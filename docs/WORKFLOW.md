@@ -18,7 +18,8 @@ src/                readable, portable C of the game logic
 ## Bench quick start
 
 ```
-tools/bench/fetch.sh            # ext/ at pinned commits + DSP-4 patch
+tools/bench/fetch.sh            # ext/ at pinned commits + DSP-4 patch (refuses to wipe edits)
+tools/bench/export-patch.sh     # after editing ext/lakesnes-dinkc64: save edits into patches/
 make -C tools/bench             # -> build/bench/bench
 build/bench/bench TG3000.sfc 600 --dsp4-log dsp4.log
 build/bench/bench TG3000.sfc 3600 --movie tools/bench/movies/start_taps.txt --dump /tmp/f --every 120

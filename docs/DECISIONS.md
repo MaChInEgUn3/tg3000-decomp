@@ -81,6 +81,19 @@ re-deriving anything. Dates are absolute.
 - WRAM powers on zero-filled (LakeSnes `ramFill = 0`). Real hardware is not zeroed;
   any routine that reads uninitialised WRAM will be found by the differential test.
 
+## Bench save states and patch safety (bench-fix, 2026-11-13)
+
+- LakeSnes save states now include the DSP-4 (cart type 5 → the bridge's fixed-size
+  blob from `Dsp4::saveState`; a rejected blob aborts the bench rather than continue
+  with a wrong chip). `--state-test N`: save, run N frames, reload, run them again;
+  WRAM hashes and the final full state must match. At frame 3,100 + 600 frames:
+  identical (state = 270,705 bytes). Caveat: no DSP-4 command has run by then, so
+  the chip's part of the round trip is only exercised once a race is reached.
+- `fetch.sh` refuses to run when `ext/lakesnes-dinkc64` has edits that differ from
+  the patch (they would be wiped); `tools/bench/export-patch.sh` saves them,
+  `FORCE=1` discards them. Tested: clean re-run, refuse-and-keep, force, export
+  round trip.
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

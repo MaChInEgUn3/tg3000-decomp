@@ -7,6 +7,8 @@
 // A "frame" is one full video frame: the bench steps the CPU until LakeSnes's frame
 // counter changes (start of the next frame), so frame N of a movie is always video frame N.
 // --hashes writes one line per frame: "<frame> <FNV-1a 64 of the 128 KB WRAM>".
+// --state-test N: after the run, save a state, run N more frames, reload the state, run the
+// same N frames again; the WRAM hashes and the final full save states must be identical.
 //
 // Movie file: one "<frame> <buttons>" per line, the buttons held from that frame on
 // (player 1). Buttons: B Y s(elect) S(tart) U D L R A X l r, or "." for none.
@@ -125,6 +127,7 @@ int main(int argc, char** argv) {
   const char* romPath = argv[1];
   const char* dumpDir = NULL;
   FILE* hashes = NULL;
+  int stateTest = 0;
   int frames = 600, every = 60;
   for(int i = 2; i < argc; i++) {
     if(strcmp(argv[i], "--dsp4-log") == 0 && i + 1 < argc) {
@@ -133,6 +136,8 @@ int main(int argc, char** argv) {
     } else if(strcmp(argv[i], "--hashes") == 0 && i + 1 < argc) {
       hashes = fopen(argv[++i], "w");
       if(hashes == NULL) { perror(argv[i]); return 1; }
+    } else if(strcmp(argv[i], "--state-test") == 0 && i + 1 < argc) {
+      stateTest = atoi(argv[++i]);
     } else if(strcmp(argv[i], "--movie") == 0 && i + 1 < argc) {
       if(!loadMovie(argv[++i])) return 1;
     } else if(strcmp(argv[i], "--dump") == 0 && i + 1 < argc) {
@@ -159,6 +164,31 @@ int main(int argc, char** argv) {
     if(dumpDir != NULL && (i + 1) % every == 0) dumpFrame(dumpDir);
   }
 
+  int status = 0;
+  if(stateTest > 0) {
+    int size = snes_saveState(snes, NULL);
+    uint8_t* saved = malloc(size);
+    uint8_t* endA = malloc(size);
+    uint8_t* endB = malloc(size);
+    uint64_t* hashA = malloc(stateTest * sizeof *hashA);
+    snes_saveState(snes, saved);
+    for(int k = 0; k < stateTest; k++) { applyMovie(frames + k); benchRunFrame(); hashA[k] = wramHash(); }
+    int sizeA = snes_saveState(snes, endA);
+    if(!snes_loadState(snes, saved, size)) { fprintf(stderr, "state-test: load rejected\n"); return 1; }
+    int firstDiff = -1;
+    for(int k = 0; k < stateTest; k++) {
+      applyMovie(frames + k);
+      benchRunFrame();
+      if(firstDiff < 0 && wramHash() != hashA[k]) firstDiff = k;
+    }
+    int sizeB = snes_saveState(snes, endB);
+    bool same = firstDiff < 0 && sizeA == sizeB && memcmp(endA, endB, sizeA) == 0;
+    printf("state-test: %d frames after reload: %s (state %d bytes%s)\n", stateTest,
+      same ? "IDENTICAL" : "DIFFERENT", size, firstDiff >= 0 ? ", WRAM diverged" : "");
+    if(!same) status = 3;
+    free(saved); free(endA); free(endB); free(hashA);
+  }
+
   int firstWrite = -1;
   for(int i = 0; i < (int)snes->frames && i < (1 << 16); i++) if(dsp4WritesByFrame[i]) { firstWrite = i; break; }
   printf("frames=%u dsp4 data: %lu reads %lu writes; status: %lu reads %lu writes; first write frame %d\n",
@@ -168,5 +198,5 @@ int main(int argc, char** argv) {
   snes_free(snes);
   free(rom);
   free(movie);
-  return 0;
+  return status;
 }

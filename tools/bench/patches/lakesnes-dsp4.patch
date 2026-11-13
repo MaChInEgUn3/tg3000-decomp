@@ -1,5 +1,5 @@
 diff --git a/snes/cart.c b/snes/cart.c
-index e0b8bb9..3f67e79 100644
+index e0b8bb9..7b8efcc 100644
 --- a/snes/cart.c
 +++ b/snes/cart.c
 @@ -9,6 +9,7 @@
@@ -29,7 +29,24 @@ index e0b8bb9..3f67e79 100644
    }
  }
  
-@@ -109,6 +115,7 @@ uint8_t cart_read(Cart* cart, uint8_t bank, uint16_t adr) {
+@@ -67,6 +73,16 @@ void cart_handleState(Cart* cart, StateHandler* sh) {
+ 
+   switch(cart->type) {
+     case 4: cx4_handleState(sh); break;
++    case 5: {
++      // DSP-4: the bridge's chip state as a fixed-size blob
++      int size = dsp4_bridge_state_size();
++      uint8_t* buf = malloc(size);
++      if(sh->saving) dsp4_bridge_save_state(buf);
++      sh_handleByteArray(sh, buf, size);
++      if(!sh->saving) dsp4_bridge_load_state(buf, size);
++      free(buf);
++      break;
++    }
+   }
+ }
+ 
+@@ -109,6 +125,7 @@ uint8_t cart_read(Cart* cart, uint8_t bank, uint16_t adr) {
      case 2: return cart_readHirom(cart, bank, adr);
      case 3: return cart_readExHirom(cart, bank, adr);
      case 4: return cart_readCX4(cart, bank, adr);
@@ -37,7 +54,7 @@ index e0b8bb9..3f67e79 100644
    }
    return cart->snes->openBus;
  }
-@@ -120,6 +127,7 @@ void cart_write(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val) {
+@@ -120,6 +137,7 @@ void cart_write(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val) {
      case 2: cart_writeHirom(cart, bank, adr, val); break;
      case 3: cart_writeHirom(cart, bank, adr, val); break;
      case 4: cart_writeCX4(cart, bank, adr, val); break;
@@ -45,7 +62,7 @@ index e0b8bb9..3f67e79 100644
    }
  }
  
-@@ -209,3 +217,21 @@ static void cart_writeHirom(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val)
+@@ -209,3 +227,21 @@ static void cart_writeHirom(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val)
      cart->ram[(((bank & 0x3f) << 13) | (adr & 0x1fff)) & (cart->ramSize - 1)] = val;
    }
  }
@@ -69,10 +86,10 @@ index e0b8bb9..3f67e79 100644
 +}
 diff --git a/snes/dsp4_bridge.h b/snes/dsp4_bridge.h
 new file mode 100644
-index 0000000..fe7564b
+index 0000000..65fae29
 --- /dev/null
 +++ b/snes/dsp4_bridge.h
-@@ -0,0 +1,17 @@
+@@ -0,0 +1,21 @@
 +#ifndef DSP4_BRIDGE_H
 +#define DSP4_BRIDGE_H
 +
@@ -85,6 +102,10 @@ index 0000000..fe7564b
 +void dsp4_bridge_reset(void);
 +uint8_t dsp4_bridge_read(uint8_t bank, uint16_t adr);
 +void dsp4_bridge_write(uint8_t bank, uint16_t adr, uint8_t val);
++// Save states: the chip's state is a blob of a fixed size.
++int dsp4_bridge_state_size(void);
++void dsp4_bridge_save_state(uint8_t* out);
++void dsp4_bridge_load_state(const uint8_t* data, int size);
 +#ifdef __cplusplus
 +}
 +#endif
