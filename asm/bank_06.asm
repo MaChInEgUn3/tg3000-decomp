@@ -491,7 +491,8 @@ CODE_86E16E:
     cmp.w $4216                 ; $86E16E
     bcc CODE_86E17F             ; $86E171
     beq CODE_86E17A             ; $86E173
-    incbin !baserom:$36175..$3617A
+    jsr.w $E1BA                 ; $86E175
+    bra CODE_86E182             ; $86E178
 CODE_86E17A:
     jsr.w $E1E6                 ; $86E17A
     bra CODE_86E182             ; $86E17D
@@ -524,7 +525,26 @@ CODE_86E1A8:
     sta.w $2142                 ; $86E1B5
     pld                         ; $86E1B8
     rts                         ; $86E1B9
-    incbin !baserom:$361BA..$361E6
+    lda.l $810479               ; $86E1BA
+CODE_86E1BE:
+    cmp.w $2143                 ; $86E1BE
+    bne CODE_86E1BE             ; $86E1C1
+    lda.b [$E0],y               ; $86E1C3
+    iny                         ; $86E1C5
+    sta.w $2140                 ; $86E1C6
+    lda.b [$E0],y               ; $86E1C9
+    iny                         ; $86E1CB
+    sta.w $2141                 ; $86E1CC
+    lda.b [$E0],y               ; $86E1CF
+    iny                         ; $86E1D1
+    sta.w $2142                 ; $86E1D2
+    lda.l $810479               ; $86E1D5
+    eor.b #$FF                  ; $86E1D9
+    sta.l $810479               ; $86E1DB
+    sta.w $2143                 ; $86E1DF
+    dex                         ; $86E1E2
+    bne CODE_86E1BE             ; $86E1E3
+    rts                         ; $86E1E5
     lda.l $810479               ; $86E1E6
 CODE_86E1EA:
     cmp.w $2143                 ; $86E1EA

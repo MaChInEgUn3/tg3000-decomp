@@ -158,6 +158,35 @@ re-deriving anything. Dates are absolute.
   1,073 labels — identical ROM on the first try.
 - The asm grows with the map: as coverage rises, `incbin` turns into instructions.
 
+## Race controls and first WRAM variables (driver-2, 2026-11-13)
+
+Found by holding buttons from save states and diffing WRAM dumps (`--wram-dump`,
+128 KB per frame) with numpy (project `.venv`, ignored):
+- Controls (default config): **X accelerates**, **A brakes**, D-pad Left/Right steers.
+  The countdown ends with "GO!" ~600 frames after the race screen appears.
+- **`$7E:020F` (16-bit): player speed.** 0 at rest, ~10,475 after 3 s of throttle,
+  falls when coasting (the speedometer shows ~183 mph around 11,700; roughly
+  mph ≈ value / 64). Mirrored at `$7E:FACA`.
+- **`$7E:0202` (signed 16-bit): player lateral position**, +64 on the starting grid;
+  Left lowers it, Right raises it, curves push it. Mirrored at `$7E:0206` and in the
+  `$7E:34EC..` table (one per car?).
+- Not found yet: distance along the track (no monotonic 16-bit counter; probably
+  segment index + offset), lap counter, race position.
+
+These names are working hypotheses for the driver; they become labels once the code
+that reads/writes them is understood.
+
+**Autopilot** (`bench --autopilot STEP`, 2026-11-13): in a race (detected by DSP-4
+writes in the last frame) it holds X and steers L/R to keep `$0202` within ±12; outside
+races it loops "Down x6, A" (passes the league table and track intro, leaves the shop
+through EXIT). `--record FILE` saves the buttons as a movie. From `race1.txt` + autopilot
+at step 8,000 it drove 60,000 frames through several tracks (desert, night, plains;
+"qualified in 6th position, 8888 credits"); saved as `movies/autopilot_60k.txt`, whose
+replay without the autopilot gives the identical DSP-4 traffic (70,943,352 writes).
+Coverage with it: **55,874 code bytes, 381,461 data bytes, 41.71% classified**;
+the generated asm grows to 23,921 instructions / 1,489 labels and still rebuilds the
+ROM byte for byte. The shop is only ever exited, never used (upgrades not covered).
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

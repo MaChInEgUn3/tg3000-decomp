@@ -14,3 +14,4 @@ __pycache__/
 # Claude Code session/harness artifacts - not project content.
 /.claude/
 /CLAUDE.md
+/.venv/

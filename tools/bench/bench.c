@@ -9,6 +9,11 @@
 // --hashes writes one line per step: "<step> <video frame counter> <FNV-1a 64 of the 128 KB WRAM>".
 // --coverage FILE: trace execution and OR-merge the per-ROM-byte flags into FILE
 // (see coverage.h); RAM-executed addresses go to FILE.ram.
+// --autopilot FROM: from step FROM on, drive the race: hold X (accelerate) and steer with
+// L/R to keep the car's lateral position ($7E:0202, signed) near the road centre.
+// Replaces the movie's buttons from that step. --record FILE writes every step's buttons
+// as a movie, so an autopilot run can be replayed without the autopilot.
+// --wram-dump FILE: append the 128 KB WRAM after every step (for finding variables).
 // --load-state FILE: start from a save state (frame numbers in the movie stay relative to
 // the bench's own loop, starting at 0). --save-state FILE: write one at the end.
 // --state-test N: after the run, save a state, run N more frames, reload the state, run the
@@ -96,11 +101,55 @@ static bool loadMovie(const char* path) {
   return true;
 }
 
+static uint16_t heldButtons;
+
+static void setButtons(uint16_t mask) {
+  heldButtons = mask;
+  for(int b = 0; b < 12; b++) snes_setButtonState(snes, 1, b, (mask >> b) & 1);
+}
+
 static void applyMovie(int frame) {
   for(int i = 0; i < movieLen; i++) {
-    if(movie[i].frame != frame) continue;
-    for(int b = 0; b < 12; b++) snes_setButtonState(snes, 1, b, (movie[i].buttons >> b) & 1);
+    if(movie[i].frame == frame) setButtons(movie[i].buttons);
   }
+}
+
+// Race autopilot (see --autopilot). Button bits follow buttonChars.
+enum { BTN_L_DPAD = 1 << 6, BTN_R_DPAD = 1 << 7, BTN_A = 1 << 8, BTN_X = 1 << 9 };
+
+// In a race the DSP-4 gets commands every frame; elsewhere (league table, track
+// description, shop) the autopilot loops "Down x6, A", which leaves the shop through EXIT
+// and confirms the other screens.
+static unsigned long dsp4WritesAtLastStep;
+static int menuClock;
+
+static void autopilot(void) {
+  unsigned long writes = dsp4Counts[1][1];
+  bool racing = writes != dsp4WritesAtLastStep;
+  dsp4WritesAtLastStep = writes;
+  if(racing) {
+    menuClock = 0;
+    int16_t lateral = (int16_t)(snes->ram[0x202] | (snes->ram[0x203] << 8));
+    uint16_t mask = BTN_X;
+    if(lateral > 12) mask |= BTN_L_DPAD;
+    else if(lateral < -12) mask |= BTN_R_DPAD;
+    setButtons(mask);
+    return;
+  }
+  int t = menuClock++ % 240;
+  bool down = t < 120 && t % 20 < 6;
+  bool a = t >= 150 && t < 156;
+  setButtons(down ? (1 << 5) : a ? BTN_A : 0);
+}
+
+static void recordStep(FILE* f, int step, uint16_t* last) {
+  if(f == NULL || (step > 0 && heldButtons == *last)) return;
+  char buf[16] = ".";
+  int n = 0;
+  for(int b = 0; b < 12; b++) if(heldButtons & (1 << b)) buf[n++] = buttonChars[b];
+  buf[n ? n : 1] = '\0';
+  fprintf(f, "%d %s\n", step, buf);
+  *last = heldButtons;
 }
 
 // ---- frame dumps ----
@@ -126,7 +175,7 @@ static void dumpFrame(const char* dir) {
 
 int main(int argc, char** argv) {
   if(argc < 2) {
-    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE] [--coverage FILE] [--load-state FILE] [--save-state FILE] [--state-test N]\n", argv[0]);
+    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE] [--coverage FILE] [--load-state FILE] [--save-state FILE] [--wram-dump FILE] [--autopilot STEP] [--record FILE] [--state-test N]\n", argv[0]);
     return 2;
   }
   const char* romPath = argv[1];
@@ -135,6 +184,9 @@ int main(int argc, char** argv) {
   int stateTest = 0;
   const char* coveragePath = NULL;
   const char* loadStatePath = NULL;
+  FILE* wramDump = NULL;
+  FILE* record = NULL;
+  int autopilotFrom = -1;
   const char* saveStatePath = NULL;
   int frames = 600, every = 60;
   for(int i = 2; i < argc; i++) {
@@ -144,6 +196,14 @@ int main(int argc, char** argv) {
     } else if(strcmp(argv[i], "--hashes") == 0 && i + 1 < argc) {
       hashes = fopen(argv[++i], "w");
       if(hashes == NULL) { perror(argv[i]); return 1; }
+    } else if(strcmp(argv[i], "--autopilot") == 0 && i + 1 < argc) {
+      autopilotFrom = atoi(argv[++i]);
+    } else if(strcmp(argv[i], "--record") == 0 && i + 1 < argc) {
+      record = fopen(argv[++i], "w");
+      if(record == NULL) { perror(argv[i]); return 1; }
+    } else if(strcmp(argv[i], "--wram-dump") == 0 && i + 1 < argc) {
+      wramDump = fopen(argv[++i], "wb");
+      if(wramDump == NULL) { perror(argv[i]); return 1; }
     } else if(strcmp(argv[i], "--load-state") == 0 && i + 1 < argc) {
       loadStatePath = argv[++i];
     } else if(strcmp(argv[i], "--save-state") == 0 && i + 1 < argc) {
@@ -179,9 +239,13 @@ int main(int argc, char** argv) {
     free(st);
   }
 
+  uint16_t lastRecorded = 0;
   for(int i = 0; i < frames; i++) {
     applyMovie(i);
+    if(autopilotFrom >= 0 && i >= autopilotFrom) autopilot();
+    recordStep(record, i, &lastRecorded);
     benchRunFrame();
+    if(wramDump != NULL) fwrite(snes->ram, 1, sizeof snes->ram, wramDump);
     if(hashes != NULL) fprintf(hashes, "%d %u %016llx\n", i + 1, snes->frames, (unsigned long long)wramHash());
     if(dumpDir != NULL && (i + 1) % every == 0) dumpFrame(dumpDir);
   }
@@ -232,6 +296,8 @@ int main(int argc, char** argv) {
     snes->frames, dsp4Counts[0][1], dsp4Counts[1][1], dsp4Counts[0][0], dsp4Counts[1][0], firstWrite);
   if(dsp4Log != NULL) fclose(dsp4Log);
   if(hashes != NULL) fclose(hashes);
+  if(wramDump != NULL) fclose(wramDump);
+  if(record != NULL) fclose(record);
   snes_free(snes);
   free(rom);
   free(movie);

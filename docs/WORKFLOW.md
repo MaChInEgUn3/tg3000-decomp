@@ -23,7 +23,8 @@ tools/bench/export-patch.sh     # after editing ext/lakesnes-dinkc64: save edits
 make -C tools/bench             # -> build/bench/bench
 build/bench/bench TG3000.sfc 600 --dsp4-log dsp4.log
 build/bench/bench TG3000.sfc 3600 --movie tools/bench/movies/start_taps.txt --dump /tmp/f --every 120
-build/bench/bench TG3000.sfc 9000 --movie tools/bench/movies/to_race.txt --coverage traces/coverage.bin
+build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --coverage traces/coverage.bin
+build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/race1.txt --autopilot 8000 --record new.txt   # new autopilot run
 python3 -I tools/map.py && python3 -I tools/progress.py   # -> map/*.txt, README numbers
 tools/bench/selftest.sh         # determinism + fresh-process save/load + race reached
 python3 -I tools/listing.py && tools/build_asm.sh   # asm/ -> exact ROM (SHA-1 + code-from-text proof)
