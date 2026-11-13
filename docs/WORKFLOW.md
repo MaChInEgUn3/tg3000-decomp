@@ -26,6 +26,7 @@ build/bench/bench TG3000.sfc 3600 --movie tools/bench/movies/start_taps.txt --du
 build/bench/bench TG3000.sfc 9000 --movie tools/bench/movies/to_race.txt --coverage traces/coverage.bin
 python3 -I tools/map.py && python3 -I tools/progress.py   # -> map/*.txt, README numbers
 tools/bench/selftest.sh         # determinism + fresh-process save/load + race reached
+python3 -I tools/listing.py && tools/build_asm.sh   # asm/ -> exact ROM (SHA-1 + code-from-text proof)
 ```
 
 Frame dumps are game assets: write them outside the repo (they are also ignored).

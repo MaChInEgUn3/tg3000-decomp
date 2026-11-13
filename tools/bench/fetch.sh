@@ -36,6 +36,13 @@ fetch() { # dir url commit
 
 fetch lakesnes-dinkc64 https://github.com/dinkc64/LakeSnes.git 048a0d7
 fetch snes-dsp4 https://github.com/StackBlender/snes-dsp4.git 3155961
+fetch asar https://github.com/RPGHacker/asar.git v1.91
+
+# asar (the assembler for asm/): build once
+if [ ! -x "$root/ext/asar-build/asar/bin/asar" ]; then
+  cmake -S "$root/ext/asar/src" -B "$root/ext/asar-build" -DCMAKE_BUILD_TYPE=Release >/dev/null 2>&1
+  cmake --build "$root/ext/asar-build" -j"$(nproc 2>/dev/null || echo 2)" >/dev/null 2>&1
+fi
 
 git -C "$ls_dir" apply "$patch"
 echo "ext/ ready"

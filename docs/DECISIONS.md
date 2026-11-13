@@ -112,7 +112,9 @@ re-deriving anything. Dates are absolute.
   data; code that is only read (e.g. copied) would count as data until executed.
 - Interrupt vectors (native): COP/BRK → `$8000`, ABORT → `$89CC`, **NMI → `$00:0000`
   and IRQ → `$00:0004` in WRAM** (trampolines the game writes into RAM; the NMI one
-  runs once a frame — the only RAM execution seen so far). Emulation: RESET `$8000`.
+  runs once a frame, the IRQ one during races). Emulation: **RESET → `$8002`**,
+  COP/BRK → `$8000`, others → `$89CC`. `$8000` is `80 FE` = `BRA *`, a hang trap for
+  BRK/COP (never executed so far).
 - First map, from the two menu movies only (no race): **11,360 code bytes, 72,074
   data bytes, 7.96% of the ROM classified**, 5,194 instruction starts (mostly 16-bit
   A with 8-bit index, or all 16-bit).
@@ -139,6 +141,22 @@ re-deriving anything. Dates are absolute.
 - Coverage with the race: **41,306 code bytes, 211,528 data bytes, 24.11% of the ROM
   classified**; the IRQ trampoline at `$00:0004` runs during the race.
 - Driving is not automated yet: the car just sits/accelerates as the movie leaves it.
+
+## Byte-for-byte disassembly (listing-1, 2026-11-13)
+
+- `tools/listing.py` writes `asm/main.asm` + `asm/bank_XX.asm` (asar syntax, `lorom`,
+  one file per 32 KB bank at its `$80-$9F` FastROM address). Executed code becomes
+  instructions with explicit sizes (`.b/.w/.l`) and `CODE_bbaaaa` labels on branch
+  targets (asar needs labels for branches; a raw number is taken as the offset).
+  Code that cannot be decoded unambiguously (width-dependent opcode seen with two
+  widths, crossing a bank, `per`, branch to a non-instruction) is `db`. Everything else
+  is `incbin !baserom:$a..$b` from the user's ROM — no game data in the repository.
+- `tools/build_asm.sh` assembles with asar v1.91 (built by `fetch.sh` into
+  `ext/asar-build/`) and checks SHA-1 `058aadf1...`. A second build feeds asar a copy
+  of the ROM with all code bytes zeroed and must still match: **all code comes from
+  the asm text**. First result: 17,590 instructions, 122 code bytes as `db`,
+  1,073 labels — identical ROM on the first try.
+- The asm grows with the map: as coverage rises, `incbin` turns into instructions.
 
 ## Coverage without a player (2026-11-13)
 

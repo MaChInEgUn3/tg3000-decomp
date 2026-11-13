@@ -43,7 +43,7 @@ _Gerado por `tools/progress.py` a partir de `map/` e `src/`._
 |---|---|
 | 1. Bancada: rodar a ROM original sem tela, como referência | ✅ liga, desenha, DSP-4 encaixado, determinística |
 | 2. Mapa: classificar cada byte da ROM como código ou dado, a partir de traces | ⏳ em andamento (menus + primeira corrida) |
-| 3. Listagem: disassembly gerado, com nomes, que remonta byte a byte | — |
+| 3. Listagem: disassembly gerado, com nomes, que remonta byte a byte | ✅ remonta a ROM exata; cresce junto com o mapa |
 | 4. C: portar as rotinas, cada uma aprovada no teste diferencial | — |
 
 ## Como a fidelidade é comprovada
@@ -77,6 +77,12 @@ build/bench/bench TG3000.sfc 3600 \
     --dsp4-log /tmp/dsp4.log --hashes /tmp/wram.txt
 ```
 
+Para remontar a ROM a partir de `asm/` (precisa da sua ROM para os dados que ele puxa com `incbin`):
+
+```sh
+tools/build_asm.sh            # confere o SHA-1 e que todo o código sai do texto do asm
+```
+
 O `--dump` grava prints em PNG fora do repositório. Eles são assets do jogo e nunca
 são commitados.
 
@@ -87,7 +93,7 @@ docs/          DECISIONS.md (escopo e fatos), WORKFLOW.md (como trabalhar)
 tools/bench/   o executor de referência: LakeSnes + DSP-4, movies, prints
 tools/         mapeador, gerador da listagem, relatório de progresso
 map/           mapa de código/dados da ROM (em breve)
-asm/           disassembly gerado, remonta byte a byte (em breve)
+asm/           disassembly gerado (asar), remonta byte a byte
 src/           C legível e portável da lógica do jogo (em breve)
 ```
 

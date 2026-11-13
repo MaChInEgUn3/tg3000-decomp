@@ -9,5 +9,7 @@
 - **[snes-dsp4](https://github.com/StackBlender/snes-dsp4)** by StackBlender
   (GPL-3.0-or-later) — clean-room DSP-4 used by the bench, and documentation of the
   chip's commands.
+- **[Asar](https://github.com/RPGHacker/asar)** by RPGHacker and contributors
+  (LGPL-3.0-or-later) — the assembler for `asm/`; fetched and built by `fetch.sh`.
 - **[top-gear-snes-re](https://github.com/pedro-walter/top-gear-snes-re)** by
   pedro-walter — reverse-engineering notes on Top Gear (1992), same studio.
