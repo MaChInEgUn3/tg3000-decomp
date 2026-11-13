@@ -30,9 +30,9 @@ a matemática do DSP-4, o vídeo e o driver de som viram código nativo.
 
 | Métrica | Atual |
 |---|---:|
-| Bytes da ROM classificados (código + dados) | **0 / 1,048,576 (0.00%)** |
-| Bytes de código | 0 (`0x0`) |
-| Bytes de dados | 0 (`0x0`) |
+| Bytes da ROM classificados (código + dados) | **83,434 / 1,048,576 (7.96%)** |
+| Bytes de código | 11,360 (`0x2C60`) |
+| Bytes de dados | 72,074 (`0x1198A`) |
 | Rotinas portadas para C e aprovadas no teste diferencial | **0** |
 
 _Gerado por `tools/progress.py` a partir de `map/` e `src/`._
@@ -42,7 +42,7 @@ _Gerado por `tools/progress.py` a partir de `map/` e `src/`._
 | Fase | Estado |
 |---|---|
 | 1. Bancada: rodar a ROM original sem tela, como referência | ✅ liga, desenha, DSP-4 encaixado, determinística |
-| 2. Mapa: classificar cada byte da ROM como código ou dado, a partir de traces | ⏳ próxima |
+| 2. Mapa: classificar cada byte da ROM como código ou dado, a partir de traces | ⏳ em andamento (só menus até agora) |
 | 3. Listagem: disassembly de referência gerado e com nomes | — |
 | 4. C: portar as rotinas, cada uma aprovada no teste diferencial | — |
 

@@ -23,6 +23,8 @@ tools/bench/export-patch.sh     # after editing ext/lakesnes-dinkc64: save edits
 make -C tools/bench             # -> build/bench/bench
 build/bench/bench TG3000.sfc 600 --dsp4-log dsp4.log
 build/bench/bench TG3000.sfc 3600 --movie tools/bench/movies/start_taps.txt --dump /tmp/f --every 120
+build/bench/bench TG3000.sfc 9000 --movie tools/bench/movies/to_race.txt --coverage traces/coverage.bin
+python3 -I tools/map.py && python3 -I tools/progress.py   # -> map/*.txt, README numbers
 ```
 
 Frame dumps are game assets: write them outside the repo (they are also ignored).

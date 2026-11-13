@@ -7,6 +7,8 @@
 // A "frame" is one full video frame: the bench steps the CPU until LakeSnes's frame
 // counter changes (start of the next frame), so frame N of a movie is always video frame N.
 // --hashes writes one line per frame: "<frame> <FNV-1a 64 of the 128 KB WRAM>".
+// --coverage FILE: trace execution and OR-merge the per-ROM-byte flags into FILE
+// (see coverage.h); RAM-executed addresses go to FILE.ram.
 // --state-test N: after the run, save a state, run N more frames, reload the state, run the
 // same N frames again; the WRAM hashes and the final full save states must be identical.
 //
@@ -20,6 +22,7 @@
 #include "snes.h"
 #include "bench_log.h"
 #include "png.h"
+#include "coverage.h"
 
 static Snes* snes;
 static FILE* dsp4Log;
@@ -121,13 +124,14 @@ static void dumpFrame(const char* dir) {
 
 int main(int argc, char** argv) {
   if(argc < 2) {
-    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE]\n", argv[0]);
+    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE] [--coverage FILE] [--state-test N]\n", argv[0]);
     return 2;
   }
   const char* romPath = argv[1];
   const char* dumpDir = NULL;
   FILE* hashes = NULL;
   int stateTest = 0;
+  const char* coveragePath = NULL;
   int frames = 600, every = 60;
   for(int i = 2; i < argc; i++) {
     if(strcmp(argv[i], "--dsp4-log") == 0 && i + 1 < argc) {
@@ -136,6 +140,8 @@ int main(int argc, char** argv) {
     } else if(strcmp(argv[i], "--hashes") == 0 && i + 1 < argc) {
       hashes = fopen(argv[++i], "w");
       if(hashes == NULL) { perror(argv[i]); return 1; }
+    } else if(strcmp(argv[i], "--coverage") == 0 && i + 1 < argc) {
+      coveragePath = argv[++i];
     } else if(strcmp(argv[i], "--state-test") == 0 && i + 1 < argc) {
       stateTest = atoi(argv[++i]);
     } else if(strcmp(argv[i], "--movie") == 0 && i + 1 < argc) {
@@ -156,6 +162,8 @@ int main(int argc, char** argv) {
   snes = snes_init();
   if(!snes_loadRom(snes, rom, size)) { fprintf(stderr, "ROM did not load\n"); return 1; }
   if(snes->cart->type != 5) { fprintf(stderr, "ROM was not detected as DSP-4 (type %d)\n", snes->cart->type); return 1; }
+  if(snes->cart->romSize != 0x100000) { fprintf(stderr, "expected a 1 MB ROM\n"); return 1; }
+  if(coveragePath != NULL) coverage_start(snes->cpu, snes->cart->rom);
 
   for(int i = 0; i < frames; i++) {
     applyMovie(i);
@@ -187,6 +195,11 @@ int main(int argc, char** argv) {
       same ? "IDENTICAL" : "DIFFERENT", size, firstDiff >= 0 ? ", WRAM diverged" : "");
     if(!same) status = 3;
     free(saved); free(endA); free(endB); free(hashA);
+  }
+
+  if(coveragePath != NULL) {
+    coverage_report();
+    if(!coverage_merge_save(coveragePath)) status = 1;
   }
 
   int firstWrite = -1;

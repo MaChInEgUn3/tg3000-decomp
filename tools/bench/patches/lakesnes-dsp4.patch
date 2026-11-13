@@ -1,5 +1,5 @@
 diff --git a/snes/cart.c b/snes/cart.c
-index e0b8bb9..7b8efcc 100644
+index e0b8bb9..81ab89d 100644
 --- a/snes/cart.c
 +++ b/snes/cart.c
 @@ -9,6 +9,7 @@
@@ -10,16 +10,18 @@ index e0b8bb9..7b8efcc 100644
  
  static uint8_t cart_readLorom(Cart* cart, uint8_t bank, uint16_t adr);
  static void cart_writeLorom(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val);
-@@ -17,6 +18,8 @@ static uint8_t cart_readExHirom(Cart* cart, uint8_t bank, uint16_t adr);
+@@ -17,6 +18,10 @@ static uint8_t cart_readExHirom(Cart* cart, uint8_t bank, uint16_t adr);
  static void cart_writeHirom(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val);
  static uint8_t cart_readCX4(Cart* cart, uint8_t bank, uint16_t adr);
  static void cart_writeCX4(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val);
 +static uint8_t cart_readDsp4(Cart* cart, uint8_t bank, uint16_t adr);
 +static void cart_writeDsp4(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val);
++
++void (*cart_romReadHook)(uint32_t offset) = NULL;
  
  Cart* cart_init(Snes* snes) {
    Cart* cart = malloc(sizeof(Cart));
-@@ -43,6 +46,9 @@ void cart_reset(Cart* cart) {
+@@ -43,6 +48,9 @@ void cart_reset(Cart* cart) {
        cx4_init(cart->snes);
        cx4_reset();
        break;
@@ -29,7 +31,7 @@ index e0b8bb9..7b8efcc 100644
    }
  }
  
-@@ -67,6 +73,16 @@ void cart_handleState(Cart* cart, StateHandler* sh) {
+@@ -67,6 +75,16 @@ void cart_handleState(Cart* cart, StateHandler* sh) {
  
    switch(cart->type) {
      case 4: cx4_handleState(sh); break;
@@ -46,7 +48,7 @@ index e0b8bb9..7b8efcc 100644
    }
  }
  
-@@ -109,6 +125,7 @@ uint8_t cart_read(Cart* cart, uint8_t bank, uint16_t adr) {
+@@ -109,6 +127,7 @@ uint8_t cart_read(Cart* cart, uint8_t bank, uint16_t adr) {
      case 2: return cart_readHirom(cart, bank, adr);
      case 3: return cart_readExHirom(cart, bank, adr);
      case 4: return cart_readCX4(cart, bank, adr);
@@ -54,7 +56,7 @@ index e0b8bb9..7b8efcc 100644
    }
    return cart->snes->openBus;
  }
-@@ -120,6 +137,7 @@ void cart_write(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val) {
+@@ -120,6 +139,7 @@ void cart_write(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val) {
      case 2: cart_writeHirom(cart, bank, adr, val); break;
      case 3: cart_writeHirom(cart, bank, adr, val); break;
      case 4: cart_writeCX4(cart, bank, adr, val); break;
@@ -62,7 +64,18 @@ index e0b8bb9..7b8efcc 100644
    }
  }
  
-@@ -209,3 +227,21 @@ static void cart_writeHirom(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val)
+@@ -131,7 +151,9 @@ static uint8_t cart_readLorom(Cart* cart, uint8_t bank, uint16_t adr) {
+   bank &= 0x7f;
+   if(adr >= 0x8000 || bank >= 0x40) {
+     // adr 8000-ffff in all banks or all addresses in banks 40-7f and c0-ff
+-    return cart->rom[((bank << 15) | (adr & 0x7fff)) & (cart->romSize - 1)];
++    uint32_t offset = ((bank << 15) | (adr & 0x7fff)) & (cart->romSize - 1);
++    if(cart_romReadHook != NULL) cart_romReadHook(offset);
++    return cart->rom[offset];
+   }
+   return cart->snes->openBus;
+ }
+@@ -209,3 +231,21 @@ static void cart_writeHirom(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val)
      cart->ram[(((bank & 0x3f) << 13) | (adr & 0x1fff)) & (cart->ramSize - 1)] = val;
    }
  }
@@ -84,6 +97,53 @@ index e0b8bb9..7b8efcc 100644
 +  }
 +  cart_writeLorom(cart, bank, adr, val);
 +}
+diff --git a/snes/cart.h b/snes/cart.h
+index 0ddf651..bbd858c 100644
+--- a/snes/cart.h
++++ b/snes/cart.h
+@@ -31,6 +31,8 @@ void cart_handleState(Cart* cart, StateHandler* sh);
+ void cart_load(Cart* cart, int type, uint8_t* rom, int romSize, int ramSize, bool hasBattery); // loads rom, sets up ram buffer
+ bool cart_handleBattery(Cart* cart, bool save, uint8_t* data, int* size); // saves/loads ram
+ uint8_t cart_read(Cart* cart, uint8_t bank, uint16_t adr);
++// Called with the ROM offset of every LoROM ROM read (CPU or DMA); NULL when unused. TG3000 bench.
++extern void (*cart_romReadHook)(uint32_t offset);
+ void cart_write(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val);
+ 
+ #endif
+diff --git a/snes/cpu.c b/snes/cpu.c
+index 05018e0..ebac6ad 100644
+--- a/snes/cpu.c
++++ b/snes/cpu.c
+@@ -81,6 +81,8 @@ void cpu_handleState(Cpu* cpu, StateHandler* sh) {
+   sh_handleWords(sh, &cpu->a, &cpu->x, &cpu->y, &cpu->sp, &cpu->pc, &cpu->dp, NULL);
+ }
+ 
++void (*cpu_traceHook)(Cpu* cpu) = NULL;
++
+ void cpu_runOpcode(Cpu* cpu) {
+   if(cpu->resetWanted) {
+     cpu->resetWanted = false;
+@@ -120,6 +122,7 @@ void cpu_runOpcode(Cpu* cpu) {
+     cpu_read(cpu, (cpu->k << 16) | cpu->pc);
+     cpu_doInterrupt(cpu);
+   } else {
++    if(cpu_traceHook != NULL) cpu_traceHook(cpu);
+     uint8_t opcode = cpu_readOpcode(cpu);
+     cpu_doOpcode(cpu, opcode);
+   }
+diff --git a/snes/cpu.h b/snes/cpu.h
+index ae515ef..71ab5cb 100644
+--- a/snes/cpu.h
++++ b/snes/cpu.h
+@@ -54,6 +54,8 @@ void cpu_free(Cpu* cpu);
+ void cpu_reset(Cpu* cpu, bool hard);
+ void cpu_handleState(Cpu* cpu, StateHandler* sh);
+ void cpu_runOpcode(Cpu* cpu);
++// Called before each opcode fetch (not for interrupts); NULL when unused. TG3000 bench tracer.
++extern void (*cpu_traceHook)(Cpu* cpu);
+ void cpu_nmi(Cpu* cpu);
+ void cpu_setIrq(Cpu* cpu, bool state);
+ 
 diff --git a/snes/dsp4_bridge.h b/snes/dsp4_bridge.h
 new file mode 100644
 index 0000000..65fae29

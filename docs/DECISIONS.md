@@ -94,6 +94,26 @@ re-deriving anything. Dates are absolute.
   `FORCE=1` discards them. Tested: clean re-run, refuse-and-keep, force, export
   round trip.
 
+## Code/data map (map-1, 2026-11-13)
+
+- LakeSnes patch adds two hooks: `cpu_traceHook` (before each opcode fetch, not
+  interrupts) and `cart_romReadHook` (every LoROM ROM read, CPU or DMA).
+- `--coverage traces/coverage.bin` keeps one flag byte per ROM byte (instruction
+  start / code byte / read / M-X widths seen / emulation mode), OR-merged across
+  runs; addresses executed outside ROM go to `coverage.bin.ram`.
+- `tools/map.py` turns it into the committed `map/rom_map.txt` (code/data/unknown
+  ranges), `map/code_starts.txt` (instruction starts with widths, CPU address in the
+  `$80-$FF` FastROM mirror) and `map/ram_exec.txt`. It fails if any start lies inside
+  another start's operand under the same widths (65816 length check).
+- **Code in data = "read and not code"**, so data the code reads but never runs is
+  data; code that is only read (e.g. copied) would count as data until executed.
+- Interrupt vectors (native): COP/BRK → `$8000`, ABORT → `$89CC`, **NMI → `$00:0000`
+  and IRQ → `$00:0004` in WRAM** (trampolines the game writes into RAM; the NMI one
+  runs once a frame — the only RAM execution seen so far). Emulation: RESET `$8000`.
+- First map, from the two menu movies only (no race): **11,360 code bytes, 72,074
+  data bytes, 7.96% of the ROM classified**, 5,194 instruction starts (mostly 16-bit
+  A with 8-bit index, or all 16-bit).
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:
