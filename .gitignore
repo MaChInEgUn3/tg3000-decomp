@@ -1,0 +1,16 @@
+# Game data and firmware are never committed - supply your own legally obtained copies.
+*.sfc
+*.smc
+*.rom
+*.bin
+# Third-party code fetched by tools/bench/fetch.sh, and build output.
+/ext/
+/build/
+/traces/
+# Frame dumps are game assets. Only original art under docs/img/ may be committed.
+*.png
+!/docs/img/**
+__pycache__/
+# Claude Code session/harness artifacts - not project content.
+/.claude/
+/CLAUDE.md
