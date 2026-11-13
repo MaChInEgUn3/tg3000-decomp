@@ -6,9 +6,11 @@
 //
 // A "frame" is one full video frame: the bench steps the CPU until LakeSnes's frame
 // counter changes (start of the next frame), so frame N of a movie is always video frame N.
-// --hashes writes one line per frame: "<frame> <FNV-1a 64 of the 128 KB WRAM>".
+// --hashes writes one line per step: "<step> <video frame counter> <FNV-1a 64 of the 128 KB WRAM>".
 // --coverage FILE: trace execution and OR-merge the per-ROM-byte flags into FILE
 // (see coverage.h); RAM-executed addresses go to FILE.ram.
+// --load-state FILE: start from a save state (frame numbers in the movie stay relative to
+// the bench's own loop, starting at 0). --save-state FILE: write one at the end.
 // --state-test N: after the run, save a state, run N more frames, reload the state, run the
 // same N frames again; the WRAM hashes and the final full save states must be identical.
 //
@@ -124,7 +126,7 @@ static void dumpFrame(const char* dir) {
 
 int main(int argc, char** argv) {
   if(argc < 2) {
-    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE] [--coverage FILE] [--state-test N]\n", argv[0]);
+    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE] [--coverage FILE] [--load-state FILE] [--save-state FILE] [--state-test N]\n", argv[0]);
     return 2;
   }
   const char* romPath = argv[1];
@@ -132,6 +134,8 @@ int main(int argc, char** argv) {
   FILE* hashes = NULL;
   int stateTest = 0;
   const char* coveragePath = NULL;
+  const char* loadStatePath = NULL;
+  const char* saveStatePath = NULL;
   int frames = 600, every = 60;
   for(int i = 2; i < argc; i++) {
     if(strcmp(argv[i], "--dsp4-log") == 0 && i + 1 < argc) {
@@ -140,6 +144,10 @@ int main(int argc, char** argv) {
     } else if(strcmp(argv[i], "--hashes") == 0 && i + 1 < argc) {
       hashes = fopen(argv[++i], "w");
       if(hashes == NULL) { perror(argv[i]); return 1; }
+    } else if(strcmp(argv[i], "--load-state") == 0 && i + 1 < argc) {
+      loadStatePath = argv[++i];
+    } else if(strcmp(argv[i], "--save-state") == 0 && i + 1 < argc) {
+      saveStatePath = argv[++i];
     } else if(strcmp(argv[i], "--coverage") == 0 && i + 1 < argc) {
       coveragePath = argv[++i];
     } else if(strcmp(argv[i], "--state-test") == 0 && i + 1 < argc) {
@@ -164,11 +172,17 @@ int main(int argc, char** argv) {
   if(snes->cart->type != 5) { fprintf(stderr, "ROM was not detected as DSP-4 (type %d)\n", snes->cart->type); return 1; }
   if(snes->cart->romSize != 0x100000) { fprintf(stderr, "expected a 1 MB ROM\n"); return 1; }
   if(coveragePath != NULL) coverage_start(snes->cpu, snes->cart->rom);
+  if(loadStatePath != NULL) {
+    int stSize = 0;
+    uint8_t* st = readFile(loadStatePath, &stSize);
+    if(st == NULL || !snes_loadState(snes, st, stSize)) { fprintf(stderr, "could not load state %s\n", loadStatePath); return 1; }
+    free(st);
+  }
 
   for(int i = 0; i < frames; i++) {
     applyMovie(i);
     benchRunFrame();
-    if(hashes != NULL) fprintf(hashes, "%d %016llx\n", i + 1, (unsigned long long)wramHash());
+    if(hashes != NULL) fprintf(hashes, "%d %u %016llx\n", i + 1, snes->frames, (unsigned long long)wramHash());
     if(dumpDir != NULL && (i + 1) % every == 0) dumpFrame(dumpDir);
   }
 
@@ -195,6 +209,16 @@ int main(int argc, char** argv) {
       same ? "IDENTICAL" : "DIFFERENT", size, firstDiff >= 0 ? ", WRAM diverged" : "");
     if(!same) status = 3;
     free(saved); free(endA); free(endB); free(hashA);
+  }
+
+  if(saveStatePath != NULL) {
+    int stSize = snes_saveState(snes, NULL);
+    uint8_t* st = malloc(stSize);
+    snes_saveState(snes, st);
+    FILE* f = fopen(saveStatePath, "wb");
+    if(f == NULL || fwrite(st, 1, stSize, f) != (size_t)stSize) { perror(saveStatePath); status = 1; }
+    if(f != NULL) fclose(f);
+    free(st);
   }
 
   if(coveragePath != NULL) {

@@ -11,7 +11,7 @@ docs/               DECISIONS.md, WORKFLOW.md, notes
 tools/bench/        reference runner: runs the ROM, traces, diffs the C (may emulate)
 tools/              scripts: mapper, listing generator, checks
 map/                code/data map produced from traces (committed)
-asm/                generated reference listing (committed, not reassembled)
+asm/                generated disassembly (committed; must reassemble to the exact ROM)
 src/                readable, portable C of the game logic
 ```
 
@@ -25,6 +25,7 @@ build/bench/bench TG3000.sfc 600 --dsp4-log dsp4.log
 build/bench/bench TG3000.sfc 3600 --movie tools/bench/movies/start_taps.txt --dump /tmp/f --every 120
 build/bench/bench TG3000.sfc 9000 --movie tools/bench/movies/to_race.txt --coverage traces/coverage.bin
 python3 -I tools/map.py && python3 -I tools/progress.py   # -> map/*.txt, README numbers
+tools/bench/selftest.sh         # determinism + fresh-process save/load + race reached
 ```
 
 Frame dumps are game assets: write them outside the repo (they are also ignored).
@@ -41,7 +42,8 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
 2. **Map.** Log every executed PC with its M/X/E/DB/D state; classify every ROM byte
    as code / data / unknown. Statically discovered but never-executed code is
    marked unverified.
-3. **Listing.** Generate the reference disassembly from the map, with labels.
+3. **Listing.** Generate the disassembly from the map, with labels; it must
+   assemble back to the exact ROM (SHA-1 check).
 4. **C.** Port leaf routines first; each must pass the per-routine differential test.
 
 ## Metrics

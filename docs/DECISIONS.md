@@ -6,14 +6,17 @@ re-deriving anything. Dates are absolute.
 
 ## Scope (2026-11-13)
 
-- **This repository = reference disassembly + readable C of the game logic.**
+- **This repository = byte-for-byte disassembly + readable C of the game logic.**
   Platform ports (Linux x86-64, Windows x86-64, maybe Mega Drive/Genesis one day)
   live in a **separate repository** that consumes the C from here.
 - **Readable C from the start.** No static recompiler and no "ugly generated C"
   phase. Offered and rejected.
-- **The disassembly is a reference listing**, not a deliverable that must
-  reassemble to the ROM. Byte-matching the C is impossible anyway (the original is
-  hand-written 65816); fidelity is proven by differential testing instead.
+- **Two deliverables (owner, confirmed 2026-11-13):** a byte-for-byte disassembly
+  (the generated `.asm` must assemble back to the exact ROM, SHA-1 checked) **and**
+  the readable C. Earlier the `.asm` was planned as a reference listing only; the
+  owner expects both, and making the generated listing reassemble is cheap, so it
+  is a deliverable again. Byte-matching applies to the `.asm` only: the C cannot
+  byte-match hand-written 65816, so the C is proven by differential testing.
 - **"Not even 1% emulator" in the shipped game.** No CPU/PPU/SPC700/DSP-4 model in
   any port. DSP-4 commands become native game functions; video and the sound driver
   are rewritten natively in the port repository.
@@ -113,6 +116,29 @@ re-deriving anything. Dates are absolute.
 - First map, from the two menu movies only (no race): **11,360 code bytes, 72,074
   data bytes, 7.96% of the ROM classified**, 5,194 instruction starts (mostly 16-bit
   A with 8-bit index, or all 16-bit).
+
+## Reaching a race; save-state fix (driver-1, 2026-11-13)
+
+- Menu route, found screen by screen from save states (`movies/race1.txt`):
+  intro (Start taps; it cannot be skipped) → main menu, **A** opens the Championship
+  submenu (OPTIONS / 1 PLAYER FULL / 1 PLAYER SPLIT / 2 PLAYERS / PASSWORD / EXIT),
+  Down + A = 1 PLAYER FULL → NAME / CONTROL / SPEED / RACE, Down x3 + A → track
+  description (system Merak, track Misk) → A → shop (Paintshop, Engine, Tires,
+  Gearbox, Armor, Boost, EXIT below after scrolling) → Down x6 + A → **race**.
+  First DSP-4 write at frame 7,930; the race renders correctly on the bench
+  (HUD, mountains, road, car).
+- **LakeSnes bug fixed (in our patch):** the dinkc64 fork caches memory access times
+  in a table built from `fastMem`; loading a save state restored `fastMem` but not the
+  table, so a state loaded in a *fresh process* ran FastROM code at SlowROM speed
+  (the race then broke: garbled raster effects, one instruction spanning 5-7 frames).
+  The table is now rebuilt after loading. The earlier `--state-test` missed it because
+  it saved and loaded inside one process.
+- `tools/bench/selftest.sh` (local, needs the ROM): determinism over 9,450 frames,
+  race reached with DSP-4 traffic, and a state saved at frame 7,650 then loaded in a
+  new process matches the uninterrupted run for 1,800 race frames.
+- Coverage with the race: **41,306 code bytes, 211,528 data bytes, 24.11% of the ROM
+  classified**; the IRQ trampoline at `$00:0004` runs during the race.
+- Driving is not automated yet: the car just sits/accelerates as the movie leaves it.
 
 ## Coverage without a player (2026-11-13)
 

@@ -171,6 +171,20 @@ index 0000000..65fae29
 +#endif
 +
 +#endif
+diff --git a/snes/snes.c b/snes/snes.c
+index 7af76fe..4dde057 100644
+--- a/snes/snes.c
++++ b/snes/snes.c
+@@ -114,6 +114,9 @@ void snes_handleState(Snes* snes, StateHandler* sh) {
+   input_handleState(snes->input1, sh);
+   input_handleState(snes->input2, sh);
+   cart_handleState(snes->cart, sh);
++  // the access-time table caches fastMem; rebuild it after loading (TG3000 bench fix:
++  // without this, a state loaded into a fresh process runs FastROM code at SlowROM speed)
++  if(!sh->saving) build_accesstime(snes, true);
+ }
+ 
+ void snes_runFrame(Snes* snes) {
 diff --git a/snes/snes_other.c b/snes/snes_other.c
 index e69700d..ee05dfc 100644
 --- a/snes/snes_other.c

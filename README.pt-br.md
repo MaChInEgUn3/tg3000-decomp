@@ -12,7 +12,7 @@
 # Top Gear 3000 — disassembly e C legível
 
 Projeto de engenharia reversa do jogo de SNES **Top Gear 3000** (EUA, 1995):
-um disassembly de referência do código 65816, todo anotado, e a lógica do jogo
+um disassembly do código 65816, todo anotado, que remonta a ROM byte a byte, e a lógica do jogo
 reescrita em **C legível e portável**, com cada rotina comprovada contra o original.
 
 Os ports nativos (Linux, Windows e, quem sabe um dia, Mega Drive) vão ficar num
@@ -30,9 +30,9 @@ a matemática do DSP-4, o vídeo e o driver de som viram código nativo.
 
 | Métrica | Atual |
 |---|---:|
-| Bytes da ROM classificados (código + dados) | **83,434 / 1,048,576 (7.96%)** |
-| Bytes de código | 11,360 (`0x2C60`) |
-| Bytes de dados | 72,074 (`0x1198A`) |
+| Bytes da ROM classificados (código + dados) | **252,834 / 1,048,576 (24.11%)** |
+| Bytes de código | 41,306 (`0xA15A`) |
+| Bytes de dados | 211,528 (`0x33A48`) |
 | Rotinas portadas para C e aprovadas no teste diferencial | **0** |
 
 _Gerado por `tools/progress.py` a partir de `map/` e `src/`._
@@ -42,8 +42,8 @@ _Gerado por `tools/progress.py` a partir de `map/` e `src/`._
 | Fase | Estado |
 |---|---|
 | 1. Bancada: rodar a ROM original sem tela, como referência | ✅ liga, desenha, DSP-4 encaixado, determinística |
-| 2. Mapa: classificar cada byte da ROM como código ou dado, a partir de traces | ⏳ em andamento (só menus até agora) |
-| 3. Listagem: disassembly de referência gerado e com nomes | — |
+| 2. Mapa: classificar cada byte da ROM como código ou dado, a partir de traces | ⏳ em andamento (menus + primeira corrida) |
+| 3. Listagem: disassembly gerado, com nomes, que remonta byte a byte | — |
 | 4. C: portar as rotinas, cada uma aprovada no teste diferencial | — |
 
 ## Como a fidelidade é comprovada
@@ -87,7 +87,7 @@ docs/          DECISIONS.md (escopo e fatos), WORKFLOW.md (como trabalhar)
 tools/bench/   o executor de referência: LakeSnes + DSP-4, movies, prints
 tools/         mapeador, gerador da listagem, relatório de progresso
 map/           mapa de código/dados da ROM (em breve)
-asm/           disassembly de referência gerado (em breve)
+asm/           disassembly gerado, remonta byte a byte (em breve)
 src/           C legível e portável da lógica do jogo (em breve)
 ```
 
