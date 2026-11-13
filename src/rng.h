@@ -2,7 +2,6 @@
 #ifndef TG3000_RNG_H
 #define TG3000_RNG_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 // The 32-bit state sits in the direct page at D+$10. Every call seen so far ran with
@@ -11,8 +10,8 @@
 #define RNG_STATE 0x0110
 
 // Advance the generator whose state is at `state` and return its new low word.
-// `carry`, if not NULL, receives the bit shifted out (the old bit 31), which the
-// original leaves in the carry flag.
-uint16_t rng_next(uint16_t state, bool* carry);
+// (The original also leaves the bit shifted out in the carry; no caller reads it, as
+// measured by the bench's flag-liveness check over 4,000 returns.)
+uint16_t rng_next(uint16_t state);
 
 #endif

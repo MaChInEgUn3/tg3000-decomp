@@ -249,6 +249,42 @@ fuzz 500/500, paths 16/16, entered with D = $0100 and DB = $81 or $8A.
   the carry matters). `$80:8373` waits for the frame counter `$0024`, so every live
   sample is interrupted by design — it needs an interrupt-aware test.
 
+## Hardware rules and flag liveness (difftest-hw part 1, 2026-11-13)
+
+Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
+- **CPU multiply/divide unit** (`$4202-$4206` operands, `$4214-$4217` results): no
+  interface — the C computes natively (`*`, `/`). The harness accepts those accesses
+  inside a sample, but a result read is only allowed after an operand write in the
+  same sample. (Division by zero must still be checked against the bench when the first
+  divide routine is ported.) `$211B/$211C` is also the Mode 7 matrix: it gets the same
+  rule only once the movies show Mode 7 is never selected.
+- **Uploads to video memory** (immediate DMA `$80:83AD` VRAM, `$80:83CB` CGRAM, the
+  queue drain): will be **semantic calls** in `src/` ("upload N bytes from bank:addr to
+  VRAM word address / CGRAM index") — never register writes, which a port could only
+  consume with a PPU register model. Verified by comparing effect logs (next unit).
+  A routine whose hardware effect cannot be named yet stays asm.
+- **Flag liveness:** after each live sample returns, the bench keeps watching the
+  original (per-opcode read/write masks from `tools/gen_opflags.py` →
+  `tools/bench/opflags.h`, REP/SEP by operand, interrupt handlers skipped) until each of
+  N/V/Z/C is read (live) or overwritten (dead), within 400 instructions (unresolved =
+  live). Flags are always compared, but a mismatch fails the routine only if the flag
+  was live at least once, or if fewer than 100 returns were watched. `verified.txt`
+  records the live flags. Result: `rng_next`'s carry is dead over 4,000 returns, so its
+  `carry` parameter was removed.
+- **Decoder** tracks REP/SEP when listing a routine's instruction starts (a `SEP #$20`
+  followed by `LDA #imm` was mis-decoded before). **Extent guard:** a sample fails if,
+  at the routine's own stack depth, the PC leaves the declared extent.
+- **Stale rows:** the hash in `verified.txt` now covers the C source *and*
+  `tools/bench/routines.c` and `tools/bench/difftest.c`; `tools/verify_all.sh` rewrites
+  the file from the full autopilot movie (~10 min). Fuzz now runs after the save state
+  and coverage are written, with coverage off.
+- **`inverse_scale` ($80:F709)** (`src/scale.c`): D+$38 = 42 × q, q = 8-bit quotient of a
+  restoring division of $200·2⁷ by D+$7A (= ⌊65536/divisor⌋ for divisors above $100),
+  divisor $100 short-cuts to $2A00; the ×42 uses the hardware multiplier. Race movie:
+  535/535 live, fuzz 500/500 (divisor 0, $100, small and random), paths 29/29; its C
+  and V differ from the C's but are dead in all 535 watched returns. Entered with
+  D = $0100, so the variables are `$017A`, `$0114`, `$0138`.
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

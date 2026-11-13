@@ -27,7 +27,7 @@ typedef struct {
   // Run the C from `in` (g_ram already holds the entry WRAM); fill the outputs in `out`
   // (start: a copy of `in`).
   void (*call)(const Regs* in, Regs* out);
-  bool compareA, compareX, compareY, compareC;  // which outputs are part of the contract
+  bool compareA, compareX, compareY;  // which registers are outputs (flags: by liveness)
   bool lowWramDb;          // absolute ($0000-$1FFF) accesses through DB must hit low WRAM
   // Fuzz: given registers already randomised and D/DB/widths from a real entry, make the
   // inputs valid for this routine (WRAM through `ram`, registers through `r`). NULL = no fuzz.

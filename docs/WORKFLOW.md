@@ -51,6 +51,8 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
    `tools/bench/routines.c`, then run
    `build/bench/bench TG3000.sfc 9450 --movie tools/bench/movies/race1.txt --difftest map/verified.txt --fuzz 500`
    (and other movies until it is reached) and `python3 -I tools/progress.py`.
+   Before committing, `tools/verify_all.sh` re-verifies every routine from the full
+   autopilot movie (a change to the registry or harness makes all rows stale).
 
 ## Metrics
 

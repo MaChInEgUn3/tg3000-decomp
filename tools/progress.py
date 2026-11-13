@@ -37,10 +37,16 @@ def classified_bytes():
     return code, data
 
 
-def fnv1a64(path):
+def verification_hash(source):
+    """FNV-1a 64 over the C source, the bench's registry and its harness, in that order
+    (the bench's verificationHash in tools/bench/difftest.c)."""
     h = 0xcbf29ce484222325
-    for b in open(path, "rb").read():
-        h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
+    for rel in (source, "tools/bench/routines.c", "tools/bench/difftest.c"):
+        path = os.path.join(ROOT, rel)
+        if not os.path.exists(path):
+            return None
+        for b in open(path, "rb").read():
+            h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
     return h
 
 
@@ -54,11 +60,10 @@ def ported_routines():
             parts = line.split()
             if line.startswith("#") or len(parts) < 8 or parts[7] != "verified":
                 continue
-            src = os.path.join(ROOT, parts[2])
-            if os.path.exists(src) and fnv1a64(src) == int(parts[3], 16):
+            if verification_hash(parts[2]) == int(parts[3], 16):
                 count += 1
             else:
-                stale.append(f"{parts[0]} {parts[1]} ({parts[2]} changed since it was verified)")
+                stale.append(f"{parts[0]} {parts[1]} ({parts[2]}, the registry or the harness changed since it was verified)")
     return count, stale
 
 

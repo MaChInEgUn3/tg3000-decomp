@@ -298,11 +298,6 @@ int main(int argc, char** argv) {
     free(saved); free(endA); free(endB); free(hashA);
   }
 
-  if(difftestOn) {
-    if(fuzzIterations > 0) difftest_fuzz(fuzzIterations);
-    if(!difftest_report(difftestNegative ? NULL : difftestResults)) status = 4;
-  }
-
   if(saveStatePath != NULL) {
     int stSize = snes_saveState(snes, NULL);
     uint8_t* st = malloc(stSize);
@@ -316,6 +311,14 @@ int main(int argc, char** argv) {
   if(coveragePath != NULL) {
     coverage_report();
     if(!coverage_merge_save(coveragePath)) status = 1;
+  }
+
+  // last: fuzzing runs the interpreter on synthetic state, so it must come after the save
+  // state and the coverage file have captured the real run
+  if(difftestOn) {
+    coverageOn = false;
+    if(fuzzIterations > 0) difftest_fuzz(fuzzIterations);
+    if(!difftest_report(difftestNegative ? NULL : difftestResults)) status = 4;
   }
 
   int firstWrite = -1;

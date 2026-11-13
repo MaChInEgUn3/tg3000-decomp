@@ -14,3 +14,4 @@ ram     7E1900   vram_queue_size     ; 32 words each: size, src, bank, dest
 ram     7E1940   vram_queue_src
 ram     7E1980   vram_queue_bank
 ram     7E19C0   vram_queue_dest
+func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c

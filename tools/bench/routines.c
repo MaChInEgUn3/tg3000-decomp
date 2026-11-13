@@ -10,6 +10,7 @@
 #include <stddef.h>
 
 #include "rng.h"
+#include "scale.h"
 #include "tg3000.h"
 #include "util.h"
 #include "vram_queue.h"
@@ -17,11 +18,9 @@
 static void setNZ16(Regs* r, uint16_t v) { r->n = (v >> 15) & 1; r->z = v == 0; }
 
 // ---- rng_next ($80:87E9, $8A:988C) ----
-// State at D+$10, 16-bit A; returns A = new low word, C = bit shifted out.
+// State at D+$10, 16-bit A; returns A = new low word. (C: the bit shifted out; dead.)
 static void call_rng_next(const Regs* in, Regs* out) {
-  bool carry;
-  out->a = rng_next((uint16_t)(in->d + 0x10), &carry);
-  out->c = carry;
+  out->a = rng_next((uint16_t)(in->d + 0x10));
   setNZ16(out, out->a);
 }
 
@@ -78,25 +77,41 @@ static void fuzz_lsr_n(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->y = rnd() % 20;  // includes 0 and counts beyond 16
 }
 
+// ---- inverse_scale ($80:F709) ----
+// Inputs/outputs in the direct page (D+$7A in, D+$14 scratch, D+$38 out). Exits with
+// A = result and N/Z from it; X = 0 after the division loop (the early $100 exit leaves X).
+// C and V are whatever the last shift/subtract left: they are only compared if the flag
+// liveness check finds a caller that reads them.
+static void call_inverse_scale(const Regs* in, Regs* out) {
+  bool early = rd16((uint16_t)(in->d + SCALE_DIVISOR)) == 0x0100;
+  out->a = inverse_scale(in->d);
+  if(!early) out->x = 0;
+  setNZ16(out, out->a);
+}
+
+static void fuzz_inverse_scale(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint32_t k = rnd();
+  uint16_t divisor = (k & 7) == 0 ? 0x0100 : (k & 7) == 1 ? 0 : (k & 7) == 2 ? (uint16_t)(rnd() & 0x1FF) : (uint16_t)rnd();
+  ram[(uint16_t)(r->d + SCALE_DIVISOR)] = (uint8_t)divisor;
+  ram[(uint16_t)(r->d + SCALE_DIVISOR + 1)] = (uint8_t)(divisor >> 8);
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
-static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
+static uint16_t rng_next_wrong(uint16_t state) {
   uint32_t s = rd32(state);
   bool top = (s >> 31) & 1;
   s <<= 1;
   if(!top) s ^= 0x1D872B44;
   wr32(state, s);
-  *carry = top;
   return (uint16_t)s;
 }
 
 static void call_rng_next_wrong(const Regs* in, Regs* out) {
-  bool carry;
-  out->a = rng_next_wrong((uint16_t)(in->d + 0x10), &carry);
-  out->c = carry;
+  out->a = rng_next_wrong((uint16_t)(in->d + 0x10));
   setNZ16(out, out->a);
 }
 
-#define ALL_OUTPUTS .compareA = true, .compareX = true, .compareY = true, .compareC = true
+#define ALL_OUTPUTS .compareA = true, .compareX = true, .compareY = true
 
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
@@ -110,6 +125,8 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .call = call_take_slot, ALL_OUTPUTS, .fuzz = fuzz_take_slot},
   {.name = "lsr_n", .entry = 0x8AB15E, .end = 0x8AB168, .source = "src/util.c",
    .needM16 = true, .needX16 = true, .call = call_lsr_n, ALL_OUTPUTS, .fuzz = fuzz_lsr_n},
+  {.name = "inverse_scale", .entry = 0x80F709, .end = 0x80F745, .source = "src/scale.c",
+   .needM16 = true, .needX16 = true, .call = call_inverse_scale, ALL_OUTPUTS, .fuzz = fuzz_inverse_scale},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

@@ -31,8 +31,11 @@ Read `docs/WORKFLOW.md` first and `docs/DECISIONS.md` when you need the reasonin
    `python3 -I tools/listing.py`).
 4. Register it in `tools/bench/routines.c` with an adapter (registers -> arguments),
    its extent, entry contract and fuzz inputs.
-5. Run the differential test (see `docs/WORKFLOW.md`). It writes `map/verified.txt`;
-   never edit that file by hand. Then `python3 -I tools/progress.py`.
+5. Run `tools/verify_all.sh` (needs your ROM): it runs the differential test for every
+   routine and rewrites `map/verified.txt` and the README numbers. Never edit
+   `map/verified.txt` by hand; CI rejects rows whose C, registry or harness changed.
+   Hardware rules: multiply/divide is plain C; uploads to video memory are semantic
+   calls, never register writes (see `docs/DECISIONS.md`).
 
 ## Mapping and research
 

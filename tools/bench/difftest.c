@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "coverage.h"
+#include "opflags.h"
 #include "cpu.h"
 #include "routines.h"
 #include "tg3000.h"
@@ -27,6 +28,12 @@ const uint8_t* g_rom;
 #define MAX_EXTENT 0x400
 #define MAX_CONTRACTS 8
 #define MAX_INSNS 200000     // a sample that runs longer is abandoned
+#define WATCH_CAP 400        // flag liveness: instructions watched after a return
+#define MIN_WATCHED 100      // fewer watched returns than this: every flag counts as live
+
+enum { FN = 8, FV = 4, FZ = 2, FC = 1 };
+static const char flagNames[4] = {'N', 'V', 'Z', 'C'};
+static const uint8_t flagBits[4] = {FN, FV, FZ, FC};
 
 typedef struct {
   uint16_t d;
@@ -41,6 +48,9 @@ typedef struct {
   int contractCount;
   bool starts[MAX_EXTENT], visited[MAX_EXTENT];
   char firstFailure[256];
+  // flags: compared separately; a mismatch only fails the routine if the flag is live
+  unsigned long watched, live[4], dead[4], flagMismatch[4];
+  char firstFlagFailure[4][160];
 } Stats;
 
 static Snes* snes;
@@ -56,8 +66,16 @@ static Regs entryRegs;
 static uint16_t entrySp, minSp, retPc;
 static uint8_t retBank;
 static uint32_t interruptsAtEntry, insnsInSample;
-static bool hwAccess;
-static uint32_t hwAccessAdr;
+static bool hwAccess, mathWritten, leftExtent;
+static uint32_t hwAccessAdr, leftExtentPc;
+static const char* hwWhy;
+
+// flag-liveness watch after a live sample returns
+static int watching = -1;
+static uint8_t watchUnresolved;
+static int watchCount;
+static uint32_t watchInterrupts;
+static int32_t watchPausedUntilSp = -1;
 
 static uint32_t norm(uint32_t adr) {  // ROM banks $00-$3F/$40-$7D -> $80+ mirror
   uint8_t bank = adr >> 16;
@@ -82,21 +100,43 @@ static bool isRom(uint32_t adr) {
   return bank < 0x7E && ((adr & 0xFFFF) >= 0x8000 || bank >= 0x40);
 }
 
+// CPU multiply/divide unit ($4202-$4206 operands, $4214-$4217 results): the C computes
+// natively, so these accesses are part of the routine's own work, provided the result it
+// reads was started inside the routine.
+static bool isMathReg(uint32_t adr, bool write) {
+  if(((adr >> 16) & 0x7F) >= 0x40) return false;
+  uint16_t a = adr & 0xFFFF;
+  return write ? (a >= 0x4202 && a <= 0x4206) : (a >= 0x4214 && a <= 0x4217);
+}
+
 static void onAccess(uint32_t adr, uint8_t val, bool write) {
   (void)val;
   if(active < 0 || hwAccess) return;
   if(isWram(adr) || (!write && isRom(adr))) return;
+  if(isMathReg(adr, write)) {
+    if(write) { mathWritten = true; return; }
+    if(mathWritten) return;
+    hwWhy = "reads a multiply/divide result it did not start";
+  } else {
+    hwWhy = "hardware access (not supported by this routine's C)";
+  }
   hwAccess = true;
   hwAccessAdr = adr;
 }
 
 // Instruction starts of a routine's extent, by linear decode with the contract's widths.
+// REP/SEP change the widths as the decode goes (the routines are straight-line enough for
+// a linear sweep).
 static void findStarts(const Routine* r, Stats* s) {
   uint32_t off = (((r->entry >> 16) & 0x7F) << 15) | (r->entry & 0x7FFF);
   uint32_t n = r->end - r->entry;
+  bool m8 = !r->needM16, x8 = !r->needX16;
   for(uint32_t i = 0; i < n && i < MAX_EXTENT;) {
     s->starts[i] = true;
-    i += coverage_insn_length(g_rom[off + i], !r->needM16, !r->needX16);
+    uint8_t op = g_rom[off + i], arg = g_rom[off + i + 1];
+    i += coverage_insn_length(op, m8, x8);
+    if(op == 0xC2) { if(arg & 0x20) m8 = false; if(arg & 0x10) x8 = false; }
+    if(op == 0xE2) { if(arg & 0x20) m8 = true; if(arg & 0x10) x8 = true; }
   }
 }
 
@@ -112,7 +152,7 @@ static void noteContract(Stats* s, const Routine* r, const Regs* in) {
 }
 
 // Run the C from the recorded entry state and compare with the recorded result.
-static bool compareWithC(int idx, const Regs* after, char* why, size_t whyLen) {
+static bool compareWithC(int idx, const Regs* after, char* why, size_t whyLen, uint8_t* flagDiff) {
   const Routine* r = &table[idx];
   memcpy(g_ram, entryRam, sizeof g_ram);
   Regs out = entryRegs;
@@ -129,9 +169,10 @@ static bool compareWithC(int idx, const Regs* after, char* why, size_t whyLen) {
     snprintf(why, whyLen, #field ": original %X, C %X", (unsigned)after->field, (unsigned)out.field); \
     return false; \
   }
-  CHECK(a, r->compareA) CHECK(x, r->compareX) CHECK(y, r->compareY) CHECK(c, r->compareC)
-  CHECK(n, true) CHECK(z, true) CHECK(v, true) CHECK(d, true) CHECK(db, true)
+  CHECK(a, r->compareA) CHECK(x, r->compareX) CHECK(y, r->compareY) CHECK(d, true) CHECK(db, true)
 #undef CHECK
+  *flagDiff = (out.n != after->n ? FN : 0) | (out.v != after->v ? FV : 0) |
+              (out.z != after->z ? FZ : 0) | (out.c != after->c ? FC : 0);
   return true;
 }
 
@@ -144,11 +185,32 @@ static void finishSample(const Cpu* cpu) {
   if(cpu_interruptCount != interruptsAtEntry) { s->interrupted++; return; }
   char why[200] = "";
   bool ok;
+  uint8_t flagDiff = 0;
   if(hwAccess) {
-    snprintf(why, sizeof why, "hardware access at $%06X (not supported by this routine's C)", hwAccessAdr);
+    snprintf(why, sizeof why, "%s at $%06X", hwWhy, hwAccessAdr);
+    ok = false;
+  } else if(leftExtent) {
+    snprintf(why, sizeof why, "ran outside its declared extent at $%06X", leftExtentPc);
     ok = false;
   } else {
-    ok = compareWithC(idx, &after, why, sizeof why);
+    ok = compareWithC(idx, &after, why, sizeof why, &flagDiff);
+  }
+  for(int f = 0; f < 4; f++) {
+    if(!(flagDiff & flagBits[f])) continue;
+    s->flagMismatch[f]++;
+    if(s->firstFlagFailure[f][0] == '\0') {
+      snprintf(s->firstFlagFailure[f], sizeof s->firstFlagFailure[f], "%s%c: original %d, C %d (D=%04X A=%04X)",
+        fuzzing ? "fuzz " : "", flagNames[f], (int)((f == 0 ? after.n : f == 1 ? after.v : f == 2 ? after.z : after.c)),
+        (int)!((f == 0 ? after.n : f == 1 ? after.v : f == 2 ? after.z : after.c)), entryRegs.d, entryRegs.a);
+    }
+  }
+  if(!fuzzing && watching < 0) {  // watch which flags the caller goes on to read
+    watching = idx;
+    watchUnresolved = FN | FV | FZ | FC;
+    watchCount = 0;
+    watchInterrupts = cpu_interruptCount;
+    watchPausedUntilSp = -1;
+    s->watched++;
   }
   if(fuzzing) { if(ok) s->fuzzPass++; else s->fuzzFail++; }
   else { s->samples++; if(ok) s->pass++; else s->fail++; }
@@ -169,8 +231,50 @@ static void startSample(int idx, const Cpu* cpu) {
   retBank = r->rtl ? snes->ram[(uint16_t)(sp + 3)] : cpu->k;
   interruptsAtEntry = cpu_interruptCount;
   insnsInSample = 0;
-  hwAccess = false;
+  hwAccess = mathWritten = leftExtent = false;
   noteContract(&stats[idx], r, &entryRegs);
+}
+
+static uint8_t peekByte(uint32_t adr) {
+  if(isRom(adr)) return g_rom[(((adr >> 16) & 0x7F) << 15 | (adr & 0x7FFF)) & 0xFFFFF];
+  if(isWram(adr)) {
+    uint8_t bank = adr >> 16;
+    return snes->ram[(bank == 0x7F ? 0x10000 : 0) | (bank == 0x7E || bank == 0x7F ? (adr & 0xFFFF) : (adr & 0x1FFF))];
+  }
+  return 0xEA;  // unknown: treat as NOP (reads and writes no flag)
+}
+
+static void resolveFlags(uint8_t mask, bool live) {
+  Stats* s = &stats[watching];
+  for(int f = 0; f < 4; f++) {
+    if(!(watchUnresolved & mask & flagBits[f])) continue;
+    if(live) s->live[f]++; else s->dead[f]++;
+    watchUnresolved &= ~flagBits[f];
+  }
+  if(watchUnresolved == 0) watching = -1;
+}
+
+// One instruction of the caller after a live sample returned: which flags does it read
+// before writing them? Interrupt handlers are skipped (they restore P with RTI).
+static void watchStep(const Cpu* cpu) {
+  if(cpu_interruptCount != watchInterrupts) {
+    watchInterrupts = cpu_interruptCount;
+    if(watchPausedUntilSp < 0) watchPausedUntilSp = (uint16_t)(cpu->sp + (cpu->e ? 3 : 4));
+  }
+  if(watchPausedUntilSp >= 0) {
+    if(cpu->sp != (uint16_t)watchPausedUntilSp) return;
+    watchPausedUntilSp = -1;
+  }
+  if(++watchCount > WATCH_CAP) { resolveFlags(FN | FV | FZ | FC, true); return; }
+  uint32_t pc = ((uint32_t)cpu->k << 16) | cpu->pc;
+  uint8_t op = peekByte(pc);
+  uint8_t reads = opFlagsRead[op], writes = opFlagsWritten[op];
+  if(op == 0xC2 || op == 0xE2) {
+    uint8_t p = peekByte((pc & 0xFF0000) | (uint16_t)(pc + 1));
+    writes = (p & 0x80 ? FN : 0) | (p & 0x40 ? FV : 0) | (p & 0x02 ? FZ : 0) | (p & 0x01 ? FC : 0);
+  }
+  if(reads) resolveFlags(reads, true);
+  if(watching >= 0 && writes) resolveFlags(writes, false);
 }
 
 void difftest_on_insn(Cpu* cpu) {
@@ -182,12 +286,21 @@ void difftest_on_insn(Cpu* cpu) {
     uint16_t back = r->rtl ? 3 : 2;
     if(cpu->pc == retPc && cpu->k == retBank && cpu->sp == (uint16_t)(entrySp + back)) {
       finishSample(cpu);
-    } else if(++insnsInSample > MAX_INSNS) {
-      stats[active].abandoned++;
-      active = -1;
+    } else {
+      // at the routine's own stack depth, every instruction must lie inside its extent
+      if(cpu->sp == entrySp && (pc < r->entry || pc >= r->end) && !leftExtent) {
+        leftExtent = true;
+        leftExtentPc = pc;
+      }
+      if(++insnsInSample > MAX_INSNS) {
+        stats[active].abandoned++;
+        active = -1;
+      }
+      if(watching >= 0) watchStep(cpu);
+      return;
     }
-    return;
   }
+  if(watching >= 0) watchStep(cpu);
   if(fuzzing) return;
   for(int i = 0; i < tableCount; i++) {
     if(table[i].entry != pc) continue;
@@ -261,13 +374,18 @@ void difftest_fuzz(int iterations) {
   fuzzing = false;
 }
 
-static uint64_t fileHash(const char* path) {
-  FILE* f = fopen(path, "rb");
-  if(f == NULL) return 0;
+// What a "verified" row vouches for: the routine's C source, the registry (adapters,
+// extents, contracts) and this harness. A change to any of them makes the row stale.
+static uint64_t verificationHash(const char* source) {
+  const char* files[3] = {source, "tools/bench/routines.c", "tools/bench/difftest.c"};
   uint64_t h = 0xcbf29ce484222325ull;
-  int ch;
-  while((ch = fgetc(f)) != EOF) { h ^= (uint8_t)ch; h *= 0x100000001b3ull; }
-  fclose(f);
+  for(int i = 0; i < 3; i++) {
+    FILE* f = fopen(files[i], "rb");
+    if(f == NULL) return 0;
+    int ch;
+    while((ch = fgetc(f)) != EOF) { h ^= (uint8_t)ch; h *= 0x100000001b3ull; }
+    fclose(f);
+  }
   return h;
 }
 
@@ -292,14 +410,23 @@ bool difftest_report(const char* resultsPath) {
   }
   FILE* out = NULL;
   if(resultsPath != NULL) out = fopen(resultsPath, "w");
-  if(out != NULL) fprintf(out, "# entry name source fnv1a64(source) live fuzz paths status  -- written by the bench (--difftest)\n");
+  if(out != NULL) fprintf(out, "# entry name source fnv1a64(source+routines.c+difftest.c) live fuzz paths status live-flags  -- written by the bench (--difftest)\n");
   for(int i = 0; i < tableCount; i++) {
     const Routine* r = &table[i];
     Stats* s = &stats[i];
     int need = 0, seen = 0;
     for(int k = 0; k < MAX_EXTENT; k++) if(s->starts[k]) { need++; if(s->visited[k]) seen++; }
     bool reached = s->entries > 0 || s->fuzzPass + s->fuzzFail > 0;
-    bool ok = s->fail == 0 && s->fuzzFail == 0 && (s->pass + s->fuzzPass) > 0 && seen == need && !s->contractBroken;
+    char liveFlags[5] = "", flagNote[64] = "";
+    bool flagsOk = true;
+    for(int f = 0, n = 0; f < 4; f++) {
+      bool live = s->live[f] > 0 || s->watched < MIN_WATCHED;
+      if(live) liveFlags[n++] = flagNames[f];
+      if(live && s->flagMismatch[f] > 0) flagsOk = false;
+    }
+    if(liveFlags[0] == '\0') strcpy(liveFlags, "-");
+    snprintf(flagNote, sizeof flagNote, "flags live %s (of %lu returns watched)", liveFlags, s->watched);
+    bool ok = flagsOk && s->fail == 0 && s->fuzzFail == 0 && (s->pass + s->fuzzPass) > 0 && seen == need && !s->contractBroken;
     const char* status = !reached ? "unreached" : ok ? "verified" : "failed";
     if(reached) allOk &= ok;  // a routine this run never reached is reported, not failed
     printf("difftest %-16s $%06X: %s  live %lu/%lu pass (%lu entries, %lu interrupted, %lu abandoned), fuzz %lu/%lu, paths %d/%d%s\n",
@@ -309,7 +436,12 @@ bool difftest_report(const char* resultsPath) {
       Contract* k = &s->contracts[c];
       printf("    entry state: D=%04X DB=%02X %s %s%s\n", k->d, k->db, k->m8 ? "m8" : "m16", k->x8 ? "x8" : "x16", k->e ? " emu" : "");
     }
+    printf("    %s; mismatches N%lu V%lu Z%lu C%lu\n", flagNote, s->flagMismatch[0], s->flagMismatch[1], s->flagMismatch[2], s->flagMismatch[3]);
     if(s->firstFailure[0]) printf("    first failure: %s\n", s->firstFailure);
+    for(int f = 0; f < 4; f++) {
+      bool live = s->live[f] > 0 || s->watched < MIN_WATCHED;
+      if(live && s->firstFlagFailure[f][0]) printf("    first live-flag failure: %s\n", s->firstFlagFailure[f]);
+    }
     bool keptRow = false;
     for(int k = 0; k < keptCount; k++) {
       unsigned entry;
@@ -319,8 +451,8 @@ bool difftest_report(const char* resultsPath) {
       }
     }
     if(out != NULL && !keptRow) {
-      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s\n", r->entry, r->name, r->source,
-        (unsigned long long)fileHash(r->source), s->pass, s->fuzzPass, seen, need, status);
+      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s\n", r->entry, r->name, r->source,
+        (unsigned long long)verificationHash(r->source), s->pass, s->fuzzPass, seen, need, status, liveFlags);
     }
   }
   if(out != NULL) fclose(out);
