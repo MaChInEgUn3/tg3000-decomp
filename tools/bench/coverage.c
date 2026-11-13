@@ -55,7 +55,7 @@ static int32_t romOffset(uint8_t bank, uint16_t adr) {
 static Cpu* traced;
 static uint32_t prevPc, firstRamEntryFrom = 0xFFFFFFFF, firstRamAt;
 
-static void onInsn(Cpu* cpu) {
+void coverage_on_insn(Cpu* cpu) {
   insnCount++;
   int32_t off = romOffset(cpu->k, cpu->pc);
   if(off < 0) {
@@ -90,7 +90,6 @@ uint8_t cart_peekRom(uint32_t offset) { return romData[offset & (ROM_SIZE - 1)];
 void coverage_start(Cpu* cpu, const uint8_t* rom) {
   traced = cpu;
   romData = rom;
-  cpu_traceHook = onInsn;
   cart_romReadHook = onRomRead;
 }
 

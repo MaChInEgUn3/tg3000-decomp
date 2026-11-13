@@ -4,6 +4,7 @@
 #  2. save states: a state saved mid-race and loaded in a *fresh process* continues exactly
 #     like the uninterrupted run (catches state that a save file does not carry)
 #  3. the race really runs: DSP-4 commands are written
+#  4. differential test: the ported C passes, and a deliberately wrong C fails
 set -eu
 root=$(cd "$(dirname "$0")/../.." && pwd)
 rom=${TG3000_ROM:-$root/TG3000.sfc}
@@ -30,3 +31,11 @@ awk -v s=$split 'NR > s {print $3}' "$tmp/a" > "$tmp/a3"
 awk '{print $3}' "$tmp/c" > "$tmp/c3"
 cmp -s "$tmp/a3" "$tmp/c3" || { echo "FAIL fresh-process save/load diverges"; exit 1; }
 echo "ok   save state at $split reloaded in a new process matches ($((total - split)) frames)"
+
+"$bench" "$rom" $total --movie "$movie" --difftest "$tmp/v" --fuzz 200 > "$tmp/d" 2>/dev/null \
+  || { echo "FAIL differential test"; grep -A3 "^difftest" "$tmp/d"; exit 1; }
+echo "ok   differential test passes ($(grep -c PASS "$tmp/d") routine(s))"
+if "$bench" "$rom" $total --movie "$movie" --difftest-negative --fuzz 50 > /dev/null 2>&1; then
+  echo "FAIL negative test: a wrong C passed"; exit 1
+fi
+echo "ok   negative test: a deliberately wrong C fails"

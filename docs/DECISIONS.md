@@ -187,6 +187,45 @@ Coverage with it: **55,874 code bytes, 381,461 data bytes, 41.71% classified**;
 the generated asm grows to 23,921 instructions / 1,489 labels and still rebuilds the
 ROM byte for byte. The shop is only ever exited, never used (upgrades not covered).
 
+## C state model and the differential test (difftest-1, 2026-11-13)
+
+Technical decisions (advisor-reviewed; not the owner's call):
+- **State:** one flat `uint8_t g_ram[0x20000]` at the original WRAM offsets plus
+  `const uint8_t* g_rom`, touched only through `rd8/rd16/rd32/wr8/wr16/wr32`
+  (explicit little-endian; `src/tg3000.h`). No struct overlays (68000 safety).
+- **Signatures** carry only what callers use (`uint16_t rng_next(uint16_t state, bool* carry)`).
+  The register-to-argument mapping lives in `tools/bench/routines.c` adapters, never
+  in `src/`. `src/` includes no bench/LakeSnes header and is compiled with
+  `-std=c99 -pedantic -Wextra`.
+- **Names:** `map/symbols.txt` is the one list of names; `tools/listing.py` uses it for
+  labels and `jsr/jsl` operands (e.g. `jsr.w rng_next`), so asm and C agree.
+- **Harness** (`bench --difftest map/verified.txt --fuzz N`): at a registered entry
+  the bench copies WRAM and registers (no save states — they proved lossy once), lets
+  the original run to its return, then runs the C from the copy and compares WRAM
+  (minus the stack bytes pushed below the entry SP), A/X/Y, N/Z/C/V, D and DB.
+  An interrupt inside the routine discards the sample (patch counts dispatches); any
+  CPU access outside WRAM/ROM fails it (hardware not modelled yet). The entry state
+  (D, DB, widths) is recorded and a routine fails if it breaks the C's assumptions.
+  Fuzz runs the original on the interpreter from the entry with random inputs
+  (declared direct-page bytes and registers), interrupts off, so all branches run.
+  **Verified** = no failure, ≥1 compared sample, and every instruction start of the
+  routine's extent executed in a compared sample.
+- **Results** go to `map/verified.txt` (entry, source file, FNV-1a of the source,
+  counts, status), written by the bench only. `progress.py` counts verified rows whose
+  source is unchanged, and `--check` (CI) fails if a verified source changed since.
+- **Negative test:** `--difftest-negative` swaps in a C with one XOR constant off; it
+  must fail (it does: first difference at WRAM `$0110`, original `45`, C `44`).
+
+First routine: **`rng_next` ($80:87E9), `src/rng.c`** — a 32-bit LFSR, shifted left,
+XORed with `$1D872B45` when the top bit was clear (the reverse of the usual Galois
+form); the bit shifted out is left in the carry. Live: 4,000/4,000 compared samples
+(of 14,644 entries in `race1.txt`), fuzz 500/500, paths 16/16. Every entry seen had
+**D = $0100**, so the state is at `$0110-$0113` (the long wrapper `$80:87DF` sets
+D = $0100 itself). Carry: no caller was seen to read it right away, but `lda/sta/xba/
+sep` keep it, so it stays part of the contract. The identical copy at `$8A:988C`
+(`rng_next_8a`, same C) runs only later in `autopilot_60k.txt`: 2,070/2,070 live,
+fuzz 500/500, paths 16/16, entered with D = $0100 and DB = $81 or $8A.
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

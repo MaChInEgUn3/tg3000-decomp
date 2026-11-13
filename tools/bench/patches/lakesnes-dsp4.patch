@@ -111,7 +111,7 @@ index 0ddf651..bbd858c 100644
  
  #endif
 diff --git a/snes/cpu.c b/snes/cpu.c
-index 05018e0..ebac6ad 100644
+index 05018e0..4be4568 100644
 --- a/snes/cpu.c
 +++ b/snes/cpu.c
 @@ -81,6 +81,8 @@ void cpu_handleState(Cpu* cpu, StateHandler* sh) {
@@ -131,16 +131,29 @@ index 05018e0..ebac6ad 100644
      uint8_t opcode = cpu_readOpcode(cpu);
      cpu_doOpcode(cpu, opcode);
    }
+@@ -262,7 +265,10 @@ static void cpu_writeWord(Cpu* cpu, uint32_t adrl, uint32_t adrh, uint16_t value
+   }
+ }
+ 
++uint32_t cpu_interruptCount = 0;
++
+ static void cpu_doInterrupt(Cpu* cpu) {
++  cpu_interruptCount++;
+   cpu_idle(cpu);
+   cpu_pushByte(cpu, cpu->k);
+   cpu_pushWord(cpu, cpu->pc, false);
 diff --git a/snes/cpu.h b/snes/cpu.h
-index ae515ef..71ab5cb 100644
+index ae515ef..df6119d 100644
 --- a/snes/cpu.h
 +++ b/snes/cpu.h
-@@ -54,6 +54,8 @@ void cpu_free(Cpu* cpu);
+@@ -54,6 +54,10 @@ void cpu_free(Cpu* cpu);
  void cpu_reset(Cpu* cpu, bool hard);
  void cpu_handleState(Cpu* cpu, StateHandler* sh);
  void cpu_runOpcode(Cpu* cpu);
 +// Called before each opcode fetch (not for interrupts); NULL when unused. TG3000 bench tracer.
 +extern void (*cpu_traceHook)(Cpu* cpu);
++// Counts NMI/IRQ/BRK/COP dispatches (TG3000 bench: discards samples an interrupt ran inside).
++extern uint32_t cpu_interruptCount;
  void cpu_nmi(Cpu* cpu);
  void cpu_setIrq(Cpu* cpu, bool state);
  
@@ -172,7 +185,7 @@ index 0000000..65fae29
 +
 +#endif
 diff --git a/snes/snes.c b/snes/snes.c
-index 7af76fe..4dde057 100644
+index 7af76fe..c52a795 100644
 --- a/snes/snes.c
 +++ b/snes/snes.c
 @@ -114,6 +114,9 @@ void snes_handleState(Snes* snes, StateHandler* sh) {
@@ -185,6 +198,43 @@ index 7af76fe..4dde057 100644
  }
  
  void snes_runFrame(Snes* snes) {
+@@ -567,12 +570,15 @@ void snes_cpuIdle(void* mem, bool waiting) {
+   snes_runCycles(snes, 6);
+ }
+ 
++void (*snes_cpuAccessHook)(uint32_t adr, uint8_t val, bool write) = NULL;
++
+ uint8_t snes_cpuRead(void* mem, uint32_t adr) {
+   Snes* snes = (Snes*) mem;
+   const int cycles = access_time[adr] - 4;
+   dma_handleDma(snes->dma, cycles + 4);
+   snes_runCycles(snes, cycles);
+   uint8_t rv = snes_read(snes, adr);
++  if(snes_cpuAccessHook != NULL) snes_cpuAccessHook(adr, rv, false);
+   snes_runCycles(snes, 4);
+   return rv;
+ }
+@@ -582,6 +588,7 @@ void snes_cpuWrite(void* mem, uint32_t adr, uint8_t val) {
+   const int cycles = access_time[adr];
+   dma_handleDma(snes->dma, cycles);
+   snes_runCycles(snes, cycles);
++  if(snes_cpuAccessHook != NULL) snes_cpuAccessHook(adr, val, true);
+   snes_write(snes, adr, val);
+ }
+ 
+diff --git a/snes/snes.h b/snes/snes.h
+index ee981a8..245d537 100644
+--- a/snes/snes.h
++++ b/snes/snes.h
+@@ -77,6 +77,8 @@ uint8_t snes_read(Snes* snes, uint32_t adr);
+ void snes_write(Snes* snes, uint32_t adr, uint8_t val);
+ void snes_cpuIdle(void* mem, bool waiting);
+ uint8_t snes_cpuRead(void* mem, uint32_t adr);
++// Every CPU bus access (not DMA); NULL when unused. TG3000 bench differential test.
++extern void (*snes_cpuAccessHook)(uint32_t adr, uint8_t val, bool write);
+ void snes_cpuWrite(void* mem, uint32_t adr, uint8_t val);
+ // debugging
+ void snes_runCpuCycle(Snes* snes);
 diff --git a/snes/snes_other.c b/snes/snes_other.c
 index e69700d..ee05dfc 100644
 --- a/snes/snes_other.c

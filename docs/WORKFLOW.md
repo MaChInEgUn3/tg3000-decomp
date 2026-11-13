@@ -46,7 +46,11 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
    marked unverified.
 3. **Listing.** Generate the disassembly from the map, with labels; it must
    assemble back to the exact ROM (SHA-1 check).
-4. **C.** Port leaf routines first; each must pass the per-routine differential test.
+4. **C.** Port leaf routines first; each must pass the per-routine differential test:
+   write the C in `src/`, name it in `map/symbols.txt`, register it with an adapter in
+   `tools/bench/routines.c`, then run
+   `build/bench/bench TG3000.sfc 9450 --movie tools/bench/movies/race1.txt --difftest map/verified.txt --fuzz 500`
+   (and other movies until it is reached) and `python3 -I tools/progress.py`.
 
 ## Metrics
 

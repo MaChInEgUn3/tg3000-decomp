@@ -2652,7 +2652,7 @@ CODE_81FBDE:
     lda.w $FADE,y               ; $81FBF5
     and.w #$FFDF                ; $81FBF8
     sta.w $FADE,y               ; $81FBFB
-    jsl.l $8087DF               ; $81FBFE
+    jsl.l rng_next_long         ; $81FBFE
     and.w #$0020                ; $81FC02
     ora.w $FADE,y               ; $81FC05
     ora.w #$0010                ; $81FC08

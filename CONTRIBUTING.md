@@ -20,16 +20,19 @@ build/bench/bench /path/to/TG3000.sfc 600
 
 Read `docs/WORKFLOW.md` first and `docs/DECISIONS.md` when you need the reasoning.
 
-## Porting a routine (once phase 4 opens)
+## Porting a routine
 
-1. Pick a routine from the listing, preferably a leaf (it calls nothing unported).
+1. Pick a routine from `asm/`, preferably a leaf (it calls nothing unported and
+   touches only WRAM).
 2. Write it in `src/` as readable C, following the portability rules in
-   `docs/DECISIONS.md`: fixed-width types, explicit little-endian reads from ROM,
-   no floating point, game state at its original WRAM offsets through the lo/hi
-   helpers, hardware behind the interfaces.
-3. Run the differential test for it on at least the standard movies.
-4. Mark it `// TG3000_ROUTINE($bb:aaaa) verified` only when it passes, then run
-   `python3 -I tools/progress.py`.
+   `docs/DECISIONS.md`: fixed-width types, WRAM only through `rd16`/`wr16` and
+   friends (`src/tg3000.h`), no floating point, no bench headers.
+3. Give it a name in `map/symbols.txt` (the asm picks the name up via
+   `python3 -I tools/listing.py`).
+4. Register it in `tools/bench/routines.c` with an adapter (registers -> arguments),
+   its extent, entry contract and fuzz inputs.
+5. Run the differential test (see `docs/WORKFLOW.md`). It writes `map/verified.txt`;
+   never edit that file by hand. Then `python3 -I tools/progress.py`.
 
 ## Mapping and research
 

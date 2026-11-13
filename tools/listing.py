@@ -69,8 +69,11 @@ def snes(off):
     return ((0x80 | (off >> 15)) << 16) | 0x8000 | (off & 0x7FFF)
 
 
+NAMES = {}
+
+
 def label(addr):
-    return f"CODE_{addr:06X}"
+    return NAMES.get(addr, f"CODE_{addr:06X}")
 
 
 def main():
@@ -88,6 +91,15 @@ def main():
         if kind == "code":
             for o in range(int(a, 16), int(b, 16)):
                 code[o] = 1
+
+    # names from map/symbols.txt (functions only label code)
+    names = {}
+    sym_path = os.path.join(ROOT, "map", "symbols.txt")
+    if os.path.exists(sym_path):
+        for line in open(sym_path):
+            parts = line.split(";")[0].split()
+            if len(parts) >= 3 and parts[0] == "func":
+                names[int(parts[1], 16)] = parts[2]
 
     starts = {}  # offset -> set of widths
     for line in open(os.path.join(ROOT, "map", "code_starts.txt")):
@@ -114,6 +126,8 @@ def main():
         if (off + n - 1) >> 15 != off >> 15:
             return None  # crosses a bank
         return m8, x8
+
+    NAMES.update(names)
 
     # pass 1: which instructions are emitted (labels may only point at those)
     emitted = {}
@@ -191,7 +205,7 @@ def main():
                     (m8, x8), n = emitted[off]
                     op = rom[off]
                     mn, mode = TABLE[op]
-                    if off in targets:
+                    if off in targets or snes(off) in NAMES:
                         lines.append(f"{label(snes(off))}:")
                     if mode in BRANCH:
                         disp = rom[off + 1] if mode == "rel" else rom[off + 1] | rom[off + 2] << 8
@@ -212,6 +226,13 @@ def main():
                     else:
                         suffix = "" if mode in NO_SUFFIX else SUFFIX[n]
                         opnd = operand(off, mode, n, (m8, x8))
+                        v = int.from_bytes(rom[off + 1:off + n], "little")
+                        if mn in ("jsr", "jmp") and mode == "abs":
+                            tgt = (snes(off) & 0xFF0000) | v
+                            if tgt in NAMES and (tgt - (snes(off) & 0xFF0000)) == v:
+                                opnd = NAMES[tgt]
+                        elif mn in ("jsl", "jml") and mode == "long" and v in NAMES:
+                            opnd = NAMES[v]
                         text = f"{mn}{suffix} {opnd}".rstrip()
                     lines.append(f"    {text:<28}; ${snes(off):06X}")
                     stats["insn"] += 1

@@ -7,11 +7,12 @@ D4 := $(EXT)/snes-dsp4/src
 
 CC ?= gcc
 CXX ?= g++
-CFLAGS := -O2 -Wall -I$(LS) -I.
+SRC := $(ROOT)/src
+CFLAGS := -O2 -Wall -I$(LS) -I. -I$(SRC)
 CXXFLAGS := -O2 -Wall -std=c++17 -I$(LS) -I$(D4) -I.
 
 LS_SRC := $(filter-out $(LS)/statehandler.c,$(wildcard $(LS)/*.c)) $(LS)/statehandler.c
-OBJ := $(patsubst $(LS)/%.c,$(OUT)/ls/%.o,$(LS_SRC)) $(OUT)/Dsp4.o $(OUT)/dsp4_bridge.o $(OUT)/bench.o $(OUT)/png.o $(OUT)/coverage.o
+OBJ := $(patsubst $(LS)/%.c,$(OUT)/ls/%.o,$(LS_SRC)) $(OUT)/Dsp4.o $(OUT)/dsp4_bridge.o $(OUT)/bench.o $(OUT)/png.o $(OUT)/coverage.o $(OUT)/difftest.o $(OUT)/routines.o $(OUT)/src_rng.o
 
 .PHONY: all clean
 all: $(OUT)/bench
@@ -34,7 +35,17 @@ $(OUT)/png.o: png.c png.h | $(OUT)
 $(OUT)/coverage.o: coverage.c coverage.h | $(OUT)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OUT)/bench.o: bench.c bench_log.h png.h coverage.h | $(OUT)
+$(OUT)/difftest.o: difftest.c difftest.h routines.h coverage.h $(SRC)/tg3000.h | $(OUT)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OUT)/routines.o: routines.c routines.h difftest.h $(SRC)/rng.h $(SRC)/tg3000.h | $(OUT)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# the game's C, built exactly as a port would build it (no bench headers)
+$(OUT)/src_%.o: $(SRC)/%.c $(SRC)/*.h | $(OUT)
+	$(CC) -O2 -Wall -Wextra -std=c99 -pedantic -I$(SRC) -c $< -o $@
+
+$(OUT)/bench.o: bench.c difftest.h bench_log.h png.h coverage.h | $(OUT)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OUT) $(OUT)/ls:

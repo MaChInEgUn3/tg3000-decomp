@@ -6,7 +6,8 @@
     python3 -I tools/progress.py --check  # exit 1 if a block is stale (CI)
 
 Sources (all optional until they exist): map/rom_map.txt for the code/data map and
-src/ for ported routines. The numbers are counted, never typed by hand.
+map/verified.txt (written by `bench --difftest`) for ported routines; --check also fails
+when a verified routine's C source changed after it was verified. The numbers are counted, never typed by hand.
 """
 import os
 import re
@@ -36,17 +37,29 @@ def classified_bytes():
     return code, data
 
 
+def fnv1a64(path):
+    h = 0xcbf29ce484222325
+    for b in open(path, "rb").read():
+        h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
+    return h
+
+
 def ported_routines():
-    """Routines in src/ marked with a `// TG3000_ROUTINE(<addr>) verified` comment."""
-    src = os.path.join(ROOT, "src")
-    count = 0
-    if os.path.isdir(src):
-        for dirpath, _, files in os.walk(src):
-            for name in files:
-                if name.endswith(".c"):
-                    with open(os.path.join(dirpath, name)) as f:
-                        count += len(re.findall(r"TG3000_ROUTINE\([^)]*\)\s+verified", f.read()))
-    return count
+    """Routine entry points the bench verified (map/verified.txt, written by
+    `bench --difftest`) whose C source is unchanged since. Returns (count, stale rows)."""
+    path = os.path.join(ROOT, "map", "verified.txt")
+    count, stale = 0, []
+    if os.path.exists(path):
+        for line in open(path):
+            parts = line.split()
+            if line.startswith("#") or len(parts) < 8 or parts[7] != "verified":
+                continue
+            src = os.path.join(ROOT, parts[2])
+            if os.path.exists(src) and fnv1a64(src) == int(parts[3], 16):
+                count += 1
+            else:
+                stale.append(f"{parts[0]} {parts[1]} ({parts[2]} changed since it was verified)")
+    return count, stale
 
 
 def pct(n, d):
@@ -56,19 +69,19 @@ def pct(n, d):
 def block(lang):
     code, data = classified_bytes()
     known = code + data
-    ported = ported_routines()
+    ported, _ = ported_routines()
     rows = {
         "en": [
             ("ROM bytes classified (code + data)", f"**{known:,} / {ROM_SIZE:,} ({pct(known, ROM_SIZE)})**"),
             ("Code bytes", f"{code:,} (`0x{code:X}`)"),
             ("Data bytes", f"{data:,} (`0x{data:X}`)"),
-            ("Routines ported to C and passing the differential test", f"**{ported:,}**"),
+            ("Routine entry points in C, verified by the differential test", f"**{ported:,}**"),
         ],
         "pt": [
             ("Bytes da ROM classificados (código + dados)", f"**{known:,} / {ROM_SIZE:,} ({pct(known, ROM_SIZE)})**"),
             ("Bytes de código", f"{code:,} (`0x{code:X}`)"),
             ("Bytes de dados", f"{data:,} (`0x{data:X}`)"),
-            ("Rotinas portadas para C e aprovadas no teste diferencial", f"**{ported:,}**"),
+            ("Pontos de entrada de rotinas em C, aprovados no teste diferencial", f"**{ported:,}**"),
         ],
     }[lang]
     head = ("| Metric | Current |" if lang == "en" else "| Métrica | Atual |")
@@ -80,6 +93,12 @@ def block(lang):
 
 def main():
     check = "--check" in sys.argv[1:]
+    _, stale_rows = ported_routines()
+    if check and stale_rows:
+        for r in stale_rows:
+            print("stale verification: " + r, file=sys.stderr)
+        print("re-run the differential test (see CONTRIBUTING.md)", file=sys.stderr)
+        return 1
     stale = False
     for name, lang in (("README.md", "en"), ("README.pt-br.md", "pt")):
         path = os.path.join(ROOT, name)

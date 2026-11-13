@@ -715,12 +715,14 @@ CODE_8086D0:
     lda.b $16                   ; $808701
     rts                         ; $808703
     incbin !baserom:$704..$7DF
+rng_next_long:
     phd                         ; $8087DF
     lda.w #$0100                ; $8087E0
     tcd                         ; $8087E3
-    jsr.w $87E9                 ; $8087E4
+    jsr.w rng_next              ; $8087E4
     pld                         ; $8087E7
     rtl                         ; $8087E8
+rng_next:
     lda.b $12                   ; $8087E9
     bmi CODE_808800             ; $8087EB
     lda.b $10                   ; $8087ED
@@ -2905,42 +2907,42 @@ CODE_80C140:
     ldx.b $5E                   ; $80C14A
     ldy.w #$000C                ; $80C14C
 CODE_80C14F:
-    jsr.w $87E9                 ; $80C14F
+    jsr.w rng_next              ; $80C14F
     and.w #$C00F                ; $80C152
     clc                         ; $80C155
     adc.w #$0D60                ; $80C156
     sta.w $08D4,x               ; $80C159
-    jsr.w $87E9                 ; $80C15C
+    jsr.w rng_next              ; $80C15C
     and.w #$C00F                ; $80C15F
     clc                         ; $80C162
     adc.w #$0D60                ; $80C163
     sta.w $0914,x               ; $80C166
-    jsr.w $87E9                 ; $80C169
+    jsr.w rng_next              ; $80C169
     and.w #$C00F                ; $80C16C
     clc                         ; $80C16F
     adc.w #$0D60                ; $80C170
     sta.w $0954,x               ; $80C173
-    jsr.w $87E9                 ; $80C176
+    jsr.w rng_next              ; $80C176
     and.w #$C00F                ; $80C179
     clc                         ; $80C17C
     adc.w #$0D60                ; $80C17D
     sta.w $0994,x               ; $80C180
-    jsr.w $87E9                 ; $80C183
+    jsr.w rng_next              ; $80C183
     and.w #$C00F                ; $80C186
     clc                         ; $80C189
     adc.w #$0D60                ; $80C18A
     sta.w $09D4,x               ; $80C18D
-    jsr.w $87E9                 ; $80C190
+    jsr.w rng_next              ; $80C190
     and.w #$C00F                ; $80C193
     clc                         ; $80C196
     adc.w #$0D60                ; $80C197
     sta.w $0A14,x               ; $80C19A
-    jsr.w $87E9                 ; $80C19D
+    jsr.w rng_next              ; $80C19D
     and.w #$C00F                ; $80C1A0
     clc                         ; $80C1A3
     adc.w #$0D60                ; $80C1A4
     sta.w $0A54,x               ; $80C1A7
-    jsr.w $87E9                 ; $80C1AA
+    jsr.w rng_next              ; $80C1AA
     and.w #$C00F                ; $80C1AD
     clc                         ; $80C1B0
     adc.w #$0D60                ; $80C1B1
@@ -2952,37 +2954,37 @@ CODE_80C14F:
     ldx.b $5E                   ; $80C1BC
     ldy.w #$0008                ; $80C1BE
 CODE_80C1C1:
-    jsr.w $87E9                 ; $80C1C1
+    jsr.w rng_next              ; $80C1C1
     sta.w $0010,x               ; $80C1C4
-    jsr.w $87E9                 ; $80C1C7
+    jsr.w rng_next              ; $80C1C7
     sta.w $0030,x               ; $80C1CA
-    jsr.w $87E9                 ; $80C1CD
+    jsr.w rng_next              ; $80C1CD
     sta.w $0050,x               ; $80C1D0
-    jsr.w $87E9                 ; $80C1D3
+    jsr.w rng_next              ; $80C1D3
     sta.w $0070,x               ; $80C1D6
-    jsr.w $87E9                 ; $80C1D9
+    jsr.w rng_next              ; $80C1D9
     sta.w $0090,x               ; $80C1DC
-    jsr.w $87E9                 ; $80C1DF
+    jsr.w rng_next              ; $80C1DF
     sta.w $00B0,x               ; $80C1E2
-    jsr.w $87E9                 ; $80C1E5
+    jsr.w rng_next              ; $80C1E5
     sta.w $00D0,x               ; $80C1E8
-    jsr.w $87E9                 ; $80C1EB
+    jsr.w rng_next              ; $80C1EB
     sta.w $00F0,x               ; $80C1EE
-    jsr.w $87E9                 ; $80C1F1
+    jsr.w rng_next              ; $80C1F1
     sta.w $0110,x               ; $80C1F4
-    jsr.w $87E9                 ; $80C1F7
+    jsr.w rng_next              ; $80C1F7
     sta.w $0130,x               ; $80C1FA
-    jsr.w $87E9                 ; $80C1FD
+    jsr.w rng_next              ; $80C1FD
     sta.w $0150,x               ; $80C200
-    jsr.w $87E9                 ; $80C203
+    jsr.w rng_next              ; $80C203
     sta.w $0170,x               ; $80C206
-    jsr.w $87E9                 ; $80C209
+    jsr.w rng_next              ; $80C209
     sta.w $0190,x               ; $80C20C
-    jsr.w $87E9                 ; $80C20F
+    jsr.w rng_next              ; $80C20F
     sta.w $01B0,x               ; $80C212
-    jsr.w $87E9                 ; $80C215
+    jsr.w rng_next              ; $80C215
     sta.w $01D0,x               ; $80C218
-    jsr.w $87E9                 ; $80C21B
+    jsr.w rng_next              ; $80C21B
     sta.w $01F0,x               ; $80C21E
     inx                         ; $80C221
     inx                         ; $80C222
@@ -5019,7 +5021,7 @@ CODE_80E0D9:
     jsr.w $E166                 ; $80E0DF
     lda.w #$018C                ; $80E0E2
     sta.w $0F04,x               ; $80E0E5
-    jsr.w $87E9                 ; $80E0E8
+    jsr.w rng_next              ; $80E0E8
     and.w #$7FFF                ; $80E0EB
     sta.w $0F06,x               ; $80E0EE
     txa                         ; $80E0F1
@@ -5034,7 +5036,7 @@ CODE_80E0FC:
     jsr.w $E166                 ; $80E102
     lda.w #$018E                ; $80E105
     sta.w $0F04,x               ; $80E108
-    jsr.w $87E9                 ; $80E10B
+    jsr.w rng_next              ; $80E10B
     and.w #$7FFF                ; $80E10E
     sta.w $0F06,x               ; $80E111
     txa                         ; $80E114
@@ -5049,7 +5051,7 @@ CODE_80E11F:
     jsr.w $E166                 ; $80E125
     lda.w #$018F                ; $80E128
     sta.w $0F04,x               ; $80E12B
-    jsr.w $87E9                 ; $80E12E
+    jsr.w rng_next              ; $80E12E
     and.w #$7FFF                ; $80E131
     sta.w $0F06,x               ; $80E134
     txa                         ; $80E137
@@ -5064,7 +5066,7 @@ CODE_80E142:
     jsr.w $E166                 ; $80E148
     lda.w #$019A                ; $80E14B
     sta.w $0F04,x               ; $80E14E
-    jsr.w $87E9                 ; $80E151
+    jsr.w rng_next              ; $80E151
     and.w #$7FFF                ; $80E154
     sta.w $0F06,x               ; $80E157
     txa                         ; $80E15A
@@ -5075,7 +5077,7 @@ CODE_80E142:
     bne CODE_80E142             ; $80E163
     rts                         ; $80E165
 CODE_80E166:
-    jsr.w $87E9                 ; $80E166
+    jsr.w rng_next              ; $80E166
     cmp.w #$DC00                ; $80E169
     bcs CODE_80E166             ; $80E16C
     and.w #$FF00                ; $80E16E
@@ -7687,7 +7689,7 @@ CODE_80F8EC:
     lda.w #$2000                ; $80F8FB
     sta.b $14                   ; $80F8FE
 CODE_80F900:
-    jsr.w $87E9                 ; $80F900
+    jsr.w rng_next              ; $80F900
     sep.b #$20                  ; $80F903
     pha                         ; $80F905
     lda.b $14                   ; $80F906
@@ -7699,7 +7701,7 @@ CODE_80F900:
     rep.b #$20                  ; $80F914
     lda.w $2135                 ; $80F916
     sta.w $0F00,x               ; $80F919
-    jsr.w $87E9                 ; $80F91C
+    jsr.w rng_next              ; $80F91C
     xba                         ; $80F91F
     sep.b #$20                  ; $80F920
     pha                         ; $80F922
@@ -7845,11 +7847,11 @@ CODE_80FA2A:
     bne CODE_80FA27             ; $80FA3A
     stx.b $74                   ; $80FA3C
     rts                         ; $80FA3E
-    jsr.w $87E9                 ; $80FA3F
+    jsr.w rng_next              ; $80FA3F
     cmp.w #$8000                ; $80FA42
     ror a                       ; $80FA45
     sta.w $0F00,y               ; $80FA46
-    jsr.w $87E9                 ; $80FA49
+    jsr.w rng_next              ; $80FA49
     xba                         ; $80FA4C
     cmp.w #$8000                ; $80FA4D
     ror a                       ; $80FA50

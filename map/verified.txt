@@ -1,0 +1,3 @@
+# entry name source fnv1a64(source) live fuzz paths status  -- written by the bench (--difftest)
+8087E9 rng_next src/rng.c 5e87c9c886a0431e 4000 500 16/16 verified
+8A988C rng_next_8a src/rng.c 5e87c9c886a0431e 2070 500 16/16 verified

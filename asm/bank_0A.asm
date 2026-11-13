@@ -1798,7 +1798,7 @@ CODE_8A9686:
     lda.w #$2000                ; $8A971E
     sta.b $14                   ; $8A9721
 CODE_8A9723:
-    jsr.w $988C                 ; $8A9723
+    jsr.w rng_next_8a           ; $8A9723
     sep.b #$20                  ; $8A9726
     pha                         ; $8A9728
     lda.b $14                   ; $8A9729
@@ -1810,7 +1810,7 @@ CODE_8A9723:
     rep.b #$20                  ; $8A9737
     lda.w $2135                 ; $8A9739
     sta.w $0F00,x               ; $8A973C
-    jsr.w $988C                 ; $8A973F
+    jsr.w rng_next_8a           ; $8A973F
     xba                         ; $8A9742
     sep.b #$20                  ; $8A9743
     pha                         ; $8A9745
@@ -1956,11 +1956,11 @@ CODE_8A984E:
     bne CODE_8A984B             ; $8A985E
     stx.b $74                   ; $8A9860
     rts                         ; $8A9862
-    jsr.w $988C                 ; $8A9863
+    jsr.w rng_next_8a           ; $8A9863
     cmp.w #$8000                ; $8A9866
     ror a                       ; $8A9869
     sta.w $0F00,y               ; $8A986A
-    jsr.w $988C                 ; $8A986D
+    jsr.w rng_next_8a           ; $8A986D
     xba                         ; $8A9870
     cmp.w #$8000                ; $8A9871
     ror a                       ; $8A9874
@@ -1975,6 +1975,7 @@ CODE_8A9885:
     cmp.l $810024               ; $8A9885
     bne CODE_8A9885             ; $8A9889
     rtl                         ; $8A988B
+rng_next_8a:
     lda.b $12                   ; $8A988C
     bmi CODE_8A98A3             ; $8A988E
     lda.b $10                   ; $8A9890

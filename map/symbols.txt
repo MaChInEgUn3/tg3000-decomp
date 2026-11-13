@@ -1,0 +1,6 @@
+# Names shared by the disassembly (tools/listing.py labels) and the C (src/).
+# kind  address  name                comment
+func    8087DF   rng_next_long       ; JSL wrapper: D = $0100, JSR rng_next, RTL
+func    8087E9   rng_next            ; 32-bit LFSR at D+$10 -> src/rng.c
+func    8A988C   rng_next_8a         ; identical copy of rng_next in bank $8A -> src/rng.c
+ram     7E0110   rng_state           ; 4 bytes, rng_next's state (D = $0100)

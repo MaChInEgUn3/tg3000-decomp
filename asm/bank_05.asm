@@ -1321,7 +1321,7 @@ CODE_859BB2:
     cmp.b $24                   ; $859BB6
     beq CODE_859BA6             ; $859BB8
     sta.b $1A                   ; $859BBA
-    jsl.l $8087DF               ; $859BBC
+    jsl.l rng_next_long         ; $859BBC
     and.w #$001F                ; $859BC0
     eor.w #$FFFF                ; $859BC3
     sec                         ; $859BC6
@@ -1334,7 +1334,7 @@ CODE_859BB2:
     sbc.b $20                   ; $859BD5
     sta.l $7EFAD9,x             ; $859BD7
 CODE_859BDB:
-    jsl.l $8087DF               ; $859BDB
+    jsl.l rng_next_long         ; $859BDB
     cmp.w #$FFF0                ; $859BDF
     bmi CODE_859BE9             ; $859BE2
     cmp.w #$0010                ; $859BE4

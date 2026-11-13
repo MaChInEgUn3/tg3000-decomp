@@ -20,6 +20,7 @@ enum {
 };
 
 void coverage_start(Cpu* cpu, const uint8_t* rom);  // rom: the 1 MB image as loaded
+void coverage_on_insn(Cpu* cpu);                     // from the bench's CPU trace hook
 bool coverage_merge_save(const char* path);         // also writes <path>.ram
 void coverage_report(void);
 int coverage_insn_length(uint8_t opcode, bool m8, bool x8);
