@@ -4,3 +4,13 @@ func    8087DF   rng_next_long       ; JSL wrapper: D = $0100, JSR rng_next, RTL
 func    8087E9   rng_next            ; 32-bit LFSR at D+$10 -> src/rng.c
 func    8A988C   rng_next_8a         ; identical copy of rng_next in bank $8A -> src/rng.c
 ram     7E0110   rng_state           ; 4 bytes, rng_next's state (D = $0100)
+func    8083FC   vram_queue_push     ; queue a VRAM DMA transfer -> src/vram_queue.c
+func    8088B9   vram_queue_drain    ; NMI part that sends queued transfers (not ported yet)
+func    8AA25D   take_slot           ; Y = word at D+$8C, then += 2 -> src/util.c
+func    8AB15E   lsr_n               ; A >>= Y, one bit at a time -> src/util.c
+ram     7E0028   vram_queue_head     ; byte offset, even, $00-$3E
+ram     7E002A   vram_queue_tail
+ram     7E1900   vram_queue_size     ; 32 words each: size, src, bank, dest
+ram     7E1940   vram_queue_src
+ram     7E1980   vram_queue_bank
+ram     7E19C0   vram_queue_dest

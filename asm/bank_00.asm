@@ -374,6 +374,7 @@ CODE_8083EE:
     stz.w $0172                 ; $8083F5
     stz.w $0174                 ; $8083F8
     rts                         ; $8083FB
+vram_queue_push:
     phx                         ; $8083FC
     ldx.w $0028                 ; $8083FD
     sta.w $1900,x               ; $808400
@@ -803,7 +804,7 @@ CODE_80884D:
 CODE_808884:
     lda.w #$0002                ; $808884
     trb.b $26                   ; $808887
-    beq CODE_8088B9             ; $808889
+    beq vram_queue_drain        ; $808889
     stz.w $2102                 ; $80888B
     lda.w #$0402                ; $80888E
     sta.w $4300                 ; $808891
@@ -822,7 +823,7 @@ CODE_808884:
     sec                         ; $8088B3
     sbc.w #$0280                ; $8088B4
     sta.b $2C                   ; $8088B7
-CODE_8088B9:
+vram_queue_drain:
     ldx.b $2A                   ; $8088B9
     cpx.b $28                   ; $8088BB
     beq CODE_808901             ; $8088BD
@@ -3583,67 +3584,67 @@ CODE_80D24B:
     ldx.w #$AE50                ; $80D33C
     ldy.w #$5000                ; $80D33F
     lda.w #$0700                ; $80D342
-    jsr.w $83FC                 ; $80D345
+    jsr.w vram_queue_push       ; $80D345
     lda.w #$007F                ; $80D348
     sta.b $14                   ; $80D34B
     ldx.w #$CB10                ; $80D34D
     ldy.w #$5400                ; $80D350
     lda.w #$0700                ; $80D353
-    jsr.w $83FC                 ; $80D356
+    jsr.w vram_queue_push       ; $80D356
     lda.w #$007F                ; $80D359
     sta.b $14                   ; $80D35C
     ldx.w #$B550                ; $80D35E
     ldy.w #$0000                ; $80D361
     lda.w #$0700                ; $80D364
-    jsr.w $83FC                 ; $80D367
+    jsr.w vram_queue_push       ; $80D367
     lda.w #$007F                ; $80D36A
     sta.b $14                   ; $80D36D
     ldx.w #$BD10                ; $80D36F
     ldy.w #$5800                ; $80D372
     lda.w #$0700                ; $80D375
-    jsr.w $83FC                 ; $80D378
+    jsr.w vram_queue_push       ; $80D378
     lda.w #$007F                ; $80D37B
     sta.b $14                   ; $80D37E
     ldx.w #$C410                ; $80D380
     ldy.w #$5C00                ; $80D383
     lda.w #$0700                ; $80D386
-    jsr.w $83FC                 ; $80D389
+    jsr.w vram_queue_push       ; $80D389
     lda.w #$007F                ; $80D38C
     sta.b $14                   ; $80D38F
     ldx.w #$D210                ; $80D391
     ldy.w #$3010                ; $80D394
     lda.w #$0600                ; $80D397
-    jsr.w $83FC                 ; $80D39A
+    jsr.w vram_queue_push       ; $80D39A
     lda.w #$007F                ; $80D39D
     sta.b $14                   ; $80D3A0
     ldx.w #$2000                ; $80D3A2
     ldy.w #$0400                ; $80D3A5
     lda.w #$0700                ; $80D3A8
-    jsr.w $83FC                 ; $80D3AB
+    jsr.w vram_queue_push       ; $80D3AB
     lda.w #$007F                ; $80D3AE
     sta.b $14                   ; $80D3B1
     ldx.w #$1000                ; $80D3B3
     ldy.w #$6000                ; $80D3B6
     pla                         ; $80D3B9
-    jsr.w $83FC                 ; $80D3BA
+    jsr.w vram_queue_push       ; $80D3BA
     lda.w #$007F                ; $80D3BD
     sta.b $14                   ; $80D3C0
     ldx.w #$2700                ; $80D3C2
     ldy.w #$1400                ; $80D3C5
     lda.w #$24E0                ; $80D3C8
-    jsr.w $83FC                 ; $80D3CB
+    jsr.w vram_queue_push       ; $80D3CB
     lda.w #$007F                ; $80D3CE
     sta.b $14                   ; $80D3D1
     ldx.w #$4BE0                ; $80D3D3
     ldy.w #$7000                ; $80D3D6
     lda.w #$1A40                ; $80D3D9
-    jsr.w $83FC                 ; $80D3DC
+    jsr.w vram_queue_push       ; $80D3DC
     lda.w #$007F                ; $80D3DF
     sta.b $14                   ; $80D3E2
     ldx.w #$6620                ; $80D3E4
     ldy.w #$3000                ; $80D3E7
     lda.w #$0020                ; $80D3EA
-    jsr.w $83FC                 ; $80D3ED
+    jsr.w vram_queue_push       ; $80D3ED
     lda.w #$0072                ; $80D3F0
     sta.b $7A                   ; $80D3F3
     jsr.w $D6A0                 ; $80D3F5

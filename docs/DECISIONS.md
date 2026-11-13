@@ -226,6 +226,29 @@ sep` keep it, so it stays part of the contract. The identical copy at `$8A:988C`
 (`rng_next_8a`, same C) runs only later in `autopilot_60k.txt`: 2,070/2,070 live,
 fuzz 500/500, paths 16/16, entered with D = $0100 and DB = $81 or $8A.
 
+## More leaf routines (port-leaves, 2026-11-13)
+
+- **VRAM transfer queue** (`src/vram_queue.c`): a ring of 32 transfers in four word
+  tables — size `$1900`, source `$1940`, bank `$1980`, VRAM word address `$19C0` —
+  with head `$0028` and tail `$002A` (byte offsets, even, `$00-$3E`). The NMI part at
+  `$80:88B9` (`vram_queue_drain`) sends them with DMA channel 0 (`$1801` → `$2118`),
+  splitting transfers to respect a per-frame byte budget in `$2C`. **`vram_queue_push`
+  ($80:83FC)**: A = size, Y = dest, X = source, D+$14 = bank word; no full-queue
+  check. Verified: 4 live (it runs rarely), 500 fuzz, paths 15/15.
+- **`take_slot` ($8A:A25D)** (`src/util.c`): returns the word at D+$8C and adds 2;
+  callers fill object tables at `$0500/$0600/$0800,y`. 2,451 live, 500 fuzz.
+- **`lsr_n` ($8A:B15E)** (`src/util.c`): A >>= Y one bit at a time; the last bit out is
+  left in the carry, and with Y = 0 the carry is set (from `CPY #0`). 1 live, 500 fuzz
+  (counts 0-19), paths 6/6.
+- Harness now: fuzz is a per-routine callback that makes inputs valid (e.g. the queue
+  head even and < $40), and a `lowWramDb` contract for routines that reach low WRAM
+  through DB-relative absolute addressing (DB must be a bank that mirrors it).
+- Deferred on purpose: `$80:B537` (a second queue push with base D+$8A whose masking only
+  makes sense for base 0 — needs its callers understood first) and `$80:B7BB` (leaves a
+  comparison result in the carry; port it together with a caller that shows whether
+  the carry matters). `$80:8373` waits for the frame counter `$0024`, so every live
+  sample is interrupted by design — it needs an interrupt-aware test.
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

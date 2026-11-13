@@ -2713,7 +2713,7 @@ CODE_8AA069:
     clc                         ; $8AA121
     adc.w $0D80,x               ; $8AA122
     sta.w $0D60,x               ; $8AA125
-    jsr.w $A25D                 ; $8AA128
+    jsr.w take_slot             ; $8AA128
     lda.w #$FFFF                ; $8AA12B
     sta.w $0500,y               ; $8AA12E
     lda.w #$3000                ; $8AA131
@@ -2722,7 +2722,7 @@ CODE_8AA069:
     sta.w $0600,y               ; $8AA13A
     lda.w $0D68,x               ; $8AA13D
     sta.w $0700,y               ; $8AA140
-    jsr.w $A25D                 ; $8AA143
+    jsr.w take_slot             ; $8AA143
     lda.w #$FFFF                ; $8AA146
     sta.w $0500,y               ; $8AA149
     lda.w #$3001                ; $8AA14C
@@ -2733,7 +2733,7 @@ CODE_8AA069:
     clc                         ; $8AA15B
     adc.b $4C                   ; $8AA15C
     sta.w $0700,y               ; $8AA15E
-    jsr.w $A25D                 ; $8AA161
+    jsr.w take_slot             ; $8AA161
     lda.w #$FFFF                ; $8AA164
     sta.w $0500,y               ; $8AA167
     lda.w #$B000                ; $8AA16A
@@ -2766,7 +2766,7 @@ CODE_8AA1A0:
     sec                         ; $8AA1A7
     sbc.w #$0008                ; $8AA1A8
     sta.w $0D60,x               ; $8AA1AB
-    jsr.w $A25D                 ; $8AA1AE
+    jsr.w take_slot             ; $8AA1AE
     lda.w #$FFFF                ; $8AA1B1
     sta.w $0500,y               ; $8AA1B4
     lda.w #$7000                ; $8AA1B7
@@ -2775,7 +2775,7 @@ CODE_8AA1A0:
     sta.w $0600,y               ; $8AA1C0
     lda.w $0D68,x               ; $8AA1C3
     sta.w $0700,y               ; $8AA1C6
-    jsr.w $A25D                 ; $8AA1C9
+    jsr.w take_slot             ; $8AA1C9
     lda.w #$FFFF                ; $8AA1CC
     sta.w $0500,y               ; $8AA1CF
     lda.w #$7001                ; $8AA1D2
@@ -2786,7 +2786,7 @@ CODE_8AA1A0:
     clc                         ; $8AA1E1
     adc.b $4C                   ; $8AA1E2
     sta.w $0700,y               ; $8AA1E4
-    jsr.w $A25D                 ; $8AA1E7
+    jsr.w take_slot             ; $8AA1E7
     lda.w #$FFFF                ; $8AA1EA
     sta.w $0500,y               ; $8AA1ED
     lda.w #$F000                ; $8AA1F0
@@ -2807,7 +2807,7 @@ CODE_8AA1A0:
     sta.w $0D60,x               ; $8AA211
     plx                         ; $8AA214
     rts                         ; $8AA215
-    jsr.w $A25D                 ; $8AA216
+    jsr.w take_slot             ; $8AA216
     lda.w #$FFFF                ; $8AA219
     sta.w $0500,y               ; $8AA21C
     lda.w $0D60,x               ; $8AA21F
@@ -2816,7 +2816,7 @@ CODE_8AA1A0:
     sta.w $0700,y               ; $8AA228
     lda.w #$3002                ; $8AA22B
     sta.w $0800,y               ; $8AA22E
-    jsr.w $A25D                 ; $8AA231
+    jsr.w take_slot             ; $8AA231
     lda.w #$FFFF                ; $8AA234
     sta.w $0500,y               ; $8AA237
     lda.w $0D60,x               ; $8AA23A
@@ -2834,6 +2834,7 @@ CODE_8AA1A0:
     adc.w #$0008                ; $8AA256
     sta.w $0D60,x               ; $8AA259
     rts                         ; $8AA25C
+take_slot:
     ldy.b $8C                   ; $8AA25D
     inc.b $8C                   ; $8AA25F
     inc.b $8C                   ; $8AA261
@@ -3131,7 +3132,7 @@ CODE_8AA4F6:
     lda.l $8103DC               ; $8AB0EA
     and.w #$0400                ; $8AB0EE
     ldy.w #$0008                ; $8AB0F1
-    jsr.w $B15E                 ; $8AB0F4
+    jsr.w lsr_n                 ; $8AB0F4
     ora.w $1528                 ; $8AB0F7
     sta.w $1528                 ; $8AB0FA
     lda.w $1526                 ; $8AB0FD
@@ -3140,11 +3141,12 @@ CODE_8AA4F6:
     lda.l $8103DC               ; $8AB106
     and.w #$0300                ; $8AB10A
     ldy.w #$0006                ; $8AB10D
-    jsr.w $B15E                 ; $8AB110
+    jsr.w lsr_n                 ; $8AB110
     ora.w $1526                 ; $8AB113
     sta.w $1526                 ; $8AB116
     rts                         ; $8AB119
     incbin !baserom:$5311A..$5315E
+lsr_n:
     cpy.w #$0000                ; $8AB15E
     beq CODE_8AB167             ; $8AB161
 CODE_8AB163:
@@ -3564,7 +3566,7 @@ CODE_8ABBA5:
     and.w #$00FF                ; $8ABBBC
     tay                         ; $8ABBBF
     lda.b [$42]                 ; $8ABBC0
-    jsr.w $B15E                 ; $8ABBC2
+    jsr.w lsr_n                 ; $8ABBC2
     ply                         ; $8ABBC5
     eor.w $BC3D,y               ; $8ABBC6
     jsr.w $BBF4                 ; $8ABBC9
@@ -3834,7 +3836,7 @@ CODE_8ABFC0:
     dey                         ; $8ABFC5
     bne CODE_8ABFC0             ; $8ABFC6
     ldy.w #$000C                ; $8ABFC8
-    jsr.w $B15E                 ; $8ABFCB
+    jsr.w lsr_n                 ; $8ABFCB
     ply                         ; $8ABFCE
     rts                         ; $8ABFCF
     ldx.w #$0008                ; $8ABFD0

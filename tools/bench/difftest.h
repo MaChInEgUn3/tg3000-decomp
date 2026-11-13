@@ -28,8 +28,10 @@ typedef struct {
   // (start: a copy of `in`).
   void (*call)(const Regs* in, Regs* out);
   bool compareA, compareX, compareY, compareC;  // which outputs are part of the contract
-  // Fuzz: direct-page bytes (D-relative) that are the routine's inputs.
-  uint8_t fuzzDp, fuzzDpLen;
+  bool lowWramDb;          // absolute ($0000-$1FFF) accesses through DB must hit low WRAM
+  // Fuzz: given registers already randomised and D/DB/widths from a real entry, make the
+  // inputs valid for this routine (WRAM through `ram`, registers through `r`). NULL = no fuzz.
+  void (*fuzz)(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 } Routine;
 
 void difftest_init(Snes* snes, const uint8_t* rom, bool negative);

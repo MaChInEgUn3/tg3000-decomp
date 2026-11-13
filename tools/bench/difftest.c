@@ -103,6 +103,7 @@ static void findStarts(const Routine* r, Stats* s) {
 static void noteContract(Stats* s, const Routine* r, const Regs* in) {
   Contract c = {in->d, in->db, in->m8, in->x8, in->e};
   if(in->e || (r->needM16 && in->m8) || (r->needX16 && in->x8)) s->contractBroken = true;
+  if(r->lowWramDb && !((in->db & 0x7F) < 0x40 || in->db == 0x7E)) s->contractBroken = true;
   for(int i = 0; i < s->contractCount; i++) {
     Contract* o = &s->contracts[i];
     if(o->d == c.d && o->db == c.db && o->m8 == c.m8 && o->x8 == c.x8 && o->e == c.e) return;
@@ -210,34 +211,35 @@ void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
 }
 
 // Fuzz: synthetic inputs, run on the interpreter from the entry, interrupts disabled.
+static uint32_t fuzzSeed;
+static uint32_t fuzzRandom(void) {
+  fuzzSeed = fuzzSeed * 1103515245u + 12345u;
+  return (fuzzSeed >> 16) | ((fuzzSeed * 1103515245u + 12345u) & 0xFFFF0000u);
+}
+
 void difftest_fuzz(int iterations) {
-  uint32_t seed = 0x13579BDF;
+  fuzzSeed = 0x13579BDF;
   fuzzing = true;
   snes->nmiEnabled = false;
   snes->hIrqEnabled = snes->vIrqEnabled = false;
   for(int i = 0; i < tableCount; i++) {
     const Routine* r = &table[i];
     Stats* s = &stats[i];
-    if(r->fuzzDpLen == 0 || s->contractCount == 0) continue;
+    if(r->fuzz == NULL || s->contractCount == 0) continue;
     for(int k = 0; k < iterations; k++) {
       Contract c = s->contracts[k % s->contractCount];
+      Regs in = {(uint16_t)fuzzRandom(), (uint16_t)fuzzRandom(), (uint16_t)fuzzRandom(), c.d, c.db,
+                 fuzzRandom() & 1, fuzzRandom() & 1, fuzzRandom() & 1, fuzzRandom() & 1, c.m8, c.x8, false};
+      if(in.x8) { in.x &= 0xFF; in.y &= 0xFF; }
+      r->fuzz(&in, snes->ram, fuzzRandom);
       Cpu* cpu = snes->cpu;
       cpu->nmiWanted = cpu->irqWanted = cpu->intWanted = false;
       cpu->i = true;
       cpu->e = false;
-      cpu->mf = c.m8;
-      cpu->xf = c.x8;
-      cpu->dp = c.d;
-      cpu->db = c.db;
-      seed = seed * 1103515245u + 12345u; cpu->a = seed >> 16;
-      seed = seed * 1103515245u + 12345u; cpu->x = c.x8 ? (seed >> 24) : (seed >> 16);
-      seed = seed * 1103515245u + 12345u; cpu->y = c.x8 ? (seed >> 24) : (seed >> 16);
-      for(int b = 0; b < r->fuzzDpLen; b++) {
-        seed = seed * 1103515245u + 12345u;
-        snes->ram[(uint16_t)(c.d + r->fuzzDp + b)] = seed >> 24;
-      }
+      cpu->mf = in.m8; cpu->xf = in.x8;
+      cpu->a = in.a; cpu->x = in.x; cpu->y = in.y; cpu->dp = in.d; cpu->db = in.db;
+      cpu->n = in.n; cpu->v = in.v; cpu->z = in.z; cpu->c = in.c;
       // sentinel return to $8000 of the entry bank (a BRA * trap), stack at $1F00
-      cpu->sp = 0x1F00;
       if(r->rtl) {
         snes->ram[0x1F00] = r->entry >> 16;
         snes->ram[0x1EFF] = 0x7F; snes->ram[0x1EFE] = 0xFF;
