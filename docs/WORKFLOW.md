@@ -52,4 +52,6 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
 - Anything that is the owner's call (licence, scope, commits): stop and ask.
 - One local commit per finished unit, gated on its check with `&&`
   (`check && git commit`), never on reading output. Stage paths explicitly.
-- Push and publishing follow the gate in DECISIONS.md ("Publishing").
+- The repo is public (github.com/MaChInEgUn3/tg3000-decomp): push each unit's commit
+  and check the CI run. Before every commit: `git status --short`, no assets, no
+  personal data, and `python3 -I tools/progress.py` if the numbers moved.

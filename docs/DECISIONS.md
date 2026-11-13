@@ -115,6 +115,11 @@ the advisor, who settled them on 2026-11-13:
   a generated progress block (as in `memories-decomp`), `CREDITS.md`.
 - Never pushed: ROM, `ext/`, firmware, `build/`, frame dumps (game assets).
   `CLAUDE.md` is local, not versioned.
+- **Done 2026-11-13:** fresh clone passed the CI steps locally and ran the ROM;
+  created private, pushed `74b5438`, remote tree checked (24 files, no assets, all
+  commits under the noreply address), GitHub Actions green, then made **public**
+  at https://github.com/MaChInEgUn3/tg3000-decomp with issues on and topics set.
+  From now on each finished unit is committed and pushed (CI must stay green).
 
 ## Licence (decided 2026-11-13)
 
