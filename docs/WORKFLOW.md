@@ -21,7 +21,10 @@ src/                readable, portable C of the game logic
 tools/bench/fetch.sh            # ext/ at pinned commits + DSP-4 patch
 make -C tools/bench             # -> build/bench/bench
 build/bench/bench TG3000.sfc 600 --dsp4-log dsp4.log
+build/bench/bench TG3000.sfc 3600 --movie tools/bench/movies/start_taps.txt --dump /tmp/f --every 120
 ```
+
+Frame dumps are game assets: write them outside the repo (they are also ignored).
 
 ## Phases
 

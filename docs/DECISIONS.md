@@ -55,6 +55,20 @@ re-deriving anything. Dates are absolute.
 - The SPC700 is only proven to work once the ROM gets past the sound-driver
   handshake (bench-3).
 
+## Bench boot check (bench-3, 2026-11-13)
+
+- Headless boot works: Kemco/Gremlin title (~frame 120), the full intro story
+  ("Once every millennium...", frames ~400-2900), then the main menu
+  (Championship / VS Mode) at ~frame 3000. The SPC700 handshake therefore passes,
+  and the picture renders correctly (`--dump DIR --every N`, 256x224 PNG).
+- Start does not skip the intro. In the menu, Start/A/B taps lead to a
+  Difficulty / Music / Exit screen; no race reached by blind tapping, so **still zero
+  DSP-4 writes after 9,000 frames**. Expected: the chip is for the road. Reaching a
+  race is left to bench-5 (the owner plays and records a movie).
+- Movie format: `tools/bench/movies/*.txt`, one `<frame> <buttons>` per line, keyed
+  by the bench's loop index (not `snes->frames`, which skipped one value around
+  frame 2,900 in a run; check this in bench-4).
+
 ## Legal posture
 
 Never committed: the ROM (`*.sfc`), DSP firmware, extracted assets, third-party
