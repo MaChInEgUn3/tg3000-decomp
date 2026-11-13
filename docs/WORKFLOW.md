@@ -31,8 +31,10 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
 1. **Bench.** Embeddable core (licence verified, working SPC700) + DSP-4 mapped at
    the addresses the ROM itself uses. Boot headless, dump PNGs and look at them.
    Prove determinism: same input movie → same per-frame WRAM hash, twice.
-   SDL window mode that records input movies (the owner playing is the fastest
-   route to coverage).
+   The server is headless and nobody plays by hand, so coverage comes from an
+   automated driver: it reads game state from WRAM (menu cursor, game mode, car
+   position/speed) to navigate menus and drive races, and a coverage-guided explorer
+   tries input variations from save states, keeping whatever executes new code.
 2. **Map.** Log every executed PC with its M/X/E/DB/D state; classify every ROM byte
    as code / data / unknown. Statically discovered but never-executed code is
    marked unverified.

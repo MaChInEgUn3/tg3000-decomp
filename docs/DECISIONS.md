@@ -64,10 +64,32 @@ re-deriving anything. Dates are absolute.
 - Start does not skip the intro. In the menu, Start/A/B taps lead to a
   Difficulty / Music / Exit screen; no race reached by blind tapping, so **still zero
   DSP-4 writes after 9,000 frames**. Expected: the chip is for the road. Reaching a
-  race is left to bench-5 (the owner plays and records a movie).
+  race is left to the automated driver (the server is headless; the owner does
+  not play by hand — decided 2026-11-13).
 - Movie format: `tools/bench/movies/*.txt`, one `<frame> <buttons>` per line, keyed
   by the bench's loop index (not `snes->frames`, which skipped one value around
   frame 2,900 in a run; check this in bench-4).
+
+## Bench determinism (bench-4, 2026-11-13)
+
+- The bench now steps one video frame per iteration by running until LakeSnes's
+  frame counter changes (`snes_runFrame` stops at vblank and once covered two frames
+  in one call). Movie frame N is video frame N.
+- `--hashes FILE` writes `<frame> <FNV-1a 64 of WRAM>` per frame. Two fresh runs of
+  `movies/to_race.txt`, 9,000 frames: **identical**, and 8,959 distinct hashes, so
+  the hash moves almost every frame (it would catch a divergence).
+- WRAM powers on zero-filled (LakeSnes `ramFill = 0`). Real hardware is not zeroed;
+  any routine that reads uninitialised WRAM will be found by the differential test.
+
+## Coverage without a player (2026-11-13)
+
+The server has no display and the owner will not play by hand. Coverage comes from:
+1. **Driver:** a scripted bot that reads WRAM state (game mode, menu cursor, car
+   position/speed) to navigate menus and drive races, recorded as movies.
+2. **Explorer:** from save states along those movies, try input variations and keep
+   the ones that execute new code (coverage-guided), so rare paths get reached.
+Optional later: a movie the owner records on a desktop emulator, converted to our
+format (risk: a different DSP-4 implementation could desync it).
 
 ## Legal posture
 

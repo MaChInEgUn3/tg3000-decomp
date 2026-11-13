@@ -2,7 +2,11 @@
 // TG3000 bench: runs the original ROM headless as the ground truth for the C port.
 // It is a measuring instrument (it emulates); nothing here is linked into the game.
 //
-//   bench ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE]
+//   bench ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE]
+//
+// A "frame" is one full video frame: the bench steps the CPU until LakeSnes's frame
+// counter changes (start of the next frame), so frame N of a movie is always video frame N.
+// --hashes writes one line per frame: "<frame> <FNV-1a 64 of the 128 KB WRAM>".
 //
 // Movie file: one "<frame> <buttons>" per line, the buttons held from that frame on
 // (player 1). Buttons: B Y s(elect) S(tart) U D L R A X l r, or "." for none.
@@ -40,6 +44,19 @@ static uint8_t* readFile(const char* path, int* size) {
   if(fread(buf, 1, *size, f) != (size_t)*size) { free(buf); buf = NULL; }
   fclose(f);
   return buf;
+}
+
+// One video frame: run until the frame counter advances. (snes_runFrame stops at the start
+// of vblank and, in a run, once covered two frames in one call; this cannot.)
+static void benchRunFrame(void) {
+  const uint32_t frame = snes->frames;
+  while(snes->frames == frame) cpu_runOpcode(snes->cpu);
+}
+
+static uint64_t wramHash(void) {
+  uint64_t h = 0xcbf29ce484222325ull;
+  for(size_t i = 0; i < sizeof snes->ram; i++) { h ^= snes->ram[i]; h *= 0x100000001b3ull; }
+  return h;
 }
 
 // ---- input movie ----
@@ -102,16 +119,20 @@ static void dumpFrame(const char* dir) {
 
 int main(int argc, char** argv) {
   if(argc < 2) {
-    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE]\n", argv[0]);
+    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE]\n", argv[0]);
     return 2;
   }
   const char* romPath = argv[1];
   const char* dumpDir = NULL;
+  FILE* hashes = NULL;
   int frames = 600, every = 60;
   for(int i = 2; i < argc; i++) {
     if(strcmp(argv[i], "--dsp4-log") == 0 && i + 1 < argc) {
       dsp4Log = fopen(argv[++i], "w");
       if(dsp4Log == NULL) { perror(argv[i]); return 1; }
+    } else if(strcmp(argv[i], "--hashes") == 0 && i + 1 < argc) {
+      hashes = fopen(argv[++i], "w");
+      if(hashes == NULL) { perror(argv[i]); return 1; }
     } else if(strcmp(argv[i], "--movie") == 0 && i + 1 < argc) {
       if(!loadMovie(argv[++i])) return 1;
     } else if(strcmp(argv[i], "--dump") == 0 && i + 1 < argc) {
@@ -133,7 +154,8 @@ int main(int argc, char** argv) {
 
   for(int i = 0; i < frames; i++) {
     applyMovie(i);
-    snes_runFrame(snes);
+    benchRunFrame();
+    if(hashes != NULL) fprintf(hashes, "%d %016llx\n", i + 1, (unsigned long long)wramHash());
     if(dumpDir != NULL && (i + 1) % every == 0) dumpFrame(dumpDir);
   }
 
@@ -142,6 +164,7 @@ int main(int argc, char** argv) {
   printf("frames=%u dsp4 data: %lu reads %lu writes; status: %lu reads %lu writes; first write frame %d\n",
     snes->frames, dsp4Counts[0][1], dsp4Counts[1][1], dsp4Counts[0][0], dsp4Counts[1][0], firstWrite);
   if(dsp4Log != NULL) fclose(dsp4Log);
+  if(hashes != NULL) fclose(hashes);
   snes_free(snes);
   free(rom);
   free(movie);
