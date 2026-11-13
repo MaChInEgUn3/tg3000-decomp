@@ -1,0 +1,34 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject game data
+        run: |
+          bad=$(git ls-files | grep -iE '\.(sfc|smc|rom|bin|png|jpg|gif|bmp|spc|brr)$' | grep -v '^docs/img/' || true)
+          if [ -n "$bad" ]; then echo "Game data must not be committed:"; echo "$bad"; exit 1; fi
+
+      - name: Fetch third-party code
+        run: tools/bench/fetch.sh
+
+      - name: Build the bench
+        run: make -C tools/bench
+
+      - name: Bench runs (no ROM in CI, so it must fail cleanly)
+        run: |
+          set +e
+          ./build/bench/bench missing.sfc 1
+          test $? -eq 1
+
+      - name: Progress block is up to date
+        run: python3 -I tools/progress.py --check
