@@ -309,6 +309,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   now requires *every* negative variant to fail.
 - The verification hash also covers `tools/bench/platform_bench.c`.
 
+## C calling C (port-batch-2, 2026-11-14)
+
+- Routines whose callees are already verified are portable: the sample includes the
+  original callee, and the C calls the C callee. A scan (`asm` + `map/symbols.txt` +
+  `map/verified.txt`) finds them.
+- `src/tg3000.h` gains `DP` (`$0100`: every entry seen so far ran with it; routines that
+  assume it declare `fixedD` and the bench fails them otherwise), a data-bank contract
+  (`db`), and `rom8/rom16` to read ROM tables by bus address.
+- New: `rng_next_long` ($80:87DF), `star_spawn` ($80:FA3F; copy $8A:9863 registered,
+  not reached yet), `star_random_y` ($80:E166), `upload_7f_to_3000` ($8A:BA7D),
+  `upload_tiles_3300` ($85:8245) and `upload_tiles_3700` ($85:8260). The `$0F00` table of
+  (x, y, depth) words filled with random positions is most likely the intro starfield.
+- **The flag check paid off twice:** callers of `rng_next_long` *do* read the carry
+  (the bit shifted out), so `rng_next` takes `bool* carry` again (NULL when unused);
+  `star_random_y` exits with C = 0 by construction (the rejection loop ends on
+  `CMP #$DC00` with the carry clear).
+- **The data-bank check paid off:** the tile uploads in bank `$85` read their offset
+  table through DB = `$83`, not their own bank (`$83:84B1`). The `$8A:8D81/8DA0`
+  variants are left in asm until a movie runs them and shows their DB.
+- Adapters derive mechanical flag results (N/Z from a value, C/V of a final ADC whose
+  sum the upload effect already checks); the value logic stays in `src/`.
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

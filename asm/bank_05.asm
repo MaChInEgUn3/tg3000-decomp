@@ -26,9 +26,9 @@ org $858000
     lda.w #$0420                ; $85809A
     jsr.w $817B                 ; $85809D
     lda.w #$0020                ; $8580A0
-    jsr.w $8245                 ; $8580A3
+    jsr.w upload_tiles_3300     ; $8580A3
     lda.w #$0220                ; $8580A6
-    jsr.w $8260                 ; $8580A9
+    jsr.w upload_tiles_3700     ; $8580A9
     lda.w #$0020                ; $8580AC
     jsr.w $827B                 ; $8580AF
     lda.w #$0220                ; $8580B2
@@ -44,9 +44,9 @@ org $858000
     lda.w #$0820                ; $8580CC
     jsr.w $817B                 ; $8580CF
     lda.w #$0020                ; $8580D2
-    jsr.w $8245                 ; $8580D5
+    jsr.w upload_tiles_3300     ; $8580D5
     lda.w #$0220                ; $8580D8
-    jsr.w $8260                 ; $8580DB
+    jsr.w upload_tiles_3700     ; $8580DB
     lda.w #$0420                ; $8580DE
     jsr.w $827B                 ; $8580E1
     lda.w #$0620                ; $8580E4
@@ -163,6 +163,7 @@ CODE_858228:
     jsl.l upload_vram_now       ; $85823F
     plx                         ; $858243
     rts                         ; $858244
+upload_tiles_3300:
     phx                         ; $858245
     sta.b $16                   ; $858246
     lda.w #$007F                ; $858248
@@ -176,6 +177,7 @@ CODE_858228:
     jsl.l upload_vram_now       ; $85825A
     plx                         ; $85825E
     rts                         ; $85825F
+upload_tiles_3700:
     phx                         ; $858260
     sta.b $16                   ; $858261
     lda.w #$007F                ; $858263

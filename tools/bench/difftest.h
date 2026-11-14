@@ -29,6 +29,8 @@ typedef struct {
   void (*call)(const Regs* in, Regs* out);
   bool compareA, compareX, compareY;  // which registers are outputs (flags: by liveness)
   bool lowWramDb;          // absolute ($0000-$1FFF) accesses through DB must hit low WRAM
+  bool fixedD;             // the C assumes D = DP ($0100)
+  uint8_t db;              // the C assumes this data bank (0 = any)
   // Fuzz: given registers already randomised and D/DB/widths from a real entry, make the
   // inputs valid for this routine (WRAM through `ram`, registers through `r`). NULL = no fuzz.
   void (*fuzz)(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));

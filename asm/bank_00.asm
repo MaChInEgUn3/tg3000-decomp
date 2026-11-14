@@ -5021,7 +5021,7 @@ CODE_80E0D2:
 CODE_80E0D9:
     lda.w #$0100                ; $80E0D9
     sta.w $0F00,x               ; $80E0DC
-    jsr.w $E166                 ; $80E0DF
+    jsr.w star_random_y         ; $80E0DF
     lda.w #$018C                ; $80E0E2
     sta.w $0F04,x               ; $80E0E5
     jsr.w rng_next              ; $80E0E8
@@ -5036,7 +5036,7 @@ CODE_80E0D9:
 CODE_80E0FC:
     lda.w #$0080                ; $80E0FC
     sta.w $0F00,x               ; $80E0FF
-    jsr.w $E166                 ; $80E102
+    jsr.w star_random_y         ; $80E102
     lda.w #$018E                ; $80E105
     sta.w $0F04,x               ; $80E108
     jsr.w rng_next              ; $80E10B
@@ -5051,7 +5051,7 @@ CODE_80E0FC:
 CODE_80E11F:
     lda.w #$0040                ; $80E11F
     sta.w $0F00,x               ; $80E122
-    jsr.w $E166                 ; $80E125
+    jsr.w star_random_y         ; $80E125
     lda.w #$018F                ; $80E128
     sta.w $0F04,x               ; $80E12B
     jsr.w rng_next              ; $80E12E
@@ -5066,7 +5066,7 @@ CODE_80E11F:
 CODE_80E142:
     lda.w #$0020                ; $80E142
     sta.w $0F00,x               ; $80E145
-    jsr.w $E166                 ; $80E148
+    jsr.w star_random_y         ; $80E148
     lda.w #$019A                ; $80E14B
     sta.w $0F04,x               ; $80E14E
     jsr.w rng_next              ; $80E151
@@ -5079,10 +5079,10 @@ CODE_80E142:
     cpx.w #$0200                ; $80E160
     bne CODE_80E142             ; $80E163
     rts                         ; $80E165
-CODE_80E166:
+star_random_y:
     jsr.w rng_next              ; $80E166
     cmp.w #$DC00                ; $80E169
-    bcs CODE_80E166             ; $80E16C
+    bcs star_random_y           ; $80E16C
     and.w #$FF00                ; $80E16E
     sta.w $0F02,x               ; $80E171
     rts                         ; $80E174
@@ -7834,7 +7834,7 @@ CODE_80F9F7:
     cmp.w #$0100                ; $80FA1F
     bcs CODE_80FA2A             ; $80FA22
 CODE_80FA24:
-    jsr.w $FA3F                 ; $80FA24
+    jsr.w star_spawn            ; $80FA24
 CODE_80FA27:
     jmp.w $F959                 ; $80FA27
 CODE_80FA2A:
@@ -7851,6 +7851,7 @@ CODE_80FA2A:
     bne CODE_80FA27             ; $80FA3A
     stx.b $74                   ; $80FA3C
     rts                         ; $80FA3E
+star_spawn:
     jsr.w rng_next              ; $80FA3F
     cmp.w #$8000                ; $80FA42
     ror a                       ; $80FA45

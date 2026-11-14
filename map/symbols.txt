@@ -1,6 +1,6 @@
 # Names shared by the disassembly (tools/listing.py labels) and the C (src/).
 # kind  address  name                comment
-func    8087DF   rng_next_long       ; JSL wrapper: D = $0100, JSR rng_next, RTL
+func    8087DF   rng_next_long       ; JSL wrapper: D = $0100, JSR rng_next, RTL -> src/rng.c
 func    8087E9   rng_next            ; 32-bit LFSR at D+$10 -> src/rng.c
 func    8A988C   rng_next_8a         ; identical copy of rng_next in bank $8A -> src/rng.c
 ram     7E0110   rng_state           ; 4 bytes, rng_next's state (D = $0100)
@@ -17,3 +17,10 @@ ram     7E19C0   vram_queue_dest
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    8083AD   upload_vram_now     ; JSL: DMA ch0 A bytes from D+$14:X to VRAM word Y -> src/video_dma.c
 func    8083CB   upload_cgram_now    ; JSL: DMA ch0 Y bytes from A.hi:X to CGRAM index A.lo -> src/video_dma.c
+func    80FA3F   star_spawn          ; random x/y, depth $7F00 at $0F00+Y -> src/stars.c
+func    8A9863   star_spawn_8a       ; copy in bank $8A -> src/stars.c
+func    80E166   star_random_y       ; random y < $DC00 at $0F02+X -> src/stars.c
+func    8ABA7D   upload_7f_to_3000   ; 2 KB $7F:0000 -> VRAM $3000 -> src/video_dma.c
+func    858245   upload_tiles_3300   ; 512 B from $7F via table $83:84B1 -> VRAM $3300 -> src/video_dma.c
+func    858260   upload_tiles_3700   ; same, VRAM $3700 -> src/video_dma.c
+ram     7E0F00   star_table          ; 3 words per star: x, y, depth

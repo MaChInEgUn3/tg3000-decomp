@@ -11,6 +11,7 @@
 
 #include "rng.h"
 #include "scale.h"
+#include "stars.h"
 #include "tg3000.h"
 #include "util.h"
 #include "video_dma.h"
@@ -20,9 +21,11 @@
 static void setNZ16(Regs* r, uint16_t v) { r->n = (v >> 15) & 1; r->z = v == 0; }
 
 // ---- rng_next ($80:87E9, $8A:988C) ----
-// State at D+$10, 16-bit A; returns A = new low word. (C: the bit shifted out; dead.)
+// State at D+$10, 16-bit A; returns A = new low word, C = the bit shifted out.
 static void call_rng_next(const Regs* in, Regs* out) {
-  out->a = rng_next((uint16_t)(in->d + 0x10));
+  bool carry;
+  out->a = rng_next((uint16_t)(in->d + 0x10), &carry);
+  out->c = carry;
   setNZ16(out, out->a);
 }
 
@@ -136,18 +139,93 @@ static void call_upload_cgram_now(const Regs* in, Regs* out) {
   out->n = out->z = false;
 }
 
+static void fuzz_rng_state(uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint32_t s = rnd();
+  for(int b = 0; b < 4; b++) ram[RNG_STATE + b] = (uint8_t)(s >> (8 * b));
+}
+
+// ---- rng_next_long ($80:87DF, long call) ----
+// PHD / D = $0100 / JSR rng_next / PLD / RTL: A = result, N/Z from the PLD (entry D).
+static void call_rng_next_long(const Regs* in, Regs* out) {
+  bool carry;
+  out->a = rng_next_long(&carry);
+  out->c = carry;
+  setNZ16(out, in->d);
+}
+
+static void fuzz_rng_next_long(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { (void)r; fuzz_rng_state(ram, rnd); }
+
+// ---- star_spawn ($80:FA3F, $8A:9863) ----  Y = slot; exits with A = $7F00.
+static void call_star_spawn(const Regs* in, Regs* out) {
+  out->a = star_spawn(in->y);
+  setNZ16(out, out->a);
+}
+
+static void fuzz_star_spawn(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_rng_state(ram, rnd);
+  r->y = (uint16_t)(6 * (rnd() % 40));
+}
+
+// ---- star_random_y ($80:E166) ----  X = slot; exits with A = the stored y, N/Z from
+// AND, C = 0 (the loop only ends when CMP #$DC00 leaves the carry clear).
+static void call_star_random_y(const Regs* in, Regs* out) {
+  out->a = star_random_y(in->x);
+  out->c = false;
+  setNZ16(out, out->a);
+}
+
+static void fuzz_star_random_y(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_rng_state(ram, rnd);
+  r->x = (uint16_t)(6 * (rnd() % 40));
+}
+
+// ---- upload_7f_to_3000 ($8A:BA7D) ----  leaves A = $1801, X = 0, Y = $3000, N = Z = 0.
+static void call_upload_7f_to_3000(const Regs* in, Regs* out) {
+  (void)in;
+  upload_7f_to_3000();
+  out->a = 0x1801; out->x = 0; out->y = 0x3000;
+  out->n = out->z = false;
+}
+
+// ---- upload_tiles_* ($85:8245, $85:8260) ----
+// X = table entry, A = offset; X is kept (PHX/PLX, so N/Z come from it), A = $1801,
+// Y = the VRAM address.
+// C and V are those of the last ADC (table word + offset, carry clear), which the upload
+// leaves alone; the sum itself is checked through the upload effect.
+#define TILES_ADAPTER(fn, vram) \
+  static void call_##fn(const Regs* in, Regs* out) { \
+    fn(in->x, in->a); \
+    out->a = 0x1801; out->y = vram; \
+    setNZ16(out, in->x); \
+    uint16_t t = rom16(0x8384B1 + in->x); \
+    uint32_t sum = (uint32_t)t + in->a; \
+    out->c = sum > 0xFFFF; \
+    out->v = (~(t ^ in->a) & (t ^ sum) & 0x8000) != 0; \
+  }
+TILES_ADAPTER(upload_tiles_3300, 0x3300)
+TILES_ADAPTER(upload_tiles_3700, 0x3700)
+
+static void fuzz_upload_tiles(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->x = (uint16_t)(2 * (rnd() % 64));
+  r->a = (uint16_t)(rnd() & 0x1FFF);
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
-static uint16_t rng_next_wrong(uint16_t state) {
+static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
   bool top = (s >> 31) & 1;
   s <<= 1;
   if(!top) s ^= 0x1D872B44;
   wr32(state, s);
+  *carry = top;
   return (uint16_t)s;
 }
 
 static void call_rng_next_wrong(const Regs* in, Regs* out) {
-  out->a = rng_next_wrong((uint16_t)(in->d + 0x10));
+  bool carry;
+  out->a = rng_next_wrong((uint16_t)(in->d + 0x10), &carry);
+  out->c = carry;
   setNZ16(out, out->a);
 }
 
@@ -178,6 +256,20 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .call = call_upload_vram_now, ALL_OUTPUTS, .fuzz = fuzz_upload_vram_now},
   {.name = "upload_cgram_now", .entry = 0x8083CB, .end = 0x8083E8, .rtl = true, .source = "src/video_dma.c",
    .needM16 = true, .needX16 = true, .call = call_upload_cgram_now, ALL_OUTPUTS, .fuzz = fuzz_upload_cgram_now},
+  {.name = "rng_next_long", .entry = 0x8087DF, .end = 0x8087E9, .rtl = true, .source = "src/rng.c",
+   .needM16 = true, .call = call_rng_next_long, ALL_OUTPUTS, .fuzz = fuzz_rng_next_long},
+  {.name = "star_spawn", .entry = 0x80FA3F, .end = 0x80FA5B, .source = "src/stars.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_star_spawn, ALL_OUTPUTS, .fuzz = fuzz_star_spawn},
+  {.name = "star_spawn_8a", .entry = 0x8A9863, .end = 0x8A987F, .source = "src/stars.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_star_spawn, ALL_OUTPUTS, .fuzz = fuzz_star_spawn},
+  {.name = "star_random_y", .entry = 0x80E166, .end = 0x80E175, .source = "src/stars.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_star_random_y, ALL_OUTPUTS, .fuzz = fuzz_star_random_y},
+  {.name = "upload_7f_to_3000", .entry = 0x8ABA7D, .end = 0x8ABA90, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_upload_7f_to_3000, ALL_OUTPUTS, .fuzz = fuzz_upload_tiles},
+  {.name = "upload_tiles_3300", .entry = 0x858245, .end = 0x858260, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_upload_tiles_3300, ALL_OUTPUTS, .fuzz = fuzz_upload_tiles},
+  {.name = "upload_tiles_3700", .entry = 0x858260, .end = 0x85827B, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_upload_tiles_3700, ALL_OUTPUTS, .fuzz = fuzz_upload_tiles},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

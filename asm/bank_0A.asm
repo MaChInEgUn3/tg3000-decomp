@@ -1708,7 +1708,7 @@ CODE_8A954E:
     lda.w #$0007                ; $8A95E0
     sta.b $3C                   ; $8A95E3
     jsr.w $C15D                 ; $8A95E5
-    jsr.w $BA7D                 ; $8A95E8
+    jsr.w upload_7f_to_3000     ; $8A95E8
     lda.w #$0001                ; $8A95EB
     jsl.l $8A9880               ; $8A95EE
     lda.w #$0004                ; $8A95F2
@@ -1939,7 +1939,7 @@ CODE_8A981A:
     cmp.w #$0100                ; $8A9843
     bcs CODE_8A984E             ; $8A9846
 CODE_8A9848:
-    jsr.w $9863                 ; $8A9848
+    jsr.w star_spawn_8a         ; $8A9848
 CODE_8A984B:
     jmp.w $977C                 ; $8A984B
 CODE_8A984E:
@@ -1956,6 +1956,7 @@ CODE_8A984E:
     bne CODE_8A984B             ; $8A985E
     stx.b $74                   ; $8A9860
     rts                         ; $8A9862
+star_spawn_8a:
     jsr.w rng_next_8a           ; $8A9863
     cmp.w #$8000                ; $8A9866
     ror a                       ; $8A9869
@@ -2628,7 +2629,7 @@ CODE_8AA033:
     incbin !baserom:$5203C..$52050
     lda.b $8E                   ; $8AA050
     beq CODE_8AA069             ; $8AA052
-    jsr.w $BA7D                 ; $8AA054
+    jsr.w upload_7f_to_3000     ; $8AA054
     jsl.l $8A8E1B               ; $8AA057
     inc.w $0164                 ; $8AA05B
     lda.w $0164                 ; $8AA05E
@@ -3482,6 +3483,7 @@ CODE_8AB98A:
     ldy.w #$0200                ; $8ABA75
     jsl.l upload_cgram_now      ; $8ABA78
     rts                         ; $8ABA7C
+upload_7f_to_3000:
     lda.w #$007F                ; $8ABA7D
     sta.b $14                   ; $8ABA80
     ldx.w #$0000                ; $8ABA82

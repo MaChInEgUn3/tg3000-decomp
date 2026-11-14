@@ -195,6 +195,8 @@ static void noteContract(Stats* s, const Routine* r, const Regs* in) {
   Contract c = {in->d, in->db, in->m8, in->x8, in->e};
   if(in->e || (r->needM16 && in->m8) || (r->needX16 && in->x8)) s->contractBroken = true;
   if(r->lowWramDb && !((in->db & 0x7F) < 0x40 || in->db == 0x7E)) s->contractBroken = true;
+  if(r->fixedD && in->d != DP) s->contractBroken = true;
+  if(r->db != 0 && in->db != r->db) s->contractBroken = true;
   for(int i = 0; i < s->contractCount; i++) {
     Contract* o = &s->contracts[i];
     if(o->d == c.d && o->db == c.db && o->m8 == c.m8 && o->x8 == c.x8 && o->e == c.e) return;

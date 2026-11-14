@@ -29,6 +29,19 @@ static inline void wr16(uint32_t adr, uint16_t val) {
   wr8(adr + 1, (uint8_t)(val >> 8));
 }
 
+// The direct page the game runs with: every routine entry seen so far had D = $0100, so
+// the original's "direct page $14" is WRAM $0114. (The bench checks D on every entry.)
+#define DP 0x0100
+
+// Read the ROM through a 24-bit bus address (LoROM: bank & $7F selects a 32 KB half).
+static inline uint8_t rom8(uint32_t bus) {
+  return g_rom[(((bus >> 16) & 0x7F) << 15) | (bus & 0x7FFF)];
+}
+
+static inline uint16_t rom16(uint32_t bus) {
+  return (uint16_t)(rom8(bus) | (rom8((bus & 0xFF0000) | ((bus + 1) & 0xFFFF)) << 8));
+}
+
 static inline uint32_t rd32(uint32_t adr) { return rd16(adr) | ((uint32_t)rd16(adr + 2) << 16); }
 
 static inline void wr32(uint32_t adr, uint32_t val) {
