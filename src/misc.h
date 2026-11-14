@@ -48,4 +48,16 @@ void byte_buffer_push(uint8_t b);
 // changed cells in $0178; then the columns move apart ($0176 += 2, $0174 -= 2).
 void func_8AB942(void);
 
+// Clear the object tables' first column ($0500-$05F7) and the slot counter $018C.
+void clear_object_slots(void);
+
+// $0D90 = $013C * 8 - $1C and $0D78 = $015A * 8 (targets for step_toward_0d68/0d70).
+void func_8AA469(void);
+
+// Skip `n` zero-terminated strings starting at bus address `list`, returning the
+// address of the next one (also left in $0144). The original steps over each terminator
+// with an 8-bit increment of the pointer's low byte, so a terminator at $xxFF wraps
+// within the page; that quirk is kept.
+uint16_t string_list_nth(uint32_t list, uint16_t n);
+
 #endif

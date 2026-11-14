@@ -576,6 +576,56 @@ static void fuzz_decompress(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->y = 0x2100;
 }
 
+// ---- decompress_near ($80:FBA0) ----  JSL decompress / RTS: same registers and flags.
+static void call_decompress_near(const Regs* in, Regs* out) { call_decompress(in, out); }
+
+// ---- clear_object_slots ($8A:A47E) ----  X kept (N/Z from PLX).
+static void call_clear_object_slots(const Regs* in, Regs* out) {
+  clear_object_slots();
+  setNZ16(out, in->x);
+}
+
+// ---- func_8AA469 ($8A:A469) ----  A = $0D78's new value (N/Z of the last ASL),
+// C = the bit shifted out of the last ASL.
+static void call_func_8AA469(const Regs* in, Regs* out) {
+  (void)in;
+  func_8AA469();
+  out->a = rd16(0x0D78);
+  setNZ16(out, out->a);
+  out->c = (rd16(DP + 0x5A) >> 13) & 1;
+  Regs t;
+  setSbc16(&t, (uint16_t)(rd16(DP + 0x3C) << 3), 0x1C);  // V of the SEC/SBC #$1C (ASL keeps V)
+  out->v = t.v;
+}
+
+static void fuzz_8aa469(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x3C, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x5A, (uint16_t)rnd());
+}
+
+// ---- string_list_nth ($8A:A4CF) ----  A = list address (bank DB), n from ($1516,X & $3C)
+// >> 2. Exits with A = the address, X/Y kept (N/Z from the PLX).
+static void call_string_list_nth(const Regs* in, Regs* out) {
+  uint16_t n = (uint16_t)((rd16(0x1516 + in->x) & 0x3C) >> 2);
+  out->a = string_list_nth(((uint32_t)in->db << 16) | in->a, n);
+  setNZ16(out, in->x);
+}
+
+static void fuzz_string_list_nth(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)(2 * (rnd() % 8));
+  wr16ram(ram, 0x1516 + r->x, (uint16_t)rnd());
+  // strings in low WRAM (bank $8A's mirror), sometimes ending right at a page boundary
+  uint16_t base = (rnd() & 3) == 0 ? (uint16_t)(0x1BF0 - rnd() % 8) : 0x1A00;
+  uint16_t p = base;
+  for(int k = 0; k < 20 && p < 0x1CF0; k++) {
+    int len = (int)(rnd() % 12);
+    for(int i = 0; i < len; i++) ram[p++] = (uint8_t)(0x20 + rnd() % 0x5F);
+    ram[p++] = 0;
+  }
+  r->a = base;
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -693,6 +743,14 @@ const Routine routines[] = {
   {.name = "decompress", .entry = 0x82FB70, .end = 0x82FFAB, .rtl = true, .source = "src/decompress.c",
    .needM16 = true, .needX16 = true, .call = call_decompress, ALL_OUTPUTS, .fuzz = fuzz_decompress,
    .holes = {{0x82FB8B, 0x82FC8B}, {0x82FD58, 0x82FD78}, {0x82FDD7, 0x82FDF7}, {0x82FE99, 0x82FEB9}}},
+  {.name = "decompress_near", .entry = 0x80FBA0, .end = 0x80FBA5, .source = "src/decompress.c",
+   .needM16 = true, .needX16 = true, .call = call_decompress_near, ALL_OUTPUTS, .fuzz = fuzz_decompress},
+  {.name = "clear_object_slots", .entry = 0x8AA47E, .end = 0x8AA48D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_clear_object_slots, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_8AA469", .entry = 0x8AA469, .end = 0x8AA47E, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_func_8AA469, ALL_OUTPUTS, .fuzz = fuzz_8aa469},
+  {.name = "string_list_nth", .entry = 0x8AA4CF, .end = 0x8AA4FB, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_string_list_nth, ALL_OUTPUTS, .fuzz = fuzz_string_list_nth},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

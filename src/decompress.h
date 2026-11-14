@@ -24,4 +24,7 @@
 // just after the end byte.
 uint16_t decompress(uint16_t dp, uint8_t src_bank, uint16_t src, uint8_t dst_bank, uint16_t dst, uint16_t* src_end);
 
+// $80:FBA0: the same, for callers in bank $80 (a JSL/RTS bridge). Returns the length.
+uint16_t decompress_near(uint16_t dp, uint8_t src_bank, uint16_t src, uint8_t dst_bank, uint16_t dst, uint16_t* src_end);
+
 #endif

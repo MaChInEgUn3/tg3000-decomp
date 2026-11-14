@@ -109,3 +109,26 @@ void func_8AB942(void) {
   wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) + 2));
   wr16(DP + 0x74, (uint16_t)(rd16(DP + 0x74) - 2));
 }
+
+// TG3000_ROUTINE($8A:A47E) clear_object_slots
+void clear_object_slots(void) {
+  wr16(DP + 0x8C, 0);
+  for(int i = 0xF6; i >= 0; i -= 2) wr16(0x0500 + i, 0);
+}
+
+// TG3000_ROUTINE($8A:A469) func_8AA469
+void func_8AA469(void) {
+  wr16(0x0D90, (uint16_t)((rd16(DP + 0x3C) << 3) - 0x1C));
+  wr16(0x0D78, (uint16_t)(rd16(DP + 0x5A) << 3));
+}
+
+// TG3000_ROUTINE($8A:A4CF) string_list_nth
+uint16_t string_list_nth(uint32_t list, uint16_t n) {
+  uint32_t bank = list & 0xFF0000;
+  wr16(DP + 0x44, (uint16_t)list);
+  for(; n; n--) {
+    while(bus_rd8(bank | rd16(DP + 0x44)) != 0) wr16(DP + 0x44, (uint16_t)(rd16(DP + 0x44) + 1));
+    wr8(DP + 0x44, (uint8_t)(rd8(DP + 0x44) + 1));  // 8-bit: no carry into $0145
+  }
+  return rd16(DP + 0x44);
+}

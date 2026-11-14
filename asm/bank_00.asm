@@ -327,7 +327,7 @@ CODE_808377:
     ora.w #$7F00                ; $808381
     phy                         ; $808384
     ldy.w #$0000                ; $808385
-    jsr.w $FBA0                 ; $808388
+    jsr.w decompress_near       ; $808388
     ldy.w #$1801                ; $80838B
     sty.w $4300                 ; $80838E
     ldy.w #$0000                ; $808391
@@ -1151,7 +1151,7 @@ CODE_808B59:
     ldx.w #$8B62                ; $808BD7
     ldy.w #$2000                ; $808BDA
     lda.w #$7E81                ; $808BDD
-    jsr.w $FBA0                 ; $808BE0
+    jsr.w decompress_near       ; $808BE0
     ldy.w #$0010                ; $808BE3
     ldx.w #$8000                ; $808BE6
     lda.w #$008D                ; $808BE9
@@ -2146,7 +2146,7 @@ CODE_80B95E:
     ora.w #$7F00                ; $80B963
     phy                         ; $80B966
     ldy.b $5E                   ; $80B967
-    jsr.w $FBA0                 ; $80B969
+    jsr.w decompress_near       ; $80B969
     ply                         ; $80B96C
     sty.b $6A                   ; $80B96D
     ldy.b $5E                   ; $80B96F
@@ -2817,14 +2817,14 @@ CODE_80BF7E:
     tay                         ; $80BF88
     lda.w #$7F92                ; $80BF89
     ldx.w #$8000                ; $80BF8C
-    jsr.w $FBA0                 ; $80BF8F
+    jsr.w decompress_near       ; $80BF8F
     lda.b $5E                   ; $80BF92
     clc                         ; $80BF94
     adc.w #$1000                ; $80BF95
     tay                         ; $80BF98
     lda.w #$7F87                ; $80BF99
     ldx.w #$8404                ; $80BF9C
-    jsr.w $FBA0                 ; $80BF9F
+    jsr.w decompress_near       ; $80BF9F
     lda.b $5E                   ; $80BFA2
     clc                         ; $80BFA4
     adc.w #$1000                ; $80BFA5
@@ -3448,7 +3448,7 @@ CODE_80C474:
     tay                         ; $80C50C
     lda.w #$7F98                ; $80C50D
     ldx.w #$8000                ; $80C510
-    jsr.w $FBA0                 ; $80C513
+    jsr.w decompress_near       ; $80C513
     pha                         ; $80C516
     lda.b $5E                   ; $80C517
     clc                         ; $80C519
@@ -3456,7 +3456,7 @@ CODE_80C474:
     tay                         ; $80C51D
     lda.w #$7F87                ; $80C51E
     ldx.w #$8404                ; $80C521
-    jsr.w $FBA0                 ; $80C524
+    jsr.w decompress_near       ; $80C524
     lda.b $5E                   ; $80C527
     clc                         ; $80C529
     adc.w #$1000                ; $80C52A
@@ -3655,14 +3655,14 @@ CODE_80C6B9:
     tay                         ; $80C6E6
     lda.w #$7F9E                ; $80C6E7
     ldx.w #$8D11                ; $80C6EA
-    jsr.w $FBA0                 ; $80C6ED
+    jsr.w decompress_near       ; $80C6ED
     lda.b $5E                   ; $80C6F0
     clc                         ; $80C6F2
     adc.w #$2000                ; $80C6F3
     tay                         ; $80C6F6
     lda.w #$7F8C                ; $80C6F7
     ldx.w #$8000                ; $80C6FA
-    jsr.w $FBA0                 ; $80C6FD
+    jsr.w decompress_near       ; $80C6FD
     pha                         ; $80C700
     lda.b $5E                   ; $80C701
     clc                         ; $80C703
@@ -4188,14 +4188,14 @@ CODE_80CB2F:
     tay                         ; $80CEF4
     lda.w #$7F9E                ; $80CEF5
     ldx.w #$8D6B                ; $80CEF8
-    jsr.w $FBA0                 ; $80CEFB
+    jsr.w decompress_near       ; $80CEFB
     lda.b $5E                   ; $80CEFE
     clc                         ; $80CF00
     adc.w #$4000                ; $80CF01
     tay                         ; $80CF04
     lda.w #$7F87                ; $80CF05
     ldx.w #$898E                ; $80CF08
-    jsr.w $FBA0                 ; $80CF0B
+    jsr.w decompress_near       ; $80CF0B
     pha                         ; $80CF0E
     lda.b $5E                   ; $80CF0F
     clc                         ; $80CF11
@@ -4203,7 +4203,7 @@ CODE_80CB2F:
     tay                         ; $80CF15
     lda.w #$7F8C                ; $80CF16
     ldx.w #$8B54                ; $80CF19
-    jsr.w $FBA0                 ; $80CF1C
+    jsr.w decompress_near       ; $80CF1C
     pha                         ; $80CF1F
     lda.b $5E                   ; $80CF20
     clc                         ; $80CF22
@@ -4529,16 +4529,16 @@ CODE_80D1D3:
     ldy.w #$0000                ; $80D1DB
     lda.w #$7F9C                ; $80D1DE
     ldx.w #$8FC3                ; $80D1E1
-    jsr.w $FBA0                 ; $80D1E4
+    jsr.w decompress_near       ; $80D1E4
     ldy.w #$1000                ; $80D1E7
     ldx.w #$8190                ; $80D1EA
     lda.w #$7F87                ; $80D1ED
-    jsr.w $FBA0                 ; $80D1F0
+    jsr.w decompress_near       ; $80D1F0
     pha                         ; $80D1F3
     ldy.w #$2700                ; $80D1F4
     ldx.w #$80B2                ; $80D1F7
     lda.w #$7F92                ; $80D1FA
-    jsr.w $FBA0                 ; $80D1FD
+    jsr.w decompress_near       ; $80D1FD
     ldx.w #$0700                ; $80D200
     lda.w #$0048                ; $80D203
 CODE_80D206:
@@ -6005,7 +6005,7 @@ CODE_80DEA8:
     ldx.w $C3EE,y               ; $80E011
     ldy.b $7C                   ; $80E014
     lda.w #$7E91                ; $80E016
-    jsr.w $FBA0                 ; $80E019
+    jsr.w decompress_near       ; $80E019
     clc                         ; $80E01C
     adc.b $7C                   ; $80E01D
     sta.b $7C                   ; $80E01F
@@ -6565,7 +6565,7 @@ CODE_80E46B:
     ldx.w #$8C7D                ; $80E4FB
     ldy.w #$0000                ; $80E4FE
     lda.w #$7F88                ; $80E501
-    jsr.w $FBA0                 ; $80E504
+    jsr.w decompress_near       ; $80E504
     ldy.w #$1900                ; $80E507
     sty.w $4300                 ; $80E50A
     ldy.w #$0000                ; $80E50D
@@ -6595,7 +6595,7 @@ CODE_80E46B:
     ldx.w #$8000                ; $80E54D
     ldy.w #$0000                ; $80E550
     lda.w #$7F95                ; $80E553
-    jsr.w $FBA0                 ; $80E556
+    jsr.w decompress_near       ; $80E556
     lda.w #$1800                ; $80E559
     sta.w $4300                 ; $80E55C
     lda.w #$0000                ; $80E55F
@@ -7677,11 +7677,11 @@ CODE_80EDD9:
     ldx.w #$AB17                ; $80EE80
     ldy.w #$2000                ; $80EE83
     lda.w #$7E91                ; $80EE86
-    jsr.w $FBA0                 ; $80EE89
+    jsr.w decompress_near       ; $80EE89
     ldx.w #$8020                ; $80EE8C
     ldy.w #$0000                ; $80EE8F
     lda.w #$7F94                ; $80EE92
-    jsr.w $FBA0                 ; $80EE95
+    jsr.w decompress_near       ; $80EE95
     ldy.w #$1902                ; $80EE98
     sty.w $4300                 ; $80EE9B
     ldy.w #$0000                ; $80EE9E
@@ -7706,7 +7706,7 @@ CODE_80EEC1:
     ldx.w #$C343                ; $80EECA
     ldy.w #$4000                ; $80EECD
     lda.w #$7F90                ; $80EED0
-    jsr.w $FBA0                 ; $80EED3
+    jsr.w decompress_near       ; $80EED3
     ldx.w #$050B                ; $80EED6
     ldy.w #$4000                ; $80EED9
     pea.w $817F                 ; $80EEDC
@@ -8511,7 +8511,7 @@ CODE_80F68A:
     tax                         ; $80F694
     ldy.w #$0000                ; $80F695
     lda.w #$7F7E                ; $80F698
-    jsr.w $FBA0                 ; $80F69B
+    jsr.w decompress_near       ; $80F69B
     inc.b $40                   ; $80F69E
     inc.b $40                   ; $80F6A0
     lda.b $40                   ; $80F6A2
@@ -8558,7 +8558,7 @@ CODE_80F6DB:
     ldx.w #$C730                ; $80F6EF
     ldy.w #$0000                ; $80F6F2
     lda.w #$7F7E                ; $80F6F5
-    jsr.w $FBA0                 ; $80F6F8
+    jsr.w decompress_near       ; $80F6F8
 CODE_80F6FB:
     sec                         ; $80F6FB
     rts                         ; $80F6FC
@@ -9114,6 +9114,7 @@ CODE_80FB29:
     rep.b #$20                  ; $80FB59
     rts                         ; $80FB5B
     incbin !baserom:$7B5C..$7BA0
+decompress_near:
     jsl.l decompress            ; $80FBA0
     rts                         ; $80FBA4
     sta.w $1536                 ; $80FBA5

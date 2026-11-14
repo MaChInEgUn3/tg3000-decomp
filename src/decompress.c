@@ -143,3 +143,8 @@ uint16_t decompress(uint16_t dp, uint8_t src_bank, uint16_t src, uint8_t dst_ban
   *src_end = s.x;
   return (uint16_t)(s.y - dst);
 }
+
+// TG3000_ROUTINE($80:FBA0) decompress_near
+uint16_t decompress_near(uint16_t dp, uint8_t src_bank, uint16_t src, uint8_t dst_bank, uint16_t dst, uint16_t* src_end) {
+  return decompress(dp, src_bank, src, dst_bank, dst, src_end);
+}

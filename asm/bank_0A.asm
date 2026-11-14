@@ -2900,7 +2900,7 @@ CODE_8AA2A8:
 CODE_8AA2AE:
     rts                         ; $8AA2AE
     sta.b $4A                   ; $8AA2AF
-    jsr.w $A47E                 ; $8AA2B1
+    jsr.w clear_object_slots    ; $8AA2B1
     ldx.w #$0000                ; $8AA2B4
     jsr.w $A0F9                 ; $8AA2B7
     ldy.w #$0000                ; $8AA2BA
@@ -2924,13 +2924,13 @@ CODE_8AA2AE:
 CODE_8AA2F7:
     stz.b $68                   ; $8AA2F7
     lda.b ($4A),y               ; $8AA2F9
-    jsr.w $A4CF                 ; $8AA2FB
+    jsr.w string_list_nth       ; $8AA2FB
     jsr.w text_print_centered   ; $8AA2FE
     jsr.w text_cursor_down3     ; $8AA301
     lda.w $1516,x               ; $8AA304
     and.w #$0001                ; $8AA307
     beq CODE_8AA31F             ; $8AA30A
-    jsr.w $A469                 ; $8AA30C
+    jsr.w func_8AA469           ; $8AA30C
     jsr.w $A381                 ; $8AA30F
     lda.w $1516,x               ; $8AA312
     and.w #$0080                ; $8AA315
@@ -3100,6 +3100,7 @@ CODE_8AA445:
     sec                         ; $8AA464
     rts                         ; $8AA465
     jmp.w ($015C)               ; $8AA466
+func_8AA469:
     lda.b $3C                   ; $8AA469
     asl a                       ; $8AA46B
     asl a                       ; $8AA46C
@@ -3113,6 +3114,7 @@ CODE_8AA445:
     asl a                       ; $8AA479
     sta.w $0D78                 ; $8AA47A
     rts                         ; $8AA47D
+clear_object_slots:
     phx                         ; $8AA47E
     stz.b $8C                   ; $8AA47F
     ldx.w #$00F6                ; $8AA481
@@ -3153,6 +3155,7 @@ CODE_8AA4C3:
     bra CODE_8AA4C3             ; $8AA4CC
 CODE_8AA4CE:
     rts                         ; $8AA4CE
+string_list_nth:
     sta.b $44                   ; $8AA4CF
     phx                         ; $8AA4D1
     phy                         ; $8AA4D2

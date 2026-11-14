@@ -492,6 +492,19 @@ loop) — found from the first differing output byte; now race movie 67/67 live,
 400/400, paths 435/435. Harness failure messages now show the entry X/Y and the first
 differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
 
+## After the decompressor (2026-11-14)
+
+- Roots recomputed: `decompress_near` ($80:FBA0, a JSL/RTS bridge in bank $80) became the
+  top root (29 dependents) and is ported; also `clear_object_slots` ($8A:A47E, the
+  object table `$0500` and `take_slot`'s counter), `func_8AA469` ($8A:A469, targets for
+  `step_toward`) and `string_list_nth` ($8A:A4CF: skip n zero-terminated strings; the
+  original steps over each terminator with an **8-bit** increment of the pointer's low
+  byte, so a terminator at `$xxFF` wraps within the page — kept, and fuzzed with lists
+  ending at a page boundary).
+- Recurring cost: routines with fewer than 100 watched returns keep every flag in the
+  contract, so adapters keep modelling incidental C/V. The real fix is the open harness
+  task (sample nested entries, one flag watcher per routine).
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:
