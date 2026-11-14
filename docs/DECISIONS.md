@@ -674,9 +674,13 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   a 60k run with 500 fuzz cases per routine now takes ~22-24 minutes (the old 10-12
   minute figure dates from fewer routines). Separately, the short movie with `--fuzz 50`
   fails the fuzz of ~8 already verified routines, on the committed code too, while
-  `--fuzz 200` (selftest) and the 60k run with 500 pass: the fuzz base RAM carries over
-  from routine to routine, so results depend on how many cases ran before. To be fixed
-  in the harness (open item).
+  `--fuzz 200` (selftest) and the 60k run with 500 pass: the fuzz base RAM carried over
+  from routine to routine, so results depended on how many cases ran before.
+- **Fixed:** every routine's fuzz now starts from the same WRAM (a copy taken when the
+  live run ends). Short movie: `--fuzz 50` 8 failures → 0; `--fuzz 200` 0 → 0. Not
+  explained yet (open): in those failures the original left `$36` in a few bytes the
+  routine never writes; a guess is hardware state left by an earlier routine's fuzz (an
+  HDMA channel writing WRAM during the sample), which the WRAM reset does not cover.
 
 ## Coverage without a player (2026-11-13)
 

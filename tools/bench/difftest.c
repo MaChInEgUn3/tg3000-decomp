@@ -555,10 +555,15 @@ void difftest_fuzz(int iterations) {
   irqOwner = -1;
   snes->nmiEnabled = false;
   snes->hIrqEnabled = snes->vIrqEnabled = false;
+  // Every routine's fuzz starts from the same RAM (as the live run left it): what one
+  // routine's cases leave behind must not change another routine's cases.
+  static uint8_t base[TG3000_WRAM_SIZE];
+  memcpy(base, snes->ram, sizeof base);
   for(int i = 0; i < tableCount; i++) {
     const Routine* r = &table[i];
     Stats* s = &stats[i];
     if(r->fuzz == NULL || s->contractCount == 0) continue;
+    memcpy(snes->ram, base, sizeof base);
     // Each routine's inputs depend only on its own entry, not on its place in the
     // registry: adding a routine must not change what the others are tested with.
     fuzzSeed = 0x13579BDFu ^ (r->entry * 2654435761u);
