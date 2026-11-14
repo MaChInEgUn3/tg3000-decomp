@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Per-routine differential test (see difftest.h).
 //
-// Live samples: when the CPU reaches a registered entry, WRAM and the registers are
-// copied; the original runs on to its return (an interrupt inside discards the sample,
+// Live samples: when the CPU reaches a registered entry (also inside another routine's
+// sample, up to MAX_DEPTH deep), WRAM and the registers are copied; the original runs on to its return (an interrupt inside discards the sample,
 // a hardware access fails it, since the C cannot reproduce it yet); then the C runs from
 // the copy and WRAM (minus the stack bytes the routine pushed), registers and flags must
 // match. Fuzz samples do the same from synthetic inputs, run on the interpreter after the
@@ -61,23 +61,39 @@ static const Routine* table;
 static int tableCount;
 static Stats* stats;
 
-// the sample in progress
-static int active = -1;
-static bool fuzzing;
-static uint8_t entryRam[TG3000_WRAM_SIZE], afterRam[TG3000_WRAM_SIZE];
-static Regs entryRegs;
-static uint16_t entrySp, minSp, retPc;
-static uint8_t retBank;
-static uint32_t interruptsAtEntry, insnsInSample;
-static bool hwAccess, mathWritten, leftExtent, setupPending;
-static uint32_t hwAccessAdr, leftExtentPc;
-static const char* hwWhy;
+// Samples in progress, innermost last: a registered routine called from inside another
+// one's sample gets its own sample too (it would otherwise never be sampled once its
+// callers are registered).
+#define MAX_DEPTH 4
+#define MAX_EFFECTS 32
+typedef struct { int kind; uint32_t target, src, size; } Effect;
 
-// interrupts inside a sample of a routine that waits for them: each one's WRAM before and
-// after the handler, replayed in order by platform_wait_vblank() on the C side
+typedef struct {
+  int idx;
+  Regs entryRegs;
+  uint16_t entrySp, minSp, retPc;
+  uint8_t retBank;
+  uint32_t interruptsAtEntry, insns;
+  bool hwAccess, mathWritten, leftExtent, setupPending;
+  uint32_t hwAccessAdr, leftExtentPc;
+  const char* hwWhy;
+  Effect effects[MAX_EFFECTS];  // hardware effects of the original, from its DMA kicks
+  int effectCount;
+} Sample;
+
+static Sample samples[MAX_DEPTH];
+static uint8_t sampleRam[MAX_DEPTH][TG3000_WRAM_SIZE];  // WRAM at each sample's entry
+static int depth;
+static bool fuzzing;
+static uint8_t afterRam[TG3000_WRAM_SIZE];
+
+// Interrupts inside the sample of a routine that waits for them (at most one such sample
+// at a time): each one's WRAM before and after the handler, replayed in order by
+// platform_wait_vblank() on the C side.
 #define MAX_IRQS 24
 static uint8_t irqPre[MAX_IRQS][TG3000_WRAM_SIZE], irqPost[MAX_IRQS][TG3000_WRAM_SIZE];
-static int irqCount, irqReplayed;
+static int irqOwner = -1;  // depth of the sample that records them
+static int irqCount, irqReplayed, irqLimit;
 static bool irqActive, irqOverflow;
 static uint16_t irqReturnSp;
 static uint32_t irqSeen;
@@ -91,18 +107,16 @@ static void applyIrq(int i) {
 }
 
 void difftest_replay_interrupt(void) {
-  if(irqReplayed >= irqCount) {  // the C wants a frame the original never waited for
+  if(irqReplayed >= irqLimit) {  // the C wants a frame the original never waited for
     cWaitedTooLong = true;
     longjmp(cAbort, 1);
   }
   applyIrq(irqReplayed++);
 }
 
-// hardware effects of the sample: from the original's DMA kicks, and from the C's calls
-#define MAX_EFFECTS 32
-typedef struct { int kind; uint32_t target, src, size; } Effect;
-static Effect origEffects[MAX_EFFECTS], cEffects[MAX_EFFECTS];
-static int origEffectCount, cEffectCount;
+// The C's platform calls, recorded while it runs.
+static Effect cEffects[MAX_EFFECTS];
+static int cEffectCount;
 static bool collectingC;
 
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size) {
@@ -115,10 +129,11 @@ static const char* effectName(int kind) {
 }
 
 // A write of `val` to MDMAEN ($420B): one effect per channel started, read from the
-// channel's registers and the PPU's address state as they are at the kick.
+// channel's registers and the PPU's address state as they are at the kick, for every
+// sample in progress (an inner routine's upload is also its caller's).
 static void recordKick(uint8_t val) {
   for(int c = 0; c < 8; c++) {
-    if(!(val & (1 << c)) || origEffectCount >= MAX_EFFECTS) continue;
+    if(!(val & (1 << c))) continue;
     DmaChannel* ch = &snes->dma->channel[c];
     Ppu* ppu = snes->ppu;
     uint32_t src = ((uint32_t)ch->aBank << 16) | ch->aAdr;
@@ -131,7 +146,10 @@ static void recordKick(uint8_t val) {
     } else if(plain && ch->bAdr == 0x22 && (ch->mode == 0 || ch->mode == 2) && !ppu->cgramSecondWrite) {
       e = (Effect){EFFECT_CGRAM, ppu->cgramPointer, src, size};
     }
-    origEffects[origEffectCount++] = e;
+    for(int k = 0; k < depth; k++) {
+      Sample* smp = &samples[k];
+      if(smp->effectCount < MAX_EFFECTS) smp->effects[smp->effectCount++] = e;
+    }
   }
 }
 
@@ -143,12 +161,16 @@ static bool isUploadSetup(uint32_t adr) {
   return (a >= 0x4300 && a <= 0x437F) || a == 0x2116 || a == 0x2117 || a == 0x2121;
 }
 
-// flag-liveness watch after a live sample returns
-static int watching = -1;
-static uint8_t watchUnresolved;
-static int watchCount;
-static uint32_t watchInterrupts;
-static int32_t watchPausedUntilSp = -1;
+// Flag liveness: after a live sample of a routine returns, its watch follows the caller
+// until each flag is read (live) or overwritten (dead). One watch per routine.
+typedef struct {
+  bool active;
+  uint8_t unresolved;
+  int count;
+  uint32_t interrupts;
+  int32_t pausedUntilSp;
+} Watch;
+static Watch* watches;
 
 static uint32_t norm(uint32_t adr) {  // ROM banks $00-$3F/$40-$7D -> $80+ mirror
   uint8_t bank = adr >> 16;
@@ -183,24 +205,29 @@ static bool isMathReg(uint32_t adr, bool write) {
 }
 
 void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
-  if(active < 0 || hwAccess || irqActive) return;  // a handler's hardware is its own
+  if(depth == 0 || irqActive) return;  // a handler's hardware is its own
   if(isWram(adr) || (!write && isRom(adr))) return;
-  if(isMathReg(adr, write)) {
-    if(write) { mathWritten = true; return; }
-    if(mathWritten) return;
-    hwWhy = "reads a multiply/divide result it did not start";
-  } else if(write && isUploadSetup(adr)) {
-    setupPending = true;
-    return;
-  } else if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x420B) {
+  if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x420B) {
     recordKick(val);
-    setupPending = false;
+    for(int k = 0; k < depth; k++) samples[k].setupPending = false;
     return;
-  } else {
-    hwWhy = "hardware access (not supported by this routine's C)";
   }
-  hwAccess = true;
-  hwAccessAdr = adr;
+  for(int k = 0; k < depth; k++) {
+    Sample* smp = &samples[k];
+    if(smp->hwAccess) continue;
+    if(isMathReg(adr, write)) {
+      if(write) { smp->mathWritten = true; continue; }
+      if(smp->mathWritten) continue;
+      smp->hwWhy = "reads a multiply/divide result it did not start";
+    } else if(write && isUploadSetup(adr)) {
+      smp->setupPending = true;
+      continue;
+    } else {
+      smp->hwWhy = "hardware access (not supported by this routine's C)";
+    }
+    smp->hwAccess = true;
+    smp->hwAccessAdr = adr;
+  }
 }
 
 // Instruction starts of a routine's extent, by linear decode with the contract's widths.
@@ -240,28 +267,30 @@ static void noteContract(Stats* s, const Routine* r, const Regs* in) {
   if(s->contractCount < MAX_CONTRACTS) s->contracts[s->contractCount++] = c;
 }
 
-// Run the C from the recorded entry state and compare with the recorded result.
-static bool compareWithC(int idx, const Regs* after, char* why, size_t whyLen, uint8_t* flagDiff) {
-  const Routine* r = &table[idx];
-  memcpy(g_ram, entryRam, sizeof g_ram);
-  Regs out = entryRegs;
+// Run the C from sample k's entry state and compare with the original's result.
+static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uint8_t* flagDiff) {
+  Sample* smp = &samples[k];
+  const Routine* r = &table[smp->idx];
+  memcpy(g_ram, sampleRam[k], sizeof g_ram);
+  Regs out = smp->entryRegs;
   cEffectCount = 0;
   collectingC = true;
   irqReplayed = 0;
+  irqLimit = irqOwner == k ? irqCount : 0;
   cWaitedTooLong = false;
-  if(setjmp(cAbort) == 0) r->call(&entryRegs, &out);
+  if(setjmp(cAbort) == 0) r->call(&smp->entryRegs, &out);
   collectingC = false;
   if(cWaitedTooLong) {
-    snprintf(why, whyLen, "the C waited for more interrupts than the original's %d", irqCount);
+    snprintf(why, whyLen, "the C waited for more interrupts than the original's %d", irqLimit);
     return false;
   }
-  while(irqReplayed < irqCount) applyIrq(irqReplayed++);  // interrupts after the C's last wait
-  for(int i = 0; i < origEffectCount || i < cEffectCount; i++) {
-    if(i >= origEffectCount || i >= cEffectCount) {
-      snprintf(why, whyLen, "%d hardware effect(s) in the original, %d from the C", origEffectCount, cEffectCount);
+  while(irqReplayed < irqLimit) applyIrq(irqReplayed++);  // interrupts after the C's last wait
+  for(int i = 0; i < smp->effectCount || i < cEffectCount; i++) {
+    if(i >= smp->effectCount || i >= cEffectCount) {
+      snprintf(why, whyLen, "%d hardware effect(s) in the original, %d from the C", smp->effectCount, cEffectCount);
       return false;
     }
-    Effect* o = &origEffects[i];
+    Effect* o = &smp->effects[i];
     Effect* c = &cEffects[i];
     if(o->kind != c->kind || o->target != c->target || o->src != c->src || o->size != c->size) {
       snprintf(why, whyLen, "effect %d: original %s $%X <- $%06X x%u, C %s $%X <- $%06X x%u", i,
@@ -272,7 +301,7 @@ static bool compareWithC(int idx, const Regs* after, char* why, size_t whyLen, u
   int diffs = 0, shown = 0;
   size_t used = 0;
   for(uint32_t i = 0; i < TG3000_WRAM_SIZE; i++) {
-    if(i > minSp && i <= entrySp) continue;  // bytes the routine pushed below its entry SP
+    if(i > smp->minSp && i <= smp->entrySp) continue;  // bytes pushed below the entry SP
     if(g_ram[i] == afterRam[i]) continue;
     if(diffs++ == 0) used = (size_t)snprintf(why, whyLen, "WRAM");
     if(shown < 4 && used < whyLen) {
@@ -296,74 +325,80 @@ static bool compareWithC(int idx, const Regs* after, char* why, size_t whyLen, u
   return true;
 }
 
-static void finishSample(const Cpu* cpu) {
-  int idx = active;
+// Sample k (the innermost) has returned: compare, record, start its flag watch.
+static void finishSample(int k, const Cpu* cpu) {
+  Sample* smp = &samples[k];
+  int idx = smp->idx;
   Stats* s = &stats[idx];
-  active = -1;
+  bool owner = irqOwner == k;
+  depth = k;
+  if(owner) irqOwner = -1;
   memcpy(afterRam, snes->ram, sizeof afterRam);
   Regs after = readRegs(cpu);
   if(table[idx].waitsForInterrupts) {
-    if(irqOverflow || irqActive) { s->abandoned++; return; }
-  } else if(cpu_interruptCount != interruptsAtEntry) {
+    if(!owner || irqOverflow || irqActive) { s->abandoned++; return; }
+  } else if(cpu_interruptCount != smp->interruptsAtEntry) {
     s->interrupted++;
     return;
   }
   char why[320] = "";
   bool ok;
   uint8_t flagDiff = 0;
-  if(hwAccess) {
-    snprintf(why, sizeof why, "%s at $%06X", hwWhy, hwAccessAdr);
+  if(smp->hwAccess) {
+    snprintf(why, sizeof why, "%s at $%06X", smp->hwWhy, smp->hwAccessAdr);
     ok = false;
-  } else if(setupPending) {
+  } else if(smp->setupPending) {
     snprintf(why, sizeof why, "DMA/PPU address set up but no DMA started afterwards (not modelled)");
     ok = false;
-  } else if(leftExtent) {
-    snprintf(why, sizeof why, "ran outside its declared extent at $%06X", leftExtentPc);
+  } else if(smp->leftExtent) {
+    snprintf(why, sizeof why, "ran outside its declared extent at $%06X", smp->leftExtentPc);
     ok = false;
   } else {
-    ok = compareWithC(idx, &after, why, sizeof why, &flagDiff);
+    if(owner) irqOwner = k;  // the replay reads the recorded interrupts
+    ok = compareWithC(k, &after, why, sizeof why, &flagDiff);
+    irqOwner = -1;
   }
   for(int f = 0; f < 4; f++) {
     if(!(flagDiff & flagBits[f])) continue;
     s->flagMismatch[f]++;
     if(s->firstFlagFailure[f][0] == '\0') {
+      bool orig = f == 0 ? after.n : f == 1 ? after.v : f == 2 ? after.z : after.c;
       snprintf(s->firstFlagFailure[f], sizeof s->firstFlagFailure[f], "%s%c: original %d, C %d (D=%04X A=%04X)",
-        fuzzing ? "fuzz " : "", flagNames[f], (int)((f == 0 ? after.n : f == 1 ? after.v : f == 2 ? after.z : after.c)),
-        (int)!((f == 0 ? after.n : f == 1 ? after.v : f == 2 ? after.z : after.c)), entryRegs.d, entryRegs.a);
+        fuzzing ? "fuzz " : "", flagNames[f], (int)orig, (int)!orig, smp->entryRegs.d, smp->entryRegs.a);
     }
   }
-  if(!fuzzing && watching < 0) {  // watch which flags the caller goes on to read
-    watching = idx;
-    watchUnresolved = FN | FV | FZ | FC;
-    watchCount = 0;
-    watchInterrupts = cpu_interruptCount;
-    watchPausedUntilSp = -1;
+  Watch* w = &watches[idx];
+  if(!fuzzing && !w->active) {  // watch which flags the caller goes on to read
+    *w = (Watch){true, FN | FV | FZ | FC, 0, cpu_interruptCount, -1};
     s->watched++;
   }
   if(fuzzing) { if(ok) s->fuzzPass++; else s->fuzzFail++; }
   else { s->samples++; if(ok) s->pass++; else s->fail++; }
   if(!ok && s->firstFailure[0] == '\0') {
     snprintf(s->firstFailure, sizeof s->firstFailure, "%s%s at D=%04X A=%04X X=%04X Y=%04X: %s",
-      fuzzing ? "fuzz " : "", table[idx].name, entryRegs.d, entryRegs.a, entryRegs.x, entryRegs.y, why);
+      fuzzing ? "fuzz " : "", table[idx].name, smp->entryRegs.d, smp->entryRegs.a, smp->entryRegs.x,
+      smp->entryRegs.y, why);
   }
 }
 
 static void startSample(int idx, const Cpu* cpu) {
   const Routine* r = &table[idx];
-  active = idx;
-  memcpy(entryRam, snes->ram, sizeof entryRam);
-  entryRegs = readRegs(cpu);
-  entrySp = minSp = cpu->sp;
+  int k = depth++;
+  Sample* smp = &samples[k];
+  memcpy(sampleRam[k], snes->ram, TG3000_WRAM_SIZE);
   uint16_t sp = cpu->sp;
-  retPc = (uint16_t)((snes->ram[(uint16_t)(sp + 1)] | (snes->ram[(uint16_t)(sp + 2)] << 8)) + 1);
-  retBank = r->rtl ? snes->ram[(uint16_t)(sp + 3)] : cpu->k;
-  interruptsAtEntry = cpu_interruptCount;
-  insnsInSample = 0;
-  hwAccess = mathWritten = leftExtent = setupPending = false;
-  origEffectCount = 0;
-  irqCount = 0;
-  irqActive = irqOverflow = false;
-  irqSeen = cpu_interruptCount;
+  *smp = (Sample){
+    .idx = idx, .entryRegs = readRegs(cpu), .entrySp = sp, .minSp = sp,
+    .retPc = (uint16_t)((snes->ram[(uint16_t)(sp + 1)] | (snes->ram[(uint16_t)(sp + 2)] << 8)) + 1),
+    .retBank = r->rtl ? snes->ram[(uint16_t)(sp + 3)] : cpu->k,
+    .interruptsAtEntry = cpu_interruptCount,
+  };
+  if(r->waitsForInterrupts) {
+    irqOwner = k;
+    irqCount = 0;
+    irqActive = irqOverflow = false;
+    irqSeen = cpu_interruptCount;
+  }
 }
 
 static uint8_t peekByte(uint32_t adr) {
@@ -375,28 +410,35 @@ static uint8_t peekByte(uint32_t adr) {
   return 0xEA;  // unknown: treat as NOP (reads and writes no flag)
 }
 
-static void resolveFlags(uint8_t mask, bool live) {
-  Stats* s = &stats[watching];
+static void resolveFlags(int idx, uint8_t mask, bool live) {
+  Watch* w = &watches[idx];
+  Stats* s = &stats[idx];
   for(int f = 0; f < 4; f++) {
-    if(!(watchUnresolved & mask & flagBits[f])) continue;
+    if(!(w->unresolved & mask & flagBits[f])) continue;
     if(live) s->live[f]++; else s->dead[f]++;
-    watchUnresolved &= ~flagBits[f];
+    w->unresolved &= ~flagBits[f];
   }
-  if(watchUnresolved == 0) watching = -1;
+  if(w->unresolved == 0) w->active = false;
 }
 
-// One instruction of the caller after a live sample returned: which flags does it read
+// One instruction after a live sample of routine idx returned: which flags does it read
 // before writing them? Interrupt handlers are skipped (they restore P with RTI).
-static void watchStep(const Cpu* cpu) {
-  if(cpu_interruptCount != watchInterrupts) {
-    watchInterrupts = cpu_interruptCount;
-    if(watchPausedUntilSp < 0) watchPausedUntilSp = (uint16_t)(cpu->sp + (cpu->e ? 3 : 4));
+static void watchStep(int idx, const Cpu* cpu, uint8_t reads, uint8_t writes) {
+  Watch* w = &watches[idx];
+  if(cpu_interruptCount != w->interrupts) {
+    w->interrupts = cpu_interruptCount;
+    if(w->pausedUntilSp < 0) w->pausedUntilSp = (uint16_t)(cpu->sp + (cpu->e ? 3 : 4));
   }
-  if(watchPausedUntilSp >= 0) {
-    if(cpu->sp != (uint16_t)watchPausedUntilSp) return;
-    watchPausedUntilSp = -1;
+  if(w->pausedUntilSp >= 0) {
+    if(cpu->sp != (uint16_t)w->pausedUntilSp) return;
+    w->pausedUntilSp = -1;
   }
-  if(++watchCount > WATCH_CAP) { resolveFlags(FN | FV | FZ | FC, true); return; }
+  if(++w->count > WATCH_CAP) { resolveFlags(idx, FN | FV | FZ | FC, true); return; }
+  if(reads) resolveFlags(idx, reads, true);
+  if(w->active && writes) resolveFlags(idx, writes, false);
+}
+
+static void watchAll(const Cpu* cpu) {
   uint32_t pc = ((uint32_t)cpu->k << 16) | cpu->pc;
   uint8_t op = peekByte(pc);
   uint8_t reads = opFlagsRead[op], writes = opFlagsWritten[op];
@@ -404,19 +446,21 @@ static void watchStep(const Cpu* cpu) {
     uint8_t p = peekByte((pc & 0xFF0000) | (uint16_t)(pc + 1));
     writes = (p & 0x80 ? FN : 0) | (p & 0x40 ? FV : 0) | (p & 0x02 ? FZ : 0) | (p & 0x01 ? FC : 0);
   }
-  if(reads) resolveFlags(reads, true);
-  if(watching >= 0 && writes) resolveFlags(writes, false);
+  for(int i = 0; i < tableCount; i++) {
+    if(watches[i].active) watchStep(i, cpu, reads, writes);
+  }
 }
 
 // Every entry of a registered routine counts and is checked against its contract; one in
-// SAMPLE_STRIDE (while nothing else is being sampled) becomes a compared sample.
+// SAMPLE_STRIDE becomes a compared sample, nested inside other samples if need be.
 static void checkEntries(Cpu* cpu, uint32_t pc) {
   for(int i = 0; i < tableCount; i++) {
     if(table[i].entry != pc) continue;
     Stats* s = &stats[i];
     Regs in = readRegs(cpu);
     noteContract(s, &table[i], &in);
-    if(s->entries++ % SAMPLE_STRIDE != 0 || s->samples >= MAX_SAMPLES || active >= 0) return;
+    if(s->entries++ % SAMPLE_STRIDE != 0 || s->samples >= MAX_SAMPLES || depth >= MAX_DEPTH) return;
+    if(table[i].waitsForInterrupts && irqOwner >= 0) return;  // one interrupt recorder at a time
     if(cpu->sp >= 0x2000) return;  // stack outside WRAM: not handled
     startSample(i, cpu);
     s->visited[0] = true;
@@ -426,7 +470,7 @@ static void checkEntries(Cpu* cpu, uint32_t pc) {
 
 void difftest_on_insn(Cpu* cpu) {
   uint32_t pc = norm(((uint32_t)cpu->k << 16) | cpu->pc);
-  if(active >= 0 && table[active].waitsForInterrupts) {
+  if(irqOwner >= 0) {
     if(irqActive && cpu->sp == irqReturnSp) {  // the handler has returned (RTI)
       memcpy(irqPost[irqCount++], snes->ram, TG3000_WRAM_SIZE);
       irqActive = false;
@@ -443,35 +487,40 @@ void difftest_on_insn(Cpu* cpu) {
       }
     }
     if(irqActive) {
-      if(cpu->sp < minSp) minSp = cpu->sp;
+      for(int k = 0; k < depth; k++) if(cpu->sp < samples[k].minSp) samples[k].minSp = cpu->sp;
       return;
     }
   }
-  if(active >= 0) {
-    const Routine* r = &table[active];
-    if(pc >= r->entry && pc < r->end) stats[active].visited[pc - r->entry] = true;
-    if(cpu->sp < minSp) minSp = cpu->sp;
-    uint16_t back = r->rtl ? 3 : 2;
-    if(cpu->pc == retPc && cpu->k == retBank && cpu->sp == (uint16_t)(entrySp + back)) {
-      finishSample(cpu);
-    } else {
-      // at the routine's own stack depth, every instruction must lie inside its extent
-      if(cpu->sp == entrySp && (pc < r->entry || pc >= r->end) && !leftExtent) {
-        leftExtent = true;
-        leftExtentPc = pc;
-      }
-      if(++insnsInSample > MAX_INSNS) {
-        stats[active].abandoned++;
-        active = -1;
-      }
-      if(watching >= 0) watchStep(cpu);
-      if(!fuzzing) checkEntries(cpu, pc);  // nested entries: counted and contract-checked
-      return;
+  // the innermost sample that has returned (normally the innermost one)
+  for(int k = depth - 1; k >= 0; k--) {
+    Sample* smp = &samples[k];
+    uint16_t back = table[smp->idx].rtl ? 3 : 2;
+    if(cpu->pc == smp->retPc && cpu->k == smp->retBank && cpu->sp == (uint16_t)(smp->entrySp + back)) {
+      for(int j = depth - 1; j > k; j--) stats[samples[j].idx].abandoned++;  // left without returning
+      depth = k + 1;
+      finishSample(k, cpu);
+      break;
     }
   }
-  if(watching >= 0) watchStep(cpu);
-  if(fuzzing) return;
-  checkEntries(cpu, pc);
+  for(int k = 0; k < depth; k++) {
+    Sample* smp = &samples[k];
+    const Routine* r = &table[smp->idx];
+    if(pc >= r->entry && pc < r->end) stats[smp->idx].visited[pc - r->entry] = true;
+    if(cpu->sp < smp->minSp) smp->minSp = cpu->sp;
+    // at the routine's own stack depth, every instruction must lie inside its extent
+    if(cpu->sp == smp->entrySp && (pc < r->entry || pc >= r->end) && !smp->leftExtent) {
+      smp->leftExtent = true;
+      smp->leftExtentPc = pc;
+    }
+    if(++smp->insns > MAX_INSNS) {
+      for(int j = depth - 1; j >= k; j--) stats[samples[j].idx].abandoned++;
+      if(irqOwner >= k) irqOwner = -1;
+      depth = k;
+      break;
+    }
+  }
+  watchAll(cpu);
+  if(!fuzzing) checkEntries(cpu, pc);
 }
 
 void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
@@ -480,6 +529,7 @@ void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
   table = negative ? negativeRoutines : routines;
   tableCount = negative ? negativeRoutineCount : routineCount;
   stats = calloc(tableCount, sizeof *stats);
+  watches = calloc(tableCount, sizeof *watches);
   for(int i = 0; i < tableCount; i++) findStarts(&table[i], &stats[i]);
 }
 
@@ -493,6 +543,8 @@ static uint32_t fuzzRandom(void) {
 void difftest_fuzz(int iterations) {
   fuzzSeed = 0x13579BDF;
   fuzzing = true;
+  depth = 0;
+  irqOwner = -1;
   snes->nmiEnabled = false;
   snes->hIrqEnabled = snes->vIrqEnabled = false;
   for(int i = 0; i < tableCount; i++) {
@@ -525,10 +577,10 @@ void difftest_fuzz(int iterations) {
       cpu->pc = r->entry & 0xFFFF;
       startSample(i, cpu);
       s->visited[0] = true;
-      for(int n = 0; n < MAX_INSNS && active >= 0; n++) {
+      for(int n = 0; n < MAX_INSNS && depth > 0; n++) {
         cpu_runOpcode(cpu);  // the bench's trace hook calls difftest_on_insn
       }
-      if(active >= 0) { s->abandoned++; active = -1; }
+      if(depth > 0) { s->abandoned++; depth = 0; irqOwner = -1; }
     }
   }
   fuzzing = false;

@@ -505,6 +505,21 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   contract, so adapters keep modelling incidental C/V. The real fix is the open harness
   task (sample nested entries, one flag watcher per routine).
 
+## Nested samples and per-routine flag watches (2026-11-14)
+
+- The harness kept one sample at a time, so a routine reached only from inside another
+  registered routine's sample was never sampled (`func_8AB700`: 0 live samples once
+  `text_print_centered` was registered; `tilemap_offset` likewise) and kept every flag
+  in its contract. Now samples nest up to 4 deep: each has its own entry WRAM copy,
+  registers, stack window, extent guard and effect list; hardware accesses and DMA
+  effects count for every sample in progress (an inner upload is also the caller's);
+  interrupt recording belongs to at most one sample (a routine that waits for them).
+  A sample whose caller returns without it returning is counted as abandoned.
+- Flag liveness now has one watch per routine instead of one for all.
+- Race movie: `func_8AB700` 250 live samples (was 0), `tilemap_offset` 2,329 (was 0),
+  `text_put_char` 2,561; everything still passes and the three negative variants
+  still fail.
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:
