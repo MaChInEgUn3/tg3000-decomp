@@ -18,4 +18,16 @@ uint16_t text_put_char(uint8_t ch);
 // '!' -> $26, anything else below 'A' -> code - $16 (so '0'-'9' -> $1A-$23).
 uint16_t char_to_tile_index(uint16_t ch);
 
+// Print the zero-terminated string at bus address `str` centred between columns $013E and
+// $0140 (on the current row), or as many spaces when $0168 is non-zero (erasing it).
+// Stores the length in $015A; afterwards, when $0186 is 0, calls func_8AB700.
+void text_print_centered(uint32_t str);
+
+// Draw `ch` as a single tile (glyph index from char_to_tile_index, attribute $3880, or
+// $3C80 when $0190 is set) at the cursor and advance it. Returns the tile written.
+uint16_t text_put_tile_char(uint8_t ch);
+
+// Move the text cursor down three rows.
+void text_cursor_down3(void);
+
 #endif

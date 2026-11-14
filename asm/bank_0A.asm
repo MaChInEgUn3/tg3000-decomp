@@ -2063,7 +2063,7 @@ CODE_8A99A4:
     lda.w $9DBD,x               ; $8A99A4
     cmp.b #$FF                  ; $8A99A7
     beq CODE_8A99B1             ; $8A99A9
-    jsr.w $9C19                 ; $8A99AB
+    jsr.w byte_buffer_push      ; $8A99AB
     inx                         ; $8A99AE
     bra CODE_8A99A4             ; $8A99AF
 CODE_8A99B1:
@@ -2087,7 +2087,7 @@ CODE_8A99D0:
     rts                         ; $8A99D5
     sep.b #$20                  ; $8A99D6
     lda.b #$80                  ; $8A99D8
-    jsr.w $9C19                 ; $8A99DA
+    jsr.w byte_buffer_push      ; $8A99DA
     rep.b #$20                  ; $8A99DD
     stz.b $60                   ; $8A99DF
     rts                         ; $8A99E1
@@ -2103,7 +2103,7 @@ CODE_8A99D0:
 CODE_8A99EC:
     lda.l $7F7918,x             ; $8A99EC
     beq CODE_8A99F8             ; $8A99F0
-    jsr.w $9C19                 ; $8A99F2
+    jsr.w byte_buffer_push      ; $8A99F2
     inx                         ; $8A99F5
     bra CODE_8A99EC             ; $8A99F6
 CODE_8A99F8:
@@ -2140,7 +2140,7 @@ CODE_8A9A50:
 CODE_8A9A5F:
     tya                         ; $8A9A5F
     sep.b #$20                  ; $8A9A60
-    jsr.w $9C19                 ; $8A9A62
+    jsr.w byte_buffer_push      ; $8A9A62
     rep.b #$20                  ; $8A9A65
     cpx.w #$000A                ; $8A9A67
     beq CODE_8A9A70             ; $8A9A6A
@@ -2154,7 +2154,7 @@ CODE_8A9A70:
 CODE_8A9A74:
     sep.b #$20                  ; $8A9A74
     lda.b #$30                  ; $8A9A76
-    jsr.w $9C19                 ; $8A9A78
+    jsr.w byte_buffer_push      ; $8A9A78
     rep.b #$20                  ; $8A9A7B
     ply                         ; $8A9A7D
     plx                         ; $8A9A7E
@@ -2166,7 +2166,7 @@ CODE_8A9A74:
     pha                         ; $8A9A88
     sep.b #$20                  ; $8A9A89
     lda.b #$20                  ; $8A9A8B
-    jsr.w $9C19                 ; $8A9A8D
+    jsr.w byte_buffer_push      ; $8A9A8D
     rep.b #$20                  ; $8A9A90
     pla                         ; $8A9A92
 CODE_8A9A93:
@@ -2176,7 +2176,7 @@ CODE_8A9A93:
     pha                         ; $8A9A99
     sep.b #$20                  ; $8A9A9A
     lda.b #$20                  ; $8A9A9C
-    jsr.w $9C19                 ; $8A9A9E
+    jsr.w byte_buffer_push      ; $8A9A9E
     rep.b #$20                  ; $8A9AA1
     pla                         ; $8A9AA3
     rts                         ; $8A9AA4
@@ -2314,6 +2314,7 @@ CODE_8A9C10:
     dex                         ; $8A9C15
     bpl CODE_8A9C10             ; $8A9C16
     rtl                         ; $8A9C18
+byte_buffer_push:
     phx                         ; $8A9C19
     ldx.b $58                   ; $8A9C1A
     sta.l $7F7D00,x             ; $8A9C1C
@@ -2924,8 +2925,8 @@ CODE_8AA2F7:
     stz.b $68                   ; $8AA2F7
     lda.b ($4A),y               ; $8AA2F9
     jsr.w $A4CF                 ; $8AA2FB
-    jsr.w $B6AA                 ; $8AA2FE
-    jsr.w $A37A                 ; $8AA301
+    jsr.w text_print_centered   ; $8AA2FE
+    jsr.w text_cursor_down3     ; $8AA301
     lda.w $1516,x               ; $8AA304
     and.w #$0001                ; $8AA307
     beq CODE_8AA31F             ; $8AA30A
@@ -2984,6 +2985,7 @@ CODE_8AA376:
     rep.b #$20                  ; $8AA376
     ply                         ; $8AA378
     rts                         ; $8AA379
+text_cursor_down3:
     inc.b $3C                   ; $8AA37A
     inc.b $3C                   ; $8AA37C
     inc.b $3C                   ; $8AA37E
@@ -3365,6 +3367,7 @@ CODE_8AB6A7:
     ply                         ; $8AB6A7
     plx                         ; $8AB6A8
     rts                         ; $8AB6A9
+text_print_centered:
     phx                         ; $8AB6AA
     pha                         ; $8AB6AB
     sec                         ; $8AB6AC
@@ -3557,7 +3560,7 @@ tilemap_offset:
     ldx.w #$0010                ; $8AB92B
 CODE_8AB92E:
     stz.b $78                   ; $8AB92E
-    jsr.w $B942                 ; $8AB930
+    jsr.w func_8AB942           ; $8AB930
     lda.b $78                   ; $8AB933
     beq CODE_8AB93E             ; $8AB935
     lda.w #$0001                ; $8AB937
@@ -3566,6 +3569,7 @@ CODE_8AB93E:
     dex                         ; $8AB93E
     bne CODE_8AB92E             ; $8AB93F
     rts                         ; $8AB941
+func_8AB942:
     lda.b $70                   ; $8AB942
     pha                         ; $8AB944
     phx                         ; $8AB945
@@ -3877,7 +3881,7 @@ CODE_8ABC9B:
     sta.b $86                   ; $8ABEBA
     jsr.w $BF2A                 ; $8ABEBC
     lda.w #$0D60                ; $8ABEBF
-    jsr.w $B6AA                 ; $8ABEC2
+    jsr.w text_print_centered   ; $8ABEC2
     lda.w #$0008                ; $8ABEC5
     jsl.l wait_frames_long      ; $8ABEC8
     lda.w #$0F00                ; $8ABECC
@@ -4146,7 +4150,7 @@ CODE_8AC144:
     beq CODE_8AC156             ; $8AC149
     cmp.w #$0080                ; $8AC14B
     db $F0,$07 ; beq            ; $8AC14E
-    jsr.w $C278                 ; $8AC150
+    jsr.w text_put_tile_char    ; $8AC150
     iny                         ; $8AC153
     bra CODE_8AC144             ; $8AC154
 CODE_8AC156:
@@ -4159,7 +4163,7 @@ CODE_8AC160:
     beq CODE_8AC174             ; $8AC167
     cmp.w #$0080                ; $8AC169
     beq CODE_8AC183             ; $8AC16C
-    jsr.w $C278                 ; $8AC16E
+    jsr.w text_put_tile_char    ; $8AC16E
 CODE_8AC171:
     inx                         ; $8AC171
     bra CODE_8AC160             ; $8AC172
@@ -4235,7 +4239,7 @@ CODE_8AC200:
     dey                         ; $8AC206
     bne CODE_8AC200             ; $8AC207
     pla                         ; $8AC209
-    jsr.w $B6AA                 ; $8AC20A
+    jsr.w text_print_centered   ; $8AC20A
     ldy.w #$0080                ; $8AC20D
     ldx.w #$0080                ; $8AC210
 CODE_8AC213:
@@ -4266,6 +4270,7 @@ CODE_8AC255:
     ldy.w #$0040                ; $8AC270
     jsl.l upload_cgram_now      ; $8AC273
     rts                         ; $8AC277
+text_put_tile_char:
     php                         ; $8AC278
     phy                         ; $8AC279
     phx                         ; $8AC27A

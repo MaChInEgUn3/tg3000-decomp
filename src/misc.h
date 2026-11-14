@@ -39,4 +39,13 @@ void func_8AB700(void);
 // `last_diff` receives the last target - value the original computed (its A).
 uint16_t step_toward(uint16_t value, uint16_t target, uint16_t steps, uint16_t* last_diff);
 
+// Append byte `b` to the buffer at $7F:7D00 (index $0158, then +1) and count it in the
+// byte $0160.
+void byte_buffer_push(uint8_t b);
+
+// One step of a two-column wipe: through the long pointer at $0170 (+ $0172 bank), set
+// the word at columns $0176 and $0174 of 28 rows ($40 bytes apart) to tile $3D, counting
+// changed cells in $0178; then the columns move apart ($0176 += 2, $0174 -= 2).
+void func_8AB942(void);
+
 #endif

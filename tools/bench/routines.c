@@ -211,6 +211,12 @@ TILES_ADAPTER(upload_tiles_3700, 0x3700)
 TILES_ADAPTER(upload_tiles_7700, 0x7700)
 TILES_ADAPTER(upload_tiles_7b00, 0x7B00)
 
+static void setSbc16(Regs* r, uint16_t a, uint16_t b) {  // C and V of A - b, carry set
+  uint16_t d = (uint16_t)(a - b);
+  r->c = a >= b;
+  r->v = ((a ^ b) & (a ^ d) & 0x8000) != 0;
+}
+
 static void setAdc16(Regs* r, uint16_t a, uint16_t b) {  // C and V of A + b, carry clear
   uint32_t sum = (uint32_t)a + b;
   r->c = sum > 0xFFFF;
@@ -340,6 +346,7 @@ static void call_func_8AB700(const Regs* in, Regs* out) {
   func_8AB700();
   out->a = (rd16(DP + 0x5A) & 1) ? 4 : 0;
   setNZ16(out, in->y);
+  setSbc16(out, rd16(DP + 0x3C), 10);  // C/V of its SEC/SBC #10
 }
 
 static void fuzz_func_8AB700(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -368,11 +375,6 @@ static void fuzz_text_put_char(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 
 // ---- char_to_tile_index ($8A:C2A2) ----  A in, A out; N/Z from the result. C/V are those
 // of the last CMP (an equal match: C = 1, V kept) or of the final SEC/SBC (#$16 or #$41).
-static void setSbc16(Regs* r, uint16_t a, uint16_t b) {  // C and V of A - b, carry set
-  uint16_t d = (uint16_t)(a - b);
-  r->c = a >= b;
-  r->v = ((a ^ b) & (a ^ d) & 0x8000) != 0;
-}
 
 static void call_char_to_tile_index(const Regs* in, Regs* out) {
   out->a = char_to_tile_index(in->a);
@@ -423,6 +425,95 @@ static void call_wait_frames(const Regs* in, Regs* out) {
   out->n = false;
   uint32_t sum = (uint32_t)in->a + now;
   out->v = (~(in->a ^ now) & (in->a ^ sum) & 0x8000) != 0;
+}
+
+// ---- text_print_centered ($8A:B6AA) ----  A = string address in bank DB. Exits with
+// X kept (N/Z from the PLX), Y = the length, A = $0186 or func_8AB700's 4/0.
+// C/V: those of the ADC that computes the start column ((width/2 - len/2) + left), which
+// text_put_char's PHP/PLP preserve; when func_8AB700 runs, those of its SEC/SBC #10.
+static void call_text_print_centered(const Regs* in, Regs* out) {
+  text_print_centered(((uint32_t)in->db << 16) | in->a);
+  out->y = rd16(DP + 0x5A);
+  uint16_t f = rd16(DP + 0x86);
+  out->a = f ? f : ((rd16(DP + 0x5A) & 1) ? 4 : 0);
+  setNZ16(out, in->x);
+  // (half width recomputed: text_put_char reuses $0142 as its palette scratch)
+  uint16_t half = (uint16_t)((rd16(DP + 0x40) - rd16(DP + 0x3E)) >> 1);
+  if(f) setAdc16(out, (uint16_t)(half - rd16(DP + 0x46)), rd16(DP + 0x3E));
+  else setSbc16(out, rd16(DP + 0x3C), 10);
+}
+
+static void fuzz_text_print_centered(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = 0x1C00;  // a string in low WRAM, reached through DB = $8A's mirror
+  int len = (int)(rnd() % 21);
+  for(int i = 0; i < len; i++) ram[0x1C00 + i] = (uint8_t)(0x20 + rnd() % 0x3B);
+  ram[0x1C00 + len] = 0;
+  uint16_t left = (uint16_t)(rnd() % 8);
+  wr16ram(ram, DP + 0x3E, left);
+  wr16ram(ram, DP + 0x40, (uint16_t)(left + 8 + rnd() % 20));
+  wr16ram(ram, DP + 0x3C, (uint16_t)(10 + rnd() % 6));
+  ram[DP + 0x68] = (rnd() & 3) == 0;
+  wr16ram(ram, DP + 0x86, (rnd() & 1) ? 0 : 1);
+  wr16ram(ram, TEXT_FONT_SEL, (rnd() & 3) == 0 ? 0 : 1);
+}
+
+// ---- text_put_tile_char ($8A:C278) ----  8-bit char in A's low byte; PHP/PLP, PHX/PLX and
+// PHY/PLY keep flags and X/Y; A = the tile written.
+static void call_text_put_tile_char(const Regs* in, Regs* out) {
+  out->a = text_put_tile_char((uint8_t)in->a);
+}
+
+static void fuzz_text_put_tile_char(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (uint16_t)((r->a & 0xFF00) | (0x20 + rnd() % 0x3B));
+  wr16ram(ram, DP + 0x3A, (uint16_t)(rnd() % 32));
+  wr16ram(ram, DP + 0x3C, (uint16_t)(rnd() % 16));
+  wr16ram(ram, DP + 0x90, (uint16_t)(rnd() & 1));
+}
+
+// ---- byte_buffer_push ($8A:9C19) ----  8-bit A; X kept; N/Z from the 8-bit INC $0160.
+static void call_byte_buffer_push(const Regs* in, Regs* out) {
+  byte_buffer_push((uint8_t)in->a);
+  uint8_t c = rd8(DP + 0x60);
+  out->n = (c & 0x80) != 0;
+  out->z = c == 0;
+}
+
+static void fuzz_byte_buffer_push(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x58, (uint16_t)(rnd() % 0x200));
+  ram[DP + 0x60] = (uint8_t)rnd();
+}
+
+// ---- text_cursor_down3 ($8A:A37A) ----  N/Z of the new row.
+static void call_text_cursor_down3(const Regs* in, Regs* out) {
+  (void)in;
+  text_cursor_down3();
+  setNZ16(out, rd16(TEXT_CURSOR_Y));
+}
+
+static void fuzz_text_cursor_down3(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, TEXT_CURSOR_Y, (uint16_t)rnd());
+}
+
+// ---- func_8AB942 ($8A:B942) ----  X kept; A = the restored pointer; Y = the column used
+// last ($0174 before its final -2); N/Z of the new $0174; C/V of the last ADC #$40.
+static void call_func_8AB942(const Regs* in, Regs* out) {
+  uint16_t base = rd16(DP + 0x70);
+  func_8AB942();
+  out->a = base;
+  out->y = (uint16_t)(rd16(DP + 0x74) + 2);
+  setNZ16(out, rd16(DP + 0x74));
+  setAdc16(out, (uint16_t)(base + 27 * 0x40), 0x40);
+}
+
+static void fuzz_func_8AB942(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x70, (uint16_t)(2 * (rnd() % 0x3000)));
+  ram[DP + 0x72] = 0x7F;
+  wr16ram(ram, DP + 0x74, (uint16_t)(2 * (rnd() % 32)));
+  wr16ram(ram, DP + 0x76, (uint16_t)(2 * (rnd() % 32)));
+  wr16ram(ram, DP + 0x78, (uint16_t)rnd());
 }
 
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
@@ -529,6 +620,16 @@ const Routine routines[] = {
    .lowWramDb = true, .waitsForInterrupts = true, .call = call_wait_frames, ALL_OUTPUTS},
   {.name = "wait_frames_long", .entry = 0x8ABA90, .end = 0x8ABA9C, .rtl = true, .source = "src/frame.c",
    .needM16 = true, .waitsForInterrupts = true, .call = call_wait_frames, ALL_OUTPUTS},
+  {.name = "text_print_centered", .entry = 0x8AB6AA, .end = 0x8AB700, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_text_print_centered, ALL_OUTPUTS, .fuzz = fuzz_text_print_centered},
+  {.name = "text_put_tile_char", .entry = 0x8AC278, .end = 0x8AC2A2, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_text_put_tile_char, ALL_OUTPUTS, .fuzz = fuzz_text_put_tile_char},
+  {.name = "byte_buffer_push", .entry = 0x8A9C19, .end = 0x8A9C27, .source = "src/misc.c", .needX16 = true,
+   .fixedD = true, .call = call_byte_buffer_push, ALL_OUTPUTS, .fuzz = fuzz_byte_buffer_push},
+  {.name = "text_cursor_down3", .entry = 0x8AA37A, .end = 0x8AA381, .source = "src/text.c", .needM16 = true,
+   .fixedD = true, .call = call_text_cursor_down3, ALL_OUTPUTS, .fuzz = fuzz_text_cursor_down3},
+  {.name = "func_8AB942", .entry = 0x8AB942, .end = 0x8AB981, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_8AB942, ALL_OUTPUTS, .fuzz = fuzz_func_8AB942},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

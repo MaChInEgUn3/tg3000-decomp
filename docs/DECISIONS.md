@@ -446,6 +446,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   $0200). Negative variant waiting one frame too many fails. No fuzz for these
   (interrupts are off while fuzzing).
 
+## Text, part 2 (roots-3, 2026-11-14)
+
+- `src/tg3000.h` gains `bus_rd8/bus_rd16/bus_wr16`: access through a 24-bit bus address
+  (WRAM for `$7E/$7F` and the low mirror, ROM otherwise) for the original's long and
+  DB-relative pointers.
+- `text_print_centered` ($8A:B6AA): the zero-terminated string at DB:A is printed
+  centred between columns `$013E` and `$0140` — or, when the byte `$0168` is set, as as
+  many spaces (erasing it); its length goes to `$015A`, and when `$0186` = 0 it ends with
+  `func_8AB700`, which therefore tests the **parity of the string length**. Its callers
+  read C/V; they come from the start-column ADC (preserved through `text_put_char`'s
+  PHP/PLP) or from `func_8AB700`'s SBC, and the adapter models both. The erase path never
+  ran in a movie (decoded from ROM, fuzzed).
+- `text_put_tile_char` ($8A:C278, one-tile glyphs, attribute `$3880`/`$3C80`),
+  `text_cursor_down3` ($8A:A37A), `byte_buffer_push` ($8A:9C19, buffer `$7F:7D00`) and
+  `func_8AB942` ($8A:B942, a step of a two-column wipe through the long pointer at
+  `$0170`).
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

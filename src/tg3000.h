@@ -42,6 +42,31 @@ static inline uint16_t rom16(uint32_t bus) {
   return (uint16_t)(rom8(bus) | (rom8((bus & 0xFF0000) | ((bus + 1) & 0xFFFF)) << 8));
 }
 
+// Read/write through a 24-bit bus address, for the original's long and DB-relative
+// pointers: $7E/$7F and $0000-$1FFF of banks $00-$3F/$80-$BF are WRAM; other reads come
+// from ROM. (No pointer the game follows here points at hardware registers.)
+static inline int bus_wram(uint32_t bus, uint32_t* index) {
+  uint8_t bank = (uint8_t)(bus >> 16);
+  uint16_t adr = (uint16_t)bus;
+  if(bank == 0x7E || bank == 0x7F) { *index = ((uint32_t)(bank - 0x7E) << 16) | adr; return 1; }
+  if((bank & 0x7F) < 0x40 && adr < 0x2000) { *index = adr; return 1; }
+  return 0;
+}
+
+static inline uint8_t bus_rd8(uint32_t bus) {
+  uint32_t i;
+  return bus_wram(bus, &i) ? g_ram[i] : rom8(bus);
+}
+
+static inline uint16_t bus_rd16(uint32_t bus) {
+  return (uint16_t)(bus_rd8(bus) | (bus_rd8(bus + 1) << 8));
+}
+
+static inline void bus_wr16(uint32_t bus, uint16_t val) {
+  uint32_t i;
+  if(bus_wram(bus, &i)) wr16(i, val);
+}
+
 static inline uint32_t rd32(uint32_t adr) { return rd16(adr) | ((uint32_t)rd16(adr + 2) << 16); }
 
 static inline void wr32(uint32_t adr, uint32_t val) {

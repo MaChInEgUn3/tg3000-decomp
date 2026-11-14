@@ -84,3 +84,28 @@ uint16_t step_toward(uint16_t value, uint16_t target, uint16_t steps, uint16_t* 
     if(--steps == 0) return 0;
   }
 }
+
+// TG3000_ROUTINE($8A:9C19) byte_buffer_push (8-bit A)
+void byte_buffer_push(uint8_t b) {
+  uint16_t i = rd16(DP + 0x58);
+  wr8(0x17D00 + i, b);
+  wr16(DP + 0x58, (uint16_t)(i + 1));
+  wr8(DP + 0x60, (uint8_t)(rd8(DP + 0x60) + 1));
+}
+
+// TG3000_ROUTINE($8A:B942) func_8AB942
+void func_8AB942(void) {
+  uint16_t base = rd16(DP + 0x70);
+  for(int row = 0; row < 0x1C; row++) {
+    uint32_t ptr = ((uint32_t)rd8(DP + 0x72) << 16) | rd16(DP + 0x70);
+    uint16_t cols[2] = {rd16(DP + 0x76), rd16(DP + 0x74)};
+    for(int k = 0; k < 2; k++) {
+      if(bus_rd16(ptr + cols[k]) != 0x003D) wr16(DP + 0x78, (uint16_t)(rd16(DP + 0x78) + 1));
+      bus_wr16(ptr + cols[k], 0x003D);
+    }
+    wr16(DP + 0x70, (uint16_t)(rd16(DP + 0x70) + 0x40));
+  }
+  wr16(DP + 0x70, base);
+  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) + 2));
+  wr16(DP + 0x74, (uint16_t)(rd16(DP + 0x74) - 2));
+}
