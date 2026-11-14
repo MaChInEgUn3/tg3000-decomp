@@ -349,6 +349,33 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   another sample may have few watched returns; those keep all flags in the contract
   (e.g. `func_81F1FC`: its C = 1 from the loop's final `CPX #$26` is now modelled).
 
+## What blocks the rest: census and roots (strategy-1, 2026-11-14)
+
+- Question: after 23 routines the easy leaves ran out; is the next unlock the PPU
+  registers, the DSP-4 or more coverage? A regex count over the listing said: of 344
+  unported called routines, 103 are blocked *only* by unported callees, 8 only by PPU
+  registers, 4 only by the DSP-4. So the call graph decides, and it was measured.
+- **`bench --census map/census.txt`** (`tools/bench/census.c`): a shadow call stack over
+  the movie records, for every routine entered with JSR/JSL and both interrupt
+  handlers, its entries, how many had an interrupt inside, the hardware classes its own
+  body touches (math, ppu, dma, hdma, apu, io, dsp4, other), its D/DB/widths, its
+  callees and its indirect-jump targets. 60k movie: 432 routines + NMI (`$00:0000`)
+  and IRQ (`$00:0004`) trampolines. D is **not** always `$0100`: the frame wait runs
+  with `$0200` too, and the IRQ handler with `$0B00` — per-routine contracts matter.
+- **`tools/roots.py`** ranks *roots* (unported routines with no unported callee) by how
+  many unported routines depend on them. 407 unported, 210 roots. Top: `$82:FB70` (44, a
+  jump-table dispatcher with 40 targets), `$80:F745` (28, no hardware, never
+  interrupted), `$80:81CC` (20, PPU/DMA/HDMA), `$8A:B909` (17, 8,078 entries),
+  `$8A:B700` (16), `$8A:BA90` (15, always interrupted — a wait), `$8A:C2A2/C2CC` (14).
+  The frame wait `$80:8373` blocks only 8.
+- Plan: port the hardware-free roots by weight; then the frame waits (a platform
+  "wait for next frame" with the interrupt's WRAM writes replayed); then the
+  dispatcher; the PPU interface after logging which writes come from main code.
+- Harness fixes from the review: the entry contract (D, DB, widths) is checked on
+  **every** entry, including entries nested inside another routine's sample (before,
+  only the sampled third); DMA/PPU address setup that no `$420B` kick consumes now
+  fails the sample instead of being silently absorbed.
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

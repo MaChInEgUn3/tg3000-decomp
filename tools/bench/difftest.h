@@ -43,6 +43,7 @@ void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size);
 
 void difftest_init(Snes* snes, const uint8_t* rom, bool negative);
 void difftest_on_insn(Cpu* cpu);              // from the CPU trace hook
+void difftest_on_access(uint32_t adr, uint8_t val, bool write);  // from the CPU access hook
 void difftest_fuzz(int iterations);          // at the end of a run
 bool difftest_report(const char* resultsPath);  // prints a summary; false if any routine failed
 

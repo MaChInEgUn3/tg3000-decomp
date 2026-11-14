@@ -68,7 +68,7 @@ static Regs entryRegs;
 static uint16_t entrySp, minSp, retPc;
 static uint8_t retBank;
 static uint32_t interruptsAtEntry, insnsInSample;
-static bool hwAccess, mathWritten, leftExtent;
+static bool hwAccess, mathWritten, leftExtent, setupPending;
 static uint32_t hwAccessAdr, leftExtentPc;
 static const char* hwWhy;
 
@@ -156,7 +156,7 @@ static bool isMathReg(uint32_t adr, bool write) {
   return write ? (a >= 0x4202 && a <= 0x4206) : (a >= 0x4214 && a <= 0x4217);
 }
 
-static void onAccess(uint32_t adr, uint8_t val, bool write) {
+void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   if(active < 0 || hwAccess) return;
   if(isWram(adr) || (!write && isRom(adr))) return;
   if(isMathReg(adr, write)) {
@@ -164,9 +164,11 @@ static void onAccess(uint32_t adr, uint8_t val, bool write) {
     if(mathWritten) return;
     hwWhy = "reads a multiply/divide result it did not start";
   } else if(write && isUploadSetup(adr)) {
+    setupPending = true;
     return;
   } else if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x420B) {
     recordKick(val);
+    setupPending = false;
     return;
   } else {
     hwWhy = "hardware access (not supported by this routine's C)";
@@ -258,6 +260,9 @@ static void finishSample(const Cpu* cpu) {
   if(hwAccess) {
     snprintf(why, sizeof why, "%s at $%06X", hwWhy, hwAccessAdr);
     ok = false;
+  } else if(setupPending) {
+    snprintf(why, sizeof why, "DMA/PPU address set up but no DMA started afterwards (not modelled)");
+    ok = false;
   } else if(leftExtent) {
     snprintf(why, sizeof why, "ran outside its declared extent at $%06X", leftExtentPc);
     ok = false;
@@ -300,9 +305,8 @@ static void startSample(int idx, const Cpu* cpu) {
   retBank = r->rtl ? snes->ram[(uint16_t)(sp + 3)] : cpu->k;
   interruptsAtEntry = cpu_interruptCount;
   insnsInSample = 0;
-  hwAccess = mathWritten = leftExtent = false;
+  hwAccess = mathWritten = leftExtent = setupPending = false;
   origEffectCount = 0;
-  noteContract(&stats[idx], r, &entryRegs);
 }
 
 static uint8_t peekByte(uint32_t adr) {
@@ -347,6 +351,22 @@ static void watchStep(const Cpu* cpu) {
   if(watching >= 0 && writes) resolveFlags(writes, false);
 }
 
+// Every entry of a registered routine counts and is checked against its contract; one in
+// SAMPLE_STRIDE (while nothing else is being sampled) becomes a compared sample.
+static void checkEntries(Cpu* cpu, uint32_t pc) {
+  for(int i = 0; i < tableCount; i++) {
+    if(table[i].entry != pc) continue;
+    Stats* s = &stats[i];
+    Regs in = readRegs(cpu);
+    noteContract(s, &table[i], &in);
+    if(s->entries++ % SAMPLE_STRIDE != 0 || s->samples >= MAX_SAMPLES || active >= 0) return;
+    if(cpu->sp >= 0x2000) return;  // stack outside WRAM: not handled
+    startSample(i, cpu);
+    s->visited[0] = true;
+    return;
+  }
+}
+
 void difftest_on_insn(Cpu* cpu) {
   uint32_t pc = norm(((uint32_t)cpu->k << 16) | cpu->pc);
   if(active >= 0) {
@@ -367,20 +387,13 @@ void difftest_on_insn(Cpu* cpu) {
         active = -1;
       }
       if(watching >= 0) watchStep(cpu);
+      if(!fuzzing) checkEntries(cpu, pc);  // nested entries: counted and contract-checked
       return;
     }
   }
   if(watching >= 0) watchStep(cpu);
   if(fuzzing) return;
-  for(int i = 0; i < tableCount; i++) {
-    if(table[i].entry != pc) continue;
-    Stats* s = &stats[i];
-    if(s->entries++ % SAMPLE_STRIDE != 0 || s->samples >= MAX_SAMPLES) return;
-    if(cpu->sp >= 0x2000) return;  // stack outside WRAM: not handled
-    startSample(i, cpu);
-    stats[i].visited[0] = true;
-    return;
-  }
+  checkEntries(cpu, pc);
 }
 
 void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
@@ -390,7 +403,6 @@ void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
   tableCount = negative ? negativeRoutineCount : routineCount;
   stats = calloc(tableCount, sizeof *stats);
   for(int i = 0; i < tableCount; i++) findStarts(&table[i], &stats[i]);
-  snes_cpuAccessHook = onAccess;
 }
 
 // Fuzz: synthetic inputs, run on the interpreter from the entry, interrupts disabled.

@@ -18,6 +18,9 @@
 // routines.c during the run, then --fuzz N synthetic samples each; write RESULTS
 // (map/verified.txt). Exit status 4 if any routine fails. --difftest-negative swaps in
 // deliberately wrong C, which must fail.
+// --census FILE: for every routine entered with JSR/JSL (and every interrupt handler):
+// entries, interrupted entries, hardware classes it touches itself, D/DB/widths, callees and
+// indirect-jump targets (map/census.txt).
 // --load-state FILE: start from a save state (frame numbers in the movie stay relative to
 // the bench's own loop, starting at 0). --save-state FILE: write one at the end.
 // --state-test N: after the run, save a state, run N more frames, reload the state, run the
@@ -35,6 +38,7 @@
 #include "png.h"
 #include "coverage.h"
 #include "difftest.h"
+#include "census.h"
 
 static Snes* snes;
 static FILE* dsp4Log;
@@ -147,11 +151,17 @@ static void autopilot(void) {
   setButtons(down ? (1 << 5) : a ? BTN_A : 0);
 }
 
-static bool coverageOn, difftestOn;
+static bool coverageOn, difftestOn, censusOn;
 
 static void benchTrace(Cpu* cpu) {
   if(coverageOn) coverage_on_insn(cpu);
+  if(censusOn) census_on_insn(cpu);
   if(difftestOn) difftest_on_insn(cpu);
+}
+
+static void benchAccess(uint32_t adr, uint8_t val, bool write) {
+  if(censusOn) census_on_access(adr, write);
+  if(difftestOn) difftest_on_access(adr, val, write);
 }
 
 static void recordStep(FILE* f, int step, uint16_t* last) {
@@ -187,7 +197,7 @@ static void dumpFrame(const char* dir) {
 
 int main(int argc, char** argv) {
   if(argc < 2) {
-    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE] [--coverage FILE] [--load-state FILE] [--save-state FILE] [--wram-dump FILE] [--autopilot STEP] [--record FILE] [--difftest RESULTS] [--difftest-negative] [--fuzz N] [--state-test N]\n", argv[0]);
+    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE] [--coverage FILE] [--load-state FILE] [--save-state FILE] [--wram-dump FILE] [--autopilot STEP] [--record FILE] [--difftest RESULTS] [--difftest-negative] [--fuzz N] [--census FILE] [--state-test N]\n", argv[0]);
     return 2;
   }
   const char* romPath = argv[1];
@@ -200,6 +210,7 @@ int main(int argc, char** argv) {
   FILE* record = NULL;
   int autopilotFrom = -1;
   const char* difftestResults = NULL;
+  const char* censusPath = NULL;
   bool difftestNegative = false;
   int fuzzIterations = 0;
   const char* saveStatePath = NULL;
@@ -213,6 +224,8 @@ int main(int argc, char** argv) {
       if(hashes == NULL) { perror(argv[i]); return 1; }
     } else if(strcmp(argv[i], "--difftest") == 0 && i + 1 < argc) {
       difftestResults = argv[++i];
+    } else if(strcmp(argv[i], "--census") == 0 && i + 1 < argc) {
+      censusPath = argv[++i];
     } else if(strcmp(argv[i], "--difftest-negative") == 0) {
       difftestNegative = true;
     } else if(strcmp(argv[i], "--fuzz") == 0 && i + 1 < argc) {
@@ -254,7 +267,9 @@ int main(int argc, char** argv) {
   if(snes->cart->romSize != 0x100000) { fprintf(stderr, "expected a 1 MB ROM\n"); return 1; }
   if(coveragePath != NULL) { coverage_start(snes->cpu, snes->cart->rom); coverageOn = true; }
   if(difftestResults != NULL || difftestNegative) { difftest_init(snes, snes->cart->rom, difftestNegative); difftestOn = true; }
-  if(coverageOn || difftestOn) cpu_traceHook = benchTrace;
+  if(censusPath != NULL) { census_start(snes, snes->cart->rom); censusOn = true; }
+  if(coverageOn || difftestOn || censusOn) cpu_traceHook = benchTrace;
+  if(difftestOn || censusOn) snes_cpuAccessHook = benchAccess;
   if(loadStatePath != NULL) {
     int stSize = 0;
     uint8_t* st = readFile(loadStatePath, &stSize);
@@ -306,6 +321,11 @@ int main(int argc, char** argv) {
     if(f == NULL || fwrite(st, 1, stSize, f) != (size_t)stSize) { perror(saveStatePath); status = 1; }
     if(f != NULL) fclose(f);
     free(st);
+  }
+
+  if(censusPath != NULL) {
+    censusOn = false;
+    if(!census_save(censusPath)) status = 1;
   }
 
   if(coveragePath != NULL) {
