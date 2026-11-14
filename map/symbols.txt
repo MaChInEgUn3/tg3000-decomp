@@ -68,3 +68,8 @@ func    8AB981   clear_tilemap_7f    ; fill $7F:0000-$0FFF with tile $3D -> src/
 func    8ABC32   func_8ABC32         ; $0192 += $0DCA -> src/misc.c
 func    8ABC7F   func_8ABC7F         ; clear $0DAC-$0DCB -> src/misc.c
 func    8AC13F   text_print_tiles    ; string at DB:A, one tile per char, $80 = new line -> src/text.c
+func    8A8F02   clear_sprites       ; $0900+4i = $E000 for 128 entries (long call) -> src/misc.c
+func    8AA48D   func_8AA48D         ; $01FB = $11, $0D7E = $0A8C -> src/misc.c
+func    8AA49E   func_8AA49E         ; $01FB = $13, $0D7E = $0A8C -> src/misc.c
+func    8AB91A   wipe_columns        ; 16 func_8AB942 steps from both edges, a frame wait after each change -> src/misc.c
+func    8AC137   text_print_tiles_at ; cursor = (X, Y), then text_print_tiles -> src/text.c

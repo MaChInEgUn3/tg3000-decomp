@@ -564,6 +564,14 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   BRA`) were decoded from ROM and the fuzz, which puts strings in DB `$8A`'s low-WRAM
   mirror, covers it. `clear_tilemap_7f`'s 6 live entries were all interrupted or not
   sampled (a 2048-word fill), so it rests on the fuzz alone.
+- `wipe_columns` ($8A:B91A), `clear_sprites` ($8A:8F02), `func_8AA48D`/`func_8AA49E`
+  and `text_print_tiles_at` ($8A:C137). The wipe waits for frames inside a loop that
+  also calls other sampled routines, which showed two harness bugs: a nested waiting
+  routine (wait_frames_long) took the interrupt recording away from the outer one, and
+  any nested sample's comparison reset the recording owner to none when it finished. Now
+  an outer waiting sample keeps the recording (the nested waits go unsampled there) and
+  the owner is restored after a nested comparison; up to 64 interrupts are recorded (was
+  24). The wipe has no fuzz (it waits) and 2 live samples, both passing.
 
 ## Coverage without a player (2026-11-13)
 

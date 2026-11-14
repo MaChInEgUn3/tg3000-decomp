@@ -148,3 +148,10 @@ uint16_t text_print_tiles(uint32_t str) {
     text_put_tile_char(ch);
   }
 }
+
+// TG3000_ROUTINE($8A:C137) text_print_tiles_at
+uint16_t text_print_tiles_at(uint32_t str, uint16_t column, uint16_t row) {
+  wr16(TEXT_CURSOR_X, column);
+  wr16(TEXT_CURSOR_Y, row);
+  return text_print_tiles(str);
+}

@@ -1125,8 +1125,9 @@ CODE_8A8EF6:
     dex                         ; $8A8EF9
     dex                         ; $8A8EFA
     bpl CODE_8A8EF6             ; $8A8EFB
-    jsl.l $8A8F02               ; $8A8EFD
+    jsl.l clear_sprites         ; $8A8EFD
     rtl                         ; $8A8F01
+clear_sprites:
     rep.b #$30                  ; $8A8F02
     ldx.w #$0080                ; $8A8F04
     ldy.w #$0000                ; $8A8F07
@@ -2481,7 +2482,7 @@ CODE_8A9E96:
     jsr.w $BA55                 ; $8A9EB9
     jsr.w $B994                 ; $8A9EBC
     jsr.w $BACB                 ; $8A9EBF
-    jsr.w $B91A                 ; $8A9EC2
+    jsr.w wipe_columns          ; $8A9EC2
     jsl.l $8A8EEF               ; $8A9EC5
     lda.w #$FC5F                ; $8A9EC9
     sta.w $0008                 ; $8A9ECC
@@ -3036,7 +3037,7 @@ CODE_8AA3C2:
     stz.b $64                   ; $8AA3E6
     stz.b $66                   ; $8AA3E8
     stz.b $6E                   ; $8AA3EA
-    jsr.w $A48D                 ; $8AA3EC
+    jsr.w func_8AA48D           ; $8AA3EC
 CODE_8AA3EF:
     ply                         ; $8AA3EF
     pla                         ; $8AA3F0
@@ -3056,7 +3057,7 @@ CODE_8AA3F4:
     stz.b $64                   ; $8AA40E
     stz.b $66                   ; $8AA410
     stz.b $6E                   ; $8AA412
-    jsr.w $A48D                 ; $8AA414
+    jsr.w func_8AA48D           ; $8AA414
 CODE_8AA417:
     ply                         ; $8AA417
     rts                         ; $8AA418
@@ -3091,7 +3092,7 @@ CODE_8AA445:
     ldy.w #$0002                ; $8AA44F
     lda.b ($4A),y               ; $8AA452
     sta.b $5C                   ; $8AA454
-    jsr.w $A49E                 ; $8AA456
+    jsr.w func_8AA49E           ; $8AA456
     jsr.w $A466                 ; $8AA459
     ply                         ; $8AA45C
     plx                         ; $8AA45D
@@ -3127,6 +3128,7 @@ CODE_8AA484:
     bpl CODE_8AA484             ; $8AA489
     plx                         ; $8AA48B
     rts                         ; $8AA48C
+func_8AA48D:
     pha                         ; $8AA48D
     sep.b #$20                  ; $8AA48E
     lda.b #$11                  ; $8AA490
@@ -3136,6 +3138,7 @@ CODE_8AA484:
     sta.w $0D7E                 ; $8AA499
     pla                         ; $8AA49C
     rts                         ; $8AA49D
+func_8AA49E:
     pha                         ; $8AA49E
     sep.b #$20                  ; $8AA49F
     lda.b #$13                  ; $8AA4A1
@@ -3329,7 +3332,7 @@ CODE_8AB167:
     rts                         ; $8AB21B
     incbin !baserom:$5321C..$53659
     sta.b $62                   ; $8AB659
-    jsr.w $B91A                 ; $8AB65B
+    jsr.w wipe_columns          ; $8AB65B
 CODE_8AB65E:
     jsr.w $9F76                 ; $8AB65E
     lda.b $6C                   ; $8AB661
@@ -3343,7 +3346,7 @@ CODE_8AB65E:
     beq CODE_8AB65E             ; $8AB676
     stz.b $5E                   ; $8AB678
     stz.b $6E                   ; $8AB67A
-    jsr.w $B91A                 ; $8AB67C
+    jsr.w wipe_columns          ; $8AB67C
 CODE_8AB67F:
     rts                         ; $8AB67F
     phx                         ; $8AB680
@@ -3555,6 +3558,7 @@ tilemap_offset:
     tax                         ; $8AB917
     pla                         ; $8AB918
     rts                         ; $8AB919
+wipe_columns:
     lda.w #$0000                ; $8AB91A
     sta.b $70                   ; $8AB91D
     lda.w #$007F                ; $8AB91F
@@ -3853,7 +3857,7 @@ CODE_8ABC9B:
     jsl.l $8A8DEC               ; $8ABE51
     jsr.w $BAE3                 ; $8ABE55
     jsr.w $B18C                 ; $8ABE58
-    jsr.w $B91A                 ; $8ABE5B
+    jsr.w wipe_columns          ; $8ABE5B
     stz.b $8E                   ; $8ABE5E
     ldx.w #$8601                ; $8ABE60
     ldy.w #$1000                ; $8ABE63
@@ -3864,7 +3868,7 @@ CODE_8ABC9B:
     ldx.w #$FA37                ; $8ABE73
     ldy.w #$0040                ; $8ABE76
     jsl.l upload_cgram_now      ; $8ABE79
-    jsr.w $B91A                 ; $8ABE7D
+    jsr.w wipe_columns          ; $8ABE7D
     jsr.w $BAF2                 ; $8ABE80
     jsr.w $B212                 ; $8ABE83
     inc.b $8E                   ; $8ABE86
@@ -4126,26 +4130,27 @@ CODE_8AC0E8:
     ldx.w #$000C                ; $8AC0F6
     ldy.w #$0006                ; $8AC0F9
     lda.w #$C44F                ; $8AC0FC
-    jsr.w $C137                 ; $8AC0FF
+    jsr.w text_print_tiles_at   ; $8AC0FF
     dec.b $90                   ; $8AC102
     ldx.w #$0006                ; $8AC104
     ldy.w #$0016                ; $8AC107
     lda.w #$C458                ; $8AC10A
-    jsr.w $C137                 ; $8AC10D
+    jsr.w text_print_tiles_at   ; $8AC10D
     ldx.w #$0005                ; $8AC110
     ldy.w #$0017                ; $8AC113
     lda.w #$C46D                ; $8AC116
-    jsr.w $C137                 ; $8AC119
+    jsr.w text_print_tiles_at   ; $8AC119
     ldx.w #$0005                ; $8AC11C
     ldy.w #$0018                ; $8AC11F
     lda.w #$C484                ; $8AC122
-    jsr.w $C137                 ; $8AC125
+    jsr.w text_print_tiles_at   ; $8AC125
     inc.b $90                   ; $8AC128
     ldx.w #$0006                ; $8AC12A
     ldy.w #$001A                ; $8AC12D
     lda.w #$C49B                ; $8AC130
-    jsr.w $C137                 ; $8AC133
+    jsr.w text_print_tiles_at   ; $8AC133
     rts                         ; $8AC136
+text_print_tiles_at:
     stx.b $3A                   ; $8AC137
     sty.b $3C                   ; $8AC139
     jsr.w text_print_tiles      ; $8AC13B

@@ -90,7 +90,7 @@ static uint8_t afterRam[TG3000_WRAM_SIZE];
 // Interrupts inside the sample of a routine that waits for them (at most one such sample
 // at a time): each one's WRAM before and after the handler, replayed in order by
 // platform_wait_vblank() on the C side.
-#define MAX_IRQS 24
+#define MAX_IRQS 64
 static uint8_t irqPre[MAX_IRQS][TG3000_WRAM_SIZE], irqPost[MAX_IRQS][TG3000_WRAM_SIZE];
 static int irqOwner = -1;  // depth of the sample that records them
 static int irqCount, irqReplayed, irqLimit;
@@ -355,9 +355,11 @@ static void finishSample(int k, const Cpu* cpu) {
     snprintf(why, sizeof why, "ran outside its declared extent at $%06X", smp->leftExtentPc);
     ok = false;
   } else {
-    if(owner) irqOwner = k;  // the replay reads the recorded interrupts
+    // the replay reads the recorded interrupts; an outer waiting sample keeps recording
+    int outerOwner = irqOwner;
+    if(owner) irqOwner = k;
     ok = compareWithC(k, &after, why, sizeof why, &flagDiff);
-    irqOwner = -1;
+    irqOwner = owner ? -1 : outerOwner;
   }
   for(int f = 0; f < 4; f++) {
     if(!(flagDiff & flagBits[f])) continue;
@@ -394,7 +396,10 @@ static void startSample(int idx, const Cpu* cpu) {
     .retBank = r->rtl ? snes->ram[(uint16_t)(sp + 3)] : cpu->k,
     .interruptsAtEntry = cpu_interruptCount,
   };
-  if(r->waitsForInterrupts) {
+  // A waiting routine records the interrupts it waits through, unless an outer waiting
+  // sample already does (a wipe that waits through wait_frames): the outer one keeps them
+  // and the inner one goes unsampled. (An owner index at or past k is stale.)
+  if(r->waitsForInterrupts && (irqOwner < 0 || irqOwner >= k)) {
     irqOwner = k;
     irqCount = 0;
     irqActive = irqOverflow = false;

@@ -99,4 +99,16 @@ void func_8ABC7F(void);
 // in $011E. Returns the difference.
 uint16_t func_82EC09(uint16_t x);
 
+// Wipe the map at $7F:0000 with tile $3D from both edges inwards: 16 steps of
+// func_8AB942, waiting a frame after each step that changed a cell. Returns the frame
+// the last wait ended on, or 0 when the last step changed nothing (the original's A).
+uint16_t wipe_columns(void);
+
+// $01FB = $11 (or $13 for func_8AA49E) and $0D7E = $0A8C.
+void func_8AA48D(void);
+void func_8AA49E(void);
+
+// Set the first word of each of the 128 entries of $0900 (4 bytes each) to $E000.
+void clear_sprites(void);
+
 #endif

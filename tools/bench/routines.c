@@ -503,6 +503,55 @@ static void fuzz_text_print_tiles(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   wr16ram(ram, DP + 0x90, (uint16_t)(rnd() & 1));
 }
 
+// ---- wipe_columns ($8A:B91A) ----  exits with X = 0 (N/Z of the last DEX), Y = $0174 + 2
+// (func_8AB942's), A = the last wait's target and its C = 1 / V, or, when the last step
+// changed nothing, A = 0 and the C/V of func_8AB942's ADC with $0170 = 0.
+static void call_wipe_columns(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = wipe_columns();
+  out->x = 0;
+  out->y = (uint16_t)(rd16(DP + 0x74) + 2);
+  setNZ16(out, 0);
+  if(out->a != 0) {
+    out->c = true;
+    out->v = (uint16_t)(out->a - 1) == 0x7FFF;
+  } else {
+    setAdc16(out, 27 * 0x40, 0x40);
+  }
+}
+
+// ---- func_8AA48D, func_8AA49E ----  A kept (N/Z from the PLA).
+static void call_func_8AA48D(const Regs* in, Regs* out) { func_8AA48D(); setNZ16(out, in->a); }
+static void call_func_8AA49E(const Regs* in, Regs* out) { func_8AA49E(); setNZ16(out, in->a); }
+
+// ---- clear_sprites ($8A:8F02, long) ----  REP #$30 first; exits with A = $E000, X = 0
+// (Z from the last DEX), Y = $200.
+static void call_clear_sprites(const Regs* in, Regs* out) {
+  (void)in;
+  clear_sprites();
+  out->m8 = out->x8 = false;
+  out->a = 0xE000;
+  out->x = 0;
+  out->y = 0x0200;
+  setNZ16(out, 0);
+}
+
+// ---- text_print_tiles_at ($8A:C137) ----  X = column, Y = row, A = string (bank DB).
+static void call_text_print_tiles_at(const Regs* in, Regs* out) {
+  Regs moved = *in;
+  wr16(TEXT_CURSOR_X, in->x);
+  wr16(TEXT_CURSOR_Y, in->y);
+  moved.y = 0;
+  call_text_print_tiles(&moved, out);
+  out->x = in->x;
+}
+
+static void fuzz_text_print_tiles_at(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_text_print_tiles(r, ram, rnd);
+  r->x = (uint16_t)(rnd() % 16);
+  r->y = (uint16_t)(rnd() % 8);
+}
+
 // ---- step_toward ($8A:A264, $8A:A27D, $8A:A296) ----  X = entry, Y = steps; exits with
 // Y = steps left, A = the last difference, Z = 1 and N = 0 (from the equal SBC or the
 // final DEY), C/V of that last SBC (target - the value before the last step).
@@ -902,6 +951,16 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_func_82EC09, ALL_OUTPUTS, .fuzz = fuzz_func_82EC09},
   {.name = "text_print_tiles", .entry = 0x8AC13F, .end = 0x8AC15D, .source = "src/text.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_text_print_tiles, ALL_OUTPUTS, .fuzz = fuzz_text_print_tiles},
+  {.name = "wipe_columns", .entry = 0x8AB91A, .end = 0x8AB942, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .waitsForInterrupts = true, .call = call_wipe_columns, ALL_OUTPUTS},
+  {.name = "func_8AA48D", .entry = 0x8AA48D, .end = 0x8AA49E, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_func_8AA48D, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_8AA49E", .entry = 0x8AA49E, .end = 0x8AA4AF, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_func_8AA49E, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "clear_sprites", .entry = 0x8A8F02, .end = 0x8A8F18, .rtl = true, .source = "src/misc.c",
+   .lowWramDb = true, .call = call_clear_sprites, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "text_print_tiles_at", .entry = 0x8AC137, .end = 0x8AC13F, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_text_print_tiles_at, ALL_OUTPUTS, .fuzz = fuzz_text_print_tiles_at},
   {.name = "func_8A92CF", .entry = 0x8A92CF, .end = 0x8A9307, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8A92CF, ALL_OUTPUTS, .fuzz = fuzz_func_8A92CF},
   {.name = "func_80F745", .entry = 0x80F745, .end = 0x80F8F8, .source = "src/line_tables.c", .needM16 = true,

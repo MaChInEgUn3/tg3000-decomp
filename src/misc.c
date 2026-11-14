@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "misc.h"
 
+#include "frame.h"
 #include "tg3000.h"
 #include "util.h"
 
@@ -229,4 +230,36 @@ uint16_t func_82EC09(uint16_t x) {
   if(a & 0x0800) a |= 0xF000;  // the byte is the top of a signed 12-bit value
   wr16(DP + 0x1E, (uint16_t)(b << 1));
   return (uint16_t)(a - b);
+}
+
+// TG3000_ROUTINE($8A:B91A) wipe_columns
+uint16_t wipe_columns(void) {
+  wr16(DP + 0x70, 0x0000);  // the map at $7F:0000
+  wr16(DP + 0x72, 0x007F);
+  wr16(DP + 0x76, 0);       // from the left edge and the right edge inwards
+  wr16(DP + 0x74, 0x003E);
+  uint16_t last = 0;
+  for(int step = 0; step < 16; step++) {
+    wr16(DP + 0x78, 0);
+    func_8AB942();
+    last = 0;
+    if(rd16(DP + 0x78) != 0) last = wait_frames(1);
+  }
+  return last;
+}
+
+static void set_mode_fb(uint8_t mode) {
+  wr8(DP + 0xFB, mode);
+  wr16(0x0D7E, 0x0A8C);
+}
+
+// TG3000_ROUTINE($8A:A48D) func_8AA48D
+void func_8AA48D(void) { set_mode_fb(0x11); }
+
+// TG3000_ROUTINE($8A:A49E) func_8AA49E
+void func_8AA49E(void) { set_mode_fb(0x13); }
+
+// TG3000_ROUTINE($8A:8F02) clear_sprites (long call)
+void clear_sprites(void) {
+  for(uint16_t i = 0; i < 0x200; i += 4) wr16(0x0900 + i, 0xE000);
 }

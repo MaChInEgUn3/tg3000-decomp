@@ -44,4 +44,7 @@ uint16_t sprite_text(uint32_t str, uint16_t x);
 // string's length (the original's Y).
 uint16_t text_print_tiles(uint32_t str);
 
+// text_print_tiles starting at (`column`, `row`).
+uint16_t text_print_tiles_at(uint32_t str, uint16_t column, uint16_t row);
+
 #endif
