@@ -1241,6 +1241,80 @@ static void fuzz_func_8A9BB5(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   }
 }
 
+// ---- func_8A8EEF ($8A:8EEF, long) ----  exits as clear_sprites does (A = $E000, X = 0,
+// Y = $200, Z = 1, 16-bit registers).
+static void call_func_8A8EEF(const Regs* in, Regs* out) {
+  (void)in;
+  func_8A8EEF();
+  out->m8 = out->x8 = false;
+  out->a = 0xE000;
+  out->x = 0;
+  out->y = 0x0200;
+  setNZ16(out, 0);
+}
+
+// ---- func_8A9BAA ($8A:9BAA) ----  A = the new $0154 (C/V of its ADC), N/Z of the DEC $0156.
+static void call_func_8A9BAA(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t old = rd16(DP + 0x54);
+  func_8A9BAA();
+  out->a = rd16(DP + 0x54);
+  setAdc16(out, old, 0x10);
+  setNZ16(out, rd16(DP + 0x56));
+}
+
+static void fuzz_func_8A9BAA(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x54, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x56, (uint16_t)rnd());
+}
+
+// ---- func_8A9BE2 ($8A:9BE2) ----  A = the kind of slot 0 (the last loaded), X = $FFFE
+// (N = 1 from the DEX), C of the last CMP with the running best.
+static void call_func_8A9BE2(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t best = 0;
+  for(int x = 0x26; x > 0; x -= 2) {
+    uint16_t k = bus_rd16(0x81041C + (uint32_t)x);
+    if(!((uint16_t)(k - best) & 0x8000)) best = k;
+  }
+  uint16_t k0 = bus_rd16(0x81041C);
+  func_8A9BE2();
+  out->a = k0;
+  out->x = 0xFFFE;
+  setNZ16(out, out->x);
+  out->c = k0 >= best;
+}
+
+static void fuzz_func_8A9BE2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(int i = 0; i < 20; i++) wr16ram(ram, 0x041C + 2 * i, (uint16_t)((rnd() & 3) ? rnd() % 16 : rnd()));
+}
+
+// ---- func_8AB680 ($8A:B680) ----  A = list - 4 (bank DB); exits with A = 0, X/Y kept (N/Z
+// from the PLX), C/V of the last pointer ADC #8 (as on entry for an empty list).
+static void call_func_8AB680(const Regs* in, Regs* out) {
+  uint32_t bank = (uint32_t)in->db << 16;
+  uint16_t at = (uint16_t)(in->a + 4);
+  func_8AB680(bank | at);
+  uint16_t end = rd16(DP + 0x60);
+  out->a = 0;
+  setNZ16(out, in->x);
+  if(end != at) setAdc16(out, (uint16_t)(end - 8), 8);
+}
+
+static void fuzz_func_8AB680(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = 0x1BFC;  // the list at $1C00 of DB's low-WRAM mirror
+  int n = (int)(rnd() % 6);
+  for(int i = 0; i < n; i++) {
+    uint16_t rec = (uint16_t)(0x1C00 + 8 * i);
+    for(int b = 0; b < 8; b++) ram[rec + b] = (uint8_t)rnd();
+    if(ram[rec] == 0 && ram[rec + 1] == 0) ram[rec] = 1;
+    wr16ram(ram, rec + 4, (uint16_t)(2 * (rnd() % 32)));
+  }
+  wr16ram(ram, (uint16_t)(0x1C00 + 8 * n), 0);
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1436,6 +1510,14 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x7F, .fixedD = true, .call = call_func_80DC5A, ALL_OUTPUTS, .fuzz = fuzz_func_80DC5A},
   {.name = "func_8A9BB5", .entry = 0x8A9BB5, .end = 0x8A9BE2, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_func_8A9BB5, ALL_OUTPUTS, .fuzz = fuzz_func_8A9BB5},
+  {.name = "func_8A8EEF", .entry = 0x8A8EEF, .end = 0x8A8F02, .rtl = true, .source = "src/misc.c",
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8A8EEF, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_8A9BAA", .entry = 0x8A9BAA, .end = 0x8A9BB5, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_func_8A9BAA, ALL_OUTPUTS, .fuzz = fuzz_func_8A9BAA},
+  {.name = "func_8A9BE2", .entry = 0x8A9BE2, .end = 0x8A9BF6, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_8A9BE2, ALL_OUTPUTS, .fuzz = fuzz_func_8A9BE2},
+  {.name = "func_8AB680", .entry = 0x8AB680, .end = 0x8AB6AA, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x8A, .fixedD = true, .call = call_func_8AB680, ALL_OUTPUTS, .fuzz = fuzz_func_8AB680},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

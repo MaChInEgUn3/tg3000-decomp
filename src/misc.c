@@ -404,3 +404,41 @@ bool func_8A9BB5(uint16_t* slot) {
     wr16(DP + 0x68, (uint16_t)(want - 1));  // settle for a lower kind
   }
 }
+
+// TG3000_ROUTINE($8A:8EEF) func_8A8EEF (long call)
+void func_8A8EEF(void) {
+  wr16(DP + 0x30, 0);
+  for(uint16_t i = 0; i < 0x100; i += 2) wr16(0x0500 + i, 0);
+  clear_sprites();
+}
+
+// TG3000_ROUTINE($8A:9BAA) func_8A9BAA
+void func_8A9BAA(void) {
+  wr16(DP + 0x54, (uint16_t)(rd16(DP + 0x54) + 0x10));
+  wr16(DP + 0x56, (uint16_t)(rd16(DP + 0x56) - 1));
+}
+
+// TG3000_ROUTINE($8A:9BE2) func_8A9BE2
+uint16_t func_8A9BE2(void) {
+  wr16(DP + 0x68, 0);
+  for(int x = 0x26; x >= 0; x -= 2) {
+    uint16_t kind = bus_rd16(SLOT_KIND + (uint32_t)x);
+    // the original keeps the larger one by the sign of kind - best (BMI), not a true
+    // signed compare
+    if(!((uint16_t)(kind - rd16(DP + 0x68)) & 0x8000)) wr16(DP + 0x68, kind);
+  }
+  return rd16(DP + 0x68);
+}
+
+// TG3000_ROUTINE($8A:B680) func_8AB680
+void func_8AB680(uint32_t list) {
+  uint32_t bank = list & 0xFF0000;
+  uint16_t at = (uint16_t)list;
+  wr16(DP + 0x60, at);
+  while(bus_rd16(bank + at) != 0) {
+    uint16_t x = bus_rd16(bank + at + 4);
+    bus_wr16(bank + 0x1516 + x, bus_rd16(bank + at + 6));
+    at = (uint16_t)(at + 8);
+    wr16(DP + 0x60, at);
+  }
+}

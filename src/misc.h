@@ -155,4 +155,19 @@ uint32_t func_80DC5A(uint32_t table, uint16_t a);
 // no free slot (*slot = $0166 then).
 bool func_8A9BB5(uint16_t* slot);
 
+// $0130 = 0, the 128 words at $0500 cleared, then clear_sprites.
+void func_8A8EEF(void);
+
+// $0154 += $10, $0156 -= 1.
+void func_8A9BAA(void);
+
+// $0168 = the largest of the 20 slot kinds at $041C (largest by the sign of the
+// difference, as the original's BMI does), starting from 0. Returns it.
+uint16_t func_8A9BE2(void);
+
+// For each 8-byte record of the list at bus address `list` (the original's A + 4, bank DB)
+// until a zero first word: the word at $1516 + (word 4) = word 6. $0160 follows the
+// record pointer.
+void func_8AB680(uint32_t list);
+
 #endif

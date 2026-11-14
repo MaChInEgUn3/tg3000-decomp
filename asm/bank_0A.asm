@@ -36,7 +36,7 @@ CODE_8A803B:
     jsr.w $8768                 ; $8A8049
     jsl.l $8A8F18               ; $8A804C
     jsl.l clear_dp_scratch      ; $8A8050
-    jsl.l $8A8EEF               ; $8A8054
+    jsl.l func_8A8EEF           ; $8A8054
     jsr.w $8828                 ; $8A8058
     jsr.w $891C                 ; $8A805B
     jsr.w $8B0A                 ; $8A805E
@@ -1134,6 +1134,7 @@ CODE_8A8EB8:
     inc.b $28                   ; $8A8EEA
 CODE_8A8EEC:
     jmp.w $8E63                 ; $8A8EEC
+func_8A8EEF:
     rep.b #$20                  ; $8A8EEF
     stz.b $30                   ; $8A8EF1
     ldx.w #$00FE                ; $8A8EF3
@@ -2051,7 +2052,7 @@ CODE_8A9902:
     sta.b $5A                   ; $8A9905
     rts                         ; $8A9907
     jsr.w $9AA5                 ; $8A9908
-    jsr.w $9BE2                 ; $8A990B
+    jsr.w func_8A9BE2           ; $8A990B
     stz.b $5E                   ; $8A990E
     jsr.w $99BE                 ; $8A9910
 CODE_8A9913:
@@ -2265,9 +2266,10 @@ CODE_8A9BA0:
     plx                         ; $8A9BA0
     stx.b $54                   ; $8A9BA1
     rep.b #$20                  ; $8A9BA3
-    jsr.w $9BAA                 ; $8A9BA5
+    jsr.w func_8A9BAA           ; $8A9BA5
     pla                         ; $8A9BA8
     rts                         ; $8A9BA9
+func_8A9BAA:
     clc                         ; $8A9BAA
     lda.b $54                   ; $8A9BAB
     adc.w #$0010                ; $8A9BAD
@@ -2303,6 +2305,7 @@ CODE_8A9BDF:
     ply                         ; $8A9BDF
     sec                         ; $8A9BE0
     rts                         ; $8A9BE1
+func_8A9BE2:
     stz.b $68                   ; $8A9BE2
     ldx.w #$0026                ; $8A9BE4
 CODE_8A9BE7:
@@ -2432,7 +2435,7 @@ CODE_8A9CFE:
     dex                         ; $8A9D02
     dex                         ; $8A9D03
     bpl CODE_8A9CFE             ; $8A9D04
-    jsr.w $9BE2                 ; $8A9D06
+    jsr.w func_8A9BE2           ; $8A9D06
     jsr.w $99D0                 ; $8A9D09
     ldy.w #$0000                ; $8A9D0C
 CODE_8A9D0F:
@@ -2501,7 +2504,7 @@ CODE_8A9E96:
     jsr.w $B994                 ; $8A9EBC
     jsr.w $BACB                 ; $8A9EBF
     jsr.w wipe_columns          ; $8A9EC2
-    jsl.l $8A8EEF               ; $8A9EC5
+    jsl.l func_8A8EEF           ; $8A9EC5
     lda.w #$FC5F                ; $8A9EC9
     sta.w $0008                 ; $8A9ECC
     sep.b #$20                  ; $8A9ECF
@@ -3133,7 +3136,7 @@ func_8AA49E:
 CODE_8AA4C3:
     lda.b ($4A),y               ; $8AA4C3
     beq CODE_8AA4CE             ; $8AA4C5
-    jsr.w $B680                 ; $8AA4C7
+    jsr.w func_8AB680           ; $8AA4C7
     iny                         ; $8AA4CA
     iny                         ; $8AA4CB
     bra CODE_8AA4C3             ; $8AA4CC
@@ -3292,6 +3295,7 @@ CODE_8AB65E:
     jsr.w wipe_columns          ; $8AB67C
 CODE_8AB67F:
     rts                         ; $8AB67F
+func_8AB680:
     phx                         ; $8AB680
     phy                         ; $8AB681
     inc a                       ; $8AB682
@@ -3818,7 +3822,7 @@ CODE_8ABC9B:
     jsr.w $B212                 ; $8ABE83
     inc.b $8E                   ; $8ABE86
     inc.w $0D7C                 ; $8ABE88
-    jsl.l $8A8EEF               ; $8ABE8B
+    jsl.l func_8A8EEF           ; $8ABE8B
     jsr.w clear_tilemap_7f      ; $8ABE8F
     jsr.w $BF4E                 ; $8ABE92
     lda.w #$FC5F                ; $8ABE95
@@ -4032,7 +4036,7 @@ CODE_8AC04C:
     ldx.w #$F5BC                ; $8AC08D
     lda.w #$0087                ; $8AC090
     jsl.l $80837D               ; $8AC093
-    jsl.l $8A8EEF               ; $8AC097
+    jsl.l func_8A8EEF           ; $8AC097
     jsr.w clear_tilemap_7f      ; $8AC09B
     lda.w #$FC5F                ; $8AC09E
     sta.w $0008                 ; $8AC0A1

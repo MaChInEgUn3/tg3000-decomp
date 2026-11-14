@@ -681,6 +681,11 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   explained yet (open): in those failures the original left `$36` in a few bytes the
   routine never writes; a guess is hardware state left by an earlier routine's fuzz (an
   HDMA channel writing WRAM during the sample), which the WRAM reset does not cover.
+- Four small bank-`$8A` roots, each called only 4-7 times in the 60k movie (the fuzz
+  carries the evidence): `func_8A8EEF` (clear `$0500` and the sprites), `func_8A9BAA`,
+  `func_8A9BE2` (the largest slot kind, by the sign of the difference as the original's
+  BMI does — not a true signed compare) and `func_8AB680` (a list of 8-byte records
+  setting `$1516` + offset).
 
 ## Coverage without a player (2026-11-13)
 

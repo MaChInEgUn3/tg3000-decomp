@@ -90,3 +90,7 @@ func    82B7B0   func_82B7B0         ; AND a 2x5-word block of the $7E:230C map 
 func    82B838   func_82B838         ; copy a 2x5-word block from $7E:217C to $7E:230C -> src/misc.c
 func    80DC5A   func_80DC5A         ; HDMA-style table at DB:X ($7F): $31 lines, H lines, 1 line, $4D-H lines, $B4 -> src/misc.c
 func    8A9BB5   func_8A9BB5         ; take a free $7F:7FBC slot of kind $0168 (lowering it until 0); C = none -> src/misc.c
+func    8A8EEF   func_8A8EEF         ; $0130 = 0, clear $0500-$05FF, clear_sprites (long) -> src/misc.c
+func    8A9BAA   func_8A9BAA         ; $0154 += $10, $0156 -= 1 -> src/misc.c
+func    8A9BE2   func_8A9BE2         ; $0168 = largest slot kind at $041C (BMI compare) -> src/misc.c
+func    8AB680   func_8AB680         ; 8-byte records at DB:A+4: $1516+[4] = [6] -> src/misc.c
