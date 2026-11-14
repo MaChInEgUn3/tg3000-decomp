@@ -557,6 +557,13 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   run, adding these two routines shifted every later routine's random inputs and
   `text_put_char` lost 2 of its 88 paths in the selftest's short run (200 inputs) — a
   pass or fail that depended on registry order. The gate caught it before the commit.
+- Five leaves: `clear_tilemap_7f` ($8A:B981), `func_8ABC32`, `func_8ABC7F`,
+  `func_82EC09` (a signed 12-bit difference from two tables at `$7E:8CB3`/`$8CB5`) and
+  `text_print_tiles` ($8A:C13F, a string at DB:A printed with text_put_tile_char). The
+  latter's `$80` = new line path never ran in a movie; its bytes (`INC $3C; STZ $3A;
+  BRA`) were decoded from ROM and the fuzz, which puts strings in DB `$8A`'s low-WRAM
+  mirror, covers it. `clear_tilemap_7f`'s 6 live entries were all interrupted or not
+  sampled (a 2048-word fill), so it rests on the fuzz alone.
 
 ## Coverage without a player (2026-11-13)
 

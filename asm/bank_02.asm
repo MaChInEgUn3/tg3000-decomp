@@ -4813,7 +4813,7 @@ CODE_82E4ED:
     incbin !baserom:$16AFE..$16B1A
     sta.w $1F0A                 ; $82EB1A
     tyx                         ; $82EB1D
-    jsr.w $EC09                 ; $82EB1E
+    jsr.w func_82EC09           ; $82EB1E
     ldx.b $1A                   ; $82EB21
     sta.w $1F0E                 ; $82EB23
     sta.w $3C6C,x               ; $82EB26
@@ -4829,6 +4829,7 @@ CODE_82E4ED:
     sta.w $3DAC,x               ; $82EB41
     rts                         ; $82EB44
     incbin !baserom:$16B45..$16C09
+func_82EC09:
     lda.l $7E8CB5,x             ; $82EC09
     and.w #$00FF                ; $82EC0D
     sta.b $1E                   ; $82EC10

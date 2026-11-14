@@ -208,3 +208,25 @@ void func_8A9FA1(void) {
     wr16(0x1516 + object, (mask & 1) ? (uint16_t)(flags & 0xFF7F) : (uint16_t)(flags | 0x0080));
   }
 }
+
+// TG3000_ROUTINE($8A:B981) clear_tilemap_7f
+void clear_tilemap_7f(void) {
+  for(uint32_t i = 0; i < 0x1000; i += 2) wr16(0x10000 + i, 0x003D);
+}
+
+// TG3000_ROUTINE($8A:BC32) func_8ABC32
+void func_8ABC32(void) { wr16(DP + 0x92, (uint16_t)(rd16(DP + 0x92) + rd16(0x0DCA))); }
+
+// TG3000_ROUTINE($8A:BC7F) func_8ABC7F
+void func_8ABC7F(void) {
+  for(uint16_t i = 0; i < 0x20; i += 2) wr16(0x0DAC + i, 0);
+}
+
+// TG3000_ROUTINE($82:EC09) func_82EC09
+uint16_t func_82EC09(uint16_t x) {
+  uint16_t b = rd8(0x8CB5 + (uint32_t)x);
+  uint16_t a = (uint16_t)(rd8(0x8CB3 + (uint32_t)x) << 4);
+  if(a & 0x0800) a |= 0xF000;  // the byte is the top of a signed 12-bit value
+  wr16(DP + 0x1E, (uint16_t)(b << 1));
+  return (uint16_t)(a - b);
+}

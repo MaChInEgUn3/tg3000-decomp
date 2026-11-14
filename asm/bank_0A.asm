@@ -1669,7 +1669,7 @@ CODE_8A954E:
     lda.w #$0087                ; $8A9579
     jsl.l $80837D               ; $8A957C
     plb                         ; $8A9580
-    jsr.w $B981                 ; $8A9581
+    jsr.w clear_tilemap_7f      ; $8A9581
     inc.b $6A                   ; $8A9584
     jsr.w $971B                 ; $8A9586
     lda.w #$0000                ; $8A9589
@@ -3610,6 +3610,7 @@ CODE_8AB964:
     dec.b $74                   ; $8AB97C
     dec.b $74                   ; $8AB97E
     rts                         ; $8AB980
+clear_tilemap_7f:
     ldy.w #$0800                ; $8AB981
     ldx.w #$0000                ; $8AB984
     lda.w #$003D                ; $8AB987
@@ -3710,7 +3711,7 @@ CODE_8ABB60:
     bne CODE_8ABB60             ; $8ABB95
     ply                         ; $8ABB97
     rts                         ; $8ABB98
-    jsr.w $BC7F                 ; $8ABB99
+    jsr.w func_8ABC7F           ; $8ABB99
     stz.b $48                   ; $8ABB9C
     stz.b $92                   ; $8ABB9E
     stz.b $84                   ; $8ABBA0
@@ -3765,12 +3766,13 @@ CODE_8ABBF6:
     rol.w $0DAE                 ; $8ABC21
     rol.w $0DAC                 ; $8ABC24
     inc.b $84                   ; $8ABC27
-    jsr.w $BC32                 ; $8ABC29
+    jsr.w func_8ABC32           ; $8ABC29
     dey                         ; $8ABC2C
     bne CODE_8ABBF6             ; $8ABC2D
     pla                         ; $8ABC2F
     ply                         ; $8ABC30
     rts                         ; $8ABC31
+func_8ABC32:
     pha                         ; $8ABC32
     lda.b $92                   ; $8ABC33
     clc                         ; $8ABC35
@@ -3779,6 +3781,7 @@ CODE_8ABBF6:
     pla                         ; $8ABC3B
     rts                         ; $8ABC3C
     incbin !baserom:$53C3D..$53C7F
+func_8ABC7F:
     ldx.w #$001E                ; $8ABC7F
 CODE_8ABC82:
     stz.w $0DAC,x               ; $8ABC82
@@ -3867,7 +3870,7 @@ CODE_8ABC9B:
     inc.b $8E                   ; $8ABE86
     inc.w $0D7C                 ; $8ABE88
     jsl.l $8A8EEF               ; $8ABE8B
-    jsr.w $B981                 ; $8ABE8F
+    jsr.w clear_tilemap_7f      ; $8ABE8F
     jsr.w $BF4E                 ; $8ABE92
     lda.w #$FC5F                ; $8ABE95
     sta.w $0008                 ; $8ABE98
@@ -4081,7 +4084,7 @@ CODE_8AC04C:
     lda.w #$0087                ; $8AC090
     jsl.l $80837D               ; $8AC093
     jsl.l $8A8EEF               ; $8AC097
-    jsr.w $B981                 ; $8AC09B
+    jsr.w clear_tilemap_7f      ; $8AC09B
     lda.w #$FC5F                ; $8AC09E
     sta.w $0008                 ; $8AC0A1
     inc.b $8E                   ; $8AC0A4
@@ -4145,8 +4148,9 @@ CODE_8AC0E8:
     rts                         ; $8AC136
     stx.b $3A                   ; $8AC137
     sty.b $3C                   ; $8AC139
-    jsr.w $C13F                 ; $8AC13B
+    jsr.w text_print_tiles      ; $8AC13B
     rts                         ; $8AC13E
+text_print_tiles:
     sta.b $48                   ; $8AC13F
     ldy.w #$0000                ; $8AC141
 CODE_8AC144:

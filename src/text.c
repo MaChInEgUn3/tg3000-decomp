@@ -132,3 +132,19 @@ uint16_t sprite_text(uint32_t str, uint16_t x) {
   wr16(SPRITE_TEXT_SLOT, slot);
   return rd16(SPRITE_TEXT_X);
 }
+
+// TG3000_ROUTINE($8A:C13F) text_print_tiles
+uint16_t text_print_tiles(uint32_t str) {
+  wr16(DP + 0x48, (uint16_t)str);
+  uint16_t i = 0;
+  for(;; i++) {
+    uint8_t ch = bus_rd8(str + i);
+    if(ch == 0) return i;
+    if(ch == 0x80) {  // new line: next row, column 0
+      wr16(TEXT_CURSOR_Y, (uint16_t)(rd16(TEXT_CURSOR_Y) + 1));
+      wr16(TEXT_CURSOR_X, 0);
+      continue;
+    }
+    text_put_tile_char(ch);
+  }
+}

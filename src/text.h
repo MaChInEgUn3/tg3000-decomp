@@ -38,4 +38,10 @@ void text_cursor_down3(void);
 // code as the glyph. Leaves the next slot in $0174 and returns the final x (also in $0116).
 uint16_t sprite_text(uint32_t str, uint16_t x);
 
+// Print the zero-terminated string at bus address `str` (the original takes its low word
+// in A, also left in $0148, and the bank from DB) one tile per character with
+// text_put_tile_char; $80 moves the cursor to column 0 of the next row. Returns the
+// string's length (the original's Y).
+uint16_t text_print_tiles(uint32_t str);
+
 #endif

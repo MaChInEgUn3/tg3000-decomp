@@ -85,4 +85,18 @@ void sprite_frame(uint16_t entry);
 // set otherwise. $0158 is 0-5 in the game.
 void func_8A9FA1(void);
 
+// Fill the 32x64 map of words at $7F:0000 with tile $003D (a blank).
+void clear_tilemap_7f(void);
+
+// $0192 += $0DCA.
+void func_8ABC32(void);
+
+// Clear the 16 words $0DAC-$0DCB.
+void func_8ABC7F(void);
+
+// For entry `x`: the byte at $7E:8CB3 + x as the top 8 bits of a signed 12-bit value
+// (sign-extended, times 16) minus the byte at $7E:8CB5 + x; that byte, doubled, is left
+// in $011E. Returns the difference.
+uint16_t func_82EC09(uint16_t x);
+
 #endif

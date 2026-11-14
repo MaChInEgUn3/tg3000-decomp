@@ -434,6 +434,75 @@ static void fuzz_func_8A9FA1(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(uint16_t i = 0; i < 0x20; i += 2) wr16ram(ram, 0x1516 + i, (uint16_t)rnd());
 }
 
+// ---- clear_tilemap_7f ($8A:B981) ----  exits with A = $3D, X = $1000, Y = 0 (Z from DEY).
+static void call_clear_tilemap_7f(const Regs* in, Regs* out) {
+  (void)in;
+  clear_tilemap_7f();
+  out->a = 0x003D;
+  out->x = 0x1000;
+  out->y = 0;
+  setNZ16(out, 0);
+}
+
+// ---- func_8ABC32 ($8A:BC32) ----  A kept (N/Z from the PLA), C/V of the ADC.
+static void call_func_8ABC32(const Regs* in, Regs* out) {
+  uint16_t old = rd16(DP + 0x92);
+  func_8ABC32();
+  setNZ16(out, in->a);
+  setAdc16(out, old, rd16(0x0DCA));
+}
+
+static void fuzz_func_8ABC32(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x92, (uint16_t)rnd());
+  wr16ram(ram, 0x0DCA, (uint16_t)rnd());
+}
+
+// ---- func_8ABC7F ($8A:BC7F) ----  exits with X = $FFFE (N from the last DEX).
+static void call_func_8ABC7F(const Regs* in, Regs* out) {
+  (void)in;
+  func_8ABC7F();
+  out->x = 0xFFFE;
+  setNZ16(out, out->x);
+}
+
+// ---- func_82EC09 ($82:EC09) ----  X = entry; exits with A = the difference, N/Z from the
+// ASL of $011E, C = 0 (a byte doubled), V of the SBC.
+static void call_func_82EC09(const Regs* in, Regs* out) {
+  uint16_t b = rd8(0x8CB5 + (uint32_t)in->x);
+  out->a = func_82EC09(in->x);
+  setSbc16(out, (uint16_t)(out->a + b), b);
+  setNZ16(out, rd16(DP + 0x1E));
+  out->c = false;
+}
+
+static void fuzz_func_82EC09(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)(rnd() % 0x200);
+  wr16ram(ram, 0x8CB3 + r->x, (uint16_t)rnd());
+  wr16ram(ram, 0x8CB5 + r->x, (uint16_t)rnd());
+}
+
+// ---- text_print_tiles ($8A:C13F) ----  A = string (bank DB); exits with A = 0, Y = length,
+// Z = 1, C of the last CMP #$80 (unchanged for an empty string).
+static void call_text_print_tiles(const Regs* in, Regs* out) {
+  uint32_t str = ((uint32_t)in->db << 16) | in->a;
+  out->y = text_print_tiles(str);
+  out->a = 0;
+  setNZ16(out, 0);
+  if(out->y > 0) out->c = bus_rd8(((uint32_t)in->db << 16) + (uint16_t)(in->a) + out->y - 1) >= 0x80;
+}
+
+static void fuzz_text_print_tiles(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  // DB is the code's bank ($8A); its $0000-$1FFF is WRAM, so the string goes at $1C00
+  r->a = 0x1C00;
+  int n = (int)(rnd() % 12);
+  for(int i = 0; i < n; i++) ram[0x1C00 + i] = (rnd() % 6 == 0) ? 0x80 : (uint8_t)(0x20 + rnd() % 0x3B);
+  ram[0x1C00 + n] = 0;
+  wr16ram(ram, DP + 0x3A, (uint16_t)(rnd() % 16));
+  wr16ram(ram, DP + 0x3C, (uint16_t)(rnd() % 8));
+  wr16ram(ram, DP + 0x90, (uint16_t)(rnd() & 1));
+}
+
 // ---- step_toward ($8A:A264, $8A:A27D, $8A:A296) ----  X = entry, Y = steps; exits with
 // Y = steps left, A = the last difference, Z = 1 and N = 0 (from the equal SBC or the
 // final DEY), C/V of that last SBC (target - the value before the last step).
@@ -823,6 +892,16 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_sprite_frame, ALL_OUTPUTS, .fuzz = fuzz_sprite_frame},
   {.name = "func_8A9FA1", .entry = 0x8A9FA1, .end = 0x8A9FE9, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x8A, .fixedD = true, .call = call_func_8A9FA1, ALL_OUTPUTS, .fuzz = fuzz_func_8A9FA1},
+  {.name = "clear_tilemap_7f", .entry = 0x8AB981, .end = 0x8AB994, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .call = call_clear_tilemap_7f, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_8ABC32", .entry = 0x8ABC32, .end = 0x8ABC3D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8ABC32, ALL_OUTPUTS, .fuzz = fuzz_func_8ABC32},
+  {.name = "func_8ABC7F", .entry = 0x8ABC7F, .end = 0x8ABC8A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_func_8ABC7F, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_82EC09", .entry = 0x82EC09, .end = 0x82EC2B, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_82EC09, ALL_OUTPUTS, .fuzz = fuzz_func_82EC09},
+  {.name = "text_print_tiles", .entry = 0x8AC13F, .end = 0x8AC15D, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_text_print_tiles, ALL_OUTPUTS, .fuzz = fuzz_text_print_tiles},
   {.name = "func_8A92CF", .entry = 0x8A92CF, .end = 0x8A9307, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8A92CF, ALL_OUTPUTS, .fuzz = fuzz_func_8A92CF},
   {.name = "func_80F745", .entry = 0x80F745, .end = 0x80F8F8, .source = "src/line_tables.c", .needM16 = true,
