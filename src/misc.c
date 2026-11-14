@@ -71,3 +71,16 @@ void func_8AB700(void) {
   if(i < 0) return;
   wr16(0x0D04 + (uint16_t)i, (rd16(DP + 0x5A) & 1) ? 4 : 0);
 }
+
+// TG3000_ROUTINE($8A:A264) step_toward: $0D80,x towards $0D88,x
+// TG3000_ROUTINE($8A:A27D) step_toward: $0D70,x towards $0D78,x
+// TG3000_ROUTINE($8A:A296) step_toward: $0D68,x towards $0D90,x
+uint16_t step_toward(uint16_t value, uint16_t target, uint16_t steps, uint16_t* last_diff) {
+  for(;;) {
+    uint16_t diff = (uint16_t)(rd16(target) - rd16(value));
+    *last_diff = diff;
+    if(diff == 0) return steps;
+    wr16(value, (uint16_t)(rd16(value) + ((int16_t)diff < 0 ? -1 : 1)));
+    if(--steps == 0) return 0;
+  }
+}

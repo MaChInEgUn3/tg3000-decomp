@@ -393,6 +393,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   RTS jumps through Y. No movie reaches it; the C does nothing there and fuzz keeps
   `$013C >= 10`.
 
+## Text and small steppers (roots-2, 2026-11-14)
+
+- **Text:** `text_put_char` ($8A:B83C, `src/text.c`, 8,078 calls) draws an ASCII
+  character (8-bit A) at the cursor (`$013A` column, `$013C` row) into the word map at
+  `$7F:0000` — 32 columns, each character two tiles high (bottom at +`$40`) — and
+  advances the cursor. Main font: glyph pairs at `$81:CCD9` (letters → 0-25, digits →
+  `$1A-$23` with attribute `$3C00` instead of `$3800`, space → `$33`, punctuation looked up
+  in a 15-byte list at `$8A:B8FA`: `&\x9c[.+={}?!]<>/_`). When `$0D7C` = 0 an alternate
+  font (tops `$8A:C9C4`, bottoms `$8A:CA3A`) is used; that path never ran in a movie
+  and sits right before the punctuation list, so the "table" there was really code
+  (decoded from ROM, covered by fuzz: paths 88/88). `char_to_tile_index` ($8A:C2A2) is a
+  second, simpler ASCII → glyph map. `$8A:C2CC` is a byte-identical copy of
+  `tilemap_offset`.
+- **`step_toward`** ($8A:A264/A27D/A296, `src/misc.c`): move a word one step toward a
+  target, up to Y steps, stopping when equal (pairs `$0D80→$0D88`, `$0D70→$0D78`,
+  `$0D68→$0D90`, indexed by X). One of them had 88 watched returns (< 100), so all its
+  flags stay in the contract; C/V are derived from the C's reported last difference.
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

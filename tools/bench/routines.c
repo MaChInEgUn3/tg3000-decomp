@@ -14,6 +14,7 @@
 #include "line_tables.h"
 #include "misc.h"
 #include "stars.h"
+#include "text.h"
 #include "tg3000.h"
 #include "util.h"
 #include "video_dma.h"
@@ -346,6 +347,72 @@ static void fuzz_func_8AB700(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x5A, (uint16_t)rnd());
 }
 
+// ---- text_put_char ($8A:B83C) ----  entered with 8-bit A = the character. PHP/PLP keep
+// V/C, and N/Z of the LDX $0D7C before the PHP; exits with A = the bottom tile written,
+// X = the map offset, Y kept.
+static void call_text_put_char(const Regs* in, Regs* out) {
+  uint16_t at = text_put_char((uint8_t)in->a);
+  out->x = at;
+  out->a = rd16(0x10040 + at);
+  setNZ16(out, rd16(TEXT_FONT_SEL));  // the PHP comes after LDX $0D7C
+}
+
+static void fuzz_text_put_char(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint32_t k = rnd();
+  r->a = (uint16_t)((r->a & 0xFF00) | (0x20 + rnd() % 0x60));
+  wr16ram(ram, TEXT_FONT_SEL, (k & 3) == 0 ? 0 : 1);
+  wr16ram(ram, DP + 0x3A, (uint16_t)(rnd() % 32));
+  wr16ram(ram, DP + 0x3C, (uint16_t)(rnd() % 16));
+}
+
+// ---- char_to_tile_index ($8A:C2A2) ----  A in, A out; N/Z from the result. C/V are those
+// of the last CMP (an equal match: C = 1, V kept) or of the final SEC/SBC (#$16 or #$41).
+static void setSbc16(Regs* r, uint16_t a, uint16_t b) {  // C and V of A - b, carry set
+  uint16_t d = (uint16_t)(a - b);
+  r->c = a >= b;
+  r->v = ((a ^ b) & (a ^ d) & 0x8000) != 0;
+}
+
+static void call_char_to_tile_index(const Regs* in, Regs* out) {
+  out->a = char_to_tile_index(in->a);
+  setNZ16(out, out->a);
+  uint16_t ch = in->a;
+  if(ch == 0x20 || ch == 0x2E || ch == 0x21) out->c = true;
+  else setSbc16(out, ch, (int16_t)(ch - 0x41) < 0 ? 0x16 : 0x41);
+}
+
+static void fuzz_char_to_tile_index(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  static const uint16_t special[] = {0x20, 0x2E, 0x21, 0x41, 0x40, 0x5A};
+  uint32_t k = rnd();
+  r->a = (k & 3) == 0 ? special[rnd() % 6] : (uint16_t)(rnd() & 0x7F);
+}
+
+// ---- step_toward ($8A:A264, $8A:A27D, $8A:A296) ----  X = entry, Y = steps; exits with
+// Y = steps left, A = the last difference, Z = 1 and N = 0 (from the equal SBC or the
+// final DEY), C/V of that last SBC (target - the value before the last step).
+#define STEP_ADAPTER(fn, value, target) \
+  static void call_##fn(const Regs* in, Regs* out) { \
+    uint16_t diff; \
+    out->y = step_toward((uint16_t)(value + in->x), (uint16_t)(target + in->x), in->y, &diff); \
+    out->a = diff; \
+    out->z = true; \
+    out->n = false; \
+    uint16_t t = rd16((uint16_t)(target + in->x)), prior = (uint16_t)(t - diff); \
+    out->c = t >= prior; \
+    out->v = ((t ^ prior) & (t ^ diff) & 0x8000) != 0; \
+  } \
+  static void fuzz_##fn(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { \
+    r->x = (uint16_t)(2 * (rnd() % 4)); \
+    uint16_t v = (uint16_t)rnd(); \
+    wr16ram(ram, value + r->x, v); \
+    wr16ram(ram, target + r->x, (uint16_t)(v + (int16_t)(rnd() % 25) - 12)); \
+    r->y = (uint16_t)(1 + rnd() % 12); \
+  }
+STEP_ADAPTER(step_toward_0d80, 0x0D80, 0x0D88)
+STEP_ADAPTER(step_toward_0d70, 0x0D70, 0x0D78)
+STEP_ADAPTER(step_toward_0d68, 0x0D68, 0x0D90)
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -427,6 +494,18 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_tilemap_offset, ALL_OUTPUTS, .fuzz = fuzz_tilemap_offset},
   {.name = "func_8AB700", .entry = 0x8AB700, .end = 0x8AB721, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8AB700, ALL_OUTPUTS, .fuzz = fuzz_func_8AB700},
+  {.name = "tilemap_offset_c2cc", .entry = 0x8AC2CC, .end = 0x8AC2DD, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_tilemap_offset, ALL_OUTPUTS, .fuzz = fuzz_tilemap_offset},
+  {.name = "text_put_char", .entry = 0x8AB83C, .end = 0x8AB8FA, .source = "src/text.c", .needX16 = true,
+   .lowWramDb = true, .fixedD = true, .db = 0x8A, .call = call_text_put_char, ALL_OUTPUTS, .fuzz = fuzz_text_put_char},
+  {.name = "char_to_tile_index", .entry = 0x8AC2A2, .end = 0x8AC2CC, .source = "src/text.c", .needM16 = true,
+   .call = call_char_to_tile_index, ALL_OUTPUTS, .fuzz = fuzz_char_to_tile_index},
+  {.name = "step_toward_0d80", .entry = 0x8AA264, .end = 0x8AA27D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_step_toward_0d80, ALL_OUTPUTS, .fuzz = fuzz_step_toward_0d80},
+  {.name = "step_toward_0d70", .entry = 0x8AA27D, .end = 0x8AA296, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_step_toward_0d70, ALL_OUTPUTS, .fuzz = fuzz_step_toward_0d70},
+  {.name = "step_toward_0d68", .entry = 0x8AA296, .end = 0x8AA2AF, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_step_toward_0d68, ALL_OUTPUTS, .fuzz = fuzz_step_toward_0d68},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

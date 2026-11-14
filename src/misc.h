@@ -34,4 +34,9 @@ uint16_t tilemap_offset(void);
 // return address; no movie reaches that, and this C does nothing then.)
 void func_8AB700(void);
 
+// Move the word at `value` one step towards the word at `target`, up to `steps` times
+// (the original's Y), stopping early once they are equal. Returns the steps left;
+// `last_diff` receives the last target - value the original computed (its A).
+uint16_t step_toward(uint16_t value, uint16_t target, uint16_t steps, uint16_t* last_diff);
+
 #endif

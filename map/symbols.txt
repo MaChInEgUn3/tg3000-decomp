@@ -38,3 +38,10 @@ func    8AB909   tilemap_offset      ; X = $0138*64 + ($0136 <<= 1) -> src/misc.
 func    8AB700   func_8AB700         ; $0D04+($013C-10) = $015A odd ? 4 : 0 (bug if $013C < 10) -> src/misc.c
 ram     7E0D00   line_table_a        ; HDMA format: count byte + word, two buffers ($0134/$0136 offsets)
 ram     7E0D40   line_table_b
+func    8AC2CC   tilemap_offset_c2cc ; identical copy of tilemap_offset -> src/misc.c
+func    8AB83C   text_put_char       ; draw ASCII char (8-bit A) at cursor $013A/$013C into $7F:0000 -> src/text.c
+func    8AC2A2   char_to_tile_index  ; ASCII -> glyph index -> src/text.c
+func    8AA264   step_toward_0d80    ; $0D80,x towards $0D88,x, Y steps -> src/misc.c
+func    8AA27D   step_toward_0d70    ; $0D70,x towards $0D78,x -> src/misc.c
+func    8AA296   step_toward_0d68    ; $0D68,x towards $0D90,x -> src/misc.c
+ram     7F0000   text_map            ; 32-column word map; character bottoms at +$40

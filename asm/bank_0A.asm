@@ -2696,11 +2696,11 @@ CODE_8AA069:
     rts                         ; $8AA0F8
     phx                         ; $8AA0F9
     ldy.b $7E                   ; $8AA0FA
-    jsr.w $A27D                 ; $8AA0FC
+    jsr.w step_toward_0d70      ; $8AA0FC
     ldy.b $7C                   ; $8AA0FF
-    jsr.w $A296                 ; $8AA101
+    jsr.w step_toward_0d68      ; $8AA101
     ldy.b $7A                   ; $8AA104
-    jsr.w $A264                 ; $8AA106
+    jsr.w step_toward_0d80      ; $8AA106
     lda.w $0D60,x               ; $8AA109
     pha                         ; $8AA10C
     lda.w $0D68,x               ; $8AA10D
@@ -2843,6 +2843,7 @@ take_slot:
     inc.b $8C                   ; $8AA25F
     inc.b $8C                   ; $8AA261
     rts                         ; $8AA263
+step_toward_0d80:
     lda.w $0D88,x               ; $8AA264
     sec                         ; $8AA267
     sbc.w $0D80,x               ; $8AA268
@@ -2850,7 +2851,7 @@ take_slot:
     incbin !baserom:$5226D..$5227C
 CODE_8AA27C:
     rts                         ; $8AA27C
-CODE_8AA27D:
+step_toward_0d70:
     lda.w $0D78,x               ; $8AA27D
     sec                         ; $8AA280
     sbc.w $0D70,x               ; $8AA281
@@ -2858,15 +2859,15 @@ CODE_8AA27D:
     bmi CODE_8AA28F             ; $8AA286
     inc.w $0D70,x               ; $8AA288
     dey                         ; $8AA28B
-    bne CODE_8AA27D             ; $8AA28C
+    bne step_toward_0d70        ; $8AA28C
     rts                         ; $8AA28E
 CODE_8AA28F:
     dec.w $0D70,x               ; $8AA28F
     dey                         ; $8AA292
-    bne CODE_8AA27D             ; $8AA293
+    bne step_toward_0d70        ; $8AA293
 CODE_8AA295:
     rts                         ; $8AA295
-CODE_8AA296:
+step_toward_0d68:
     lda.w $0D90,x               ; $8AA296
     sec                         ; $8AA299
     sbc.w $0D68,x               ; $8AA29A
@@ -2874,12 +2875,12 @@ CODE_8AA296:
     bmi CODE_8AA2A8             ; $8AA29F
     inc.w $0D68,x               ; $8AA2A1
     dey                         ; $8AA2A4
-    bne CODE_8AA296             ; $8AA2A5
+    bne step_toward_0d68        ; $8AA2A5
     rts                         ; $8AA2A7
 CODE_8AA2A8:
     dec.w $0D68,x               ; $8AA2A8
     dey                         ; $8AA2AB
-    bne CODE_8AA296             ; $8AA2AC
+    bne step_toward_0d68        ; $8AA2AC
 CODE_8AA2AE:
     rts                         ; $8AA2AE
     sta.b $4A                   ; $8AA2AF
@@ -3258,7 +3259,7 @@ CODE_8AB6DB:
 CODE_8AB6EB:
     lda.b ($44),y               ; $8AB6EB
     beq CODE_8AB6F5             ; $8AB6ED
-    jsr.w $B83C                 ; $8AB6EF
+    jsr.w text_put_char         ; $8AB6EF
     iny                         ; $8AB6F2
     bra CODE_8AB6DB             ; $8AB6F3
 CODE_8AB6F5:
@@ -3290,6 +3291,7 @@ CODE_8AB719:
     ply                         ; $8AB71F
     rts                         ; $8AB720
     incbin !baserom:$53721..$5383C
+text_put_char:
     ldx.w $0D7C                 ; $8AB83C
     bne CODE_8AB844             ; $8AB83F
     jmp.w $B8C9                 ; $8AB841
@@ -4128,8 +4130,8 @@ CODE_8AC255:
     sty.b $36                   ; $8AC282
     ldy.b $3C                   ; $8AC284
     sty.b $38                   ; $8AC286
-    jsr.w $C2CC                 ; $8AC288
-    jsr.w $C2A2                 ; $8AC28B
+    jsr.w tilemap_offset_c2cc   ; $8AC288
+    jsr.w char_to_tile_index    ; $8AC28B
     ldy.b $90                   ; $8AC28E
     beq CODE_8AC295             ; $8AC290
     ora.w #$0400                ; $8AC292
@@ -4141,6 +4143,7 @@ CODE_8AC295:
     ply                         ; $8AC29F
     plp                         ; $8AC2A0
     rts                         ; $8AC2A1
+char_to_tile_index:
     cmp.w #$0020                ; $8AC2A2
     beq CODE_8AC2BB             ; $8AC2A5
     cmp.w #$002E                ; $8AC2A7
@@ -4163,6 +4166,7 @@ CODE_8AC2C7:
     sec                         ; $8AC2C7
     sbc.w #$0016                ; $8AC2C8
     rts                         ; $8AC2CB
+tilemap_offset_c2cc:
     pha                         ; $8AC2CC
     lda.b $38                   ; $8AC2CD
     asl a                       ; $8AC2CF
