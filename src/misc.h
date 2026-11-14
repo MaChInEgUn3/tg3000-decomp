@@ -142,4 +142,17 @@ void func_82B7B0(void);
 // last word copied.
 uint16_t func_82B838(uint16_t at);
 
+// Write a small HDMA-style table at bus address `table` (DB:X in the original; bank $7F in
+// the game): 3-byte entries (line count, word) — $31 lines of $00FF; if A's high byte H
+// is not 0, H lines of (L | L << 8) with L = A's low byte + $69; 1 line of (L << 8 | $69);
+// $4D - H lines of $00FF; then the byte $B4. Also leaves A in $0114, L in $0116 and H in
+// $0118. Returns the address of the final byte.
+uint32_t func_80DC5A(uint32_t table, uint16_t a);
+
+// Take a free slot (word 0 in $7F:7FBC + slot, slots 0..$0166 step 2) whose kind
+// ($041C + slot) is $0168; if there is none, lower $0168 and look again, down to kind 0.
+// The slot taken is marked $FFFF and stored in *slot. Returns false when even kind 0 has
+// no free slot (*slot = $0166 then).
+bool func_8A9BB5(uint16_t* slot);
+
 #endif

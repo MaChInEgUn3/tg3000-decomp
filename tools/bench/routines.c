@@ -1202,6 +1202,45 @@ static void fuzz_func_82B838(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(int i = 0; i < 0x80; i++) ram[0x217C + r->x + i] = (uint8_t)rnd();
 }
 
+// ---- func_80DC5A ($80:DC5A) ----  A = value, X = table (bank DB); exits with X = the
+// final byte's offset, A = $00B4 (N = Z = 0), C/V of the SBC $4D - H.
+static void call_func_80DC5A(const Regs* in, Regs* out) {
+  uint32_t end = func_80DC5A(((uint32_t)in->db << 16) + in->x, in->a);
+  out->x = (uint16_t)end;
+  out->a = 0x00B4;
+  setNZ16(out, out->a);
+  setSbc16(out, 0x4D, (uint16_t)(in->a >> 8));
+}
+
+static void fuzz_func_80DC5A(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->a = (uint16_t)rnd();
+  if(rnd() & 1) r->a &= 0x00FF;
+  r->x = (uint16_t)(rnd() % 0x8000);
+}
+
+// ---- func_8A9BB5 ($8A:9BB5) ----  exits with X = the slot, C = 0 and A = $FFFF when one
+// was taken, else C = 1, A = 0 ($0168) and X = $0166; Y kept (N/Z from the PLY).
+static void call_func_8A9BB5(const Regs* in, Regs* out) {
+  uint16_t slot;
+  bool taken = func_8A9BB5(&slot);
+  out->x = slot;
+  out->c = !taken;
+  out->a = taken ? 0xFFFF : 0;
+  setNZ16(out, in->y);
+}
+
+static void fuzz_func_8A9BB5(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t n = (uint16_t)(1 + rnd() % 20);
+  wr16ram(ram, DP + 0x66, (uint16_t)(2 * n));
+  wr16ram(ram, DP + 0x68, (uint16_t)(rnd() % 8));
+  for(uint16_t i = 0; i < n; i++) {
+    wr16ram(ram, 0x17FBC + 2 * i, (rnd() % 3) ? 0 : 0xFFFF);
+    wr16ram(ram, 0x041C + 2 * i, (uint16_t)(rnd() % 8));
+  }
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1393,6 +1432,10 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x83, .fixedD = true, .call = call_func_82B7B0, ALL_OUTPUTS, .fuzz = fuzz_func_82B7B0},
   {.name = "func_82B838", .entry = 0x82B838, .end = 0x82B87A, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .call = call_func_82B838, ALL_OUTPUTS, .fuzz = fuzz_func_82B838},
+  {.name = "func_80DC5A", .entry = 0x80DC5A, .end = 0x80DCBB, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x7F, .fixedD = true, .call = call_func_80DC5A, ALL_OUTPUTS, .fuzz = fuzz_func_80DC5A},
+  {.name = "func_8A9BB5", .entry = 0x8A9BB5, .end = 0x8A9BE2, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_8A9BB5, ALL_OUTPUTS, .fuzz = fuzz_func_8A9BB5},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

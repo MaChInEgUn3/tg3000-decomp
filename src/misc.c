@@ -356,3 +356,51 @@ uint16_t func_82B838(uint16_t at) {
   }
   return last;
 }
+
+// TG3000_ROUTINE($80:DC5A) func_80DC5A
+uint32_t func_80DC5A(uint32_t table, uint16_t a) {
+  // entries of 3 bytes (line count, word); each written as two overlapping words, as the
+  // original does
+  wr16(DP + 0x14, a);
+  uint16_t low = (uint16_t)((a & 0xFF) + 0x69), high = (uint16_t)(a >> 8);
+  wr16(DP + 0x16, low);
+  wr16(DP + 0x18, high);
+  bus_wr16(table, 0xFF31);
+  bus_wr16(table + 1, 0x00FF);
+  table += 3;
+  if(high != 0) {
+    bus_wr16(table, high);
+    bus_wr16(table + 1, (uint16_t)(((low << 8) | (low >> 8)) | low));
+    table += 3;
+  }
+  bus_wr16(table, 0x0001);
+  bus_wr16(table + 1, (uint16_t)(((low << 8) | (low >> 8)) | 0x69));
+  table += 3;
+  bus_wr16(table, (uint16_t)(0x4D - high));
+  bus_wr16(table + 1, 0x00FF);
+  table += 3;
+  bus_wr16(table, 0x00B4);
+  return table;
+}
+
+#define SLOT_USED 0x17FBC   // $7F:7FBC, one word per slot: 0 free, $FFFF taken
+#define SLOT_KIND 0x81041C  // the slots' kinds (low WRAM $041C through bank $81)
+
+// TG3000_ROUTINE($8A:9BB5) func_8A9BB5
+bool func_8A9BB5(uint16_t* slot) {
+  for(;;) {
+    uint16_t want = rd16(DP + 0x68), end = rd16(DP + 0x66);
+    for(uint16_t x = 0; x != end; x = (uint16_t)(x + 2)) {
+      if(rd16(SLOT_USED + (uint32_t)x) == 0 && bus_rd16(SLOT_KIND + x) == want) {
+        wr16(SLOT_USED + (uint32_t)x, 0xFFFF);
+        *slot = x;
+        return true;
+      }
+    }
+    if(want == 0) {
+      *slot = end;
+      return false;
+    }
+    wr16(DP + 0x68, (uint16_t)(want - 1));  // settle for a lower kind
+  }
+}

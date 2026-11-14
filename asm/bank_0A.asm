@@ -2055,7 +2055,7 @@ CODE_8A9902:
     stz.b $5E                   ; $8A990E
     jsr.w $99BE                 ; $8A9910
 CODE_8A9913:
-    jsr.w $9BB5                 ; $8A9913
+    jsr.w func_8A9BB5           ; $8A9913
     bcs CODE_8A993E             ; $8A9916
     inc.b $5E                   ; $8A9918
     jsr.w $9A81                 ; $8A991A
@@ -2274,6 +2274,7 @@ CODE_8A9BA0:
     sta.b $54                   ; $8A9BB0
     dec.b $56                   ; $8A9BB2
     rts                         ; $8A9BB4
+func_8A9BB5:
     phy                         ; $8A9BB5
 CODE_8A9BB6:
     ldx.w #$0000                ; $8A9BB6
@@ -2435,7 +2436,7 @@ CODE_8A9CFE:
     jsr.w $99D0                 ; $8A9D09
     ldy.w #$0000                ; $8A9D0C
 CODE_8A9D0F:
-    jsr.w $9BB5                 ; $8A9D0F
+    jsr.w func_8A9BB5           ; $8A9D0F
     bcs CODE_8A9D1D             ; $8A9D12
     txa                         ; $8A9D14
     lsr a                       ; $8A9D15

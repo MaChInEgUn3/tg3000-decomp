@@ -667,6 +667,16 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   `$0156`/`$0158` (two table bytes at `$7E:4F31`, each − 2), `func_82B7B0` ANDs the block
   at those coordinates with one of 8 ten-word masks in bank `$83`, `func_82B838` copies a
   block in from `$7E:217C`. What the map is is not known yet.
+- `func_80DC5A` ($80:DC5A) writes a small HDMA-style table (3-byte entries) at DB:X, bank
+  `$7F` in the game; `func_8A9BB5` ($8A:9BB5) takes a free slot of a wanted kind from a
+  table at `$7F:7FBC`, settling for lower kinds down to 0 (carry set when there is none).
+- Process note: a 60k difftest run was killed as "hung" at 23 minutes; it was not —
+  a 60k run with 500 fuzz cases per routine now takes ~22-24 minutes (the old 10-12
+  minute figure dates from fewer routines). Separately, the short movie with `--fuzz 50`
+  fails the fuzz of ~8 already verified routines, on the committed code too, while
+  `--fuzz 200` (selftest) and the 60k run with 500 pass: the fuzz base RAM carries over
+  from routine to routine, so results depend on how many cases ran before. To be fixed
+  in the harness (open item).
 
 ## Coverage without a player (2026-11-13)
 

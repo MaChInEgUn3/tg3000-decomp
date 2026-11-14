@@ -88,3 +88,5 @@ func    8085CA   take_nibble16       ; A = top nibble of $011A, which shifts lef
 func    82B78D   func_82B78D         ; $0156/$0158 = the two bytes at $7E:4F31+((A>>2)&~3), each - 2 -> src/misc.c
 func    82B7B0   func_82B7B0         ; AND a 2x5-word block of the $7E:230C map with one of 8 masks ($83) -> src/misc.c
 func    82B838   func_82B838         ; copy a 2x5-word block from $7E:217C to $7E:230C -> src/misc.c
+func    80DC5A   func_80DC5A         ; HDMA-style table at DB:X ($7F): $31 lines, H lines, 1 line, $4D-H lines, $B4 -> src/misc.c
+func    8A9BB5   func_8A9BB5         ; take a free $7F:7FBC slot of kind $0168 (lowering it until 0); C = none -> src/misc.c

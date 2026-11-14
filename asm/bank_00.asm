@@ -9291,7 +9291,7 @@ CODE_80DB65:
     bra CODE_80DB30             ; $80DB7B
     pea.w $817F                 ; $80DB7D
     plb                         ; $80DB80
-    jsr.w $DC5A                 ; $80DB81
+    jsr.w func_80DC5A           ; $80DB81
     txa                         ; $80DB84
     clc                         ; $80DB85
     adc.w #$0033                ; $80DB86
@@ -9332,7 +9332,7 @@ CODE_80DBA4:
     jmp.w $DC19                 ; $80DBC8
     pea.w $817F                 ; $80DBCB
     plb                         ; $80DBCE
-    jsr.w $DC5A                 ; $80DBCF
+    jsr.w func_80DC5A           ; $80DBCF
     txa                         ; $80DBD2
     clc                         ; $80DBD3
     adc.w #$0033                ; $80DBD4
@@ -9408,6 +9408,7 @@ CODE_80DC4A:
     bne CODE_80DC4A             ; $80DC56
     plb                         ; $80DC58
     rts                         ; $80DC59
+func_80DC5A:
     sta.b $14                   ; $80DC5A
     and.w #$00FF                ; $80DC5C
     clc                         ; $80DC5F
