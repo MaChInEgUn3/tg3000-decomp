@@ -2,11 +2,13 @@
 org $818000
 
     incbin !baserom:$8000..$80D0
+oam_finish_0b00:
     jsr.w oam_high_table_0b00   ; $8180D0
     lda.b $74                   ; $8180D3
     sta.b $72                   ; $8180D5
     stz.b $74                   ; $8180D7
     rtl                         ; $8180D9
+oam_finish:
     jsr.w oam_high_table        ; $8180DA
     lda.b $70                   ; $8180DD
     sta.b $72                   ; $8180DF

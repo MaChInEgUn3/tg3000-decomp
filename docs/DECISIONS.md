@@ -657,6 +657,11 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   point. Because bank `$84`'s `$0000`–`$1FFF` mirrors low WRAM, the fuzz builds a
   synthetic table at `$1800` that the original and the C both read. The C flag is live
   (callers read it) and matched in all 4,000 live samples.
+- The end-of-frame sprite wrappers: `oam_finish_0b00` ($81:80D0; the single table at
+  `$0B00`: pack, D+`$72` = D+`$74`, D+`$74` = 0) and `oam_finish` ($81:80DA; two sprite
+  buffers: pack the one at D+`$6C`, keep the last two frames' ends in `$70`/`$72`, start
+  the next frame in the other buffer, D+`$74` = D+`$6E` − `$0900`, and swap `$6C`/`$6E`).
+  `take_nibble16` ($80:85CA, 19,950 calls) is take_nibble's 16-bit sibling on `$011A`.
 
 ## Coverage without a player (2026-11-13)
 

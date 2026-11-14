@@ -127,4 +127,7 @@ uint16_t func_8ABB5C(uint16_t count, bool* carry);
 // `bits` from bit 0 up; after each shift $0184 += 1 and func_8ABC32 ($0192 += $0DCA).
 void func_8ABBF4(uint16_t bits, uint16_t count);
 
+// The 16-bit sibling of take_nibble: A = the top 4 bits of $011A, which is shifted left 4.
+uint16_t take_nibble16(void);
+
 #endif

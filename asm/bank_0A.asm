@@ -1693,7 +1693,7 @@ CODE_8A954E:
     lda.w #$0000                ; $8A9589
     ldx.w #$0040                ; $8A958C
     jsr.w $9773                 ; $8A958F
-    jsl.l $8180D0               ; $8A9592
+    jsl.l oam_finish_0b00       ; $8A9592
     sep.b #$20                  ; $8A9596
     lda.b #$08                  ; $8A9598
     sta.w $2110                 ; $8A959A
@@ -1764,7 +1764,7 @@ CODE_8A954E:
     tax                         ; $8A9640
     lda.b $7C                   ; $8A9641
     jsr.w $9773                 ; $8A9643
-    jsl.l $8180D0               ; $8A9646
+    jsl.l oam_finish_0b00       ; $8A9646
     lda.w #$0002                ; $8A964A
     tsb.w $0026                 ; $8A964D
     bit.w $1B37                 ; $8A9650

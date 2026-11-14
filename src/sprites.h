@@ -14,4 +14,14 @@
 // the one at $0B00.)
 void oam_high_table(uint16_t dp, uint16_t table);
 
+// End of frame with the single table at $0B00: oam_high_table, then D+$72 = D+$74 (this
+// frame's end) and D+$74 = 0.
+void oam_finish_0b00(uint16_t dp);
+
+// End of frame with two sprite buffers: D+$6C is the one just built (its table at
+// D+$6C + $200), D+$6E the other. Packs the built one (oam_high_table), keeps the ends of
+// the last two frames (D+$72 = D+$70, D+$70 = D+$74), starts the next frame in the other
+// buffer (D+$74 = D+$6E - $0900) and swaps D+$6C and D+$6E.
+void oam_finish(uint16_t dp);
+
 #endif

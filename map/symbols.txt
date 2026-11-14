@@ -82,3 +82,6 @@ func    818101   oam_high_table      ; pack 128 entries' extra bits into the 32-
 func    8ABB5C   func_8ABB5C         ; 256-bit $0DAC-$0DCB >>= Y, bits out -> A, bits in from C then $0146 -> src/misc.c
 func    8ABBF4   func_8ABBF4         ; 256-bit $0DAC-$0DCB <<= Y, bits in from A; $0184++, $0192 += $0DCA each -> src/misc.c
 func    81FBB1   func_81FBB1         ; car Y: advance its record in the segment table ($84), branch choice, jump point -> src/track.c
+func    8180D0   oam_finish_0b00     ; end of frame, single table: pack $0B00, $72 = $74, $74 = 0 (long) -> src/sprites.c
+func    8180DA   oam_finish          ; end of frame, two buffers: pack, keep ends, swap $6C/$6E (long) -> src/sprites.c
+func    8085CA   take_nibble16       ; A = top nibble of $011A, which shifts left 4 -> src/misc.c

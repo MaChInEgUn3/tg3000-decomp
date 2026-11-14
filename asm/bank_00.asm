@@ -576,7 +576,7 @@ take_nibble:
     ldy.b $74                   ; $80855E
     ldx.w #$0004                ; $808560
 CODE_808563:
-    jsr.w $85CA                 ; $808563
+    jsr.w take_nibble16         ; $808563
     bne CODE_808570             ; $808566
     cpx.w #$0003                ; $808568
     beq CODE_808570             ; $80856B
@@ -624,12 +624,13 @@ CODE_808570:
     iny                         ; $8085BD
     iny                         ; $8085BE
 CODE_8085BF:
-    jsr.w $85CA                 ; $8085BF
+    jsr.w take_nibble16         ; $8085BF
     dex                         ; $8085C2
     bne CODE_808570             ; $8085C3
     sty.b $74                   ; $8085C5
     ldy.b $16                   ; $8085C7
     rts                         ; $8085C9
+take_nibble16:
     lda.w #$0000                ; $8085CA
     asl.b $1A                   ; $8085CD
     rol a                       ; $8085CF
@@ -1064,9 +1065,9 @@ CODE_80899E:
 CODE_8089B1:
     rts                         ; $8089B1
     incbin !baserom:$9B2..$9D1
-    jsl.l $8180D0               ; $8089D1
+    jsl.l oam_finish_0b00       ; $8089D1
     rts                         ; $8089D5
-    jsl.l $8180DA               ; $8089D6
+    jsl.l oam_finish            ; $8089D6
     rts                         ; $8089DA
     lda.w $0459                 ; $8089DB
     db $10,$24 ; bpl            ; $8089DE

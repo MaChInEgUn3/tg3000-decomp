@@ -28,3 +28,21 @@ void oam_high_table(uint16_t dp, uint16_t table) {
     for(uint16_t i = 0, s = end; i < n; i++, s = (uint16_t)(s + 4)) wr16(0x0900 + s, 0xE0E0);
   }
 }
+
+// TG3000_ROUTINE($81:80D0) oam_finish_0b00 (long call)
+void oam_finish_0b00(uint16_t dp) {
+  oam_high_table(dp, 0x0B00);
+  wr16(dp + 0x72, rd16(dp + 0x74));  // this frame's end becomes "last frame's"
+  wr16(dp + 0x74, 0);
+}
+
+// TG3000_ROUTINE($81:80DA) oam_finish (long call)
+void oam_finish(uint16_t dp) {
+  uint16_t built = rd16(dp + 0x6C), other = rd16(dp + 0x6E);
+  oam_high_table(dp, (uint16_t)(built + 0x200));
+  wr16(dp + 0x72, rd16(dp + 0x70));
+  wr16(dp + 0x70, rd16(dp + 0x74));
+  wr16(dp + 0x74, (uint16_t)(other - 0x0900));  // the next frame fills the other buffer
+  wr16(dp + 0x6C, other);
+  wr16(dp + 0x6E, built);
+}

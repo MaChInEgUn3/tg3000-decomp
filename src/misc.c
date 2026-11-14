@@ -312,3 +312,10 @@ void func_8ABBF4(uint16_t bits, uint16_t count) {
     func_8ABC32();
   } while(--count != 0);
 }
+
+// TG3000_ROUTINE($80:85CA) take_nibble16
+uint16_t take_nibble16(void) {
+  uint16_t v = rd16(DP + 0x1A);
+  wr16(DP + 0x1A, (uint16_t)(v << 4));
+  return (uint16_t)(v >> 12);
+}

@@ -963,8 +963,7 @@ static void fuzz_func_83EA9B(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // ---- oam_high_table ($81:8101; $81:80F6) ----  exits with M = 16 and either A = $74 - $72
 // (C = 1, no sprites to hide), X = the table - $200, or A = $E0E0, X = the end of the hidden
 // run, Y = 0 (Z from the DEY), C = 0; V of the SBC either way.
-static void oam_high_table_outputs(const Regs* in, Regs* out, uint16_t x) {
-  uint16_t end = rd16((uint16_t)(in->d + 0x74)), last = rd16((uint16_t)(in->d + 0x72));
+static void oam_high_table_outputs_from(Regs* out, uint16_t x, uint16_t end, uint16_t last) {
   uint16_t diff = (uint16_t)(end - last);
   out->m8 = false;
   out->v = ((end ^ last) & (end ^ diff) & 0x8000) != 0;
@@ -981,6 +980,48 @@ static void oam_high_table_outputs(const Regs* in, Regs* out, uint16_t x) {
     out->c = ((uint16_t)(last - end) >> 1) & 1;
     setNZ16(out, 0);
   }
+}
+
+static void oam_high_table_outputs(const Regs* in, Regs* out, uint16_t x) {
+  oam_high_table_outputs_from(out, x, rd16((uint16_t)(in->d + 0x74)), rd16((uint16_t)(in->d + 0x72)));
+}
+
+static void fuzz_oam_tables(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), uint16_t table);
+
+// ---- oam_finish_0b00 ($81:80D0, long) ----  the packer's exit registers, then A = the old
+// D+$74 (N/Z from its LDA).
+static void call_oam_finish_0b00(const Regs* in, Regs* out) {
+  uint16_t end = rd16((uint16_t)(in->d + 0x74)), last = rd16((uint16_t)(in->d + 0x72));
+  oam_finish_0b00(in->d);
+  oam_high_table_outputs_from(out, 0x0900, end, last);
+  out->a = end;
+  setNZ16(out, end);
+}
+
+static void fuzz_oam_finish_0b00(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_oam_tables(r, ram, rnd, 0x0B00);
+}
+
+// ---- oam_finish ($81:80DA, long) ----  exits with X = the old D+$6C, A = the old D+$6E
+// (N/Z from its LDA), C/V of its SBC #$0900, Y as the packer left it.
+static void call_oam_finish(const Regs* in, Regs* out) {
+  uint16_t built = rd16((uint16_t)(in->d + 0x6C)), other = rd16((uint16_t)(in->d + 0x6E));
+  uint16_t end = rd16((uint16_t)(in->d + 0x74)), last = rd16((uint16_t)(in->d + 0x72));
+  oam_finish(in->d);
+  oam_high_table_outputs_from(out, built, end, last);
+  out->x = built;
+  out->a = other;
+  setNZ16(out, other);
+  setSbc16(out, other, 0x0900);
+}
+
+static void fuzz_oam_finish(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint16_t built = (rnd() & 1) ? 0x0700 : 0x0900, other = (uint16_t)(0x1000 - built);
+  wr16ram(ram, (uint16_t)(r->d + 0x6C), built);
+  fuzz_oam_tables(r, ram, rnd, (uint16_t)(built + 0x200));
+  wr16ram(ram, (uint16_t)(r->d + 0x6C), built);
+  wr16ram(ram, (uint16_t)(r->d + 0x6E), (rnd() & 3) ? other : (uint16_t)rnd());
+  wr16ram(ram, (uint16_t)(r->d + 0x70), (uint16_t)(4 * (rnd() % 129)));
 }
 
 static void call_oam_high_table(const Regs* in, Regs* out) {
@@ -1093,6 +1134,19 @@ static void fuzz_func_81FBB1(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0xFAE2 + car, (rnd() & 1) ? 0x7000 : (uint16_t)(pos + rnd() % 0x200 - 0x80));
   wr16ram(ram, 0xFAE4 + car, (uint16_t)(rnd() % 0x200));
   fuzz_rng_state(ram, rnd);
+}
+
+// ---- take_nibble16 ($80:85CA) ----  A = the nibble (N/Z from the last ROL), C = 0.
+static void call_take_nibble16(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = take_nibble16();
+  setNZ16(out, out->a);
+  out->c = false;
+}
+
+static void fuzz_take_nibble16(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x1A, (uint16_t)rnd());
 }
 
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
@@ -1273,6 +1327,13 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8ABBF4, ALL_OUTPUTS, .fuzz = fuzz_big_number},
   {.name = "func_81FBB1", .entry = 0x81FBB1, .end = 0x81FC72, .source = "src/track.c", .needM16 = true,
    .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_func_81FBB1, ALL_OUTPUTS, .fuzz = fuzz_func_81FBB1},
+  {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
+   .fuzz = fuzz_oam_finish_0b00},
+  {.name = "oam_finish", .entry = 0x8180DA, .end = 0x8180F6, .rtl = true, .source = "src/sprites.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish, ALL_OUTPUTS, .fuzz = fuzz_oam_finish},
+  {.name = "take_nibble16", .entry = 0x8085CA, .end = 0x8085DA, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_take_nibble16, ALL_OUTPUTS, .fuzz = fuzz_take_nibble16},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 
