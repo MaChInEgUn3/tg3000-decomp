@@ -15,6 +15,7 @@
 #include "decompress.h"
 #include "frame.h"
 #include "misc.h"
+#include "sprites.h"
 #include "stars.h"
 #include "text.h"
 #include "tg3000.h"
@@ -958,6 +959,57 @@ static void fuzz_func_83EA9B(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->x = (uint16_t)(2 * (rnd() % 41));
 }
 
+// ---- oam_high_table ($81:8101; $81:80F6) ----  exits with M = 16 and either A = $74 - $72
+// (C = 1, no sprites to hide), X = the table - $200, or A = $E0E0, X = the end of the hidden
+// run, Y = 0 (Z from the DEY), C = 0; V of the SBC either way.
+static void oam_high_table_outputs(const Regs* in, Regs* out, uint16_t x) {
+  uint16_t end = rd16((uint16_t)(in->d + 0x74)), last = rd16((uint16_t)(in->d + 0x72));
+  uint16_t diff = (uint16_t)(end - last);
+  out->m8 = false;
+  out->v = ((end ^ last) & (end ^ diff) & 0x8000) != 0;
+  if(end >= last) {
+    out->a = diff;
+    out->x = x;
+    out->c = true;
+    setNZ16(out, diff);
+  } else {
+    uint16_t n = (uint16_t)(last - end) >> 2;
+    out->a = 0xE0E0;
+    out->x = (uint16_t)(end + 4 * n);
+    out->y = 0;
+    out->c = ((uint16_t)(last - end) >> 1) & 1;
+    setNZ16(out, 0);
+  }
+}
+
+static void call_oam_high_table(const Regs* in, Regs* out) {
+  uint16_t x = rd16((uint16_t)(in->d + 0x6C));
+  oam_high_table(in->d, (uint16_t)(x + 0x200));
+  oam_high_table_outputs(in, out, x);
+}
+
+static void call_oam_high_table_0b00(const Regs* in, Regs* out) {
+  oam_high_table(in->d, 0x0B00);
+  oam_high_table_outputs(in, out, 0x0900);
+}
+
+static void fuzz_oam_tables(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), uint16_t table) {
+  for(int i = 0; i < 512; i++) ram[(uint16_t)(table + i)] = (uint8_t)rnd();
+  wr16ram(ram, (uint16_t)(r->d + 0x74), (uint16_t)(4 * (rnd() % 129)));
+  wr16ram(ram, (uint16_t)(r->d + 0x72), (uint16_t)(4 * (rnd() % 129)));
+}
+
+static void fuzz_oam_high_table(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint16_t x = (rnd() & 1) ? 0x0700 : (uint16_t)(0x0200 + 0x100 * (rnd() % 0x10));
+  wr16ram(ram, (uint16_t)(r->d + 0x6C), x);
+  fuzz_oam_tables(r, ram, rnd, (uint16_t)(x + 0x200));
+  wr16ram(ram, (uint16_t)(r->d + 0x6C), x);  // in case the table covered it
+}
+
+static void fuzz_oam_high_table_0b00(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_oam_tables(r, ram, rnd, 0x0B00);
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1124,6 +1176,12 @@ const Routine routines[] = {
    .needX16 = true, .call = call_sprite_group, ALL_OUTPUTS, .fuzz = fuzz_sprite_group},
   {.name = "func_83EA9B", .entry = 0x83EA9B, .end = 0x83EAC6, .source = "src/misc.c", .needM16 = true,
    .lowWramDb = true, .call = call_func_83EA9B, ALL_OUTPUTS, .fuzz = fuzz_func_83EA9B},
+  {.name = "oam_high_table", .entry = 0x818101, .end = 0x818487, .source = "src/sprites.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_oam_high_table, ALL_OUTPUTS, .fuzz = fuzz_oam_high_table},
+  // enters the packer above after its own prologue: the other entry's prologue is a hole
+  {.name = "oam_high_table_0b00", .entry = 0x8180F6, .end = 0x818487, .source = "src/sprites.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_oam_high_table_0b00, ALL_OUTPUTS, .fuzz = fuzz_oam_high_table_0b00,
+   .holes = {{0x818101, 0x81810A}}},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

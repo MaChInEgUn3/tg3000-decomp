@@ -2,12 +2,12 @@
 org $818000
 
     incbin !baserom:$8000..$80D0
-    jsr.w $80F6                 ; $8180D0
+    jsr.w oam_high_table_0b00   ; $8180D0
     lda.b $74                   ; $8180D3
     sta.b $72                   ; $8180D5
     stz.b $74                   ; $8180D7
     rtl                         ; $8180D9
-    jsr.w $8101                 ; $8180DA
+    jsr.w oam_high_table        ; $8180DA
     lda.b $70                   ; $8180DD
     sta.b $72                   ; $8180DF
     lda.b $74                   ; $8180E1
@@ -21,11 +21,13 @@ org $818000
     sta.b $6C                   ; $8180F1
     stx.b $6E                   ; $8180F3
     rtl                         ; $8180F5
+oam_high_table_0b00:
     ldx.w #$0900                ; $8180F6
     phd                         ; $8180F9
     lda.w #$0B00                ; $8180FA
     tcd                         ; $8180FD
     jmp.w $810A                 ; $8180FE
+oam_high_table:
     phd                         ; $818101
     lda.b $6C                   ; $818102
     tax                         ; $818104

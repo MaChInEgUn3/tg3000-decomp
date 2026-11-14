@@ -77,3 +77,5 @@ func    8AB91A   wipe_columns        ; 16 func_8AB942 steps from both edges, a f
 func    8AC137   text_print_tiles_at ; cursor = (X, Y), then text_print_tiles -> src/text.c
 func    80B49E   sprite_group        ; two 6-byte item lists from DB=A table -> sprite entries at $0900+slot -> src/text.c
 func    83EA9B   func_83EA9B         ; entry X of six bank-$86 word tables -> $1EA0-$1EAC -> src/misc.c
+func    8180F6   oam_high_table_0b00 ; oam_high_table on the table at $0B00 -> src/sprites.c
+func    818101   oam_high_table      ; pack 128 entries' extra bits into the 32-byte OAM high table, hide stale slots -> src/sprites.c

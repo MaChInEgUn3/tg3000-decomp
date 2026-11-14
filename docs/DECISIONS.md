@@ -635,6 +635,13 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   C) and sets DB to the table's bank, so its entry stores also go through that bank
   (`bus_wr16`). `func_83EA9B` ($83:EA9B, 18,548 calls; D/DB `$0100/$83` or `$0200/$30`)
   copies entry X of six parallel word tables in bank `$86` to `$1EA0`–`$1EAC`.
+- `oam_high_table` ($81:8101, 8,552 calls; second entry $81:80F6 for the table at
+  `$0B00`), the first piece of `src/sprites.c`: 256 unrolled shifts that take bit 7 of
+  byte 1 and bit 0 of byte 2 of each of the 128 4-byte entries (shifting them out of
+  those bytes) and pack them, 2 bits per entry, into the 32-byte OAM high table written
+  over the start of the table; then the slots from D+`$74` to last frame's D+`$72` get
+  x/y `$E0` (off screen). In C a 32×4 loop. The `$80F6` entry jumps into the other's body
+  after its prologue, so its extent spans the body with that prologue as a hole.
 
 ## Coverage without a player (2026-11-13)
 
