@@ -275,3 +275,40 @@ uint16_t func_83EA9B(uint16_t i) {
   wr16(0x1EA0, first);
   return first;
 }
+
+#define BIG_NUMBER 0x0DAC  // 16 words, $0DAC the most significant: a 256-bit number
+#define BIG_WORDS 16
+
+// TG3000_ROUTINE($8A:BB5C) func_8ABB5C
+uint16_t func_8ABB5C(uint16_t count, bool* carry) {
+  uint16_t out = 0;
+  bool in = *carry;
+  do {
+    for(int w = 0; w < BIG_WORDS; w++) {  // shift right, `in` entering at the top
+      uint16_t v = rd16(BIG_NUMBER + 2 * w);
+      wr16(BIG_NUMBER + 2 * w, (uint16_t)((v >> 1) | (in ? 0x8000 : 0)));
+      in = v & 1;
+    }
+    out = (uint16_t)((out << 1) | in);  // the bit that fell off the bottom
+    uint16_t feed = rd16(DP + 0x46);
+    in = (feed & 0x8000) != 0;  // the next bit in comes from $0146, which fills with 1s
+    wr16(DP + 0x46, (uint16_t)((feed << 1) | 1));
+  } while(--count != 0);
+  *carry = in;
+  return out;
+}
+
+// TG3000_ROUTINE($8A:BBF4) func_8ABBF4
+void func_8ABBF4(uint16_t bits, uint16_t count) {
+  do {
+    bool in = bits & 1;
+    bits >>= 1;
+    for(int w = BIG_WORDS - 1; w >= 0; w--) {  // shift left, `in` entering at the bottom
+      uint16_t v = rd16(BIG_NUMBER + 2 * w);
+      wr16(BIG_NUMBER + 2 * w, (uint16_t)((v << 1) | in));
+      in = (v & 0x8000) != 0;
+    }
+    wr16(DP + 0x84, (uint16_t)(rd16(DP + 0x84) + 1));
+    func_8ABC32();
+  } while(--count != 0);
+}

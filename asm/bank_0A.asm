@@ -3631,6 +3631,7 @@ CODE_8ABAEC:
     sta.w $0196                 ; $8ABAFB
     rts                         ; $8ABAFE
     incbin !baserom:$53AFF..$53B5C
+func_8ABB5C:
     phy                         ; $8ABB5C
     lda.w #$0000                ; $8ABB5D
 CODE_8ABB60:
@@ -3679,7 +3680,7 @@ CODE_8ABBA5:
     jsr.w lsr_n                 ; $8ABBC2
     ply                         ; $8ABBC5
     eor.w $BC3D,y               ; $8ABBC6
-    jsr.w $BBF4                 ; $8ABBC9
+    jsr.w func_8ABBF4           ; $8ABBC9
     inx                         ; $8ABBCC
     inx                         ; $8ABBCD
     inx                         ; $8ABBCE
@@ -3691,6 +3692,7 @@ CODE_8ABBD4:
     lda.b $84                   ; $8ABBD4
     rts                         ; $8ABBD6
     incbin !baserom:$53BD7..$53BF4
+func_8ABBF4:
     phy                         ; $8ABBF4
     pha                         ; $8ABBF5
 CODE_8ABBF6:
@@ -3747,7 +3749,7 @@ CODE_8ABC8D:
     ldx.w #$0000                ; $8ABC98
 CODE_8ABC9B:
     ldy.w #$0005                ; $8ABC9B
-    jsr.w $BB5C                 ; $8ABC9E
+    jsr.w func_8ABB5C           ; $8ABC9E
     tay                         ; $8ABCA1
     sep.b #$20                  ; $8ABCA2
     lda.w $BC5F,y               ; $8ABCA4

@@ -116,4 +116,15 @@ void clear_sprites(void);
 // $1EAC. Returns the $1EA0 value.
 uint16_t func_83EA9B(uint16_t i);
 
+// The 16 words $0DAC-$0DCB are a 256-bit number, $0DAC the most significant word.
+// func_8ABB5C shifts it right `count` times (1-65536; 0 means 65536): the first bit in at
+// the top is *carry, the next ones are taken from the top of $0146 (which fills with 1s);
+// returns the bits shifted out at the bottom (last one in bit 0) and leaves the last
+// $0146 bit taken in *carry.
+uint16_t func_8ABB5C(uint16_t count, bool* carry);
+
+// Shift the 256-bit number left `count` times (0 means 65536), feeding in the bits of
+// `bits` from bit 0 up; after each shift $0184 += 1 and func_8ABC32 ($0192 += $0DCA).
+void func_8ABBF4(uint16_t bits, uint16_t count);
+
 #endif

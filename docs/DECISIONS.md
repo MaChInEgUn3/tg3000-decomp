@@ -642,6 +642,12 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   over the start of the table; then the slots from D+`$74` to last frame's D+`$72` get
   x/y `$E0` (off screen). In C a 32×4 loop. The `$80F6` entry jumps into the other's body
   after its prologue, so its extent spans the body with that prologue as a hole.
+- `func_8ABB5C` / `func_8ABBF4` ($8A:BB5C, $8A:BBF4): the 16 words `$0DAC`–`$0DCB` are a
+  256-bit number (most significant word first), shifted right Y times (bits out into A;
+  bits in: the entry carry, then the top bits of `$0146`, which fills with 1s) or left
+  (bits in from A's low end, each step `$0184` += 1 and `$0192` += `$0DCA`). Purpose not
+  confirmed (a password's bit buffer is a guess). Few live samples (17 and 30 calls in
+  the 60k movie); the fuzz carries most of the evidence.
 
 ## Coverage without a player (2026-11-13)
 

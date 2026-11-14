@@ -1010,6 +1010,32 @@ static void fuzz_oam_high_table_0b00(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   fuzz_oam_tables(r, ram, rnd, 0x0B00);
 }
 
+// ---- func_8ABB5C ($8A:BB5C) ----  Y = count, C = first bit in; exits with A = the bits
+// shifted out, Y kept (N/Z from the PLY), C = the last bit taken from $0146.
+static void call_func_8ABB5C(const Regs* in, Regs* out) {
+  bool carry = in->c;
+  out->a = func_8ABB5C(in->y, &carry);
+  out->c = carry;
+  setNZ16(out, in->y);
+}
+
+static void fuzz_big_number(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  for(int i = 0; i < 32; i++) ram[0x0DAC + i] = (uint8_t)rnd();
+  r->y = (uint16_t)(1 + rnd() % 24);
+  wr16ram(ram, DP + 0x46, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x84, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x92, (uint16_t)rnd());
+}
+
+// ---- func_8ABBF4 ($8A:BBF4) ----  A = bits, Y = count; exits with A and Y kept (N/Z from
+// the PLY), C/V of the last func_8ABC32 ADC ($0192 + $0DCA).
+static void call_func_8ABBF4(const Regs* in, Regs* out) {
+  func_8ABBF4(in->a, in->y);
+  setNZ16(out, in->y);
+  uint16_t low = rd16(0x0DCA);
+  setAdc16(out, (uint16_t)(rd16(DP + 0x92) - low), low);
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1182,6 +1208,10 @@ const Routine routines[] = {
   {.name = "oam_high_table_0b00", .entry = 0x8180F6, .end = 0x818487, .source = "src/sprites.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_oam_high_table_0b00, ALL_OUTPUTS, .fuzz = fuzz_oam_high_table_0b00,
    .holes = {{0x818101, 0x81810A}}},
+  {.name = "func_8ABB5C", .entry = 0x8ABB5C, .end = 0x8ABB99, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8ABB5C, ALL_OUTPUTS, .fuzz = fuzz_big_number},
+  {.name = "func_8ABBF4", .entry = 0x8ABBF4, .end = 0x8ABC32, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8ABBF4, ALL_OUTPUTS, .fuzz = fuzz_big_number},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 
