@@ -85,3 +85,6 @@ func    81FBB1   func_81FBB1         ; car Y: advance its record in the segment 
 func    8180D0   oam_finish_0b00     ; end of frame, single table: pack $0B00, $72 = $74, $74 = 0 (long) -> src/sprites.c
 func    8180DA   oam_finish          ; end of frame, two buffers: pack, keep ends, swap $6C/$6E (long) -> src/sprites.c
 func    8085CA   take_nibble16       ; A = top nibble of $011A, which shifts left 4 -> src/misc.c
+func    82B78D   func_82B78D         ; $0156/$0158 = the two bytes at $7E:4F31+((A>>2)&~3), each - 2 -> src/misc.c
+func    82B7B0   func_82B7B0         ; AND a 2x5-word block of the $7E:230C map with one of 8 masks ($83) -> src/misc.c
+func    82B838   func_82B838         ; copy a 2x5-word block from $7E:217C to $7E:230C -> src/misc.c

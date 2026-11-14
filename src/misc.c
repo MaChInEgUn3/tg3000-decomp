@@ -319,3 +319,40 @@ uint16_t take_nibble16(void) {
   wr16(DP + 0x1A, (uint16_t)(v << 4));
   return (uint16_t)(v >> 12);
 }
+
+#define BLOCK_MAP 0x230C      // bank $7E: blocks of 2 rows x 5 words, rows $50 bytes apart
+#define BLOCK_SOURCE 0x217C   // bank $7E: the same layout, copied in by func_82B838
+#define BLOCK_ROW 0x50
+#define BLOCK_COLUMN 0x0156   // set by func_82B78D
+#define BLOCK_ROW_INDEX 0x0158
+
+// TG3000_ROUTINE($82:B78D) func_82B78D
+uint16_t func_82B78D(uint16_t a) {
+  uint32_t at = 0x4F31 + (uint32_t)((uint16_t)(a >> 2) & 0xFFFC);
+  wr16(BLOCK_COLUMN, (uint16_t)((rd16(at) - 2) & 0xFF));
+  uint16_t row = (uint16_t)((rd16(at + 1) - 2) & 0xFF);
+  wr16(BLOCK_ROW_INDEX, row);
+  return row;
+}
+
+// TG3000_ROUTINE($82:B7B0) func_82B7B0
+void func_82B7B0(void) {
+  uint16_t column = rd16(BLOCK_COLUMN), row = rd16(BLOCK_ROW_INDEX);
+  uint16_t at = (uint16_t)(2 * row + rom16(0x838C65 + (column & 0xFFFE)));
+  uint16_t mask = rom16(0x838C55 + 2 * (column & 7));  // one of 8 masks, in bank $83
+  for(int i = 0; i < 10; i++) {
+    uint32_t cell = BLOCK_MAP + (uint32_t)at + (i < 5 ? 2 * i : BLOCK_ROW + 2 * (i - 5));
+    wr16(cell, (uint16_t)(rd16(cell) & bus_rd16(0x830000 + (uint32_t)mask + 2 * i)));
+  }
+}
+
+// TG3000_ROUTINE($82:B838) func_82B838
+uint16_t func_82B838(uint16_t at) {
+  uint16_t last = 0;
+  for(int i = 0; i < 10; i++) {
+    uint16_t off = (uint16_t)(at + (i < 5 ? 2 * i : BLOCK_ROW + 2 * (i - 5)));
+    last = rd16(BLOCK_SOURCE + (uint32_t)off);
+    wr16(BLOCK_MAP + (uint32_t)off, last);
+  }
+  return last;
+}

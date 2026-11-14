@@ -130,4 +130,16 @@ void func_8ABBF4(uint16_t bits, uint16_t count);
 // The 16-bit sibling of take_nibble: A = the top 4 bits of $011A, which is shifted left 4.
 uint16_t take_nibble16(void);
 
+// Blocks of 2 rows x 5 words in a map at $7E:230C (rows $50 bytes apart).
+// func_82B78D: from the entry at $7E:4F31 + ((A >> 2) & ~3) (two bytes), $0156 = byte 0
+// - 2 and $0158 = byte 1 - 2 (both 8-bit). Returns $0158.
+uint16_t func_82B78D(uint16_t a);
+// func_82B7B0: AND the block at row $0158, column $0156 (offset 2 * $0158 + the word at
+// $83:8C65 + ($0156 & ~1)) with one of 8 ten-word masks in bank $83 (pointer table at
+// $83:8C55, chosen by $0156 & 7).
+void func_82B7B0(void);
+// func_82B838: copy the block at byte offset `at` from $7E:217C to $7E:230C. Returns the
+// last word copied.
+uint16_t func_82B838(uint16_t at);
+
 #endif

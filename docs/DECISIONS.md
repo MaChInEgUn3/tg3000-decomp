@@ -662,6 +662,11 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   buffers: pack the one at D+`$6C`, keep the last two frames' ends in `$70`/`$72`, start
   the next frame in the other buffer, D+`$74` = D+`$6E` − `$0900`, and swap `$6C`/`$6E`).
   `take_nibble16` ($80:85CA, 19,950 calls) is take_nibble's 16-bit sibling on `$011A`.
+- A map at `$7E:230C` handled in blocks of 2 rows × 5 words (rows `$50` bytes apart),
+  ~18,000 calls each in the 60k movie: `func_82B78D` sets the block coordinates
+  `$0156`/`$0158` (two table bytes at `$7E:4F31`, each − 2), `func_82B7B0` ANDs the block
+  at those coordinates with one of 8 ten-word masks in bank `$83`, `func_82B838` copies a
+  block in from `$7E:217C`. What the map is is not known yet.
 
 ## Coverage without a player (2026-11-13)
 

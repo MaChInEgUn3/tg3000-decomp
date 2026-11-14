@@ -1149,6 +1149,59 @@ static void fuzz_take_nibble16(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x1A, (uint16_t)rnd());
 }
 
+// ---- func_82B78D ($82:B78D) ----  exits with A = $0158 (N/Z from the AND), X = the entry
+// offset, C/V of the second SBC #2.
+static void call_func_82B78D(const Regs* in, Regs* out) {
+  uint16_t x = (uint16_t)(in->a >> 2) & 0xFFFC;
+  uint16_t word = rd16(0x4F32 + (uint32_t)x);
+  out->a = func_82B78D(in->a);
+  out->x = x;
+  setNZ16(out, out->a);
+  setSbc16(out, word, 2);
+}
+
+static void fuzz_func_82B78D(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (uint16_t)rnd();
+  uint16_t x = (uint16_t)(r->a >> 2) & 0xFFFC;
+  for(int i = 0; i < 3; i++) ram[0x4F31 + x + i] = (uint8_t)rnd();
+}
+
+// ---- func_82B7B0 ($82:B7B0) ----  exits with A = the last AND, X = the block offset, Y =
+// the mask pointer, C = 0 (an ASL of $0156 & 7), V of the ADC that found the offset.
+static void call_func_82B7B0(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t column = rd16(0x0156), row = rd16(0x0158);
+  uint16_t base = rom16(0x838C65 + (column & 0xFFFE));
+  uint16_t at = (uint16_t)(2 * row + base), mask = rom16(0x838C55 + 2 * (column & 7));
+  func_82B7B0();
+  out->a = rd16(0x230C + (uint32_t)at + 0x50 + 8);
+  out->x = at;
+  out->y = mask;
+  setNZ16(out, out->a);
+  setAdc16(out, (uint16_t)(2 * row), base);
+  out->c = false;
+}
+
+static void fuzz_func_82B7B0(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0156, (uint16_t)(rnd() % 0x40));
+  wr16ram(ram, 0x0158, (uint16_t)(rnd() % 0x40));
+  for(int i = 0; i < 0x400; i++) ram[0x230C + i] = (uint8_t)rnd();
+}
+
+// ---- func_82B838 ($82:B838) ----  X = block offset; exits with A = the last word copied,
+// N = 1 / Z = 0 from the final PLB of $83.
+static void call_func_82B838(const Regs* in, Regs* out) {
+  out->a = func_82B838(in->x);
+  out->n = true;
+  out->z = false;
+}
+
+static void fuzz_func_82B838(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)(2 * (rnd() % 0x100));
+  for(int i = 0; i < 0x80; i++) ram[0x217C + r->x + i] = (uint8_t)rnd();
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1334,6 +1387,12 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish, ALL_OUTPUTS, .fuzz = fuzz_oam_finish},
   {.name = "take_nibble16", .entry = 0x8085CA, .end = 0x8085DA, .source = "src/misc.c", .needM16 = true,
    .fixedD = true, .call = call_take_nibble16, ALL_OUTPUTS, .fuzz = fuzz_take_nibble16},
+  {.name = "func_82B78D", .entry = 0x82B78D, .end = 0x82B7B0, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_func_82B78D, ALL_OUTPUTS, .fuzz = fuzz_func_82B78D},
+  {.name = "func_82B7B0", .entry = 0x82B7B0, .end = 0x82B838, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x83, .fixedD = true, .call = call_func_82B7B0, ALL_OUTPUTS, .fuzz = fuzz_func_82B7B0},
+  {.name = "func_82B838", .entry = 0x82B838, .end = 0x82B87A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .call = call_func_82B838, ALL_OUTPUTS, .fuzz = fuzz_func_82B838},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

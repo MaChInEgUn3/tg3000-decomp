@@ -2330,7 +2330,7 @@ CODE_82B6C5:
     incbin !baserom:$136FB..$1371D
 CODE_82B71D:
     ldx.b $50                   ; $82B71D
-    jsr.w $B838                 ; $82B71F
+    jsr.w func_82B838           ; $82B71F
     lda.w $0226                 ; $82B722
     ldy.w $0235                 ; $82B725
     jsr.w $B769                 ; $82B728
@@ -2375,9 +2375,10 @@ CODE_82B77E:
 CODE_82B785:
     pla                         ; $82B785
 CODE_82B786:
-    jsr.w $B78D                 ; $82B786
-    jsr.w $B7B0                 ; $82B789
+    jsr.w func_82B78D           ; $82B786
+    jsr.w func_82B7B0           ; $82B789
     rts                         ; $82B78C
+func_82B78D:
     lsr a                       ; $82B78D
     lsr a                       ; $82B78E
     and.w #$FFFC                ; $82B78F
@@ -2393,6 +2394,7 @@ CODE_82B786:
     and.w #$00FF                ; $82B7A9
     sta.w $0158                 ; $82B7AC
     rts                         ; $82B7AF
+func_82B7B0:
     lda.b $56                   ; $82B7B0
     and.w #$FFFE                ; $82B7B2
     tay                         ; $82B7B5
@@ -2438,6 +2440,7 @@ CODE_82B786:
     and.w $0012,y               ; $82B830
     sta.l $7E2364,x             ; $82B833
     rts                         ; $82B837
+func_82B838:
     pea.w $837E                 ; $82B838
     plb                         ; $82B83B
     lda.w $217C,x               ; $82B83C
