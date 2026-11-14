@@ -463,6 +463,35 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `func_8AB942` ($8A:B942, a step of a two-column wipe through the long pointer at
   `$0170`).
 
+## The data decompressor (2026-11-14)
+
+`decompress` ($82:FB70, long call, `src/decompress.c`; 44 unported routines depended on
+it): A = output bank << 8 | input bank, X = input offset, Y = output offset; returns the
+length in A. Format (each command a byte; documented in `src/decompress.h`):
+
+| command | effect |
+|---|---|
+| `$00` | end |
+| `$01-$3F` | that many literal bytes |
+| `$4n` | n+3 bytes continuing the byte progression of the last two output bytes |
+| `$5n` | n+2 words continuing the word progression of the last two words |
+| `$6n` | the last byte repeated n+3 times |
+| `$7n` | the last word repeated n+2 times |
+| `$80-$BF` | 3 bytes copied from (cmd & $3F) + 3 back |
+| `$C0-$DF`, d | 4 + ((cmd >> 2) & 7) bytes from ((cmd & 3) << 8 \| d) + 3 back |
+| `$E0-$FF`, d, l | l + 5 bytes from ((cmd & $1F) << 8 \| d) + 3 back |
+
+Back copies move 16-bit words in the original's fixed order (two different orders for
+odd lengths in `$C0` and `$E0`), which matters when a copy reads what it just wrote, so
+the C keeps that order. The routine dispatches through a 128-entry jump table and three
+inner ones (unrolled stores entered part-way, and an RTS used as a jump); the harness
+gained "holes" so those tables are not mistaken for code. Fuzz builds random but valid
+streams with every command (short and long distances, overlapping copies). First run
+failed on `$5n` (I had copied `$4n`'s count; the word version stores one fewer before its
+loop) — found from the first differing output byte; now race movie 67/67 live, fuzz
+400/400, paths 435/435. Harness failure messages now show the entry X/Y and the first
+differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

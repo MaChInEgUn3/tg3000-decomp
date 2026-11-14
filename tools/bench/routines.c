@@ -12,6 +12,7 @@
 #include "rng.h"
 #include "scale.h"
 #include "line_tables.h"
+#include "decompress.h"
 #include "frame.h"
 #include "misc.h"
 #include "stars.h"
@@ -516,6 +517,65 @@ static void fuzz_func_8AB942(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x78, (uint16_t)rnd());
 }
 
+// ---- decompress ($82:FB70, long call) ----  A = output bank << 8 | input bank, X = input,
+// Y = output; D = its scratch page. Exits with A = bytes written (N/Z, and C/V of the
+// final ADC: ~start + end + 1), X = the input after the end byte, Y = the output end.
+static void call_decompress(const Regs* in, Regs* out) {
+  uint16_t end;
+  uint16_t len = decompress(in->d, (uint8_t)in->a, in->x, (uint8_t)(in->a >> 8), in->y, &end);
+  out->a = len;
+  out->x = end;
+  out->y = (uint16_t)(in->y + len);
+  setNZ16(out, len);
+  uint16_t a = (uint16_t)~in->y;
+  uint32_t sum = (uint32_t)a + out->y + 1;
+  out->c = sum > 0xFFFF;
+  out->v = (~(a ^ out->y) & (a ^ sum) & 0x8000) != 0;
+}
+
+// A random but valid stream at $7E:4000 unpacking to $7F:2100, after 8 KB of random
+// bytes the back references can reach.
+static void fuzz_decompress(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  for(int i = 0; i < 0x2100; i++) ram[0x10000 + i] = (uint8_t)rnd();
+  uint32_t p = 0x4000, y = 0x2100;
+  int commands = 4 + (int)(rnd() % 24);
+  for(int c = 0; c < commands && y < 0x3800; c++) {
+    switch(rnd() % 8) {
+      case 0: {
+        uint8_t n = (uint8_t)(1 + rnd() % 0x3F);
+        ram[p++] = n;
+        for(int i = 0; i < n; i++) ram[p++] = (uint8_t)rnd();
+        y += n;
+        break;
+      }
+      case 1: { uint8_t k = (uint8_t)(rnd() & 15); ram[p++] = (uint8_t)(0x40 | k); y += k + 3; break; }
+      case 2: { uint8_t k = (uint8_t)(rnd() & 15); ram[p++] = (uint8_t)(0x50 | k); y += 2 * (k + 2); break; }
+      case 3: { uint8_t k = (uint8_t)(rnd() & 15); ram[p++] = (uint8_t)(0x60 | k); y += k + 3; break; }
+      case 4: { uint8_t k = (uint8_t)(rnd() & 15); ram[p++] = (uint8_t)(0x70 | k); y += 2 * (k + 2); break; }
+      case 5: { ram[p++] = (uint8_t)(0x80 | (rnd() & 0x3F)); y += 3; break; }
+      case 6: {
+        ram[p++] = (uint8_t)(0xC0 | (rnd() & 0x1F));
+        ram[p++] = (uint8_t)rnd();
+        y += 11;
+        break;
+      }
+      default: {
+        uint8_t k = (rnd() & 1) ? (uint8_t)(rnd() & 7) : (uint8_t)(rnd() & 0x1F);  // short distances too
+        ram[p++] = (uint8_t)(0xE0 | k);
+        ram[p++] = (uint8_t)rnd();
+        uint8_t l = (rnd() & 1) ? (uint8_t)(rnd() & 3) : (uint8_t)rnd();         // lengths 5-8 and longer
+        ram[p++] = l;
+        y += l + 5;
+        break;
+      }
+    }
+  }
+  ram[p] = 0;
+  r->a = 0x7F7E;
+  r->x = 0x4000;
+  r->y = 0x2100;
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -630,6 +690,9 @@ const Routine routines[] = {
    .fixedD = true, .call = call_text_cursor_down3, ALL_OUTPUTS, .fuzz = fuzz_text_cursor_down3},
   {.name = "func_8AB942", .entry = 0x8AB942, .end = 0x8AB981, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_func_8AB942, ALL_OUTPUTS, .fuzz = fuzz_func_8AB942},
+  {.name = "decompress", .entry = 0x82FB70, .end = 0x82FFAB, .rtl = true, .source = "src/decompress.c",
+   .needM16 = true, .needX16 = true, .call = call_decompress, ALL_OUTPUTS, .fuzz = fuzz_decompress,
+   .holes = {{0x82FB8B, 0x82FC8B}, {0x82FD58, 0x82FD78}, {0x82FDD7, 0x82FDF7}, {0x82FE99, 0x82FEB9}}},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

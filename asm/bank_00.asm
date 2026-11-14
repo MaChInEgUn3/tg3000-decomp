@@ -9114,7 +9114,7 @@ CODE_80FB29:
     rep.b #$20                  ; $80FB59
     rts                         ; $80FB5B
     incbin !baserom:$7B5C..$7BA0
-    jsl.l $82FB70               ; $80FBA0
+    jsl.l decompress            ; $80FBA0
     rts                         ; $80FBA4
     sta.w $1536                 ; $80FBA5
     phb                         ; $80FBA8
@@ -9128,7 +9128,7 @@ CODE_80FB29:
     ldx.w #$EB44                ; $80FBB4
     ldy.w #$8000                ; $80FBB7
     lda.w #$7E9A                ; $80FBBA
-    jsl.l $82FB70               ; $80FBBD
+    jsl.l decompress            ; $80FBBD
     jsl.l $8A800B               ; $80FBC1
     sep.b #$20                  ; $80FBC5
     stz.w $420C                 ; $80FBC7

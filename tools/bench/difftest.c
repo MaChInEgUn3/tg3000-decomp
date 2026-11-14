@@ -28,9 +28,9 @@ const uint8_t* g_rom;
 
 #define MAX_SAMPLES 4000     // compared live samples per routine
 #define SAMPLE_STRIDE 3      // take one entry in N
-#define MAX_EXTENT 0x400
+#define MAX_EXTENT 0x600
 #define MAX_CONTRACTS 8
-#define MAX_INSNS 200000     // a sample that runs longer is abandoned
+#define MAX_INSNS 4000000    // a sample that runs longer is abandoned
 #define WATCH_CAP 400        // flag liveness: instructions watched after a return
 #define MIN_WATCHED 100      // fewer watched returns than this: every flag counts as live
 
@@ -50,7 +50,7 @@ typedef struct {
   Contract contracts[MAX_CONTRACTS];
   int contractCount;
   bool starts[MAX_EXTENT], visited[MAX_EXTENT];
-  char firstFailure[256];
+  char firstFailure[400];
   // flags: compared separately; a mismatch only fails the routine if the flag is live
   unsigned long watched, live[4], dead[4], flagMismatch[4];
   char firstFlagFailure[4][160];
@@ -211,6 +211,14 @@ static void findStarts(const Routine* r, Stats* s) {
   uint32_t n = r->end - r->entry;
   bool m8 = !r->needM16, x8 = !r->needX16;
   for(uint32_t i = 0; i < n && i < MAX_EXTENT;) {
+    bool skipped = false;
+    for(int h = 0; h < 4; h++) {
+      if(r->holes[h][1] && r->entry + i >= r->holes[h][0] && r->entry + i < r->holes[h][1]) {
+        i = r->holes[h][1] - r->entry;
+        skipped = true;
+      }
+    }
+    if(skipped) continue;
     s->starts[i] = true;
     uint8_t op = g_rom[off + i], arg = g_rom[off + i + 1];
     i += coverage_insn_length(op, m8, x8);
@@ -261,12 +269,20 @@ static bool compareWithC(int idx, const Regs* after, char* why, size_t whyLen, u
       return false;
     }
   }
+  int diffs = 0, shown = 0;
+  size_t used = 0;
   for(uint32_t i = 0; i < TG3000_WRAM_SIZE; i++) {
     if(i > minSp && i <= entrySp) continue;  // bytes the routine pushed below its entry SP
-    if(g_ram[i] != afterRam[i]) {
-      snprintf(why, whyLen, "WRAM $%05X: original %02X, C %02X", i, afterRam[i], g_ram[i]);
-      return false;
+    if(g_ram[i] == afterRam[i]) continue;
+    if(diffs++ == 0) used = (size_t)snprintf(why, whyLen, "WRAM");
+    if(shown < 4 && used < whyLen) {
+      used += (size_t)snprintf(why + used, whyLen - used, " $%05X: original %02X, C %02X;", i, afterRam[i], g_ram[i]);
+      shown++;
     }
+  }
+  if(diffs) {
+    if(used < whyLen) snprintf(why + used, whyLen - used, " %d byte(s) differ", diffs);
+    return false;
   }
 #define CHECK(field, enabled) \
   if((enabled) && out.field != after->field) { \
@@ -292,7 +308,7 @@ static void finishSample(const Cpu* cpu) {
     s->interrupted++;
     return;
   }
-  char why[200] = "";
+  char why[320] = "";
   bool ok;
   uint8_t flagDiff = 0;
   if(hwAccess) {
@@ -327,8 +343,8 @@ static void finishSample(const Cpu* cpu) {
   if(fuzzing) { if(ok) s->fuzzPass++; else s->fuzzFail++; }
   else { s->samples++; if(ok) s->pass++; else s->fail++; }
   if(!ok && s->firstFailure[0] == '\0') {
-    snprintf(s->firstFailure, sizeof s->firstFailure, "%s%s at D=%04X A=%04X: %s",
-      fuzzing ? "fuzz " : "", table[idx].name, entryRegs.d, entryRegs.a, why);
+    snprintf(s->firstFailure, sizeof s->firstFailure, "%s%s at D=%04X A=%04X X=%04X Y=%04X: %s",
+      fuzzing ? "fuzz " : "", table[idx].name, entryRegs.d, entryRegs.a, entryRegs.x, entryRegs.y, why);
   }
 }
 

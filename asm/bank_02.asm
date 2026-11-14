@@ -152,7 +152,7 @@ CODE_8284C8:
     ldx.w #$8B3D                ; $8284D5
     ldy.w #$0000                ; $8284D8
     lda.w #$7F87                ; $8284DB
-    jsl.l $82FB70               ; $8284DE
+    jsl.l decompress            ; $8284DE
     lda.w $1F06                 ; $8284E2
     asl a                       ; $8284E5
     tax                         ; $8284E6
@@ -542,7 +542,7 @@ CODE_828FF9:
     ldx.w #$8080                ; $8292E2
     ldy.w #$0000                ; $8292E5
     lda.w #$7F9B                ; $8292E8
-    jsl.l $82FB70               ; $8292EB
+    jsl.l decompress            ; $8292EB
     jsr.w $A1D3                 ; $8292EF
     lda.w #$8E00                ; $8292F2
     ldx.w #$8000                ; $8292F5
@@ -700,7 +700,7 @@ CODE_829BFA:
     ldx.w #$9FEB                ; $82A1D3
     ldy.w #$0000                ; $82A1D6
     lda.w #$7F98                ; $82A1D9
-    jsl.l $82FB70               ; $82A1DC
+    jsl.l decompress            ; $82A1DC
     ldx.w $047B                 ; $82A1E0
     lda.l $84A66C,x             ; $82A1E3
     and.w #$00FF                ; $82A1E7
@@ -1142,7 +1142,7 @@ CODE_82A66A:
     ldx.w #$929A                ; $82A672
     ldy.w #$0000                ; $82A675
     lda.w #$7F88                ; $82A678
-    jsl.l $82FB70               ; $82A67B
+    jsl.l decompress            ; $82A67B
     pea.w $837E                 ; $82A67F
     plb                         ; $82A682
     lda.w #$0000                ; $82A683
@@ -1269,7 +1269,7 @@ CODE_82A7F7:
     tax                         ; $82A802
     ldy.w #$5391                ; $82A803
     lda.w #$7E9B                ; $82A806
-    jsl.l $82FB70               ; $82A809
+    jsl.l decompress            ; $82A809
     lda.w $047B                 ; $82A80D
     asl a                       ; $82A810
     tax                         ; $82A811
@@ -1279,7 +1279,7 @@ CODE_82A7F7:
     lda.l $84FE0F,x             ; $82A81A
     ora.w #$7E00                ; $82A81E
     plx                         ; $82A821
-    jsl.l $82FB70               ; $82A822
+    jsl.l decompress            ; $82A822
     phb                         ; $82A826
     lda.w $047B                 ; $82A827
     asl a                       ; $82A82A
@@ -1300,7 +1300,7 @@ CODE_82A7F7:
     ldx.w #$8512                ; $82A84B
     ldy.w #$0000                ; $82A84E
     lda.w #$7F89                ; $82A851
-    jsl.l $82FB70               ; $82A854
+    jsl.l decompress            ; $82A854
     bra CODE_82A88C             ; $82A858
 CODE_82A85A:
     lda.w $01E4                 ; $82A85A
@@ -1310,7 +1310,7 @@ CODE_82A87F:
     ldx.w #$8020                ; $82A87F
     ldy.w #$0000                ; $82A882
     lda.w #$7F96                ; $82A885
-    jsl.l $82FB70               ; $82A888
+    jsl.l decompress            ; $82A888
 CODE_82A88C:
     lda.w $047B                 ; $82A88C
     asl a                       ; $82A88F
@@ -1392,7 +1392,7 @@ CODE_82A90F:
     lda.l $860004,x             ; $82A93C
     tax                         ; $82A940
     pla                         ; $82A941
-    jsl.l $82FB70               ; $82A942
+    jsl.l decompress            ; $82A942
     clc                         ; $82A946
     adc.b $14                   ; $82A947
     sta.b $14                   ; $82A949
@@ -1409,7 +1409,7 @@ CODE_82A94C:
     ldx.w #$8000                ; $82A954
     ldy.w #$0000                ; $82A957
     lda.w #$7F9A                ; $82A95A
-    jsl.l $82FB70               ; $82A95D
+    jsl.l decompress            ; $82A95D
     lda.w $047B                 ; $82A961
     asl a                       ; $82A964
     tax                         ; $82A965
@@ -1841,7 +1841,7 @@ CODE_82ADA6:
     ldx.w #$97E4                ; $82ADC2
     ldy.w #$0000                ; $82ADC5
     lda.w #$7F99                ; $82ADC8
-    jsl.l $82FB70               ; $82ADCB
+    jsl.l decompress            ; $82ADCB
     lda.w #$0000                ; $82ADCF
     sta.l $308000               ; $82ADD2
     lda.w $047B                 ; $82ADD6
@@ -5342,6 +5342,7 @@ CODE_82FB0F:
     incbin !baserom:$17B10..$17B1C
     rts                         ; $82FB1C
     incbin !baserom:$17B1D..$17B70
+decompress:
     phy                         ; $82FB70
     phb                         ; $82FB71
     sep.b #$20                  ; $82FB72

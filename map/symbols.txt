@@ -53,3 +53,4 @@ func    8AC278   text_put_tile_char  ; single-tile character at the cursor -> sr
 func    8A9C19   byte_buffer_push    ; 8-bit A -> $7F:7D00[$0158++], $0160++ -> src/misc.c
 func    8AA37A   text_cursor_down3   ; $013C += 3 -> src/text.c
 func    8AB942   func_8AB942         ; two-column wipe step through the long pointer $0170 -> src/misc.c
+func    82FB70   decompress          ; JSL: data decompressor (A = out:in banks, X = in, Y = out) -> src/decompress.c

@@ -12,7 +12,7 @@ org $858000
     lda.w $8597,y               ; $85800E
     ldx.w $8585,y               ; $858011
     ldy.w #$0000                ; $858014
-    jsl.l $82FB70               ; $858017
+    jsl.l decompress            ; $858017
     plx                         ; $85801B
     phx                         ; $85801C
     lda.w $047B                 ; $85801D
@@ -1531,7 +1531,7 @@ CODE_859D9F:
     ldx.w #$95E3                ; $859D9F
     ldy.w #$6C33                ; $859DA2
     lda.w #$7E8C                ; $859DA5
-    jsl.l $82FB70               ; $859DA8
+    jsl.l decompress            ; $859DA8
     rtl                         ; $859DAC
     incbin !baserom:$29DAD..$2A066
     pea.w $837E                 ; $85A066

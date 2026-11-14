@@ -38,6 +38,9 @@ typedef struct {
   // (their WRAM changes) and replayed when the C calls platform_wait_vblank(), instead
   // of discarding the sample. Their hardware accesses belong to the handler.
   bool waitsForInterrupts;
+  // Data inside the extent (jump tables): [start, end) ranges skipped when listing its
+  // instruction starts.
+  uint32_t holes[4][2];
 } Routine;
 
 // Hardware effects, in canonical form: what the original did through DMA and what the C

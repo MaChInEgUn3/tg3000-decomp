@@ -62,6 +62,11 @@ static inline uint16_t bus_rd16(uint32_t bus) {
   return (uint16_t)(bus_rd8(bus) | (bus_rd8(bus + 1) << 8));
 }
 
+static inline void bus_wr8(uint32_t bus, uint8_t val) {
+  uint32_t i;
+  if(bus_wram(bus, &i)) wr8(i, val);
+}
+
 static inline void bus_wr16(uint32_t bus, uint16_t val) {
   uint32_t i;
   if(bus_wram(bus, &i)) wr16(i, val);

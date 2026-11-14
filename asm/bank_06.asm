@@ -68,7 +68,7 @@ org $868000
     lda.w #$7F86                ; $86DDB4
     ldx.w #$E478                ; $86DDB7
     ldy.w #$0000                ; $86DDBA
-    jsl.l $82FB70               ; $86DDBD
+    jsl.l decompress            ; $86DDBD
     pld                         ; $86DDC1
     lda.w #$0000                ; $86DDC2
     sta.b $E0                   ; $86DDC5
@@ -121,7 +121,7 @@ CODE_86DE26:
     and.w #$00FF                ; $86DE2B
     ora.w #$7F00                ; $86DE2E
     ldy.w #$0000                ; $86DE31
-    jsl.l $82FB70               ; $86DE34
+    jsl.l decompress            ; $86DE34
     pld                         ; $86DE38
     lda.w #$0000                ; $86DE39
     sta.b $E0                   ; $86DE3C

@@ -818,7 +818,7 @@ CODE_8A8BBB:
     lda.l $838597,x             ; $8A8BD6
     ldy.w #$0000                ; $8A8BDA
     plx                         ; $8A8BDD
-    jsl.l $82FB70               ; $8A8BDE
+    jsl.l decompress            ; $8A8BDE
     plx                         ; $8A8BE2
     phx                         ; $8A8BE3
     lda.l $810444               ; $8A8BE4
