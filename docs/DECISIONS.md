@@ -629,6 +629,12 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   with leading zeros skipped and a 1-pixel gap after positions 6 and 3. An empty string
   would make the centring loop walk all of memory (a do-while on `CPY $74`); the game
   never centres one and the fuzz does not either.
+- `sprite_group` ($80:B49E, 14,024 calls) adds a group of sprites from a table of two
+  zero-terminated lists of 6-byte items (tile, x, y), the first list's entries flagged
+  `$0B02 = 1`, the second's 0; it runs with D = `$0100` or `$0200` (a parameter in the
+  C) and sets DB to the table's bank, so its entry stores also go through that bank
+  (`bus_wr16`). `func_83EA9B` ($83:EA9B, 18,548 calls; D/DB `$0100/$83` or `$0200/$30`)
+  copies entry X of six parallel word tables in bank `$86` to `$1EA0`–`$1EAC`.
 
 ## Coverage without a player (2026-11-13)
 

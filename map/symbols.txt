@@ -75,3 +75,5 @@ func    8AA48D   func_8AA48D         ; $01FB = $11, $0D7E = $0A8C -> src/misc.c
 func    8AA49E   func_8AA49E         ; $01FB = $13, $0D7E = $0A8C -> src/misc.c
 func    8AB91A   wipe_columns        ; 16 func_8AB942 steps from both edges, a frame wait after each change -> src/misc.c
 func    8AC137   text_print_tiles_at ; cursor = (X, Y), then text_print_tiles -> src/text.c
+func    80B49E   sprite_group        ; two 6-byte item lists from DB=A table -> sprite entries at $0900+slot -> src/text.c
+func    83EA9B   func_83EA9B         ; entry X of six bank-$86 word tables -> $1EA0-$1EAC -> src/misc.c

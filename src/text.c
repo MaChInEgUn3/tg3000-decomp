@@ -194,3 +194,32 @@ uint16_t sprite_number(uint32_t value, uint16_t x) {
   wr16(SPRITE_TEXT_SLOT, slot);
   return rd16(SPRITE_TEXT_X);
 }
+
+// Entries of one list (6 bytes each, until a zero word): tile, x, y offsets.
+static uint16_t sprite_group_list(uint16_t dp, uint32_t* at, uint16_t slot, uint16_t flag) {
+  uint32_t bank = *at & 0xFF0000;
+  for(;;) {
+    uint16_t tile = bus_rd16(*at);
+    if(tile == 0) return slot;
+    bus_wr16(bank | (uint16_t)(0x0902 + slot), (uint16_t)(tile + rd16(dp + 0x18)));
+    uint16_t xpos = (uint16_t)((uint16_t)(bus_rd16(*at + 2) + rd16(dp + 0x16)) & 0xFF);
+    wr16(dp + 0x1A, (uint16_t)(xpos << 8));
+    uint16_t ypos = (uint16_t)(bus_rd16(*at + 4) + rd16(dp + 0x14));
+    if(ypos & 0xFF00) ypos |= 0xFF00;  // keep only the sign
+    bus_wr16(bank | (uint16_t)(0x0B00 + slot), ypos);
+    bus_wr16(bank | (uint16_t)(0x0900 + slot), (uint16_t)((ypos & 0xFF) | (xpos << 8)));
+    bus_wr16(bank | (uint16_t)(0x0B02 + slot), flag);
+    slot = (uint16_t)(slot + 4);
+    *at = bank | (uint16_t)(*at + 6);
+  }
+}
+
+// TG3000_ROUTINE($80:B49E) sprite_group
+uint32_t sprite_group(uint16_t dp, uint32_t table) {
+  uint16_t slot = rd16(dp + 0x74);
+  slot = sprite_group_list(dp, &table, slot, 1);
+  table = (table & 0xFF0000) | (uint16_t)(table + 2);
+  slot = sprite_group_list(dp, &table, slot, 0);
+  wr16(dp + 0x74, slot);
+  return table;
+}

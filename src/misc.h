@@ -111,4 +111,9 @@ void func_8AA49E(void);
 // Set the first word of each of the 128 entries of $0900 (4 bytes each) to $E000.
 void clear_sprites(void);
 
+// Load entry `i` (a byte offset) of six parallel word tables in bank $86 ($DAF5, $DB47,
+// $DB99, $DBEB, $DC3D, $DC8F; 41 entries each) into $1EA0, $1EA2, $1EA4, $1EA6, $1EAA and
+// $1EAC. Returns the $1EA0 value.
+uint16_t func_83EA9B(uint16_t i);
+
 #endif

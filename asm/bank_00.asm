@@ -3281,7 +3281,7 @@ CODE_80A1F2:
     lda.b $E8                   ; $80A1F8
     sta.b $16                   ; $80A1FA
     lda.w #$007E                ; $80A1FC
-    jsr.w $B49E                 ; $80A1FF
+    jsr.w sprite_group          ; $80A1FF
     lda.b $44                   ; $80A202
     bmi CODE_80A250             ; $80A204
     asl a                       ; $80A206
@@ -3401,7 +3401,7 @@ CODE_80A296:
     lda.w #$0100                ; $80A2E1
     sta.b $18                   ; $80A2E4
     lda.w #$007E                ; $80A2E6
-    jsr.w $B49E                 ; $80A2E9
+    jsr.w sprite_group          ; $80A2E9
     lda.w #$2320                ; $80A2EC
     sta.b $84                   ; $80A2EF
     jsr.w $A4B8                 ; $80A2F1
@@ -3417,7 +3417,7 @@ CODE_80A296:
     lda.w #$0100                ; $80A305
     sta.b $18                   ; $80A308
     lda.w #$007E                ; $80A30A
-    jsr.w $B49E                 ; $80A30D
+    jsr.w sprite_group          ; $80A30D
     ldy.b $7C                   ; $80A310
     lda.w $A894,y               ; $80A312
     tax                         ; $80A315
@@ -3430,7 +3430,7 @@ CODE_80A296:
     lda.w #$0100                ; $80A321
     sta.b $18                   ; $80A324
     lda.w #$007E                ; $80A326
-    jsr.w $B49E                 ; $80A329
+    jsr.w sprite_group          ; $80A329
     inc.b $3E                   ; $80A32C
     bpl CODE_80A332             ; $80A32E
     incbin !baserom:$2330..$2332
@@ -3450,7 +3450,7 @@ CODE_80A332:
     lda.w #$0100                ; $80A349
     sta.b $18                   ; $80A34C
     lda.w #$007E                ; $80A34E
-    jsr.w $B49E                 ; $80A351
+    jsr.w sprite_group          ; $80A351
     lda.w #$2338                ; $80A354
     sta.b $84                   ; $80A357
     jsr.w $A4B8                 ; $80A359
@@ -3466,7 +3466,7 @@ CODE_80A332:
     lda.w #$0100                ; $80A36D
     sta.b $18                   ; $80A370
     lda.w #$007E                ; $80A372
-    jsr.w $B49E                 ; $80A375
+    jsr.w sprite_group          ; $80A375
     ldy.b $7C                   ; $80A378
     lda.w $A894,y               ; $80A37A
     tax                         ; $80A37D
@@ -3479,7 +3479,7 @@ CODE_80A332:
     lda.w #$0100                ; $80A389
     sta.b $18                   ; $80A38C
     lda.w #$007E                ; $80A38E
-    jsr.w $B49E                 ; $80A391
+    jsr.w sprite_group          ; $80A391
     inc.b $3E                   ; $80A394
     bpl CODE_80A39A             ; $80A396
     incbin !baserom:$2398..$239A
@@ -3499,7 +3499,7 @@ CODE_80A39A:
     lda.w #$0100                ; $80A3B1
     sta.b $18                   ; $80A3B4
     lda.w #$007E                ; $80A3B6
-    jsr.w $B49E                 ; $80A3B9
+    jsr.w sprite_group          ; $80A3B9
     lda.w #$2338                ; $80A3BC
     sta.b $84                   ; $80A3BF
     jsr.w $A4B8                 ; $80A3C1
@@ -3515,7 +3515,7 @@ CODE_80A39A:
     lda.w #$0100                ; $80A3D5
     sta.b $18                   ; $80A3D8
     lda.w #$007E                ; $80A3DA
-    jsr.w $B49E                 ; $80A3DD
+    jsr.w sprite_group          ; $80A3DD
     ldy.b $7C                   ; $80A3E0
     lda.w $A894,y               ; $80A3E2
     tax                         ; $80A3E5
@@ -3528,7 +3528,7 @@ CODE_80A39A:
     lda.w #$0100                ; $80A3F1
     sta.b $18                   ; $80A3F4
     lda.w #$007E                ; $80A3F6
-    jsr.w $B49E                 ; $80A3F9
+    jsr.w sprite_group          ; $80A3F9
     inc.b $3E                   ; $80A3FC
     bpl CODE_80A402             ; $80A3FE
     incbin !baserom:$2400..$2402
@@ -3932,7 +3932,7 @@ CODE_80A694:
     lda.w #$0100                ; $80A72A
     sta.b $18                   ; $80A72D
     lda.w #$007E                ; $80A72F
-    jsr.w $B49E                 ; $80A732
+    jsr.w sprite_group          ; $80A732
     ldy.b $74                   ; $80A735
     lda.w #$0030                ; $80A737
     sec                         ; $80A73A
@@ -4006,7 +4006,7 @@ CODE_80A7A5:
     lda.w #$0100                ; $80A7B6
     sta.b $18                   ; $80A7B9
     lda.w #$007E                ; $80A7BB
-    jsr.w $B49E                 ; $80A7BE
+    jsr.w sprite_group          ; $80A7BE
     ldy.b $7C                   ; $80A7C1
     lda.w $A896,y               ; $80A7C3
     tax                         ; $80A7C6
@@ -4019,7 +4019,7 @@ CODE_80A7A5:
     lda.w #$0100                ; $80A7D2
     sta.b $18                   ; $80A7D5
     lda.w #$007E                ; $80A7D7
-    jsr.w $B49E                 ; $80A7DA
+    jsr.w sprite_group          ; $80A7DA
     inc.b $3E                   ; $80A7DD
     bpl CODE_80A7E3             ; $80A7DF
     incbin !baserom:$27E1..$27E3
@@ -4073,7 +4073,7 @@ CODE_80A7E3:
     lda.w #$0100                ; $80A84F
     sta.b $18                   ; $80A852
     lda.w #$007E                ; $80A854
-    jsr.w $B49E                 ; $80A857
+    jsr.w sprite_group          ; $80A857
     ldy.b $7C                   ; $80A85A
     lda.w $A894,y               ; $80A85C
     tax                         ; $80A85F
@@ -4086,7 +4086,7 @@ CODE_80A7E3:
     lda.w #$0100                ; $80A86B
     sta.b $18                   ; $80A86E
     lda.w #$007E                ; $80A870
-    jsr.w $B49E                 ; $80A873
+    jsr.w sprite_group          ; $80A873
     inc.b $3E                   ; $80A876
     bpl CODE_80A87C             ; $80A878
     incbin !baserom:$287A..$287C
@@ -4294,7 +4294,7 @@ CODE_80A9AD:
     lda.w #$0100                ; $80AA28
     sta.b $18                   ; $80AA2B
     lda.w #$007E                ; $80AA2D
-    jsr.w $B49E                 ; $80AA30
+    jsr.w sprite_group          ; $80AA30
     jsr.w $AA59                 ; $80AA33
     ldy.b $7C                   ; $80AA36
     lda.w $A894,y               ; $80AA38
@@ -4308,7 +4308,7 @@ CODE_80A9AD:
     lda.w #$0100                ; $80AA47
     sta.b $18                   ; $80AA4A
     lda.w #$007E                ; $80AA4C
-    jsr.w $B49E                 ; $80AA4F
+    jsr.w sprite_group          ; $80AA4F
     inc.b $3E                   ; $80AA52
     bpl CODE_80AA58             ; $80AA54
     incbin !baserom:$2A56..$2A58
@@ -4329,7 +4329,7 @@ CODE_80AA66:
     lda.w #$0100                ; $80AA71
     sta.b $18                   ; $80AA74
     lda.w #$007E                ; $80AA76
-    jsr.w $B49E                 ; $80AA79
+    jsr.w sprite_group          ; $80AA79
     lda.b $3E                   ; $80AA7C
     sec                         ; $80AA7E
     sbc.w #$0010                ; $80AA7F
@@ -4448,7 +4448,7 @@ CODE_80AAF0:
     lda.w #$0100                ; $80AB67
     sta.b $18                   ; $80AB6A
     lda.w #$007E                ; $80AB6C
-    jsr.w $B49E                 ; $80AB6F
+    jsr.w sprite_group          ; $80AB6F
     ldy.b $7C                   ; $80AB72
     lda.w $A894,y               ; $80AB74
     tax                         ; $80AB77
@@ -4461,7 +4461,7 @@ CODE_80AAF0:
     lda.w #$0100                ; $80AB83
     sta.b $18                   ; $80AB86
     lda.w #$007E                ; $80AB88
-    jsr.w $B49E                 ; $80AB8B
+    jsr.w sprite_group          ; $80AB8B
     ldy.b $7C                   ; $80AB8E
     lda.w $A896,y               ; $80AB90
     tax                         ; $80AB93
@@ -4474,7 +4474,7 @@ CODE_80AAF0:
     lda.w #$0100                ; $80AB9F
     sta.b $18                   ; $80ABA2
     lda.w #$007E                ; $80ABA4
-    jsr.w $B49E                 ; $80ABA7
+    jsr.w sprite_group          ; $80ABA7
     ldy.b $C4                   ; $80ABAA
     lda.b $40                   ; $80ABAC
     bit.w #$0020                ; $80ABAE
@@ -4520,7 +4520,7 @@ CODE_80ABF5:
     lda.w #$0100                ; $80AC4A
     sta.b $18                   ; $80AC4D
     lda.w #$007E                ; $80AC4F
-    jsr.w $B49E                 ; $80AC52
+    jsr.w sprite_group          ; $80AC52
     lda.w #$0050                ; $80AC55
     sec                         ; $80AC58
     sbc.b $7A                   ; $80AC59
@@ -4537,7 +4537,7 @@ CODE_80ABF5:
     lda.w #$0100                ; $80AC6C
     sta.b $18                   ; $80AC6F
     lda.w #$007E                ; $80AC71
-    jsr.w $B49E                 ; $80AC74
+    jsr.w sprite_group          ; $80AC74
     jsr.w $ACB6                 ; $80AC77
     lda.b $C4                   ; $80AC7A
     clc                         ; $80AC7C
@@ -4758,7 +4758,7 @@ CODE_80AE4B:
     lda.w #$0100                ; $80AE61
     sta.b $18                   ; $80AE64
     lda.w #$007E                ; $80AE66
-    jsr.w $B49E                 ; $80AE69
+    jsr.w sprite_group          ; $80AE69
     lda.w #$0050                ; $80AE6C
     sec                         ; $80AE6F
     sbc.b $7A                   ; $80AE70
@@ -4769,7 +4769,7 @@ CODE_80AE4B:
     lda.w #$0100                ; $80AE7A
     sta.b $18                   ; $80AE7D
     lda.w #$007E                ; $80AE7F
-    jsr.w $B49E                 ; $80AE82
+    jsr.w sprite_group          ; $80AE82
     lda.w #$0050                ; $80AE85
     sec                         ; $80AE88
     sbc.b $7A                   ; $80AE89
@@ -4786,7 +4786,7 @@ CODE_80AE4B:
     lda.w #$0100                ; $80AE9C
     sta.b $18                   ; $80AE9F
     lda.w #$007E                ; $80AEA1
-    jsr.w $B49E                 ; $80AEA4
+    jsr.w sprite_group          ; $80AEA4
     lda.b $40                   ; $80AEA7
     clc                         ; $80AEA9
     adc.w #$0040                ; $80AEAA
@@ -4813,7 +4813,7 @@ CODE_80AEBD:
     lda.w #$0100                ; $80AED1
     sta.b $18                   ; $80AED4
     lda.w #$007E                ; $80AED6
-    jsr.w $B49E                 ; $80AED9
+    jsr.w sprite_group          ; $80AED9
     lda.w #$257B                ; $80AEDC
     sta.b $84                   ; $80AEDF
     jsr.w $AF36                 ; $80AEE1
@@ -4833,7 +4833,7 @@ CODE_80AEBD:
     lda.w #$0100                ; $80AEFB
     sta.b $18                   ; $80AEFE
     lda.w #$007E                ; $80AF00
-    jsr.w $B49E                 ; $80AF03
+    jsr.w sprite_group          ; $80AF03
     lda.w #$0050                ; $80AF06
     sec                         ; $80AF09
     sbc.b $7A                   ; $80AF0A
@@ -4844,7 +4844,7 @@ CODE_80AEBD:
     lda.w #$0100                ; $80AF14
     sta.b $18                   ; $80AF17
     lda.w #$007E                ; $80AF19
-    jsr.w $B49E                 ; $80AF1C
+    jsr.w sprite_group          ; $80AF1C
     lda.b $40                   ; $80AF1F
     clc                         ; $80AF21
     adc.w #$0040                ; $80AF22
@@ -4946,7 +4946,7 @@ CODE_80AFD9:
     lda.w #$0100                ; $80AFF4
     sta.b $18                   ; $80AFF7
     lda.w #$007E                ; $80AFF9
-    jsr.w $B49E                 ; $80AFFC
+    jsr.w sprite_group          ; $80AFFC
     lda.w #$0050                ; $80AFFF
     sec                         ; $80B002
     sbc.b $7A                   ; $80B003
@@ -4962,7 +4962,7 @@ CODE_80AFD9:
     lda.w #$0100                ; $80B015
     sta.b $18                   ; $80B018
     lda.w #$007E                ; $80B01A
-    jsr.w $B49E                 ; $80B01D
+    jsr.w sprite_group          ; $80B01D
     lda.w #$0050                ; $80B020
     sec                         ; $80B023
     sbc.b $7A                   ; $80B024
@@ -4973,7 +4973,7 @@ CODE_80AFD9:
     lda.w #$0100                ; $80B02E
     sta.b $18                   ; $80B031
     lda.w #$007E                ; $80B033
-    jsr.w $B49E                 ; $80B036
+    jsr.w sprite_group          ; $80B036
     lda.b $40                   ; $80B039
     clc                         ; $80B03B
     adc.w #$0080                ; $80B03C
@@ -5299,6 +5299,7 @@ CODE_80B36F:
     clc                         ; $80B36F
     rts                         ; $80B370
     incbin !baserom:$3371..$349E
+sprite_group:
     txy                         ; $80B49E
     ldx.b $74                   ; $80B49F
     phb                         ; $80B4A1
@@ -7877,7 +7878,7 @@ CODE_80CB2F:
     stz.b $18                   ; $80CB3E
     ldx.w #$BF40                ; $80CB40
     lda.w #$0081                ; $80CB43
-    jsr.w $B49E                 ; $80CB46
+    jsr.w sprite_group          ; $80CB46
     rts                         ; $80CB49
     incbin !baserom:$4B4A..$4EE2
     stz.b $4C                   ; $80CEE2
@@ -8046,7 +8047,7 @@ CODE_80D044:
     lda.w #$00D0                ; $80D044
     sta.b $18                   ; $80D047
     lda.w #$0081                ; $80D049
-    jsr.w $B49E                 ; $80D04C
+    jsr.w sprite_group          ; $80D04C
     lda.w #$0080                ; $80D04F
     sta.b $14                   ; $80D052
     lda.w #$0025                ; $80D054
@@ -8062,7 +8063,7 @@ CODE_80D069:
     lda.w #$00D0                ; $80D069
     sta.b $18                   ; $80D06C
     lda.w #$0081                ; $80D06E
-    jsr.w $B49E                 ; $80D071
+    jsr.w sprite_group          ; $80D071
     ldy.b $C4                   ; $80D074
     lda.b $7C                   ; $80D076
     and.w #$FFFE                ; $80D078
@@ -8928,7 +8929,7 @@ CODE_80D77B:
     stz.b $18                   ; $80D851
     ldx.w #$C272                ; $80D853
     lda.w #$0081                ; $80D856
-    jsr.w $B49E                 ; $80D859
+    jsr.w sprite_group          ; $80D859
 CODE_80D85C:
     lda.w #$2200                ; $80D85C
     sta.b $14                   ; $80D85F
@@ -9054,7 +9055,7 @@ CODE_80D95D:
     lda.w $0704,x               ; $80D979
     tax                         ; $80D97C
     lda.w #$0081                ; $80D97D
-    jsr.w $B49E                 ; $80D980
+    jsr.w sprite_group          ; $80D980
 CODE_80D983:
     lda.b $1C                   ; $80D983
     clc                         ; $80D985
@@ -11197,7 +11198,7 @@ CODE_80EBA4:
     sta.b $18                   ; $80EBAF
     ldx.w #$CBB8                ; $80EBB1
     lda.w #$0081                ; $80EBB4
-    jsr.w $B49E                 ; $80EBB7
+    jsr.w sprite_group          ; $80EBB7
     rts                         ; $80EBBA
     incbin !baserom:$6BBB..$6BCE
     stz.b $CC                   ; $80EBCE

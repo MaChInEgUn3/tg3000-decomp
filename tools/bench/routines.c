@@ -905,6 +905,59 @@ static void fuzz_sprite_number(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x14, (uint16_t)rnd());
 }
 
+// ---- sprite_group ($80:B49E) ----  A low byte = table bank, X = table address; D = $0100
+// or $0200. Exits with A = 0 (the last terminator), X = the new slot, Y = the second
+// terminator's address, N/Z from the PLB (the caller's DB), C/V of the last item's
+// ADC #6 (or as on entry if both lists are empty).
+static void call_sprite_group(const Regs* in, Regs* out) {
+  uint32_t bank = (uint32_t)(in->a & 0xFF) << 16, at = bank | in->x;
+  bool any = false;
+  uint16_t lastY = 0;
+  for(int list = 0; list < 2; list++) {
+    while(bus_rd16(at) != 0) { any = true; lastY = (uint16_t)at; at = bank | (uint16_t)(at + 6); }
+    if(list == 0) at = bank | (uint16_t)(at + 2);
+  }
+  uint32_t end = sprite_group(in->d, bank | in->x);
+  out->a = 0;
+  out->x = rd16((uint16_t)(in->d + 0x74));
+  out->y = (uint16_t)end;
+  out->n = (in->db & 0x80) != 0;
+  out->z = in->db == 0;
+  if(any) setAdc16(out, lastY, 6);
+}
+
+static void fuzz_sprite_group(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint16_t at = 0x1C00;
+  for(int list = 0; list < 2; list++) {
+    int n = (int)(rnd() % 5);
+    for(int i = 0; i < n; i++) {
+      uint16_t tile = (uint16_t)rnd();
+      if(tile == 0) tile = 1;
+      wr16ram(ram, at, tile);
+      wr16ram(ram, at + 2, (uint16_t)rnd());
+      wr16ram(ram, at + 4, (uint16_t)((rnd() & 1) ? rnd() : rnd() % 0x100));
+      at = (uint16_t)(at + 6);
+    }
+    wr16ram(ram, at, 0);
+    at = (uint16_t)(at + 2);
+  }
+  r->a = (uint16_t)((r->a & 0xFF00) | 0x7E);  // the table in bank $7E
+  r->x = 0x1C00;
+  for(int o = 0x14; o <= 0x18; o += 2) wr16ram(ram, (uint16_t)(r->d + o), (uint16_t)rnd());
+  wr16ram(ram, (uint16_t)(r->d + 0x74), (uint16_t)(4 * (rnd() % 32)));
+}
+
+// ---- func_83EA9B ($83:EA9B) ----  X = entry offset; exits with A = the $1EA0 value.
+static void call_func_83EA9B(const Regs* in, Regs* out) {
+  out->a = func_83EA9B(in->x);
+  setNZ16(out, out->a);
+}
+
+static void fuzz_func_83EA9B(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->x = (uint16_t)(2 * (rnd() % 41));
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1067,6 +1120,10 @@ const Routine routines[] = {
   {.name = "sprite_number", .entry = 0x8084F0, .end = 0x808542, .source = "src/text.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_sprite_number, ALL_OUTPUTS,
    .fuzz = fuzz_sprite_number},
+  {.name = "sprite_group", .entry = 0x80B49E, .end = 0x80B535, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .call = call_sprite_group, ALL_OUTPUTS, .fuzz = fuzz_sprite_group},
+  {.name = "func_83EA9B", .entry = 0x83EA9B, .end = 0x83EAC6, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .call = call_func_83EA9B, ALL_OUTPUTS, .fuzz = fuzz_func_83EA9B},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

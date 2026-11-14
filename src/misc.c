@@ -263,3 +263,15 @@ void func_8AA49E(void) { set_mode_fb(0x13); }
 void clear_sprites(void) {
   for(uint16_t i = 0; i < 0x200; i += 4) wr16(0x0900 + i, 0xE000);
 }
+
+// TG3000_ROUTINE($83:EA9B) func_83EA9B
+uint16_t func_83EA9B(uint16_t i) {
+  wr16(0x1EA2, rom16(0x86DB47 + i));
+  wr16(0x1EA4, rom16(0x86DB99 + i));
+  wr16(0x1EA6, rom16(0x86DBEB + i));
+  wr16(0x1EAA, rom16(0x86DC3D + i));
+  wr16(0x1EAC, rom16(0x86DC8F + i));
+  uint16_t first = rom16(0x86DAF5 + i);
+  wr16(0x1EA0, first);
+  return first;
+}

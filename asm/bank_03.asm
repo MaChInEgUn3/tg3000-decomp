@@ -345,7 +345,7 @@ CODE_8389D0:
     clc                         ; $83E2EF
     adc.l $86DAD9,x             ; $83E2F0
     tax                         ; $83E2F4
-    jsr.w $EA9B                 ; $83E2F5
+    jsr.w func_83EA9B           ; $83E2F5
     sta.w $022B                 ; $83E2F8
     lda.w $0393                 ; $83E2FB
     and.w #$00FF                ; $83E2FE
@@ -690,6 +690,7 @@ CODE_83EA93:
 CODE_83EA99:
     plb                         ; $83EA99
     rts                         ; $83EA9A
+func_83EA9B:
     lda.l $86DB47,x             ; $83EA9B
     sta.w $1EA2                 ; $83EA9F
     lda.l $86DB99,x             ; $83EAA2
@@ -1161,7 +1162,7 @@ CODE_83EF1F:
     clc                         ; $83EF2A
     adc.l $86DAD9,x             ; $83EF2B
     tax                         ; $83EF2F
-    jsr.w $EA9B                 ; $83EF30
+    jsr.w func_83EA9B           ; $83EF30
     sta.b $2B                   ; $83EF33
     bit.w $1F31                 ; $83EF35
     bmi CODE_83EF3F             ; $83EF38

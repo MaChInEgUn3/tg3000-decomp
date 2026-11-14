@@ -58,4 +58,14 @@ uint16_t sprite_text_centered(uint32_t str, uint16_t x);
 // read through take_nibble ($0118:$011A). Returns the final x.
 uint16_t sprite_number(uint32_t value, uint16_t x);
 
+// Add the sprites of a group to the entries at $0900+slot (slot at D+$74): the table at
+// `table` holds two lists of 6-byte items (tile, x, y), each ended by a zero word; items
+// of the first list get $0B02 = 1, those of the second $0B02 = 0. Each entry's tile is
+// item tile + D+$18, its x byte item x + D+$16 (the high byte of $0900), its y item y
+// + D+$14 with the high byte reduced to a sign ($0B00 keeps it, $0900's low byte the low
+// byte). The entries are written through the table's bank (the original sets DB to it).
+// `dp` is the direct page ($0100 or $0200). Returns the address of the second list's
+// terminating zero word.
+uint32_t sprite_group(uint16_t dp, uint32_t table);
+
 #endif
