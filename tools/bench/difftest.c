@@ -461,6 +461,9 @@ static void checkEntries(Cpu* cpu, uint32_t pc) {
     noteContract(s, &table[i], &in);
     if(s->entries++ % SAMPLE_STRIDE != 0 || s->samples >= MAX_SAMPLES || depth >= MAX_DEPTH) return;
     if(table[i].waitsForInterrupts && irqOwner >= 0) return;  // one interrupt recorder at a time
+    // an entry reached in a stack frame that is already being sampled is a branch back to
+    // the entry (a loop) or a tail jump, not a call: it would steal the real sample's return
+    for(int k = 0; k < depth; k++) if(samples[k].entrySp == cpu->sp) return;
     if(cpu->sp >= 0x2000) return;  // stack outside WRAM: not handled
     startSample(i, cpu);
     s->visited[0] = true;

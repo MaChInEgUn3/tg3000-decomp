@@ -516,6 +516,14 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   interrupt recording belongs to at most one sample (a routine that waits for them).
   A sample whose caller returns without it returning is counted as abandoned.
 - Flag liveness now has one watch per routine instead of one for all.
+- **Fix after the first commit of this change:** an entry reached again in a stack frame
+  that is already being sampled is a branch back to the entry (`star_random_y` loops
+  with `BCS` to its own first instruction) or a tail jump, not a call; it opened a bogus
+  nested sample that took the real sample's return. Such entries no longer start a
+  sample. That commit (6fad60e) went in with `star_random_y` marked *failed* (43
+  verified) because `tools/verify_all.sh` returned `grep`'s status instead of the
+  bench's and the commit was chained with `;`: the script now returns the bench's status,
+  and commits are gated on it with `&&`.
 - Race movie: `func_8AB700` 250 live samples (was 0), `tilemap_offset` 2,329 (was 0),
   `text_put_char` 2,561; everything still passes and the three negative variants
   still fail.
