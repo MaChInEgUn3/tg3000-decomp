@@ -10,6 +10,7 @@
 // its extent ran in a compared sample.
 #include "difftest.h"
 
+#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,6 +72,31 @@ static uint32_t interruptsAtEntry, insnsInSample;
 static bool hwAccess, mathWritten, leftExtent, setupPending;
 static uint32_t hwAccessAdr, leftExtentPc;
 static const char* hwWhy;
+
+// interrupts inside a sample of a routine that waits for them: each one's WRAM before and
+// after the handler, replayed in order by platform_wait_vblank() on the C side
+#define MAX_IRQS 24
+static uint8_t irqPre[MAX_IRQS][TG3000_WRAM_SIZE], irqPost[MAX_IRQS][TG3000_WRAM_SIZE];
+static int irqCount, irqReplayed;
+static bool irqActive, irqOverflow;
+static uint16_t irqReturnSp;
+static uint32_t irqSeen;
+static jmp_buf cAbort;
+static bool cWaitedTooLong;
+
+static void applyIrq(int i) {
+  for(uint32_t a = 0; a < TG3000_WRAM_SIZE; a++) {
+    if(irqPre[i][a] != irqPost[i][a]) g_ram[a] = irqPost[i][a];
+  }
+}
+
+void difftest_replay_interrupt(void) {
+  if(irqReplayed >= irqCount) {  // the C wants a frame the original never waited for
+    cWaitedTooLong = true;
+    longjmp(cAbort, 1);
+  }
+  applyIrq(irqReplayed++);
+}
 
 // hardware effects of the sample: from the original's DMA kicks, and from the C's calls
 #define MAX_EFFECTS 32
@@ -157,7 +183,7 @@ static bool isMathReg(uint32_t adr, bool write) {
 }
 
 void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
-  if(active < 0 || hwAccess) return;
+  if(active < 0 || hwAccess || irqActive) return;  // a handler's hardware is its own
   if(isWram(adr) || (!write && isRom(adr))) return;
   if(isMathReg(adr, write)) {
     if(write) { mathWritten = true; return; }
@@ -213,8 +239,15 @@ static bool compareWithC(int idx, const Regs* after, char* why, size_t whyLen, u
   Regs out = entryRegs;
   cEffectCount = 0;
   collectingC = true;
-  r->call(&entryRegs, &out);
+  irqReplayed = 0;
+  cWaitedTooLong = false;
+  if(setjmp(cAbort) == 0) r->call(&entryRegs, &out);
   collectingC = false;
+  if(cWaitedTooLong) {
+    snprintf(why, whyLen, "the C waited for more interrupts than the original's %d", irqCount);
+    return false;
+  }
+  while(irqReplayed < irqCount) applyIrq(irqReplayed++);  // interrupts after the C's last wait
   for(int i = 0; i < origEffectCount || i < cEffectCount; i++) {
     if(i >= origEffectCount || i >= cEffectCount) {
       snprintf(why, whyLen, "%d hardware effect(s) in the original, %d from the C", origEffectCount, cEffectCount);
@@ -253,7 +286,12 @@ static void finishSample(const Cpu* cpu) {
   active = -1;
   memcpy(afterRam, snes->ram, sizeof afterRam);
   Regs after = readRegs(cpu);
-  if(cpu_interruptCount != interruptsAtEntry) { s->interrupted++; return; }
+  if(table[idx].waitsForInterrupts) {
+    if(irqOverflow || irqActive) { s->abandoned++; return; }
+  } else if(cpu_interruptCount != interruptsAtEntry) {
+    s->interrupted++;
+    return;
+  }
   char why[200] = "";
   bool ok;
   uint8_t flagDiff = 0;
@@ -307,6 +345,9 @@ static void startSample(int idx, const Cpu* cpu) {
   insnsInSample = 0;
   hwAccess = mathWritten = leftExtent = setupPending = false;
   origEffectCount = 0;
+  irqCount = 0;
+  irqActive = irqOverflow = false;
+  irqSeen = cpu_interruptCount;
 }
 
 static uint8_t peekByte(uint32_t adr) {
@@ -369,6 +410,27 @@ static void checkEntries(Cpu* cpu, uint32_t pc) {
 
 void difftest_on_insn(Cpu* cpu) {
   uint32_t pc = norm(((uint32_t)cpu->k << 16) | cpu->pc);
+  if(active >= 0 && table[active].waitsForInterrupts) {
+    if(irqActive && cpu->sp == irqReturnSp) {  // the handler has returned (RTI)
+      memcpy(irqPost[irqCount++], snes->ram, TG3000_WRAM_SIZE);
+      irqActive = false;
+    }
+    if(cpu_interruptCount != irqSeen) {  // this instruction is a handler's first
+      irqSeen = cpu_interruptCount;
+      if(!irqActive) {
+        if(irqCount >= MAX_IRQS) irqOverflow = true;
+        else {
+          memcpy(irqPre[irqCount], snes->ram, TG3000_WRAM_SIZE);
+          irqActive = true;
+          irqReturnSp = (uint16_t)(cpu->sp + (cpu->e ? 3 : 4));
+        }
+      }
+    }
+    if(irqActive) {
+      if(cpu->sp < minSp) minSp = cpu->sp;
+      return;
+    }
+  }
   if(active >= 0) {
     const Routine* r = &table[active];
     if(pc >= r->entry && pc < r->end) stats[active].visited[pc - r->entry] = true;

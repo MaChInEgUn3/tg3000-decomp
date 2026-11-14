@@ -34,12 +34,17 @@ typedef struct {
   // Fuzz: given registers already randomised and D/DB/widths from a real entry, make the
   // inputs valid for this routine (WRAM through `ram`, registers through `r`). NULL = no fuzz.
   void (*fuzz)(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+  // The routine waits for interrupts: the ones that land inside a sample are recorded
+  // (their WRAM changes) and replayed when the C calls platform_wait_vblank(), instead
+  // of discarding the sample. Their hardware accesses belong to the handler.
+  bool waitsForInterrupts;
 } Routine;
 
 // Hardware effects, in canonical form: what the original did through DMA and what the C
 // asked the platform for (tools/bench/platform_bench.c) must be the same list.
 enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3 };
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size);
+void difftest_replay_interrupt(void);  // platform_wait_vblank() on the bench
 
 void difftest_init(Snes* snes, const uint8_t* rom, bool negative);
 void difftest_on_insn(Cpu* cpu);              // from the CPU trace hook

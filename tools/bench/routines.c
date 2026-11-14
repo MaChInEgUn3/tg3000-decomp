@@ -12,6 +12,7 @@
 #include "rng.h"
 #include "scale.h"
 #include "line_tables.h"
+#include "frame.h"
 #include "misc.h"
 #include "stars.h"
 #include "text.h"
@@ -413,6 +414,17 @@ STEP_ADAPTER(step_toward_0d80, 0x0D80, 0x0D88)
 STEP_ADAPTER(step_toward_0d70, 0x0D70, 0x0D78)
 STEP_ADAPTER(step_toward_0d68, 0x0D68, 0x0D90)
 
+// ---- wait_frames ($80:8373, $8A:BA90 long) ----  A = frames; exits with A = the target,
+// Z = C = 1 and N = 0 (the final equal CMP), V of the ADC that computed the target.
+static void call_wait_frames(const Regs* in, Regs* out) {
+  uint16_t now = rd16(FRAME_COUNTER);
+  out->a = wait_frames(in->a);
+  out->z = out->c = true;
+  out->n = false;
+  uint32_t sum = (uint32_t)in->a + now;
+  out->v = (~(in->a ^ now) & (in->a ^ sum) & 0x8000) != 0;
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -429,6 +441,13 @@ static void call_rng_next_wrong(const Regs* in, Regs* out) {
   out->a = rng_next_wrong((uint16_t)(in->d + 0x10), &carry);
   out->c = carry;
   setNZ16(out, out->a);
+}
+
+// Negative test for the interrupt replay: waiting one frame too many must FAIL.
+static void call_wait_frames_wrong(const Regs* in, Regs* out) {
+  out->a = wait_frames((uint16_t)(in->a + 1));
+  out->z = out->c = true;
+  out->n = false;
 }
 
 // Negative test for the effect comparison: an upload one byte too long must FAIL.
@@ -506,6 +525,10 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_step_toward_0d70, ALL_OUTPUTS, .fuzz = fuzz_step_toward_0d70},
   {.name = "step_toward_0d68", .entry = 0x8AA296, .end = 0x8AA2AF, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_step_toward_0d68, ALL_OUTPUTS, .fuzz = fuzz_step_toward_0d68},
+  {.name = "wait_frames", .entry = 0x808373, .end = 0x80837D, .source = "src/frame.c", .needM16 = true,
+   .lowWramDb = true, .waitsForInterrupts = true, .call = call_wait_frames, ALL_OUTPUTS},
+  {.name = "wait_frames_long", .entry = 0x8ABA90, .end = 0x8ABA9C, .rtl = true, .source = "src/frame.c",
+   .needM16 = true, .waitsForInterrupts = true, .call = call_wait_frames, ALL_OUTPUTS},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 
@@ -514,5 +537,7 @@ const Routine negativeRoutines[] = {
    .needM16 = true, .call = call_rng_next_wrong, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
   {.name = "upload_vram_now_wrong", .entry = 0x8083AD, .end = 0x8083CB, .rtl = true, .source = "src/video_dma.c",
    .needM16 = true, .needX16 = true, .call = call_upload_vram_now_wrong, ALL_OUTPUTS, .fuzz = fuzz_upload_vram_now},
+  {.name = "wait_frames_wrong", .entry = 0x808373, .end = 0x80837D, .source = "src/frame.c", .needM16 = true,
+   .lowWramDb = true, .waitsForInterrupts = true, .call = call_wait_frames_wrong, ALL_OUTPUTS},
 };
 const int negativeRoutineCount = sizeof negativeRoutines / sizeof negativeRoutines[0];

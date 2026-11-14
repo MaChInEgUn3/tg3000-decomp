@@ -45,3 +45,6 @@ func    8AA264   step_toward_0d80    ; $0D80,x towards $0D88,x, Y steps -> src/m
 func    8AA27D   step_toward_0d70    ; $0D70,x towards $0D78,x -> src/misc.c
 func    8AA296   step_toward_0d68    ; $0D68,x towards $0D90,x -> src/misc.c
 ram     7F0000   text_map            ; 32-column word map; character bottoms at +$40
+func    808373   wait_frames         ; wait until $0024 (frame counter) += A -> src/frame.c
+func    8ABA90   wait_frames_long    ; JSL copy of wait_frames -> src/frame.c
+ram     7E0024   frame_counter       ; incremented by the NMI handler

@@ -2172,7 +2172,16 @@ CODE_81F2F5:
     sta.w $FABB,x               ; $81F325
     ldx.b $18                   ; $81F328
     bmi CODE_81F33F             ; $81F32A
-    incbin !baserom:$F32C..$F33F
+    pha                         ; $81F32C
+    lda.w $0244,x               ; $81F32D
+    bit.w #$0004                ; $81F330
+    bne CODE_81F33E             ; $81F333
+    lda.b $01,s                 ; $81F335
+    clc                         ; $81F337
+    adc.w $029C,x               ; $81F338
+    sta.w $0206,x               ; $81F33B
+CODE_81F33E:
+    pla                         ; $81F33E
 CODE_81F33F:
     ply                         ; $81F33F
     plx                         ; $81F340

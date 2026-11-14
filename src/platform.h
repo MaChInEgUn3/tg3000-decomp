@@ -19,4 +19,9 @@ void video_upload_vram(uint16_t vram_word, uint32_t src, uint32_t size);
 // each colour is two bytes, low byte first (BGR555).
 void video_upload_cgram(uint8_t index, uint32_t src, uint32_t size);
 
+// Return after the next interrupt has run: the platform does the frame's work (what the
+// original's NMI and IRQ handlers do) and then comes back. Game code that waits for
+// "the next frame" calls this in a loop until its own frame counter has moved on.
+void platform_wait_vblank(void);
+
 #endif

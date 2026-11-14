@@ -411,6 +411,41 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `$0D68→$0D90`, indexed by X). One of them had 88 watched returns (< 100), so all its
   flags stay in the contract; C/V are derived from the C's reported last difference.
 
+## Community TAS movies (2026-11-14, suggested by the owner)
+
+- TASVideos lists 8 TAS files for this game. Seven (Technickle, "All Tracks — System N")
+  are for the Japanese release. **"Light Spike" by Jmosx36** (user file
+  34264942243851572, BizHawk 1.9.4, bsnes core, real DSP-4 firmware, 450,994 frames
+  ≈ 2 h) is for **our exact ROM** (SHA-1 `058AADF1...`).
+- `tools/bk2_to_movie.py` converts a `.bk2` (TASVideos may serve it gzip-wrapped) into a
+  bench movie (player 1). TAS files are **not committed** (their authors' work);
+  download them from TASVideos.
+- On the bench the TAS **desyncs during the first race** (by frame ~7,600 the car is
+  20th of 20 and stopped). Frame offset 0 is right (−3 already desyncs in the name
+  entry menu). Likely causes: the clean-room DSP-4 (96-100% exact) and LakeSnes timing
+  differing from bsnes + the real chip; a TAS amplifies any difference. Learned anyway:
+  the intro can be skipped with A (race at frame ~1,200 instead of ~7,900).
+- **Desynced input still runs real game code:** 120k frames (offset 0) + 40k (offset −3,
+  which reaches name entry) raised the map from 41.71% to **46.78%** (code 55,874 →
+  65,367 bytes; data 381,461 → 425,133).
+- Exact sync would need a bench with a low-level DSP-4 (the chip's firmware, which
+  this project does not have) and bsnes-level timing — left as an owner decision.
+
+## Frame waits (2026-11-14)
+
+- `platform_wait_vblank()` joins `src/platform.h`: return after the next interrupt has
+  run (the port does the frame's work there). `wait_frames(n)` ($80:8373 and the long
+  copy $8A:BA90, `src/frame.c`) waits until the frame counter `$0024` (incremented by
+  the NMI handler) has advanced by n.
+- Harness: routines marked `waitsForInterrupts` keep their interrupted samples. Each
+  interrupt inside the sample is recorded as WRAM before/after the handler (whose
+  hardware accesses are its own, not the routine's), and the bench's
+  `platform_wait_vblank()` replays them in order; leftovers are applied after the C
+  returns; a C that waits for more interrupts than the original saw is aborted with
+  `longjmp` and fails. Race movie: 1,994/1,994 and 155/155 live samples (D = $0100 or
+  $0200). Negative variant waiting one frame too many fails. No fuzz for these
+  (interrupts are off while fuzzing).
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:
