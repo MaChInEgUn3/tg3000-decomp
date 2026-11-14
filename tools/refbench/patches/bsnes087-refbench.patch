@@ -1,0 +1,69 @@
+diff --git a/libsnes/bsnes/snes/chip/necdsp/memory.cpp b/libsnes/bsnes/snes/chip/necdsp/memory.cpp
+index 0b11d594c..293190bb0 100644
+--- a/libsnes/bsnes/snes/chip/necdsp/memory.cpp
++++ b/libsnes/bsnes/snes/chip/necdsp/memory.cpp
+@@ -1,6 +1,13 @@
+ #ifdef NECDSP_CPP
+ 
++// tg3000-decomp reference bench: when set, DR/SR go to a high-level DSP replacement
++// instead of the uPD7725 core (used when no firmware is supplied).
++uint8 (*necdsp_hle_read)(bool data) = 0;
++void (*necdsp_hle_write)(uint8 data) = 0;
++unsigned long necdsp_writes = 0;  // data writes, counted by the reference bench
++
+ uint8 NECDSP::sr_read(unsigned) {
++  if(necdsp_hle_read) return necdsp_hle_read(false);
+   cpu.synchronize_coprocessors();
+   return regs.sr >> 8;
+ }
+@@ -10,6 +17,7 @@ void NECDSP::sr_write(unsigned, uint8 data) {
+ }
+ 
+ uint8 NECDSP::dr_read(unsigned) {
++  if(necdsp_hle_read) return necdsp_hle_read(true);
+   cpu.synchronize_coprocessors();
+   if(regs.sr.drc == 0) {
+     //16-bit
+@@ -29,6 +37,8 @@ uint8 NECDSP::dr_read(unsigned) {
+ }
+ 
+ void NECDSP::dr_write(unsigned, uint8 data) {
++  necdsp_writes++;
++  if(necdsp_hle_write) { necdsp_hle_write(data); return; }
+   cpu.synchronize_coprocessors();
+   if(regs.sr.drc == 0) {
+     //16-bit
+diff --git a/libsnes/bsnes/target-libsnes/Makefile b/libsnes/bsnes/target-libsnes/Makefile
+index 9ebdc9bde..be2bd597c 100644
+--- a/libsnes/bsnes/target-libsnes/Makefile
++++ b/libsnes/bsnes/target-libsnes/Makefile
+@@ -10,7 +10,7 @@ else ifeq ($(platform),win)
+ endif
+ 
+ #rules
+-objects := $(objects) libsnes libsnes_pwrap
++objects := $(objects) libsnes
+ objects := $(patsubst %,obj/%.o,$(objects))
+ 
+ obj/libsnes.o: $(ui)/libsnes.cpp $(ui)/*
+@@ -20,7 +20,6 @@ obj/libsnes_pwrap.o: $(ui)/libsnes_pwrap.cpp $(ui)/*
+ build: $(objects)
+ ifeq ($(platform),x)
+ 	ar rcs out/libsnes.a $(objects)
+-	$(cpp) -o out/libsnes.so -shared -soname,libsnes.so.1 $(objects)
+ else ifeq ($(platform),osx)
+ 	ar rcs out/libsnes.a $(objects)
+ 	$(cpp) -o out/libsnes.dylib -install_name @executable_path/../Libraries/libsnes.dylib -shared -dynamiclib $(objects)
+diff --git a/libsnes/bsnes/target-libsnes/libsnes.cpp b/libsnes/bsnes/target-libsnes/libsnes.cpp
+index e83189f83..f363f624d 100644
+--- a/libsnes/bsnes/target-libsnes/libsnes.cpp
++++ b/libsnes/bsnes/target-libsnes/libsnes.cpp
+@@ -6,7 +6,7 @@
+ 
+ #include <queue>
+ 
+-#include <Windows.h>
++// (Windows.h not needed on Linux)
+ 
+ using namespace nall;
+ 

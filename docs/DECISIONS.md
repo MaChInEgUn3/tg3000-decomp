@@ -431,6 +431,36 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - Exact sync would need a bench with a low-level DSP-4 (the chip's firmware, which
   this project does not have) and bsnes-level timing — left as an owner decision.
 
+## Reference bench and the DSP-4 firmware (2026-11-14, owner's decisions)
+
+- **Owner:** downloading emulators for the bench is fine; the owner supplied **their own
+  dump** of the DSP-4 firmware. It is kept at `ext/firmware/dsp4.rom` (ignored by git:
+  `/ext/` and `*.rom`), **never downloaded by the project and never committed**. It
+  checks out: 8,192 bytes, SHA-1 `af6478ae…8c72` (what the TAS's `.bk2` header requires)
+  and SHA-256 `752d03b2…31da` (what bsnes's cartridge markup expects). Ports never use it.
+- **`tools/refbench/`**: the TAS's own emulator, headless — bsnes v087 as shipped in
+  BizHawk 1.9.4 (`libsnes`, Compatibility profile, per the `.bk2`'s `Header.txt` and
+  `SyncSettings.json`), sparse-fetched by `tools/refbench/fetch.sh` with
+  `patches/bsnes087-refbench.patch` (builds on Linux; BizHawk's Windows IPC wrapper left
+  out; hooks to swap in the clean-room DSP-4; a DSP-4 write counter). `refbench ROM
+  "Input Log.txt"` replays the `.bk2`'s log frame by frame (`--firmware` for the real
+  chip, `--hashes`, `--dump`, `--offset`, `--p2-pad`); the share of frames with DSP-4
+  traffic measures time spent racing.
+- **Light Spike is the whole game** (450,995 log lines, ≈ 2 h 05 min).
+- **Result: even on bsnes v087 with the real firmware, the TAS desyncs in the first
+  race.** The race starts at frame 1,370 like on the main bench, but the car drives slowly
+  (14th/10th place) and ends "did not finish"; afterwards it sits in the menus.
+  Port 2 with a joypad (BizHawk's default) and offsets −2…+2 do not fix it (30,000
+  frames each: 27-36% racing, no variant goes on to a second race; offset −1 never
+  reaches a race). So neither the clean-room DSP-4 nor LakeSnes is the (only) cause:
+  what is left is BizHawk 1.9.4's frontend (input latching and lag frames, initial RAM,
+  where it puts frame boundaries), not reproduced here.
+- The clean-room DSP-4 inside bsnes diverges from the firmware at frame 1,378 and that
+  run later crashes, while the same code races fine on the main bench: the hooks bypass
+  the uPD7725 core's synchronisation, so the DSP-4's timing changes; not pursued.
+- **Value already in hand:** with the firmware, bsnes is a reference for the DSP-4's
+  exact output, which is what the native DSP-4 C will be checked against later.
+
 ## Frame waits (2026-11-14)
 
 - `platform_wait_vblank()` joins `src/platform.h`: return after the next interrupt has

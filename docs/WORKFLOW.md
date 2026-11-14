@@ -28,6 +28,8 @@ build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/race1.txt --autopi
 python3 -I tools/map.py && python3 -I tools/progress.py   # -> map/*.txt, README numbers
 tools/bench/selftest.sh         # determinism + fresh-process save/load + race reached
 python3 -I tools/listing.py && tools/build_asm.sh   # asm/ -> exact ROM (SHA-1 + code-from-text proof)
+tools/refbench/fetch.sh && make -C tools/refbench    # TAS reference: bsnes from BizHawk 1.9.4
+build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --frames 30000
 ```
 
 Frame dumps are game assets: write them outside the repo (they are also ignored).
