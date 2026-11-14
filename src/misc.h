@@ -72,4 +72,17 @@ uint16_t take_nibble(void);
 // Returns true when refused (the original's carry).
 bool func_83FE9A(uint16_t dp, uint16_t a, uint16_t x, uint16_t y);
 
+// Draw the sprite frame of the table entry at byte offset `entry`: first its width
+// ($0D70), y ($0D68) and x offset ($0D80) each step towards their targets ($0D78, $0D90,
+// $0D88) by up to $017E, $017C and $017A steps. The frame is three rows $014C apart,
+// centred on x ($0D60) + the offset: a left column (tiles $3000/$3001/$B000), one
+// func_8AA216 column per 8 pixels of width, and a right column (the left one flipped,
+// $7000/$7001/$F000). $0148 = width / 2; x, y and width are left as they were.
+void sprite_frame(uint16_t entry);
+
+// Show or hide seven objects by the mask word for $0158 (table $8A:9FF9): object i
+// (offsets at $8A:9FE9) gets bit 7 of its $1516 flags cleared when mask bit i is set,
+// set otherwise. $0158 is 0-5 in the game.
+void func_8A9FA1(void);
+
 #endif

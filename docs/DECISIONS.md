@@ -547,6 +547,16 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   The glyph mapper at `$80:8435` is 8-bit code reached by a branch after a `REP #$20`
   at `$80:842E`, so the linear decode for path coverage got the widths wrong (55/76
   paths); routines can now name addresses where the sweep restarts with M = 8 (`m8At`).
+- `sprite_frame` ($8A:A0F9) and `func_8A9FA1` ($8A:9FA1), the next roots: a box of
+  sprites three rows high whose width, y and x offset first step towards their targets
+  (the step_toward routines), and a mask that shows or hides seven objects through bit 7
+  of their `$1516` flags. Both passed on the first run; the fuzz keeps widths below `$60`
+  and `$0158` in 0–5, the ranges the game uses (a huge width would make the original
+  write slots across all of WRAM).
+- Fuzz seeds are per routine now (from its entry address). With one seed for the whole
+  run, adding these two routines shifted every later routine's random inputs and
+  `text_put_char` lost 2 of its 88 paths in the selftest's short run (200 inputs) — a
+  pass or fail that depended on registry order. The gate caught it before the commit.
 
 ## Coverage without a player (2026-11-13)
 

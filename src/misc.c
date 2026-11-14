@@ -155,3 +155,56 @@ bool func_83FE9A(uint16_t dp, uint16_t a, uint16_t x, uint16_t y) {
   wr16(0x0463, a);
   return false;
 }
+
+// One piece of a sprite frame: a slot from take_slot with tile/attributes `tile` at
+// (`x`, `y`), $0500 = $FFFF.
+static void frame_piece(uint16_t tile, uint16_t x, uint16_t y) {
+  uint16_t slot = take_slot(DP + 0x8C);
+  wr16(0x0500 + slot, 0xFFFF);
+  wr16(0x0800 + slot, tile);
+  wr16(0x0600 + slot, x);
+  wr16(0x0700 + slot, y);
+}
+
+// TG3000_ROUTINE($8A:A0F9) sprite_frame
+void sprite_frame(uint16_t entry) {
+  uint16_t diff;
+  step_toward(0x0D70 + entry, 0x0D78 + entry, rd16(DP + 0x7E), &diff);
+  step_toward(0x0D68 + entry, 0x0D90 + entry, rd16(DP + 0x7C), &diff);
+  step_toward(0x0D80 + entry, 0x0D88 + entry, rd16(DP + 0x7A), &diff);
+  uint16_t x = rd16(0x0D60 + entry), y = rd16(0x0D68 + entry), width = rd16(0x0D70 + entry);
+  uint16_t row = rd16(DP + 0x4C);
+  wr16(DP + 0x48, width >> 1);
+  uint16_t left = (uint16_t)(x - (width >> 1) + rd16(0x0D80 + entry));
+  wr16(0x0D60 + entry, left);
+  frame_piece(0x3000, left, y);  // left column: corner, side, corner flipped vertically
+  frame_piece(0x3001, left, (uint16_t)(y + row));
+  frame_piece(0xB000, left, (uint16_t)(y + 2 * row));
+  wr16(0x0D60 + entry, (uint16_t)(left + 8));
+  while(rd16(0x0D70 + entry) >= 8) {  // middle columns, 8 pixels each
+    wr16(0x0D70 + entry, (uint16_t)(rd16(0x0D70 + entry) - 8));
+    func_8AA216(entry);
+  }
+  uint16_t right = (uint16_t)(rd16(0x0D70 + entry) + rd16(0x0D60 + entry) - 8);
+  wr16(0x0D60 + entry, right);
+  frame_piece(0x7000, right, y);  // right column: the left one flipped horizontally
+  frame_piece(0x7001, right, (uint16_t)(y + row));
+  frame_piece(0xF000, right, (uint16_t)(y + 2 * row));
+  wr16(0x0D70 + entry, width);
+  wr16(0x0D68 + entry, y);
+  wr16(0x0D60 + entry, x);
+}
+
+#define MASK_OBJECTS 0x8A9FE9  // object offsets into $1516, $FFFF-terminated
+#define MASK_TABLE   0x8A9FF9  // one mask word per value of $0158
+
+// TG3000_ROUTINE($8A:9FA1) func_8A9FA1
+void func_8A9FA1(void) {
+  uint16_t mask = rom16(MASK_TABLE + 2 * rd16(DP + 0x58));
+  for(uint16_t i = 0;; i += 2, mask >>= 1) {
+    uint16_t object = rom16(MASK_OBJECTS + i);
+    if(object == 0xFFFF) return;
+    uint16_t flags = rd16(0x1516 + object);
+    wr16(0x1516 + object, (mask & 1) ? (uint16_t)(flags & 0xFF7F) : (uint16_t)(flags | 0x0080));
+  }
+}

@@ -2571,6 +2571,7 @@ CODE_8A9F9E:
     inc.b $6C                   ; $8A9F9E
 CODE_8A9FA0:
     rts                         ; $8A9FA0
+func_8A9FA1:
     phx                         ; $8A9FA1
     phy                         ; $8A9FA2
     ldx.w #$0000                ; $8A9FA3
@@ -2710,6 +2711,7 @@ CODE_8AA069:
     sta.w $0D2F                 ; $8AA0F3
     rep.b #$20                  ; $8AA0F6
     rts                         ; $8AA0F8
+sprite_frame:
     phx                         ; $8AA0F9
     ldy.b $7E                   ; $8AA0FA
     jsr.w step_toward_0d70      ; $8AA0FC
@@ -2902,7 +2904,7 @@ CODE_8AA2AE:
     sta.b $4A                   ; $8AA2AF
     jsr.w clear_object_slots    ; $8AA2B1
     ldx.w #$0000                ; $8AA2B4
-    jsr.w $A0F9                 ; $8AA2B7
+    jsr.w sprite_frame          ; $8AA2B7
     ldy.w #$0000                ; $8AA2BA
     lda.b ($4A),y               ; $8AA2BD
     sta.b $3C                   ; $8AA2BF
@@ -3334,7 +3336,7 @@ CODE_8AB65E:
     bne CODE_8AB67F             ; $8AB663
     lda.w #$0001                ; $8AB665
     jsl.l wait_frames_long      ; $8AB668
-    jsr.w $9FA1                 ; $8AB66C
+    jsr.w func_8A9FA1           ; $8AB66C
     lda.b $62                   ; $8AB66F
     jsr.w $A2AF                 ; $8AB671
     lda.b $5E                   ; $8AB674

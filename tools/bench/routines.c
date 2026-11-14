@@ -392,6 +392,48 @@ static void fuzz_char_to_tile_index(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   r->a = (k & 3) == 0 ? special[rnd() % 6] : (uint16_t)(rnd() & 0x7F);
 }
 
+// ---- sprite_frame ($8A:A0F9) ----  X = entry; exits with A = the entry's x (PLA), X =
+// entry (N/Z from the PLX), Y = the last slot, C/V of the last ADC (y + row + row).
+static void call_sprite_frame(const Regs* in, Regs* out) {
+  sprite_frame(in->x);
+  out->a = rd16(0x0D60 + in->x);
+  out->y = (uint16_t)(rd16(DP + 0x8C) - 2);
+  setNZ16(out, in->x);
+  uint16_t y = rd16(0x0D68 + in->x), row = rd16(DP + 0x4C);
+  setAdc16(out, (uint16_t)(y + row), row);
+}
+
+static void fuzz_sprite_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)(2 * (rnd() % 4));
+  for(uint16_t t = 0x0D60; t <= 0x0D90; t += 8) wr16ram(ram, t + r->x, (uint16_t)rnd());
+  // the game's widths are small (a frame of a few columns); so are the step counts
+  wr16ram(ram, 0x0D70 + r->x, (uint16_t)(rnd() % 0x60));
+  wr16ram(ram, 0x0D78 + r->x, (uint16_t)(rnd() % 0x60));
+  uint16_t y = (uint16_t)rnd();
+  wr16ram(ram, 0x0D68 + r->x, y);
+  wr16ram(ram, 0x0D90 + r->x, (uint16_t)(y + (int16_t)(rnd() % 25) - 12));
+  wr16ram(ram, DP + 0x7A, (uint16_t)(rnd() % 12));
+  wr16ram(ram, DP + 0x7C, (uint16_t)(rnd() % 12));
+  wr16ram(ram, DP + 0x7E, (uint16_t)(rnd() % 12));
+  wr16ram(ram, DP + 0x4C, (uint16_t)(rnd() % 0x20));
+  wr16ram(ram, DP + 0x8C, (uint16_t)(2 * (rnd() % 32)));
+}
+
+// ---- func_8A9FA1 ($8A:9FA1) ----  exits with A = $FFFF (the terminator), X/Y restored
+// (N/Z from the last PLX), C = 1 from the CMP that found the terminator.
+static void call_func_8A9FA1(const Regs* in, Regs* out) {
+  func_8A9FA1();
+  out->a = 0xFFFF;
+  setNZ16(out, in->x);
+  out->c = true;
+}
+
+static void fuzz_func_8A9FA1(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x58, (uint16_t)(rnd() % 6));
+  for(uint16_t i = 0; i < 0x20; i += 2) wr16ram(ram, 0x1516 + i, (uint16_t)rnd());
+}
+
 // ---- step_toward ($8A:A264, $8A:A27D, $8A:A296) ----  X = entry, Y = steps; exits with
 // Y = steps left, A = the last difference, Z = 1 and N = 0 (from the equal SBC or the
 // final DEY), C/V of that last SBC (target - the value before the last step).
@@ -777,6 +819,10 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x7E, .call = call_func_81F1FC, ALL_OUTPUTS, .fuzz = fuzz_func_81F1FC},
   {.name = "func_8AA216", .entry = 0x8AA216, .end = 0x8AA25D, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8AA216, ALL_OUTPUTS, .fuzz = fuzz_func_8AA216},
+  {.name = "sprite_frame", .entry = 0x8AA0F9, .end = 0x8AA216, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_sprite_frame, ALL_OUTPUTS, .fuzz = fuzz_sprite_frame},
+  {.name = "func_8A9FA1", .entry = 0x8A9FA1, .end = 0x8A9FE9, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x8A, .fixedD = true, .call = call_func_8A9FA1, ALL_OUTPUTS, .fuzz = fuzz_func_8A9FA1},
   {.name = "func_8A92CF", .entry = 0x8A92CF, .end = 0x8A9307, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8A92CF, ALL_OUTPUTS, .fuzz = fuzz_func_8A92CF},
   {.name = "func_80F745", .entry = 0x80F745, .end = 0x80F8F8, .source = "src/line_tables.c", .needM16 = true,

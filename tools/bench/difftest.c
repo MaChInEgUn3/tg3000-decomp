@@ -545,7 +545,6 @@ static uint32_t fuzzRandom(void) {
 }
 
 void difftest_fuzz(int iterations) {
-  fuzzSeed = 0x13579BDF;
   fuzzing = true;
   depth = 0;
   irqOwner = -1;
@@ -555,6 +554,9 @@ void difftest_fuzz(int iterations) {
     const Routine* r = &table[i];
     Stats* s = &stats[i];
     if(r->fuzz == NULL || s->contractCount == 0) continue;
+    // Each routine's inputs depend only on its own entry, not on its place in the
+    // registry: adding a routine must not change what the others are tested with.
+    fuzzSeed = 0x13579BDFu ^ (r->entry * 2654435761u);
     for(int k = 0; k < iterations; k++) {
       Contract c = s->contracts[k % s->contractCount];
       Regs in = {(uint16_t)fuzzRandom(), (uint16_t)fuzzRandom(), (uint16_t)fuzzRandom(), c.d, c.db,
