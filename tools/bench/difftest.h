@@ -34,6 +34,11 @@ typedef struct {
   void (*fuzz)(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 } Routine;
 
+// Hardware effects, in canonical form: what the original did through DMA and what the C
+// asked the platform for (tools/bench/platform_bench.c) must be the same list.
+enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3 };
+void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size);
+
 void difftest_init(Snes* snes, const uint8_t* rom, bool negative);
 void difftest_on_insn(Cpu* cpu);              // from the CPU trace hook
 void difftest_fuzz(int iterations);          // at the end of a run

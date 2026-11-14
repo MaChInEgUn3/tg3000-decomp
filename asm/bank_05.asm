@@ -160,7 +160,7 @@ CODE_858228:
     tax                         ; $85823A
     pla                         ; $85823B
     ldy.w #$5FE0                ; $85823C
-    jsl.l $8083AD               ; $85823F
+    jsl.l upload_vram_now       ; $85823F
     plx                         ; $858243
     rts                         ; $858244
     phx                         ; $858245
@@ -173,7 +173,7 @@ CODE_858228:
     tax                         ; $858253
     lda.w #$0200                ; $858254
     ldy.w #$3300                ; $858257
-    jsl.l $8083AD               ; $85825A
+    jsl.l upload_vram_now       ; $85825A
     plx                         ; $85825E
     rts                         ; $85825F
     phx                         ; $858260
@@ -186,7 +186,7 @@ CODE_858228:
     tax                         ; $85826E
     lda.w #$0200                ; $85826F
     ldy.w #$3700                ; $858272
-    jsl.l $8083AD               ; $858275
+    jsl.l upload_vram_now       ; $858275
     plx                         ; $858279
     rts                         ; $85827A
     phx                         ; $85827B
@@ -199,7 +199,7 @@ CODE_858228:
     tax                         ; $858289
     lda.w #$0200                ; $85828A
     ldy.w #$7700                ; $85828D
-    jsl.l $8083AD               ; $858290
+    jsl.l upload_vram_now       ; $858290
     plx                         ; $858294
     rts                         ; $858295
     phx                         ; $858296
@@ -212,7 +212,7 @@ CODE_858228:
     tax                         ; $8582A4
     lda.w #$0200                ; $8582A5
     ldy.w #$7B00                ; $8582A8
-    jsl.l $8083AD               ; $8582AB
+    jsl.l upload_vram_now       ; $8582AB
     plx                         ; $8582AF
     rts                         ; $8582B0
     incbin !baserom:$282B1..$282D8

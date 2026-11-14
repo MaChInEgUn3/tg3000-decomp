@@ -285,6 +285,30 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   and V differ from the C's but are dead in all 535 watched returns. Entered with
   D = $0100, so the variables are `$017A`, `$0114`, `$0138`.
 
+## Platform interface: video uploads (difftest-upload, 2026-11-13)
+
+- **`src/platform.h`** is the boundary between the game logic and a port. First two
+  services: `video_upload_vram(vram_word, src, size)` and
+  `video_upload_cgram(index, src, size)`; `src` is a 24-bit SNES bus address (LoROM ROM
+  or WRAM), `size` 1-65536. Ports implement them natively (copy bytes into their VRAM /
+  palette); the bench implements them in `tools/bench/platform_bench.c` by recording
+  an effect. `src/` never writes hardware registers.
+- **Effect comparison:** on the original side, every write to MDMAEN (`$420B`) becomes
+  one effect per channel, read from the channel registers and the PPU's address state
+  at that moment: *VRAM upload* (B-bus `$18`, mode 1, A→B, no fixed/decrement, VMAIN
+  increment 1 word after the high byte, no remap) at the current VRAM address; *CGRAM
+  upload* (B-bus `$22`, mode 0/2) at the current CGRAM index; anything else is a raw
+  DMA effect that no C can match yet. The setup writes (`$4300-$437F`, `$2116/7`, `$2121`)
+  have no effect of their own. The C's platform calls must produce the same list.
+  VMAIN (`$2115`) is an implicit input: an upload under another increment mode does
+  not count as a VRAM upload.
+- `upload_vram_now` ($80:83AD, JSL) and `upload_cgram_now` ($80:83CB, JSL) in
+  `src/video_dma.c`: full movie 362/362 and 17/17 live (4 interrupted samples discarded), fuzz 500 each (ROM and WRAM
+  sources, sizes 1-2 KB), all paths. A negative variant uploading one byte too many
+  fails with "original VRAM upload $3000 <- $7F0000 x2048, C ... x2049". The selftest
+  now requires *every* negative variant to fail.
+- The verification hash also covers `tools/bench/platform_bench.c`.
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

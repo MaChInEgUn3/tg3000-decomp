@@ -34,8 +34,9 @@ Read `docs/WORKFLOW.md` first and `docs/DECISIONS.md` when you need the reasonin
 5. Run `tools/verify_all.sh` (needs your ROM): it runs the differential test for every
    routine and rewrites `map/verified.txt` and the README numbers. Never edit
    `map/verified.txt` by hand; CI rejects rows whose C, registry or harness changed.
-   Hardware rules: multiply/divide is plain C; uploads to video memory are semantic
-   calls, never register writes (see `docs/DECISIONS.md`).
+   Hardware rules: multiply/divide is plain C; uploads to video memory go through
+   `src/platform.h` (`video_upload_vram`, `video_upload_cgram`), never register
+   writes (see `docs/DECISIONS.md`).
 
 ## Mapping and research
 

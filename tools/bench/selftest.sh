@@ -35,7 +35,8 @@ echo "ok   save state at $split reloaded in a new process matches ($((total - sp
 "$bench" "$rom" $total --movie "$movie" --difftest "$tmp/v" --fuzz 200 > "$tmp/d" 2>/dev/null \
   || { echo "FAIL differential test"; grep -A3 "^difftest" "$tmp/d"; exit 1; }
 echo "ok   differential test passes ($(grep -c PASS "$tmp/d") routine(s))"
-if "$bench" "$rom" $total --movie "$movie" --difftest-negative --fuzz 50 > /dev/null 2>&1; then
-  echo "FAIL negative test: a wrong C passed"; exit 1
+"$bench" "$rom" $total --movie "$movie" --difftest-negative --fuzz 50 > "$tmp/n" 2>/dev/null || true
+if grep -q "^difftest.*: PASS" "$tmp/n" || ! grep -q "^difftest.*: FAIL" "$tmp/n"; then
+  echo "FAIL negative test: a deliberately wrong C passed"; grep "^difftest" "$tmp/n"; exit 1
 fi
-echo "ok   negative test: a deliberately wrong C fails"
+echo "ok   negative test: every deliberately wrong C fails ($(grep -c ': FAIL' "$tmp/n"))"

@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Immediate uploads to video memory (outside the VRAM transfer queue).
+#include "video_dma.h"
+
+#include "platform.h"
+
+// TG3000_ROUTINE($80:83AD) upload_vram_now (long call)
+//
+// The original takes size in A, source in X with its bank at D+$14, and the VRAM word
+// address in Y, and starts DMA channel 0 right away (VMAIN must already be $80).
+void upload_vram_now(uint16_t vram_word, uint8_t src_bank, uint16_t src, uint16_t size) {
+  video_upload_vram(vram_word, ((uint32_t)src_bank << 16) | src, size ? size : 0x10000);
+}
+
+// TG3000_ROUTINE($80:83CB) upload_cgram_now (long call)
+//
+// The original takes the colour index in A's low byte and the source bank in its high
+// byte, the source in X and the size in Y.
+void upload_cgram_now(uint8_t index, uint8_t src_bank, uint16_t src, uint16_t size) {
+  video_upload_cgram(index, ((uint32_t)src_bank << 16) | src, size ? size : 0x10000);
+}

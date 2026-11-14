@@ -17,6 +17,8 @@
 #include "coverage.h"
 #include "opflags.h"
 #include "cpu.h"
+#include "dma.h"
+#include "ppu.h"
 #include "routines.h"
 #include "tg3000.h"
 
@@ -70,6 +72,51 @@ static bool hwAccess, mathWritten, leftExtent;
 static uint32_t hwAccessAdr, leftExtentPc;
 static const char* hwWhy;
 
+// hardware effects of the sample: from the original's DMA kicks, and from the C's calls
+#define MAX_EFFECTS 32
+typedef struct { int kind; uint32_t target, src, size; } Effect;
+static Effect origEffects[MAX_EFFECTS], cEffects[MAX_EFFECTS];
+static int origEffectCount, cEffectCount;
+static bool collectingC;
+
+void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size) {
+  if(!collectingC || cEffectCount >= MAX_EFFECTS) return;
+  cEffects[cEffectCount++] = (Effect){kind, target, src, size};
+}
+
+static const char* effectName(int kind) {
+  return kind == EFFECT_VRAM ? "VRAM upload" : kind == EFFECT_CGRAM ? "CGRAM upload" : "other DMA";
+}
+
+// A write of `val` to MDMAEN ($420B): one effect per channel started, read from the
+// channel's registers and the PPU's address state as they are at the kick.
+static void recordKick(uint8_t val) {
+  for(int c = 0; c < 8; c++) {
+    if(!(val & (1 << c)) || origEffectCount >= MAX_EFFECTS) continue;
+    DmaChannel* ch = &snes->dma->channel[c];
+    Ppu* ppu = snes->ppu;
+    uint32_t src = ((uint32_t)ch->aBank << 16) | ch->aAdr;
+    uint32_t size = ch->size ? ch->size : 0x10000;
+    bool plain = !ch->fromB && !ch->fixed && !ch->decrement;
+    Effect e = {EFFECT_RAW_DMA, ((uint32_t)ch->bAdr << 8) | ch->mode, src, size};
+    if(plain && ch->bAdr == 0x18 && ch->mode == 1 && ppu->vramIncrementOnHigh && ppu->vramIncrement == 1 &&
+       ppu->vramRemapMode == 0) {
+      e = (Effect){EFFECT_VRAM, ppu->vramPointer, src, size};
+    } else if(plain && ch->bAdr == 0x22 && (ch->mode == 0 || ch->mode == 2) && !ppu->cgramSecondWrite) {
+      e = (Effect){EFFECT_CGRAM, ppu->cgramPointer, src, size};
+    }
+    origEffects[origEffectCount++] = e;
+  }
+}
+
+// Registers a DMA upload is set up through; on their own they have no visible effect, the
+// kick turns them into one.
+static bool isUploadSetup(uint32_t adr) {
+  if(((adr >> 16) & 0x7F) >= 0x40) return false;
+  uint16_t a = adr & 0xFFFF;
+  return (a >= 0x4300 && a <= 0x437F) || a == 0x2116 || a == 0x2117 || a == 0x2121;
+}
+
 // flag-liveness watch after a live sample returns
 static int watching = -1;
 static uint8_t watchUnresolved;
@@ -110,13 +157,17 @@ static bool isMathReg(uint32_t adr, bool write) {
 }
 
 static void onAccess(uint32_t adr, uint8_t val, bool write) {
-  (void)val;
   if(active < 0 || hwAccess) return;
   if(isWram(adr) || (!write && isRom(adr))) return;
   if(isMathReg(adr, write)) {
     if(write) { mathWritten = true; return; }
     if(mathWritten) return;
     hwWhy = "reads a multiply/divide result it did not start";
+  } else if(write && isUploadSetup(adr)) {
+    return;
+  } else if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x420B) {
+    recordKick(val);
+    return;
   } else {
     hwWhy = "hardware access (not supported by this routine's C)";
   }
@@ -156,7 +207,23 @@ static bool compareWithC(int idx, const Regs* after, char* why, size_t whyLen, u
   const Routine* r = &table[idx];
   memcpy(g_ram, entryRam, sizeof g_ram);
   Regs out = entryRegs;
+  cEffectCount = 0;
+  collectingC = true;
   r->call(&entryRegs, &out);
+  collectingC = false;
+  for(int i = 0; i < origEffectCount || i < cEffectCount; i++) {
+    if(i >= origEffectCount || i >= cEffectCount) {
+      snprintf(why, whyLen, "%d hardware effect(s) in the original, %d from the C", origEffectCount, cEffectCount);
+      return false;
+    }
+    Effect* o = &origEffects[i];
+    Effect* c = &cEffects[i];
+    if(o->kind != c->kind || o->target != c->target || o->src != c->src || o->size != c->size) {
+      snprintf(why, whyLen, "effect %d: original %s $%X <- $%06X x%u, C %s $%X <- $%06X x%u", i,
+        effectName(o->kind), o->target, o->src, o->size, effectName(c->kind), c->target, c->src, c->size);
+      return false;
+    }
+  }
   for(uint32_t i = 0; i < TG3000_WRAM_SIZE; i++) {
     if(i > minSp && i <= entrySp) continue;  // bytes the routine pushed below its entry SP
     if(g_ram[i] != afterRam[i]) {
@@ -232,6 +299,7 @@ static void startSample(int idx, const Cpu* cpu) {
   interruptsAtEntry = cpu_interruptCount;
   insnsInSample = 0;
   hwAccess = mathWritten = leftExtent = false;
+  origEffectCount = 0;
   noteContract(&stats[idx], r, &entryRegs);
 }
 
@@ -377,9 +445,9 @@ void difftest_fuzz(int iterations) {
 // What a "verified" row vouches for: the routine's C source, the registry (adapters,
 // extents, contracts) and this harness. A change to any of them makes the row stale.
 static uint64_t verificationHash(const char* source) {
-  const char* files[3] = {source, "tools/bench/routines.c", "tools/bench/difftest.c"};
+  const char* files[4] = {source, "tools/bench/routines.c", "tools/bench/difftest.c", "tools/bench/platform_bench.c"};
   uint64_t h = 0xcbf29ce484222325ull;
-  for(int i = 0; i < 3; i++) {
+  for(int i = 0; i < 4; i++) {
     FILE* f = fopen(files[i], "rb");
     if(f == NULL) return 0;
     int ch;
@@ -410,7 +478,7 @@ bool difftest_report(const char* resultsPath) {
   }
   FILE* out = NULL;
   if(resultsPath != NULL) out = fopen(resultsPath, "w");
-  if(out != NULL) fprintf(out, "# entry name source fnv1a64(source+routines.c+difftest.c) live fuzz paths status live-flags  -- written by the bench (--difftest)\n");
+  if(out != NULL) fprintf(out, "# entry name source fnv1a64(source+routines.c+difftest.c+platform_bench.c) live fuzz paths status live-flags  -- written by the bench (--difftest)\n");
   for(int i = 0; i < tableCount; i++) {
     const Routine* r = &table[i];
     Stats* s = &stats[i];

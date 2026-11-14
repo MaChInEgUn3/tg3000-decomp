@@ -41,7 +41,7 @@ def verification_hash(source):
     """FNV-1a 64 over the C source, the bench's registry and its harness, in that order
     (the bench's verificationHash in tools/bench/difftest.c)."""
     h = 0xcbf29ce484222325
-    for rel in (source, "tools/bench/routines.c", "tools/bench/difftest.c"):
+    for rel in (source, "tools/bench/routines.c", "tools/bench/difftest.c", "tools/bench/platform_bench.c"):
         path = os.path.join(ROOT, rel)
         if not os.path.exists(path):
             return None

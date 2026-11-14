@@ -141,19 +141,19 @@ CODE_8A81B9:
     lda.w #$7E80                ; $8A81BA
     ldx.w #$81E2                ; $8A81BD
     ldy.w #$0020                ; $8A81C0
-    jsl.l $8083CB               ; $8A81C3
+    jsl.l upload_cgram_now      ; $8A81C3
     lda.w #$7E90                ; $8A81C7
     ldx.w #$8202                ; $8A81CA
     ldy.w #$0020                ; $8A81CD
-    jsl.l $8083CB               ; $8A81D0
+    jsl.l upload_cgram_now      ; $8A81D0
     lda.w #$7EA0                ; $8A81D4
     ldx.w #$8222                ; $8A81D7
     ldy.w #$0020                ; $8A81DA
-    jsl.l $8083CB               ; $8A81DD
+    jsl.l upload_cgram_now      ; $8A81DD
     lda.w #$7E01                ; $8A81E1
     ldx.w #$8114                ; $8A81E4
     ldy.w #$001E                ; $8A81E7
-    jsl.l $8083CB               ; $8A81EA
+    jsl.l upload_cgram_now      ; $8A81EA
     lda.w $1536                 ; $8A81EE
     asl a                       ; $8A81F1
     asl a                       ; $8A81F2
@@ -163,7 +163,7 @@ CODE_8A81B9:
     tax                         ; $8A81F9
     lda.w #$7EA0                ; $8A81FA
     ldy.w #$0020                ; $8A81FD
-    jsl.l $8083CB               ; $8A8200
+    jsl.l upload_cgram_now      ; $8A8200
     rts                         ; $8A8204
     incbin !baserom:$50205..$50232
     lda.b $36                   ; $8A8232
@@ -580,7 +580,7 @@ CODE_8A88BB:
     ldx.w #$A071                ; $8A8948
     ldy.w #$3600                ; $8A894B
     lda.w #$0800                ; $8A894E
-    jsl.l $8083AD               ; $8A8951
+    jsl.l upload_vram_now       ; $8A8951
     stz.b $5A                   ; $8A8955
     ldx.w #$0000                ; $8A8957
     ldy.w #$0200                ; $8A895A
@@ -947,7 +947,7 @@ CODE_8A8D64:
     tax                         ; $8A8D76
     pla                         ; $8A8D77
     ldy.w #$6FE0                ; $8A8D78
-    jsl.l $8083AD               ; $8A8D7B
+    jsl.l upload_vram_now       ; $8A8D7B
     plx                         ; $8A8D7F
     rts                         ; $8A8D80
     phx                         ; $8A8D81
@@ -962,7 +962,7 @@ CODE_8A8D64:
     tax                         ; $8A8D93
     lda.w #$0200                ; $8A8D94
     ldy.w #$C280                ; $8A8D97
-    jsl.l $8083AD               ; $8A8D9A
+    jsl.l upload_vram_now       ; $8A8D9A
     plx                         ; $8A8D9E
     rts                         ; $8A8D9F
     phx                         ; $8A8DA0
@@ -977,7 +977,7 @@ CODE_8A8D64:
     tax                         ; $8A8DB2
     lda.w #$0200                ; $8A8DB3
     ldy.w #$C680                ; $8A8DB6
-    jsl.l $8083AD               ; $8A8DB9
+    jsl.l upload_vram_now       ; $8A8DB9
     plx                         ; $8A8DBD
     rts                         ; $8A8DBE
     phx                         ; $8A8DBF
@@ -994,7 +994,7 @@ CODE_8A8D64:
     sta.b $72                   ; $8A8DDE
     lda.w #$7F70                ; $8A8DE0
     ldy.w #$0020                ; $8A8DE3
-    jsl.l $8083CB               ; $8A8DE6
+    jsl.l upload_cgram_now      ; $8A8DE6
     plx                         ; $8A8DEA
     rts                         ; $8A8DEB
     sep.b #$20                  ; $8A8DEC
@@ -1621,11 +1621,11 @@ CODE_8A9201:
     lda.w #$8660                ; $8A94FF
     ldx.w #$F40B                ; $8A9502
     ldy.w #$0040                ; $8A9505
-    jsl.l $8083CB               ; $8A9508
+    jsl.l upload_cgram_now      ; $8A9508
     lda.w #$8A10                ; $8A950C
     ldx.w #$9D2D                ; $8A950F
     ldy.w #$0020                ; $8A9512
-    jsl.l $8083CB               ; $8A9515
+    jsl.l upload_cgram_now      ; $8A9515
     ldx.w #$AADF                ; $8A9519
     ldy.w #$7400                ; $8A951C
     lda.w #$0091                ; $8A951F
@@ -1657,11 +1657,11 @@ CODE_8A954E:
     lda.w #$8C80                ; $8A9559
     ldx.w #$95C3                ; $8A955C
     ldy.w #$0020                ; $8A955F
-    jsl.l $8083CB               ; $8A9562
+    jsl.l upload_cgram_now      ; $8A9562
     lda.w #$8600                ; $8A9566
     ldx.w #$F44B                ; $8A9569
     ldy.w #$0020                ; $8A956C
-    jsl.l $8083CB               ; $8A956F
+    jsl.l upload_cgram_now      ; $8A956F
     ldy.w #$0800                ; $8A9573
     ldx.w #$F861                ; $8A9576
     lda.w #$0087                ; $8A9579
@@ -3480,14 +3480,14 @@ CODE_8AB98A:
     lda.w #$8A00                ; $8ABA6F
     ldx.w #$C658                ; $8ABA72
     ldy.w #$0200                ; $8ABA75
-    jsl.l $8083CB               ; $8ABA78
+    jsl.l upload_cgram_now      ; $8ABA78
     rts                         ; $8ABA7C
     lda.w #$007F                ; $8ABA7D
     sta.b $14                   ; $8ABA80
     ldx.w #$0000                ; $8ABA82
     ldy.w #$3000                ; $8ABA85
     lda.w #$0800                ; $8ABA88
-    jsl.l $8083AD               ; $8ABA8B
+    jsl.l upload_vram_now       ; $8ABA8B
     rts                         ; $8ABA8F
     clc                         ; $8ABA90
     adc.l $810024               ; $8ABA91
@@ -3697,7 +3697,7 @@ CODE_8ABC9B:
     lda.w #$8560                ; $8ABE70
     ldx.w #$FA37                ; $8ABE73
     ldy.w #$0040                ; $8ABE76
-    jsl.l $8083CB               ; $8ABE79
+    jsl.l upload_cgram_now      ; $8ABE79
     jsr.w $B91A                 ; $8ABE7D
     jsr.w $BAF2                 ; $8ABE80
     jsr.w $B212                 ; $8ABE83
@@ -4106,11 +4106,11 @@ CODE_8AC255:
     lda.w #$8A80                ; $8AC25D
     ldx.w #$C964                ; $8AC260
     ldy.w #$0020                ; $8AC263
-    jsl.l $8083CB               ; $8AC266
+    jsl.l upload_cgram_now      ; $8AC266
     lda.w #$8A60                ; $8AC26A
     ldx.w #$C984                ; $8AC26D
     ldy.w #$0040                ; $8AC270
-    jsl.l $8083CB               ; $8AC273
+    jsl.l upload_cgram_now      ; $8AC273
     rts                         ; $8AC277
     php                         ; $8AC278
     phy                         ; $8AC279

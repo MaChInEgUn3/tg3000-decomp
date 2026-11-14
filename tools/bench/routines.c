@@ -13,7 +13,9 @@
 #include "scale.h"
 #include "tg3000.h"
 #include "util.h"
+#include "video_dma.h"
 #include "vram_queue.h"
+#include "platform.h"
 
 static void setNZ16(Regs* r, uint16_t v) { r->n = (v >> 15) & 1; r->z = v == 0; }
 
@@ -96,6 +98,44 @@ static void fuzz_inverse_scale(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   ram[(uint16_t)(r->d + SCALE_DIVISOR + 1)] = (uint8_t)(divisor >> 8);
 }
 
+// ---- upload_vram_now ($80:83AD, long call) ----
+// A = size, X = source, D+$14 = source bank, Y = VRAM word address. Exits with
+// A = $1801 (the DMA mode word, then LDA #$01 in 8-bit), N = Z = 0; X, Y kept.
+static void call_upload_vram_now(const Regs* in, Regs* out) {
+  upload_vram_now(in->y, rd8((uint16_t)(in->d + 0x14)), in->x, in->a);
+  out->a = 0x1801;
+  out->n = out->z = false;
+}
+
+// Random but plausible uploads: source in ROM or WRAM, sizes up to 2 KB.
+static void fuzz_upload(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), bool bankInA) {
+  static const uint8_t banks[] = {0x7E, 0x7F, 0x80, 0x85, 0x8A, 0x9F, 0xC0};
+  uint8_t bank = banks[rnd() % sizeof banks];
+  uint16_t size = (uint16_t)(1 + rnd() % 0x800);
+  if(bankInA) {  // upload_cgram_now: A = bank:index, X = source, Y = size
+    r->a = (uint16_t)((bank << 8) | (rnd() & 0xFF));
+    r->y = size;
+  } else {       // upload_vram_now: A = size, D+$14 = bank, Y = VRAM word address
+    r->a = size;
+    ram[(uint16_t)(r->d + 0x14)] = bank;
+    r->y = (uint16_t)(rnd() & 0x7FFF);
+  }
+  r->x = (uint16_t)rnd();
+}
+
+static void fuzz_upload_vram_now(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_upload(r, ram, rnd, false); }
+static void fuzz_upload_cgram_now(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_upload(r, ram, rnd, true); }
+
+// ---- upload_cgram_now ($80:83CB, long call) ----
+// A = bank:index, X = source, Y = size. Exits with X = $2202 (the DMA mode word),
+// A = index:$01 (XBA, then LDA #$01 in 8-bit), N = Z = 0.
+static void call_upload_cgram_now(const Regs* in, Regs* out) {
+  upload_cgram_now((uint8_t)in->a, (uint8_t)(in->a >> 8), in->x, in->y);
+  out->x = 0x2202;
+  out->a = (uint16_t)(((in->a & 0xFF) << 8) | 0x01);
+  out->n = out->z = false;
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state) {
   uint32_t s = rd32(state);
@@ -109,6 +149,13 @@ static uint16_t rng_next_wrong(uint16_t state) {
 static void call_rng_next_wrong(const Regs* in, Regs* out) {
   out->a = rng_next_wrong((uint16_t)(in->d + 0x10));
   setNZ16(out, out->a);
+}
+
+// Negative test for the effect comparison: an upload one byte too long must FAIL.
+static void call_upload_vram_now_wrong(const Regs* in, Regs* out) {
+  video_upload_vram(in->y, ((uint32_t)rd8((uint16_t)(in->d + 0x14)) << 16) | in->x, (in->a ? in->a : 0x10000) + 1u);
+  out->a = 0x1801;
+  out->n = out->z = false;
 }
 
 #define ALL_OUTPUTS .compareA = true, .compareX = true, .compareY = true
@@ -127,11 +174,17 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .call = call_lsr_n, ALL_OUTPUTS, .fuzz = fuzz_lsr_n},
   {.name = "inverse_scale", .entry = 0x80F709, .end = 0x80F745, .source = "src/scale.c",
    .needM16 = true, .needX16 = true, .call = call_inverse_scale, ALL_OUTPUTS, .fuzz = fuzz_inverse_scale},
+  {.name = "upload_vram_now", .entry = 0x8083AD, .end = 0x8083CB, .rtl = true, .source = "src/video_dma.c",
+   .needM16 = true, .needX16 = true, .call = call_upload_vram_now, ALL_OUTPUTS, .fuzz = fuzz_upload_vram_now},
+  {.name = "upload_cgram_now", .entry = 0x8083CB, .end = 0x8083E8, .rtl = true, .source = "src/video_dma.c",
+   .needM16 = true, .needX16 = true, .call = call_upload_cgram_now, ALL_OUTPUTS, .fuzz = fuzz_upload_cgram_now},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 
 const Routine negativeRoutines[] = {
   {.name = "rng_next_wrong", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next_wrong, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
+  {.name = "upload_vram_now_wrong", .entry = 0x8083AD, .end = 0x8083CB, .rtl = true, .source = "src/video_dma.c",
+   .needM16 = true, .needX16 = true, .call = call_upload_vram_now_wrong, ALL_OUTPUTS, .fuzz = fuzz_upload_vram_now},
 };
 const int negativeRoutineCount = sizeof negativeRoutines / sizeof negativeRoutines[0];

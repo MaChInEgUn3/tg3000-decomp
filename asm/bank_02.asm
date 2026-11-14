@@ -165,7 +165,7 @@ CODE_8284C8:
     ldx.w #$0000                ; $8284FA
     ldy.w #$7C00                ; $8284FD
     lda.w #$0700                ; $828500
-    jsl.l $8083AD               ; $828503
+    jsl.l upload_vram_now       ; $828503
     jsr.w $A1D3                 ; $828507
     jsr.w $ADC2                 ; $82850A
     lda.w #$007E                ; $82850D
@@ -173,17 +173,17 @@ CODE_8284C8:
     ldx.w #$217C                ; $828512
     ldy.w #$57A0                ; $828515
     lda.w #$0190                ; $828518
-    jsl.l $8083AD               ; $82851B
+    jsl.l upload_vram_now       ; $82851B
     lda.w #$007E                ; $82851F
     sta.b $14                   ; $828522
     ldx.w #$217C                ; $828524
     ldy.w #$5868                ; $828527
     lda.w #$0190                ; $82852A
-    jsl.l $8083AD               ; $82852D
+    jsl.l upload_vram_now       ; $82852D
     lda.w #$8D00                ; $828531
     ldx.w #$8B70                ; $828534
     ldy.w #$0040                ; $828537
-    jsl.l $8083CB               ; $82853A
+    jsl.l upload_cgram_now      ; $82853A
     ldx.w #$B3D5                ; $82853E
     ldy.w #$0EE0                ; $828541
     lda.w #$0099                ; $828544
@@ -502,7 +502,7 @@ CODE_829BFA:
     lda.l $85A348,x             ; $82A209
     ldy.w #$3800                ; $82A20D
     plx                         ; $82A210
-    jsl.l $8083AD               ; $82A211
+    jsl.l upload_vram_now       ; $82A211
     plx                         ; $82A215
     phx                         ; $82A216
     lda.w #$007F                ; $82A217
@@ -511,7 +511,7 @@ CODE_829BFA:
     tax                         ; $82A220
     ldy.w #$3000                ; $82A221
     lda.w #$0600                ; $82A224
-    jsl.l $8083AD               ; $82A227
+    jsl.l upload_vram_now       ; $82A227
     plx                         ; $82A22B
     phx                         ; $82A22C
     lda.w #$007F                ; $82A22D
@@ -520,7 +520,7 @@ CODE_829BFA:
     tax                         ; $82A236
     ldy.w #$3400                ; $82A237
     lda.w #$0600                ; $82A23A
-    jsl.l $8083AD               ; $82A23D
+    jsl.l upload_vram_now       ; $82A23D
     plx                         ; $82A241
     phx                         ; $82A242
     lda.l $85A34A,x             ; $82A243
@@ -544,7 +544,7 @@ CODE_82A24B:
     tax                         ; $82A26A
     ldy.w #$7400                ; $82A26B
     lda.w #$0600                ; $82A26E
-    jsl.l $8083AD               ; $82A271
+    jsl.l upload_vram_now       ; $82A271
     plx                         ; $82A275
     lda.w #$007F                ; $82A276
     sta.b $14                   ; $82A279
@@ -552,7 +552,7 @@ CODE_82A24B:
     tax                         ; $82A27F
     ldy.w #$7800                ; $82A280
     lda.w #$0600                ; $82A283
-    jsl.l $8083AD               ; $82A286
+    jsl.l upload_vram_now       ; $82A286
     rts                         ; $82A28A
     stz.w $00B4                 ; $82A28B
     stz.w $00B6                 ; $82A28E
@@ -1803,7 +1803,7 @@ CODE_82B001:
     lda.w #$007F                ; $82B006
     sta.b $14                   ; $82B009
     lda.b $16                   ; $82B00B
-    jsl.l $8083AD               ; $82B00D
+    jsl.l upload_vram_now       ; $82B00D
     plx                         ; $82B011
 CODE_82B012:
     inx                         ; $82B012

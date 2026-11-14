@@ -340,6 +340,7 @@ CODE_808377:
     sta.w $420B                 ; $8083A7
     rep.b #$20                  ; $8083AA
     rts                         ; $8083AC
+upload_vram_now:
     sta.w $4305                 ; $8083AD
     lda.w #$1801                ; $8083B0
     sta.w $4300                 ; $8083B3
@@ -352,6 +353,7 @@ CODE_808377:
     sta.w $420B                 ; $8083C5
     rep.b #$20                  ; $8083C8
     rtl                         ; $8083CA
+upload_cgram_now:
     stx.w $4302                 ; $8083CB
     sty.w $4305                 ; $8083CE
     ldx.w #$2202                ; $8083D1
