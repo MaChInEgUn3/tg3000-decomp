@@ -61,6 +61,8 @@ func    8AA47E   clear_object_slots  ; zero $0500-$05F7 and $018C -> src/misc.c
 func    8AA469   func_8AA469         ; $0D90 = $013C*8-$1C, $0D78 = $015A*8 -> src/misc.c
 func    8AA4CF   string_list_nth     ; skip n strings (8-bit terminator step) -> src/misc.c
 func    80841A   sprite_text         ; string -> sprite entries at $0900+slot, x advanced by glyph widths ($80:85E5) -> src/text.c
+func    8084BE   sprite_text_centered ; sprite_text, then entries shifted to centre the string on x -> src/text.c
+func    8084F0   sprite_number       ; 8 hex digits as sprites, leading zeros skipped, thousands gaps -> src/text.c
 func    808542   take_nibble         ; A = top 4 bits of $0118:$011A, shifted out (61k calls) -> src/misc.c
 func    83FE9A   func_83FE9A         ; request into $0463/$0465 unless $047C bit 15 or cooldown D+$23; C = refused -> src/misc.c
 func    82EC09   func_82EC09         ; byte $7E:8CB3+x as signed 12-bit top minus byte $7E:8CB5+x; $011E = that byte * 2 -> src/misc.c

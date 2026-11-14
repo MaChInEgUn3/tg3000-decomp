@@ -857,6 +857,54 @@ static void fuzz_sprite_text(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x14, (uint16_t)rnd());
 }
 
+// ---- sprite_text_centered ($80:84BE) ----  as sprite_text (A = bank, X = string, Y = x);
+// exits with Y = the end slot, A = shift high byte : the last entry's new x byte, Z = C =
+// 1 from the final CPY, V of the last 8-bit ADC.
+static void call_sprite_text_centered(const Regs* in, Regs* out) {
+  uint32_t str = ((uint32_t)(in->a & 0xFF) << 16) | in->x;
+  uint16_t n = 0;
+  while(bus_rd8((str & 0xFF0000) | (uint16_t)(str + n)) != 0) n++;
+  uint16_t shift = sprite_text_centered(str, in->y);
+  uint16_t end = rd16(DP + 0x74);
+  uint8_t last = rd8(0x0900 + (uint16_t)(end - 4)), before = (uint8_t)(last - shift);
+  out->a = (uint16_t)((shift & 0xFF00) | last);
+  out->x = (uint16_t)(in->x + n);
+  out->y = end;
+  out->z = out->c = true;
+  out->n = false;
+  out->v = ((~(before ^ (uint8_t)shift)) & (before ^ last) & 0x80) != 0;
+}
+
+static void fuzz_sprite_text_centered(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_sprite_text(r, ram, rnd);
+  if(ram[0x1C00] == 0) { ram[0x1C00] = 'A'; ram[0x1C01] = 0; }  // the game never centres ""
+}
+
+// ---- sprite_number ($80:84F0) ----  A = low word, X = high word, Y = x; exits with Y =
+// the final x (N/Z from the closing LDY), A = 0 (a ninth nibble), X = $FFFF ($FFFE for 0),
+// C of the last CPX, V of the last width ADC.
+static void call_sprite_number(const Regs* in, Regs* out) {
+  uint32_t value = ((uint32_t)in->x << 16) | in->a;
+  out->y = sprite_number(value, in->y);
+  out->a = 0;
+  out->x = value == 0 ? 0xFFFE : 0xFFFF;
+  setNZ16(out, out->y);
+  out->c = value == 0;
+  uint16_t w = rom8(0x8085E5 + 0x34 + (value & 0xF));
+  setAdc16(out, w, (uint16_t)(out->y - w));
+}
+
+static void fuzz_sprite_number(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint32_t k = rnd();
+  r->a = (uint16_t)rnd();
+  r->x = (k & 3) == 0 ? 0 : (uint16_t)rnd();  // short numbers too
+  if((k & 12) == 0) r->a = (uint16_t)(r->a & 0xF);
+  if((k & 48) == 0) r->a = 0, r->x = 0;
+  r->y = (uint16_t)rnd();
+  wr16ram(ram, DP + 0x74, (uint16_t)(4 * (rnd() % 32)));
+  wr16ram(ram, DP + 0x14, (uint16_t)rnd());
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1013,6 +1061,12 @@ const Routine routines[] = {
   {.name = "sprite_text", .entry = 0x80841A, .end = 0x8084B0, .source = "src/text.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_sprite_text, ALL_OUTPUTS, .fuzz = fuzz_sprite_text,
    .m8At = {0x808435}},
+  {.name = "sprite_text_centered", .entry = 0x8084BE, .end = 0x8084F0, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_sprite_text_centered, ALL_OUTPUTS,
+   .fuzz = fuzz_sprite_text_centered},
+  {.name = "sprite_number", .entry = 0x8084F0, .end = 0x808542, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_sprite_number, ALL_OUTPUTS,
+   .fuzz = fuzz_sprite_number},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

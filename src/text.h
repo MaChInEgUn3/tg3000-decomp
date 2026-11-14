@@ -47,4 +47,15 @@ uint16_t text_print_tiles(uint32_t str);
 // text_print_tiles starting at (`column`, `row`).
 uint16_t text_print_tiles_at(uint32_t str, uint16_t column, uint16_t row);
 
+// sprite_text, then the new entries are moved so the string is centred on `x`: each
+// entry's x byte gets (x - end) / 2 added (low bytes, 16-bit halving), which is also left
+// in $0114 (the glyph base sprite_text used). Returns that shift.
+uint16_t sprite_text_centered(uint32_t str, uint16_t x);
+
+// Lay out the 8 hex digits of `value` as sprites from `x` (entries as in sprite_text,
+// glyphs $34-$43), leading zeros skipped (zero shows one digit), with one extra pixel
+// after the 2nd and the 5th digit position from the left (thousands gaps). The digits are
+// read through take_nibble ($0118:$011A). Returns the final x.
+uint16_t sprite_number(uint32_t value, uint16_t x);
+
 #endif

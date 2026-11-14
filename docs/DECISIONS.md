@@ -622,6 +622,13 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   an outer waiting sample keeps the recording (the nested waits go unsampled there) and
   the owner is restored after a nested comparison; up to 64 interrupts are recorded (was
   24). The wipe has no fuzz (it waits) and 2 live samples, both passing.
+- `sprite_text_centered` ($80:84BE, 36,567 calls in the 60k movie) and `sprite_number`
+  ($80:84F0): the first runs sprite_text and moves the new entries by half of
+  (start − end) so the string is centred (the shift is left in `$0114`, clobbering the
+  glyph base); the second shows the 8 nibbles of X:A (high:low) as digits (glyphs `$34`–`$43`)
+  with leading zeros skipped and a 1-pixel gap after positions 6 and 3. An empty string
+  would make the centring loop walk all of memory (a do-while on `CPY $74`); the game
+  never centres one and the fuzz does not either.
 
 ## Coverage without a player (2026-11-13)
 

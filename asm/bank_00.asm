@@ -479,6 +479,7 @@ CODE_808486:
     inx                         ; $8084AC
     jmp.w $8423                 ; $8084AD
     incbin !baserom:$4B0..$4BE
+sprite_text_centered:
     sta.b $16                   ; $8084BE
     lda.b $74                   ; $8084C0
     pha                         ; $8084C2
@@ -509,6 +510,7 @@ CODE_8084DC:
     bne CODE_8084DC             ; $8084EB
     rep.b #$20                  ; $8084ED
     rts                         ; $8084EF
+sprite_number:
     sty.b $16                   ; $8084F0
     stx.b $18                   ; $8084F2
     sta.b $1A                   ; $8084F4
@@ -644,7 +646,7 @@ CODE_8085BF:
     pha                         ; $808639
     phy                         ; $80863A
     lda.b $16                   ; $80863B
-    jsr.w $84F0                 ; $80863D
+    jsr.w sprite_number         ; $80863D
     tya                         ; $808640
     and.w #$00FF                ; $808641
     sta.b $14                   ; $808644
@@ -703,7 +705,7 @@ CODE_808684:
     pha                         ; $80869C
     phy                         ; $80869D
     lda.b $16                   ; $80869E
-    jsr.w $84F0                 ; $8086A0
+    jsr.w sprite_number         ; $8086A0
     tya                         ; $8086A3
     and.w #$00FF                ; $8086A4
     sta.b $14                   ; $8086A7
@@ -2816,7 +2818,7 @@ CODE_809E0B:
     pha                         ; $809E31
     lda.w $038E,x               ; $809E32
     plx                         ; $809E35
-    jsr.w $84F0                 ; $809E36
+    jsr.w sprite_number         ; $809E36
     rts                         ; $809E39
     incbin !baserom:$1E3A..$1E49
     ldx.b $74                   ; $809E49
@@ -5244,7 +5246,7 @@ CODE_80B241:
     adc.b $E7                   ; $80B307
     tay                         ; $80B309
     lda.w #$0080                ; $80B30A
-    jsr.w $84BE                 ; $80B30D
+    jsr.w sprite_text_centered  ; $80B30D
     plx                         ; $80B310
 CODE_80B311:
     lda.b $22                   ; $80B311
@@ -7029,7 +7031,7 @@ CODE_80C3F9:
     ldy.b $18                   ; $80C3F9
     ldx.w #$BDE0                ; $80C3FB
     lda.w #$0081                ; $80C3FE
-    jsr.w $84BE                 ; $80C401
+    jsr.w sprite_text_centered  ; $80C401
     lda.w #$0100                ; $80C404
     sta.b $14                   ; $80C407
     dec.b $1A                   ; $80C409
@@ -7043,7 +7045,7 @@ CODE_80C412:
     tay                         ; $80C418
     ldx.w #$BDE5                ; $80C419
     lda.w #$0081                ; $80C41C
-    jsr.w $84BE                 ; $80C41F
+    jsr.w sprite_text_centered  ; $80C41F
     lda.w #$0100                ; $80C422
     sta.b $14                   ; $80C425
     dec.b $1A                   ; $80C427
@@ -7057,7 +7059,7 @@ CODE_80C430:
     tay                         ; $80C436
     ldx.w #$BDED                ; $80C437
     lda.w #$0081                ; $80C43A
-    jsr.w $84BE                 ; $80C43D
+    jsr.w sprite_text_centered  ; $80C43D
     lda.w #$0100                ; $80C440
     sta.b $14                   ; $80C443
     dec.b $1A                   ; $80C445
@@ -7071,7 +7073,7 @@ CODE_80C44E:
     tay                         ; $80C454
     ldx.w #$BDF3                ; $80C455
     lda.w #$0081                ; $80C458
-    jsr.w $84BE                 ; $80C45B
+    jsr.w sprite_text_centered  ; $80C45B
     lda.b $48                   ; $80C45E
     asl a                       ; $80C460
     tax                         ; $80C461
@@ -8968,7 +8970,7 @@ CODE_80D85C:
     lda.w $2135                 ; $80D8B5
     jsr.w $86C9                 ; $80D8B8
     ldy.w #$2CD2                ; $80D8BB
-    jsr.w $84F0                 ; $80D8BE
+    jsr.w sprite_number         ; $80D8BE
     lda.w #$2200                ; $80D8C1
     sta.b $14                   ; $80D8C4
     lda.b $36                   ; $80D8C6
@@ -8996,7 +8998,7 @@ CODE_80D85C:
     sta.b $14                   ; $80D8F9
     lda.w #$0086                ; $80D8FB
     ldy.w #$BDA8                ; $80D8FE
-    jsr.w $84BE                 ; $80D901
+    jsr.w sprite_text_centered  ; $80D901
     lda.w $0444                 ; $80D904
     asl a                       ; $80D907
     tax                         ; $80D908
@@ -9006,7 +9008,7 @@ CODE_80D85C:
     sta.b $14                   ; $80D911
     lda.w #$0086                ; $80D913
     ldy.w #$CDA8                ; $80D916
-    jsr.w $84BE                 ; $80D919
+    jsr.w sprite_text_centered  ; $80D919
     lda.w $0444                 ; $80D91C
     asl a                       ; $80D91F
     tax                         ; $80D920
@@ -9016,7 +9018,7 @@ CODE_80D85C:
     sta.b $14                   ; $80D929
     lda.w #$0086                ; $80D92B
     ldy.w #$6832                ; $80D92E
-    jsr.w $84BE                 ; $80D931
+    jsr.w sprite_text_centered  ; $80D931
     jsr.w $DAED                 ; $80D934
     lda.b $32                   ; $80D937
     sec                         ; $80D939

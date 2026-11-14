@@ -155,3 +155,42 @@ uint16_t text_print_tiles_at(uint32_t str, uint16_t column, uint16_t row) {
   wr16(TEXT_CURSOR_Y, row);
   return text_print_tiles(str);
 }
+
+// TG3000_ROUTINE($80:84BE) sprite_text_centered
+uint16_t sprite_text_centered(uint32_t str, uint16_t x) {
+  uint16_t first = rd16(SPRITE_TEXT_SLOT);
+  uint16_t end = sprite_text(str, x);
+  // half of (start - end) on the low bytes, as a 16-bit LSR: the shift left in $0114
+  uint16_t shift = (uint16_t)((uint16_t)((x & 0xFF) - (end & 0xFF)) >> 1);
+  wr16(SPRITE_TEXT_BASE, shift);
+  // (with an empty string the original's do-while walks all of memory; never happens)
+  for(uint16_t s = first; s != rd16(SPRITE_TEXT_SLOT); s = (uint16_t)(s + 4))
+    wr8(0x0900 + s, (uint8_t)(rd8(0x0900 + s) + shift));
+  return shift;
+}
+
+#define SPRITE_DIGIT_GLYPHS 0x34  // glyphs of the hex digits 0-F
+
+// TG3000_ROUTINE($80:84F0) sprite_number
+uint16_t sprite_number(uint32_t value, uint16_t x) {
+  wr16(SPRITE_TEXT_X, x);
+  wr16(DP + 0x18, (uint16_t)(value >> 16));
+  wr16(DP + 0x1A, (uint16_t)value);
+  uint16_t slot = rd16(SPRITE_TEXT_SLOT);
+  int pos = 7;  // digit position, 7 = most significant
+  uint16_t digit;
+  while((digit = take_nibble()) == 0 && --pos >= 0) {}  // skip leading zeros
+  for(;;) {
+    uint16_t glyph = (uint16_t)(digit + SPRITE_DIGIT_GLYPHS);
+    wr16(0x0902 + slot, (uint16_t)(glyph + rd16(SPRITE_TEXT_BASE)));
+    wr16(0x0B01 + slot, 0);
+    wr16(0x0900 + slot, rd16(SPRITE_TEXT_X));
+    wr16(SPRITE_TEXT_X, (uint16_t)(rom8(SPRITE_GLYPH_WIDTHS + glyph) + rd16(SPRITE_TEXT_X)));
+    slot = (uint16_t)(slot + 4);
+    digit = take_nibble();
+    if(pos == 6 || pos == 3) wr16(SPRITE_TEXT_X, (uint16_t)(rd16(SPRITE_TEXT_X) + 1));  // a gap
+    if(--pos < 0) break;
+  }
+  wr16(SPRITE_TEXT_SLOT, slot);
+  return rd16(SPRITE_TEXT_X);
+}
