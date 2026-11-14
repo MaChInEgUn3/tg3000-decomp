@@ -29,7 +29,7 @@ python3 -I tools/map.py && python3 -I tools/progress.py   # -> map/*.txt, README
 tools/bench/selftest.sh         # determinism + fresh-process save/load + race reached
 python3 -I tools/listing.py && tools/build_asm.sh   # asm/ -> exact ROM (SHA-1 + code-from-text proof)
 tools/refbench/fetch.sh && make -C tools/refbench    # TAS reference: bsnes from BizHawk 1.9.4
-build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --frames 30000
+build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --coverage traces/coverage.bin
 ```
 
 Frame dumps are game assets: write them outside the repo (they are also ignored).

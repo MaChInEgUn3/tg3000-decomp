@@ -2,8 +2,8 @@
 // Reference bench: replays a BizHawk SNES movie on the bsnes core BizHawk 1.9.4 used
 // (libsnes, compatibility profile), headless. It answers one question the main bench
 // cannot: does a community TAS stay in sync when the emulator is the one it was recorded
-// on? With --firmware the DSP-4 runs its real program on the uPD7725 core (the owner's
-// own dump; never downloaded, never committed). Without it, the DSP-4 is StackBlender's
+// on? With --firmware the DSP-4 runs its real program on the uPD7725 core (a file
+// supplied by the owner; never downloaded, never committed). Without it, the DSP-4 is StackBlender's
 // clean-room replacement, the same one the main bench uses, so a desync then points at the
 // DSP-4 rather than at the emulator's timing. Measuring instrument only: nothing here goes
 // into src/ or into a port.
@@ -17,6 +17,13 @@
 // line measures how much of a movie is spent racing (a synced TAS races most of the time).
 // --offset N plays N idle frames before the log (negative: skips the log's first -N
 // lines). --p2-pad connects a joypad in port 2 (BizHawk's default) instead of nothing.
+// --bizhawk replays what BizHawk 1.9.4's LibsnesCore does while a movie is recorded
+// (deterministic mode): power once more after loading, take a save state then and before
+// every frame (bsnes's snes_serialize runs the system to a save point, which moves
+// thread synchronisation, so it is part of the timing the movie was recorded with), and
+// leave both ports with libsnes's default joypads.
+// --coverage FILE OR-merges execution coverage into FILE (and FILE.ram), in the main
+// bench's format (tools/bench/coverage.h), for tools/map.py.
 #include "libsnes.hpp"
 
 #include "dsp4/Dsp4.h"
@@ -37,6 +44,8 @@ Interface* interface();  // creates libsnes's interface object, which the setter
 extern unsigned char (*necdsp_hle_read)(bool data);
 extern void (*necdsp_hle_write)(unsigned char data);
 extern unsigned long necdsp_writes;
+extern void (*refbench_exec_hook)(unsigned pc, bool e, bool m, bool x);
+extern void (*refbench_read_hook)(unsigned addr);
 }
 
 // libsnes.cpp calls BizHawk's process wrapper (a Windows IPC layer, not built here).
@@ -45,6 +54,88 @@ void pwrap_init() {}
 static dsp4::Dsp4 chip;
 static unsigned char hleRead(bool data) { return data ? chip.readData() : chip.readStatus(); }
 static void hleWrite(unsigned char v) { chip.writeData(v); }
+
+// ---- coverage, same file format and flags as tools/bench/coverage.c ----
+enum { COV_START = 0x01, COV_CODE = 0x02, COV_READ = 0x04, COV_M8X8 = 0x08, COV_M8X16 = 0x10,
+       COV_M16X8 = 0x20, COV_M16X16 = 0x40, COV_EMU = 0x80 };
+static const uint32_t kRomSize = 0x100000;
+static std::vector<uint8_t> covFlags(kRomSize), covRamExec(1u << 21), romImage;
+static unsigned long long covInsns, covRamInsns;
+
+static const int8_t kOpLength[256] = {
+  2, 2, 2, 2, 2, 2, 2, 2, 1,-1, 1, 1, 3, 3, 3, 4,  2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+  3, 2, 4, 2, 2, 2, 2, 2, 1,-1, 1, 1, 3, 3, 3, 4,  2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+  1, 2, 2, 2, 3, 2, 2, 2, 1,-1, 1, 1, 3, 3, 3, 4,  2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 4, 3, 3, 4,
+  1, 2, 3, 2, 2, 2, 2, 2, 1,-1, 1, 1, 3, 3, 3, 4,  2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+  2, 2, 3, 2, 2, 2, 2, 2, 1,-1, 1, 1, 3, 3, 3, 4,  2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+ -2, 2,-2, 2, 2, 2, 2, 2, 1,-1, 1, 1, 3, 3, 3, 4,  2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+ -2, 2, 2, 2, 2, 2, 2, 2, 1,-1, 1, 1, 3, 3, 3, 4,  2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+ -2, 2, 2, 2, 2, 2, 2, 2, 1,-1, 1, 1, 3, 3, 3, 4,  2, 2, 2, 2, 3, 2, 2, 2, 1, 3, 1, 1, 3, 3, 3, 4,
+};
+
+// LoROM ROM offset of a bus address, or -1 (WRAM, I/O, the DSP-4 at $30-$3F:8000-FFFF).
+static int32_t romOffset(uint32_t a) {
+  uint8_t b = (a >> 16) & 0x7F;
+  uint16_t adr = uint16_t(a);
+  if(b >= 0x7E) return -1;
+  if(adr < 0x8000 && b < 0x40) return -1;
+  if(b >= 0x30 && b < 0x40) return -1;
+  return int32_t(((uint32_t(b) << 15) | (adr & 0x7FFF)) & (kRomSize - 1));
+}
+
+static void covExec(unsigned pc, bool e, bool m, bool x) {
+  covInsns++;
+  int32_t off = romOffset(pc);
+  if(off < 0) {
+    covRamInsns++;
+    uint32_t a = pc & 0xFFFFFF;
+    covRamExec[a >> 3] |= uint8_t(1 << (a & 7));
+    return;
+  }
+  bool m8 = e || m, x8 = e || x;
+  int len = kOpLength[romImage[off]];
+  if(len == -1) len = m8 ? 2 : 3;
+  if(len == -2) len = x8 ? 2 : 3;
+  uint8_t state = m8 ? (x8 ? COV_M8X8 : COV_M8X16) : (x8 ? COV_M16X8 : COV_M16X16);
+  covFlags[off] |= COV_START | COV_CODE | state | (e ? COV_EMU : 0);
+  for(int i = 1; i < len; i++) {  // operands stay in the bank
+    int32_t o = romOffset((pc & 0xFF0000) | uint16_t(pc + i));
+    if(o >= 0) covFlags[o] |= COV_CODE;
+  }
+}
+
+static void covRead(unsigned addr) {
+  int32_t off = romOffset(addr);
+  if(off >= 0) covFlags[off] |= COV_READ;
+}
+
+static bool covMergeSave(const std::string& path) {
+  std::vector<uint8_t> old(kRomSize);
+  if(FILE* f = std::fopen(path.c_str(), "rb")) {
+    if(std::fread(old.data(), 1, kRomSize, f) == kRomSize)
+      for(uint32_t i = 0; i < kRomSize; i++) covFlags[i] |= old[i];
+    std::fclose(f);
+  }
+  FILE* f = std::fopen(path.c_str(), "wb");
+  if(f == nullptr) { std::perror(path.c_str()); return false; }
+  bool ok = std::fwrite(covFlags.data(), 1, kRomSize, f) == kRomSize;
+  ok = std::fclose(f) == 0 && ok;
+  std::string ramPath = path + ".ram";
+  if(FILE* r = std::fopen(ramPath.c_str(), "r")) {
+    unsigned b, a;
+    while(std::fscanf(r, "%x:%x", &b, &a) == 2) {
+      uint32_t x = (b << 16) | a;
+      covRamExec[x >> 3] |= uint8_t(1 << (x & 7));
+    }
+    std::fclose(r);
+  }
+  FILE* r = std::fopen(ramPath.c_str(), "w");
+  if(r == nullptr) { std::perror(ramPath.c_str()); return false; }
+  for(uint32_t x = 0; x < (1u << 24); x++)
+    if(covRamExec[x >> 3] & (1 << (x & 7))) std::fprintf(r, "%02X:%04X\n", x >> 16, x & 0xFFFF);
+  std::fclose(r);
+  return ok;
+}
 
 static std::string firmwarePath;
 static uint16_t pad;  // libsnes button ids as bits
@@ -115,7 +206,8 @@ int main(int argc, char** argv) {
     return 2;
   }
   long maxFrames = -1, every = 0, wramAt = -1, offset = 0;
-  bool p2pad = false;
+  bool p2pad = false, bizhawk = false;
+  std::string coveragePath;
   const char* dumpDir = nullptr;
   const char* wramFile = nullptr;
   FILE* hashes = nullptr;
@@ -127,6 +219,8 @@ int main(int argc, char** argv) {
     else if(!std::strcmp(argv[i], "--every") && i + 1 < argc) every = std::atol(argv[++i]);
     else if(!std::strcmp(argv[i], "--offset") && i + 1 < argc) offset = std::atol(argv[++i]);
     else if(!std::strcmp(argv[i], "--p2-pad")) p2pad = true;
+    else if(!std::strcmp(argv[i], "--bizhawk")) bizhawk = true;
+    else if(!std::strcmp(argv[i], "--coverage") && i + 1 < argc) coveragePath = argv[++i];
     else if(!std::strcmp(argv[i], "--wram-at") && i + 2 < argc) { wramAt = std::atol(argv[++i]); wramFile = argv[++i]; }
     else { std::fprintf(stderr, "unknown option %s\n", argv[i]); return 2; }
   }
@@ -136,6 +230,12 @@ int main(int argc, char** argv) {
   std::vector<uint8_t> rom;
   for(int c; (c = std::fgetc(f)) != EOF;) rom.push_back(uint8_t(c));
   std::fclose(f);
+  romImage = rom;
+  romImage.resize(kRomSize);
+  if(!coveragePath.empty()) {
+    SNES::refbench_exec_hook = covExec;
+    SNES::refbench_read_hook = covRead;
+  }
   FILE* log = std::fopen(argv[2], "r");
   if(log == nullptr) { std::perror(argv[2]); return 1; }
 
@@ -163,8 +263,10 @@ int main(int argc, char** argv) {
       }
     snes_set_color_lut(lut.data());
   }
-  snes_set_controller_port_device(false, SNES_DEVICE_JOYPAD);
-  snes_set_controller_port_device(true, p2pad ? SNES_DEVICE_JOYPAD : SNES_DEVICE_NONE);
+  if(!bizhawk) {
+    snes_set_controller_port_device(false, SNES_DEVICE_JOYPAD);
+    snes_set_controller_port_device(true, p2pad ? SNES_DEVICE_JOYPAD : SNES_DEVICE_NONE);
+  }
   if(!snes_load_cartridge_normal(nullptr, rom.data(), unsigned(rom.size()))) {
     std::fprintf(stderr, "cartridge load failed\n");
     return 1;
@@ -176,6 +278,15 @@ int main(int argc, char** argv) {
   }
   std::fprintf(stderr, "DSP-4: %s\n", firmwarePath.empty() ? "clean-room replacement (no firmware)" : firmwarePath.c_str());
 
+  std::vector<uint8_t> state;
+  auto saveState = [&state]() {
+    state.resize(snes_serialize_size());
+    snes_serialize(state.data(), unsigned(state.size()));
+  };
+  if(bizhawk) {
+    snes_power();
+    saveState();  // BizHawk's frame-0 state
+  }
   uint8_t* wram = snes_get_memory_data(SNES_MEMORY_WRAM);
   unsigned wramSize = snes_get_memory_size(SNES_MEMORY_WRAM);
   char line[256];
@@ -191,7 +302,11 @@ int main(int argc, char** argv) {
       if(!parseLine(line, &pad, &reset, &power)) continue;  // LogKey and blank lines
       if(skip > 0) { skip--; continue; }
     }
-    if(power) snes_power();
+    if(bizhawk) saveState();
+    if(bizhawk) {  // BizHawk's order: reset, then power
+      if(reset) snes_reset();
+      if(power) snes_power();
+    } else if(power) snes_power();
     else if(reset) snes_reset();
     snes_run();
     frame++;
@@ -207,6 +322,17 @@ int main(int argc, char** argv) {
   }
   std::fclose(log);
   if(hashes) std::fclose(hashes);
+  if(!coveragePath.empty()) {
+    if(!covMergeSave(coveragePath)) return 1;
+    unsigned code = 0, starts = 0, read = 0;
+    for(uint32_t i = 0; i < kRomSize; i++) {
+      if(covFlags[i] & COV_CODE) code++;
+      if(covFlags[i] & COV_START) starts++;
+      if((covFlags[i] & COV_READ) && !(covFlags[i] & COV_CODE)) read++;
+    }
+    std::fprintf(stderr, "coverage (merged): %llu instructions (%llu outside ROM); %u code bytes, %u instruction starts, %u data bytes read\n",
+                 covInsns, covRamInsns, code, starts, read);
+  }
   std::fprintf(stderr, "frames=%ld racing=%ld (%.1f%%)\n", frame, racing, frame ? 100.0 * racing / frame : 0.0);
   return 0;
 }

@@ -123,7 +123,9 @@ CODE_84A419:
     db $F0,$0A ; beq            ; $84A421
     cmp.w #$0100                ; $84A423
     beq CODE_84A44B             ; $84A426
-    incbin !baserom:$22428..$2244B
+    cmp.w #$0200                ; $84A428
+    beq CODE_84A469             ; $84A42B
+    incbin !baserom:$2242D..$2244B
 CODE_84A44B:
     ldx.w #$0000                ; $84A44B
 CODE_84A44E:
@@ -139,7 +141,21 @@ CODE_84A45D:
     and.w #$00FF                ; $84A462
     sta.w $0444                 ; $84A465
     rtl                         ; $84A468
-    incbin !baserom:$22469..$22487
+CODE_84A469:
+    ldx.w #$0000                ; $84A469
+CODE_84A46C:
+    lda.l $8ACB01,x             ; $84A46C
+    and.w #$00FF                ; $84A470
+    cmp.w $0444                 ; $84A473
+    beq CODE_84A47B             ; $84A476
+    inx                         ; $84A478
+    bra CODE_84A46C             ; $84A479
+CODE_84A47B:
+    inx                         ; $84A47B
+    lda.l $8ACB01,x             ; $84A47C
+    and.w #$00FF                ; $84A480
+    sta.w $0444                 ; $84A483
+    rtl                         ; $84A486
     lda.l $81047B               ; $84A487
     and.w #$0003                ; $84A48B
     clc                         ; $84A48E
@@ -197,14 +213,4 @@ CODE_84A51D:
     incbin !baserom:$22534..$22552
 CODE_84A552:
     rtl                         ; $84A552
-    lda.l $8103DC               ; $84A553
-    and.w #$0003                ; $84A557
-    cmp.w #$0002                ; $84A55A
-    beq CODE_84A585             ; $84A55D
-    incbin !baserom:$2255F..$22585
-CODE_84A585:
-    jsl.l rng_next_long         ; $84A585
-    and.w #$0007                ; $84A589
-    sta.w $047B                 ; $84A58C
-    rtl                         ; $84A58F
-    incbin !baserom:$22590..$28000
+    incbin !baserom:$22553..$28000

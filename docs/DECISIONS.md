@@ -425,16 +425,16 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   entry menu). Likely causes: the clean-room DSP-4 (96-100% exact) and LakeSnes timing
   differing from bsnes + the real chip; a TAS amplifies any difference. Learned anyway:
   the intro can be skipped with A (race at frame ~1,200 instead of ~7,900).
-- **Desynced input still runs real game code:** 120k frames (offset 0) + 40k (offset −3,
-  which reaches name entry) raised the map from 41.71% to **46.78%** (code 55,874 →
-  65,367 bytes; data 381,461 → 425,133).
+- ~~Desynced input still runs real game code~~ — **withdrawn** (see "Coverage sources"
+  below): a desynced run can derail the game into data, and one did (a lone `BRK` at
+  `$80:A3B2`, inside a real `LDA #$0100` at `$80:A3B1`). Its coverage was dropped.
 - Exact sync would need a bench with a low-level DSP-4 (the chip's firmware, which
   this project does not have) and bsnes-level timing — left as an owner decision.
 
 ## Reference bench and the DSP-4 firmware (2026-11-14, owner's decisions)
 
-- **Owner:** downloading emulators for the bench is fine; the owner supplied **their own
-  dump** of the DSP-4 firmware. It is kept at `ext/firmware/dsp4.rom` (ignored by git:
+- **Owner:** downloading emulators for the bench is fine; the owner supplied the DSP-4
+  firmware **file** (its provenance is the owner's). It is kept at `ext/firmware/dsp4.rom` (ignored by git:
   `/ext/` and `*.rom`), **never downloaded by the project and never committed**. It
   checks out: 8,192 bytes, SHA-1 `af6478ae…8c72` (what the TAS's `.bk2` header requires)
   and SHA-256 `752d03b2…31da` (what bsnes's cartridge markup expects). Ports never use it.
@@ -447,19 +447,39 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   chip, `--hashes`, `--dump`, `--offset`, `--p2-pad`); the share of frames with DSP-4
   traffic measures time spent racing.
 - **Light Spike is the whole game** (450,995 log lines, ≈ 2 h 05 min).
-- **Result: even on bsnes v087 with the real firmware, the TAS desyncs in the first
-  race.** The race starts at frame 1,370 like on the main bench, but the car drives slowly
-  (14th/10th place) and ends "did not finish"; afterwards it sits in the menus.
-  Port 2 with a joypad (BizHawk's default) and offsets −2…+2 do not fix it (30,000
-  frames each: 27-36% racing, no variant goes on to a second race; offset −1 never
-  reaches a race). So neither the clean-room DSP-4 nor LakeSnes is the (only) cause:
-  what is left is BizHawk 1.9.4's frontend (input latching and lag frames, initial RAM,
-  where it puts frame boundaries), not reproduced here.
-- The clean-room DSP-4 inside bsnes diverges from the firmware at frame 1,378 and that
-  run later crashes, while the same code races fine on the main bench: the hooks bypass
-  the uPD7725 core's synchronisation, so the DSP-4's timing changes; not pursued.
+- **The TAS syncs to the end** with the real firmware **and** `--bizhawk`, which replays
+  what BizHawk 1.9.4's `LibsnesCore` does while recording a movie (read from its source at
+  the 1.9.4 tag): a second `power()` after loading the cartridge, and — deterministic
+  mode — a save state at load and **before every frame**. In bsnes, `snes_serialize()`
+  first runs the system to a save point (`system.runtosave()`), which moves the threads'
+  synchronisation; the movie was recorded with that, so it has to be replayed with it.
+  Full run: 450,994 frames, **48 races**, 86.7% of frames with DSP-4 traffic; the last
+  race ends at frame 450,249 in 1st place (the movie ends 745 frames later).
+- First attempt, without `--bizhawk` (recorded here because it was committed as a
+  conclusion in b411ff4, wrongly): the car drove slowly in the first race and did not
+  finish; port 2, offsets −2…+2 changed nothing. That conclusion ("BizHawk's frontend",
+  unverified) is superseded by the above; the instrument had not been validated.
+- The clean-room DSP-4 run inside bsnes (hooks on DR/SR) diverges from the firmware run
+  at frame 1,378 and later crashes; why is **open** (the hooks bypass the uPD7725
+  core's synchronisation — unverified). To measure the clean-room chip, the plan is to
+  log the firmware run's DSP-4 command stream and replay it into the clean-room chip
+  offline (no timing involved).
 - **Value already in hand:** with the firmware, bsnes is a reference for the DSP-4's
   exact output, which is what the native DSP-4 C will be checked against later.
+
+## Coverage sources (2026-11-14)
+
+- **Only runs that are known to follow the game's intended path feed
+  `traces/coverage.bin`:** the bench's own movies (start taps, to race, race 1, the 60k
+  autopilot) and the TAS replayed **in sync** on the reference bench (`--bizhawk`, real
+  DSP-4). Desynced TAS runs are not coverage sources: `tools/map.py` rejected the merge
+  because the old desynced coverage had an instruction start inside one the synced TAS
+  executes, and the bench movies alone never touch `$80:A3B2`.
+- Rebuilt from scratch with those sources: **79.94% of the ROM classified** (code
+  69,676 bytes, data 768,558, unknown 210,342), up from 46.78% (whose code count,
+  65,367, included the derailed bytes). The TAS alone executed 67,823 code bytes and
+  read 766,727 data bytes in 450,994 frames; outside ROM only `$00:0000`/`$00:0004` run
+  (the idle loop), as on the bench.
 
 ## Frame waits (2026-11-14)
 

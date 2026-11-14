@@ -2,9 +2,10 @@
 # Fetch the reference bench's emulator into ext/ (ignored by git): bsnes v087 as shipped in
 # BizHawk 1.9.4 (libsnes, the core community TAS movies of this game were recorded on),
 # sparse-checked out at the 1.9.4 tag, plus our patch (Linux build, no Windows IPC wrapper,
-# DSP-4 high-level hooks, a DSP-4 write counter). Needs tools/bench/fetch.sh for snes-dsp4.
+# DSP-4 high-level hooks, a DSP-4 write counter, coverage hooks on the CPU's instruction
+# starts and bus/DMA reads). Needs tools/bench/fetch.sh for snes-dsp4.
 #
-# The DSP-4 firmware is not fetched: it is the owner's own dump, kept at
+# The DSP-4 firmware is not fetched: it is a file supplied by the owner, kept at
 # ext/firmware/dsp4.rom (8192 bytes, SHA-1 af6478aecb6f1b67177e79c82ca04c56250a8c72) and
 # never committed. Without it the reference bench uses the clean-room DSP-4.
 #

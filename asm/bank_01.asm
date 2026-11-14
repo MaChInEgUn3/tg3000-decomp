@@ -608,7 +608,13 @@ CODE_818486:
     rts                         ; $818486
     and.w #$FFFF                ; $818487
     bne CODE_818497             ; $81848A
-    incbin !baserom:$848C..$8497
+    stz.w $8000                 ; $81848C
+    nop                         ; $81848F
+    nop                         ; $818490
+    nop                         ; $818491
+    stz.w $8000                 ; $818492
+    clc                         ; $818495
+    rtl                         ; $818496
 CODE_818497:
     sty.b $32                   ; $818497
     ldy.b $14                   ; $818499
@@ -1926,7 +1932,13 @@ CODE_81EDDD:
     lda.w $FAB6,x               ; $81EE11
     sbc.w $019A                 ; $81EE14
     bcc CODE_81EDDA             ; $81EE17
-    incbin !baserom:$EE19..$EF10
+    sta.w $FAB6,x               ; $81EE19
+    iny                         ; $81EE1C
+    ldx.w $1E88                 ; $81EE1D
+    lda.w $FAB6,x               ; $81EE20
+    sbc.w $019A                 ; $81EE23
+    bcc CODE_81EDDA             ; $81EE26
+    incbin !baserom:$EE28..$EF10
     ldx.w $1E90                 ; $81EF10
     lda.w $1E8E                 ; $81EF13
     sta.w $1E90                 ; $81EF16
@@ -2599,7 +2611,7 @@ CODE_81FA65:
     and.w #$FFDF                ; $81FACE
     bit.w $1E66                 ; $81FAD1
     bpl CODE_81FAD9             ; $81FAD4
-    incbin !baserom:$FAD6..$FAD9
+    ora.w #$0020                ; $81FAD6
 CODE_81FAD9:
     ora.w #$0010                ; $81FAD9
     sta.w $FADE,y               ; $81FADC

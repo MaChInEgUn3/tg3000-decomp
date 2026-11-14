@@ -33,6 +33,71 @@ index 0b11d594c..293190bb0 100644
    cpu.synchronize_coprocessors();
    if(regs.sr.drc == 0) {
      //16-bit
+diff --git a/libsnes/bsnes/snes/cpu/cpu.cpp b/libsnes/bsnes/snes/cpu/cpu.cpp
+index 8457b7974..3eeede783 100644
+--- a/libsnes/bsnes/snes/cpu/cpu.cpp
++++ b/libsnes/bsnes/snes/cpu/cpu.cpp
+@@ -3,6 +3,11 @@
+ #define CPU_CPP
+ namespace SNES {
+ 
++// tg3000-decomp reference bench: coverage hooks (instruction starts and bus reads).
++void (*refbench_exec_hook)(unsigned pc, bool e, bool m, bool x) = 0;
++void (*refbench_read_hook)(unsigned addr) = 0;
++
++
+ CPU cpu;
+ 
+ #include "serialization.cpp"
+@@ -55,12 +60,12 @@ void CPU::Enter() { cpu.enter(); }
+ 
+ void CPU::enter() {
+   while(true) {
+-    if(scheduler.sync == Scheduler::SynchronizeMode::CPU) {
+-      // we can only stop if there's enough time for at least one more event
+-      // on both the PPU and the SMP
++    if(scheduler.sync == Scheduler::SynchronizeMode::CPU) {
++      // we can only stop if there's enough time for at least one more event
++      // on both the PPU and the SMP
+       if (smp.clock < 0 && ppu.clock < 0) {
+         scheduler.sync = Scheduler::SynchronizeMode::All;
+-        scheduler.exit(Scheduler::ExitReason::SynchronizeEvent);
++        scheduler.exit(Scheduler::ExitReason::SynchronizeEvent);
+       }
+     }
+ 
+@@ -90,6 +95,7 @@ void CPU::enter() {
+ 
+ void CPU::op_step() {
+   debugger.op_exec(regs.pc.d);
++  if(refbench_exec_hook) refbench_exec_hook(regs.pc.d, regs.e, regs.p.m, regs.p.x);
+ 
+   if (interface()->wanttrace)
+   {
+diff --git a/libsnes/bsnes/snes/cpu/dma/dma.cpp b/libsnes/bsnes/snes/cpu/dma/dma.cpp
+index e8cdb3ecc..6573b2a75 100644
+--- a/libsnes/bsnes/snes/cpu/dma/dma.cpp
++++ b/libsnes/bsnes/snes/cpu/dma/dma.cpp
+@@ -25,6 +25,7 @@ bool CPU::dma_addr_valid(uint32 abus) {
+ }
+ 
+ uint8 CPU::dma_read(uint32 abus) {
++  if(refbench_read_hook) refbench_read_hook(abus);
+   if(dma_addr_valid(abus) == false) return 0x00;
+   return bus.read(abus);
+ }
+diff --git a/libsnes/bsnes/snes/cpu/memory/memory.cpp b/libsnes/bsnes/snes/cpu/memory/memory.cpp
+index 7e5c0c691..df88a8d42 100644
+--- a/libsnes/bsnes/snes/cpu/memory/memory.cpp
++++ b/libsnes/bsnes/snes/cpu/memory/memory.cpp
+@@ -12,6 +12,7 @@ void CPU::op_io() {
+ 
+ uint8 CPU::op_read(uint32 addr) {
+   debugger.op_read(addr);
++  if(refbench_read_hook) refbench_read_hook(addr);
+ 
+   status.clock_count = speed(addr);
+   dma_edge();
 diff --git a/libsnes/bsnes/target-libsnes/Makefile b/libsnes/bsnes/target-libsnes/Makefile
 index 9ebdc9bde..be2bd597c 100644
 --- a/libsnes/bsnes/target-libsnes/Makefile

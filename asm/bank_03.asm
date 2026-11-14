@@ -1,28 +1,7 @@
 ; bank $83 (file offset $018000)
 org $838000
 
-    incbin !baserom:$18000..$18623
-    rep.b #$30                  ; $838623
-    phb                         ; $838625
-    pha                         ; $838626
-    phx                         ; $838627
-    phy                         ; $838628
-    phd                         ; $838629
-    phk                         ; $83862A
-    plb                         ; $83862B
-    lda.w $4210                 ; $83862C
-    lda.w #$0000                ; $83862F
-    tcd                         ; $838632
-    jsl.l $86DFE1               ; $838633
-    jsr.w $86FF                 ; $838637
-    inc.b $24                   ; $83863A
-    inc.b $BA                   ; $83863C
-    pld                         ; $83863E
-    ply                         ; $83863F
-    plx                         ; $838640
-    pla                         ; $838641
-    plb                         ; $838642
-    rti                         ; $838643
+    incbin !baserom:$18000..$18644
     lda.b $FC                   ; $838644
     bmi CODE_8386B6             ; $838646
     beq CODE_8386B6             ; $838648
@@ -39,7 +18,7 @@ CODE_838657:
     bmi CODE_8386B4             ; $838661
     sec                         ; $838663
     sbc.l $7EF433,x             ; $838664
-    db $30,$4D ; bmi            ; $838668
+    bmi CODE_8386B7             ; $838668
     sec                         ; $83866A
     sbc.w #$0064                ; $83866B
     sta.b $FC                   ; $83866E
@@ -75,7 +54,34 @@ CODE_8386B4:
     stx.b $FE                   ; $8386B4
 CODE_8386B6:
     rts                         ; $8386B6
-    incbin !baserom:$186B7..$186FB
+CODE_8386B7:
+    lda.b $FC                   ; $8386B7
+    sta.w $4375                 ; $8386B9
+    lsr a                       ; $8386BC
+    sta.b $3C                   ; $8386BD
+    lda.l $7EF433,x             ; $8386BF
+    sec                         ; $8386C3
+    sbc.b $FC                   ; $8386C4
+    sta.l $7EF433,x             ; $8386C6
+    lda.l $7EF533,x             ; $8386CA
+    sta.w $4372                 ; $8386CE
+    clc                         ; $8386D1
+    adc.b $FC                   ; $8386D2
+    sta.l $7EF533,x             ; $8386D4
+    lda.l $7EF633,x             ; $8386D8
+    sta.w $2116                 ; $8386DC
+    clc                         ; $8386DF
+    adc.b $3C                   ; $8386E0
+    sta.l $7EF633,x             ; $8386E2
+    sep.b #$20                  ; $8386E6
+    lda.l $7EF733,x             ; $8386E8
+    sta.w $4374                 ; $8386EC
+    lda.b #$80                  ; $8386EF
+    sta.w $420B                 ; $8386F1
+    rep.b #$20                  ; $8386F4
+    stz.b $FC                   ; $8386F6
+    stx.b $FE                   ; $8386F8
+    rts                         ; $8386FA
     jsr.w $86FF                 ; $8386FB
     rtl                         ; $8386FE
     lda.w #$0001                ; $8386FF
@@ -406,7 +412,9 @@ CODE_83E391:
     lda.w $000C                 ; $83E394
     bit.w $039F                 ; $83E397
     beq CODE_83E3A5             ; $83E39A
-    incbin !baserom:$1E39C..$1E3A5
+    lda.w #$0002                ; $83E39C
+    tsb.w $1E9C                 ; $83E39F
+    ldx.w #$109F                ; $83E3A2
 CODE_83E3A5:
     txa                         ; $83E3A5
     sta.l $7E2142               ; $83E3A6
@@ -443,12 +451,29 @@ CODE_83E3EE:
     lda.w $03A5                 ; $83E3EE
     trb.w $000E                 ; $83E3F1
     beq CODE_83E407             ; $83E3F4
-    incbin !baserom:$1E3F6..$1E407
+    ldx.b $4C                   ; $83E3F6
+CODE_83E3F8:
+    dex                         ; $83E3F8
+    beq CODE_83E405             ; $83E3F9
+    bmi CODE_83E407             ; $83E3FB
+    lda.w $0397,x               ; $83E3FD
+    and.w #$00FF                ; $83E400
+    beq CODE_83E3F8             ; $83E403
+CODE_83E405:
+    stx.b $4C                   ; $83E405
 CODE_83E407:
     lda.w $03A3                 ; $83E407
     trb.w $000E                 ; $83E40A
     beq CODE_83E422             ; $83E40D
-    incbin !baserom:$1E40F..$1E422
+    ldx.b $4C                   ; $83E40F
+CODE_83E411:
+    inx                         ; $83E411
+    cpx.w #$0005                ; $83E412
+    beq CODE_83E422             ; $83E415
+    lda.l $810397,x             ; $83E417
+    and.w #$00FF                ; $83E41B
+    beq CODE_83E411             ; $83E41E
+    stx.b $4C                   ; $83E420
 CODE_83E422:
     ldx.b $4C                   ; $83E422
     lda.w $024E,x               ; $83E424
@@ -552,7 +577,14 @@ CODE_83E950:
     sbc.w #$0080                ; $83E964
     cmp.w $0114                 ; $83E967
     bpl CODE_83E985             ; $83E96A
-    incbin !baserom:$1E96C..$1E980
+    lda.l $7EFABB,x             ; $83E96C
+    clc                         ; $83E970
+    adc.w #$0080                ; $83E971
+    cmp.w $0116                 ; $83E974
+    bpl CODE_83E985             ; $83E977
+    cmp.w $0114                 ; $83E979
+    bmi CODE_83E9C3             ; $83E97C
+    bra CODE_83E9B3             ; $83E97E
 CODE_83E980:
     lda.w #$0002                ; $83E980
     tsb.b $44                   ; $83E983
@@ -576,7 +608,9 @@ CODE_83E992:
     cmp.w $0116                 ; $83E9AC
     bpl CODE_83E9C3             ; $83E9AF
     bra CODE_83E980             ; $83E9B1
-    incbin !baserom:$1E9B3..$1E9B8
+CODE_83E9B3:
+    lda.w #$0002                ; $83E9B3
+    trb.b $44                   ; $83E9B6
 CODE_83E9B8:
     lda.l $7EFABB,x             ; $83E9B8
     clc                         ; $83E9BC
@@ -601,7 +635,19 @@ CODE_83E9F6:
     lda.w $1F2C                 ; $83E9F9
     lsr a                       ; $83E9FC
     bcc CODE_83EA1F             ; $83E9FD
-    incbin !baserom:$1E9FF..$1EA1F
+    ldx.w $1EBC                 ; $83E9FF
+    lda.b $14                   ; $83EA02
+    sec                         ; $83EA04
+    sbc.l $7E3DEC,x             ; $83EA05
+    sta.b $14                   ; $83EA09
+    lda.b $16                   ; $83EA0B
+    sec                         ; $83EA0D
+    sbc.l $7E3DEC,x             ; $83EA0E
+    sta.b $16                   ; $83EA12
+    lda.w #$0000                ; $83EA14
+    sec                         ; $83EA17
+    sbc.l $7E3DEC,x             ; $83EA18
+    sta.w $011E                 ; $83EA1C
 CODE_83EA1F:
     lda.w $0116                 ; $83EA1F
     sec                         ; $83EA22
@@ -630,7 +676,7 @@ CODE_83EA72:
     bmi CODE_83EA86             ; $83EA7C
     cmp.w #$0030                ; $83EA7E
     bpl CODE_83EA86             ; $83EA81
-    incbin !baserom:$1EA83..$1EA86
+    lda.w #$0000                ; $83EA83
 CODE_83EA86:
     tax                         ; $83EA86
     beq CODE_83EA99             ; $83EA87
@@ -716,7 +762,7 @@ CODE_83EB31:
     bne CODE_83EB6B             ; $83EB41
     lda.b $4E                   ; $83EB43
     and.w #$00FF                ; $83EB45
-    beq CODE_83EB5F             ; $83EB48
+    db $F0,$15 ; beq            ; $83EB48
     dec.b $4E                   ; $83EB4A
     lda.w $1EB6                 ; $83EB4C
     sta.b $31                   ; $83EB4F
@@ -725,11 +771,7 @@ CODE_83EB31:
     ldy.w #$003C                ; $83EB57
     jsr.w func_83FE9A           ; $83EB5A
     bra CODE_83EB6B             ; $83EB5D
-CODE_83EB5F:
-    lda.w #$FF1C                ; $83EB5F
-    ldx.w $1EBE                 ; $83EB62
-    ldy.w #$0000                ; $83EB65
-    jsr.w func_83FE9A           ; $83EB68
+    incbin !baserom:$1EB5F..$1EB6B
 CODE_83EB6B:
     lda.b $31                   ; $83EB6B
     sec                         ; $83EB6D
@@ -741,12 +783,50 @@ CODE_83EB76:
     lda.w #$0080                ; $83EB78
     trb.w $1E9C                 ; $83EB7B
     beq CODE_83EBC3             ; $83EB7E
-    incbin !baserom:$1EB80..$1EBC3
+    lda.b $1A                   ; $83EB80
+    bne CODE_83EBC3             ; $83EB82
+    lda.b $51                   ; $83EB84
+    and.w #$00FF                ; $83EB86
+    beq CODE_83EBC3             ; $83EB89
+    dec.b $51                   ; $83EB8B
+    lda.b $44                   ; $83EB8D
+    bit.w #$0020                ; $83EB8F
+    bne CODE_83EBC3             ; $83EB92
+    ora.w #$0120                ; $83EB94
+    sta.b $44                   ; $83EB97
+    lda.w #$0005                ; $83EB99
+    sta.b $1A                   ; $83EB9C
+    lda.w #$FF29                ; $83EB9E
+    ldx.w $1EBE                 ; $83EBA1
+    ldy.w #$0000                ; $83EBA4
+    jsr.w func_83FE9A           ; $83EBA7
+    ldx.w $1EBA                 ; $83EBAA
+    lda.w #$0008                ; $83EBAD
+    ora.l $7EFADE,x             ; $83EBB0
+    sta.l $7EFADE,x             ; $83EBB4
+    lda.w #$0020                ; $83EBB8
+    sta.b $5E                   ; $83EBBB
+    lda.b $10                   ; $83EBBD
+    sta.b $70                   ; $83EBBF
+    sta.b $72                   ; $83EBC1
 CODE_83EBC3:
     lda.w #$0020                ; $83EBC3
     trb.w $1E9C                 ; $83EBC6
     beq CODE_83EBED             ; $83EBC9
-    incbin !baserom:$1EBCB..$1EBED
+    lda.b $1A                   ; $83EBCB
+    bne CODE_83EBED             ; $83EBCD
+    and.w #$7FFF                ; $83EBCF
+    dec a                       ; $83EBD2
+    beq CODE_83EBED             ; $83EBD3
+    cmp.w #$0005                ; $83EBD5
+    beq CODE_83EBED             ; $83EBD8
+    stz.b $7E                   ; $83EBDA
+    lda.w #$0001                ; $83EBDC
+    sta.b $1A                   ; $83EBDF
+    lda.w #$FF1D                ; $83EBE1
+    ldx.w $1EBE                 ; $83EBE4
+    ldy.w #$0000                ; $83EBE7
+    jsr.w func_83FE9A           ; $83EBEA
 CODE_83EBED:
     bit.w $1F31                 ; $83EBED
     bmi CODE_83EC1D             ; $83EBF0
@@ -774,10 +854,55 @@ CODE_83EC1D:
     lda.w #$0040                ; $83EC1D
     bit.w $1E9C                 ; $83EC20
     beq CODE_83EC30             ; $83EC23
-    incbin !baserom:$1EC25..$1EC30
+    lda.b $50                   ; $83EC25
+    and.w #$007F                ; $83EC27
+    beq CODE_83EC30             ; $83EC2A
+    lda.b $81                   ; $83EC2C
+    bpl CODE_83EC33             ; $83EC2E
 CODE_83EC30:
     jmp.w $ECF6                 ; $83EC30
-    incbin !baserom:$1EC33..$1ECF6
+CODE_83EC33:
+    sep.b #$20                  ; $83EC33
+    lda.w $1E9E                 ; $83EC35
+    asl a                       ; $83EC38
+    asl a                       ; $83EC39
+    asl a                       ; $83EC3A
+    eor.b #$FF                  ; $83EC3B
+    sec                         ; $83EC3D
+    adc.b $80                   ; $83EC3E
+    sta.b $80                   ; $83EC40
+    lda.b $50                   ; $83EC42
+    sbc.b #$00                  ; $83EC44
+    sta.b $50                   ; $83EC46
+    rep.b #$20                  ; $83EC48
+    ldx.b $81                   ; $83EC4A
+    db $F0,$14 ; beq            ; $83EC4C
+    lda.l $8103DC               ; $83EC4E
+    and.w #$000F                ; $83EC52
+    beq CODE_83EC68             ; $83EC55
+    incbin !baserom:$1EC57..$1EC68
+CODE_83EC68:
+    lda.l $7EFAC9,x             ; $83EC68
+    sta.w $011C                 ; $83EC6C
+    lda.l $7EFACB,x             ; $83EC6F
+    sta.w $011E                 ; $83EC73
+    jsr.w $F6E1                 ; $83EC76
+    lda.l $7EFAC9,x             ; $83EC79
+    sec                         ; $83EC7D
+    sbc.w $0115                 ; $83EC7E
+    sta.l $7EFAC9,x             ; $83EC81
+    lda.l $7EFACB,x             ; $83EC85
+    sbc.w $0117                 ; $83EC89
+    sta.l $7EFACB,x             ; $83EC8C
+    bpl CODE_83EC9D             ; $83EC90
+    incbin !baserom:$1EC92..$1EC9D
+CODE_83EC9D:
+    lda.w $013C                 ; $83EC9D
+    sec                         ; $83ECA0
+    sbc.w $0116                 ; $83ECA1
+    sta.w $013C                 ; $83ECA4
+    jmp.w $ECF6                 ; $83ECA7
+    incbin !baserom:$1ECAA..$1ECF6
     stz.w $8000                 ; $83ECF6
     lda.b $16                   ; $83ECF9
     sta.w $8000                 ; $83ECFB
@@ -842,7 +967,8 @@ CODE_83ED84:
     lda.w #$0000                ; $83ED92
     ldx.b $48                   ; $83ED95
     beq CODE_83ED9D             ; $83ED97
-    incbin !baserom:$1ED99..$1ED9D
+    clc                         ; $83ED99
+    adc.w #$2400                ; $83ED9A
 CODE_83ED9D:
     ldx.b $31                   ; $83ED9D
     beq CODE_83EDA5             ; $83ED9F
@@ -986,7 +1112,9 @@ CODE_83EEB5:
     adc.w $8000                 ; $83EECE
     sta.b $14                   ; $83EED1
     bpl CODE_83EEDC             ; $83EED3
-    incbin !baserom:$1EED5..$1EEDC
+    stz.b $14                   ; $83EED5
+    stz.b $12                   ; $83EED7
+    lda.w #$0000                ; $83EED9
 CODE_83EEDC:
     cmp.b $18                   ; $83EEDC
     beq CODE_83EEE2             ; $83EEDE
@@ -1231,7 +1359,16 @@ CODE_83F0F1:
     lda.w $1E9C                 ; $83F0F1
     bit.w #$0002                ; $83F0F4
     beq CODE_83F115             ; $83F0F7
-    incbin !baserom:$1F0F9..$1F115
+    stz.w $8000                 ; $83F0F9
+    lda.w $1E9E                 ; $83F0FC
+    sta.w $8000                 ; $83F0FF
+    lda.w #$0100                ; $83F102
+    sta.w $8000                 ; $83F105
+    lda.w $013C                 ; $83F108
+    clc                         ; $83F10B
+    adc.w $8000                 ; $83F10C
+    sta.w $013C                 ; $83F10F
+    lda.w $8000                 ; $83F112
 CODE_83F115:
     stz.w $8000                 ; $83F115
     lda.w $013C                 ; $83F118
@@ -1350,7 +1487,7 @@ CODE_83F1EC:
     lda.w $1E9E                 ; $83F217
     sta.w $8000                 ; $83F21A
     lda.b $1C                   ; $83F21D
-    db $10,$0F ; bpl            ; $83F21F
+    bpl CODE_83F230             ; $83F21F
     clc                         ; $83F221
     adc.w $8000                 ; $83F222
     sta.b $1C                   ; $83F225
@@ -1358,7 +1495,14 @@ CODE_83F1EC:
     bmi CODE_83F23F             ; $83F22A
     stz.b $1C                   ; $83F22C
     bra CODE_83F23F             ; $83F22E
-    incbin !baserom:$1F230..$1F23F
+CODE_83F230:
+    sec                         ; $83F230
+    sbc.w $8000                 ; $83F231
+    sta.b $1C                   ; $83F234
+    sta.w $8000                 ; $83F236
+    bpl CODE_83F23F             ; $83F239
+    stz.b $1C                   ; $83F23B
+    bra CODE_83F23F             ; $83F23D
 CODE_83F23F:
     lda.b $44                   ; $83F23F
     bit.w #$0020                ; $83F241
@@ -1504,13 +1648,81 @@ CODE_83F36C:
     sec                         ; $83F36C
     sbc.w #$0280                ; $83F36D
     bcc CODE_83F3B0             ; $83F370
-    incbin !baserom:$1F372..$1F3B0
+    lda.b $06                   ; $83F372
+    sec                         ; $83F374
+    sbc.b $9E                   ; $83F375
+    bpl CODE_83F37D             ; $83F377
+    eor.w #$FFFF                ; $83F379
+    inc a                       ; $83F37C
+CODE_83F37D:
+    sec                         ; $83F37D
+    sbc.w #$0280                ; $83F37E
+    bcc CODE_83F3B0             ; $83F381
+    lda.w $1F2C                 ; $83F383
+    bit.w #$8001                ; $83F386
+    bne CODE_83F399             ; $83F389
+    lda.b $06                   ; $83F38B
+    bpl CODE_83F394             ; $83F38D
+    lda.w #$FD80                ; $83F38F
+    bra CODE_83F3AE             ; $83F392
+CODE_83F394:
+    lda.w #$0280                ; $83F394
+    bra CODE_83F3AE             ; $83F397
+CODE_83F399:
+    lda.b $06                   ; $83F399
+    sec                         ; $83F39B
+    sbc.b $9E                   ; $83F39C
+    bpl CODE_83F3A8             ; $83F39E
+    lda.b $9E                   ; $83F3A0
+    clc                         ; $83F3A2
+    adc.w #$FD80                ; $83F3A3
+    bra CODE_83F3AE             ; $83F3A6
+CODE_83F3A8:
+    lda.b $9E                   ; $83F3A8
+    clc                         ; $83F3AA
+    adc.w #$0280                ; $83F3AB
+CODE_83F3AE:
+    sta.b $06                   ; $83F3AE
 CODE_83F3B0:
     lda.b $60                   ; $83F3B0
     and.w #$00FF                ; $83F3B2
     tax                         ; $83F3B5
     jmp.w ($F3B9,x)             ; $83F3B6
-    incbin !baserom:$1F3B9..$1F423
+    incbin !baserom:$1F3B9..$1F3C5
+    lda.b $26                   ; $83F3C5
+    and.w #$003F                ; $83F3C7
+    cmp.w #$0038                ; $83F3CA
+    bcs CODE_83F423             ; $83F3CD
+    cmp.w #$0018                ; $83F3CF
+    bcc CODE_83F423             ; $83F3D2
+    lda.w $1F2C                 ; $83F3D4
+    bpl CODE_83F3F0             ; $83F3D7
+    lda.b $9E                   ; $83F3D9
+    bmi CODE_83F3E6             ; $83F3DB
+    lsr a                       ; $83F3DD
+    cmp.b $06                   ; $83F3DE
+    bmi CODE_83F423             ; $83F3E0
+    incbin !baserom:$1F3E2..$1F3E6
+CODE_83F3E6:
+    sec                         ; $83F3E6
+    ror a                       ; $83F3E7
+    cmp.b $06                   ; $83F3E8
+    bpl CODE_83F423             ; $83F3EA
+    incbin !baserom:$1F3EC..$1F3F0
+CODE_83F3F0:
+    lda.b $9E                   ; $83F3F0
+    bmi CODE_83F3FD             ; $83F3F2
+    lsr a                       ; $83F3F4
+    cmp.b $06                   ; $83F3F5
+    bpl CODE_83F423             ; $83F3F7
+    incbin !baserom:$1F3F9..$1F3FD
+CODE_83F3FD:
+    sec                         ; $83F3FD
+    ror a                       ; $83F3FE
+    cmp.b $06                   ; $83F3FF
+    bmi CODE_83F423             ; $83F401
+    incbin !baserom:$1F403..$1F423
+CODE_83F423:
     lda.l $8103DC               ; $83F423
     and.w #$0003                ; $83F427
     cmp.w #$0002                ; $83F42A
@@ -1549,7 +1761,10 @@ CODE_83F449:
     lda.l $86DD0F,x             ; $83F474
     lsr a                       ; $83F478
     bcc CODE_83F486             ; $83F479
-    incbin !baserom:$1F47B..$1F486
+    lda.w #$0040                ; $83F47B
+    tsb.b $44                   ; $83F47E
+    lda.l $86DD03,x             ; $83F480
+    bra CODE_83F48A             ; $83F484
 CODE_83F486:
     stz.b $1A                   ; $83F486
     bra CODE_83F48E             ; $83F488
@@ -1724,7 +1939,25 @@ CODE_83F5EA:
     ldy.w #$0000                ; $83F609
     jsr.w func_83FE9A           ; $83F60C
     bra CODE_83F647             ; $83F60F
-    incbin !baserom:$1F611..$1F645
+    lda.w #$0258                ; $83F611
+    sta.b $48                   ; $83F614
+    bra CODE_83F647             ; $83F616
+    lda.b $44                   ; $83F618
+    bit.w #$0020                ; $83F61A
+    bne CODE_83F647             ; $83F61D
+    ora.w #$0020                ; $83F61F
+    sta.b $44                   ; $83F622
+    lda.w #$0005                ; $83F624
+    sta.b $1A                   ; $83F627
+    ldx.w $1EBA                 ; $83F629
+    lda.w #$0008                ; $83F62C
+    ora.l $7EFADE,x             ; $83F62F
+    sta.l $7EFADE,x             ; $83F633
+    lda.w #$FF29                ; $83F637
+    ldx.w $1EBE                 ; $83F63A
+    ldy.w #$0000                ; $83F63D
+    jsr.w func_83FE9A           ; $83F640
+    bra CODE_83F647             ; $83F643
     stz.b $4C                   ; $83F645
 CODE_83F647:
     bit.w $1F31                 ; $83F647
@@ -1785,7 +2018,39 @@ CODE_83F6D2:
     lda.l $308000               ; $83F6DB
     plb                         ; $83F6DF
     rts                         ; $83F6E0
-    incbin !baserom:$1F6E1..$1F73E
+    lda.w #$0000                ; $83F6E1
+    sta.l $308000               ; $83F6E4
+    lda.w $011C                 ; $83F6E8
+    sta.l $308000               ; $83F6EB
+    lda.w $1E9E                 ; $83F6EF
+    sta.l $308000               ; $83F6F2
+    nop                         ; $83F6F6
+    stz.w $0118                 ; $83F6F7
+    lda.l $308000               ; $83F6FA
+    sta.w $0114                 ; $83F6FE
+    lda.l $308000               ; $83F701
+    sta.w $0116                 ; $83F705
+    bpl CODE_83F70D             ; $83F708
+    dec.w $0118                 ; $83F70A
+CODE_83F70D:
+    lda.w #$0000                ; $83F70D
+    sta.l $308000               ; $83F710
+    lda.w $011E                 ; $83F714
+    bit.w $011C                 ; $83F717
+    bpl CODE_83F71D             ; $83F71A
+    inc a                       ; $83F71C
+CODE_83F71D:
+    sta.l $308000               ; $83F71D
+    lda.w $1E9E                 ; $83F721
+    sta.l $308000               ; $83F724
+    lda.w $0116                 ; $83F728
+    clc                         ; $83F72B
+    adc.l $308000               ; $83F72C
+    sta.w $0116                 ; $83F730
+    lda.w $0118                 ; $83F733
+    adc.l $308000               ; $83F736
+    sta.w $0118                 ; $83F73A
+    rts                         ; $83F73D
     lda.w #$0001                ; $83F73E
     bit.b $44                   ; $83F741
     bne CODE_83F748             ; $83F743
@@ -1886,16 +2151,95 @@ CODE_83F7F8:
     lda.w #$0080                ; $83F824
     trb.b $44                   ; $83F827
     beq CODE_83F839             ; $83F829
-    incbin !baserom:$1F82B..$1F839
+    ldx.w $1EBA                 ; $83F82B
+    lda.w #$FFF7                ; $83F82E
+    and.l $7EFADE,x             ; $83F831
+    sta.l $7EFADE,x             ; $83F835
 CODE_83F839:
     lda.b $44                   ; $83F839
     and.w #$0020                ; $83F83B
     cmp.w #$0020                ; $83F83E
     bne CODE_83F892             ; $83F841
-    incbin !baserom:$1F843..$1F892
+    lda.b $44                   ; $83F843
+    bit.w #$0001                ; $83F845
+    bne CODE_83F895             ; $83F848
+    lda.b $44                   ; $83F84A
+    bit.w #$0100                ; $83F84C
+    beq CODE_83F87D             ; $83F84F
+    lda.b $5E                   ; $83F851
+    beq CODE_83F866             ; $83F853
+    sec                         ; $83F855
+    sbc.w $1E9E                 ; $83F856
+    bcs CODE_83F85E             ; $83F859
+    lda.w #$0000                ; $83F85B
+CODE_83F85E:
+    sta.b $5E                   ; $83F85E
+    jsr.w $F898                 ; $83F860
+    jmp.w $F914                 ; $83F863
+CODE_83F866:
+    lda.w $1E9E                 ; $83F866
+    asl a                       ; $83F869
+    asl a                       ; $83F86A
+    eor.w #$FFFF                ; $83F86B
+    sec                         ; $83F86E
+    adc.b $70                   ; $83F86F
+    cmp.b $72                   ; $83F871
+    bmi CODE_83F8D0             ; $83F873
+    sta.b $70                   ; $83F875
+    jsr.w $F8AA                 ; $83F877
+    jmp.w $F914                 ; $83F87A
+CODE_83F87D:
+    jsr.w $F898                 ; $83F87D
+    lda.b $26                   ; $83F880
+    cmp.b $5E                   ; $83F882
+    bcc CODE_83F88C             ; $83F884
+    lda.b $5E                   ; $83F886
+    sta.b $26                   ; $83F888
+    bra CODE_83F8D0             ; $83F88A
+CODE_83F88C:
+    dec.w $0120                 ; $83F88C
+    jmp.w $F914                 ; $83F88F
 CODE_83F892:
     jmp.w $F8F0                 ; $83F892
-    incbin !baserom:$1F895..$1F8F0
+CODE_83F895:
+    jmp.w $F914                 ; $83F895
+    lda.w $1E9E                 ; $83F898
+    asl a                       ; $83F89B
+    asl a                       ; $83F89C
+    clc                         ; $83F89D
+    adc.b $70                   ; $83F89E
+    cmp.w #$0100                ; $83F8A0
+    bcc CODE_83F8A8             ; $83F8A3
+    lda.w #$0100                ; $83F8A5
+CODE_83F8A8:
+    sta.b $70                   ; $83F8A8
+    lda.w #$0000                ; $83F8AA
+    sta.l $308000               ; $83F8AD
+    lda.w $1E9E                 ; $83F8B1
+    sta.l $308000               ; $83F8B4
+    lda.b $70                   ; $83F8B8
+    sta.l $308000               ; $83F8BA
+    lda.b $25                   ; $83F8BE
+    clc                         ; $83F8C0
+    adc.l $308000               ; $83F8C1
+    sta.b $25                   ; $83F8C5
+    lda.b $27                   ; $83F8C7
+    adc.l $308000               ; $83F8C9
+    sta.b $27                   ; $83F8CD
+    rts                         ; $83F8CF
+CODE_83F8D0:
+    lda.w #$0120                ; $83F8D0
+    trb.b $44                   ; $83F8D3
+    lda.w #$0080                ; $83F8D5
+    tsb.b $44                   ; $83F8D8
+    lda.w #$0004                ; $83F8DA
+    sta.b $1A                   ; $83F8DD
+    lda.w #$FF2A                ; $83F8DF
+    ldx.w $1EBE                 ; $83F8E2
+    ldy.w #$0000                ; $83F8E5
+    jsr.w func_83FE9A           ; $83F8E8
+    dec.w $0120                 ; $83F8EB
+    bra CODE_83F914             ; $83F8EE
     lda.b $44                   ; $83F8F0
     bit.w #$0001                ; $83F8F2
     bne CODE_83F914             ; $83F8F5
@@ -2012,7 +2356,9 @@ CODE_83F9B3:
     bne CODE_83FA2B             ; $83F9E4
     lda.b $31                   ; $83F9E6
     beq CODE_83F9F1             ; $83F9E8
-    incbin !baserom:$1F9EA..$1F9F1
+    lda.w #$0001                ; $83F9EA
+    ora.b $7C                   ; $83F9ED
+    sta.b $7C                   ; $83F9EF
 CODE_83F9F1:
     ldx.w $1EBA                 ; $83F9F1
     lda.l $7EFADE,x             ; $83F9F4
@@ -2061,12 +2407,14 @@ CODE_83FA4D:
     lda.l $7E8CB5,x             ; $83FA50
     and.w #$0030                ; $83FA54
     beq CODE_83FA5C             ; $83FA57
-    incbin !baserom:$1FA59..$1FA5C
+    jmp.w $FA63                 ; $83FA59
 CODE_83FA5C:
     lda.w $0128                 ; $83FA5C
     jsr.w $FD8A                 ; $83FA5F
     rts                         ; $83FA62
-    incbin !baserom:$1FA63..$1FA6A
+    lda.w $0128                 ; $83FA63
+    jsr.w $FDCD                 ; $83FA66
+    rts                         ; $83FA69
     stz.w $012A                 ; $83FA6A
     ldx.w $011A                 ; $83FA6D
     lda.l $7E8CB3,x             ; $83FA70
@@ -2086,7 +2434,17 @@ CODE_83FA83:
     ldx.w $011C                 ; $83FA8B
     cmp.l $8380CC,x             ; $83FA8E
     bmi CODE_83FAD5             ; $83FA92
-    incbin !baserom:$1FA94..$1FAB0
+    lda.b $1A                   ; $83FA94
+    bne CODE_83FAD5             ; $83FA96
+    lda.w #$0008                ; $83FA98
+    sta.b $7E                   ; $83FA9B
+    lda.w #$0006                ; $83FA9D
+    sta.b $1A                   ; $83FAA0
+    lda.w #$FF1D                ; $83FAA2
+    ldx.w $1EBE                 ; $83FAA5
+    ldy.w #$0000                ; $83FAA8
+    jsr.w func_83FE9A           ; $83FAAB
+    bra CODE_83FAD5             ; $83FAAE
 CODE_83FAB0:
     ldx.w $011C                 ; $83FAB0
     cmp.l $8380CE,x             ; $83FAB3
@@ -2132,10 +2490,51 @@ CODE_83FB14:
     rts                         ; $83FB14
     jsr.w $FC05                 ; $83FB15
     bcc CODE_83FB49             ; $83FB18
-    incbin !baserom:$1FB1A..$1FB49
+    ldx.w $1F2E                 ; $83FB1A
+    lda.b $4E                   ; $83FB1D
+    and.w #$00FF                ; $83FB1F
+    cmp.w #$000A                ; $83FB22
+    beq CODE_83FB49             ; $83FB25
+    inc.b $4E                   ; $83FB27
+    ldx.w $011A                 ; $83FB29
+    lda.w #$0000                ; $83FB2C
+    sta.l $7E8CB3,x             ; $83FB2F
+    ldx.w $1EBE                 ; $83FB33
+    lda.w #$FF19                ; $83FB36
+    ldy.w #$0000                ; $83FB39
+    jsr.w func_83FE9A           ; $83FB3C
+    lda.w #$801E                ; $83FB3F
+    sta.b $4A                   ; $83FB42
+    lda.w #$004C                ; $83FB44
+    sta.b $33                   ; $83FB47
 CODE_83FB49:
     rts                         ; $83FB49
-    incbin !baserom:$1FB4A..$1FC05
+    jsr.w $FC05                 ; $83FB4A
+    bcc CODE_83FB75             ; $83FB4D
+    ldx.w $011A                 ; $83FB4F
+    lda.w #$0000                ; $83FB52
+    sta.l $7E8CB3,x             ; $83FB55
+    ldx.w $1EBE                 ; $83FB59
+    lda.w #$FF19                ; $83FB5C
+    ldy.w #$0000                ; $83FB5F
+    jsr.w func_83FE9A           ; $83FB62
+    lda.w #$801E                ; $83FB65
+    sta.b $4A                   ; $83FB68
+    jsl.l rng_next_long         ; $83FB6A
+    and.w #$001E                ; $83FB6E
+    tax                         ; $83FB71
+    jmp.w ($FB76,x)             ; $83FB72
+CODE_83FB75:
+    rts                         ; $83FB75
+    incbin !baserom:$1FB76..$1FBE2
+    lda.w #$0028                ; $83FBE2
+    sta.b $58                   ; $83FBE5
+    lda.w #$FFFF                ; $83FBE7
+    sta.b $56                   ; $83FBEA
+    lda.w #$004A                ; $83FBEC
+    sta.b $33                   ; $83FBEF
+    rts                         ; $83FBF1
+    incbin !baserom:$1FBF2..$1FC05
     ldx.w $011A                 ; $83FC05
     lda.l $7E8CB3,x             ; $83FC08
     and.w #$00FF                ; $83FC0C
@@ -2174,7 +2573,10 @@ CODE_83FC39:
     sec                         ; $83FC4B
     sbc.l $81012C               ; $83FC4C
     bpl CODE_83FC5A             ; $83FC50
-    incbin !baserom:$1FC52..$1FC5A
+    cmp.l $83826C,x             ; $83FC52
+    bmi CODE_83FC37             ; $83FC56
+    sec                         ; $83FC58
+    rts                         ; $83FC59
 CODE_83FC5A:
     ldx.w $011C                 ; $83FC5A
     cmp.l $83826E,x             ; $83FC5D
@@ -2241,7 +2643,28 @@ CODE_83FCCB:
     jsr.w $FDCD                 ; $83FCEE
 CODE_83FCF1:
     rts                         ; $83FCF1
-    incbin !baserom:$1FCF2..$1FD26
+    lda.w $0128                 ; $83FCF2
+    jsr.w $FDCD                 ; $83FCF5
+    bcs CODE_83FD25             ; $83FCF8
+    lda.w $0128                 ; $83FCFA
+    eor.w #$FFFF                ; $83FCFD
+    inc a                       ; $83FD00
+    sta.w $0128                 ; $83FD01
+    jsr.w $FDCD                 ; $83FD04
+    bcs CODE_83FD25             ; $83FD07
+    lda.w $0128                 ; $83FD09
+    sec                         ; $83FD0C
+    sbc.w #$0080                ; $83FD0D
+    sta.w $0128                 ; $83FD10
+    jsr.w $FDCD                 ; $83FD13
+    bcs CODE_83FD25             ; $83FD16
+    lda.w $0128                 ; $83FD18
+    eor.w #$FFFF                ; $83FD1B
+    inc a                       ; $83FD1E
+    sta.w $0128                 ; $83FD1F
+    jsr.w $FDCD                 ; $83FD22
+CODE_83FD25:
+    rts                         ; $83FD25
     sep.b #$20                  ; $83FD26
     lda.b #$01                  ; $83FD28
     sta.b $53                   ; $83FD2A
@@ -2266,7 +2689,26 @@ CODE_83FCF1:
     ora.b $B1                   ; $83FD58
     sta.b $B1                   ; $83FD5A
     rts                         ; $83FD5C
-    incbin !baserom:$1FD5D..$1FD8A
+    sep.b #$20                  ; $83FD5D
+    lda.b #$03                  ; $83FD5F
+    sta.b $53                   ; $83FD61
+    rep.b #$20                  ; $83FD63
+    jmp.w $FD45                 ; $83FD65
+    lda.b $44                   ; $83FD68
+    bit.w #$0020                ; $83FD6A
+    bne CODE_83FD89             ; $83FD6D
+    sep.b #$20                  ; $83FD6F
+    lda.b #$04                  ; $83FD71
+    sta.b $53                   ; $83FD73
+    rep.b #$20                  ; $83FD75
+    ldx.w $011A                 ; $83FD77
+    lda.l $7E8CB3,x             ; $83FD7A
+    and.w #$00FF                ; $83FD7E
+    sta.b $B1                   ; $83FD81
+    lda.l $7E8CB5,x             ; $83FD83
+    sta.b $5E                   ; $83FD87
+CODE_83FD89:
+    rts                         ; $83FD89
     bit.w $0120                 ; $83FD8A
     bmi CODE_83FDAC             ; $83FD8D
     sec                         ; $83FD8F
@@ -2324,13 +2766,28 @@ CODE_83FDF5:
     rol a                       ; $83FE4B
     adc.b $5A                   ; $83FE4C
     bcc CODE_83FE53             ; $83FE4E
-    lda.w #$FFFF                ; $83FE50
+    incbin !baserom:$1FE50..$1FE53
 CODE_83FE53:
     sta.b $5A                   ; $83FE53
 CODE_83FE55:
     lda.w $0128                 ; $83FE55
     bpl CODE_83FE7A             ; $83FE58
-    incbin !baserom:$1FE5A..$1FE7A
+    lda.b $10                   ; $83FE5A
+    cmp.w #$0060                ; $83FE5C
+    bmi CODE_83FE6A             ; $83FE5F
+    lda.b $1A                   ; $83FE61
+    bne CODE_83FE6A             ; $83FE63
+    lda.w #$0002                ; $83FE65
+    sta.b $1A                   ; $83FE68
+CODE_83FE6A:
+    lda.w #$1000                ; $83FE6A
+    sta.b $1C                   ; $83FE6D
+    lda.b $18                   ; $83FE6F
+    cmp.w #$8000                ; $83FE71
+    ror.b $18                   ; $83FE74
+    ror.b $16                   ; $83FE76
+    sec                         ; $83FE78
+    rts                         ; $83FE79
 CODE_83FE7A:
     lda.b $10                   ; $83FE7A
     cmp.w #$0060                ; $83FE7C
