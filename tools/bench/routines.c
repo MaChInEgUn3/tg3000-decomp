@@ -626,6 +626,48 @@ static void fuzz_string_list_nth(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->a = base;
 }
 
+// ---- take_nibble ($80:8542) ----  A = the nibble; N = 0, Z from it, C = 0 (the last ROL
+// shifts A's clear bit 15 out).
+static void call_take_nibble(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = take_nibble();
+  setNZ16(out, out->a);
+  out->c = false;
+}
+
+static void fuzz_take_nibble(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x18, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x1A, (uint16_t)rnd());
+}
+
+// ---- func_83FE9A ($83:FE9A) ----  A, X, Y in; C = refused. N/Z/V: from BIT $047C when
+// it refuses that way, else N/Z of A (the PLA) and V of the SBC if the cooldown ran
+// (else BIT's V).
+static void call_func_83FE9A(const Regs* in, Regs* out) {
+  uint16_t flags = rd16(0x047C), cool = rd16((uint16_t)(in->d + 0x23)), step = rd16(0x1E9E);
+  out->c = func_83FE9A(in->d, in->a, in->x, in->y);
+  out->v = (flags & 0x4000) != 0;
+  if(flags & 0x8000) {
+    out->n = true;
+    out->z = (in->a & flags) == 0;
+    return;
+  }
+  setNZ16(out, in->a);
+  if(cool != 0) {
+    Regs t;
+    setSbc16(&t, cool, step);
+    out->v = t.v;
+  }
+}
+
+static void fuzz_func_83FE9A(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint32_t k = rnd();
+  wr16ram(ram, 0x047C, (uint16_t)((k & 3) == 0 ? (rnd() | 0x8000) : (rnd() & 0x7FFF)));
+  wr16ram(ram, (uint16_t)(r->d + 0x23), (k & 4) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, 0x1E9E, (uint16_t)rnd());
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -751,6 +793,10 @@ const Routine routines[] = {
    .lowWramDb = true, .fixedD = true, .call = call_func_8AA469, ALL_OUTPUTS, .fuzz = fuzz_8aa469},
   {.name = "string_list_nth", .entry = 0x8AA4CF, .end = 0x8AA4FB, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_string_list_nth, ALL_OUTPUTS, .fuzz = fuzz_string_list_nth},
+  {.name = "take_nibble", .entry = 0x808542, .end = 0x80855A, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_take_nibble, ALL_OUTPUTS, .fuzz = fuzz_take_nibble},
+  {.name = "func_83FE9A", .entry = 0x83FE9A, .end = 0x83FEBD, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_func_83FE9A, ALL_OUTPUTS, .fuzz = fuzz_func_83FE9A},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

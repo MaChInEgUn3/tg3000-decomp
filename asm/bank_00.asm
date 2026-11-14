@@ -505,7 +505,7 @@ CODE_8084DC:
     ldy.b $74                   ; $8084F6
     ldx.w #$0007                ; $8084F8
 CODE_8084FB:
-    jsr.w $8542                 ; $8084FB
+    jsr.w take_nibble           ; $8084FB
     bne CODE_808503             ; $8084FE
     dex                         ; $808500
     bpl CODE_8084FB             ; $808501
@@ -530,7 +530,7 @@ CODE_808503:
     iny                         ; $808527
     iny                         ; $808528
     iny                         ; $808529
-    jsr.w $8542                 ; $80852A
+    jsr.w take_nibble           ; $80852A
     plx                         ; $80852D
     cpx.w #$0006                ; $80852E
     beq CODE_808538             ; $808531
@@ -544,6 +544,7 @@ CODE_80853A:
     sty.b $74                   ; $80853D
     ldy.b $16                   ; $80853F
     rts                         ; $808541
+take_nibble:
     lda.w #$0000                ; $808542
     asl.b $1A                   ; $808545
     rol.b $18                   ; $808547

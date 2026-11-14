@@ -132,3 +132,26 @@ uint16_t string_list_nth(uint32_t list, uint16_t n) {
   }
   return rd16(DP + 0x44);
 }
+
+// TG3000_ROUTINE($80:8542) take_nibble
+uint16_t take_nibble(void) {
+  uint32_t v = ((uint32_t)rd16(DP + 0x18) << 16) | rd16(DP + 0x1A);
+  wr16(DP + 0x18, (uint16_t)(v >> 12));
+  wr16(DP + 0x1A, (uint16_t)(v << 4));
+  return (uint16_t)(v >> 28);
+}
+
+// TG3000_ROUTINE($83:FE9A) func_83FE9A
+bool func_83FE9A(uint16_t dp, uint16_t a, uint16_t x, uint16_t y) {
+  if(rd16(0x047C) & 0x8000) return false;
+  if(rd16(dp + 0x23) != 0) {
+    uint16_t left = (uint16_t)(rd16(dp + 0x23) - rd16(0x1E9E));
+    wr16(dp + 0x23, left);
+    if(!(left & 0x8000)) return true;
+    wr16(dp + 0x23, y);
+  }
+  wr16(0x0466, 0);
+  wr16(0x0465, x);
+  wr16(0x0463, a);
+  return false;
+}

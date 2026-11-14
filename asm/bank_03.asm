@@ -723,13 +723,13 @@ CODE_83EB31:
     lda.w #$FF1B                ; $83EB51
     ldx.w $1EBE                 ; $83EB54
     ldy.w #$003C                ; $83EB57
-    jsr.w $FE9A                 ; $83EB5A
+    jsr.w func_83FE9A           ; $83EB5A
     bra CODE_83EB6B             ; $83EB5D
 CODE_83EB5F:
     lda.w #$FF1C                ; $83EB5F
     ldx.w $1EBE                 ; $83EB62
     ldy.w #$0000                ; $83EB65
-    jsr.w $FE9A                 ; $83EB68
+    jsr.w func_83FE9A           ; $83EB68
 CODE_83EB6B:
     lda.b $31                   ; $83EB6B
     sec                         ; $83EB6D
@@ -769,7 +769,7 @@ CODE_83EC11:
     ldx.w $1EBE                 ; $83EC11
     lda.w #$7F21                ; $83EC14
     ldy.w #$0000                ; $83EC17
-    jsr.w $FE9A                 ; $83EC1A
+    jsr.w func_83FE9A           ; $83EC1A
 CODE_83EC1D:
     lda.w #$0040                ; $83EC1D
     bit.w $1E9C                 ; $83EC20
@@ -1487,7 +1487,7 @@ CODE_83F32F:
     ldx.w $1EBE                 ; $83F34C
     lda.w #$4F21                ; $83F34F
     ldy.w #$0000                ; $83F352
-    jsr.w $FE9A                 ; $83F355
+    jsr.w func_83FE9A           ; $83F355
     bra CODE_83F35C             ; $83F358
 CODE_83F35A:
     stz.b $46                   ; $83F35A
@@ -1686,7 +1686,7 @@ CODE_83F590:
     ldx.w $1EBE                 ; $83F5A9
     lda.w #$FF20                ; $83F5AC
     ldy.w #$0000                ; $83F5AF
-    jsr.w $FE9A                 ; $83F5B2
+    jsr.w func_83FE9A           ; $83F5B2
 CODE_83F5B5:
     jmp.w $F647                 ; $83F5B5
     lda.w #$003B                ; $83F5B8
@@ -1722,7 +1722,7 @@ CODE_83F5EA:
     ldx.w $1EBE                 ; $83F603
     lda.w #$FF14                ; $83F606
     ldy.w #$0000                ; $83F609
-    jsr.w $FE9A                 ; $83F60C
+    jsr.w func_83FE9A           ; $83F60C
     bra CODE_83F647             ; $83F60F
     incbin !baserom:$1F611..$1F645
     stz.b $4C                   ; $83F645
@@ -1752,7 +1752,7 @@ CODE_83F647:
     ldx.w $1EBE                 ; $83F681
     lda.w #$FF26                ; $83F684
     ldy.w #$0000                ; $83F687
-    jsr.w $FE9A                 ; $83F68A
+    jsr.w func_83FE9A           ; $83F68A
 CODE_83F68D:
     lda.w #$0000                ; $83F68D
     sta.l $308000               ; $83F690
@@ -2100,7 +2100,7 @@ CODE_83FAB0:
     lda.w #$FF1D                ; $83FAC7
     ldx.w $1EBE                 ; $83FACA
     ldy.w #$0000                ; $83FACD
-    jsr.w $FE9A                 ; $83FAD0
+    jsr.w func_83FE9A           ; $83FAD0
     bra CODE_83FAD5             ; $83FAD3
 CODE_83FAD5:
     clc                         ; $83FAD5
@@ -2123,7 +2123,7 @@ CODE_83FAD5:
     ldx.w $1EBE                 ; $83FAFE
     lda.w #$FF19                ; $83FB01
     ldy.w #$0000                ; $83FB04
-    jsr.w $FE9A                 ; $83FB07
+    jsr.w func_83FE9A           ; $83FB07
     lda.w #$801E                ; $83FB0A
     sta.b $4A                   ; $83FB0D
     lda.w #$0047                ; $83FB0F
@@ -2307,7 +2307,7 @@ CODE_83FDF5:
     ldx.w $1EBE                 ; $83FE1B
     lda.w #$FF23                ; $83FE1E
     ldy.w #$0000                ; $83FE21
-    jsr.w $FE9A                 ; $83FE24
+    jsr.w func_83FE9A           ; $83FE24
     bit.w $1F31                 ; $83FE27
     bmi CODE_83FE55             ; $83FE2A
     lda.w #$0000                ; $83FE2C
@@ -2348,6 +2348,7 @@ CODE_83FE8A:
     ror.b $16                   ; $83FE96
     sec                         ; $83FE98
     rts                         ; $83FE99
+func_83FE9A:
     bit.w $047C                 ; $83FE9A
     bmi CODE_83FEB8             ; $83FE9D
     pha                         ; $83FE9F

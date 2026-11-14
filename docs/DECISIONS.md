@@ -528,6 +528,17 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   `text_put_char` 2,561; everything still passes and the three negative variants
   still fail.
 
+## Hot roots (2026-11-14)
+
+- `take_nibble` ($80:8542, 61,785 calls — the most called routine so far): shifts the
+  32-bit value `$0118:$011A` left by 4 and returns the nibble shifted out; a bit reader.
+- `func_83FE9A` ($83:FE9A, runs with D = `$0200`, DB = `$30`): stores a request
+  (`$0463` = A, `$0465` = X, `$0467` = 0) unless `$047C` has bit 15 set (C = 0) or a
+  cooldown at D+`$23` is still running after subtracting `$1E9E` (refused, C = 1); a
+  finished cooldown restarts from Y. The cooldown path never ran in a movie (decoded
+  from ROM, fuzzed; it continues into a 3-instruction exit at `$83:FEBA` that the
+  extent now includes).
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

@@ -3,6 +3,7 @@
 #ifndef TG3000_MISC_H
 #define TG3000_MISC_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // $81:F251: an empty routine (a lone RTS) that 19 places call.
@@ -59,5 +60,16 @@ void func_8AA469(void);
 // with an 8-bit increment of the pointer's low byte, so a terminator at $xxFF wraps
 // within the page; that quirk is kept.
 uint16_t string_list_nth(uint32_t list, uint16_t n);
+
+// Shift the 32-bit value at $0118 (high word) : $011A (low word) left by 4 and return
+// the 4 bits shifted out (a nibble reader).
+uint16_t take_nibble(void);
+
+// A request ($0463 = a, $0465 = x, $0467 = 0) that is refused while the word at $047C has
+// bit 15 set (returns false, nothing stored) or while a cooldown runs: with the direct
+// page `dp`'s word $23 non-zero, it is reduced by $1E9E; if still >= 0 the request is
+// refused (returns true), else the cooldown restarts from y and the request is stored.
+// Returns true when refused (the original's carry).
+bool func_83FE9A(uint16_t dp, uint16_t a, uint16_t x, uint16_t y);
 
 #endif
