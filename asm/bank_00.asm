@@ -6805,7 +6805,7 @@ CODE_80EF94:
     sta.b $36                   ; $80F0E7
     stz.b $34                   ; $80F0E9
     stz.b $32                   ; $80F0EB
-    jsr.w $F745                 ; $80F0ED
+    jsr.w func_80F745           ; $80F0ED
     stz.b $30                   ; $80F0F0
     lda.w #$0F00                ; $80F0F2
     sta.w $0198                 ; $80F0F5
@@ -6925,7 +6925,7 @@ CODE_80F23D:
     sta.b $7C                   ; $80F23D
 CODE_80F23F:
     jsr.w inverse_scale         ; $80F23F
-    jsr.w $F745                 ; $80F242
+    jsr.w func_80F745           ; $80F242
     clc                         ; $80F245
     rts                         ; $80F246
     stz.b $7C                   ; $80F247
@@ -6966,7 +6966,7 @@ CODE_80F259:
     lda.w #$0800                ; $80F293
     sta.b $40                   ; $80F296
     jsr.w inverse_scale         ; $80F298
-    jsr.w $F745                 ; $80F29B
+    jsr.w func_80F745           ; $80F29B
     clc                         ; $80F29E
     rts                         ; $80F29F
     lda.b $30                   ; $80F2A0
@@ -7006,7 +7006,7 @@ CODE_80F2DE:
     sbc.w #$0080                ; $80F2E1
     sta.b $3A                   ; $80F2E4
     jsr.w inverse_scale         ; $80F2E6
-    jsr.w $F745                 ; $80F2E9
+    jsr.w func_80F745           ; $80F2E9
     clc                         ; $80F2EC
     rts                         ; $80F2ED
     lda.b $30                   ; $80F2EE
@@ -7017,7 +7017,7 @@ CODE_80F2F8:
     inc a                       ; $80F2F8
     sta.b $30                   ; $80F2F9
     jsr.w inverse_scale         ; $80F2FB
-    jsr.w $F745                 ; $80F2FE
+    jsr.w func_80F745           ; $80F2FE
     clc                         ; $80F301
     rts                         ; $80F302
     jsr.w $F38D                 ; $80F303
@@ -7088,7 +7088,7 @@ CODE_80F382:
     sta.b $30                   ; $80F383
 CODE_80F385:
     jsr.w inverse_scale         ; $80F385
-    jsr.w $F745                 ; $80F388
+    jsr.w func_80F745           ; $80F388
     clc                         ; $80F38B
     rts                         ; $80F38C
     sep.b #$20                  ; $80F38D
@@ -7132,7 +7132,7 @@ CODE_80F385:
     rep.b #$20                  ; $80F3E8
     inc.b $3E                   ; $80F3EA
     jsr.w inverse_scale         ; $80F3EC
-    jsr.w $F745                 ; $80F3EF
+    jsr.w func_80F745           ; $80F3EF
     clc                         ; $80F3F2
     rts                         ; $80F3F3
     lda.w #$1801                ; $80F3F4
@@ -7151,7 +7151,7 @@ CODE_80F385:
     rep.b #$20                  ; $80F418
     inc.b $3E                   ; $80F41A
     jsr.w inverse_scale         ; $80F41C
-    jsr.w $F745                 ; $80F41F
+    jsr.w func_80F745           ; $80F41F
     clc                         ; $80F422
     rts                         ; $80F423
     stz.w $2116                 ; $80F424
@@ -7201,7 +7201,7 @@ CODE_80F385:
     sta.b $80                   ; $80F4A1
     inc.b $3E                   ; $80F4A3
     jsr.w inverse_scale         ; $80F4A5
-    jsr.w $F745                 ; $80F4A8
+    jsr.w func_80F745           ; $80F4A8
     clc                         ; $80F4AB
     rts                         ; $80F4AC
     ldx.w #$3040                ; $80F4AD
@@ -7281,7 +7281,7 @@ CODE_80F385:
     rep.b #$20                  ; $80F589
     inc.b $3E                   ; $80F58B
     jsr.w inverse_scale         ; $80F58D
-    jsr.w $F745                 ; $80F590
+    jsr.w func_80F745           ; $80F590
     clc                         ; $80F593
     rts                         ; $80F594
     lda.b $7E                   ; $80F595
@@ -7302,7 +7302,7 @@ CODE_80F5A7:
     dex                         ; $80F5B4
     bpl CODE_80F5A7             ; $80F5B5
     jsr.w inverse_scale         ; $80F5B7
-    jsr.w $F745                 ; $80F5BA
+    jsr.w func_80F745           ; $80F5BA
     clc                         ; $80F5BD
     rts                         ; $80F5BE
     dec.b $30                   ; $80F5BF
@@ -7310,7 +7310,7 @@ CODE_80F5A7:
     inc.b $3E                   ; $80F5C3
 CODE_80F5C5:
     jsr.w inverse_scale         ; $80F5C5
-    jsr.w $F745                 ; $80F5C8
+    jsr.w func_80F745           ; $80F5C8
     clc                         ; $80F5CB
     rts                         ; $80F5CC
     stz.b $40                   ; $80F5CD
@@ -7488,6 +7488,7 @@ CODE_80F73F:
     lda.w #$2A00                ; $80F73F
     sta.b $38                   ; $80F742
     rts                         ; $80F744
+func_80F745:
     ldx.b $34                   ; $80F745
     lda.b $3A                   ; $80F747
     bne CODE_80F766             ; $80F749

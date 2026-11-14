@@ -25,4 +25,13 @@ void func_8AA216(uint16_t entry);
 // $017A (and x + 16), y from $017C, tiles $04A0/$04A2. Returns slot + 4.
 uint16_t func_8A92CF(uint16_t slot);
 
+// Offset of a cell in a 32-column map of words: row ($0138) * 64 + column ($0136) * 2.
+// The original doubles the column in place ($0136 <<= 1). Returns the offset.
+uint16_t tilemap_offset(void);
+
+// If $013C >= 10: set the word at $0D04 + ($013C - 10) to 4 when $015A is odd, else 0.
+// (With $013C < 10 the original returns with Y still on the stack, i.e. through a bogus
+// return address; no movie reaches that, and this C does nothing then.)
+void func_8AB700(void);
+
 #endif

@@ -3265,10 +3265,11 @@ CODE_8AB6F5:
     rep.b #$20                  ; $8AB6F5
     lda.b $86                   ; $8AB6F7
     bne CODE_8AB6FE             ; $8AB6F9
-    jsr.w $B700                 ; $8AB6FB
+    jsr.w func_8AB700           ; $8AB6FB
 CODE_8AB6FE:
     plx                         ; $8AB6FE
     rts                         ; $8AB6FF
+func_8AB700:
     phy                         ; $8AB700
     lda.b $3C                   ; $8AB701
     sec                         ; $8AB703
@@ -3301,7 +3302,7 @@ CODE_8AB844:
     sty.b $36                   ; $8AB84D
     ldy.b $3C                   ; $8AB84F
     sty.b $38                   ; $8AB851
-    jsr.w $B909                 ; $8AB853
+    jsr.w tilemap_offset        ; $8AB853
     phx                         ; $8AB856
     phx                         ; $8AB857
     ldy.w #$3800                ; $8AB858
@@ -3369,7 +3370,7 @@ CODE_8AB8A1:
     sty.b $36                   ; $8AB8D2
     ldy.b $3C                   ; $8AB8D4
     sty.b $38                   ; $8AB8D6
-    jsr.w $B909                 ; $8AB8D8
+    jsr.w tilemap_offset        ; $8AB8D8
     sec                         ; $8AB8DB
     sbc.w #$0020                ; $8AB8DC
     asl a                       ; $8AB8DF
@@ -3385,6 +3386,7 @@ CODE_8AB8A1:
     plp                         ; $8AB8F8
     rts                         ; $8AB8F9
     incbin !baserom:$538FA..$53909
+tilemap_offset:
     pha                         ; $8AB909
     lda.b $38                   ; $8AB90A
     asl a                       ; $8AB90C

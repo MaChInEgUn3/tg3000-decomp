@@ -57,3 +57,17 @@ uint16_t func_8A92CF(uint16_t slot) {
   wr16(0x08C2 + slot, 0x04A2);
   return (uint16_t)(slot + 4);
 }
+
+// TG3000_ROUTINE($8A:B909) tilemap_offset
+uint16_t tilemap_offset(void) {
+  uint16_t column = (uint16_t)(rd16(DP + 0x36) << 1);
+  wr16(DP + 0x36, column);
+  return (uint16_t)((rd16(DP + 0x38) << 6) + column);
+}
+
+// TG3000_ROUTINE($8A:B700) func_8AB700
+void func_8AB700(void) {
+  int16_t i = (int16_t)(rd16(DP + 0x3C) - 10);
+  if(i < 0) return;
+  wr16(0x0D04 + (uint16_t)i, (rd16(DP + 0x5A) & 1) ? 4 : 0);
+}

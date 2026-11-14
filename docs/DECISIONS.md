@@ -376,6 +376,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   only the sampled third); DMA/PPU address setup that no `$420B` kick consumes now
   fails the sample instead of being silently absorbed.
 
+## Hardware-free roots (roots-1, 2026-11-14)
+
+- `func_80F745` ($80:F745, `src/line_tables.c`, 28 dependents): builds two tables in the
+  HDMA format (a line-count byte, then a word) at `$0D00` and `$0D40` + the back-buffer
+  offset `$0134`, from `inverse_scale`'s `$0138` and `$013A/$013C/$0132`, then swaps the
+  back/front offsets (`$0134/$0136`). Probably the sky/road split; the meaning waits for
+  the HDMA side. Its 3-byte entries are written as two overlapping word stores, kept in
+  that order. One block (`$80:F898-$80:F8B8`, taken when `$0132`'s high byte is non-zero)
+  never ran in any movie, so it was decoded from the ROM and is covered by fuzz:
+  paths 209/209, 535 live samples.
+- `tilemap_offset` ($8A:B909): X = row `$0138` × 64 + column × 2, doubling `$0136` in
+  place — a 32-column map of words. 2,660 live samples.
+- `func_8AB700` ($8A:B700): the word at `$0D04 + ($013C − 10)` becomes 4 or 0 by the
+  parity of `$015A`. **Game bug:** with `$013C < 10` it returns with Y still pushed, so
+  RTS jumps through Y. No movie reaches it; the C does nothing there and fuzz keeps
+  `$013C >= 10`.
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:

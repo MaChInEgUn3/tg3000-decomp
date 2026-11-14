@@ -11,6 +11,7 @@
 
 #include "rng.h"
 #include "scale.h"
+#include "line_tables.h"
 #include "misc.h"
 #include "stars.h"
 #include "tg3000.h"
@@ -295,6 +296,56 @@ static void fuzz_upload_tiles(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->a = (uint16_t)(rnd() & 0x1FFF);
 }
 
+// ---- func_80F745 ($80:F745) ----  exits with A = the old back offset, X = the new one
+// (LDX: N/Z from it); C/V depend on the path and are left to the liveness check.
+static void call_func_80F745(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = func_80F745();
+  out->x = rd16(DP + 0x34);
+  setNZ16(out, out->x);
+}
+
+static void fuzz_func_80F745(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint32_t k = rnd();
+  wr16ram(ram, DP + 0x34, (k & 1) ? 0x0000 : 0x0020);  // the game alternates two buffers
+  wr16ram(ram, DP + 0x36, (k & 1) ? 0x0020 : 0x0000);
+  wr16ram(ram, DP + 0x38, (uint16_t)(rnd() & 0x0FFF));
+  wr16ram(ram, DP + 0x3A, (k & 6) == 0 ? 0 : (uint16_t)rnd());
+  wr16ram(ram, DP + 0x3C, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x32, (k & 8) ? (uint16_t)(rnd() & 0x0F00) : 0);
+  wr16ram(ram, DP + 0x14, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x16, (uint16_t)rnd());
+}
+
+// ---- tilemap_offset ($8A:B909) ----  X = offset, A kept (PHA/PLA: N/Z from it);
+// C/V from the final ADC.
+static void call_tilemap_offset(const Regs* in, Regs* out) {
+  uint16_t row = (uint16_t)(rd16(DP + 0x38) << 6);
+  out->x = tilemap_offset();
+  setNZ16(out, in->a);
+  setAdc16(out, row, rd16(DP + 0x36));
+}
+
+static void fuzz_tilemap_offset(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x36, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x38, (uint16_t)rnd());
+}
+
+// ---- func_8AB700 ($8A:B700) ----  exits with A = 4 or 0, N/Z from the PLY (Y kept).
+static void call_func_8AB700(const Regs* in, Regs* out) {
+  func_8AB700();
+  out->a = (rd16(DP + 0x5A) & 1) ? 4 : 0;
+  setNZ16(out, in->y);
+}
+
+static void fuzz_func_8AB700(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x3C, (uint16_t)(10 + rnd() % 0x40));  // >= 10: see the C's comment
+  wr16ram(ram, DP + 0x5A, (uint16_t)rnd());
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -370,6 +421,12 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8AA216, ALL_OUTPUTS, .fuzz = fuzz_func_8AA216},
   {.name = "func_8A92CF", .entry = 0x8A92CF, .end = 0x8A9307, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8A92CF, ALL_OUTPUTS, .fuzz = fuzz_func_8A92CF},
+  {.name = "func_80F745", .entry = 0x80F745, .end = 0x80F8F8, .source = "src/line_tables.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_80F745, ALL_OUTPUTS, .fuzz = fuzz_func_80F745},
+  {.name = "tilemap_offset", .entry = 0x8AB909, .end = 0x8AB91A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_tilemap_offset, ALL_OUTPUTS, .fuzz = fuzz_tilemap_offset},
+  {.name = "func_8AB700", .entry = 0x8AB700, .end = 0x8AB721, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8AB700, ALL_OUTPUTS, .fuzz = fuzz_func_8AB700},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 
