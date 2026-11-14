@@ -93,3 +93,42 @@ uint16_t text_put_tile_char(uint8_t ch) {
 
 // TG3000_ROUTINE($8A:A37A) text_cursor_down3
 void text_cursor_down3(void) { wr16(TEXT_CURSOR_Y, (uint16_t)(rd16(TEXT_CURSOR_Y) + 3)); }
+
+#define SPRITE_TEXT_SLOT (DP + 0x74)
+#define SPRITE_TEXT_X (DP + 0x16)
+#define SPRITE_TEXT_BASE (DP + 0x14)
+#define SPRITE_GLYPH_WIDTHS 0x8085E5
+#define SPRITE_PUNCTUATION 0x8084B0  // "&#[.+={}?!-~]_", glyphs $3E-$4B; others: the code
+
+static uint16_t sprite_glyph(uint8_t ch) {
+  if(ch >= 0x30 && ch < 0x3A) return (uint8_t)(ch + 4);       // digits $34-$3D
+  if(ch >= 0x41 && ch < 0x5B) return (uint8_t)(ch - 0x27);     // capitals $1A-$33
+  if(ch >= 0x61 && ch < 0x7B) return (uint8_t)(ch - 0x61);     // lower case $00-$19
+  for(uint16_t g = 0x3E; g < 0x4C; g++) {
+    if(rom8(SPRITE_PUNCTUATION + g - 0x3E) == ch) return g;
+  }
+  return ch;  // not in the list: the original falls through with the character itself
+}
+
+// TG3000_ROUTINE($80:841A) sprite_text
+uint16_t sprite_text(uint32_t str, uint16_t x) {
+  wr16(SPRITE_TEXT_X, x);
+  uint16_t slot = rd16(SPRITE_TEXT_SLOT);
+  for(uint16_t i = 0;; i++) {
+    uint8_t ch = bus_rd8((str & 0xFF0000) | (uint16_t)(str + i));
+    if(ch == 0) break;
+    if(ch & 0x80) continue;
+    if(ch == 0x20) {
+      wr8(SPRITE_TEXT_X, (uint8_t)(rd8(SPRITE_TEXT_X) + 6));
+      continue;
+    }
+    uint16_t g = sprite_glyph(ch);
+    wr16(0x0902 + slot, (uint16_t)(g + rd16(SPRITE_TEXT_BASE)));
+    wr16(0x0900 + slot, rd16(SPRITE_TEXT_X));
+    wr16(0x0B01 + slot, 0);
+    wr8(SPRITE_TEXT_X, (uint8_t)(rom8(SPRITE_GLYPH_WIDTHS + g) + rd8(SPRITE_TEXT_X)));
+    slot = (uint16_t)(slot + 4);
+  }
+  wr16(SPRITE_TEXT_SLOT, slot);
+  return rd16(SPRITE_TEXT_X);
+}

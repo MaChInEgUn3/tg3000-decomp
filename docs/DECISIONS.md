@@ -538,6 +538,15 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   finished cooldown restarts from Y. The cooldown path never ran in a movie (decoded
   from ROM, fuzzed; it continues into a 3-instruction exit at `$83:FEBA` that the
   extent now includes).
+- `sprite_text` ($80:841A): lays a zero-terminated string out as sprites, one 4-byte
+  entry per glyph at `$0900+slot` (x, glyph + base `$0114`) with `$0B01+slot` cleared;
+  x advances by each glyph's width (table `$80:85E5`), a space by 6, bytes with bit 7
+  set are skipped. Glyphs: digits ch+4, A–Z ch−$27, a–z ch−$61, the punctuation list
+  `&#[.+={}?!-~]_` at `$80:84B0` → `$3E`–`$4B`; anything else keeps its own code (the
+  search loop falls through with A unchanged — the fuzz found it, no movie does it).
+  The glyph mapper at `$80:8435` is 8-bit code reached by a branch after a `REP #$20`
+  at `$80:842E`, so the linear decode for path coverage got the widths wrong (55/76
+  paths); routines can now name addresses where the sweep restarts with M = 8 (`m8At`).
 
 ## Coverage without a player (2026-11-13)
 

@@ -668,6 +668,35 @@ static void fuzz_func_83FE9A(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x1E9E, (uint16_t)rnd());
 }
 
+// ---- sprite_text ($80:841A) ----  A's low byte = the string's bank, X = its address,
+// Y = start x. Exits with Y = final x (N/Z from that LDY), X = the address of the
+// terminator, A = 0 when a glyph was laid out (its 16-bit LDA #0 cleared B), else B kept.
+static void call_sprite_text(const Regs* in, Regs* out) {
+  uint32_t str = ((uint32_t)(in->a & 0xFF) << 16) | in->x;
+  uint16_t slot = rd16(DP + 0x74);
+  out->y = sprite_text(str, in->y);
+  uint16_t n = 0;
+  while(bus_rd8((str & 0xFF0000) | (uint16_t)(str + n)) != 0) n++;
+  out->x = (uint16_t)(in->x + n);
+  out->a = rd16(DP + 0x74) != slot ? 0 : (uint16_t)(in->a & 0xFF00);
+  setNZ16(out, out->y);
+}
+
+static void fuzz_sprite_text(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  static const char pool[] = "AZaz09 .!?&#[+={}-~]_@*,\x85\xC1";
+  int len = (int)(rnd() % 16);
+  for(int i = 0; i < len; i++) {
+    uint32_t k = rnd();
+    ram[0x1C00 + i] = (k & 1) ? (uint8_t)pool[rnd() % (sizeof pool - 1)] : (uint8_t)(0x20 + rnd() % 0x60);
+  }
+  ram[0x1C00 + len] = 0;
+  r->a = (uint16_t)((r->a & 0xFF00) | 0x7E);  // the string in bank $7E
+  r->x = 0x1C00;
+  r->y = (uint16_t)rnd();
+  wr16ram(ram, DP + 0x74, (uint16_t)(4 * (rnd() % 32)));
+  wr16ram(ram, DP + 0x14, (uint16_t)rnd());
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -797,6 +826,9 @@ const Routine routines[] = {
    .fixedD = true, .call = call_take_nibble, ALL_OUTPUTS, .fuzz = fuzz_take_nibble},
   {.name = "func_83FE9A", .entry = 0x83FE9A, .end = 0x83FEBD, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_func_83FE9A, ALL_OUTPUTS, .fuzz = fuzz_func_83FE9A},
+  {.name = "sprite_text", .entry = 0x80841A, .end = 0x8084B0, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_sprite_text, ALL_OUTPUTS, .fuzz = fuzz_sprite_text,
+   .m8At = {0x808435}},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

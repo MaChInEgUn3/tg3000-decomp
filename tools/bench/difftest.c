@@ -246,6 +246,7 @@ static void findStarts(const Routine* r, Stats* s) {
       }
     }
     if(skipped) continue;
+    for(int h = 0; h < 2; h++) if(r->m8At[h] == r->entry + i) m8 = true;
     s->starts[i] = true;
     uint8_t op = g_rom[off + i], arg = g_rom[off + i + 1];
     i += coverage_insn_length(op, m8, x8);

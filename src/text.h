@@ -30,4 +30,12 @@ uint16_t text_put_tile_char(uint8_t ch);
 // Move the text cursor down three rows.
 void text_cursor_down3(void);
 
+// Lay out the zero-terminated string at bus address `str` as sprites with a
+// proportional font: one 4-byte entry per glyph from slot $0174 (x word at $0900, tile word
+// at $0902 = glyph + base $0114, word $0B01 = 0), x starting at `x` and advancing by the
+// glyph's width (8-bit, table $80:85E5); a space advances 6, bytes with bit 7 set are
+// skipped; a character neither alphanumeric nor in the punctuation list uses its own
+// code as the glyph. Leaves the next slot in $0174 and returns the final x (also in $0116).
+uint16_t sprite_text(uint32_t str, uint16_t x);
+
 #endif

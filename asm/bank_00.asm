@@ -394,6 +394,7 @@ vram_queue_push:
     and.w #$003F                ; $808413
     sta.w $0028                 ; $808416
     rts                         ; $808419
+sprite_text:
     phb                         ; $80841A
     sep.b #$20                  ; $80841B
     pha                         ; $80841D
@@ -474,7 +475,7 @@ CODE_808486:
     pha                         ; $8084C2
     phy                         ; $8084C3
     lda.b $16                   ; $8084C4
-    jsr.w $841A                 ; $8084C6
+    jsr.w sprite_text           ; $8084C6
     tya                         ; $8084C9
     and.w #$00FF                ; $8084CA
     sta.b $14                   ; $8084CD
@@ -1503,7 +1504,7 @@ CODE_809E0B:
     adc.b $E7                   ; $809E17
     tay                         ; $809E19
     lda.w #$0080                ; $809E1A
-    jsr.w $841A                 ; $809E1D
+    jsr.w sprite_text           ; $809E1D
     ldx.b $94                   ; $809E20
     lda.w #$3C00                ; $809E22
     sta.b $14                   ; $809E25
