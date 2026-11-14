@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// A table of 3-word entries at $0F00 (x, y, depth), filled with random positions: most
-// likely the starfield of the intro and menus. (Named from what the code does; the
-// drawing side is not ported yet.)
+// The star table at $0F00, in two layouts: 3-word entries (x, y, depth) for the intro's
+// 3D starfield, and 4-word entries (speed, y, tile, x) for scrolling star layers. (Named
+// from what the code does; the drawing side is not ported yet.)
 #ifndef TG3000_STARS_H
 #define TG3000_STARS_H
 
@@ -17,5 +17,10 @@ uint16_t star_spawn(uint16_t slot);
 
 // Give the star at `slot` a random y below $DC00, in whole units (low byte 0).
 uint16_t star_random_y(uint16_t slot);
+
+// Fill the 4-word layout with four layers of stars: 2 at speed $100, 10 at $80, 24 at
+// $40 and 28 at $20, each at a random y and x with that layer's tile. Returns the end
+// offset ($200).
+uint16_t star_layers_init(void);
 
 #endif

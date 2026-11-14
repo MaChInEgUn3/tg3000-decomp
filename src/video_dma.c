@@ -42,5 +42,11 @@ void upload_tiles_3300(uint16_t entry, uint16_t offset) { upload_tiles(TILE_OFFS
 // TG3000_ROUTINE($85:8260) upload_tiles_3700
 void upload_tiles_3700(uint16_t entry, uint16_t offset) { upload_tiles(TILE_OFFSETS, entry, offset, 0, 0x3700); }
 
+// TG3000_ROUTINE($85:827B) upload_tiles_7700
+void upload_tiles_7700(uint16_t entry, uint16_t offset) { upload_tiles(TILE_OFFSETS, entry, offset, 0, 0x7700); }
+
+// TG3000_ROUTINE($85:8296) upload_tiles_7b00
+void upload_tiles_7b00(uint16_t entry, uint16_t offset) { upload_tiles(TILE_OFFSETS, entry, offset, 0, 0x7B00); }
+
 // Two more variants at $8A:8D81 / $8A:8DA0 (+$20, VRAM $C280 / $C680) are not ported until
 // a movie runs them and shows their data bank.

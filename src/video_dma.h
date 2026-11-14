@@ -21,5 +21,7 @@ void upload_7f_to_3000(void);
 // $14 = $7F and $16 = `offset`.
 void upload_tiles_3300(uint16_t entry, uint16_t offset);
 void upload_tiles_3700(uint16_t entry, uint16_t offset);
+void upload_tiles_7700(uint16_t entry, uint16_t offset);
+void upload_tiles_7b00(uint16_t entry, uint16_t offset);
 
 #endif

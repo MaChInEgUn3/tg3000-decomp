@@ -3487,7 +3487,7 @@ CODE_80D214:
     dex                         ; $80D235
     bne CODE_80D214             ; $80D236
     jsr.w $DCBB                 ; $80D238
-    jsr.w $E0D6                 ; $80D23B
+    jsr.w star_layers_init      ; $80D23B
     jsr.w $83E8                 ; $80D23E
 CODE_80D241:
     lda.b $16                   ; $80D241
@@ -5017,6 +5017,7 @@ CODE_80E035:
 CODE_80E0D2:
     adc.w #$23FF                ; $80E0D2
     rts                         ; $80E0D5
+star_layers_init:
     ldx.w #$0000                ; $80E0D6
 CODE_80E0D9:
     lda.w #$0100                ; $80E0D9
@@ -8062,7 +8063,7 @@ CODE_80FC2D:
     tcd                         ; $80FC40
     jsl.l $8A9E5B               ; $80FC41
     plb                         ; $80FC45
-    jsl.l $8A8001               ; $80FC46
+    jsl.l clear_dp_scratch      ; $80FC46
     ldx.w #$00FE                ; $80FC4A
 CODE_80FC4D:
     stz.w $0D00,x               ; $80FC4D

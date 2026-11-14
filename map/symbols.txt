@@ -24,3 +24,12 @@ func    8ABA7D   upload_7f_to_3000   ; 2 KB $7F:0000 -> VRAM $3000 -> src/video_
 func    858245   upload_tiles_3300   ; 512 B from $7F via table $83:84B1 -> VRAM $3300 -> src/video_dma.c
 func    858260   upload_tiles_3700   ; same, VRAM $3700 -> src/video_dma.c
 ram     7E0F00   star_table          ; 3 words per star: x, y, depth
+func    85827B   upload_tiles_7700   ; same as upload_tiles_3300, VRAM $7700 -> src/video_dma.c
+func    858296   upload_tiles_7b00   ; same, VRAM $7B00 -> src/video_dma.c
+func    80E0D6   star_layers_init    ; 4 layers of scrolling stars at $0F00 -> src/stars.c
+func    81F251   func_81F251         ; lone RTS, 19 callers -> src/misc.c
+func    8A8001   clear_dp_scratch    ; JSL: zero $0114-$0193 -> src/misc.c
+func    81F1FC   func_81F1FC         ; order list $1E6A -> next pointers $7E:FACD (race order?) -> src/misc.c
+func    8AA216   func_8AA216         ; two objects via take_slot -> src/misc.c
+func    8A92CF   func_8A92CF         ; 2-tile sprite into $05C0-$08C0 tables -> src/misc.c
+ram     7E1E6A   order_list          ; 20 words (race order?)

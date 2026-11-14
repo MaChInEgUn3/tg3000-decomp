@@ -11,6 +11,7 @@
 
 #include "rng.h"
 #include "scale.h"
+#include "misc.h"
 #include "stars.h"
 #include "tg3000.h"
 #include "util.h"
@@ -204,6 +205,89 @@ static void call_upload_7f_to_3000(const Regs* in, Regs* out) {
   }
 TILES_ADAPTER(upload_tiles_3300, 0x3300)
 TILES_ADAPTER(upload_tiles_3700, 0x3700)
+TILES_ADAPTER(upload_tiles_7700, 0x7700)
+TILES_ADAPTER(upload_tiles_7b00, 0x7B00)
+
+static void setAdc16(Regs* r, uint16_t a, uint16_t b) {  // C and V of A + b, carry clear
+  uint32_t sum = (uint32_t)a + b;
+  r->c = sum > 0xFFFF;
+  r->v = (~(a ^ b) & (a ^ sum) & 0x8000) != 0;
+}
+
+static void wr16ram(uint8_t* ram, uint32_t adr, uint16_t v) { ram[adr] = (uint8_t)v; ram[adr + 1] = (uint8_t)(v >> 8); }
+
+// ---- star_layers_init ($80:E0D6) ----  exits with A = X = $200 and the flags of
+// CPX #$200 (Z = C = 1, N = 0) and of the last ADC #8 (V = 0).
+static void call_star_layers_init(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = out->x = star_layers_init();
+  out->z = out->c = true;
+  out->n = out->v = false;
+}
+
+static void fuzz_star_layers_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { (void)r; fuzz_rng_state(ram, rnd); }
+
+// ---- func_81F251 ($81:F251): RTS ----
+static void call_func_81F251(const Regs* in, Regs* out) { (void)in; (void)out; func_81F251(); }
+
+static void fuzz_nothing(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { (void)r; (void)ram; (void)rnd; }
+
+// ---- clear_dp_scratch ($8A:8001, long call) ----  exits with X = $FFFE, N = 1, Z = 0.
+static void call_clear_dp_scratch(const Regs* in, Regs* out) {
+  (void)in;
+  clear_dp_scratch();
+  out->x = 0xFFFE;
+  out->n = true;
+  out->z = false;
+}
+
+// ---- func_81F1FC ($81:F1FC) ----  A = the first entry; X/Y kept (N/Z from PLX);
+// C = 1 from the CPX #$26 that ends the loop.
+static void call_func_81F1FC(const Regs* in, Regs* out) {
+  out->a = func_81F1FC();
+  out->c = true;
+  setNZ16(out, in->x);
+}
+
+static void fuzz_func_81F1FC(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(int i = 0; i < 20; i++) wr16ram(ram, 0x1E6A + 2 * i, (uint16_t)(2 * (rnd() % 20)));
+}
+
+// ---- func_8AA216 ($8A:A216) ----  X = entry; exits with A = the new $0D60 value (flags of
+// its ADC #8), Y = the second slot.
+static void call_func_8AA216(const Regs* in, Regs* out) {
+  uint16_t oldX = rd16(0x0D60 + in->x);
+  func_8AA216(in->x);
+  out->a = rd16(0x0D60 + in->x);
+  out->y = (uint16_t)(rd16(DP + 0x8C) - 2);
+  setNZ16(out, out->a);
+  setAdc16(out, oldX, 8);
+}
+
+static void fuzz_func_8AA216(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)(2 * (rnd() % 4));
+  wr16ram(ram, 0x0D60 + r->x, (uint16_t)rnd());
+  wr16ram(ram, 0x0D68 + r->x, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x8C, (uint16_t)(2 * (rnd() % 64)));
+  wr16ram(ram, DP + 0x4C, (uint16_t)rnd());
+}
+
+// ---- func_8A92CF ($8A:92CF) ----  X = slot; exits with X = slot + 4, A = $017C (N/Z from
+// the PLA), C/V of x + $10.
+static void call_func_8A92CF(const Regs* in, Regs* out) {
+  uint16_t x = rd16(DP + 0x7A);
+  out->x = func_8A92CF(in->x);
+  out->a = rd16(DP + 0x7C);
+  setNZ16(out, out->a);
+  setAdc16(out, x, 0x10);
+}
+
+static void fuzz_func_8A92CF(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)(4 * (rnd() % 32));
+  wr16ram(ram, DP + 0x7A, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x7C, (uint16_t)rnd());
+}
 
 static void fuzz_upload_tiles(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)ram;
@@ -270,6 +354,22 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_upload_tiles_3300, ALL_OUTPUTS, .fuzz = fuzz_upload_tiles},
   {.name = "upload_tiles_3700", .entry = 0x858260, .end = 0x85827B, .source = "src/video_dma.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_upload_tiles_3700, ALL_OUTPUTS, .fuzz = fuzz_upload_tiles},
+  {.name = "upload_tiles_7700", .entry = 0x85827B, .end = 0x858296, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_upload_tiles_7700, ALL_OUTPUTS, .fuzz = fuzz_upload_tiles},
+  {.name = "upload_tiles_7b00", .entry = 0x858296, .end = 0x8582B1, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_upload_tiles_7b00, ALL_OUTPUTS, .fuzz = fuzz_upload_tiles},
+  {.name = "star_layers_init", .entry = 0x80E0D6, .end = 0x80E166, .source = "src/stars.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_star_layers_init, ALL_OUTPUTS, .fuzz = fuzz_star_layers_init},
+  {.name = "func_81F251", .entry = 0x81F251, .end = 0x81F252, .source = "src/misc.c",
+   .call = call_func_81F251, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "clear_dp_scratch", .entry = 0x8A8001, .end = 0x8A800B, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_clear_dp_scratch, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_81F1FC", .entry = 0x81F1FC, .end = 0x81F21E, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .call = call_func_81F1FC, ALL_OUTPUTS, .fuzz = fuzz_func_81F1FC},
+  {.name = "func_8AA216", .entry = 0x8AA216, .end = 0x8AA25D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8AA216, ALL_OUTPUTS, .fuzz = fuzz_func_8AA216},
+  {.name = "func_8A92CF", .entry = 0x8A92CF, .end = 0x8A9307, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8A92CF, ALL_OUTPUTS, .fuzz = fuzz_func_8A92CF},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

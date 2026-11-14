@@ -1547,11 +1547,11 @@ CODE_81EAA7:
     beq CODE_81EACC             ; $81EAB6
     stz.b $3C                   ; $81EAB8
     bpl CODE_81EACF             ; $81EABA
-    jsr.w $F251                 ; $81EABC
+    jsr.w func_81F251           ; $81EABC
     bcs CODE_81EACF             ; $81EABF
     sty.w $1E8E                 ; $81EAC1
     stx.w $1E90                 ; $81EAC4
-    jsr.w $F1FC                 ; $81EAC7
+    jsr.w func_81F1FC           ; $81EAC7
     bra CODE_81EACF             ; $81EACA
 CODE_81EACC:
     jsr.w $F21E                 ; $81EACC
@@ -1566,11 +1566,11 @@ CODE_81EAD2:
     beq CODE_81EAF7             ; $81EAE1
     stz.b $3C                   ; $81EAE3
     bpl CODE_81EAFA             ; $81EAE5
-    jsr.w $F251                 ; $81EAE7
+    jsr.w func_81F251           ; $81EAE7
     bcs CODE_81EAFA             ; $81EAEA
     sty.w $1E8C                 ; $81EAEC
     stx.w $1E8E                 ; $81EAEF
-    jsr.w $F1FC                 ; $81EAF2
+    jsr.w func_81F1FC           ; $81EAF2
     bra CODE_81EAA7             ; $81EAF5
 CODE_81EAF7:
     jsr.w $F21E                 ; $81EAF7
@@ -1585,11 +1585,11 @@ CODE_81EAFD:
     beq CODE_81EB22             ; $81EB0C
     stz.b $3C                   ; $81EB0E
     bpl CODE_81EB25             ; $81EB10
-    jsr.w $F251                 ; $81EB12
+    jsr.w func_81F251           ; $81EB12
     bcs CODE_81EB25             ; $81EB15
     sty.w $1E8A                 ; $81EB17
     stx.w $1E8C                 ; $81EB1A
-    jsr.w $F1FC                 ; $81EB1D
+    jsr.w func_81F1FC           ; $81EB1D
     bra CODE_81EAD2             ; $81EB20
 CODE_81EB22:
     jsr.w $F21E                 ; $81EB22
@@ -1604,11 +1604,11 @@ CODE_81EB28:
     beq CODE_81EB4D             ; $81EB37
     stz.b $3C                   ; $81EB39
     bpl CODE_81EB50             ; $81EB3B
-    jsr.w $F251                 ; $81EB3D
+    jsr.w func_81F251           ; $81EB3D
     bcs CODE_81EB50             ; $81EB40
     sty.w $1E88                 ; $81EB42
     stx.w $1E8A                 ; $81EB45
-    jsr.w $F1FC                 ; $81EB48
+    jsr.w func_81F1FC           ; $81EB48
     bra CODE_81EAFD             ; $81EB4B
 CODE_81EB4D:
     jsr.w $F21E                 ; $81EB4D
@@ -1623,11 +1623,11 @@ CODE_81EB53:
     beq CODE_81EB78             ; $81EB62
     stz.b $3C                   ; $81EB64
     bpl CODE_81EB7B             ; $81EB66
-    jsr.w $F251                 ; $81EB68
+    jsr.w func_81F251           ; $81EB68
     bcs CODE_81EB7B             ; $81EB6B
     sty.w $1E86                 ; $81EB6D
     stx.w $1E88                 ; $81EB70
-    jsr.w $F1FC                 ; $81EB73
+    jsr.w func_81F1FC           ; $81EB73
     bra CODE_81EB28             ; $81EB76
 CODE_81EB78:
     jsr.w $F21E                 ; $81EB78
@@ -1642,11 +1642,11 @@ CODE_81EB7E:
     beq CODE_81EBA3             ; $81EB8D
     stz.b $3C                   ; $81EB8F
     bpl CODE_81EBA6             ; $81EB91
-    jsr.w $F251                 ; $81EB93
+    jsr.w func_81F251           ; $81EB93
     bcs CODE_81EBA6             ; $81EB96
     sty.w $1E84                 ; $81EB98
     stx.w $1E86                 ; $81EB9B
-    jsr.w $F1FC                 ; $81EB9E
+    jsr.w func_81F1FC           ; $81EB9E
     bra CODE_81EB53             ; $81EBA1
 CODE_81EBA3:
     jsr.w $F21E                 ; $81EBA3
@@ -1661,11 +1661,11 @@ CODE_81EBA9:
     beq CODE_81EBCE             ; $81EBB8
     stz.b $3C                   ; $81EBBA
     bpl CODE_81EBD1             ; $81EBBC
-    jsr.w $F251                 ; $81EBBE
+    jsr.w func_81F251           ; $81EBBE
     bcs CODE_81EBD1             ; $81EBC1
     sty.w $1E82                 ; $81EBC3
     stx.w $1E84                 ; $81EBC6
-    jsr.w $F1FC                 ; $81EBC9
+    jsr.w func_81F1FC           ; $81EBC9
     bra CODE_81EB7E             ; $81EBCC
 CODE_81EBCE:
     jsr.w $F21E                 ; $81EBCE
@@ -1680,11 +1680,11 @@ CODE_81EBD4:
     beq CODE_81EBF9             ; $81EBE3
     stz.b $3C                   ; $81EBE5
     bpl CODE_81EBFC             ; $81EBE7
-    jsr.w $F251                 ; $81EBE9
+    jsr.w func_81F251           ; $81EBE9
     bcs CODE_81EBFC             ; $81EBEC
     sty.w $1E80                 ; $81EBEE
     stx.w $1E82                 ; $81EBF1
-    jsr.w $F1FC                 ; $81EBF4
+    jsr.w func_81F1FC           ; $81EBF4
     bra CODE_81EBA9             ; $81EBF7
 CODE_81EBF9:
     jsr.w $F21E                 ; $81EBF9
@@ -1699,11 +1699,11 @@ CODE_81EBFF:
     beq CODE_81EC24             ; $81EC0E
     stz.b $3C                   ; $81EC10
     bpl CODE_81EC27             ; $81EC12
-    jsr.w $F251                 ; $81EC14
+    jsr.w func_81F251           ; $81EC14
     bcs CODE_81EC27             ; $81EC17
     sty.w $1E7E                 ; $81EC19
     stx.w $1E80                 ; $81EC1C
-    jsr.w $F1FC                 ; $81EC1F
+    jsr.w func_81F1FC           ; $81EC1F
     bra CODE_81EBD4             ; $81EC22
 CODE_81EC24:
     jsr.w $F21E                 ; $81EC24
@@ -1718,11 +1718,11 @@ CODE_81EC2A:
     beq CODE_81EC4F             ; $81EC39
     stz.b $3C                   ; $81EC3B
     bpl CODE_81EC52             ; $81EC3D
-    jsr.w $F251                 ; $81EC3F
+    jsr.w func_81F251           ; $81EC3F
     bcs CODE_81EC52             ; $81EC42
     sty.w $1E7C                 ; $81EC44
     stx.w $1E7E                 ; $81EC47
-    jsr.w $F1FC                 ; $81EC4A
+    jsr.w func_81F1FC           ; $81EC4A
     bra CODE_81EBFF             ; $81EC4D
 CODE_81EC4F:
     jsr.w $F21E                 ; $81EC4F
@@ -1737,11 +1737,11 @@ CODE_81EC55:
     beq CODE_81EC7A             ; $81EC64
     stz.b $3C                   ; $81EC66
     bpl CODE_81EC7D             ; $81EC68
-    jsr.w $F251                 ; $81EC6A
+    jsr.w func_81F251           ; $81EC6A
     bcs CODE_81EC7D             ; $81EC6D
     sty.w $1E7A                 ; $81EC6F
     stx.w $1E7C                 ; $81EC72
-    jsr.w $F1FC                 ; $81EC75
+    jsr.w func_81F1FC           ; $81EC75
     bra CODE_81EC2A             ; $81EC78
 CODE_81EC7A:
     jsr.w $F21E                 ; $81EC7A
@@ -1756,11 +1756,11 @@ CODE_81EC80:
     beq CODE_81ECA5             ; $81EC8F
     stz.b $3C                   ; $81EC91
     bpl CODE_81ECA8             ; $81EC93
-    jsr.w $F251                 ; $81EC95
+    jsr.w func_81F251           ; $81EC95
     bcs CODE_81ECA8             ; $81EC98
     sty.w $1E78                 ; $81EC9A
     stx.w $1E7A                 ; $81EC9D
-    jsr.w $F1FC                 ; $81ECA0
+    jsr.w func_81F1FC           ; $81ECA0
     bra CODE_81EC55             ; $81ECA3
 CODE_81ECA5:
     jsr.w $F21E                 ; $81ECA5
@@ -1775,11 +1775,11 @@ CODE_81ECAB:
     beq CODE_81ECD0             ; $81ECBA
     stz.b $3C                   ; $81ECBC
     bpl CODE_81ECD3             ; $81ECBE
-    jsr.w $F251                 ; $81ECC0
+    jsr.w func_81F251           ; $81ECC0
     bcs CODE_81ECD3             ; $81ECC3
     sty.w $1E76                 ; $81ECC5
     stx.w $1E78                 ; $81ECC8
-    jsr.w $F1FC                 ; $81ECCB
+    jsr.w func_81F1FC           ; $81ECCB
     bra CODE_81EC80             ; $81ECCE
 CODE_81ECD0:
     jsr.w $F21E                 ; $81ECD0
@@ -1794,11 +1794,11 @@ CODE_81ECD6:
     beq CODE_81ECFB             ; $81ECE5
     stz.b $3C                   ; $81ECE7
     bpl CODE_81ECFE             ; $81ECE9
-    jsr.w $F251                 ; $81ECEB
+    jsr.w func_81F251           ; $81ECEB
     bcs CODE_81ECFE             ; $81ECEE
     sty.w $1E74                 ; $81ECF0
     stx.w $1E76                 ; $81ECF3
-    jsr.w $F1FC                 ; $81ECF6
+    jsr.w func_81F1FC           ; $81ECF6
     bra CODE_81ECAB             ; $81ECF9
 CODE_81ECFB:
     jsr.w $F21E                 ; $81ECFB
@@ -1813,11 +1813,11 @@ CODE_81ED01:
     beq CODE_81ED26             ; $81ED10
     stz.b $3C                   ; $81ED12
     bpl CODE_81ED29             ; $81ED14
-    jsr.w $F251                 ; $81ED16
+    jsr.w func_81F251           ; $81ED16
     bcs CODE_81ED29             ; $81ED19
     sty.w $1E72                 ; $81ED1B
     stx.w $1E74                 ; $81ED1E
-    jsr.w $F1FC                 ; $81ED21
+    jsr.w func_81F1FC           ; $81ED21
     bra CODE_81ECD6             ; $81ED24
 CODE_81ED26:
     jsr.w $F21E                 ; $81ED26
@@ -1832,11 +1832,11 @@ CODE_81ED2C:
     beq CODE_81ED51             ; $81ED3B
     stz.b $3C                   ; $81ED3D
     bpl CODE_81ED54             ; $81ED3F
-    jsr.w $F251                 ; $81ED41
+    jsr.w func_81F251           ; $81ED41
     bcs CODE_81ED54             ; $81ED44
     sty.w $1E70                 ; $81ED46
     stx.w $1E72                 ; $81ED49
-    jsr.w $F1FC                 ; $81ED4C
+    jsr.w func_81F1FC           ; $81ED4C
     bra CODE_81ED01             ; $81ED4F
 CODE_81ED51:
     jsr.w $F21E                 ; $81ED51
@@ -1851,11 +1851,11 @@ CODE_81ED57:
     beq CODE_81ED7C             ; $81ED66
     stz.b $3C                   ; $81ED68
     bpl CODE_81ED7F             ; $81ED6A
-    jsr.w $F251                 ; $81ED6C
+    jsr.w func_81F251           ; $81ED6C
     bcs CODE_81ED7F             ; $81ED6F
     sty.w $1E6E                 ; $81ED71
     stx.w $1E70                 ; $81ED74
-    jsr.w $F1FC                 ; $81ED77
+    jsr.w func_81F1FC           ; $81ED77
     bra CODE_81ED2C             ; $81ED7A
 CODE_81ED7C:
     jsr.w $F21E                 ; $81ED7C
@@ -1870,11 +1870,11 @@ CODE_81ED82:
     beq CODE_81EDA7             ; $81ED91
     stz.b $3C                   ; $81ED93
     bpl CODE_81EDAA             ; $81ED95
-    jsr.w $F251                 ; $81ED97
+    jsr.w func_81F251           ; $81ED97
     bcs CODE_81EDAA             ; $81ED9A
     sty.w $1E6C                 ; $81ED9C
     stx.w $1E6E                 ; $81ED9F
-    jsr.w $F1FC                 ; $81EDA2
+    jsr.w func_81F1FC           ; $81EDA2
     bra CODE_81ED57             ; $81EDA5
 CODE_81EDA7:
     jsr.w $F21E                 ; $81EDA7
@@ -1888,11 +1888,11 @@ CODE_81EDAA:
     beq CODE_81EDD2             ; $81EDBC
     stz.b $3C                   ; $81EDBE
     bpl CODE_81EDDD             ; $81EDC0
-    jsr.w $F251                 ; $81EDC2
+    jsr.w func_81F251           ; $81EDC2
     bcs CODE_81EDDD             ; $81EDC5
     sty.w $1E6A                 ; $81EDC7
     stx.w $1E6C                 ; $81EDCA
-    jsr.w $F1FC                 ; $81EDCD
+    jsr.w func_81F1FC           ; $81EDCD
     bra CODE_81ED82             ; $81EDD0
 CODE_81EDD2:
     jsr.w $F21E                 ; $81EDD2
@@ -2040,6 +2040,7 @@ CODE_81F1D8:
     sta.w $FACD,x               ; $81F1F7
     plb                         ; $81F1FA
     rtl                         ; $81F1FB
+func_81F1FC:
     phx                         ; $81F1FC
     phy                         ; $81F1FD
     ldx.w #$0000                ; $81F1FE
@@ -2089,6 +2090,7 @@ CODE_81F24B:
     plx                         ; $81F24F
 CODE_81F250:
     rts                         ; $81F250
+func_81F251:
     rts                         ; $81F251
     lda.w $FADE,y               ; $81F252
     ora.w $FADE,x               ; $81F255

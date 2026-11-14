@@ -2,6 +2,7 @@
 org $8A8000
 
     rtl                         ; $8A8000
+clear_dp_scratch:
     ldx.w #$007E                ; $8A8001
 CODE_8A8004:
     stz.b $14,x                 ; $8A8004
@@ -21,7 +22,7 @@ CODE_8A8004:
     jsl.l $8081C8               ; $8A8024
     lda.w #$FBD1                ; $8A8028
     sta.w $0008                 ; $8A802B
-    jsl.l $8A8001               ; $8A802E
+    jsl.l clear_dp_scratch      ; $8A802E
     jsl.l $8A8DEC               ; $8A8032
     stz.b $8C                   ; $8A8036
     ldx.w #$001E                ; $8A8038
@@ -34,7 +35,7 @@ CODE_8A803B:
     jsl.l $8A8BB6               ; $8A8045
     jsr.w $8768                 ; $8A8049
     jsl.l $8A8F18               ; $8A804C
-    jsl.l $8A8001               ; $8A8050
+    jsl.l clear_dp_scratch      ; $8A8050
     jsl.l $8A8EEF               ; $8A8054
     jsr.w $8828                 ; $8A8058
     jsr.w $891C                 ; $8A805B
@@ -367,7 +368,7 @@ CODE_8A86BC:
     lda.b $80                   ; $8A8703
     adc.w #$000A                ; $8A8705
     sta.b $7A                   ; $8A8708
-    jsr.w $92CF                 ; $8A870A
+    jsr.w func_8A92CF           ; $8A870A
     clc                         ; $8A870D
     lda.b $84                   ; $8A870E
     adc.w #$0032                ; $8A8710
@@ -375,7 +376,7 @@ CODE_8A86BC:
     lda.b $82                   ; $8A8715
     adc.w #$0012                ; $8A8717
     sta.b $7A                   ; $8A871A
-    jsr.w $92CF                 ; $8A871C
+    jsr.w func_8A92CF           ; $8A871C
     clc                         ; $8A871F
     lda.b $84                   ; $8A8720
     adc.w #$0028                ; $8A8722
@@ -383,7 +384,7 @@ CODE_8A86BC:
     lda.b $80                   ; $8A8727
     adc.w #$00F0                ; $8A8729
     sta.b $7A                   ; $8A872C
-    jsr.w $92CF                 ; $8A872E
+    jsr.w func_8A92CF           ; $8A872E
     clc                         ; $8A8731
     lda.b $84                   ; $8A8732
     adc.w #$0032                ; $8A8734
@@ -391,7 +392,7 @@ CODE_8A86BC:
     lda.b $82                   ; $8A8739
     adc.w #$00C8                ; $8A873B
     sta.b $7A                   ; $8A873E
-    jsr.w $92CF                 ; $8A8740
+    jsr.w func_8A92CF           ; $8A8740
     clc                         ; $8A8743
     lda.b $84                   ; $8A8744
     adc.w #$0019                ; $8A8746
@@ -399,7 +400,7 @@ CODE_8A86BC:
     lda.b $82                   ; $8A874B
     adc.w #$0080                ; $8A874D
     sta.b $7A                   ; $8A8750
-    jsr.w $92CF                 ; $8A8752
+    jsr.w func_8A92CF           ; $8A8752
     clc                         ; $8A8755
     lda.b $84                   ; $8A8756
     sbc.w #$000A                ; $8A8758
@@ -407,7 +408,7 @@ CODE_8A86BC:
     lda.b $80                   ; $8A875D
     adc.w #$0140                ; $8A875F
     sta.b $7A                   ; $8A8762
-    jsr.w $92CF                 ; $8A8764
+    jsr.w func_8A92CF           ; $8A8764
     rts                         ; $8A8767
     lda.w $1536                 ; $8A8768
     asl a                       ; $8A876B
@@ -1572,6 +1573,7 @@ CODE_8A9201:
     pla                         ; $8A92CB
     sta.b $7C                   ; $8A92CC
     rts                         ; $8A92CE
+func_8A92CF:
     lda.b $7C                   ; $8A92CF
     pha                         ; $8A92D1
     lda.b $7A                   ; $8A92D2
@@ -2459,7 +2461,7 @@ CODE_8A9E82:
     stz.w $0196                 ; $8A9E86
     stz.w $0198                 ; $8A9E89
     stz.w $019A                 ; $8A9E8C
-    jsl.l $8A8001               ; $8A9E8F
+    jsl.l clear_dp_scratch      ; $8A9E8F
     ldx.w #$00FE                ; $8A9E93
 CODE_8A9E96:
     stz.w $0D00,x               ; $8A9E96
@@ -2758,7 +2760,7 @@ CODE_8AA18F:
     sbc.w #$0008                ; $8AA193
     bcc CODE_8AA1A0             ; $8AA196
     sta.w $0D70,x               ; $8AA198
-    jsr.w $A216                 ; $8AA19B
+    jsr.w func_8AA216           ; $8AA19B
     bra CODE_8AA18F             ; $8AA19E
 CODE_8AA1A0:
     adc.w #$0008                ; $8AA1A0
@@ -2808,6 +2810,7 @@ CODE_8AA1A0:
     sta.w $0D60,x               ; $8AA211
     plx                         ; $8AA214
     rts                         ; $8AA215
+func_8AA216:
     jsr.w take_slot             ; $8AA216
     lda.w #$FFFF                ; $8AA219
     sta.w $0500,y               ; $8AA21C
@@ -3681,7 +3684,7 @@ CODE_8ABC9B:
     stz.w $019A                 ; $8ABE38
     lda.w #$8934                ; $8ABE3B
     sta.w $0008                 ; $8ABE3E
-    jsl.l $8A8001               ; $8ABE41
+    jsl.l clear_dp_scratch      ; $8ABE41
     stz.b $8E                   ; $8ABE45
     ldx.w #$C4B0                ; $8ABE47
     lda.w #$008A                ; $8ABE4A
@@ -3903,7 +3906,7 @@ CODE_8AC04C:
     stz.w $0196                 ; $8AC05A
     stz.w $0198                 ; $8AC05D
     stz.w $019A                 ; $8AC060
-    jsl.l $8A8001               ; $8AC063
+    jsl.l clear_dp_scratch      ; $8AC063
     stz.b $8E                   ; $8AC067
     ldx.w #$C4B0                ; $8AC069
     lda.w #$008A                ; $8AC06C

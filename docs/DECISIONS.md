@@ -331,6 +331,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - Adapters derive mechanical flag results (N/Z from a value, C/V of a final ADC whose
   sum the upload effect already checks); the value logic stays in `src/`.
 
+## Batch 3 and naming (port-batch-3, 2026-11-14)
+
+- `tools/portable.py` lists routines whose calls all go to verified routines and whose
+  only hardware is the multiply unit (the scan is a guide; the bench decides).
+- **Naming:** a routine whose purpose is not known yet is `func_<address>` (as in the
+  owner's FM decomp) and lives in `src/misc.c` until understood; a guess about purpose
+  goes in a comment marked as such, never in the name.
+- New: `upload_tiles_7700/7b00` ($85:827B/8296, table again through DB = $83),
+  `star_layers_init` ($80:E0D6: the `$0F00` table in a second, 4-word layout — speed, y,
+  tile, x — 2/10/24/28 stars at speeds $100/$80/$40/$20), `func_81F251` (a lone RTS that
+  19 places call), `clear_dp_scratch` ($8A:8001, zeroes `$0114-$0193`), `func_81F1FC`
+  (turns the 20-word list at `$1E6A` into next pointers at `$7E:FACD`; 20 = the number
+  of cars, so probably the race order), `func_8AA216` and `func_8A92CF` (fill object /
+  sprite tables at `$0500-$0800` and `$05C0-$08C0`).
+- The flag watcher follows one return at a time, so routines called right after
+  another sample may have few watched returns; those keep all flags in the contract
+  (e.g. `func_81F1FC`: its C = 1 from the loop's final `CPX #$26` is now modelled).
+
 ## Coverage without a player (2026-11-13)
 
 The server has no display and the owner will not play by hand. Coverage comes from:
