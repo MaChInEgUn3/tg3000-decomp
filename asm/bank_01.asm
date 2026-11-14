@@ -2393,7 +2393,7 @@ CODE_81F893:
     lda.w $FAB7,y               ; $81F8B3
     adc.l $308000               ; $81F8B6
     sta.w $FAB7,y               ; $81F8BA
-    jsr.w $FBB1                 ; $81F8BD
+    jsr.w func_81FBB1           ; $81F8BD
     lda.w #$0000                ; $81F8C0
     sta.l $308000               ; $81F8C3
     lda.w $FACB,y               ; $81F8C7
@@ -2608,7 +2608,7 @@ CODE_81FA65:
     sta.w $FABB,y               ; $81FABF
     lda.w #$FFFF                ; $81FAC2
     sta.w $FAC7,y               ; $81FAC5
-    jsr.w $FBB1                 ; $81FAC8
+    jsr.w func_81FBB1           ; $81FAC8
     lda.w $FADE,y               ; $81FACB
     and.w #$FFDF                ; $81FACE
     bit.w $1E66                 ; $81FAD1
@@ -2638,9 +2638,10 @@ CODE_81FAE0:
     sta.w $FAC9,y               ; $81FB13
     lda.w $0210                 ; $81FB16
     sta.w $FACB,y               ; $81FB19
-    jsr.w $FBB1                 ; $81FB1C
+    jsr.w func_81FBB1           ; $81FB1C
     rts                         ; $81FB1F
     incbin !baserom:$FB20..$FBB1
+func_81FBB1:
     lda.w $FADE,y               ; $81FBB1
     bit.w #$0040                ; $81FBB4
     bne CODE_81FBDE             ; $81FBB7

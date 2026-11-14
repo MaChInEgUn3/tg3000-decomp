@@ -648,6 +648,15 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   (bits in from A's low end, each step `$0184` += 1 and `$0192` += `$0DCA`). Purpose not
   confirmed (a password's bit buffer is a guess). Few live samples (17 and 30 calls in
   the 60k movie); the fuzz carries most of the evidence.
+- `func_81FBB1` ($81:FBB1, the most called routine: 351,383 calls in the 60k movie),
+  the first of `src/track.c`: for the car at Y (records `$35` bytes apart in bank `$7E`:
+  position `$FAB6`, flags `$FADE`, segment record `$FAE0`, jump point `$FAE2`, jump
+  `$FAE4`) it moves the car's record pointer through a 20-byte-record segment table
+  read as `$84:0000+X`, choosing each record's branch once with rng_next_long, adding the
+  record's length or setting a jump point, and finally jumps the car once it passes its
+  point. Because bank `$84`'s `$0000`–`$1FFF` mirrors low WRAM, the fuzz builds a
+  synthetic table at `$1800` that the original and the C both read. The C flag is live
+  (callers read it) and matched in all 4,000 live samples.
 
 ## Coverage without a player (2026-11-13)
 

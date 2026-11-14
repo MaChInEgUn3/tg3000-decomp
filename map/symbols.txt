@@ -81,3 +81,4 @@ func    8180F6   oam_high_table_0b00 ; oam_high_table on the table at $0B00 -> s
 func    818101   oam_high_table      ; pack 128 entries' extra bits into the 32-byte OAM high table, hide stale slots -> src/sprites.c
 func    8ABB5C   func_8ABB5C         ; 256-bit $0DAC-$0DCB >>= Y, bits out -> A, bits in from C then $0146 -> src/misc.c
 func    8ABBF4   func_8ABBF4         ; 256-bit $0DAC-$0DCB <<= Y, bits in from A; $0184++, $0192 += $0DCA each -> src/misc.c
+func    81FBB1   func_81FBB1         ; car Y: advance its record in the segment table ($84), branch choice, jump point -> src/track.c

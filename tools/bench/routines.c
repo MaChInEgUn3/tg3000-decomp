@@ -16,6 +16,7 @@
 #include "frame.h"
 #include "misc.h"
 #include "sprites.h"
+#include "track.h"
 #include "stars.h"
 #include "text.h"
 #include "tg3000.h"
@@ -1036,6 +1037,64 @@ static void call_func_8ABBF4(const Regs* in, Regs* out) {
   setAdc16(out, (uint16_t)(rd16(DP + 0x92) - low), low);
 }
 
+// ---- func_81FBB1 ($81:FBB1) ----  Y = car offset (DB = $7E). Exits with X = the car's
+// segment record, and: first call (flag $40 was clear): A = position - record start (C = 0,
+// N/Z of that or of it - $3F); later calls: A = the position and N/Z/C of its compare with
+// the jump point, or, after a jump, A = the flags (C/V of the jump's ADC). V otherwise from
+// the last position - start.
+static void call_func_81FBB1(const Regs* in, Regs* out) {
+  uint16_t car = in->y;
+  bool first = !(rd16(CAR_FLAGS + (uint32_t)car) & 0x40);
+  bool jumped = func_81FBB1(car);
+  uint16_t seg = rd16(CAR_SEG + (uint32_t)car), pos = rd16(CAR_POS + (uint32_t)car);
+  uint16_t start = bus_rd16(0x840000 + (uint32_t)seg);
+  out->x = seg;
+  if(jumped) {
+    uint16_t skip = rd16(CAR_SKIP + (uint32_t)car);
+    out->a = rd16(CAR_FLAGS + (uint32_t)car);
+    setNZ16(out, out->a);
+    setAdc16(out, (uint16_t)(pos - skip), skip);
+    return;
+  }
+  setSbc16(out, pos, start);  // V (and C, overwritten below) of the last position - start
+  out->c = false;
+  if(first) {
+    uint16_t d = (uint16_t)(pos - start);
+    out->a = d;
+    setNZ16(out, pos < start ? d : (uint16_t)(d - 0x3F));
+  } else {
+    out->a = pos;
+    setNZ16(out, (uint16_t)(pos - rd16(CAR_LIMIT + (uint32_t)car)));
+  }
+}
+
+static void fuzz_func_81FBB1(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  // a segment table in low WRAM, which bank $84's $0000-$1FFF mirrors
+  uint16_t start = (uint16_t)(rnd() % 0x400);
+  uint16_t starts[10];
+  for(int i = 0; i < 10; i++) {
+    uint16_t rec = (uint16_t)(0x1800 + 0x14 * i);
+    starts[i] = start;
+    for(int b = 0; b < 0x14; b++) ram[rec + b] = (uint8_t)rnd();
+    wr16ram(ram, rec, start);
+    wr16ram(ram, rec + 0x10, (uint16_t)(rnd() % 0x80));
+    wr16ram(ram, rec + 0x12, (uint16_t)(rnd() % 0x200));
+    start = (uint16_t)(start + 0x20 + rnd() % 0x80);
+  }
+  wr16ram(ram, 0x1800 + 0x14 * 10, 0xFFFF);  // past the end: never reached
+  uint16_t car = (uint16_t)(0x35 * (rnd() % 20));
+  int k = (int)(rnd() % 5);
+  uint16_t pos = (uint16_t)(starts[k] + rnd() % 0x100 - 0x40);
+  if(pos >= 0xF000) pos = starts[k];
+  r->y = car;
+  wr16ram(ram, 0xFAE0 + car, (uint16_t)(0x1800 + 0x14 * k));
+  wr16ram(ram, 0xFAB6 + car, pos);
+  wr16ram(ram, 0xFADE + car, (uint16_t)(rnd() & 0xF0));
+  wr16ram(ram, 0xFAE2 + car, (rnd() & 1) ? 0x7000 : (uint16_t)(pos + rnd() % 0x200 - 0x80));
+  wr16ram(ram, 0xFAE4 + car, (uint16_t)(rnd() % 0x200));
+  fuzz_rng_state(ram, rnd);
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1212,6 +1271,8 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8ABB5C, ALL_OUTPUTS, .fuzz = fuzz_big_number},
   {.name = "func_8ABBF4", .entry = 0x8ABBF4, .end = 0x8ABC32, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8ABBF4, ALL_OUTPUTS, .fuzz = fuzz_big_number},
+  {.name = "func_81FBB1", .entry = 0x81FBB1, .end = 0x81FC72, .source = "src/track.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_func_81FBB1, ALL_OUTPUTS, .fuzz = fuzz_func_81FBB1},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 
