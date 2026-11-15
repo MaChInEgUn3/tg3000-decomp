@@ -88,9 +88,9 @@ def main():
         if line.startswith("#"):
             continue
         a, b, kind = line.split()[:3]
-        if kind == "code":
+        if kind in ("code", "static"):  # static: found statically (map/static_code.txt)
             for o in range(int(a, 16), int(b, 16)):
-                code[o] = 1
+                code[o] = 1 if kind == "code" else 2
 
     # names from map/symbols.txt (functions only label code)
     names = {}
@@ -234,7 +234,7 @@ def main():
                         elif mn in ("jsl", "jml") and mode == "long" and v in NAMES:
                             opnd = NAMES[v]
                         text = f"{mn}{suffix} {opnd}".rstrip()
-                    lines.append(f"    {text:<28}; ${snes(off):06X}")
+                    lines.append(f"    {text:<28}; ${snes(off):06X}" + (" static" if code[off] == 2 else ""))
                     stats["insn"] += 1
                     off += n
                 elif code[off]:

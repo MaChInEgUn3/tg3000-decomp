@@ -643,6 +643,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   (modes 0/1 and 1/2): the mode is set elsewhere (likely from the NMI), so the names say
   what the routines write, not the mode on screen at that moment.
 
+## Statically found code (map-2, 2026-11-15)
+
+- **`map/static_code.txt`** lists code that no trusted run executed but that other
+  evidence shows is code; each line is a range, its entry widths and the evidence.
+  `tools/map.py` decodes it linearly (following REP/SEP), requires it to lie on unknown
+  bytes and to end on an instruction boundary, marks it **`static`** in `rom_map.txt`
+  and adds its instruction starts to `code_starts.txt`. The listing disassembles it (each
+  line tagged `static`) and the code-from-text proof covers it. It does not count as
+  code or data in the progress numbers: coverage stays the only source of "code".
+- First entry: `$8A:8B9D`–`$8A:8BB5`, the set-bit path of `mode7_view` (25 bytes),
+  executed only by its difftest fuzz and matched there by `src/scale.c`. The branch at
+  `$8A:8B82` now assembles as `bne CODE_8A8B9D` instead of raw bytes.
+
 ## Coverage sources (2026-11-14)
 
 - **Only runs that are known to follow the game's intended path feed

@@ -785,7 +785,7 @@ mode7_view:
     tax                         ; $8A8B7A
     lda.l $8A9351,x             ; $8A8B7B
     and.w #$0004                ; $8A8B7F
-    db $D0,$19 ; bne            ; $8A8B82
+    bne CODE_8A8B9D             ; $8A8B82
     sep.b #$20                  ; $8A8B84
     lda.b #$80                  ; $8A8B86
     sta.w $2110                 ; $8A8B88
@@ -798,7 +798,19 @@ mode7_view:
     sta.w $0D0A                 ; $8A8B99
 CODE_8A8B9C:
     rts                         ; $8A8B9C
-    incbin !baserom:$50B9D..$50BB6
+CODE_8A8B9D:
+    lda.b $62                   ; $8A8B9D static
+    cmp.w #$FFC0                ; $8A8B9F static
+    bmi CODE_8A8BB5             ; $8A8BA2 static
+    sta.w $0D0A                 ; $8A8BA4 static
+    sep.b #$20                  ; $8A8BA7 static
+    lda.b $62                   ; $8A8BA9 static
+    sta.w $2110                 ; $8A8BAB static
+    lda.b $63                   ; $8A8BAE static
+    sta.w $2110                 ; $8A8BB0 static
+    rep.b #$20                  ; $8A8BB3 static
+CODE_8A8BB5:
+    rts                         ; $8A8BB5 static
     clc                         ; $8A8BB6
     adc.l $810024               ; $8A8BB7
 CODE_8A8BBB:

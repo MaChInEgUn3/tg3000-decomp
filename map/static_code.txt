@@ -1,0 +1,5 @@
+# start end(excl) widths ; why  -- code found statically: in no trusted run's coverage (so
+# not "code" in rom_map.txt) but shown to be code by other evidence. Read by tools/map.py,
+# which decodes each range linearly from its widths (following REP/SEP) and marks it
+# "static" in rom_map.txt; the listing disassembles it. CPU addresses ($80-$FF mirror).
+8A:8B9D 8A:8BB6 m16x16 ; the set-bit path of mode7_view ($8A:8B82 BNE +$19): executed by its difftest fuzz, matched by src/scale.c

@@ -34,7 +34,7 @@ rom = bytearray(open(sys.argv[1], "rb").read())
 for line in open(sys.argv[2]):
     if not line.startswith("#"):
         a, b, kind = line.split()[:3]
-        if kind == "code":
+        if kind in ("code", "static"):
             rom[int(a, 16):int(b, 16)] = bytes(int(b, 16) - int(a, 16))
 open(sys.argv[3], "wb").write(rom)
 EOF
