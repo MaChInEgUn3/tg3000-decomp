@@ -728,10 +728,11 @@ static void startSample(int idx, const Cpu* cpu) {
     .retSp = (uint16_t)(sp + (r->rtl ? 3 : 2)),
     .interruptsAtEntry = cpu_interruptCount,
   };
-  if(r->rti) {  // the interrupt frame: P, PC (low, high), PB
-    smp->retPc = (uint16_t)(snes->ram[(uint16_t)(sp + 2)] | (snes->ram[(uint16_t)(sp + 3)] << 8));
-    smp->retBank = snes->ram[(uint16_t)(sp + 4)];
-    smp->retSp = (uint16_t)(sp + 4);
+  if(r->rti) {  // the interrupt frame (P, PC low, PC high, PB) above what the prologue pushed
+    uint16_t f = (uint16_t)(sp + r->rtiFrame);
+    smp->retPc = (uint16_t)(snes->ram[(uint16_t)(f + 2)] | (snes->ram[(uint16_t)(f + 3)] << 8));
+    smp->retBank = snes->ram[(uint16_t)(f + 4)];
+    smp->retSp = (uint16_t)(f + 4);
   }
   for(int f = 0; f < PF_COUNT; f++) smp->ppuStart[f] = ppuFieldValue(f);
   // A waiting routine records the interrupts it waits through, unless an outer waiting
@@ -936,11 +937,12 @@ void difftest_fuzz(int iterations) {
       cpu->a = in.a; cpu->x = in.x; cpu->y = in.y; cpu->dp = in.d; cpu->db = in.db;
       cpu->n = in.n; cpu->v = in.v; cpu->z = in.z; cpu->c = in.c;
       // sentinel return to $8000 of the entry bank (a BRA * trap), stack at $1F00
-      if(r->rti) {  // an interrupt frame: PB, PC = $8000, a random P
+      if(r->rti) {  // an interrupt frame: PB, PC = $8000, a random P; then what the prologue pushed
         snes->ram[0x1F00] = r->entry >> 16;
         snes->ram[0x1EFF] = 0x80; snes->ram[0x1EFE] = 0x00;
         snes->ram[0x1EFD] = (uint8_t)(fuzzRandom() & ~0x08);  // decimal mode off
-        cpu->sp = 0x1EFC;
+        for(int b = 0; b < r->rtiFrame; b++) snes->ram[0x1EFC - b] = (uint8_t)fuzzRandom();
+        cpu->sp = (uint16_t)(0x1EFC - r->rtiFrame);
       } else if(r->rtl) {
         snes->ram[0x1F00] = r->entry >> 16;
         snes->ram[0x1EFF] = 0x7F; snes->ram[0x1EFE] = 0xFF;

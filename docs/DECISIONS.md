@@ -977,6 +977,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   V at the exit comes from bit 6 of `$4213`
   (the 16-bit `BIT $4212`). A negative variant that drops pads A and B fails.
 
+## The NMI's common tail (nmi-1, 2026-11-15)
+
+- **Handler tails as rows:** `.rtiFrame` gives the bytes the handler's prologue pushed
+  above the interrupt frame. The common NMI prologue (`$80:8807`) pushes DB, A, X, Y and D
+  (9 bytes) before it dispatches through `jmp ($0008)`, so a tail's row returns through
+  RTI with those registers pulled back. The adapter restores them from the stack, and P
+  from the frame. The fuzz pushes random prologue bytes above its interrupt frame.
+- **`nmi_tail`** ($80:8934, `src/frame.c`) is where most NMI dispatch targets end:
+  - it reads the pads (`pads_read_long`), unless bit 2 of `$0026` is set;
+  - steps the sound request ring (`func_80894E`) and sends the sound message
+    (`sound_frame`);
+  - counts the frame (`$0024`).
+
+  Race movie 2,616/2,616 live, most of them inside a waiter's recording, which the
+  handler sampling of hdma-3 now reaches; paths 13/13. It has no fuzz, because of the
+  sound handshake. A negative variant that skips the frame count fails.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

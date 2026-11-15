@@ -23,4 +23,9 @@ void wait_one_frame(void);
 // IRQ $85:95BD: acknowledges the interrupt and returns; nothing else.
 void irq_ack_only(void);
 
+// $80:8934, the NMI's common tail (most of its dispatch targets end here): read the pads
+// unless bit 2 of $0026 is set, step the sound request queue (func_80894E), send the
+// sound message (sound_frame), count the frame (FRAME_COUNTER).
+void nmi_tail(void);
+
 #endif

@@ -1013,6 +1013,7 @@ CODE_808903:
     stz.b $2C                   ; $80892F
 CODE_808931:
     jmp.w ($0008)               ; $808931
+nmi_tail:
     lda.b $26                   ; $808934
     bit.w #$0004                ; $808936
     bne CODE_80893F             ; $808939
@@ -6214,7 +6215,7 @@ CODE_80BC80:
     jsr.w ($01EC,x)             ; $80BC93
     plb                         ; $80BC96
     pld                         ; $80BC97
-    jmp.w $8934                 ; $80BC98
+    jmp.w nmi_tail              ; $80BC98
     rep.b #$30                  ; $80BC9B
     phb                         ; $80BC9D
     pha                         ; $80BC9E
@@ -8932,7 +8933,7 @@ CODE_80D77B:
     stz.w $2122                 ; $80D818
     stz.w $2122                 ; $80D81B
     rep.b #$20                  ; $80D81E
-    jmp.w $8934                 ; $80D820
+    jmp.w nmi_tail              ; $80D820
     ldx.w #$0000                ; $80D823
     sep.b #$20                  ; $80D826
     lda.b $37                   ; $80D828
@@ -10039,7 +10040,7 @@ star_random_y:
     lda.b $16                   ; $80E17A
     beq CODE_80E182             ; $80E17C
     pld                         ; $80E17E
-    jmp.w $8934                 ; $80E17F
+    jmp.w nmi_tail              ; $80E17F
 CODE_80E182:
     ldx.w #$0000                ; $80E182
     lda.b $14                   ; $80E185
@@ -10172,12 +10173,12 @@ CODE_80E27B:
     sta.b $14                   ; $80E27B
     stz.b $16                   ; $80E27D
     pld                         ; $80E27F
-    jmp.w $8934                 ; $80E280
+    jmp.w nmi_tail              ; $80E280
 CODE_80E283:
     lda.w #$0001                ; $80E283
     sta.b $16                   ; $80E286
     pld                         ; $80E288
-    jmp.w $8934                 ; $80E289
+    jmp.w nmi_tail              ; $80E289
     lda.w $017A                 ; $80E28C
     sec                         ; $80E28F
     sbc.w #$0004                ; $80E290
@@ -10313,7 +10314,7 @@ CODE_80E33B:
     sta.w $2124                 ; $80E3EB
     lda.w #$0017                ; $80E3EE
     sta.w $212C                 ; $80E3F1
-    jmp.w $8934                 ; $80E3F4
+    jmp.w nmi_tail              ; $80E3F4
     rep.b #$30                  ; $80E3F7
     phb                         ; $80E3F9
     pha                         ; $80E3FA
@@ -13005,7 +13006,7 @@ decompress_near:
     plb                         ; $80FBCF
     rtl                         ; $80FBD0
     jsl.l func_8A8000           ; $80FBD1
-    jmp.w $8934                 ; $80FBD5
+    jmp.w nmi_tail              ; $80FBD5
 oam_clear_long:
     jsr.w oam_clear             ; $80FBD8
     rtl                         ; $80FBDB
@@ -13025,7 +13026,7 @@ oam_clear_long:
     rtl                         ; $80FBF7
     incbin !baserom:$7BF8..$7C14
     jml.l $8A968E               ; $80FC14
-    jmp.w $8934                 ; $80FC18
+    jmp.w nmi_tail              ; $80FC18
     incbin !baserom:$7C1B..$7C20
     ldx.w #$0002                ; $80FC20
     bra CODE_80FC2D             ; $80FC23
@@ -13070,5 +13071,5 @@ CODE_80FC4D:
     plb                         ; $80FC75
     lda.w #$0000                ; $80FC76
     tcd                         ; $80FC79
-    jmp.w $8934                 ; $80FC7A
+    jmp.w nmi_tail              ; $80FC7A
     incbin !baserom:$7C7D..$8000

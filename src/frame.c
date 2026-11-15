@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "frame.h"
 
+#include "misc.h"
+#include "pads.h"
 #include "platform.h"
+#include "sound.h"
 #include "tg3000.h"
 
 // TG3000_ROUTINE($80:8373) wait_frames
@@ -27,3 +30,13 @@ void wait_one_frame(void) { wait_frames(1); }
 //
 // The original reads $4210 (BIT) to acknowledge; the platform acknowledges for itself.
 void irq_ack_only(void) {}
+
+// TG3000_ROUTINE($80:8934) nmi_tail
+//
+// The original then restores the registers its NMI prologue saved and returns (RTI).
+void nmi_tail(void) {
+  if(!(rd16(0x0026) & 0x0004)) pads_read_long();
+  func_80894E();
+  sound_frame();
+  wr16(FRAME_COUNTER, (uint16_t)(rd16(FRAME_COUNTER) + 1));
+}

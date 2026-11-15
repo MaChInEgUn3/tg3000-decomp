@@ -26,6 +26,8 @@ typedef struct {
   bool rti;                // an interrupt handler entered at its vector target: returns with
                            // RTI to the pushed PC (its reads of $4210-$4212, the interrupt
                            // acknowledges, are free)
+  uint8_t rtiFrame;        // for a handler's tail: bytes its prologue pushed above the
+                           // interrupt frame (D, Y, X, A, DB = 9 for the common NMI prologue)
   const char* source;      // src/ file holding the C, hashed into the results
   bool needM16, needX16;   // entry contract: register widths the C assumes (else either)
   // Run the C from `in` (g_ram already holds the entry WRAM); fill the outputs in `out`

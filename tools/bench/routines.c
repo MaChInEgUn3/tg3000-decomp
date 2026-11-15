@@ -1534,11 +1534,39 @@ static void fuzz_pads(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 
 // Interrupt handlers return with RTI: P comes back from the interrupt frame (at SP + 1 on
 // entry), with its M and X widths; the registers they save they restore.
-static void restoreP(const Regs* in, Regs* out) {
-  uint8_t p = rd8(in->sp + 1u);
+static void restorePAt(const Regs* in, Regs* out, unsigned frame) {
+  uint8_t p = rd8((uint16_t)(in->sp + frame + 1u));
   out->n = p & 0x80; out->v = p & 0x40; out->z = p & 0x02; out->c = p & 0x01;
   out->m8 = p & 0x20; out->x8 = p & 0x10;
   if(out->x8) { out->x &= 0xFF; out->y &= 0xFF; }  // 8-bit index registers drop their high bytes
+}
+
+static void restoreP(const Regs* in, Regs* out) { restorePAt(in, out, 0); }
+
+// The common NMI prologue's saves, above which the interrupt frame sits: D, Y, X, A (words,
+// last pushed lowest), DB; the tail pulls them back before its RTI.
+static void restoreNmiFrame(const Regs* in, Regs* out) {
+  uint16_t sp = in->sp;
+  out->d = rd16((uint16_t)(sp + 1));
+  out->y = rd16((uint16_t)(sp + 3));
+  out->x = rd16((uint16_t)(sp + 5));
+  out->a = rd16((uint16_t)(sp + 7));
+  out->db = rd8((uint16_t)(sp + 9));
+  restorePAt(in, out, 9);
+}
+
+// Negative test: the tail without counting the frame.
+static void call_nmi_tail_wrong(const Regs* in, Regs* out) {
+  uint16_t f = rd16(FRAME_COUNTER);
+  nmi_tail();
+  wr16(FRAME_COUNTER, f);
+  restoreNmiFrame(in, out);
+}
+
+// ---- nmi_tail ($80:8934) ----
+static void call_nmi_tail(const Regs* in, Regs* out) {
+  nmi_tail();
+  restoreNmiFrame(in, out);
 }
 
 // ---- irq_ack_only ($85:95BD) ----
@@ -2911,6 +2939,9 @@ const Routine routines[] = {
    .call = call_sound_send_message, ALL_OUTPUTS},
   {.name = "sound_frame", .entry = 0x86DFE1, .end = 0x86DFFB, .rtl = true, .source = "src/sound.c", .needM16 = true,
    .lowWramDb = true, .call = call_sound_frame, ALL_OUTPUTS},
+  // no fuzz: it sends the sound message, whose handshake needs the sound CPU
+  {.name = "nmi_tail", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .fixedD = false, .call = call_nmi_tail, ALL_OUTPUTS},
   {.name = "irq_ack_only", .entry = 0x8595BD, .end = 0x8595C7, .rti = true, .source = "src/frame.c",
    .call = call_irq_ack_only, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "scroll_tables_build", .entry = 0x85BC20, .end = 0x85BED1, .rtl = true, .source = "src/scroll_tables.c",
@@ -3264,5 +3295,7 @@ const Routine negativeRoutines[] = {
    .call = call_sound_send_message_wrong, ALL_OUTPUTS},
   {.name = "pads_read_wrong", .entry = 0x8386FF, .end = 0x8387C1, .source = "src/pads.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_pads_read_wrong, ALL_OUTPUTS, .fuzz = fuzz_pads},
+  {.name = "nmi_tail_wrong", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_tail_wrong, ALL_OUTPUTS},
 };
 const int negativeRoutineCount = sizeof negativeRoutines / sizeof negativeRoutines[0];
