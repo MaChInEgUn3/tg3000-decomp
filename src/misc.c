@@ -867,3 +867,55 @@ bool func_8AC024(void) {
   shift32(0x038E, 0x0390, false);
   return shift32(0x03BD, 0x03BF, false);
 }
+
+// TG3000_ROUTINE($8A:A32B) func_8AA32B
+//
+// The bit-7 path ($8A:A345) runs in no recorded movie; it is checked by the fuzz.
+uint8_t func_8AA32B(uint16_t x) {
+  uint8_t i = rom8(0x8AC599 + (uint8_t)(rd8(DP + 0x3C) - 10));
+  uint8_t flags = rd8((uint16_t)(0x1516 + x)), v;
+  if(flags & 0x80) {
+    v = 0xE0;
+  } else if(!(flags & 0x40)) {
+    v = 0xE7;
+  } else {
+    uint8_t k = rom8(0x8AC5B7 + (rd8(DP + 0x6E) & 0x1F));
+    v = (uint8_t)((rd8(0x0D23 + i) & 0xE0) | k);
+    wr8(DP + 0x6E, (uint8_t)(rd8(DP + 0x6E) + 1));
+  }
+  wr8(0x0D23 + i, v);
+  return v;
+}
+
+static void object_flags_41(uint16_t x, uint16_t set_at) {
+  wr16((uint16_t)(0x1516 + x), (uint16_t)(rd16((uint16_t)(0x1516 + x)) & 0xFFBE));
+  wr16((uint16_t)(set_at + x), (uint16_t)(rd16((uint16_t)(set_at + x)) | 0x0041));
+  wr16(DP + 0x64, 0);
+  wr16(DP + 0x66, 0);
+  wr16(DP + 0x6E, 0);
+  func_8AA48D();
+}
+
+// TG3000_ROUTINE($8A:A381) func_8AA381
+//
+// The bit-11 path ($8A:A3C2) runs in no recorded movie; it is checked by the fuzz. The
+// original lowers D+$4A by 2 to read the word before it and puts it back afterwards.
+int func_8AA381(uint16_t x) {
+  static const uint16_t words[4] = {0x000E, 0x0012, 0x0016, 0x001A};
+  for(int bit = 11; bit >= 10; bit--) {
+    uint16_t mask = (uint16_t)(1u << bit);
+    for(int i = 0; i < 4; i++) {
+      uint16_t w = rd16(words[i]);
+      if(!(w & mask)) continue;
+      wr16(words[i], (uint16_t)(w & ~mask));
+      uint16_t p = rd16(DP + 0x4A);
+      if(bit == 11) {
+        if(bus_rd16(0x8A0000 | (uint16_t)(p - 2)) != 0xFFFF) object_flags_41(x, 0x1514);
+      } else {
+        if(bus_rd16((0x8A0000 | p) + 8) != 0) object_flags_41(x, 0x1518);
+      }
+      return bit;
+    }
+  }
+  return 0;
+}

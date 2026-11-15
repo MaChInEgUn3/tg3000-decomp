@@ -2948,7 +2948,7 @@ CODE_8AA2AE:
     ldy.w #$0000                ; $8AA2CF
     lda.b ($4A),y               ; $8AA2D2
     beq CODE_8AA32A             ; $8AA2D4
-    jsr.w $A32B                 ; $8AA2D6
+    jsr.w func_8AA32B           ; $8AA2D6
     lda.w $1516,x               ; $8AA2D9
     and.w #$0002                ; $8AA2DC
     beq CODE_8AA2F7             ; $8AA2DF
@@ -2963,7 +2963,7 @@ CODE_8AA2F7:
     and.w #$0001                ; $8AA307
     beq CODE_8AA31F             ; $8AA30A
     jsr.w func_8AA469           ; $8AA30C
-    jsr.w $A381                 ; $8AA30F
+    jsr.w func_8AA381           ; $8AA30F
     lda.w $1516,x               ; $8AA312
     and.w #$0080                ; $8AA315
     bne CODE_8AA31F             ; $8AA318
@@ -2977,6 +2977,7 @@ CODE_8AA31F:
     jmp.w $A2C9                 ; $8AA327
 CODE_8AA32A:
     rts                         ; $8AA32A
+func_8AA32B:
     phy                         ; $8AA32B
     lda.w #$0000                ; $8AA32C
     sep.b #$20                  ; $8AA32F
@@ -2990,7 +2991,9 @@ CODE_8AA32A:
     lda.w $1516,x               ; $8AA33E
     and.b #$80                  ; $8AA341
     beq CODE_8AA34C             ; $8AA343
-    incbin !baserom:$52345..$5234C
+    lda.b #$E0                  ; $8AA345 static
+    sta.w $0D23,y               ; $8AA347 static
+    bra CODE_8AA376             ; $8AA34A static
 CODE_8AA34C:
     lda.w $1516,x               ; $8AA34C
     and.b #$40                  ; $8AA34F
@@ -3022,18 +3025,19 @@ text_cursor_down3:
     inc.b $3C                   ; $8AA37C
     inc.b $3C                   ; $8AA37E
     rts                         ; $8AA380
+func_8AA381:
     lda.w #$0800                ; $8AA381
     trb.w $000E                 ; $8AA384
-    db $D0,$39 ; bne            ; $8AA387
+    bne CODE_8AA3C2             ; $8AA387
     lda.w #$0800                ; $8AA389
     trb.w $0012                 ; $8AA38C
-    db $D0,$31 ; bne            ; $8AA38F
+    bne CODE_8AA3C2             ; $8AA38F
     lda.w #$0800                ; $8AA391
     trb.w $0016                 ; $8AA394
-    db $D0,$29 ; bne            ; $8AA397
+    bne CODE_8AA3C2             ; $8AA397
     lda.w #$0800                ; $8AA399
     trb.w $001A                 ; $8AA39C
-    db $D0,$21 ; bne            ; $8AA39F
+    bne CODE_8AA3C2             ; $8AA39F
     lda.w #$0400                ; $8AA3A1
     trb.w $000E                 ; $8AA3A4
     bne CODE_8AA3F4             ; $8AA3A7
@@ -3047,7 +3051,31 @@ text_cursor_down3:
     trb.w $001A                 ; $8AA3BC
     bne CODE_8AA3F4             ; $8AA3BF
     rts                         ; $8AA3C1
-    incbin !baserom:$523C2..$523F4
+CODE_8AA3C2:
+    lda.b $4A                   ; $8AA3C2 static
+    pha                         ; $8AA3C4 static
+    phy                         ; $8AA3C5 static
+    ldy.w #$0000                ; $8AA3C6 static
+    dec.b $4A                   ; $8AA3C9 static
+    dec.b $4A                   ; $8AA3CB static
+    lda.b ($4A),y               ; $8AA3CD static
+    cmp.w #$FFFF                ; $8AA3CF static
+    beq CODE_8AA3EF             ; $8AA3D2 static
+    lda.w $1516,x               ; $8AA3D4 static
+    and.w #$FFBE                ; $8AA3D7 static
+    sta.w $1516,x               ; $8AA3DA static
+    lda.w $1514,x               ; $8AA3DD static
+    ora.w #$0041                ; $8AA3E0 static
+    sta.w $1514,x               ; $8AA3E3 static
+    stz.b $64                   ; $8AA3E6 static
+    stz.b $66                   ; $8AA3E8 static
+    stz.b $6E                   ; $8AA3EA static
+    jsr.w func_8AA48D           ; $8AA3EC static
+CODE_8AA3EF:
+    ply                         ; $8AA3EF static
+    pla                         ; $8AA3F0 static
+    sta.b $4A                   ; $8AA3F1 static
+    rts                         ; $8AA3F3 static
 CODE_8AA3F4:
     phy                         ; $8AA3F4
     ldy.w #$0008                ; $8AA3F5

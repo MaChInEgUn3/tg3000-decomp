@@ -144,6 +144,19 @@ void func_82FB1C(void);
 bool func_8AC03D(void);
 bool func_8AC024(void);
 
+// Set the byte $0D23 + i, i = the byte at $8A:C599 + (D+$3C - 10), from the flags byte
+// $1516 + x: bit 7 set -> $E0; else bit 6 clear -> $E7; else its low 5 bits from the
+// byte at $8A:C5B7 + (D+$6E & $1F) (D+$6E then counts up, as a byte). Returns the byte.
+uint8_t func_8AA32B(uint16_t x);
+
+// The first of the words $000E, $0012, $0016, $001A with bit 11 set (else, the first with
+// bit 10) has that bit cleared, and then, for the object x: on bit 11, unless the word
+// before D+$4A in bank $8A is $FFFF; on bit 10, if the word 8 bytes after D+$4A is not
+// zero: clear bits 0 and 6 of $1516 + x, set bits 0 and 6 of $1514 + x (bit 11) or
+// $1518 + x (bit 10), zero D+$64, D+$66, D+$6E, and func_8AA48D. Returns 11, 10 or 0
+// (no bit found).
+int func_8AA381(uint16_t x);
+
 // Append the words (a, x, y, D+$14) to the four tables $1900, $1940, $19C0, $1980 at
 // index D+$8C, then advance it: D+$8C = ((index + 2) & $3F) + D+$8A (32 entries in a
 // ring, D+$8A choosing the ring). Returns the new index.

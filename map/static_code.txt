@@ -3,3 +3,5 @@
 # which decodes each range linearly from its widths (following REP/SEP) and marks it
 # "static" in rom_map.txt; the listing disassembles it. CPU addresses ($80-$FF mirror).
 8A:8B9D 8A:8BB6 m16x16 ; the set-bit path of mode7_view ($8A:8B82 BNE +$19): executed by its difftest fuzz, matched by src/scale.c
+8A:A345 8A:A34C m8x16 ; func_8AA32B's bit-7 path ($8A:A343 BEQ falls into it): executed by its difftest fuzz, matched by src/misc.c
+8A:A3C2 8A:A3F4 m16x16 ; func_8AA381's bit-11 path (four BNEs at $8A:A387-$8A:A39F): executed by its difftest fuzz, matched by src/misc.c

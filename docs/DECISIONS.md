@@ -758,6 +758,16 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - First entry: `$8A:8B9D`–`$8A:8BB5`, the set-bit path of `mode7_view` (25 bytes),
   executed only by its difftest fuzz and matched there by `src/scale.c`. The branch at
   `$8A:8B82` now assembles as `bne CODE_8A8B9D` instead of raw bytes.
+- **The static route for blocked roots (map-3, 2026-11-15):** decode the unexecuted bytes
+  by hand and list every branch and call that leaves them; if one leads to other
+  unexecuted code, park the routine (no chained static claims); otherwise port it, aim
+  the fuzz until `paths N/N` includes the new bytes, and only then add the range.
+  - `func_8AA32B` ($8A:A32B, 857 calls): its bit-7 path `$8A:A345-$8A:A34B` (store `$E0`,
+    branch to the common exit). Live 286/286, fuzz 500/500, paths 39/39.
+  - `func_8AA381` ($8A:A381, 264 calls): its bit-11 path `$8A:A3C2-$8A:A3F3`, reached by
+    four BNEs, calling only the verified `func_8AA48D`. Live 88/88, fuzz 500/500, paths
+    64/64. The four branches now assemble as `bne CODE_8AA3C2`.
+  - Parked: `$8A:9F76` (its unexecuted bytes call `$8A:AE9B`, itself never executed).
 
 ## Coverage sources (2026-11-14)
 

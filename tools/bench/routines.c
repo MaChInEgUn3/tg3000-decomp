@@ -1148,6 +1148,64 @@ static void call_func_8AC024(const Regs* in, Regs* out) {
   out->z = true;
 }
 
+// ---- func_8AA32B ----  A = the byte stored (A's high byte 0 from its LDA #0), Y kept (N Z
+// from its PLY), C V of the 8-bit SBC #10 on D+$3C
+static void call_func_8AA32B(const Regs* in, Regs* out) {
+  uint8_t d = rd8(DP + 0x3C), r = (uint8_t)(d - 10);
+  out->a = func_8AA32B(in->x);
+  setNZ16(out, in->y);
+  out->c = d >= 10;
+  out->v = ((d ^ 10) & (d ^ r) & 0x80) != 0;
+}
+
+// all three flag cases, any D+$3C and D+$6E, an object index as the game's (a word index)
+static void fuzz_func_8AA32B(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)(2 * (rnd() % 32));
+  uint32_t k = rnd();
+  ram[(uint16_t)(0x1516 + r->x)] = (uint8_t)((k & 3) == 0 ? 0x80 | rnd() : (k & 3) == 1 ? rnd() & 0x3F : 0x40 | (rnd() & 0x3F));
+  ram[DP + 0x3C] = (uint8_t)rnd();
+  ram[DP + 0x6E] = (uint8_t)rnd();
+}
+
+// ---- func_8AA381 ----  nothing found: A = $0400, N = 0, Z = 1. Bit 10: Y kept (N Z from the
+// PLY), A = the word after the call ($1518 + x) or 0 when it was skipped. Bit 11: A = D+$4A
+// (N Z from the PLA), C = whether the word before it was $FFFF (CMP #$FFFF). C V otherwise
+// as on entry.
+static void call_func_8AA381(const Regs* in, Regs* out) {
+  uint16_t p = rd16(DP + 0x4A);
+  uint16_t before = bus_rd16(0x8A0000 | (uint16_t)(p - 2)), after = bus_rd16((0x8A0000 | p) + 8);
+  int bit = func_8AA381(in->x);
+  if(bit == 0) {
+    out->a = 0x0400;
+    out->n = false;
+    out->z = true;
+  } else if(bit == 10) {
+    out->a = after != 0 ? rd16((uint16_t)(0x1518 + in->x)) : 0;
+    setNZ16(out, in->y);
+  } else {
+    out->a = p;
+    setNZ16(out, p);
+    out->c = before == 0xFFFF;
+  }
+}
+
+// the four words with bits 10/11 sometimes set; D+$4A pointing into bank $8A's low-WRAM
+// mirror at $1C02, with the word before it sometimes $FFFF and the one 8 after sometimes 0
+static void fuzz_func_8AA381(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  static const uint16_t words[4] = {0x000E, 0x0012, 0x0016, 0x001A};
+  uint32_t k = rnd();
+  for(int i = 0; i < 4; i++) {
+    uint16_t w = (uint16_t)(rnd() & ~0x0C00);
+    if((k >> (2 * i)) % 4 == 0) w |= 0x0800;
+    if((k >> (2 * i + 8)) % 4 == 0) w |= 0x0400;
+    wr16ram(ram, words[i], w);
+  }
+  wr16ram(ram, DP + 0x4A, 0x1C02);
+  wr16ram(ram, 0x1C00, (rnd() & 1) ? 0xFFFF : (uint16_t)rnd());
+  wr16ram(ram, 0x1C0A, (rnd() & 1) ? 0 : (uint16_t)rnd());
+  r->x = (uint16_t)(2 * (rnd() % 32));
+}
+
 static void fuzz_shift32(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   static const uint16_t words[4] = {0x038E, 0x0390, 0x03BD, 0x03BF};
@@ -2458,6 +2516,10 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_func_82AD12, ALL_OUTPUTS, .fuzz = fuzz_func_82AD12},
   {.name = "binary_to_bcd5", .entry = 0x8ABFD0, .end = 0x8AC004, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_binary_to_bcd5, ALL_OUTPUTS, .fuzz = fuzz_binary_to_bcd5},
+  {.name = "func_8AA32B", .entry = 0x8AA32B, .end = 0x8AA37A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_func_8AA32B, ALL_OUTPUTS, .fuzz = fuzz_func_8AA32B},
+  {.name = "func_8AA381", .entry = 0x8AA381, .end = 0x8AA419, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_func_8AA381, ALL_OUTPUTS, .fuzz = fuzz_func_8AA381},
   {.name = "func_82FB1C", .entry = 0x82FB1C, .end = 0x82FB1D, .source = "src/misc.c",
    .call = call_func_82FB1C, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "func_8AC03D", .entry = 0x8AC03D, .end = 0x8AC056, .source = "src/misc.c", .needM16 = true,
