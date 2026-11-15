@@ -52,6 +52,23 @@ void sound_send_frame(const uint8_t msg[16]) {
 bool sound_is_ready(void) { return difftest_input(0x2141) == 0x77; }
 bool video_is_pal(void) { return (difftest_input(0x213F) & 0x10) != 0; }
 
+// Controllers: from the original's reads of the joypad registers, in order.
+uint16_t input_pad1(void) { return (uint16_t)(difftest_input(0x4218) | difftest_input(0x4219) << 8); }
+bool input_port1_data(void) { return difftest_input(0x4016) & 1; }
+
+void input_multitap_pair(int pair, uint16_t* d0, uint16_t* d1, uint8_t* tail) {
+  (void)pair;  // the original's reads already carry which pair it was
+  uint16_t a = 0, b = 0;
+  for(int i = 0; i < 16; i++) {
+    uint8_t v = difftest_input(0x4017);
+    a = (uint16_t)(a << 1 | (v & 1));
+    b = (uint16_t)(b << 1 | ((v >> 1) & 1));
+  }
+  *d0 = a;
+  *d1 = b;
+  *tail = difftest_input(0x4017) & 3;
+}
+
 // The bench replays, in order, the WRAM changes each interrupt made while the original
 // routine was waiting (recorded by the differential test).
 void platform_wait_vblank(void) { difftest_replay_interrupt(); }

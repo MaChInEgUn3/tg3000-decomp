@@ -948,6 +948,35 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 
   A negative variant with the two request groups swapped fails at effect 8.
 
+## Controllers (pads-1, 2026-11-15)
+
+- **Platform calls:**
+  - `input_pad1()`: controller 1's 16 bits from the automatic read;
+  - `input_port1_data()`: port 1's first data line after it;
+  - `input_multitap_pair(pair, &d0, &d1, &tail)`: two multitap pads read serially
+    through port 2, plus the lines on a 17th read, which a plugged-in pad answers with 1.
+
+  The waits on `$4212` and the latch and I/O-line writes (`$4016`, `$4201`) are the
+  platform's.
+- **Harness:** `$4212/$4213`, `$4218-$421F`, `$4016` and `$4017` are inputs, replayed
+  like the APU ports. The serial lines are not collapsed: each read is a bit. Writes to
+  `$4016`/`$4201` are free. The fuzz now gives both controllers random states, so the
+  serial reads vary, signature bits included.
+- **Ported** (`src/pads.c`; the module is not called `input` because LakeSnes has an
+  `input.h`):
+  - `pads_read_pair` ($83:87C1): live 4,000/4,000, fuzz 500/500;
+  - `pads_read` ($83:86FF): the five pads as (held, pressed) pairs at `$000C-$001F`,
+    "pressed" collecting new presses, and an absent pad reading as 1. Live 2,647/2,647,
+    fuzz 500/500, paths 89/89;
+  - `pads_read_long` ($83:86FB).
+
+  Its "pad A absent" test (`$83:878F`) never ran in a recorded movie and is now static
+  code, reached by the random pad states. (The extra random draws shifted every
+  routine's fuzz sequence; `scroll_tables_build` then missed one path at the selftest's
+  200 cases, so its fuzz now draws height bytes of 1-3 on purpose instead of by chance.)
+  V at the exit comes from bit 6 of `$4213`
+  (the 16-bit `BIT $4212`). A negative variant that drops pads A and B fails.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

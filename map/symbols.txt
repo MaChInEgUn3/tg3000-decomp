@@ -79,6 +79,9 @@ func    8595BD   irq_ack_only        ; IRQ handler: acknowledge, RTI -> src/fram
 func    86DFAE   sound_fade_step     ; master volume fade ($045C by $03E0) -> src/sound.c
 func    86DFFB   sound_send_message  ; the 16-byte message to the sound driver -> src/sound.c
 func    86DFE1   sound_frame         ; fade, then the message when enabled and ready (long) -> src/sound.c
+func    8387C1   pads_read_pair      ; read a multitap pair into $0020/$0022 -> src/pads.c
+func    8386FF   pads_read           ; read the five pads into their (held, pressed) pairs -> src/pads.c
+func    8386FB   pads_read_long      ; pads_read (long) -> src/pads.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

@@ -82,8 +82,10 @@ CODE_8386B7:
     stz.b $FC                   ; $8386F6
     stx.b $FE                   ; $8386F8
     rts                         ; $8386FA
-    jsr.w $86FF                 ; $8386FB
+pads_read_long:
+    jsr.w pads_read             ; $8386FB
     rtl                         ; $8386FE
+pads_read:
     lda.w #$0001                ; $8386FF
 CODE_838702:
     bit.w $4212                 ; $838702
@@ -107,7 +109,7 @@ CODE_838702:
     lda.b #$01                  ; $83872A
     sta.w $4016                 ; $83872C
     stz.w $4016                 ; $83872F
-    jsr.w $87C1                 ; $838732
+    jsr.w pads_read_pair        ; $838732
     rep.b #$20                  ; $838735
     lda.b $20                   ; $838737
     tax                         ; $838739
@@ -125,7 +127,7 @@ CODE_838702:
     sta.b $16                   ; $83874F
     sep.b #$20                  ; $838751
     stz.w $4201                 ; $838753
-    jsr.w $87C1                 ; $838756
+    jsr.w pads_read_pair        ; $838756
     lda.b #$80                  ; $838759
     sta.w $4201                 ; $83875B
     rep.b #$20                  ; $83875E
@@ -153,7 +155,9 @@ CODE_838788:
     lda.b $10                   ; $838788
     bit.w #$000F                ; $83878A
     beq CODE_838796             ; $83878D
-    incbin !baserom:$1878F..$18796
+    lda.w #$0001                ; $83878F static
+    sta.b $10                   ; $838792 static
+    sta.b $12                   ; $838794 static
 CODE_838796:
     lda.b $14                   ; $838796
     bit.w #$000F                ; $838798
@@ -177,6 +181,7 @@ CODE_8387B2:
     sta.b $1E                   ; $8387BE
 CODE_8387C0:
     rts                         ; $8387C0
+pads_read_pair:
     lda.w $4017                 ; $8387C1
     lsr a                       ; $8387C4
     rol.b $21                   ; $8387C5
@@ -310,7 +315,7 @@ CODE_8389AE:
 CODE_8389D0:
     rts                         ; $8389D0
     incbin !baserom:$189D1..$196CD
-    jsr.w $86FF                 ; $8396CD
+    jsr.w pads_read             ; $8396CD
     rtl                         ; $8396D0
     jsr.w $8644                 ; $8396D1
     rtl                         ; $8396D4

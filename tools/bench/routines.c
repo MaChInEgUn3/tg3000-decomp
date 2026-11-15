@@ -17,6 +17,7 @@
 #include "decompress.h"
 #include "dsp4.h"
 #include "frame.h"
+#include "pads.h"
 #include "hud.h"
 #include "misc.h"
 #include "sprites.h"
@@ -1400,8 +1401,10 @@ static void fuzz_scroll_tables_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   uint16_t i1 = (uint16_t)(rnd() % 0x40), i2 = (uint16_t)(rnd() % 0x40);
   wr16ram(ram, 0x0164, i1);
   wr16ram(ram, 0x0168, i2);
-  ram[0x4CFE + i1] = (k & 4) ? 0 : (uint8_t)rnd();
-  ram[0x4D4A + i2] = (k & 8) ? 0 : (uint8_t)rnd();
+  // a height byte of 0 (counts as $DC), 1-3 (goes negative, then 0) or anything
+  uint32_t h = rnd();
+  ram[0x4CFE + i1] = (h & 3) == 0 ? 0 : (h & 3) == 1 ? (uint8_t)(1 + rnd() % 3) : (uint8_t)rnd();
+  ram[0x4D4A + i2] = (h & 12) == 0 ? 0 : (h & 12) == 4 ? (uint8_t)(1 + rnd() % 3) : (uint8_t)rnd();
   wr16ram(ram, 0x0237, (k & 0x30) == 0 ? (uint16_t)(0xFF00 + rnd() % 0x100) : (uint16_t)(rnd() % 0x100 - 0x40));
   wr16ram(ram, 0x1E3E, (uint16_t)rnd());
   wr16ram(ram, 0x1E40, (uint16_t)rnd());
@@ -1469,6 +1472,64 @@ static void call_sound_send_message_wrong(const Regs* in, Regs* out) {
   out->a = (uint16_t)((in->a & 0xFF00) | 0xFF);
   out->x = x;
   out->y = y;
+}
+
+// ---- pads_read_pair ($83:87C1, 8-bit A) ----  A = its high byte : $0022's low byte (the
+// last ORA, N Z from it), C = 0 (ROL of 0), X = A's high byte : (17th read ^ 3) >> 2 (TAX
+// with 16-bit index registers takes A's high byte too)
+static void call_pads_read_pair(const Regs* in, Regs* out) {
+  pads_read_pair(0);
+  uint8_t lo = rd8(0x0022);
+  int tail = difftest_input_peek(0x4017, 16);
+  out->a = (uint16_t)((in->a & 0xFF00) | lo);
+  out->x = (uint16_t)((in->a & 0xFF00) | ((uint8_t)((tail < 0 ? 0 : tail) ^ 3) >> 2));
+  out->n = lo & 0x80;
+  out->z = lo == 0;
+  out->c = false;
+}
+
+// ---- pads_read ($83:86FF) / pads_read_long ($83:86FB) ----  A = $001C, or 1 if that pad
+// read as absent (N Z: of the LDA $1C with Z = 1 from the BIT, or of the LDA #1); X = the
+// last pair's second pad (its TAX); C = 0 (the pair read's last ROL); V below
+// V: bit 6 of $4213, from the 16-bit BIT $4212 that waited for the automatic read (the
+// last value read; nothing after changes V)
+static void pads_read_v(Regs* out) {
+  int last = -1;
+  for(int n = 0, v; (v = difftest_input_peek(0x4213, n)) >= 0; n++) last = v;
+  if(last >= 0) out->v = (last >> 6) & 1;
+}
+
+static void pads_read_outputs(Regs* out) {
+  pads_read_v(out);
+  uint16_t d = rd16(0x001C);
+  out->x = rd16(0x0022);
+  if(d == 1 && rd16(0x001E) == 1 && (rd16(0x0022) & 0xF)) {
+    out->a = 1;
+    out->n = out->z = false;
+  } else {
+    out->a = d;
+    out->n = d >> 15;
+    out->z = true;
+  }
+  out->c = false;
+}
+
+// Negative test: pads_read with the multitap pairs taken in the other order.
+static void call_pads_read_wrong(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t old[10];
+  for(int i = 0; i < 10; i++) old[i] = rd16((uint16_t)(0x000C + 2 * i));
+  pads_read();
+  for(int i = 2; i < 6; i++) wr16((uint16_t)(0x000C + 2 * i), old[i]);  // drop pads A and B's update
+  pads_read_outputs(out);
+}
+
+static void call_pads_read(const Regs* in, Regs* out) { (void)in; pads_read(); pads_read_outputs(out); }
+static void call_pads_read_long(const Regs* in, Regs* out) { (void)in; pads_read_long(); pads_read_outputs(out); }
+
+static void fuzz_pads(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint16_t a = 0x000C; a < 0x0024; a++) ram[a] = (uint8_t)rnd();
 }
 
 // Interrupt handlers return with RTI: P comes back from the interrupt frame (at SP + 1 on
@@ -2837,6 +2898,12 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_func_82AD12, ALL_OUTPUTS, .fuzz = fuzz_func_82AD12},
   {.name = "binary_to_bcd5", .entry = 0x8ABFD0, .end = 0x8AC004, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_binary_to_bcd5, ALL_OUTPUTS, .fuzz = fuzz_binary_to_bcd5},
+  {.name = "pads_read_pair", .entry = 0x8387C1, .end = 0x83886A, .source = "src/pads.c", .lowWramDb = true,
+   .call = call_pads_read_pair, ALL_OUTPUTS, .fuzz = fuzz_pads},
+  {.name = "pads_read", .entry = 0x8386FF, .end = 0x8387C1, .source = "src/pads.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_pads_read, ALL_OUTPUTS, .fuzz = fuzz_pads},
+  {.name = "pads_read_long", .entry = 0x8386FB, .end = 0x8386FF, .rtl = true, .source = "src/pads.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_pads_read_long, ALL_OUTPUTS, .fuzz = fuzz_pads},
   {.name = "sound_fade_step", .entry = 0x86DFAE, .end = 0x86DFE1, .source = "src/sound.c", .needM16 = true,
    .lowWramDb = true, .call = call_sound_fade_step, ALL_OUTPUTS, .fuzz = fuzz_sound_fade_step},
   // no fuzz: the fuzz runs the CPU alone, so the sound CPU never answers the handshake
@@ -3195,5 +3262,7 @@ const Routine negativeRoutines[] = {
    .call = call_irq_ack_only_wrong, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "sound_send_message_wrong", .entry = 0x86DFFB, .end = 0x86E096, .source = "src/sound.c", .lowWramDb = true,
    .call = call_sound_send_message_wrong, ALL_OUTPUTS},
+  {.name = "pads_read_wrong", .entry = 0x8386FF, .end = 0x8387C1, .source = "src/pads.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_pads_read_wrong, ALL_OUTPUTS, .fuzz = fuzz_pads},
 };
 const int negativeRoutineCount = sizeof negativeRoutines / sizeof negativeRoutines[0];

@@ -1016,7 +1016,7 @@ CODE_808931:
     lda.b $26                   ; $808934
     bit.w #$0004                ; $808936
     bne CODE_80893F             ; $808939
-    jsl.l $8386FB               ; $80893B
+    jsl.l pads_read_long        ; $80893B
 CODE_80893F:
     jsr.w func_80894E           ; $80893F
     jsl.l sound_frame           ; $808942
@@ -11860,7 +11860,7 @@ CODE_80F1CA:
     phd                         ; $80F1CA
     lda.w #$0000                ; $80F1CB
     tcd                         ; $80F1CE
-    jsl.l $8386FB               ; $80F1CF
+    jsl.l pads_read_long        ; $80F1CF
     pld                         ; $80F1D3
     lda.w $019A                 ; $80F1D4
     beq CODE_80F1DC             ; $80F1D7

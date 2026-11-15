@@ -67,6 +67,24 @@ bool sound_is_ready(void);
 // Whether the console runs at 50 Hz (the original: bit 4 of $213F).
 bool video_is_pal(void);
 
+// Controllers. The game reads up to five: controller 1 through the console's automatic
+// read, and four behind a multitap in port 2, read serially two at a time.
+//
+// Controller 1's 16 bits as the automatic read gives them ($4218/$4219): buttons B Y
+// Select Start Up Down Left Right A X L R from the top, then a 4-bit signature (0 for a
+// standard controller).
+uint16_t input_pad1(void);
+
+// Port 1's first data line after the automatic read (1 with a standard controller
+// plugged in, 0 with none).
+bool input_port1_data(void);
+
+// Two multitap controllers through port 2, 16 bits each, first bit highest: `pair` 0
+// with the I/O line high (the original's $4201 = $80), 1 with it low. d0 comes from the
+// first data line, d1 from the second; *tail gets the two lines on one more read (bit 0
+// = line 1, bit 1 = line 2), where a plugged-in standard controller answers 1.
+void input_multitap_pair(int pair, uint16_t* d0, uint16_t* d1, uint8_t* tail);
+
 // Return after the next interrupt has run. On the console the NMI and IRQ handlers do
 // the frame's work; they are game code too (ported to C like the rest), so a port
 // presents the frame here and then runs the game's NMI code, and runs its IRQ code at

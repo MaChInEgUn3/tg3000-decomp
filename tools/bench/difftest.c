@@ -155,11 +155,22 @@ static uint16_t cMissingReg;
 
 
 // Input registers whose values the C receives through platform calls (difftest_input):
-// the APU ports and $213F (the PPU status with the 50/60 Hz flag).
+// the APU ports, $213F (the PPU status with the 50/60 Hz flag), the joypad registers
+// ($4212 status, with $4213 that a 16-bit BIT of it reads too; $4218-$421F automatic
+// reads; $4016/$4017 serial lines).
 static bool isInputReg(uint32_t adr) {
   if(((adr >> 16) & 0x7F) >= 0x40) return false;
   uint16_t a = adr & 0xFFFF;
-  return a == 0x213F || (a >= 0x2140 && a <= 0x217F);
+  return a == 0x213F || (a >= 0x2140 && a <= 0x217F) || a == 0x4212 || a == 0x4213 || (a >= 0x4218 && a <= 0x421F) ||
+         a == 0x4016 || a == 0x4017;
+}
+
+// Writes that drive the joypad protocol (the latch strobe $4016, the I/O line $4201): the
+// platform's input calls stand for them.
+static bool isJoypadProtocolWrite(uint32_t adr) {
+  if(((adr >> 16) & 0x7F) >= 0x40) return false;
+  uint16_t a = adr & 0xFFFF;
+  return a == 0x4016 || a == 0x4201;
 }
 static bool collectingC;
 
@@ -173,6 +184,13 @@ static uint8_t inputFor(void* p, uint16_t reg) {
   if(!cInputMissing) cMissingReg = reg;
   cInputMissing = true;
   return 0;
+}
+
+int difftest_input_peek(uint16_t reg, int n) {
+  Sample* smp = cSample;
+  if(smp == NULL) return -1;
+  for(int i = 0; i < smp->nInputs; i++) if(smp->inputs[i].reg == reg && n-- == 0) return smp->inputs[i].val;
+  return -1;
 }
 
 uint8_t difftest_input(uint16_t reg) {
@@ -380,7 +398,9 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   }
   if(isWram(adr) || (!write && isRom(adr))) return;
   if(write && ppuFieldWrite(adr)) return;
-  bool apuPort = isInputReg(adr) && (adr & 0xFFFF) != 0x213F;
+  if(write && isJoypadProtocolWrite(adr)) return;
+  uint16_t lo = adr & 0xFFFF;
+  bool apuPort = lo >= 0x2140 && lo <= 0x217F && ((adr >> 16) & 0x7F) < 0x40;
   if((write && apuPort) || (!write && isInputReg(adr))) {
     // APU port writes are effects (port, value) in order; input reads are recorded
     for(int k = accessBase; k < depth; k++) {
@@ -390,10 +410,11 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
         else smp->effectOverflow = true;
       } else {
         // a value repeated by a polling loop is one input: only changes are recorded
-        uint16_t reg = (adr & 0xFFFF) == 0x213F ? 0x213F : (uint16_t)(0x2140 + (adr & 3));
+        uint16_t reg = apuPort ? (uint16_t)(0x2140 + (adr & 3)) : lo;
         int last = -1;
         for(int i = smp->nInputs - 1; i >= 0 && last < 0; i--) if(smp->inputs[i].reg == reg) last = i;
-        if(last >= 0 && smp->inputs[last].val == val) continue;
+        // serial joypad reads are bits: every one counts
+        if(reg != 0x4016 && reg != 0x4017 && last >= 0 && smp->inputs[last].val == val) continue;
         if(smp->nInputs < 256) {
           smp->inputs[smp->nInputs].reg = reg;
           smp->inputs[smp->nInputs++].val = val;
@@ -893,6 +914,9 @@ void difftest_fuzz(int iterations) {
       snes->hIrqEnabled = snes->vIrqEnabled = false;
       for(int ch = 0; ch < 8; ch++) snes->dma->channel[ch].hdmaActive = false;
       dsp4_bridge_reset();  // and the DSP-4 waits for a command
+      // the controllers hold random buttons (their serial reads; signature bits included)
+      snes->input1->currentState = (uint16_t)fuzzRandom();
+      snes->input2->currentState = (uint16_t)fuzzRandom();
       // the screen blanked, as when the game writes VRAM itself: the console takes VRAM data
       // at any line then (the live samples check the game's own timing)
       snes->ppu->forcedBlank = true;
