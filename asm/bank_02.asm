@@ -423,7 +423,7 @@ CODE_828933:
     jsl.l $818564               ; $828937
     jsr.w $8F8F                 ; $82893B
     jsr.w $CBD4                 ; $82893E
-    jsr.w $A9B7                 ; $828941
+    jsr.w func_82A9B7           ; $828941
     jmp.w $AE15                 ; $828944
     incbin !baserom:$10947..$10961
     lda.w #$7C57                ; $828961
@@ -1368,6 +1368,7 @@ CODE_82A99E:
     rtl                         ; $82A9B2
     jsr.w $FA4F                 ; $82A9B3
     rtl                         ; $82A9B6
+func_82A9B7:
     pea.w $837E                 ; $82A9B7
     plb                         ; $82A9BA
     lda.w $0281                 ; $82A9BB

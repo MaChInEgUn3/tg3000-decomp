@@ -506,6 +506,12 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `func_82AB3F` ($82:AB3F: two linear interpolations at the fraction `$FAB5,x` / 256, each
   the high word of a product). The fuzz for `func_82EA49` keeps both table offsets in ROM:
   random ones reached bank `$84`'s I/O window (`$2000`–`$7FFF`), which the game never does.
+- `func_82A9B7` ($82:A9B7, 18,525 calls): two targets from `func_82AB3F`, each scaled
+  by `$0293` on the DSP-4 (one reads the whole product, the other skips its low word with a
+  write), then `$028B`/`$028D` approach them by at most `$1E9E × 4` per call (a camera
+  following something, probably). A static scan of the DSP-4 roots found the other
+  multiply-only ones: `$82:AC52`, `$82:ADC2`, `$82:A672`; the rest (`$81:89F5`, `$81:8527`,
+  `$82:D267`, `$81:F887` …) use the road commands (`$0A` and others), not ported yet.
 
 ## Coverage sources (2026-11-14)
 

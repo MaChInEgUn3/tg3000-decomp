@@ -530,3 +530,33 @@ uint16_t func_82AB3F(uint16_t x, uint16_t y) {
   wr16(DP + 0x18, (uint16_t)(b - 0x0C));
   return rd16(DP + 0x18);
 }
+
+// Move `cur` towards `target` by at most `step`; "past the target" is judged by the sign of
+// each difference (BMI/BPL), as the original does.
+static uint16_t approach(uint16_t cur, uint16_t target, uint16_t step) {
+  if((uint16_t)(target - cur) & 0x8000) {
+    uint16_t t = (uint16_t)(cur - step);
+    return ((uint16_t)(t - target) & 0x8000) ? target : t;
+  }
+  uint16_t t = (uint16_t)(cur + step);
+  return ((uint16_t)(t - target) & 0x8000) ? t : target;
+}
+
+// TG3000_ROUTINE($82:A9B7) func_82A9B7
+uint16_t func_82A9B7(void) {
+  if(rd16(0x0281) & 0x8000) {
+    wr16(DP + 0x18, 0xFFD0);
+    wr16(DP + 0x16, 0);
+  } else {
+    func_82AB3F(rd16(0x0281), rd16(0x0283));
+    int16_t scale = (int16_t)rd16(0x0293);
+    uint16_t h1 = (uint16_t)((uint32_t)dsp4_multiply((int16_t)(rd16(DP + 0x16) << 1), scale) >> 16);
+    wr16(DP + 0x16, (uint16_t)-h1);
+    uint16_t h2 = (uint16_t)((uint32_t)dsp4_multiply((int16_t)(rd16(DP + 0x18) << 1), scale) >> 16);
+    wr16(DP + 0x18, (uint16_t)(h2 - 0x33));
+  }
+  uint16_t step = (uint16_t)(rd16(0x1E9E) << 2);
+  wr16(0x028B, approach(rd16(0x028B), rd16(DP + 0x16), step));
+  wr16(0x028D, approach(rd16(0x028D), rd16(DP + 0x18), step));
+  return rd16(0x028D);
+}

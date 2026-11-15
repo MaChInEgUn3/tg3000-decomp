@@ -1501,6 +1501,46 @@ static void fuzz_func_82AB3F(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   }
 }
 
+// ---- func_82A9B7 ($82:A9B7) ----  exits with A = the new $028D, DB = $83 (N = 1, Z = 0
+// from the final PLB), C of the last CMP, V of the last ADC (both on the $028D step); X/Y
+// = $0281/$0283 unless $0281 was negative.
+static void call_func_82A9B7(const Regs* in, Regs* out) {
+  bool skip = (rd16(0x0281) & 0x8000) != 0;
+  uint16_t x = rd16(0x0281), y = rd16(0x0283), cur = rd16(0x028D);
+  out->a = func_82A9B7();
+  uint16_t target = rd16(DP + 0x18), step = (uint16_t)(rd16(0x1E9E) << 2), t;
+  if((uint16_t)(target - cur) & 0x8000) {
+    t = (uint16_t)(cur - step);
+    uint16_t neg = (uint16_t)~step;  // EOR #$FFFF / SEC / ADC: V of ~step + cur + 1
+    uint16_t sum = (uint16_t)(neg + cur + 1);
+    out->v = (~(neg ^ cur) & (neg ^ sum) & 0x8000) != 0;
+  } else {
+    t = (uint16_t)(cur + step);
+    setAdc16(out, step, cur);
+  }
+  out->c = t >= target;
+  out->n = true;
+  out->z = false;
+  out->db = 0x83;
+  if(!skip) { out->x = x; out->y = y; }
+}
+
+static void fuzz_func_82A9B7(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t x = (uint16_t)(2 * (rnd() % 0x100)), y = (uint16_t)(2 * (rnd() % 0x80));
+  wr16ram(ram, 0x0281, (rnd() % 8 == 0) ? (uint16_t)(0x8000 | rnd()) : x);
+  wr16ram(ram, 0x0283, y);
+  for(int i = 0; i < 10; i++) ram[0xFAB4 + x + i] = (uint8_t)rnd();
+  for(int i = 0; i < 4; i++) {
+    ram[0x34EC + y + i] = (uint8_t)rnd();
+    ram[0x36EC + y + i] = (uint8_t)rnd();
+  }
+  wr16ram(ram, 0x0293, (uint16_t)rnd());
+  wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 0x40));
+  wr16ram(ram, 0x028B, (uint16_t)rnd());
+  wr16ram(ram, 0x028D, (uint16_t)rnd());
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1718,6 +1758,8 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_func_82EA49, ALL_OUTPUTS, .fuzz = fuzz_func_82EA49},
   {.name = "func_82AB3F", .entry = 0x82AB3F, .end = 0x82AB9D, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_func_82AB3F, ALL_OUTPUTS, .fuzz = fuzz_func_82AB3F},
+  {.name = "func_82A9B7", .entry = 0x82A9B7, .end = 0x82AA7B, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_82A9B7, ALL_OUTPUTS, .fuzz = fuzz_func_82A9B7},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

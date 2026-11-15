@@ -200,4 +200,10 @@ uint16_t func_82EA49(uint16_t a);
 // $0C, into $0118; returned). Bank $7E; each uses a DSP-4 multiply's high word.
 uint16_t func_82AB3F(uint16_t x, uint16_t y);
 
+// Targets for $028B/$028D: unless $0281 is negative (then $0118 = -$30, $0116 = 0),
+// func_82AB3F at ($0281, $0283), then $0116 = -(2 * $0116 * $0293 >> 16) and $0118 =
+// (2 * $0118 * $0293 >> 16) - $33 (DSP-4 multiplies). $028B and $028D then move towards
+// $0116 and $0118 by at most $1E9E * 4 (judged by sign, as the original). Returns $028D.
+uint16_t func_82A9B7(void);
+
 #endif
