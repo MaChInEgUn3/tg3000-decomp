@@ -772,6 +772,71 @@ static void fuzz_byte_buffer_push(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   ram[DP + 0x60] = (uint8_t)rnd();
 }
 
+// ---- byte_buffer_pad ($8A:99B4) ----  A kept; N Z C of the final CMP (equal); V as on entry
+static void call_byte_buffer_pad(const Regs* in, Regs* out) {
+  byte_buffer_pad(in->a);
+  out->n = false;
+  out->z = out->c = true;
+}
+
+// a target 0-24 bytes ahead of the count, without wrapping its low byte
+static void fuzz_byte_buffer_pad(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  wr16ram(ram, DP + 0x58, (uint16_t)(rnd() % 0x200));
+  uint8_t count = (uint8_t)(rnd() % 0xE0);
+  ram[DP + 0x60] = count;
+  r->a = (uint16_t)(ram[DP + 0x61] << 8 | (count + rnd() % 25));
+}
+
+// ---- byte_buffer_end ($8A:99D6) ----  A = $80 in its low byte; N Z from the count byte
+// after the push (byte_buffer_push), before it is reset; C V as on entry
+static void call_byte_buffer_end(const Regs* in, Regs* out) {
+  uint8_t count = (uint8_t)(rd8(DP + 0x60) + 1);
+  byte_buffer_end();
+  out->a = (uint16_t)((in->a & 0xFF00) | 0x80);
+  out->n = count & 0x80;
+  out->z = count == 0;
+}
+
+// ---- byte_buffer_decimal ($8A:9A33) ----  A X Y kept (N Z from the PLA); C = 1 (CMP #0,
+// or the final CPX #10); V clear after the digit loop (its last SBC is 0 - 1), else as on entry
+static void call_byte_buffer_decimal(const Regs* in, Regs* out) {
+  byte_buffer_decimal(in->a);
+  setNZ16(out, in->a);
+  out->c = true;
+  if(in->a != 0) out->v = false;
+}
+
+static void fuzz_byte_buffer_decimal(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_byte_buffer_push(r, ram, rnd);
+  uint32_t k = rnd();
+  r->a = (k & 7) == 0 ? 0 : (k & 7) == 1 ? 0xFFFF : (k & 7) < 4 ? (uint16_t)(rnd() % 100) : (uint16_t)rnd();
+}
+
+// ---- func_80E4C5 / func_80E4DB (long) ----  A kept, N Z from its PLA
+static void call_func_80E4C5(const Regs* in, Regs* out) { func_80E4C5(); setNZ16(out, in->a); }
+static void call_func_80E4DB(const Regs* in, Regs* out) { func_80E4DB(); setNZ16(out, in->a); }
+
+// ---- func_80B58D ----  A = 9 (N Z from the LDA)
+static void call_func_80B58D(const Regs* in, Regs* out) {
+  func_80B58D((uint8_t)in->a, in->x);
+  out->a = 9;
+  setNZ16(out, 9);
+}
+
+// ---- func_8ABFBC ----  A = the result, C = lsr_n's carry, N Z from the PLY (Y kept)
+static void call_func_8ABFBC(const Regs* in, Regs* out) {
+  bool carry;
+  out->a = func_8ABFBC(in->a, &carry);
+  out->c = carry;
+  setNZ16(out, in->y);
+}
+
+static void fuzz_func_8ABFBC(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x44, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x46, (uint16_t)rnd());
+}
+
 // ---- text_cursor_down3 ($8A:A37A) ----  N/Z of the new row.
 static void call_text_cursor_down3(const Regs* in, Regs* out) {
   (void)in;
@@ -872,6 +937,32 @@ static void fuzz_decompress(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 
 // ---- decompress_near ($80:FBA0) ----  JSL decompress / RTS: same registers and flags.
 static void call_decompress_near(const Regs* in, Regs* out) { call_decompress(in, out); }
+
+// ---- queue_unpacked_upload ($80:B95D) ----  A = the length, X = the input end, Y = $7F
+// (N Z from that LDY), C V of decompress.
+static void call_queue_unpacked_upload(const Regs* in, Regs* out) {
+  uint16_t dst = rd16((uint16_t)(in->d + 0x5E)), end;
+  uint16_t len = queue_unpacked_upload(in->d, (uint8_t)in->a, in->x, in->y, &end);
+  out->a = len;
+  out->x = end;
+  out->y = 0x007F;
+  out->n = out->z = false;
+  uint16_t a = (uint16_t)~dst, y = (uint16_t)(dst + len);
+  uint32_t sum = (uint32_t)a + y + 1;
+  out->c = sum > 0xFFFF;
+  out->v = (~(a ^ y) & (a ^ sum) & 0x8000) != 0;
+}
+
+// the slot free (with interrupts off a busy slot would never clear), a stream as for
+// decompress unpacking to $7F:2100; A's high byte below $80 (the destination bank is
+// A | $7F00: from $80 up it would be $FF, ROM; the game passes 0)
+static void fuzz_queue_unpacked_upload(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_decompress(r, ram, rnd);
+  wr16ram(ram, (uint16_t)(r->d + 0x64), 0);
+  wr16ram(ram, (uint16_t)(r->d + 0x5E), 0x2100);
+  r->a = (uint16_t)((rnd() & 0x7F00) | 0x7E);
+  r->y = (uint16_t)rnd();
+}
 
 // ---- clear_object_slots ($8A:A47E) ----  X kept (N/Z from PLX).
 static void call_clear_object_slots(const Regs* in, Regs* out) {
@@ -1992,6 +2083,24 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_mode7_view, ALL_OUTPUTS, .fuzz = fuzz_mode7_view},
   {.name = "draw_meter", .entry = 0x80DA5F, .end = 0x80DAAE, .source = "src/hud.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_draw_meter, ALL_OUTPUTS, .fuzz = fuzz_draw_meter},
+  {.name = "byte_buffer_pad", .entry = 0x8A99B4, .end = 0x8A99BE, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_byte_buffer_pad, ALL_OUTPUTS, .fuzz = fuzz_byte_buffer_pad},
+  {.name = "byte_buffer_end", .entry = 0x8A99D6, .end = 0x8A99E2, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_byte_buffer_end, ALL_OUTPUTS, .fuzz = fuzz_byte_buffer_push},
+  {.name = "byte_buffer_decimal", .entry = 0x8A9A33, .end = 0x8A9A81, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_byte_buffer_decimal, ALL_OUTPUTS,
+   .fuzz = fuzz_byte_buffer_decimal},
+  {.name = "func_80E4C5", .entry = 0x80E4C5, .end = 0x80E4D0, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_func_80E4C5, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_80E4DB", .entry = 0x80E4DB, .end = 0x80E4E6, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_func_80E4DB, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_80B58D", .entry = 0x80B58D, .end = 0x80B59D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_80B58D, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_8ABFBC", .entry = 0x8ABFBC, .end = 0x8ABFD0, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_8ABFBC, ALL_OUTPUTS, .fuzz = fuzz_func_8ABFBC},
+  {.name = "queue_unpacked_upload", .entry = 0x80B95D, .end = 0x80B97B, .source = "src/decompress.c",
+   .needM16 = true, .needX16 = true, .waitsForInterrupts = true, .call = call_queue_unpacked_upload, ALL_OUTPUTS,
+   .fuzz = fuzz_queue_unpacked_upload},
   {.name = "func_80B537", .entry = 0x80B537, .end = 0x80B556, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_func_80B537, ALL_OUTPUTS, .fuzz = fuzz_func_80B537},
   {.name = "byte_buffer_space", .entry = 0x8A9A99, .end = 0x8A9AA5, .source = "src/misc.c", .needM16 = true,

@@ -23,6 +23,14 @@ func    80B537   func_80B537         ; append (A, X, Y, D+$14) to the $1900-$19F
 func    808698   sprite_number_right ; sprite_number ending at x -> src/text.c
 func    80EB66   func_80EB66         ; place the $81:CBB8 sprite group -> src/text.c
 func    8A9A99   byte_buffer_space   ; byte_buffer_push($20), A kept -> src/misc.c
+func    8A99B4   byte_buffer_pad     ; push spaces until the count word $0160 = A -> src/misc.c
+func    8A99D6   byte_buffer_end     ; push $80, count = 0 -> src/misc.c
+func    8A9A33   byte_buffer_decimal ; push A in decimal -> src/misc.c
+func    80E4C5   func_80E4C5         ; $01FB = $11 (long) -> src/misc.c
+func    80E4DB   func_80E4DB         ; $01FB = $13 (long) -> src/misc.c
+func    80B58D   func_80B58D         ; $01CC = X, $01CE = A (byte), $01E3 = 0, $01E1 = 9 -> src/misc.c
+func    8ABFBC   func_8ABFBC         ; 48-bit >> 4 of D+$46:D+$44:A, then >> 12 -> src/misc.c
+func    80B95D   queue_unpacked_upload ; wait for the slot, unpack to $7F, queue the VRAM upload -> src/decompress.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

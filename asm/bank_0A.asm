@@ -2077,13 +2077,13 @@ CODE_8A9913:
     jsr.w byte_buffer_space     ; $8A991D
     jsr.w $99E2                 ; $8A9920
     lda.w #$0016                ; $8A9923
-    jsr.w $99B4                 ; $8A9926
+    jsr.w byte_buffer_pad       ; $8A9926
     jsr.w byte_buffer_space     ; $8A9929
     jsr.w byte_buffer_space     ; $8A992C
     jsr.w byte_buffer_space     ; $8A992F
     lda.l $81041C,x             ; $8A9932
-    jsr.w $9A33                 ; $8A9936
-    jsr.w $99D6                 ; $8A9939
+    jsr.w byte_buffer_decimal   ; $8A9936
+    jsr.w byte_buffer_end       ; $8A9939
     bra CODE_8A9913             ; $8A993C
 CODE_8A993E:
     bit.w $1B37                 ; $8A993E
@@ -2102,11 +2102,11 @@ CODE_8A99A4:
 CODE_8A99B1:
     rep.b #$20                  ; $8A99B1
     rtl                         ; $8A99B3
-CODE_8A99B4:
+byte_buffer_pad:
     cmp.b $60                   ; $8A99B4
     beq CODE_8A99BD             ; $8A99B6
     jsr.w byte_buffer_space     ; $8A99B8
-    bra CODE_8A99B4             ; $8A99BB
+    bra byte_buffer_pad         ; $8A99BB
 CODE_8A99BD:
     rts                         ; $8A99BD
     lda.l $8103DC               ; $8A99BE
@@ -2118,6 +2118,7 @@ CODE_8A99D0:
     lda.w #$0028                ; $8A99D0
     sta.b $66                   ; $8A99D3
     rts                         ; $8A99D5
+byte_buffer_end:
     sep.b #$20                  ; $8A99D6
     lda.b #$80                  ; $8A99D8
     jsr.w byte_buffer_push      ; $8A99DA
@@ -2144,6 +2145,7 @@ CODE_8A99F8:
     plx                         ; $8A99FA
     rts                         ; $8A99FB
     incbin !baserom:$519FC..$51A33
+byte_buffer_decimal:
     pha                         ; $8A9A33
     phx                         ; $8A9A34
     phy                         ; $8A9A35
@@ -2204,7 +2206,7 @@ CODE_8A9A74:
     pla                         ; $8A9A92
 CODE_8A9A93:
     lda.b $5E                   ; $8A9A93
-    jsr.w $9A33                 ; $8A9A95
+    jsr.w byte_buffer_decimal   ; $8A9A95
     rts                         ; $8A9A98
 byte_buffer_space:
     pha                         ; $8A9A99
@@ -3945,7 +3947,7 @@ CODE_8ABF46:
     stz.b $42                   ; $8ABF9E
     ldx.w #$0000                ; $8ABFA0
 CODE_8ABFA3:
-    jsr.w $BFBC                 ; $8ABFA3
+    jsr.w func_8ABFBC           ; $8ABFA3
     tay                         ; $8ABFA6
 CODE_8ABFA7:
     beq CODE_8ABFB4             ; $8ABFA7
@@ -3961,6 +3963,7 @@ CODE_8ABFB4:
     cpx.w #$000A                ; $8ABFB6
     bne CODE_8ABFA3             ; $8ABFB9
     rts                         ; $8ABFBB
+func_8ABFBC:
     phy                         ; $8ABFBC
     ldy.w #$0004                ; $8ABFBD
 CODE_8ABFC0:

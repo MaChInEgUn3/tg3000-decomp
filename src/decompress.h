@@ -27,4 +27,9 @@ uint16_t decompress(uint16_t dp, uint8_t src_bank, uint16_t src, uint8_t dst_ban
 // $80:FBA0: the same, for callers in bank $80 (a JSL/RTS bridge). Returns the length.
 uint16_t decompress_near(uint16_t dp, uint8_t src_bank, uint16_t src, uint8_t dst_bank, uint16_t dst, uint16_t* src_end);
 
+// Wait until the upload slot D+$64 (a length; the NMI clears it once done) is free, unpack
+// src_bank:src into $7F:(D+$5E), and fill the slot for an upload of it to VRAM word
+// `vram`: D+$6A = vram, D+$66 = D+$5E, D+$68 = $7F, D+$64 = the length. Returns it.
+uint16_t queue_unpacked_upload(uint16_t dp, uint8_t src_bank, uint16_t src, uint16_t vram, uint16_t* src_end);
+
 #endif

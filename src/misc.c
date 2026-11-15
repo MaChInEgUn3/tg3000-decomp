@@ -604,3 +604,64 @@ uint16_t func_80B537(uint16_t dp, uint16_t a, uint16_t x, uint16_t y) {
   wr16(dp + 0x8C, next);
   return next;
 }
+
+// TG3000_ROUTINE($8A:99B4) byte_buffer_pad
+void byte_buffer_pad(uint16_t count) {
+  while(rd16(DP + 0x60) != count) byte_buffer_space();
+}
+
+// TG3000_ROUTINE($8A:99D6) byte_buffer_end
+void byte_buffer_end(void) {
+  byte_buffer_push(0x80);
+  wr16(DP + 0x60, 0);
+}
+
+#define DECIMAL_POWERS 0x8A9D83  // 10000, 1000, 100, 10, 1
+
+// TG3000_ROUTINE($8A:9A33) byte_buffer_decimal
+void byte_buffer_decimal(uint16_t value) {
+  if(value == 0) {
+    byte_buffer_push('0');
+    return;
+  }
+  wr16(DP + 0x5A, 0);  // 0 while only leading zeros have been met
+  uint16_t rest = value;
+  for(uint16_t i = 0; i != 10; i = (uint16_t)(i + 2)) {
+    uint16_t power = rom16(DECIMAL_POWERS + i);
+    uint8_t digit = '0';
+    for(; rest >= power; rest = (uint16_t)(rest - power)) digit++;
+    wr16(DP + 0x5C, rest);
+    if(rd16(DP + 0x5A) == 0) {
+      if(digit == '0') continue;
+      wr16(DP + 0x5A, 1);
+    }
+    byte_buffer_push(digit);
+  }
+}
+
+// TG3000_ROUTINE($80:E4C5) func_80E4C5
+void func_80E4C5(void) { wr8(DP + 0xFB, 0x11); }
+
+// TG3000_ROUTINE($80:E4DB) func_80E4DB
+void func_80E4DB(void) { wr8(DP + 0xFB, 0x13); }
+
+// TG3000_ROUTINE($80:B58D) func_80B58D
+void func_80B58D(uint8_t a, uint16_t x) {
+  wr16(DP + 0xCC, x);
+  wr8(DP + 0xCE, a);
+  wr16(DP + 0xE3, 0);
+  wr16(DP + 0xE1, 9);
+}
+
+// TG3000_ROUTINE($8A:BFBC) func_8ABFBC
+uint16_t func_8ABFBC(uint16_t low, bool* carry) {
+  uint16_t high = rd16(DP + 0x46), mid = rd16(DP + 0x44);
+  for(int i = 0; i < 4; i++) {  // LSR high, ROR mid, ROR low
+    low = (uint16_t)(low >> 1 | (mid & 1) << 15);
+    mid = (uint16_t)(mid >> 1 | (high & 1) << 15);
+    high >>= 1;
+  }
+  wr16(DP + 0x46, high);
+  wr16(DP + 0x44, mid);
+  return lsr_n(low, 12, carry);
+}

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "decompress.h"
 
+#include "platform.h"
 #include "tg3000.h"
 
 typedef struct {
@@ -147,4 +148,15 @@ uint16_t decompress(uint16_t dp, uint8_t src_bank, uint16_t src, uint8_t dst_ban
 // TG3000_ROUTINE($80:FBA0) decompress_near
 uint16_t decompress_near(uint16_t dp, uint8_t src_bank, uint16_t src, uint8_t dst_bank, uint16_t dst, uint16_t* src_end) {
   return decompress(dp, src_bank, src, dst_bank, dst, src_end);
+}
+
+// TG3000_ROUTINE($80:B95D) queue_unpacked_upload
+uint16_t queue_unpacked_upload(uint16_t dp, uint8_t src_bank, uint16_t src, uint16_t vram, uint16_t* src_end) {
+  while(rd16(dp + 0x64) != 0) platform_wait_vblank();
+  uint16_t len = decompress_near(dp, src_bank, src, 0x7F, rd16(dp + 0x5E), src_end);
+  wr16(dp + 0x6A, vram);
+  wr16(dp + 0x66, rd16(dp + 0x5E));
+  wr16(dp + 0x68, 0x007F);
+  wr16(dp + 0x64, len);
+  return len;
 }

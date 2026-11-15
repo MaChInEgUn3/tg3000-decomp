@@ -664,6 +664,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   sample (a handler's, in a sample that is discarded anyway); before, a sprite routine
   showed the NMI's scroll writes as its own.
 
+## Hardware-free batch 5 (port-batch-5, 2026-11-15)
+
+- The byte buffer at `$7F:7D00` (index `$0158`, byte count `$0160`) gets its writers:
+  `byte_buffer_pad` ($8A:99B4: spaces until the count word equals A),
+  `byte_buffer_end` ($8A:99D6: the end marker `$80`, count reset) and
+  `byte_buffer_decimal` ($8A:9A33: A in decimal by repeated subtraction of the powers of
+  ten at `$8A:9D83`, leading zeros skipped, "0" for zero).
+- `func_80E4C5`/`func_80E4DB` (long): `$01FB` = `$11`/`$13`. `func_80B58D`: four
+  direct-page stores. `func_8ABFBC`: a 48-bit shift right by 4 of `D+$46:D+$44:A`, then
+  `lsr_n` by 12 (written as word shifts: no 64-bit arithmetic, for the 68000 rule).
+- `queue_unpacked_upload` ($80:B95D, waits for interrupts): waits until the upload slot
+  `D+$64` is free (the NMI clears it), unpacks into `$7F:(D+$5E)` and fills the slot
+  (length, source, bank `$7F`, VRAM word = Y). Its destination bank is `A | $7F00`: the
+  fuzz keeps A's high byte below `$80` (above, the bank would be `$FF`, ROM; the game
+  passes 0), as for `decompress_to_vram`.
+- `$8A:A381` and `$80:9DD0` stay in asm: each has branches into bytes no run executes.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

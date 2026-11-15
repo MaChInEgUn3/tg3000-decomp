@@ -47,6 +47,28 @@ void byte_buffer_push(uint8_t b);
 // byte_buffer_push of a space ($20).
 void byte_buffer_space(void);
 
+// Push spaces until the byte count $0160 (as a word, with $0161) equals `count`.
+void byte_buffer_pad(uint16_t count);
+
+// Push the end marker $80 and reset the count word $0160.
+void byte_buffer_end(void);
+
+// Push `value` in decimal as ASCII digits, without leading zeros ("0" for zero). Leaves
+// $015A = 1 (a digit was pushed; untouched for zero) and $015C = 0 (the remainder).
+void byte_buffer_decimal(uint16_t value);
+
+// $01FB = $11 / $13.
+void func_80E4C5(void);
+void func_80E4DB(void);
+
+// $01CC = x, byte $01CE = a, $01E3 = 0, $01E1 = 9.
+void func_80B58D(uint8_t a, uint16_t x);
+
+// Shift the 48-bit number D+$46 : D+$44 : `low` right by 4 (D+$44 and D+$46 keep the
+// result) and return its low word shifted right by 12 more (lsr_n; *carry = the last bit
+// out): bits 16-19 of the original number.
+uint16_t func_8ABFBC(uint16_t low, bool* carry);
+
 // Append the words (a, x, y, D+$14) to the four tables $1900, $1940, $19C0, $1980 at
 // index D+$8C, then advance it: D+$8C = ((index + 2) & $3F) + D+$8A (32 entries in a
 // ring, D+$8A choosing the ring). Returns the new index.
