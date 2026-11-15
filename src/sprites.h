@@ -24,4 +24,8 @@ void oam_finish_0b00(uint16_t dp);
 // buffer (D+$74 = D+$6E - $0900) and swaps D+$6C and D+$6E.
 void oam_finish(uint16_t dp);
 
+// The same two, reached by a near call (JSR) from bank $80.
+void oam_finish_0b00_near(uint16_t dp);
+void oam_finish_near(uint16_t dp);
+
 #endif

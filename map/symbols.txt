@@ -17,6 +17,12 @@ ram     7E19C0   vram_queue_dest
 func    80F38D   mode7_zoom_view     ; Mode 7 A = D = D+$7A, offset ($80-x, $6F-y) -> src/scale.c
 func    8A8B0A   mode7_view          ; Mode 7 matrix + centre, BG2 scroll, $0D00/$0D20 line patches -> src/scale.c
 func    80DA5F   draw_meter          ; 10-tile bar at VRAM $00C2, length D+$28*10/256+2 eighths -> src/hud.c
+func    8089D1   oam_finish_0b00_near ; JSL oam_finish_0b00, RTS -> src/sprites.c
+func    8089D6   oam_finish_near     ; JSL oam_finish, RTS -> src/sprites.c
+func    80B537   func_80B537         ; append (A, X, Y, D+$14) to the $1900-$19FF ring tables -> src/misc.c
+func    808698   sprite_number_right ; sprite_number ending at x -> src/text.c
+func    80EB66   func_80EB66         ; place the $81:CBB8 sprite group -> src/text.c
+func    8A9A99   byte_buffer_space   ; byte_buffer_push($20), A kept -> src/misc.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

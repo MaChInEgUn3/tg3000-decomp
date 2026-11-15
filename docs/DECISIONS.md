@@ -643,6 +643,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   (modes 0/1 and 1/2): the mode is set elsewhere (likely from the NMI), so the names say
   what the routines write, not the mode on screen at that moment.
 
+## Hardware-free batch 4 (port-batch-4, 2026-11-15)
+
+- `$80:F424` was the next PPU root, but it is entered once in the 60k movie and also sets
+  HDMA table pointers (channels 1 and 3), which have no interface yet. `tools/portable.py`
+  crossed with the census gave 22 hardware-free routines that the bench reaches and whose
+  callees are verified; this batch takes six of them. HDMA waits until more routines
+  need it.
+- `oam_finish_0b00_near` ($80:89D1), `oam_finish_near` ($80:89D6): JSL + RTS wrappers;
+  the adapters share the far ones' output model through a function argument.
+- `func_80B537`: appends (A, X, Y, D+$14) to four word tables at `$1900/$1940/$19C0/$1980`
+  and advances a 32-entry ring index (`D+$8C = ((i + 2) & $3F) + D+$8A`). The fuzz keeps
+  the index below `$500`: past that the tables reach the fuzz's own stack at `$1F00`.
+- `sprite_number_right` ($80:8698): `sprite_number`, then shifts its sprites so the number
+  ends at x (like `sprite_text_centered`, without the halving).
+- `func_80EB66`: places the sprite group at `$81:CBB8` from five direct-page words;
+  `sprite_group`'s adapter is split into a table walk and an output model so both share it.
+- `byte_buffer_space` ($8A:9A99): pushes a space, A kept.
+- **Diagnostics fix:** the PPU write counters now skip writes after an interrupt in the
+  sample (a handler's, in a sample that is discarded anyway); before, a sprite routine
+  showed the NMI's scroll writes as its own.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

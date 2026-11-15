@@ -223,3 +223,34 @@ uint32_t sprite_group(uint16_t dp, uint32_t table) {
   wr16(dp + 0x74, slot);
   return table;
 }
+
+// TG3000_ROUTINE($80:8698) sprite_number_right
+uint16_t sprite_number_right(uint32_t value, uint16_t x) {
+  wr16(SPRITE_TEXT_X, (uint16_t)value);
+  uint16_t first = rd16(SPRITE_TEXT_SLOT);
+  uint16_t end = sprite_number(value, x);
+  uint16_t shift = (uint16_t)((x & 0xFF) - (end & 0xFF));
+  wr16(SPRITE_TEXT_BASE, shift);
+  // a do-while in the original: a number always has at least one digit
+  for(uint16_t s = first; s != rd16(SPRITE_TEXT_SLOT); s = (uint16_t)(s + 4))
+    wr8(0x0900 + s, (uint8_t)(rd8(0x0900 + s) + shift));
+  return shift;
+}
+
+static uint16_t signed_high_byte(uint16_t v) {  // the high byte, sign-extended to 16 bits
+  uint16_t h = v >> 8;
+  return (h & 0x80) ? (uint16_t)(h | 0xFF00) : h;
+}
+
+// TG3000_ROUTINE($80:EB66) func_80EB66
+uint32_t func_80EB66(uint16_t dp) {
+  uint16_t x = (uint16_t)(((uint16_t)(rd16(dp + 0x7C) - signed_high_byte(rd16(dp + 0x22))) & 0xFF) - 0x100);
+  wr16(dp + 0x14, x);
+  uint16_t w = rd16(dp + 0x7E);
+  w = (uint16_t)(w << 8 | w >> 8);
+  w = (uint16_t)(w << 1 | w >> 15);
+  uint16_t y = (uint16_t)(((w + 0x24) & 0xFF) + rd16(dp + 0xE8));
+  wr16(dp + 0x16, (uint16_t)(y - signed_high_byte(rd16(dp + 0x24))));
+  wr16(dp + 0x18, 0xF000);
+  return sprite_group(dp, 0x81CBB8);
+}

@@ -68,4 +68,15 @@ uint16_t sprite_number(uint32_t value, uint16_t x);
 // terminating zero word.
 uint32_t sprite_group(uint16_t dp, uint32_t table);
 
+// sprite_number, then shift its sprites by (x - end) on the low bytes, so that the number
+// ends at `x` (right-aligned). D+$16 = the value's low word, D+$14 = the shift. Returns the
+// shift (16 bits).
+uint16_t sprite_number_right(uint32_t value, uint16_t x);
+
+// The sprite group at $81:CBB8 placed from D+$22, D+$24, D+$7C, D+$7E and D+$E8 (high
+// bytes of the first two signed): D+$14 = ((D+$7C - hi(D+$22)) & $FF) - $100, D+$16 =
+// ((rotl16(swap(D+$7E)) + $24) & $FF) + D+$E8 - hi(D+$24), D+$18 = $F000. Returns
+// sprite_group's result.
+uint32_t func_80EB66(uint16_t dp);
+
 #endif

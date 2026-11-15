@@ -330,6 +330,23 @@ static void setAdc16(Regs* r, uint16_t a, uint16_t b) {  // C and V of A + b, ca
 
 static void wr16ram(uint8_t* ram, uint32_t adr, uint16_t v) { ram[adr] = (uint8_t)v; ram[adr + 1] = (uint8_t)(v >> 8); }
 
+// ---- func_80B537 ----  A = the new index, X = old index + 2, N Z C V of the final ADC.
+static void call_func_80B537(const Regs* in, Regs* out) {
+  uint16_t i = rd16((uint16_t)(in->d + 0x8C)), base = rd16((uint16_t)(in->d + 0x8A));
+  out->a = func_80B537(in->d, in->a, in->x, in->y);
+  out->x = (uint16_t)(i + 2);
+  setNZ16(out, out->a);
+  setAdc16(out, (uint16_t)((i + 2) & 0x3F), base);
+}
+
+// the index anywhere the four tables stay in low WRAM below the fuzz's stack ($1F00
+// down); any ring base
+static void fuzz_func_80B537(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  wr16ram(ram, (uint16_t)(r->d + 0x8C), (uint16_t)(rnd() % 0x500));
+  wr16ram(ram, (uint16_t)(r->d + 0x8A), (rnd() & 1) ? (uint16_t)(rnd() & 0xC0) : (uint16_t)rnd());
+}
+
+
 // ---- star_layers_init ($80:E0D6) ----  exits with A = X = $200 and the flags of
 // CPX #$200 (Z = C = 1, N = 0) and of the last ADC #8 (V = 0).
 static void call_star_layers_init(const Regs* in, Regs* out) {
@@ -743,6 +760,12 @@ static void call_byte_buffer_push(const Regs* in, Regs* out) {
   out->z = c == 0;
 }
 
+// ---- byte_buffer_space ($8A:9A99) ----  A kept (N Z from its PLA); C V as on entry
+static void call_byte_buffer_space(const Regs* in, Regs* out) {
+  byte_buffer_space();
+  setNZ16(out, in->a);
+}
+
 static void fuzz_byte_buffer_push(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   wr16ram(ram, DP + 0x58, (uint16_t)(rnd() % 0x200));
@@ -1009,6 +1032,22 @@ static void call_sprite_number(const Regs* in, Regs* out) {
   setAdc16(out, w, (uint16_t)(out->y - w));
 }
 
+// ---- sprite_number_right ($80:8698) ----  value in X:A, x in Y. Exits with Y = D+$74
+// (the shift loop's end), X as sprite_number leaves it, N Z C of the final CPY (equal),
+// A = high byte of the shift : the last shifted byte, V of that 8-bit ADC.
+static void call_sprite_number_right(const Regs* in, Regs* out) {
+  uint32_t value = ((uint32_t)in->x << 16) | in->a;
+  uint16_t shift = sprite_number_right(value, in->y);
+  uint16_t end = rd16(DP + 0x74);
+  uint8_t post = rd8((uint16_t)(0x0900 + end - 4)), pre = (uint8_t)(post - (uint8_t)shift);
+  out->y = end;
+  out->x = value == 0 ? 0xFFFE : 0xFFFF;
+  out->a = (uint16_t)((shift & 0xFF00) | post);
+  out->n = false;
+  out->z = out->c = true;
+  out->v = (~(pre ^ (uint8_t)shift) & (pre ^ post) & 0x80) != 0;
+}
+
 static void fuzz_sprite_number(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   uint32_t k = rnd();
   r->a = (uint16_t)rnd();
@@ -1024,21 +1063,43 @@ static void fuzz_sprite_number(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // or $0200. Exits with A = 0 (the last terminator), X = the new slot, Y = the second
 // terminator's address, N/Z from the PLB (the caller's DB), C/V of the last item's
 // ADC #6 (or as on entry if both lists are empty).
-static void call_sprite_group(const Regs* in, Regs* out) {
-  uint32_t bank = (uint32_t)(in->a & 0xFF) << 16, at = bank | in->x;
-  bool any = false;
-  uint16_t lastY = 0;
+// sprite_group's exit registers: the table is walked before the call (it may be in WRAM)
+typedef struct { bool any; uint16_t lastY; } GroupWalk;
+
+static GroupWalk sprite_group_walk(uint32_t table) {
+  uint32_t bank = table & 0xFF0000, at = table;
+  GroupWalk w = {false, 0};
   for(int list = 0; list < 2; list++) {
-    while(bus_rd16(at) != 0) { any = true; lastY = (uint16_t)at; at = bank | (uint16_t)(at + 6); }
+    while(bus_rd16(at) != 0) { w.any = true; w.lastY = (uint16_t)at; at = bank | (uint16_t)(at + 6); }
     if(list == 0) at = bank | (uint16_t)(at + 2);
   }
-  uint32_t end = sprite_group(in->d, bank | in->x);
+  return w;
+}
+
+static void sprite_group_outputs(Regs* out, const Regs* in, GroupWalk w, uint32_t end) {
   out->a = 0;
   out->x = rd16((uint16_t)(in->d + 0x74));
   out->y = (uint16_t)end;
   out->n = (in->db & 0x80) != 0;
   out->z = in->db == 0;
-  if(any) setAdc16(out, lastY, 6);
+  if(w.any) setAdc16(out, w.lastY, 6);
+}
+
+static void call_sprite_group(const Regs* in, Regs* out) {
+  uint32_t table = ((uint32_t)(in->a & 0xFF) << 16) | in->x;
+  GroupWalk w = sprite_group_walk(table);
+  sprite_group_outputs(out, in, w, sprite_group(in->d, table));
+}
+
+// ---- func_80EB66 ----  sprite_group's exit registers (its table at $81:CBB8)
+static void call_func_80EB66(const Regs* in, Regs* out) {
+  GroupWalk w = sprite_group_walk(0x81CBB8);
+  sprite_group_outputs(out, in, w, func_80EB66(in->d));
+}
+
+static void fuzz_func_80EB66(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  static const uint8_t words[5] = {0x22, 0x24, 0x7C, 0x7E, 0xE8};
+  for(int i = 0; i < 5; i++) wr16ram(ram, (uint16_t)(r->d + words[i]), (uint16_t)rnd());
 }
 
 static void fuzz_sprite_group(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -1103,13 +1164,17 @@ static void fuzz_oam_tables(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), uint16
 
 // ---- oam_finish_0b00 ($81:80D0, long) ----  the packer's exit registers, then A = the old
 // D+$74 (N/Z from its LDA).
-static void call_oam_finish_0b00(const Regs* in, Regs* out) {
+static void run_oam_finish_0b00(const Regs* in, Regs* out, void (*fn)(uint16_t)) {
   uint16_t end = rd16((uint16_t)(in->d + 0x74)), last = rd16((uint16_t)(in->d + 0x72));
-  oam_finish_0b00(in->d);
+  fn(in->d);
   oam_high_table_outputs_from(out, 0x0900, end, last);
   out->a = end;
   setNZ16(out, end);
 }
+
+static void call_oam_finish_0b00(const Regs* in, Regs* out) { run_oam_finish_0b00(in, out, oam_finish_0b00); }
+// $80:89D1: JSL to it, RTS: the same outputs
+static void call_oam_finish_0b00_near(const Regs* in, Regs* out) { run_oam_finish_0b00(in, out, oam_finish_0b00_near); }
 
 static void fuzz_oam_finish_0b00(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_oam_tables(r, ram, rnd, 0x0B00);
@@ -1117,16 +1182,20 @@ static void fuzz_oam_finish_0b00(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 
 // ---- oam_finish ($81:80DA, long) ----  exits with X = the old D+$6C, A = the old D+$6E
 // (N/Z from its LDA), C/V of its SBC #$0900, Y as the packer left it.
-static void call_oam_finish(const Regs* in, Regs* out) {
+static void run_oam_finish(const Regs* in, Regs* out, void (*fn)(uint16_t)) {
   uint16_t built = rd16((uint16_t)(in->d + 0x6C)), other = rd16((uint16_t)(in->d + 0x6E));
   uint16_t end = rd16((uint16_t)(in->d + 0x74)), last = rd16((uint16_t)(in->d + 0x72));
-  oam_finish(in->d);
+  fn(in->d);
   oam_high_table_outputs_from(out, built, end, last);
   out->x = built;
   out->a = other;
   setNZ16(out, other);
   setSbc16(out, other, 0x0900);
 }
+
+static void call_oam_finish(const Regs* in, Regs* out) { run_oam_finish(in, out, oam_finish); }
+// $80:89D6: JSL to it, RTS: the same outputs
+static void call_oam_finish_near(const Regs* in, Regs* out) { run_oam_finish(in, out, oam_finish_near); }
 
 static void fuzz_oam_finish(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   uint16_t built = (rnd() & 1) ? 0x0700 : 0x0900, other = (uint16_t)(0x1000 - built);
@@ -1923,6 +1992,19 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_mode7_view, ALL_OUTPUTS, .fuzz = fuzz_mode7_view},
   {.name = "draw_meter", .entry = 0x80DA5F, .end = 0x80DAAE, .source = "src/hud.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_draw_meter, ALL_OUTPUTS, .fuzz = fuzz_draw_meter},
+  {.name = "func_80B537", .entry = 0x80B537, .end = 0x80B556, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_func_80B537, ALL_OUTPUTS, .fuzz = fuzz_func_80B537},
+  {.name = "byte_buffer_space", .entry = 0x8A9A99, .end = 0x8A9AA5, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_byte_buffer_space, ALL_OUTPUTS, .fuzz = fuzz_byte_buffer_push},
+  {.name = "sprite_number_right", .entry = 0x808698, .end = 0x8086C9, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_sprite_number_right, ALL_OUTPUTS,
+   .fuzz = fuzz_sprite_number},
+  {.name = "func_80EB66", .entry = 0x80EB66, .end = 0x80EBBB, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .call = call_func_80EB66, ALL_OUTPUTS, .fuzz = fuzz_func_80EB66},
+  {.name = "oam_finish_0b00_near", .entry = 0x8089D1, .end = 0x8089D6, .source = "src/sprites.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00_near, ALL_OUTPUTS, .fuzz = fuzz_oam_finish_0b00},
+  {.name = "oam_finish_near", .entry = 0x8089D6, .end = 0x8089DB, .source = "src/sprites.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_oam_finish_near, ALL_OUTPUTS, .fuzz = fuzz_oam_finish},
   {.name = "upload_vram_now", .entry = 0x8083AD, .end = 0x8083CB, .rtl = true, .source = "src/video_dma.c",
    .needM16 = true, .needX16 = true, .call = call_upload_vram_now, ALL_OUTPUTS, .fuzz = fuzz_upload_vram_now},
   {.name = "upload_cgram_now", .entry = 0x8083CB, .end = 0x8083E8, .rtl = true, .source = "src/video_dma.c",

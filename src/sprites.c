@@ -46,3 +46,9 @@ void oam_finish(uint16_t dp) {
   wr16(dp + 0x6C, other);
   wr16(dp + 0x6E, built);
 }
+
+// TG3000_ROUTINE($80:89D1) oam_finish_0b00_near
+void oam_finish_0b00_near(uint16_t dp) { oam_finish_0b00(dp); }
+
+// TG3000_ROUTINE($80:89D6) oam_finish_near
+void oam_finish_near(uint16_t dp) { oam_finish(dp); }

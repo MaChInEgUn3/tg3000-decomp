@@ -194,7 +194,7 @@ static bool ppuFieldWrite(uint32_t adr) {
     }
     smp->ppuWritten |= fresh | stale;
     smp->ppuStale = (uint16_t)((smp->ppuStale & ~fresh) | stale);
-    if(!fuzzing) {
+    if(!fuzzing && cpu_interruptCount == smp->interruptsAtEntry) {  // not a handler's write
       Stats* s = &stats[smp->idx];
       int line = snes->vPos;
       if(!s->ppuLines || line < s->ppuLineMin) s->ppuLineMin = line;
@@ -545,7 +545,7 @@ static void finishSample(int k, const Cpu* cpu) {
   if(owner) irqOwner = -1;
   memcpy(afterRam, snes->ram, sizeof afterRam);
   for(int f = 0; f < PF_COUNT; f++) smp->ppuEnd[f] = ppuFieldValue(f);
-  if(!fuzzing) {
+  if(!fuzzing && cpu_interruptCount == smp->interruptsAtEntry) {
     for(int f = 0; f < PF_COUNT; f++) {
       if((smp->ppuWritten & (1u << f)) && ((smp->ppuEnd[f] ^ smp->ppuStart[f]) & ppuFieldMask[f])) {
         s->ppuSamplesChanged++;

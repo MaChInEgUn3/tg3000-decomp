@@ -589,3 +589,18 @@ void func_82AC52(void) {
   uint16_t q = (uint16_t)(w / (uint8_t)d);  // the CPU's 16 / 8 divider
   wr16(0x4E2D, cap_3000((uint16_t)((uint16_t)(q << 4) - 0x0B00)));
 }
+
+// TG3000_ROUTINE($8A:9A99) byte_buffer_space
+void byte_buffer_space(void) { byte_buffer_push(0x20); }
+
+// TG3000_ROUTINE($80:B537) func_80B537
+uint16_t func_80B537(uint16_t dp, uint16_t a, uint16_t x, uint16_t y) {
+  uint16_t i = rd16(dp + 0x8C);
+  wr16(0x1900 + i, a);
+  wr16(0x19C0 + i, y);
+  wr16(0x1940 + i, x);
+  wr16(0x1980 + i, rd16(dp + 0x14));
+  uint16_t next = (uint16_t)(((i + 2) & 0x3F) + rd16(dp + 0x8A));
+  wr16(dp + 0x8C, next);
+  return next;
+}

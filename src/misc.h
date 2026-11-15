@@ -44,6 +44,14 @@ uint16_t step_toward(uint16_t value, uint16_t target, uint16_t steps, uint16_t* 
 // byte $0160.
 void byte_buffer_push(uint8_t b);
 
+// byte_buffer_push of a space ($20).
+void byte_buffer_space(void);
+
+// Append the words (a, x, y, D+$14) to the four tables $1900, $1940, $19C0, $1980 at
+// index D+$8C, then advance it: D+$8C = ((index + 2) & $3F) + D+$8A (32 entries in a
+// ring, D+$8A choosing the ring). Returns the new index.
+uint16_t func_80B537(uint16_t dp, uint16_t a, uint16_t x, uint16_t y);
+
 // One step of a two-column wipe: through the long pointer at $0170 (+ $0172 bank), set
 // the word at columns $0176 and $0174 of 28 rows ($40 bytes apart) to tile $3D, counting
 // changed cells in $0178; then the columns move apart ($0176 += 2, $0174 -= 2).

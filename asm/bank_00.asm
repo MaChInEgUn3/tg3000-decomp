@@ -703,6 +703,7 @@ CODE_808684:
     bne CODE_808684             ; $808693
     rep.b #$20                  ; $808695
     rts                         ; $808697
+sprite_number_right:
     sta.b $16                   ; $808698
     lda.b $74                   ; $80869A
     pha                         ; $80869C
@@ -1067,8 +1068,10 @@ CODE_80899E:
 CODE_8089B1:
     rts                         ; $8089B1
     incbin !baserom:$9B2..$9D1
+oam_finish_0b00_near:
     jsl.l oam_finish_0b00       ; $8089D1
     rts                         ; $8089D5
+oam_finish_near:
     jsl.l oam_finish            ; $8089D6
     rts                         ; $8089DA
     lda.w $0459                 ; $8089DB
@@ -1370,7 +1373,7 @@ CODE_808D6A:
     adc.w #$0400                ; $808D90
     tay                         ; $808D93
     lda.w #$03C0                ; $808D94
-    jsr.w $B537                 ; $808D97
+    jsr.w func_80B537           ; $808D97
     lda.w #$0001                ; $808D9A
     jsr.w wait_frames           ; $808D9D
     ldx.w #$0000                ; $808DA0
@@ -1420,7 +1423,7 @@ CODE_808DEC:
 CODE_808DFB:
     jsr.w $9DD0                 ; $808DFB
     jsr.w $8FFC                 ; $808DFE
-    jsr.w $89D6                 ; $808E01
+    jsr.w oam_finish_near       ; $808E01
     lda.w #$C1C0                ; $808E04
     trb.b $0E                   ; $808E07
     beq CODE_808E2A             ; $808E09
@@ -1505,10 +1508,10 @@ CODE_808EC6:
     jsr.w $9BF2                 ; $808ECC
     jsr.w $9DD0                 ; $808ECF
     jsr.w $8FFC                 ; $808ED2
-    jsr.w $89D6                 ; $808ED5
+    jsr.w oam_finish_near       ; $808ED5
     jsr.w $8FFC                 ; $808ED8
     jsr.w $9DD0                 ; $808EDB
-    jsr.w $89D6                 ; $808EDE
+    jsr.w oam_finish_near       ; $808EDE
     stz.b $3E                   ; $808EE1
     stz.b $40                   ; $808EE3
     stz.b $42                   ; $808EE5
@@ -1576,7 +1579,7 @@ CODE_808F5F:
     jsr.w $9F40                 ; $808F64
     jsr.w $9E49                 ; $808F67
     jsr.w $9DD0                 ; $808F6A
-    jsr.w $89D6                 ; $808F6D
+    jsr.w oam_finish_near       ; $808F6D
     lda.b $0C                   ; $808F70
     bit.w #$0900                ; $808F72
     beq CODE_808F7A             ; $808F75
@@ -2243,7 +2246,7 @@ CODE_809853:
     jsr.w $9F40                 ; $809863
     jsr.w $9E49                 ; $809866
     jsr.w $9DD0                 ; $809869
-    jsr.w $89D6                 ; $80986C
+    jsr.w oam_finish_near       ; $80986C
     rts                         ; $80986F
 CODE_809870:
     lda.w #$0001                ; $809870
@@ -2505,7 +2508,7 @@ CODE_809B74:
     jsr.w $9F40                 ; $809B86
     jsr.w $9E49                 ; $809B89
     jsr.w $9DD0                 ; $809B8C
-    jsr.w $89D6                 ; $809B8F
+    jsr.w oam_finish_near       ; $809B8F
     lda.b $4E                   ; $809B92
     cmp.w #$FFC2                ; $809B94
     bne CODE_809B62             ; $809B97
@@ -2544,7 +2547,7 @@ CODE_809BCC:
     jsr.w $9F40                 ; $809BDE
     jsr.w $9E49                 ; $809BE1
     jsr.w $9DD0                 ; $809BE4
-    jsr.w $89D6                 ; $809BE7
+    jsr.w oam_finish_near       ; $809BE7
     lda.b $4E                   ; $809BEA
     cmp.w #$0018                ; $809BEC
     bne CODE_809BBA             ; $809BEF
@@ -2621,7 +2624,7 @@ CODE_809BCC:
     tax                         ; $809C5E
     lda.w $A894,y               ; $809C5F
     ply                         ; $809C62
-    jsr.w $B537                 ; $809C63
+    jsr.w func_80B537           ; $809C63
     ply                         ; $809C66
     lda.w #$007F                ; $809C67
     sta.b $14                   ; $809C6A
@@ -2637,7 +2640,7 @@ CODE_809BCC:
     tax                         ; $809C7D
     lda.w $A898,y               ; $809C7E
     ply                         ; $809C81
-    jmp.w $B537                 ; $809C82
+    jmp.w func_80B537           ; $809C82
     phy                         ; $809C85
     lda.w #$007F                ; $809C86
     sta.b $14                   ; $809C89
@@ -2653,7 +2656,7 @@ CODE_809BCC:
     tax                         ; $809C9C
     lda.w $A898,y               ; $809C9D
     ply                         ; $809CA0
-    jsr.w $B537                 ; $809CA1
+    jsr.w func_80B537           ; $809CA1
     ply                         ; $809CA4
     lda.w #$007F                ; $809CA5
     sta.b $14                   ; $809CA8
@@ -2669,7 +2672,7 @@ CODE_809BCC:
     tax                         ; $809CBB
     lda.w $A894,y               ; $809CBC
     ply                         ; $809CBF
-    jmp.w $B537                 ; $809CC0
+    jmp.w func_80B537           ; $809CC0
     phy                         ; $809CC3
     lda.w #$007F                ; $809CC4
     sta.b $14                   ; $809CC7
@@ -2685,7 +2688,7 @@ CODE_809BCC:
     tax                         ; $809CDA
     lda.w $A898,y               ; $809CDB
     ply                         ; $809CDE
-    jsr.w $B537                 ; $809CDF
+    jsr.w func_80B537           ; $809CDF
     ply                         ; $809CE2
     lda.w #$007F                ; $809CE3
     sta.b $14                   ; $809CE6
@@ -2701,7 +2704,7 @@ CODE_809BCC:
     tax                         ; $809CF9
     lda.w $A894,y               ; $809CFA
     ply                         ; $809CFD
-    jsr.w $B537                 ; $809CFE
+    jsr.w func_80B537           ; $809CFE
     rts                         ; $809D01
     phy                         ; $809D02
     lda.w #$007F                ; $809D03
@@ -2718,7 +2721,7 @@ CODE_809BCC:
     tax                         ; $809D19
     lda.w $A898,y               ; $809D1A
     ply                         ; $809D1D
-    jsr.w $B537                 ; $809D1E
+    jsr.w func_80B537           ; $809D1E
     ply                         ; $809D21
     lda.w #$007F                ; $809D22
     sta.b $14                   ; $809D25
@@ -2734,7 +2737,7 @@ CODE_809BCC:
     tax                         ; $809D38
     lda.w $A894,y               ; $809D39
     ply                         ; $809D3C
-    jsr.w $B537                 ; $809D3D
+    jsr.w func_80B537           ; $809D3D
     rts                         ; $809D40
     phy                         ; $809D41
     lda.w #$007F                ; $809D42
@@ -2751,7 +2754,7 @@ CODE_809BCC:
     tax                         ; $809D58
     lda.w $A898,y               ; $809D59
     ply                         ; $809D5C
-    jsr.w $B537                 ; $809D5D
+    jsr.w func_80B537           ; $809D5D
     ply                         ; $809D60
     lda.w #$007F                ; $809D61
     sta.b $14                   ; $809D64
@@ -2767,7 +2770,7 @@ CODE_809BCC:
     tax                         ; $809D77
     lda.w $A894,y               ; $809D78
     ply                         ; $809D7B
-    jsr.w $B537                 ; $809D7C
+    jsr.w func_80B537           ; $809D7C
     rts                         ; $809D7F
     incbin !baserom:$1D80..$1D9E
     lda.w #$007F                ; $809D9E
@@ -2784,7 +2787,7 @@ CODE_809BCC:
     tax                         ; $809DB4
     lda.w $A894,y               ; $809DB5
     ply                         ; $809DB8
-    jmp.w $B537                 ; $809DB9
+    jmp.w func_80B537           ; $809DB9
     lda.w #$007F                ; $809DBC
     sta.b $14                   ; $809DBF
     ldx.b $5E                   ; $809DC1
@@ -2793,7 +2796,7 @@ CODE_809BCC:
     adc.w #$0400                ; $809DC6
     tay                         ; $809DC9
     lda.w #$03C0                ; $809DCA
-    jmp.w $B537                 ; $809DCD
+    jmp.w func_80B537           ; $809DCD
     lda.b $76                   ; $809DD0
     bit.w #$0002                ; $809DD2
     beq CODE_809E0B             ; $809DD5
@@ -2986,7 +2989,7 @@ CODE_809F6E:
     tax                         ; $809F90
     lda.w $BC18,y               ; $809F91
     ply                         ; $809F94
-    jsr.w $B537                 ; $809F95
+    jsr.w func_80B537           ; $809F95
     ply                         ; $809F98
     rts                         ; $809F99
     bcs CODE_809FAD             ; $809F9A
@@ -3020,7 +3023,7 @@ CODE_809FAD:
     tax                         ; $809FCF
     lda.w $BC3C,y               ; $809FD0
     ply                         ; $809FD3
-    jsr.w $B537                 ; $809FD4
+    jsr.w func_80B537           ; $809FD4
     ply                         ; $809FD7
     rts                         ; $809FD8
     bcs CODE_809FEC             ; $809FD9
@@ -3054,7 +3057,7 @@ CODE_809FEC:
     tax                         ; $80A00E
     lda.w $BC60,y               ; $80A00F
     ply                         ; $80A012
-    jsr.w $B537                 ; $80A013
+    jsr.w func_80B537           ; $80A013
     ply                         ; $80A016
     rts                         ; $80A017
     bcs CODE_80A02B             ; $80A018
@@ -3088,7 +3091,7 @@ CODE_80A02B:
     tax                         ; $80A04D
     lda.w $BC84,y               ; $80A04E
     ply                         ; $80A051
-    jsr.w $B537                 ; $80A052
+    jsr.w func_80B537           ; $80A052
     ply                         ; $80A055
     rts                         ; $80A056
     bcs CODE_80A06A             ; $80A057
@@ -3122,7 +3125,7 @@ CODE_80A06A:
     tax                         ; $80A08C
     lda.w $BCA8,y               ; $80A08D
     ply                         ; $80A090
-    jsr.w $B537                 ; $80A091
+    jsr.w func_80B537           ; $80A091
     ply                         ; $80A094
     rts                         ; $80A095
     incbin !baserom:$2096..$209F
@@ -3158,7 +3161,7 @@ CODE_80A0B2:
     tax                         ; $80A0D6
     lda.w $BCC8,y               ; $80A0D7
     ply                         ; $80A0DA
-    jsr.w $B537                 ; $80A0DB
+    jsr.w func_80B537           ; $80A0DB
 CODE_80A0DE:
     ply                         ; $80A0DE
     rts                         ; $80A0DF
@@ -3194,7 +3197,7 @@ CODE_80A0F3:
     tax                         ; $80A117
     lda.w $BCC8,y               ; $80A118
     ply                         ; $80A11B
-    jsr.w $B537                 ; $80A11C
+    jsr.w func_80B537           ; $80A11C
 CODE_80A11F:
     ply                         ; $80A11F
     rts                         ; $80A120
@@ -3230,7 +3233,7 @@ CODE_80A134:
     tax                         ; $80A158
     lda.w $BCD8,y               ; $80A159
     ply                         ; $80A15C
-    jsr.w $B537                 ; $80A15D
+    jsr.w func_80B537           ; $80A15D
 CODE_80A160:
     ply                         ; $80A160
     rts                         ; $80A161
@@ -3266,7 +3269,7 @@ CODE_80A175:
     tax                         ; $80A199
     lda.w $BCE0,y               ; $80A19A
     ply                         ; $80A19D
-    jsr.w $B537                 ; $80A19E
+    jsr.w func_80B537           ; $80A19E
 CODE_80A1A1:
     ply                         ; $80A1A1
     rts                         ; $80A1A2
@@ -5101,7 +5104,7 @@ CODE_80B183:
     jsr.w $9F40                 ; $80B18C
     jsr.w $9E49                 ; $80B18F
     jsr.w $9DD0                 ; $80B192
-    jsr.w $89D6                 ; $80B195
+    jsr.w oam_finish_near       ; $80B195
 CODE_80B198:
     lda.b $8C                   ; $80B198
     cmp.b $8E                   ; $80B19A
@@ -5223,7 +5226,7 @@ CODE_80B241:
     sta.b $14                   ; $80B2B1
     ldy.b $60                   ; $80B2B3
     lda.w #$0200                ; $80B2B5
-    jsr.w $B537                 ; $80B2B8
+    jsr.w func_80B537           ; $80B2B8
     lda.w #$007F                ; $80B2BB
     sta.b $14                   ; $80B2BE
     ldx.b $5E                   ; $80B2C0
@@ -5232,7 +5235,7 @@ CODE_80B241:
     adc.w #$0400                ; $80B2C5
     tay                         ; $80B2C8
     lda.w #$03C0                ; $80B2C9
-    jsr.w $B537                 ; $80B2CC
+    jsr.w func_80B537           ; $80B2CC
     inc.b $4E                   ; $80B2CF
     rts                         ; $80B2D1
     incbin !baserom:$32D2..$32F2
@@ -5387,6 +5390,7 @@ CODE_80B531:
     plb                         ; $80B533
     rts                         ; $80B534
     incbin !baserom:$3535..$3537
+func_80B537:
     phx                         ; $80B537
     ldx.b $8C                   ; $80B538
     sta.w $1900,x               ; $80B53A
@@ -6604,7 +6608,7 @@ CODE_80BFFF:
     adc.w $BDF8                 ; $80C020
     tax                         ; $80C023
     lda.w #$0200                ; $80C024
-    jsr.w $B537                 ; $80C027
+    jsr.w func_80B537           ; $80C027
     lda.w #$0013                ; $80C02A
     sta.b $BC                   ; $80C02D
     lda.b $76                   ; $80C02F
@@ -6641,7 +6645,7 @@ CODE_80C056:
     phx                         ; $80C072
     tax                         ; $80C073
     lda.w #$0200                ; $80C074
-    jsr.w $B537                 ; $80C077
+    jsr.w func_80B537           ; $80C077
     plx                         ; $80C07A
     inx                         ; $80C07B
     inx                         ; $80C07C
@@ -6685,7 +6689,7 @@ CODE_80C09E:
     adc.w #$0800                ; $80C0D2
     tax                         ; $80C0D5
     lda.w #$0380                ; $80C0D6
-    jsr.w $B537                 ; $80C0D9
+    jsr.w func_80B537           ; $80C0D9
     lda.w #$007F                ; $80C0DC
     sta.b $14                   ; $80C0DF
     lda.b $5C                   ; $80C0E1
@@ -6697,7 +6701,7 @@ CODE_80C09E:
     adc.w $BE08                 ; $80C0EB
     tax                         ; $80C0EE
     lda.w #$0200                ; $80C0EF
-    jsr.w $B537                 ; $80C0F2
+    jsr.w func_80B537           ; $80C0F2
     phb                         ; $80C0F5
     pea.w $7F7F                 ; $80C0F6
     plb                         ; $80C0F9
@@ -6839,7 +6843,7 @@ CODE_80C229:
     adc.w #$0800                ; $80C23C
     tax                         ; $80C23F
     lda.w #$0380                ; $80C240
-    jsr.w $B537                 ; $80C243
+    jsr.w func_80B537           ; $80C243
     lda.w #$007F                ; $80C246
     sta.b $14                   ; $80C249
     lda.b $5C                   ; $80C24B
@@ -6848,7 +6852,7 @@ CODE_80C229:
     tay                         ; $80C251
     ldx.b $5E                   ; $80C252
     lda.w #$0200                ; $80C254
-    jsr.w $B537                 ; $80C257
+    jsr.w func_80B537           ; $80C257
     dec.b $16                   ; $80C25A
     beq CODE_80C261             ; $80C25C
     jmp.w $C144                 ; $80C25E
@@ -6872,7 +6876,7 @@ CODE_80C269:
     stz.b $48                   ; $80C28E
     stz.b $4A                   ; $80C290
     jsr.w $C35E                 ; $80C292
-    jsr.w $89D6                 ; $80C295
+    jsr.w oam_finish_near       ; $80C295
     lda.w #$007F                ; $80C298
     sta.b $14                   ; $80C29B
     lda.b $5C                   ; $80C29D
@@ -6884,7 +6888,7 @@ CODE_80C269:
     adc.w #$0800                ; $80C2A7
     tax                         ; $80C2AA
     lda.w #$0380                ; $80C2AB
-    jsr.w $B537                 ; $80C2AE
+    jsr.w func_80B537           ; $80C2AE
     lda.w #$0001                ; $80C2B1
     jsr.w wait_frames           ; $80C2B4
     stz.b $1E                   ; $80C2B7
@@ -6903,7 +6907,7 @@ CODE_80C2BB:
     adc.w #$0020                ; $80C2D2
     sta.b $1E                   ; $80C2D5
     jsr.w $C35E                 ; $80C2D7
-    jsr.w $89D6                 ; $80C2DA
+    jsr.w oam_finish_near       ; $80C2DA
     lda.w #$0800                ; $80C2DD
     trb.b $0E                   ; $80C2E0
     beq CODE_80C2F0             ; $80C2E2
@@ -7211,7 +7215,7 @@ CODE_80C566:
     adc.w #$2800                ; $80C579
     tax                         ; $80C57C
     pla                         ; $80C57D
-    jsr.w $B537                 ; $80C57E
+    jsr.w func_80B537           ; $80C57E
     lda.w #$007F                ; $80C581
     sta.b $14                   ; $80C584
     lda.b $5C                   ; $80C586
@@ -7223,7 +7227,7 @@ CODE_80C566:
     adc.w #$08C4                ; $80C590
     tax                         ; $80C593
     lda.w #$0200                ; $80C594
-    jsr.w $B537                 ; $80C597
+    jsr.w func_80B537           ; $80C597
     lda.w #$007F                ; $80C59A
     sta.b $14                   ; $80C59D
     lda.b $5C                   ; $80C59F
@@ -7235,7 +7239,7 @@ CODE_80C566:
     adc.w $BE08                 ; $80C5A9
     tax                         ; $80C5AC
     lda.w #$0200                ; $80C5AD
-    jsr.w $B537                 ; $80C5B0
+    jsr.w func_80B537           ; $80C5B0
     pla                         ; $80C5B3
     sta.b $4A                   ; $80C5B4
     pla                         ; $80C5B6
@@ -7244,7 +7248,7 @@ CODE_80C566:
     sta.b $BC                   ; $80C5BC
     jsr.w $C31A                 ; $80C5BE
     jsr.w $C35E                 ; $80C5C1
-    jsr.w $89D6                 ; $80C5C4
+    jsr.w oam_finish_near       ; $80C5C4
     lda.b $8C                   ; $80C5C7
 CODE_80C5C9:
     cmp.b $8E                   ; $80C5C9
@@ -7340,7 +7344,7 @@ CODE_80C62F:
     adc.w #$0004                ; $80C6AA
     sta.b $4C                   ; $80C6AD
     jsr.w $D026                 ; $80C6AF
-    jsr.w $89D6                 ; $80C6B2
+    jsr.w oam_finish_near       ; $80C6B2
     bra CODE_80C6B9             ; $80C6B5
 CODE_80C6B7:
     stz.b $4E                   ; $80C6B7
@@ -7402,7 +7406,7 @@ CODE_80C713:
     adc.w #$2000                ; $80C726
     tax                         ; $80C729
     pla                         ; $80C72A
-    jsr.w $B537                 ; $80C72B
+    jsr.w func_80B537           ; $80C72B
     lda.w #$007F                ; $80C72E
     sta.b $14                   ; $80C731
     lda.b $5C                   ; $80C733
@@ -7414,7 +7418,7 @@ CODE_80C713:
     adc.w #$08C4                ; $80C73D
     tax                         ; $80C740
     lda.w #$0200                ; $80C741
-    jsr.w $B537                 ; $80C744
+    jsr.w func_80B537           ; $80C744
     lda.w #$0012                ; $80C747
     sta.b $BC                   ; $80C74A
     phb                         ; $80C74C
@@ -7435,7 +7439,7 @@ CODE_80C713:
     lda.w $C0D8                 ; $80C76D
     sta.b $4A                   ; $80C770
     jsr.w $CA97                 ; $80C772
-    jsr.w $89D6                 ; $80C775
+    jsr.w oam_finish_near       ; $80C775
     ldy.b $C4                   ; $80C778
     lda.w #$0FFF                ; $80C77A
     sta.w $0102,y               ; $80C77D
@@ -7705,7 +7709,7 @@ CODE_80C97C:
     lda.w #$0000                ; $80C99A
     jsr.w $8704                 ; $80C99D
 CODE_80C9A0:
-    jsr.w $89D6                 ; $80C9A0
+    jsr.w oam_finish_near       ; $80C9A0
     jmp.w $C7E2                 ; $80C9A3
     lda.b $48                   ; $80C9A6
     cmp.w #$001F                ; $80C9A8
@@ -7778,7 +7782,7 @@ CODE_80CA3B:
     sta.b $14                   ; $80CA5A
     lda.w #$0000                ; $80CA5C
     jsr.w $8704                 ; $80CA5F
-    jsr.w $89D6                 ; $80CA62
+    jsr.w oam_finish_near       ; $80CA62
     plx                         ; $80CA65
     inx                         ; $80CA66
     inx                         ; $80CA67
@@ -7793,7 +7797,7 @@ CODE_80CA3B:
     cpx.w #$000E                ; $80CA80
     bne CODE_80CA3B             ; $80CA83
     jsr.w $CA97                 ; $80CA85
-    jsr.w $89D6                 ; $80CA88
+    jsr.w oam_finish_near       ; $80CA88
     lda.w #$0003                ; $80CA8B
     sta.b $4E                   ; $80CA8E
     ldx.b $40                   ; $80CA90
@@ -7936,7 +7940,7 @@ CODE_80CF32:
     adc.w #$2000                ; $80CF47
     tax                         ; $80CF4A
     pla                         ; $80CF4B
-    jsr.w $B537                 ; $80CF4C
+    jsr.w func_80B537           ; $80CF4C
     lda.w #$007F                ; $80CF4F
     sta.b $14                   ; $80CF52
     lda.b $5C                   ; $80CF54
@@ -7948,7 +7952,7 @@ CODE_80CF32:
     adc.w #$4000                ; $80CF5E
     tax                         ; $80CF61
     pla                         ; $80CF62
-    jsr.w $B537                 ; $80CF63
+    jsr.w func_80B537           ; $80CF63
     lda.w #$007F                ; $80CF66
     sta.b $14                   ; $80CF69
     lda.b $5C                   ; $80CF6B
@@ -7960,7 +7964,7 @@ CODE_80CF32:
     adc.w #$08C4                ; $80CF75
     tax                         ; $80CF78
     lda.w #$0200                ; $80CF79
-    jsr.w $B537                 ; $80CF7C
+    jsr.w func_80B537           ; $80CF7C
     lda.w #$0012                ; $80CF7F
     sta.b $BC                   ; $80CF82
     phb                         ; $80CF84
@@ -7994,7 +7998,7 @@ CODE_80CF32:
     lda.w $C212,x               ; $80CFC3
     sta.b $7E                   ; $80CFC6
     jsr.w $D026                 ; $80CFC8
-    jsr.w $89D6                 ; $80CFCB
+    jsr.w oam_finish_near       ; $80CFCB
     lda.b $8C                   ; $80CFCE
 CODE_80CFD0:
     cmp.b $8E                   ; $80CFD0
@@ -8005,7 +8009,7 @@ CODE_80CFD9:
     lda.w #$0001                ; $80CFD9
     jsr.w wait_frames           ; $80CFDC
     jsr.w $D026                 ; $80CFDF
-    jsr.w $89D6                 ; $80CFE2
+    jsr.w oam_finish_near       ; $80CFE2
     ldx.b $94                   ; $80CFE5
     lda.w #$0400                ; $80CFE7
     trb.b $0E                   ; $80CFEA
@@ -8433,7 +8437,7 @@ CODE_80D24B:
     jsr.w $D6A0                 ; $80D3F5
     jsr.w draw_meter            ; $80D3F8
     jsr.w $D823                 ; $80D3FB
-    jsr.w $89D1                 ; $80D3FE
+    jsr.w oam_finish_0b00_near  ; $80D3FE
     lda.w #$0002                ; $80D401
     tsb.w $0026                 ; $80D404
     lda.w $0368                 ; $80D407
@@ -8682,7 +8686,7 @@ CODE_80D611:
     dec.b $26                   ; $80D62A
 CODE_80D62C:
     jsr.w $D823                 ; $80D62C
-    jsr.w $89D1                 ; $80D62F
+    jsr.w oam_finish_0b00_near  ; $80D62F
     lda.w #$0002                ; $80D632
     tsb.w $0026                 ; $80D635
     dec.b $30                   ; $80D638
@@ -8992,7 +8996,7 @@ CODE_80D85C:
     rol a                       ; $80D8E2
     jsr.w $86C9                 ; $80D8E3
     ldy.w #$7662                ; $80D8E6
-    jsr.w $8698                 ; $80D8E9
+    jsr.w sprite_number_right   ; $80D8E9
     lda.w $0368                 ; $80D8EC
     asl a                       ; $80D8EF
     tax                         ; $80D8F0
@@ -10523,8 +10527,8 @@ CODE_80E577:
     stz.b $7C                   ; $80E62A
     lda.w #$0000                ; $80E62C
     sta.b $7E                   ; $80E62F
-    jsr.w $EB66                 ; $80E631
-    jsr.w $89D6                 ; $80E634
+    jsr.w func_80EB66           ; $80E631
+    jsr.w oam_finish_near       ; $80E634
     phb                         ; $80E637
     lda.b $C4                   ; $80E638
     clc                         ; $80E63A
@@ -11025,8 +11029,8 @@ CODE_80EA3A:
     bne CODE_80EA44             ; $80EA3F
     jsr.w $EA77                 ; $80EA41
 CODE_80EA44:
-    jsr.w $EB66                 ; $80EA44
-    jsr.w $89D6                 ; $80EA47
+    jsr.w func_80EB66           ; $80EA44
+    jsr.w oam_finish_near       ; $80EA47
     inc.b $86                   ; $80EA4A
     lda.b $46                   ; $80EA4C
     bpl CODE_80EA62             ; $80EA4E
@@ -11164,6 +11168,7 @@ CODE_80EAD0:
     sta.b $3E                   ; $80EB63
 CODE_80EB65:
     rts                         ; $80EB65
+func_80EB66:
     lda.b $22                   ; $80EB66
     xba                         ; $80EB68
     and.w #$00FF                ; $80EB69
@@ -11670,7 +11675,7 @@ CODE_80EF94:
     lda.w #$0000                ; $80F03A
     ldx.w #$0040                ; $80F03D
     jsr.w $F950                 ; $80F040
-    jsr.w $89D1                 ; $80F043
+    jsr.w oam_finish_0b00_near  ; $80F043
     lda.w #$0003                ; $80F046
     tsb.w $0026                 ; $80F049
     lda.w #$0500                ; $80F04C
@@ -11796,7 +11801,7 @@ CODE_80EF94:
     tax                         ; $80F181
     lda.b $7C                   ; $80F182
     jsr.w $F950                 ; $80F184
-    jsr.w $89D1                 ; $80F187
+    jsr.w oam_finish_0b00_near  ; $80F187
     lda.w #$0002                ; $80F18A
     tsb.w $0026                 ; $80F18D
 CODE_80F190:

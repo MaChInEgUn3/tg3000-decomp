@@ -2074,13 +2074,13 @@ CODE_8A9913:
     bcs CODE_8A993E             ; $8A9916
     inc.b $5E                   ; $8A9918
     jsr.w $9A81                 ; $8A991A
-    jsr.w $9A99                 ; $8A991D
+    jsr.w byte_buffer_space     ; $8A991D
     jsr.w $99E2                 ; $8A9920
     lda.w #$0016                ; $8A9923
     jsr.w $99B4                 ; $8A9926
-    jsr.w $9A99                 ; $8A9929
-    jsr.w $9A99                 ; $8A992C
-    jsr.w $9A99                 ; $8A992F
+    jsr.w byte_buffer_space     ; $8A9929
+    jsr.w byte_buffer_space     ; $8A992C
+    jsr.w byte_buffer_space     ; $8A992F
     lda.l $81041C,x             ; $8A9932
     jsr.w $9A33                 ; $8A9936
     jsr.w $99D6                 ; $8A9939
@@ -2105,7 +2105,7 @@ CODE_8A99B1:
 CODE_8A99B4:
     cmp.b $60                   ; $8A99B4
     beq CODE_8A99BD             ; $8A99B6
-    jsr.w $9A99                 ; $8A99B8
+    jsr.w byte_buffer_space     ; $8A99B8
     bra CODE_8A99B4             ; $8A99BB
 CODE_8A99BD:
     rts                         ; $8A99BD
@@ -2206,6 +2206,7 @@ CODE_8A9A93:
     lda.b $5E                   ; $8A9A93
     jsr.w $9A33                 ; $8A9A95
     rts                         ; $8A9A98
+byte_buffer_space:
     pha                         ; $8A9A99
     sep.b #$20                  ; $8A9A9A
     lda.b #$20                  ; $8A9A9C
