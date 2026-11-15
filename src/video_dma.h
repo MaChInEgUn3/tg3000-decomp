@@ -30,6 +30,10 @@ void upload_tiles_7b00(uint16_t entry, uint16_t offset);
 // $7F00 for the destination bank; the game's high byte is always below $80, i.e. $7F.)
 uint16_t decompress_to_vram(uint16_t dp, uint8_t src_bank, uint16_t src, uint16_t vram_word);
 
+// decompress_to_vram of $88:FEC3 to VRAM $0800 and of $88:F87F to VRAM $1000. Returns the
+// second one's result.
+uint16_t func_8AB994(uint16_t dp);
+
 // Fill all of video RAM with the byte at $8A:8E19 (both bytes of every word).
 void clear_vram(void);
 

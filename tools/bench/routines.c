@@ -667,6 +667,16 @@ static void call_text_print_tiles_at(const Regs* in, Regs* out) {
   out->x = in->x;
 }
 
+// ---- func_8AC0F2 ----  as text_print_tiles_at of its last line ($8A:C49B at (6, 26))
+static void call_func_8AC0F2(const Regs* in, Regs* out) {
+  out->y = func_8AC0F2();
+  out->a = 0;
+  out->x = 6;
+  setNZ16(out, 0);
+  if(out->y > 0) out->c = rom8(0x8AC49B + out->y - 1) >= 0x80;
+  (void)in;
+}
+
 static void fuzz_text_print_tiles_at(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_text_print_tiles(r, ram, rnd);
   r->x = (uint16_t)(rnd() % 16);
@@ -1003,6 +1013,16 @@ static void call_oam_clear(const Regs* in, Regs* out) {
   out->z = true;
 }
 
+// $80:FBD8: JSR oam_clear, RTL
+static void call_oam_clear_long(const Regs* in, Regs* out) {
+  oam_clear_long();
+  out->a = 0xE0E0;
+  out->x = 0;
+  out->n = false;
+  out->z = true;
+  (void)in;
+}
+
 // ---- wait_flag_76 ($80:B950) ----  A = 8; N V Z of the BIT that saw bit 3 (bits 15, 14 of
 // D+$76, not zero); C as on entry
 static void call_wait_flag_76(const Regs* in, Regs* out) {
@@ -1016,6 +1036,33 @@ static void call_wait_flag_76(const Regs* in, Regs* out) {
 // bit 3 already set (with interrupts off nothing else would set it)
 static void fuzz_wait_flag_76(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, (uint16_t)(r->d + 0x76), (uint16_t)(rnd() | 0x0008));
+}
+
+// ---- func_808FFC ----  A = the new D+$74, X = the old one, N Z C V of its ADC #8
+static void call_func_808FFC(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t x = rd16(DP + 0x74);
+  out->a = func_808FFC();
+  out->x = x;
+  setNZ16(out, out->a);
+  setAdc16(out, x, 8);
+}
+
+static void fuzz_func_808FFC(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x74, (rnd() & 7) ? (uint16_t)(4 * (rnd() % 126)) : (uint16_t)(0xFFF8 + (rnd() & 7)));
+  wr16ram(ram, DP + 0xEE, (rnd() & 1) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, DP + 0xE7, (uint16_t)rnd());
+}
+
+// ---- wait_one_frame ($8A:B212) ----  A kept (N Z from its PLA), C V of wait_frames(1)
+static void call_wait_one_frame(const Regs* in, Regs* out) {
+  uint16_t now = rd16(FRAME_COUNTER);
+  wait_one_frame();
+  setNZ16(out, in->a);
+  out->c = true;
+  uint32_t sum = 1u + now;
+  out->v = (~(1u ^ now) & (1u ^ sum) & 0x8000) != 0;
 }
 
 static void fuzz_func_8ABFBC(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -1775,6 +1822,31 @@ static void fuzz_func_8AB680(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, (uint16_t)(0x1C00 + 8 * n), 0);
 }
 
+// ---- func_8AA4BE ----  A = 0, N = 0, Z = 1 (the terminating word), Y = 2 * the entries,
+// X as func_8AB680 leaves it (kept); C V of the last func_8AB680 (its ADC when its list
+// was not empty), else as on entry.
+static void call_func_8AA4BE(const Regs* in, Regs* out) {
+  uint32_t table = ((uint32_t)in->db << 16) | in->a;
+  uint16_t n = 0, last = 0;
+  for(uint16_t p; (p = bus_rd16(table + 2u * n)) != 0; n++) last = p;
+  func_8AA4BE(table);
+  out->a = 0;
+  out->y = (uint16_t)(2 * n);
+  out->n = false;
+  out->z = true;
+  uint16_t end = rd16(DP + 0x60), at = (uint16_t)(last + 4);
+  if(n != 0 && end != at) setAdc16(out, (uint16_t)(end - 8), 8);
+}
+
+// a table at $1E00 of 0-3 pointers to the list func_8AB680's fuzz builds
+static void fuzz_func_8AA4BE(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_8AB680(r, ram, rnd);
+  int n = (int)(rnd() % 4);
+  for(int i = 0; i < n; i++) wr16ram(ram, (uint16_t)(0x1E00 + 2 * i), 0x1BFC);
+  wr16ram(ram, (uint16_t)(0x1E00 + 2 * n), 0);
+  r->a = 0x1E00;
+}
+
 // ---- func_83FC05 ($83:FC05) ----  D = $0200. Exits with C = the result, X = $011C, A =
 // the last difference (vertical, or horizontal once the first test passed), N/Z of the
 // last CMP, V of the last SBC.
@@ -2072,6 +2144,16 @@ static void call_decompress_to_vram(const Regs* in, Regs* out) {
   out->v = false;
 }
 
+// ---- func_8AB994 ----  as decompress_to_vram's second call (Y = $1000)
+static void call_func_8AB994(const Regs* in, Regs* out) {
+  out->x = func_8AB994(in->d);
+  out->a = 0x1001;
+  out->y = 0;
+  out->n = out->z = false;
+  out->c = true;
+  out->v = false;
+}
+
 static void fuzz_decompress_to_vram(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_decompress_stream(ram, rnd, 0, false);  // unpacks to $7F:0000
   // the original ORs A with $7F00 for the destination bank: the game's A high byte is
@@ -2270,6 +2352,18 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_mode7_view, ALL_OUTPUTS, .fuzz = fuzz_mode7_view},
   {.name = "draw_meter", .entry = 0x80DA5F, .end = 0x80DAAE, .source = "src/hud.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_draw_meter, ALL_OUTPUTS, .fuzz = fuzz_draw_meter},
+  {.name = "oam_clear_long", .entry = 0x80FBD8, .end = 0x80FBDC, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_clear_long, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_808FFC", .entry = 0x808FFC, .end = 0x809039, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_808FFC, ALL_OUTPUTS, .fuzz = fuzz_func_808FFC},
+  {.name = "func_8AA4BE", .entry = 0x8AA4BE, .end = 0x8AA4CF, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8AA4BE, ALL_OUTPUTS, .fuzz = fuzz_func_8AA4BE},
+  {.name = "func_8AC0F2", .entry = 0x8AC0F2, .end = 0x8AC137, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_func_8AC0F2, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_8AB994", .entry = 0x8AB994, .end = 0x8AB9AF, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_8AB994, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "wait_one_frame", .entry = 0x8AB212, .end = 0x8AB21C, .source = "src/frame.c", .needM16 = true,
+   .lowWramDb = true, .waitsForInterrupts = true, .call = call_wait_one_frame, ALL_OUTPUTS},
   {.name = "func_80894E", .entry = 0x80894E, .end = 0x80899F, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_func_80894E, ALL_OUTPUTS, .fuzz = fuzz_func_80894E},
   {.name = "binary_to_bcd", .entry = 0x8086C9, .end = 0x808704, .source = "src/misc.c", .needM16 = true,

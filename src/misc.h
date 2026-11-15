@@ -109,6 +109,19 @@ uint16_t func_80E0C8(uint16_t a);
 // indices $0172 and $0174.
 void oam_clear(void);
 
+// oam_clear, by a long call.
+void oam_clear_long(void);
+
+// Two sprites at the slot D+$74 (then advanced by 8): tile $3892 at (D+$EE + D+$E7 + $5A,
+// $08) and tile $3890 at (D+$E7 + $5C, $0A), both with $0100 in the extra table at $0B01;
+// D+$EE counts down to 0 first. Returns the new D+$74.
+uint16_t func_808FFC(void);
+
+// For each non-zero word p of the zero-terminated table at `table` (24-bit; the original
+// reads it through DB), func_8AB680 of the list at p + 4 in the same bank. D+$4A = the
+// table's address.
+void func_8AA4BE(uint32_t table);
+
 // Append the words (a, x, y, D+$14) to the four tables $1900, $1940, $19C0, $1980 at
 // index D+$8C, then advance it: D+$8C = ((index + 2) & $3F) + D+$8A (32 entries in a
 // ring, D+$8A choosing the ring). Returns the new index.

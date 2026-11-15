@@ -1426,7 +1426,7 @@ CODE_808DEC:
     sta.b $4A                   ; $808DF9
 CODE_808DFB:
     jsr.w $9DD0                 ; $808DFB
-    jsr.w $8FFC                 ; $808DFE
+    jsr.w func_808FFC           ; $808DFE
     jsr.w oam_finish_near       ; $808E01
     lda.w #$C1C0                ; $808E04
     trb.b $0E                   ; $808E07
@@ -1511,9 +1511,9 @@ CODE_808EC6:
     stz.b $4C                   ; $808ECA
     jsr.w $9BF2                 ; $808ECC
     jsr.w $9DD0                 ; $808ECF
-    jsr.w $8FFC                 ; $808ED2
+    jsr.w func_808FFC           ; $808ED2
     jsr.w oam_finish_near       ; $808ED5
-    jsr.w $8FFC                 ; $808ED8
+    jsr.w func_808FFC           ; $808ED8
     jsr.w $9DD0                 ; $808EDB
     jsr.w oam_finish_near       ; $808EDE
     stz.b $3E                   ; $808EE1
@@ -1649,6 +1649,7 @@ CODE_808FF3:
     jsr.w $B10C                 ; $808FF7
     pla                         ; $808FFA
     rts                         ; $808FFB
+func_808FFC:
     ldx.b $74                   ; $808FFC
     lda.b $EE                   ; $808FFE
     beq CODE_809004             ; $809000
@@ -12994,6 +12995,7 @@ decompress_near:
     rtl                         ; $80FBD0
     jsl.l $8A8000               ; $80FBD1
     jmp.w $8934                 ; $80FBD5
+oam_clear_long:
     jsr.w oam_clear             ; $80FBD8
     rtl                         ; $80FBDB
     rep.b #$30                  ; $80FBDC

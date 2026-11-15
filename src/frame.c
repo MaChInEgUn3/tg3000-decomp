@@ -19,3 +19,6 @@ uint16_t wait_flag_76(uint16_t dp) {
   while(!(rd16(dp + 0x76) & 0x0008)) platform_wait_vblank();
   return rd16(dp + 0x76);
 }
+
+// TG3000_ROUTINE($8A:B212) wait_one_frame
+void wait_one_frame(void) { wait_frames(1); }

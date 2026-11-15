@@ -73,6 +73,11 @@ uint32_t sprite_group(uint16_t dp, uint32_t table);
 // shift (16 bits).
 uint16_t sprite_number_right(uint32_t value, uint16_t x);
 
+// Five lines of tile text from $8A:C44F, C458, C46D, C484, C49B at (12, 6), (6, 22),
+// (5, 23), (5, 24), (6, 26), with D+$90 = 1, 0, 0, 0, 1. Returns the last
+// text_print_tiles_at's result.
+uint16_t func_8AC0F2(void);
+
 // The sprite group at $81:CBB8 placed from D+$22, D+$24, D+$7C, D+$7E and D+$E8 (high
 // bytes of the first two signed): D+$14 = ((D+$7C - hi(D+$22)) & $FF) - $100, D+$16 =
 // ((rotl16(swap(D+$7E)) + $24) & $FF) + D+$E8 - hi(D+$24), D+$18 = $F000. Returns

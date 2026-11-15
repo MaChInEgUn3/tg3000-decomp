@@ -706,6 +706,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   the whole sprite table to `$E0`, slot indices reset. `wait_flag_76` ($80:B950, waits
   for interrupts): sets bit 4 of `D+$76`, waits for bit 3.
 
+## Hardware-free batch 8 (port-batch-8, 2026-11-15)
+
+- `func_808FFC` (2,900 calls): two sprites at the slot `D+$74`. The fuzz caught an
+  index near `$FFFF`: `abs,X` there carries into bank DB + 1, whose low 8 KB is the same
+  WRAM, so the C wraps its addresses to 16 bits instead of reaching `$7F`.
+- `func_8AA4BE`: `func_8AB680` for each pointer of a zero-terminated table (through DB,
+  `D+$4A` re-read each time). `func_8AC0F2`: five lines of tile text from `$8A:C44F...`.
+  `func_8AB994`: two `decompress_to_vram` calls from bank `$88`; its one live entry is
+  interrupted, so it is verified on the fuzz (same ROM inputs, WRAM around them random).
+  `oam_clear_long` ($80:FBD8) and `wait_one_frame` ($8A:B212): wrappers.
+- `$81:8527` was listed as portable but streams DSP-4 words: it waits for the DSP-4
+  work (the census marks it `dsp4`).
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

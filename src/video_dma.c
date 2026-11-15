@@ -88,3 +88,9 @@ uint16_t func_80F3F4(void) { return upload_half_sized(0x3350, 0x7E24A0, 0x04A0);
 uint16_t upload_slice(int slice) {
   return upload_half_sized((uint16_t)(slice * 0x030A), 0x7E3040 + (uint32_t)slice * 0x0614, 0x0614);
 }
+
+// TG3000_ROUTINE($8A:B994) func_8AB994
+uint16_t func_8AB994(uint16_t dp) {
+  decompress_to_vram(dp, 0x88, 0xFEC3, 0x0800);
+  return decompress_to_vram(dp, 0x88, 0xF87F, 0x1000);
+}

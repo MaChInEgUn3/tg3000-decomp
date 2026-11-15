@@ -764,3 +764,34 @@ void oam_clear(void) {
   wr16(0x0172, 0);
   wr16(0x0174, 0);
 }
+
+// TG3000_ROUTINE($80:FBD8) oam_clear_long
+void oam_clear_long(void) { oam_clear(); }
+
+// TG3000_ROUTINE($80:8FFC) func_808FFC
+uint16_t func_808FFC(void) {
+  uint16_t x = rd16(DP + 0x74), count = rd16(DP + 0xEE);
+  if(count != 0) wr16(DP + 0xEE, --count);
+  // absolute,X past $FFFF carries into DB + 1, whose low 8 KB is the same WRAM: 16 bits
+  wr16((uint16_t)(0x0902 + x), 0x3892);
+  wr16((uint16_t)(0x0900 + x), (uint16_t)(0x085A + count + rd16(DP + 0xE7)));
+  wr16((uint16_t)(0x0B01 + x), 0x0100);
+  wr16((uint16_t)(0x0906 + x), 0x3890);
+  wr16((uint16_t)(0x0904 + x), (uint16_t)(0x0A5C + rd16(DP + 0xE7)));
+  wr16((uint16_t)(0x0B05 + x), 0x0100);
+  wr16(DP + 0x74, (uint16_t)(x + 8));
+  return (uint16_t)(x + 8);
+}
+
+// TG3000_ROUTINE($8A:A4BE) func_8AA4BE
+void func_8AA4BE(uint32_t table) {
+  uint32_t bank = table & 0xFF0000;
+  wr16(DP + 0x4A, (uint16_t)table);
+  for(uint16_t y = 0;; y = (uint16_t)(y + 2)) {
+    // (dp),Y through D+$4A, re-read each time as the original does; the index may carry
+    // into the next bank
+    uint16_t p = bus_rd16((bank | rd16(DP + 0x4A)) + y);
+    if(p == 0) return;
+    func_8AB680(bank | (uint16_t)(p + 4));
+  }
+}

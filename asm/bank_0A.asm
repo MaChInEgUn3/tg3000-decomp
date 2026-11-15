@@ -1687,7 +1687,7 @@ CODE_8A954E:
     stz.w $2118                 ; $8A954E
     dex                         ; $8A9551
     bne CODE_8A954E             ; $8A9552
-    jsl.l $80FBD8               ; $8A9554
+    jsl.l oam_clear_long        ; $8A9554
     phb                         ; $8A9558
     lda.w #$8C80                ; $8A9559
     ldx.w #$95C3                ; $8A955C
@@ -2519,7 +2519,7 @@ CODE_8A9E96:
     jsr.w $A06D                 ; $8A9EB2
     jsl.l clear_vram            ; $8A9EB5
     jsr.w $BA55                 ; $8A9EB9
-    jsr.w $B994                 ; $8A9EBC
+    jsr.w func_8AB994           ; $8A9EBC
     jsr.w $BACB                 ; $8A9EBF
     jsr.w wipe_columns          ; $8A9EC2
     jsl.l func_8A8EEF           ; $8A9EC5
@@ -2561,7 +2561,7 @@ CODE_8A9E96:
     lda.w #$0008                ; $8A9F24
     sta.b $4C                   ; $8A9F27
     lda.w #$CAB0                ; $8A9F29
-    jsr.w $A4BE                 ; $8A9F2C
+    jsr.w func_8AA4BE           ; $8A9F2C
     stz.b $6C                   ; $8A9F2F
     jsr.w $B0E1                 ; $8A9F31
     lda.w #$0A8C                ; $8A9F34
@@ -3151,6 +3151,7 @@ func_8AA49E:
     pla                         ; $8AA4AD
     rts                         ; $8AA4AE
     incbin !baserom:$524AF..$524BE
+func_8AA4BE:
     sta.b $4A                   ; $8AA4BE
     ldy.w #$0000                ; $8AA4C0
 CODE_8AA4C3:
@@ -3291,6 +3292,7 @@ CODE_8AB167:
     stz.w $420C                 ; $8AB193
     rts                         ; $8AB196
     incbin !baserom:$53197..$53212
+wait_one_frame:
     pha                         ; $8AB212
     lda.w #$0001                ; $8AB213
     jsl.l wait_frames_long      ; $8AB216
@@ -3592,6 +3594,7 @@ CODE_8AB98A:
     dey                         ; $8AB990
     bne CODE_8AB98A             ; $8AB991
     rts                         ; $8AB993
+func_8AB994:
     ldy.w #$0800                ; $8AB994
     ldx.w #$FEC3                ; $8AB997
     lda.w #$0088                ; $8AB99A
@@ -3839,7 +3842,7 @@ CODE_8ABC9B:
     jsl.l upload_cgram_now      ; $8ABE79
     jsr.w wipe_columns          ; $8ABE7D
     jsr.w $BAF2                 ; $8ABE80
-    jsr.w $B212                 ; $8ABE83
+    jsr.w wait_one_frame        ; $8ABE83
     inc.b $8E                   ; $8ABE86
     inc.w $0D7C                 ; $8ABE88
     jsl.l func_8A8EEF           ; $8ABE8B
@@ -4074,7 +4077,7 @@ CODE_8AC04C:
     lda.w #$0014                ; $8AC0B9
     sta.b $44                   ; $8AC0BC
     jsr.w $C19C                 ; $8AC0BE
-    jsr.w $C0F2                 ; $8AC0C1
+    jsr.w func_8AC0F2           ; $8AC0C1
     lda.w #$0F00                ; $8AC0C4
     sta.w $0198                 ; $8AC0C7
     lda.w #$0080                ; $8AC0CA
@@ -4096,6 +4099,7 @@ CODE_8AC0E8:
     pla                         ; $8AC0ED
     sta.w $0008                 ; $8AC0EE
     rts                         ; $8AC0F1
+func_8AC0F2:
     stz.b $90                   ; $8AC0F2
     inc.b $90                   ; $8AC0F4
     ldx.w #$000C                ; $8AC0F6

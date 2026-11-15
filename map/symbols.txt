@@ -43,6 +43,12 @@ func    8AA005   func_8AA005         ; func_8AA022 of $0018, $0014, $0010, $000C
 func    80E0C8   func_80E0C8         ; 2a + $B990 below $40, else 2a + $2400 -> src/misc.c
 func    8083E8   oam_clear           ; sprite table to $E0, slot indices 0 -> src/misc.c
 func    80B950   wait_flag_76        ; set bit 4 of D+$76, wait for bit 3 -> src/frame.c
+func    80FBD8   oam_clear_long      ; JSR oam_clear, RTL -> src/misc.c
+func    808FFC   func_808FFC         ; two sprites at the slot D+$74 -> src/misc.c
+func    8AA4BE   func_8AA4BE         ; func_8AB680 for each pointer of a table -> src/misc.c
+func    8AC0F2   func_8AC0F2         ; five lines of tile text from $8A:C44F.. -> src/text.c
+func    8AB994   func_8AB994         ; two decompress_to_vram from bank $88 -> src/video_dma.c
+func    8AB212   wait_one_frame      ; wait_frames(1), A kept -> src/frame.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

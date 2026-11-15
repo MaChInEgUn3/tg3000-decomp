@@ -254,3 +254,15 @@ uint32_t func_80EB66(uint16_t dp) {
   wr16(dp + 0x18, 0xF000);
   return sprite_group(dp, 0x81CBB8);
 }
+
+// TG3000_ROUTINE($8A:C0F2) func_8AC0F2
+uint16_t func_8AC0F2(void) {
+  wr16(DP + 0x90, 1);
+  text_print_tiles_at(0x8AC44F, 12, 6);
+  wr16(DP + 0x90, 0);
+  text_print_tiles_at(0x8AC458, 6, 22);
+  text_print_tiles_at(0x8AC46D, 5, 23);
+  text_print_tiles_at(0x8AC484, 5, 24);
+  wr16(DP + 0x90, 1);
+  return text_print_tiles_at(0x8AC49B, 6, 26);
+}
