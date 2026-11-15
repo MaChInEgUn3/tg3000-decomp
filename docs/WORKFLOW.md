@@ -27,6 +27,7 @@ build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt 
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/race1.txt --autopilot 8000 --record new.txt   # new autopilot run
 python3 -I tools/map.py && python3 -I tools/progress.py   # -> map/*.txt, README numbers
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --hdma-report /tmp/hdma.txt   # HDMA setup and writers
+build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --apu-report /tmp/apu.txt     # APU port traffic
 tools/bench/selftest.sh         # determinism + fresh-process save/load + race reached
 python3 -I tools/listing.py && tools/build_asm.sh   # asm/ -> exact ROM (SHA-1 + code-from-text proof)
 tools/refbench/fetch.sh && make -C tools/refbench    # TAS reference: bsnes from BizHawk 1.9.4

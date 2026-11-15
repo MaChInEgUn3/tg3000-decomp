@@ -888,6 +888,40 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   BG-mode split. Both are platform services for the ports (`video_*`), to be designed
   from these tables when the first table-building routine (`$85:BC20`) is ported.
 
+## The APU ports, measured (apu-1, 2026-11-15)
+
+- **Instrument:** `bench ... --apu-report FILE` (`tools/bench/apu.c`): every instruction
+  that reads or writes `$2140-$2143`, with counts, frames, the most per frame and sample
+  values, and a histogram of port writes per frame. It is not part of the difftest.
+  Over the 60k movie: 58,840 frames have 1-16 writes, 751 frames have 257-1,024, and 6
+  frames have up to 4,096.
+- **Three kinds of traffic:**
+  - **The driver upload at boot** (`$86:E096-$86:E0DD`, the standard IPL protocol:
+    `$AA/$BB` ready, `$CC` start, a byte counter echoed on `$2140`): about 4,500 bytes.
+  - **Data uploads at scene changes** (`$86:E0F0` with `$86:E1BA`, `$86:E1E6`,
+    `$86:E22A` and `$86:E2B4/$86:E37E`, about 30 times): a custom protocol of three data
+    bytes per step on `$2140-$2142`, with `$2143` as the toggle (`$AB`/`$CD`/`$FF`
+    markers). These are music and samples for the driver.
+  - **A 16-byte message every frame** (`$86:DFFB`, called from `$86:DFE1` in the NMI's
+    common tail): it waits for `$77` on `$2141`, then sends four 4-byte groups, with
+    bit 7 of `$2140` alternating as the handshake. The groups come from WRAM `$045B-$046C`
+    (master and music state `$045B-$0462`, two sound-request slots `$0463-$0467` and
+    `$0468-$046C`, cleared after sending) and from bit 4 of `$213F` (the console's
+    50/60 Hz flag, as bit 1 of the first byte). `$86:DFAE` before it fades `$045C` by
+    `$03E0` per frame.
+- **The interface this points to** (to design with the first port):
+  - **Per frame:** `sound_send_frame(16 bytes)`. The game C builds the message, and the
+    port's native driver receives it; the handshake is the platform's.
+  - **At scene changes:** an upload call carrying the data block (source and size) the
+    game hands over.
+  - **At boot:** the driver upload, which a port with a native driver accepts and ignores
+    (recorded on the bench).
+  - **Inputs to replay** on the bench: the `$2141`/`$2140` handshake reads, `$213F`, and
+    the IPL echo.
+
+  The sound request bytes queued by `func_80894E` (`$0463`, with `$FF` above it) are the
+  ones this message carries: the earlier guess, now confirmed.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

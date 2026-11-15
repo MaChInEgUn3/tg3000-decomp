@@ -12,7 +12,7 @@ CFLAGS := -O2 -Wall -I$(LS) -I. -I$(SRC)
 CXXFLAGS := -O2 -Wall -std=c++17 -I$(LS) -I$(D4) -I.
 
 LS_SRC := $(filter-out $(LS)/statehandler.c,$(wildcard $(LS)/*.c)) $(LS)/statehandler.c
-OBJ := $(patsubst $(LS)/%.c,$(OUT)/ls/%.o,$(LS_SRC)) $(OUT)/Dsp4.o $(OUT)/dsp4_bridge.o $(OUT)/bench.o $(OUT)/png.o $(OUT)/coverage.o $(OUT)/difftest.o $(OUT)/routines.o $(OUT)/platform_bench.o $(OUT)/census.o $(OUT)/hdma.o $(patsubst $(SRC)/%.c,$(OUT)/src_%.o,$(wildcard $(SRC)/*.c))
+OBJ := $(patsubst $(LS)/%.c,$(OUT)/ls/%.o,$(LS_SRC)) $(OUT)/Dsp4.o $(OUT)/dsp4_bridge.o $(OUT)/bench.o $(OUT)/png.o $(OUT)/coverage.o $(OUT)/difftest.o $(OUT)/routines.o $(OUT)/platform_bench.o $(OUT)/census.o $(OUT)/hdma.o $(OUT)/apu.o $(patsubst $(SRC)/%.c,$(OUT)/src_%.o,$(wildcard $(SRC)/*.c))
 
 .PHONY: all clean
 all: $(OUT)/bench
@@ -42,6 +42,9 @@ $(OUT)/census.o: census.c census.h | $(OUT)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OUT)/hdma.o: hdma.c hdma.h | $(OUT)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OUT)/apu.o: apu.c apu.h | $(OUT)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OUT)/platform_bench.o: platform_bench.c difftest.h $(SRC)/platform.h | $(OUT)

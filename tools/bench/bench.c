@@ -40,6 +40,7 @@
 #include "difftest.h"
 #include "census.h"
 #include "hdma.h"
+#include "apu.h"
 
 static Snes* snes;
 static FILE* dsp4Log;
@@ -152,19 +153,21 @@ static void autopilot(void) {
   setButtons(down ? (1 << 5) : a ? BTN_A : 0);
 }
 
-static bool coverageOn, difftestOn, censusOn, hdmaOn;
+static bool coverageOn, difftestOn, censusOn, hdmaOn, apuOn;
 
 static void benchTrace(Cpu* cpu) {
   if(coverageOn) coverage_on_insn(cpu);
   if(censusOn) census_on_insn(cpu);
   if(difftestOn) difftest_on_insn(cpu);
   if(hdmaOn) hdma_on_insn(cpu);
+  if(apuOn) apu_on_insn(cpu);
 }
 
 static void benchAccess(uint32_t adr, uint8_t val, bool write) {
   if(censusOn) census_on_access(adr, write);
   if(difftestOn) difftest_on_access(adr, val, write);
   if(hdmaOn) hdma_on_access(adr, val, write);
+  if(apuOn) apu_on_access(adr, val, write);
 }
 
 static void recordStep(FILE* f, int step, uint16_t* last) {
@@ -200,7 +203,7 @@ static void dumpFrame(const char* dir) {
 
 int main(int argc, char** argv) {
   if(argc < 2) {
-    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE] [--coverage FILE] [--load-state FILE] [--save-state FILE] [--wram-dump FILE] [--autopilot STEP] [--record FILE] [--difftest RESULTS] [--difftest-negative] [--fuzz N] [--census FILE] [--hdma-report FILE] [--state-test N]\n", argv[0]);
+    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE] [--coverage FILE] [--load-state FILE] [--save-state FILE] [--wram-dump FILE] [--autopilot STEP] [--record FILE] [--difftest RESULTS] [--difftest-negative] [--fuzz N] [--census FILE] [--hdma-report FILE] [--apu-report FILE] [--state-test N]\n", argv[0]);
     return 2;
   }
   const char* romPath = argv[1];
@@ -215,6 +218,7 @@ int main(int argc, char** argv) {
   const char* difftestResults = NULL;
   const char* censusPath = NULL;
   const char* hdmaPath = NULL;
+  const char* apuPath = NULL;
   bool difftestNegative = false;
   int fuzzIterations = 0;
   const char* saveStatePath = NULL;
@@ -232,6 +236,8 @@ int main(int argc, char** argv) {
       censusPath = argv[++i];
     } else if(strcmp(argv[i], "--hdma-report") == 0 && i + 1 < argc) {
       hdmaPath = argv[++i];
+    } else if(strcmp(argv[i], "--apu-report") == 0 && i + 1 < argc) {
+      apuPath = argv[++i];
     } else if(strcmp(argv[i], "--difftest-negative") == 0) {
       difftestNegative = true;
     } else if(strcmp(argv[i], "--fuzz") == 0 && i + 1 < argc) {
@@ -275,8 +281,9 @@ int main(int argc, char** argv) {
   if(difftestResults != NULL || difftestNegative) { difftest_init(snes, snes->cart->rom, difftestNegative); difftestOn = true; }
   if(censusPath != NULL) { census_start(snes, snes->cart->rom); censusOn = true; }
   if(hdmaPath != NULL) { hdma_start(snes); hdmaOn = true; }
-  if(coverageOn || difftestOn || censusOn || hdmaOn) cpu_traceHook = benchTrace;
-  if(difftestOn || censusOn || hdmaOn) snes_cpuAccessHook = benchAccess;
+  if(apuPath != NULL) { apu_start(snes); apuOn = true; }
+  if(coverageOn || difftestOn || censusOn || hdmaOn || apuOn) cpu_traceHook = benchTrace;
+  if(difftestOn || censusOn || hdmaOn || apuOn) snes_cpuAccessHook = benchAccess;
   if(loadStatePath != NULL) {
     int stSize = 0;
     uint8_t* st = readFile(loadStatePath, &stSize);
@@ -291,6 +298,7 @@ int main(int argc, char** argv) {
     recordStep(record, i, &lastRecorded);
     benchRunFrame();
     if(hdmaOn) hdma_on_frame(i);
+    if(apuOn) apu_on_frame(i);
     if(wramDump != NULL) fwrite(snes->ram, 1, sizeof snes->ram, wramDump);
     if(hashes != NULL) fprintf(hashes, "%d %u %016llx\n", i + 1, snes->frames, (unsigned long long)wramHash());
     if(dumpDir != NULL && (i + 1) % every == 0) dumpFrame(dumpDir);
@@ -334,6 +342,10 @@ int main(int argc, char** argv) {
   if(hdmaPath != NULL) {
     hdmaOn = false;
     if(!hdma_save(hdmaPath)) status = 1;
+  }
+  if(apuPath != NULL) {
+    apuOn = false;
+    if(!apu_save(apuPath)) status = 1;
   }
 
   if(censusPath != NULL) {
