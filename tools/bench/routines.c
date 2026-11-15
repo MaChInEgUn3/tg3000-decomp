@@ -13,6 +13,7 @@
 #include "scale.h"
 #include "line_tables.h"
 #include "decompress.h"
+#include "dsp4.h"
 #include "frame.h"
 #include "misc.h"
 #include "sprites.h"
@@ -1451,6 +1452,55 @@ static void fuzz_func_83FDCD(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x0120, (uint16_t)rnd());
 }
 
+// ---- func_82EA49 ($82:EA49) ----  A = value; exits with A = the bank-$85 word (N/Z of its
+// LDA), X = its offset, Y = the value, C/V of the ADC that found the offset.
+static void call_func_82EA49(const Regs* in, Regs* out) {
+  uint16_t a = in->a;
+  uint16_t lo = (uint16_t)dsp4_multiply((int16_t)((a >> 6) & 0xFF), 10);
+  uint32_t at = (uint32_t)lo + rd16(DP + 0x98);
+  uint16_t e = bus_rd16(0x840002 + (uint32_t)(uint16_t)at), part = (uint16_t)(a & 0x3E);
+  uint32_t entry = (uint32_t)part + e + (at >> 16);
+  out->a = func_82EA49(a);
+  out->x = (uint16_t)entry;
+  out->y = a;
+  setNZ16(out, out->a);
+  out->c = entry > 0xFFFF;
+  out->v = (~(part ^ e) & (part ^ (uint16_t)entry) & 0x8000) != 0;
+}
+
+static void fuzz_func_82EA49(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  // the game's offsets land in ROM in both banks ($84 and $85, $8000-$FFFF); random ones
+  // can land on I/O ($2000-$7FFF), which the routine never reads: retry until both are ROM
+  for(int tries = 0; tries < 64; tries++) {
+    r->a = (uint16_t)rnd();
+    uint16_t base = (uint16_t)(0x8000 + rnd() % 0x7000);
+    uint32_t at = (uint32_t)(uint16_t)dsp4_multiply((int16_t)((r->a >> 6) & 0xFF), 10) + base;
+    uint16_t e = rom16(0x840002 + (uint32_t)(uint16_t)at);
+    uint32_t entry = (uint32_t)(r->a & 0x3E) + e + (at >> 16);
+    wr16ram(ram, DP + 0x98, base);
+    if((uint16_t)at >= 0x8000 && (uint16_t)entry >= 0x8000 && (uint16_t)at < 0xFFFE && (uint16_t)entry < 0xFFFE) return;
+  }
+}
+
+// ---- func_82AB3F ($82:AB3F) ----  X, Y = entry offsets (DB = $7E); exits with A = $0118
+// (N/Z of its SBC, C/V of that SBC #$0C), X/Y kept.
+static void call_func_82AB3F(const Regs* in, Regs* out) {
+  out->a = func_82AB3F(in->x, in->y);
+  uint16_t b = (uint16_t)(out->a + 0x0C);
+  setNZ16(out, out->a);
+  setSbc16(out, b, 0x0C);
+}
+
+static void fuzz_func_82AB3F(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)(2 * (rnd() % 0x100));
+  r->y = (uint16_t)(2 * (rnd() % 0x80));
+  for(int i = 0; i < 10; i++) ram[0xFAB4 + r->x + i] = (uint8_t)rnd();
+  for(int i = 0; i < 4; i++) {
+    ram[0x34EC + r->y + i] = (uint8_t)rnd();
+    ram[0x36EC + r->y + i] = (uint8_t)rnd();
+  }
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1664,6 +1714,10 @@ const Routine routines[] = {
   {.name = "func_83FDCD", .entry = 0x83FDCD, .end = 0x83FDF7, .source = "src/misc.c", .needM16 = true,
    .lowWramDb = true, .call = call_func_83FDCD, ALL_OUTPUTS, .fuzz = fuzz_func_83FDCD,
    .holes = {{0x83FDD4, 0x83FDF5}}},
+  {.name = "func_82EA49", .entry = 0x82EA49, .end = 0x82EA80, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_82EA49, ALL_OUTPUTS, .fuzz = fuzz_func_82EA49},
+  {.name = "func_82AB3F", .entry = 0x82AB3F, .end = 0x82AB9D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_func_82AB3F, ALL_OUTPUTS, .fuzz = fuzz_func_82AB3F},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

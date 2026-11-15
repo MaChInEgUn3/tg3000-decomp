@@ -1379,7 +1379,7 @@ CODE_82A99E:
 CODE_82A9CA:
     ldy.w $0283                 ; $82A9CA
     ldx.w $0281                 ; $82A9CD
-    jsr.w $AB3F                 ; $82A9D0
+    jsr.w func_82AB3F           ; $82A9D0
     lda.w #$0000                ; $82A9D3
     sta.l $308000               ; $82A9D6
     lda.b $16                   ; $82A9DA
@@ -1461,6 +1461,7 @@ CODE_82AA76:
     plb                         ; $82AA79
     rts                         ; $82AA7A
     incbin !baserom:$12A7B..$12B3F
+func_82AB3F:
     lda.w #$0000                ; $82AB3F
     sta.l $308000               ; $82AB42
     lda.w $FAB4,x               ; $82AB46
@@ -4270,7 +4271,7 @@ CODE_82E48E:
     bcc CODE_82E4A6             ; $82E4A1
     sbc.w $019A                 ; $82E4A3
 CODE_82E4A6:
-    jsr.w $EA49                 ; $82E4A6
+    jsr.w func_82EA49           ; $82E4A6
     sta.b $14                   ; $82E4A9
     lda.w $0226                 ; $82E4AB
     sec                         ; $82E4AE
@@ -4278,7 +4279,7 @@ CODE_82E4A6:
     bcs CODE_82E4B7             ; $82E4B2
     adc.w $019A                 ; $82E4B4
 CODE_82E4B7:
-    jsr.w $EA49                 ; $82E4B7
+    jsr.w func_82EA49           ; $82E4B7
     sta.b $16                   ; $82E4BA
     lda.w #$0000                ; $82E4BC
     sta.l $308000               ; $82E4BF
@@ -4312,6 +4313,7 @@ CODE_82E4ED:
     plb                         ; $82E501
     rts                         ; $82E502
     incbin !baserom:$16503..$16A49
+func_82EA49:
     tay                         ; $82EA49
     lda.w #$0000                ; $82EA4A
     sta.l $308000               ; $82EA4D

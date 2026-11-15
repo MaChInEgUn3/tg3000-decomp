@@ -494,6 +494,18 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   its result reads: reads of `$30:8000` were filtered out as ROM reads before the DSP-4
   check; the DSP-4 test now comes first. `func_83FDCD` ($83:FDCD) always answers
   "no hit": an unconditional BRA skips its 33-byte test (dead code, a hole in its extent).
+- **Skipping product bytes.** After the operands, each data access takes one of the
+  product's 4 bytes: a read returns it, a *write skips it* (the value written is ignored).
+  The game uses this for fixed-point work: `$82:AB3F` writes a word, then reads only the
+  high word (`a × b >> 16`). The first oracle stopped its capture at such a write, so those
+  cases went unchecked; it now treats every product byte as read or skipped. Whole TAS on
+  the real chip: **15,882,250 multiplies, 739,386 of them with skipped bytes, all equal**
+  to `dsp4_multiply`. The harness uses the same rule (a write during the product is a skip).
+- `func_82EA49` ($82:EA49, 37,128 calls: row × 10 on the DSP-4, then a table in bank
+  `$84` gives an offset into bank `$85`; the first add's carry feeds the second) and
+  `func_82AB3F` ($82:AB3F: two linear interpolations at the fraction `$FAB5,x` / 256, each
+  the high word of a product). The fuzz for `func_82EA49` keeps both table offsets in ROM:
+  random ones reached bank `$84`'s I/O window (`$2000`–`$7FFF`), which the game never does.
 
 ## Coverage sources (2026-11-14)
 

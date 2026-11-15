@@ -209,7 +209,8 @@ static bool isMathReg(uint32_t adr, bool write) {
 // The DSP-4 at $30-$3F:8000 (data below $C000, status above). The C calls the chip's
 // commands as native functions (src/dsp4.c), so a routine's DSP-4 traffic is its own work
 // when it is made of whole commands the C has: so far command $0000, the multiply (the
-// word $0000, two 16-bit operands, then the 32-bit product read back). Status reads are
+// word $0000, two 16-bit operands, then the 32-bit product's 4 bytes, each read or skipped
+// by a write — the chip's behaviour, checked on the real firmware). Status reads are
 // free. Anything else, or a multiply left unfinished, is a hardware access the C cannot
 // reproduce. Returns whether the access fits.
 static bool isDsp4(uint32_t adr) {
@@ -220,14 +221,13 @@ static bool isDsp4(uint32_t adr) {
 static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
   if((adr & 0xFFFF) >= 0xC000) return !write;          // status: reads only
   uint8_t st = smp->dsp4State;
-  if(write) {
-    if(st < 2) { if(val != 0) return false; }          // the command word $0000
-    else if(st >= 6) return false;                     // writing while results are due
-    smp->dsp4State = (uint8_t)(st + 1);
+  if(st >= 6) {  // the product's 4 bytes: a read takes one, a write skips one (as the chip does)
+    smp->dsp4State = st == 9 ? 0 : (uint8_t)(st + 1);
     return true;
   }
-  if(st < 6) return false;                             // reading before the operands are in
-  smp->dsp4State = st == 9 ? 0 : (uint8_t)(st + 1);    // 4 result bytes, then idle
+  if(!write) return false;                             // reading before the operands are in
+  if(st < 2 && val != 0) return false;                 // the command word must be $0000
+  smp->dsp4State = (uint8_t)(st + 1);
   return true;
 }
 

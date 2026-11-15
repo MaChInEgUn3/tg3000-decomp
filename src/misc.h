@@ -190,4 +190,14 @@ bool func_83FD8A(uint16_t dp, uint16_t a);
 // $83:FDCD: always "no hit" (its test was disabled: a BRA skips it).
 bool func_83FDCD(void);
 
+// The word in bank $85 for A: row (A >> 6) & $FF times 10 (DSP-4 multiply) plus $0198 (also
+// left in $0118) picks an entry of a table at $84:0002; that entry plus (A & $3E) (and the
+// first add's carry) is the offset in bank $85.
+uint16_t func_82EA49(uint16_t a);
+
+// Two linear interpolations at the fraction $FAB5,x / 256 ($0114): between the words at
+// $34EC,y and $34EE,y (minus $FABB,x, into $0116) and between $36EC,y and $36EE,y (minus
+// $0C, into $0118; returned). Bank $7E; each uses a DSP-4 multiply's high word.
+uint16_t func_82AB3F(uint16_t x, uint16_t y);
+
 #endif

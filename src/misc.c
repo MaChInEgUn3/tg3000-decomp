@@ -500,3 +500,33 @@ bool func_83FD8A(uint16_t dp, uint16_t a) {
 
 // TG3000_ROUTINE($83:FDCD) func_83FDCD
 bool func_83FDCD(void) { return false; }
+
+// TG3000_ROUTINE($82:EA49) func_82EA49
+uint16_t func_82EA49(uint16_t a) {
+  uint16_t row = (uint16_t)((a >> 6) & 0xFF);
+  uint16_t lo = (uint16_t)dsp4_multiply((int16_t)row, 10);  // only the product's low word is used
+  uint32_t at = (uint32_t)lo + rd16(DP + 0x98);
+  wr16(DP + 0x18, (uint16_t)at);
+  // the carry out of that add goes into the next one
+  uint32_t entry = (uint32_t)(a & 0x3E) + bus_rd16(0x840002 + (uint32_t)(uint16_t)at) + (at >> 16);
+  return bus_rd16(0x850000 + (uint32_t)(uint16_t)entry);
+}
+
+// The high word of start + (end - start) * 2 * frac / 65536 (a DSP-4 multiply whose low
+// word the original skips by writing to the chip).
+static uint16_t lerp(uint16_t start, uint16_t end, uint16_t frac) {
+  uint16_t span = (uint16_t)((uint16_t)(end - start) << 1);
+  uint16_t high = (uint16_t)((uint32_t)dsp4_multiply((int16_t)frac, (int16_t)span) >> 16);
+  return (uint16_t)(start + high);
+}
+
+// TG3000_ROUTINE($82:AB3F) func_82AB3F
+uint16_t func_82AB3F(uint16_t x, uint16_t y) {
+  uint16_t frac = (uint16_t)((rd16(0xFAB4 + (uint32_t)x) & 0xFF00) >> 1);  // the byte $FAB5,x / 256, as 1.15
+  wr16(DP + 0x14, frac);
+  uint16_t a = lerp(rd16(0x34EC + (uint32_t)y), rd16(0x34EE + (uint32_t)y), frac);
+  wr16(DP + 0x16, (uint16_t)(a - rd16(0xFABB + (uint32_t)x)));
+  uint16_t b = lerp(rd16(0x36EC + (uint32_t)y), rd16(0x36EE + (uint32_t)y), frac);
+  wr16(DP + 0x18, (uint16_t)(b - 0x0C));
+  return rd16(DP + 0x18);
+}

@@ -152,9 +152,12 @@ static bool covMergeSave(const std::string& path) {
 // ---- DSP-4 oracle: every command $0000 the game sends (an "LDA #$0000 / STA $30:8000"
 // at the instruction) is captured with its two operands and the result bytes the chip
 // returns, and checked against the native dsp4_multiply (src/dsp4.c) ----
-struct MulCapture { bool active; uint32_t pc; uint8_t w[8]; int nw; uint8_t r[4]; int nr; };
+// After the command word and two operands (6 bytes written), the product's 4 bytes go out
+// one per data access: a read takes the byte, a write skips it (the chip's documented
+// behaviour, checked here). slot = how many of the 4 are done; read[i] says which were read.
+struct MulCapture { bool active; uint32_t pc; uint8_t w[6]; int nw; uint8_t r[4]; bool read[4]; int slot; };
 static MulCapture cap;
-static unsigned long mulCases, mulMatch, mulMismatch;
+static unsigned long mulCases, mulMatch, mulMismatch, mulSkipped;
 static FILE* mulLog;
 
 static bool isDsp4Data(unsigned a) {
@@ -171,39 +174,52 @@ static bool isCommand0Site(uint32_t pc) {
 }
 
 static void finishCapture() {
-  if(cap.active && cap.nw >= 6 && cap.nr >= 2) {
+  int reads = 0;
+  for(int i = 0; i < cap.slot; i++) reads += cap.read[i];
+  if(cap.active && cap.nw == 6 && reads > 0) {
     int16_t a = int16_t(cap.w[2] | cap.w[3] << 8), b = int16_t(cap.w[4] | cap.w[5] << 8);
     uint32_t p = uint32_t(dsp4_multiply(a, b));
     bool ok = true;
-    for(int i = 0; i < cap.nr; i++) if(cap.r[i] != uint8_t(p >> (8 * i))) ok = false;
+    for(int i = 0; i < cap.slot; i++) if(cap.read[i] && cap.r[i] != uint8_t(p >> (8 * i))) ok = false;
     mulCases++;
     if(ok) mulMatch++;
     else {
       mulMismatch++;
       if(mulLog && mulMismatch <= 50) {
         std::fprintf(mulLog, "mismatch at $%06X: %d * %d: chip", cap.pc, a, b);
-        for(int i = 0; i < cap.nr; i++) std::fprintf(mulLog, " %02X", cap.r[i]);
+        for(int i = 0; i < cap.slot; i++) {
+          if(cap.read[i]) std::fprintf(mulLog, " %02X", cap.r[i]);
+          else std::fprintf(mulLog, " --");
+        }
         std::fprintf(mulLog, ", C %08X\n", p);
       }
     }
+    for(int i = 0; i < cap.slot; i++) if(!cap.read[i]) { mulSkipped++; break; }
   }
   cap.active = false;
 }
 
 static void rwHook(unsigned addr, unsigned char v, bool write) {
   if(!isDsp4Data(addr)) return;
-  if(write) {
-    if(isCommand0Site(lastPc) && !(cap.active && cap.nw == 1)) {  // a new command $0000
-      finishCapture();
-      cap = MulCapture{true, lastPc, {0}, 0, {0}, 0};
-    } else if(cap.active && cap.nw >= 6) {  // the next command (another kind) began
-      finishCapture();
-      return;
-    }
-    if(cap.active && cap.nw < 8) cap.w[cap.nw++] = v;
-  } else if(cap.active && cap.nw >= 6 && cap.nr < 4) {
-    cap.r[cap.nr++] = v;
+  if(write && isCommand0Site(lastPc) && !(cap.active && cap.nw == 1)) {  // a new command $0000
+    finishCapture();
+    cap = MulCapture{};
+    cap.active = true;
+    cap.pc = lastPc;
   }
+  if(!cap.active) return;
+  if(cap.nw < 6) {  // command word and operands
+    if(write) cap.w[cap.nw++] = v;
+    else finishCapture();  // not a multiply as the game writes it
+    return;
+  }
+  if(cap.slot < 4) {  // the product: read, or skipped by a write
+    cap.read[cap.slot] = !write;
+    cap.r[cap.slot] = v;
+    if(++cap.slot == 4) finishCapture();
+    return;
+  }
+  finishCapture();
 }
 
 static std::string firmwarePath;
@@ -397,7 +413,8 @@ int main(int argc, char** argv) {
   if(hashes) std::fclose(hashes);
   if(!mulPath.empty()) {
     finishCapture();
-    std::fprintf(stderr, "DSP-4 command $0000: %lu cases, %lu match dsp4_multiply, %lu differ\n", mulCases, mulMatch, mulMismatch);
+    std::fprintf(stderr, "DSP-4 command $0000: %lu cases, %lu match dsp4_multiply, %lu differ (%lu with skipped bytes)\n",
+                 mulCases, mulMatch, mulMismatch, mulSkipped);
     if(mulLog) std::fclose(mulLog);
   }
   if(!coveragePath.empty()) {
