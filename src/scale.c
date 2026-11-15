@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "scale.h"
 
+#include "platform.h"
 #include "tg3000.h"
 
 // TG3000_ROUTINE($80:F709) inverse_scale
@@ -26,4 +27,19 @@ uint16_t inverse_scale(uint16_t dp) {
   uint16_t result = (uint16_t)((quotient & 0xFF) * 0x2A);
   wr16(dp + SCALE_RESULT, result);
   return result;
+}
+
+// TG3000_ROUTINE($80:F38D) mode7_zoom_view
+//
+// The offsets are computed a byte at a time in the original; the high byte is the borrow
+// of the low one, so they are the 16-bit differences.
+uint16_t mode7_zoom_view(uint16_t dp) {
+  int16_t scale = (int16_t)rd16(dp + ZOOM_SCALE);
+  video_set_m7a(scale);
+  video_set_m7d(scale);
+  uint16_t h = (uint16_t)(0x80 - rd8(dp + ZOOM_CENTRE_X));
+  uint16_t v = (uint16_t)(0x6F - rd8(dp + ZOOM_CENTRE_Y));
+  video_set_bg1_hofs(h);
+  video_set_bg1_vofs(v);
+  return v;
 }

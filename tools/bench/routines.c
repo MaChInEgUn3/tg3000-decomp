@@ -109,6 +109,26 @@ static void fuzz_inverse_scale(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   ram[(uint16_t)(r->d + SCALE_DIVISOR + 1)] = (uint8_t)(divisor >> 8);
 }
 
+// ---- mode7_zoom_view ($80:F38D) ----  exits with A's low byte = the high byte of the
+// vertical offset (A's high byte kept) and N V Z C from that byte's SBC #$00: N = its top
+// bit, V clear, Z = zero, C = no borrow.
+static void call_mode7_zoom_view(const Regs* in, Regs* out) {
+  uint8_t hi = (uint8_t)(mode7_zoom_view(in->d) >> 8);
+  out->a = (uint16_t)((in->a & 0xFF00) | hi);
+  out->n = hi & 0x80;
+  out->v = false;
+  out->z = out->c = hi == 0;
+}
+
+// the centre on both sides of the offsets' borrow, and any scale
+static void fuzz_mode7_zoom_view(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint32_t k = rnd();
+  ram[(uint16_t)(r->d + ZOOM_SCALE)] = (uint8_t)k;
+  ram[(uint16_t)(r->d + ZOOM_SCALE + 1)] = (uint8_t)(k >> 8);
+  ram[(uint16_t)(r->d + ZOOM_CENTRE_X)] = (k >> 16) & 1 ? (uint8_t)(0x7F + (rnd() & 3)) : (uint8_t)rnd();
+  ram[(uint16_t)(r->d + ZOOM_CENTRE_Y)] = (k >> 17) & 1 ? (uint8_t)(0x6E + (rnd() & 3)) : (uint8_t)rnd();
+}
+
 // ---- upload_vram_now ($80:83AD, long call) ----
 // A = size, X = source, D+$14 = source bank, Y = VRAM word address. Exits with
 // A = $1801 (the DMA mode word, then LDA #$01 in 8-bit), N = Z = 0; X, Y kept.
@@ -1726,6 +1746,23 @@ SLICE_ADAPTER(0) SLICE_ADAPTER(1) SLICE_ADAPTER(2) SLICE_ADAPTER(3) SLICE_ADAPTE
 SLICE_ADAPTER(6) SLICE_ADAPTER(7) SLICE_ADAPTER(8) SLICE_ADAPTER(9) SLICE_ADAPTER(10) SLICE_ADAPTER(11)
 SLICE_ADAPTER(12) SLICE_ADAPTER(13) SLICE_ADAPTER(14) SLICE_ADAPTER(15)
 
+// Negative test: mode7_zoom_view with the two offsets swapped (the PPU field comparison
+// must see it).
+static void call_mode7_zoom_view_wrong(const Regs* in, Regs* out) {
+  int16_t scale = (int16_t)rd16((uint16_t)(in->d + ZOOM_SCALE));
+  video_set_m7a(scale);
+  video_set_m7d(scale);
+  uint16_t h = (uint16_t)(0x80 - rd8((uint16_t)(in->d + ZOOM_CENTRE_X)));
+  uint16_t v = (uint16_t)(0x6F - rd8((uint16_t)(in->d + ZOOM_CENTRE_Y)));
+  video_set_bg1_hofs(v);
+  video_set_bg1_vofs(h);
+  uint8_t hi = (uint8_t)(v >> 8);
+  out->a = (uint16_t)((in->a & 0xFF00) | hi);
+  out->n = hi & 0x80;
+  out->v = false;
+  out->z = out->c = hi == 0;
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1774,6 +1811,8 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .call = call_lsr_n, ALL_OUTPUTS, .fuzz = fuzz_lsr_n},
   {.name = "inverse_scale", .entry = 0x80F709, .end = 0x80F745, .source = "src/scale.c",
    .needM16 = true, .needX16 = true, .call = call_inverse_scale, ALL_OUTPUTS, .fuzz = fuzz_inverse_scale},
+  {.name = "mode7_zoom_view", .entry = 0x80F38D, .end = 0x80F3C4, .source = "src/scale.c", .needM16 = true,
+   .fixedD = true, .call = call_mode7_zoom_view, ALL_OUTPUTS, .fuzz = fuzz_mode7_zoom_view},
   {.name = "upload_vram_now", .entry = 0x8083AD, .end = 0x8083CB, .rtl = true, .source = "src/video_dma.c",
    .needM16 = true, .needX16 = true, .call = call_upload_vram_now, ALL_OUTPUTS, .fuzz = fuzz_upload_vram_now},
   {.name = "upload_cgram_now", .entry = 0x8083CB, .end = 0x8083E8, .rtl = true, .source = "src/video_dma.c",
@@ -2000,5 +2039,7 @@ const Routine negativeRoutines[] = {
    .needM16 = true, .needX16 = true, .call = call_upload_vram_now_wrong, ALL_OUTPUTS, .fuzz = fuzz_upload_vram_now},
   {.name = "wait_frames_wrong", .entry = 0x808373, .end = 0x80837D, .source = "src/frame.c", .needM16 = true,
    .lowWramDb = true, .waitsForInterrupts = true, .call = call_wait_frames_wrong, ALL_OUTPUTS},
+  {.name = "mode7_zoom_view_wrong", .entry = 0x80F38D, .end = 0x80F3C4, .source = "src/scale.c", .needM16 = true,
+   .fixedD = true, .call = call_mode7_zoom_view_wrong, ALL_OUTPUTS, .fuzz = fuzz_mode7_zoom_view},
 };
 const int negativeRoutineCount = sizeof negativeRoutines / sizeof negativeRoutines[0];

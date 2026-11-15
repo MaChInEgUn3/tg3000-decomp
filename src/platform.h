@@ -24,6 +24,19 @@ void video_fill_vram(uint16_t vram_word, uint8_t value, uint32_t size);
 // each colour is two bytes, low byte first (BGR555).
 void video_upload_cgram(uint8_t index, uint32_t src, uint32_t size);
 
+// PPU registers, set as the original writes them (both bytes, low first); the console
+// latches them and they take effect on the next lines it draws (see docs/DECISIONS.md,
+// "PPU registers").
+//
+// Mode 7 matrix parameters A ($211B) and D ($211E): signed 8.8 fixed point.
+void video_set_m7a(int16_t value);
+void video_set_m7d(int16_t value);
+
+// BG1 horizontal / vertical scroll ($210D / $210E). The console keeps 10 bits as the BG1
+// scroll and, from the same write, 13 bits (signed) as the Mode 7 offset.
+void video_set_bg1_hofs(uint16_t value);
+void video_set_bg1_vofs(uint16_t value);
+
 // Return after the next interrupt has run: the platform does the frame's work (what the
 // original's NMI and IRQ handlers do) and then comes back. Game code that waits for
 // "the next frame" calls this in a loop until its own frame counter has moved on.

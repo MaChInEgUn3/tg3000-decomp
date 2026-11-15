@@ -17,6 +17,20 @@ void video_upload_cgram(uint8_t index, uint32_t src, uint32_t size) {
   difftest_effect(EFFECT_CGRAM, index, src, size);
 }
 
+// PPU registers: recorded as the fields the bench's PPU decodes from the same writes.
+void video_set_m7a(int16_t value) { difftest_ppu_field(PF_M7A, (uint16_t)value); }
+void video_set_m7d(int16_t value) { difftest_ppu_field(PF_M7D, (uint16_t)value); }
+
+void video_set_bg1_hofs(uint16_t value) {
+  difftest_ppu_field(PF_BG1H, value);
+  difftest_ppu_field(PF_M7H, value);
+}
+
+void video_set_bg1_vofs(uint16_t value) {
+  difftest_ppu_field(PF_BG1V, value);
+  difftest_ppu_field(PF_M7V, value);
+}
+
 // The bench replays, in order, the WRAM changes each interrupt made while the original
 // routine was waiting (recorded by the differential test).
 void platform_wait_vblank(void) { difftest_replay_interrupt(); }

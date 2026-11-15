@@ -579,6 +579,29 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   argument; in the harness each entry's extent runs to the shared tail with the following
   entries as a hole.
 
+## PPU registers (ppu-1, 2026-11-15)
+
+- **Semantic setters, one per register field the console decodes** (`src/platform.h`):
+  `video_set_m7a/m7d` (Mode 7 matrix A/D, `$211B/$211E`) and `video_set_bg1_hofs/vofs`
+  (`$210D/$210E`). On the console one write to `$210D/$210E` sets both the BG1 scroll
+  (10 bits) and the Mode 7 offset (13 bits, signed), so a port gets both from one call.
+  Calls are added only when a verified routine needs them.
+- **Compared by end state, decoded by the bench's PPU**: the harness notes which fields
+  the original wrote inside the sample (`$210D/$210E`, `$211B-$2120`) and reads their
+  final values from LakeSnes's PPU at the return; the C's calls must set exactly the same
+  fields to the same values (masked to the bits the PPU keeps). The write-twice latches
+  are not re-implemented: a sample whose last write to a field completed a latch byte
+  written *before* the sample fails ("completed a latch byte written before the
+  routine"), because its result depends on state the C does not get.
+- **Timing:** a port has no scanlines. The harness logs the scanlines of each routine's
+  PPU field writes in live samples; the first one (`mode7_zoom_view`) writes on lines
+  247-250 only (vblank), so "takes effect from the next frame" is the contract so far.
+  A routine that writes mid-frame will need a line argument; none yet.
+- `mode7_zoom_view` ($80:F38D, `src/scale.c`): Mode 7 with no rotation, A = D = the
+  scale D+$7A, offset ($80 − x, $6F − y) for the centre bytes D+$3D/D+$3B. Race movie
+  350/350 live, fuzz 500/500 (both sides of the offsets' borrow), paths 25/25. Negative
+  variant with the offsets swapped fails ("PPU M7HOFS: original 1FC0, C 006F").
+
 ## Coverage sources (2026-11-14)
 
 - **Only runs that are known to follow the game's intended path feed

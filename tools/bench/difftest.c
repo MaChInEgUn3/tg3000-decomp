@@ -55,6 +55,8 @@ typedef struct {
   // flags: compared separately; a mismatch only fails the routine if the flag is live
   unsigned long watched, live[4], dead[4], flagMismatch[4];
   char firstFlagFailure[4][160];
+  int ppuLineMin, ppuLineMax;  // scanlines of the original's PPU field writes (live samples)
+  bool ppuLines;
 } Stats;
 
 static Snes* snes;
@@ -69,6 +71,14 @@ static Stats* stats;
 #define MAX_EFFECTS 32
 typedef struct { int kind; uint32_t target, src, size; } Effect;
 
+// PPU fields the C sets through platform calls (src/platform.h): the original's register
+// writes are compared by end state, as the bench's PPU decoded them (which fields were
+// written, and their final values). Bits of each field that the PPU keeps:
+static const uint16_t ppuFieldMask[PF_COUNT] = {
+  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x03FF, 0x03FF};
+static const char* const ppuFieldName[PF_COUNT] = {
+  "M7A", "M7B", "M7C", "M7D", "M7X", "M7Y", "M7HOFS", "M7VOFS", "BG1HOFS", "BG1VOFS"};
+
 typedef struct {
   int idx;
   Regs entryRegs;
@@ -81,6 +91,10 @@ typedef struct {
   const char* hwWhy;
   Effect effects[MAX_EFFECTS];  // hardware effects of the original, from its DMA kicks
   int effectCount;
+  // PPU fields written (bit per PF_*), and those whose last write combined a latch byte
+  // written before the sample (the result depends on state the C does not get)
+  uint16_t ppuWritten, ppuStale, ppuEnd[PF_COUNT];
+  bool m7Latch, scrollLatch, scrollLatch2;  // latch bytes written inside the sample
 } Sample;
 
 static Sample samples[MAX_DEPTH];
@@ -124,6 +138,50 @@ static bool collectingC;
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size) {
   if(!collectingC || cEffectCount >= MAX_EFFECTS) return;
   cEffects[cEffectCount++] = (Effect){kind, target, src, size};
+}
+
+static uint16_t cPpuWritten, cPpu[PF_COUNT];
+
+void difftest_ppu_field(int field, uint16_t value) {
+  if(!collectingC) return;
+  cPpuWritten |= (uint16_t)(1u << field);
+  cPpu[field] = value;
+}
+
+static uint16_t ppuFieldValue(int field) {
+  const Ppu* ppu = snes->ppu;
+  if(field <= PF_M7V) return (uint16_t)ppu->m7matrix[field];
+  return field == PF_BG1H ? ppu->bgLayer[0].hScroll : ppu->bgLayer[0].vScroll;
+}
+
+// A write to a PPU register the C models as fields: $210D/$210E (BG1 scroll, also the
+// Mode 7 offset) and $211B-$2120 (Mode 7 matrix and centre). Each is written twice, low
+// byte then high, through latches shared between registers (LakeSnes's ppu_write).
+static bool ppuFieldWrite(uint32_t adr) {
+  if(((adr >> 16) & 0x7F) >= 0x40) return false;
+  uint16_t a = adr & 0xFFFF;
+  if(a != 0x210D && a != 0x210E && (a < 0x211B || a > 0x2120)) return false;
+  for(int k = 0; k < depth; k++) {
+    Sample* smp = &samples[k];
+    uint16_t fresh = 0, stale = 0;
+    int m7 = a == 0x210D ? PF_M7H : a == 0x210E ? PF_M7V : a - 0x211B;
+    *(smp->m7Latch ? &fresh : &stale) |= (uint16_t)(1u << m7);
+    if(a == 0x210D) *(smp->scrollLatch && smp->scrollLatch2 ? &fresh : &stale) |= 1u << PF_BG1H;
+    if(a == 0x210E) *(smp->scrollLatch ? &fresh : &stale) |= 1u << PF_BG1V;
+    smp->ppuWritten |= fresh | stale;
+    smp->ppuStale = (uint16_t)((smp->ppuStale & ~fresh) | stale);
+    smp->m7Latch = true;
+    if(a == 0x210D || a == 0x210E) smp->scrollLatch = true;
+    if(a == 0x210D) smp->scrollLatch2 = true;
+    if(!fuzzing) {
+      Stats* s = &stats[smp->idx];
+      int line = snes->vPos;
+      if(!s->ppuLines || line < s->ppuLineMin) s->ppuLineMin = line;
+      if(!s->ppuLines || line > s->ppuLineMax) s->ppuLineMax = line;
+      s->ppuLines = true;
+    }
+  }
+  return true;
 }
 
 static const char* effectName(int kind) {
@@ -251,6 +309,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
     return;
   }
   if(isWram(adr) || (!write && isRom(adr))) return;
+  if(write && ppuFieldWrite(adr)) return;
   if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x420B) {
     recordKick(val);
     for(int k = 0; k < depth; k++) samples[k].setupPending = false;
@@ -319,6 +378,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   memcpy(g_ram, sampleRam[k], sizeof g_ram);
   Regs out = smp->entryRegs;
   cEffectCount = 0;
+  cPpuWritten = 0;
   collectingC = true;
   irqReplayed = 0;
   irqLimit = irqOwner == k ? irqCount : 0;
@@ -340,6 +400,19 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
     if(o->kind != c->kind || o->target != c->target || o->src != c->src || o->size != c->size) {
       snprintf(why, whyLen, "effect %d: original %s $%X <- $%06X x%u, C %s $%X <- $%06X x%u", i,
         effectName(o->kind), o->target, o->src, o->size, effectName(c->kind), c->target, c->src, c->size);
+      return false;
+    }
+  }
+  if(cPpuWritten != smp->ppuWritten) {
+    snprintf(why, whyLen, "PPU fields written: original %04X, C %04X (bits: M7A..M7VOFS, BG1HOFS, BG1VOFS)",
+      smp->ppuWritten, cPpuWritten);
+    return false;
+  }
+  for(int f = 0; f < PF_COUNT; f++) {
+    if(!(smp->ppuWritten & (1u << f))) continue;
+    uint16_t o = smp->ppuEnd[f] & ppuFieldMask[f], c = cPpu[f] & ppuFieldMask[f];
+    if(o != c) {
+      snprintf(why, whyLen, "PPU %s: original %04X, C %04X", ppuFieldName[f], o, c);
       return false;
     }
   }
@@ -379,6 +452,7 @@ static void finishSample(int k, const Cpu* cpu) {
   depth = k;
   if(owner) irqOwner = -1;
   memcpy(afterRam, snes->ram, sizeof afterRam);
+  for(int f = 0; f < PF_COUNT; f++) smp->ppuEnd[f] = ppuFieldValue(f);
   Regs after = readRegs(cpu);
   if(table[idx].waitsForInterrupts) {
     if(!owner || irqOverflow || irqActive) { s->abandoned++; return; }
@@ -399,6 +473,10 @@ static void finishSample(int k, const Cpu* cpu) {
   }
   if(smp->hwAccess) {
     snprintf(why, sizeof why, "%s at $%06X", smp->hwWhy, smp->hwAccessAdr);
+    ok = false;
+  } else if(smp->ppuStale) {
+    snprintf(why, sizeof why, "a PPU register write completed a latch byte written before the routine (fields %04X)",
+      smp->ppuStale);
     ok = false;
   } else if(smp->setupPending) {
     snprintf(why, sizeof why, "DMA/PPU address set up but no DMA started afterwards (not modelled)");
@@ -731,6 +809,7 @@ bool difftest_report(const char* resultsPath) {
     }
     printf("    %s; mismatches N%lu V%lu Z%lu C%lu\n", flagNote, s->flagMismatch[0], s->flagMismatch[1], s->flagMismatch[2], s->flagMismatch[3]);
     if(s->firstFailure[0]) printf("    first failure: %s\n", s->firstFailure);
+    if(s->ppuLines) printf("    PPU field writes on scanlines %d..%d (live samples)\n", s->ppuLineMin, s->ppuLineMax);
     if(reached && seen < need) {  // which instruction starts no sample reached
       printf("    paths not reached:");
       for(int k = 0, shown = 0; k < MAX_EXTENT && shown < 8; k++)

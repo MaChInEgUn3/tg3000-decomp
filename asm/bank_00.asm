@@ -11842,7 +11842,7 @@ CODE_80F1DC:
     rts                         ; $80F1E2
     incbin !baserom:$71E3..$7225
     rts                         ; $80F225
-    jsr.w $F38D                 ; $80F226
+    jsr.w mode7_zoom_view       ; $80F226
     inc.b $40                   ; $80F229
     lda.b $40                   ; $80F22B
     cmp.w #$0320                ; $80F22D
@@ -11951,7 +11951,7 @@ CODE_80F2F8:
     jsr.w func_80F745           ; $80F2FE
     clc                         ; $80F301
     rts                         ; $80F302
-    jsr.w $F38D                 ; $80F303
+    jsr.w mode7_zoom_view       ; $80F303
     lda.b $7A                   ; $80F306
     sec                         ; $80F308
     sbc.w #$00E2                ; $80F309
@@ -12022,6 +12022,7 @@ CODE_80F385:
     jsr.w func_80F745           ; $80F388
     clc                         ; $80F38B
     rts                         ; $80F38C
+mode7_zoom_view:
     sep.b #$20                  ; $80F38D
     lda.b $7A                   ; $80F38F
     sta.w $211B                 ; $80F391
