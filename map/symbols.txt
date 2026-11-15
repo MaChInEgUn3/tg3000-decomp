@@ -49,6 +49,12 @@ func    8AA4BE   func_8AA4BE         ; func_8AB680 for each pointer of a table -
 func    8AC0F2   func_8AC0F2         ; five lines of tile text from $8A:C44F.. -> src/text.c
 func    8AB994   func_8AB994         ; two decompress_to_vram from bank $88 -> src/video_dma.c
 func    8AB212   wait_one_frame      ; wait_frames(1), A kept -> src/frame.c
+func    8A8D81   upload_tiles_c280   ; 512 bytes from $7F (table + $20 + A) to VRAM $C280 -> src/video_dma.c
+func    8A8DA0   upload_tiles_c680   ; 512 bytes from $7F (table + $20 + A) to VRAM $C680 -> src/video_dma.c
+func    8ABFD0   binary_to_bcd5      ; $0142 -> BCD in $0144/$0146 -> src/misc.c
+func    82AD12   func_82AD12         ; $0463/$0465 = A/X unless $047C bit 15 -> src/misc.c
+func    8A8232   func_8A8232         ; $014A = ($0136 >> 2) + $0108 -> src/misc.c
+func    82F380   func_82F380         ; empty (RTS) -> src/misc.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

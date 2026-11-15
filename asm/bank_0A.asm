@@ -54,7 +54,7 @@ CODE_8A803B:
     sta.w $050A                 ; $8A807F
     sta.w $050C                 ; $8A8082
     jsr.w $82C0                 ; $8A8085
-    jsr.w $8232                 ; $8A8088
+    jsr.w func_8A8232           ; $8A8088
     jsr.w $823D                 ; $8A808B
     jsr.w $8290                 ; $8A808E
     jsr.w $824B                 ; $8A8091
@@ -101,7 +101,7 @@ CODE_8A8142:
     lda.w #$0002                ; $8A8145
     tsb.w $0026                 ; $8A8148
     jsr.w $82C0                 ; $8A814B
-    jsr.w $8232                 ; $8A814E
+    jsr.w func_8A8232           ; $8A814E
     jsr.w $823D                 ; $8A8151
     jsr.w $8290                 ; $8A8154
     jsr.w $824B                 ; $8A8157
@@ -167,6 +167,7 @@ CODE_8A81B9:
     jsl.l upload_cgram_now      ; $8A8200
     rts                         ; $8A8204
     incbin !baserom:$50205..$50232
+func_8A8232:
     lda.b $36                   ; $8A8232
     lsr a                       ; $8A8234
     lsr a                       ; $8A8235
@@ -843,36 +844,36 @@ CODE_8A8BBB:
     lda.w #$0420                ; $8A8C5C
     jsr.w $8CB7                 ; $8A8C5F
     lda.w #$0000                ; $8A8C62
-    jsr.w $8D81                 ; $8A8C65
+    jsr.w upload_tiles_c280     ; $8A8C65
     lda.w #$0200                ; $8A8C68
-    jsr.w $8DA0                 ; $8A8C6B
+    jsr.w upload_tiles_c680     ; $8A8C6B
     jsr.w $8DBF                 ; $8A8C6E
     rts                         ; $8A8C71
     plx                         ; $8A8C72
     lda.w #$0820                ; $8A8C73
     jsr.w $8CB7                 ; $8A8C76
     lda.w #$0000                ; $8A8C79
-    jsr.w $8D81                 ; $8A8C7C
+    jsr.w upload_tiles_c280     ; $8A8C7C
     lda.w #$0200                ; $8A8C7F
-    jsr.w $8DA0                 ; $8A8C82
+    jsr.w upload_tiles_c680     ; $8A8C82
     jsr.w $8DBF                 ; $8A8C85
     rts                         ; $8A8C88
     plx                         ; $8A8C89
     lda.w #$0440                ; $8A8C8A
     jsr.w $8CB7                 ; $8A8C8D
     lda.w #$0020                ; $8A8C90
-    jsr.w $8D81                 ; $8A8C93
+    jsr.w upload_tiles_c280     ; $8A8C93
     lda.w #$0220                ; $8A8C96
-    jsr.w $8DA0                 ; $8A8C99
+    jsr.w upload_tiles_c680     ; $8A8C99
     jsr.w $8DBF                 ; $8A8C9C
     rts                         ; $8A8C9F
     plx                         ; $8A8CA0
     lda.w #$0840                ; $8A8CA1
     jsr.w $8CB7                 ; $8A8CA4
     lda.w #$0020                ; $8A8CA7
-    jsr.w $8D81                 ; $8A8CAA
+    jsr.w upload_tiles_c280     ; $8A8CAA
     lda.w #$0220                ; $8A8CAD
-    jsr.w $8DA0                 ; $8A8CB0
+    jsr.w upload_tiles_c680     ; $8A8CB0
     jsr.w $8DBF                 ; $8A8CB3
     rts                         ; $8A8CB6
     sta.b $38                   ; $8A8CB7
@@ -981,6 +982,7 @@ CODE_8A8D64:
     jsl.l upload_vram_now       ; $8A8D7B
     plx                         ; $8A8D7F
     rts                         ; $8A8D80
+upload_tiles_c280:
     phx                         ; $8A8D81
     sta.b $16                   ; $8A8D82
     lda.w #$007F                ; $8A8D84
@@ -996,6 +998,7 @@ CODE_8A8D64:
     jsl.l upload_vram_now       ; $8A8D9A
     plx                         ; $8A8D9E
     rts                         ; $8A8D9F
+upload_tiles_c680:
     phx                         ; $8A8DA0
     sta.b $16                   ; $8A8DA1
     lda.w #$007F                ; $8A8DA3
@@ -3936,14 +3939,14 @@ CODE_8ABF46:
     rts                         ; $8ABF75
     lda.w $038E                 ; $8ABF76
     sta.b $42                   ; $8ABF79
-    jsr.w $BFD0                 ; $8ABF7B
+    jsr.w binary_to_bcd5        ; $8ABF7B
     lda.b $44                   ; $8ABF7E
     sta.w $038E                 ; $8ABF80
     lda.b $46                   ; $8ABF83
     sta.w $0390                 ; $8ABF85
     lda.w $03BD                 ; $8ABF88
     sta.b $42                   ; $8ABF8B
-    jsr.w $BFD0                 ; $8ABF8D
+    jsr.w binary_to_bcd5        ; $8ABF8D
     lda.b $44                   ; $8ABF90
     sta.w $03BD                 ; $8ABF92
     lda.b $46                   ; $8ABF95
@@ -3983,6 +3986,7 @@ CODE_8ABFC0:
     jsr.w lsr_n                 ; $8ABFCB
     ply                         ; $8ABFCE
     rts                         ; $8ABFCF
+binary_to_bcd5:
     ldx.w #$0008                ; $8ABFD0
     stz.b $44                   ; $8ABFD3
     stz.b $46                   ; $8ABFD5

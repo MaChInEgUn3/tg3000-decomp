@@ -719,6 +719,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - `$81:8527` was listed as portable but streams DSP-4 words: it waits for the DSP-4
   work (the census marks it `dsp4`).
 
+## Hardware-free batch 9 (port-batch-9, 2026-11-15)
+
+- `upload_tiles_c280/c680` ($8A:8D81/$8A:8DA0): the 60k movie now runs them with DB =
+  `$83`, so they join the other tile uploads (source + `$20`, VRAM `$C280/$C680`).
+- `binary_to_bcd5` ($8A:BFD0): `$0142` in BCD into `$0144/$0146` by repeated
+  subtraction of the weights at `$8A:CABA` (the inverse of `bcd_to_binary`).
+- `func_82AD12`: `$0463/$0465/$0467` from A and X unless bit 15 of `$047C` is set (the
+  same three words `func_80894E` hands its queued bytes on to). `func_8A8232`:
+  `$014A = ($0136 >> 2) + $0108`. `func_82F380`: an empty routine (a lone RTS).
+- Still in asm for now: `$8A:8290`, `$8A:9F76`, `$8A:A32B`, `$8A:A381`, `$80:9DD0` (each
+  branches into bytes no recorded run executes; they need the static-code route and an
+  aimed fuzz) and `$81:8527` (DSP-4).
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

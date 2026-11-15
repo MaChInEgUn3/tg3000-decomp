@@ -316,6 +316,20 @@ TILES_ADAPTER(upload_tiles_3700, 0x3700)
 TILES_ADAPTER(upload_tiles_7700, 0x7700)
 TILES_ADAPTER(upload_tiles_7b00, 0x7B00)
 
+// $8A:8D81 / $8A:8DA0: the table word + $20 (ADC #$20), then + A: C and V of that second ADC
+#define TILES_ADAPTER_20(fn, vram) \
+  static void call_##fn(const Regs* in, Regs* out) { \
+    fn(in->x, in->a); \
+    out->a = 0x1801; out->y = vram; \
+    setNZ16(out, in->x); \
+    uint16_t t = (uint16_t)(rom16(0x8384B1 + in->x) + 0x20); \
+    uint32_t sum = (uint32_t)t + in->a; \
+    out->c = sum > 0xFFFF; \
+    out->v = (~(t ^ in->a) & (t ^ sum) & 0x8000) != 0; \
+  }
+TILES_ADAPTER_20(upload_tiles_c280, 0xC280)
+TILES_ADAPTER_20(upload_tiles_c680, 0xC680)
+
 static void setSbc16(Regs* r, uint16_t a, uint16_t b) {  // C and V of A - b, carry set
   uint16_t d = (uint16_t)(a - b);
   r->c = a >= b;
@@ -1064,6 +1078,57 @@ static void call_wait_one_frame(const Regs* in, Regs* out) {
   uint32_t sum = 1u + now;
   out->v = (~(1u ^ now) & (1u ^ sum) & 0x8000) != 0;
 }
+
+// ---- func_8A8232 ----  A = the result, N Z C V of its ADC
+static void call_func_8A8232(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t q = (uint16_t)(rd16(DP + 0x36) >> 2);
+  out->a = func_8A8232();
+  setNZ16(out, out->a);
+  setAdc16(out, q, 0x0108);
+}
+
+static void fuzz_func_8A8232(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x36, (uint16_t)rnd());
+}
+
+// ---- func_82AD12 ----  registers kept; N V Z of the BIT on $047C
+static void call_func_82AD12(const Regs* in, Regs* out) {
+  uint16_t m = rd16(0x047C);
+  func_82AD12(in->a, in->x);
+  out->n = m >> 15;
+  out->v = (m >> 14) & 1;
+  out->z = (in->a & m) == 0;
+}
+
+static void fuzz_func_82AD12(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x047C, (uint16_t)rnd());
+}
+
+// ---- binary_to_bcd5 ($8A:BFD0) ----  A = $FFFF (the last SBC, 0 - 1), X = $FFFE, Y = 0,
+// N Z of the last DEY (zero), C = 0 (the last ROR takes a bit of the low nibble's zeros),
+// V = 0 (of that SBC)
+static void call_binary_to_bcd5(const Regs* in, Regs* out) {
+  (void)in;
+  binary_to_bcd5();
+  out->a = 0xFFFF;
+  out->x = 0xFFFE;
+  out->y = 0;
+  out->n = false;
+  out->z = true;
+  out->c = out->v = false;
+}
+
+static void fuzz_binary_to_bcd5(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint32_t k = rnd();
+  wr16ram(ram, DP + 0x42, (k & 3) == 0 ? (uint16_t)(rnd() % 100) : (k & 3) == 1 ? 0xFFFF : (uint16_t)rnd());
+}
+
+// ---- func_82F380 ----  RTS: nothing changes
+static void call_func_82F380(const Regs* in, Regs* out) { (void)in; (void)out; func_82F380(); }
 
 static void fuzz_func_8ABFBC(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
@@ -2352,6 +2417,18 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_mode7_view, ALL_OUTPUTS, .fuzz = fuzz_mode7_view},
   {.name = "draw_meter", .entry = 0x80DA5F, .end = 0x80DAAE, .source = "src/hud.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_draw_meter, ALL_OUTPUTS, .fuzz = fuzz_draw_meter},
+  {.name = "func_8A8232", .entry = 0x8A8232, .end = 0x8A823D, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_func_8A8232, ALL_OUTPUTS, .fuzz = fuzz_func_8A8232},
+  {.name = "func_82AD12", .entry = 0x82AD12, .end = 0x82AD21, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_func_82AD12, ALL_OUTPUTS, .fuzz = fuzz_func_82AD12},
+  {.name = "binary_to_bcd5", .entry = 0x8ABFD0, .end = 0x8AC004, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_binary_to_bcd5, ALL_OUTPUTS, .fuzz = fuzz_binary_to_bcd5},
+  {.name = "func_82F380", .entry = 0x82F380, .end = 0x82F381, .source = "src/misc.c",
+   .call = call_func_82F380, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "upload_tiles_c280", .entry = 0x8A8D81, .end = 0x8A8DA0, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_upload_tiles_c280, ALL_OUTPUTS, .fuzz = fuzz_upload_tiles},
+  {.name = "upload_tiles_c680", .entry = 0x8A8DA0, .end = 0x8A8DBF, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_upload_tiles_c680, ALL_OUTPUTS, .fuzz = fuzz_upload_tiles},
   {.name = "oam_clear_long", .entry = 0x80FBD8, .end = 0x80FBDC, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_clear_long, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "func_808FFC", .entry = 0x808FFC, .end = 0x809039, .source = "src/misc.c", .needM16 = true,

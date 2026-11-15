@@ -23,6 +23,10 @@ void upload_tiles_3300(uint16_t entry, uint16_t offset);
 void upload_tiles_3700(uint16_t entry, uint16_t offset);
 void upload_tiles_7700(uint16_t entry, uint16_t offset);
 void upload_tiles_7b00(uint16_t entry, uint16_t offset);
+// The same with the source $20 further on, to VRAM word $C280 / $C680 (the VRAM address
+// register keeps 15 bits: $4280 / $4680).
+void upload_tiles_c280(uint16_t entry, uint16_t offset);
+void upload_tiles_c680(uint16_t entry, uint16_t offset);
 
 // Unpack the stream at `src_bank`:`src` (the game's compression, see decompress) to
 // $7F:0000 and copy the result to video RAM from word `vram_word`. Returns the address

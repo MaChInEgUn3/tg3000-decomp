@@ -286,7 +286,7 @@ CODE_82856D:
     jsr.w wait_frames_82        ; $82862A
     lda.w #$0012                ; $82862D
     ldx.w #$4000                ; $828630
-    jsr.w $AD12                 ; $828633
+    jsr.w func_82AD12           ; $828633
     cli                         ; $828636
     lda.w #$003D                ; $828637
     bit.w $047C                 ; $82863A
@@ -1580,7 +1580,7 @@ CODE_82AC30:
     tax                         ; $82AC48
     lda.b $14                   ; $82AC49
     ora.w #$FF00                ; $82AC4B
-    jsr.w $AD12                 ; $82AC4E
+    jsr.w func_82AD12           ; $82AC4E
 CODE_82AC51:
     rts                         ; $82AC51
 func_82AC52:
@@ -1670,6 +1670,7 @@ CODE_82AD09:
 CODE_82AD0D:
     rts                         ; $82AD0D
     incbin !baserom:$12D0E..$12D12
+func_82AD12:
     bit.w $047C                 ; $82AD12
     bmi CODE_82AD20             ; $82AD15
     stz.w $0466                 ; $82AD17
@@ -4954,6 +4955,7 @@ CODE_82F34D:
 CODE_82F373:
     rts                         ; $82F373
     incbin !baserom:$17374..$17380
+func_82F380:
     rts                         ; $82F380
     bit.w $1E66                 ; $82F381
     bpl CODE_82F3B7             ; $82F384

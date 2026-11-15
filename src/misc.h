@@ -122,6 +122,20 @@ uint16_t func_808FFC(void);
 // table's address.
 void func_8AA4BE(uint32_t table);
 
+// $014A = ($0136 >> 2) + $0108.
+uint16_t func_8A8232(void);
+
+// Unless bit 15 of $047C is set: $0463 = a, $0465 = x, $0467 = 0 (byte; $0466 is then
+// overwritten by x's high byte).
+void func_82AD12(uint16_t a, uint16_t x);
+
+// $0142 in BCD into $0144 (four digits, ones lowest) and $0146 (the ten-thousands), by
+// repeated subtraction of the weights at $8A:CABA; $0142 ends as 0.
+void binary_to_bcd5(void);
+
+// An empty routine (RTS).
+void func_82F380(void);
+
 // Append the words (a, x, y, D+$14) to the four tables $1900, $1940, $19C0, $1980 at
 // index D+$8C, then advance it: D+$8C = ((index + 2) & $3F) + D+$8A (32 entries in a
 // ring, D+$8A choosing the ring). Returns the new index.

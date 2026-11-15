@@ -795,3 +795,41 @@ void func_8AA4BE(uint32_t table) {
     func_8AB680(bank | (uint16_t)(p + 4));
   }
 }
+
+// TG3000_ROUTINE($8A:8232) func_8A8232
+uint16_t func_8A8232(void) {
+  uint16_t v = (uint16_t)((rd16(DP + 0x36) >> 2) + 0x0108);
+  wr16(DP + 0x4A, v);
+  return v;
+}
+
+// TG3000_ROUTINE($82:AD12) func_82AD12
+void func_82AD12(uint16_t a, uint16_t x) {
+  if(rd16(0x047C) & 0x8000) return;
+  wr16(0x0466, 0);
+  wr16(0x0465, x);
+  wr16(0x0463, a);
+}
+
+// TG3000_ROUTINE($8A:BFD0) binary_to_bcd5
+void binary_to_bcd5(void) {
+  uint16_t v = rd16(DP + 0x42), lo = 0, hi = 0;
+  for(int x = 8; x >= 0; x -= 2) {
+    uint16_t w = rom16(BCD_WEIGHTS + (uint32_t)x);
+    for(; v >= w; v = (uint16_t)(v - w)) lo++;
+    for(int i = 0; i < 4; i++) {  // ASL lo, ROL hi
+      hi = (uint16_t)(hi << 1 | lo >> 15);
+      lo = (uint16_t)(lo << 1);
+    }
+  }
+  for(int i = 0; i < 4; i++) {  // LSR hi, ROR lo
+    lo = (uint16_t)(lo >> 1 | (hi & 1) << 15);
+    hi >>= 1;
+  }
+  wr16(DP + 0x42, v);
+  wr16(DP + 0x44, lo);
+  wr16(DP + 0x46, hi);
+}
+
+// TG3000_ROUTINE($82:F380) func_82F380
+void func_82F380(void) {}
