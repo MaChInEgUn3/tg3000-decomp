@@ -547,9 +547,12 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   and with merged input runs of 100,000+ bytes — the shadow has drifted out of step with the
   chip, so the whole-TAS counts measure the drift, not the commands. The first difference
   of all is at frame 1,385 (command `$01`, read at `$85:B73B`).
-- **Owner decision pending:** port the road commands by adapting snes-dsp4 (GPL-3.0-or-later,
-  clean room; keeps its copyright notice in `src/` and in the ports) and fix the commands
-  above with this oracle, or write our own by measurement. Either way the firmware stays an
+- **Decided by the owner (2026-11-15): we write our own.** The road commands go into
+  `src/dsp4.c` as our C, measured command by command against the firmware oracle on the
+  TAS (as the multiply was); snes-dsp4 is not a source for `src/` and stays only as the
+  refbench shadow in `ext/`. Reasons: it is far from exact on the commands that matter
+  most (`$08`, `$09` above), and the repo's C is uniformly ours, readable and verified
+  per routine. The firmware stays an
   oracle only (outputs compared; its program is never read or disassembled), and stream
   routines (`$81:89F5` drains what `$08` started) need the chip's state handed to a sample
   (a snapshot at entry, or a replay of the original's words).
@@ -885,7 +888,8 @@ the advisor, who settled them on 2026-11-13:
 
 **GPL-3.0-or-later**, chosen by the owner. This allows using
 `StackBlender/snes-dsp4` (GPL-3.0-or-later) both in the bench and as a source for the
-native DSP-4 C, with credit. The LICENSE file goes in with the GitHub setup.
+native DSP-4 C, with credit (the owner later chose to write the DSP-4 C ourselves:
+see "DSP-4 command catalogue"). The LICENSE file goes in with the GitHub setup.
 
 ## DSP-4 on the bench (2026-11-13)
 
