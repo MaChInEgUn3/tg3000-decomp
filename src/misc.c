@@ -1002,3 +1002,44 @@ bool func_8ABF76(void) {
   }
   return func_8AC03D();
 }
+
+// TG3000_ROUTINE($8A:BF4E) func_8ABF4E
+uint16_t func_8ABF4E(void) {
+  static const uint16_t words[2] = {0x038E, 0x03BD};
+  func_8AC024();
+  uint16_t a = 0;
+  for(int i = 0; i < 2; i++) {
+    wr16(DP + 0x44, rd16(words[i]));
+    wr16(DP + 0x46, rd16((uint16_t)(words[i] + 2)));
+    bcd_to_binary(rd16((uint16_t)(words[i] + 2)));
+    a = rd16(DP + 0x42);
+    wr16(words[i], a);
+  }
+  return a;
+}
+
+// TG3000_ROUTINE($8A:9202) func_8A9202
+uint16_t func_8A9202(uint16_t x) {
+  static const uint16_t tiles[10] = {0x04AA, 0x04AC, 0x04AE, 0x04C0, 0x04C2, 0x04C4, 0x04C6, 0x04C8, 0x04CA, 0x04CC};
+  uint16_t base = rd16(DP + 0x7A), y = rd16(DP + 0x7C), a = base;
+  uint32_t carry = 0;
+  for(int k = 0; k < 10; k++) {
+    if(k == 5) a = base;  // the second row restarts from D+$7A, keeping the carry
+    wr16((uint16_t)(0x06C0 + x + 2 * k), a);
+    if(k != 4 && k != 9) {
+      uint32_t sum = (uint32_t)a + 0x10 + carry;
+      carry = sum >> 16;
+      a = (uint16_t)sum;
+    }
+  }
+  for(int k = 0; k < 10; k++) wr16((uint16_t)(0x07C0 + x + 2 * k), k < 5 ? y : (uint16_t)(y + 0x10));
+  for(int k = 0; k < 10; k++) wr16((uint16_t)(0x05C0 + x + 2 * k), 1);
+  for(int k = 0; k < 10; k++) wr16((uint16_t)(0x08C0 + x + 2 * k), tiles[k]);
+  return (uint16_t)(x + 0x14);
+}
+
+// TG3000_ROUTINE($8A:8000) func_8A8000
+void func_8A8000(void) {}
+
+// TG3000_ROUTINE($8A:987F) func_8A987F
+void func_8A987F(void) {}

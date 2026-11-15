@@ -858,8 +858,9 @@ static void call_func_8ABFBC(const Regs* in, Regs* out) {
 // ---- bcd_to_binary ($8A:BF9E) ----  A as it leaves it, X = 10, Y = 0, N Z C of the final
 // CPX #10 (equal); V of the last ADC of a weight (the digits are the nibbles of $0144 and
 // the low nibble of $0146), or as on entry if every digit was 0.
-static void call_bcd_to_binary(const Regs* in, Regs* out) {
-  uint16_t lo = rd16(DP + 0x44), hi = rd16(DP + 0x46), sum = 0;
+// bcd_to_binary's last weight ADC: its C and V into `out` (left alone if every digit is 0)
+static void bcd_to_binary_cv(Regs* out, uint16_t lo, uint16_t hi) {
+  uint16_t sum = 0;
   for(int i = 0; i < 5; i++) {
     uint16_t digit = i < 4 ? (lo >> (4 * i)) & 0xF : hi & 0xF, w = rom16(0x8ACABA + 2 * i);
     for(; digit != 0; digit--) {
@@ -867,6 +868,10 @@ static void call_bcd_to_binary(const Regs* in, Regs* out) {
       sum = (uint16_t)(sum + w);
     }
   }
+}
+
+static void call_bcd_to_binary(const Regs* in, Regs* out) {
+  bcd_to_binary_cv(out, rd16(DP + 0x44), rd16(DP + 0x46));
   out->a = bcd_to_binary(in->a);
   out->x = 10;
   out->y = 0;
@@ -1307,6 +1312,45 @@ static void call_func_8ABF76(const Regs* in, Regs* out) {
   out->n = out->v = false;
   out->z = true;
 }
+
+// ---- func_8ABF4E ----  A = the second result (N Z of its LDA), X = 10, Y = 0, C = 1 (the
+// last CPX), V of the last weight ADC of either conversion (else as on entry)
+static void call_func_8ABF4E(const Regs* in, Regs* out) {
+  (void)in;
+  uint32_t a = (uint32_t)rd16(0x0390) << 16 | rd16(0x038E), b = (uint32_t)rd16(0x03BF) << 16 | rd16(0x03BD);
+  a >>= 12, b >>= 12;  // func_8AC024 (the bits above 32 are zero)
+  bcd_to_binary_cv(out, (uint16_t)a, (uint16_t)(a >> 16));
+  bcd_to_binary_cv(out, (uint16_t)b, (uint16_t)(b >> 16));
+  out->a = func_8ABF4E();
+  setNZ16(out, out->a);
+  out->x = 10;
+  out->y = 0;
+  out->c = true;
+}
+
+static void fuzz_func_8ABF4E(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const uint16_t words[4] = {0x038E, 0x0390, 0x03BD, 0x03BF};
+  for(int i = 0; i < 4; i++) wr16ram(ram, words[i], (rnd() & 3) ? (uint16_t)rnd() : 0);
+}
+
+// ---- func_8A9202 ----  X = x + $14, A = D+$7C (N Z of its PLA), C V of the ADC #$14
+static void call_func_8A9202(const Regs* in, Regs* out) {
+  uint16_t y = rd16(DP + 0x7C);
+  out->x = func_8A9202(in->x);
+  out->a = y;
+  setNZ16(out, y);
+  setAdc16(out, in->x, 0x14);
+}
+
+static void fuzz_func_8A9202(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)(0x14 * (rnd() % 8));
+  wr16ram(ram, DP + 0x7A, (rnd() & 3) ? (uint16_t)rnd() : (uint16_t)(0xFFC0 + rnd() % 0x40));
+  wr16ram(ram, DP + 0x7C, (uint16_t)rnd());
+}
+
+static void call_func_8A8000(const Regs* in, Regs* out) { (void)in; (void)out; func_8A8000(); }
+static void call_func_8A987F(const Regs* in, Regs* out) { (void)in; (void)out; func_8A987F(); }
 
 static void fuzz_func_8ABF76(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
@@ -2650,6 +2694,14 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_func_82AD12, ALL_OUTPUTS, .fuzz = fuzz_func_82AD12},
   {.name = "binary_to_bcd5", .entry = 0x8ABFD0, .end = 0x8AC004, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_binary_to_bcd5, ALL_OUTPUTS, .fuzz = fuzz_binary_to_bcd5},
+  {.name = "func_8ABF4E", .entry = 0x8ABF4E, .end = 0x8ABF76, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_func_8ABF4E, ALL_OUTPUTS, .fuzz = fuzz_func_8ABF4E},
+  {.name = "func_8A9202", .entry = 0x8A9202, .end = 0x8A92CF, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_func_8A9202, ALL_OUTPUTS, .fuzz = fuzz_func_8A9202},
+  {.name = "func_8A8000", .entry = 0x8A8000, .end = 0x8A8001, .rtl = true, .source = "src/misc.c",
+   .call = call_func_8A8000, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_8A987F", .entry = 0x8A987F, .end = 0x8A9880, .rtl = true, .source = "src/misc.c",
+   .call = call_func_8A987F, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "func_85CDAF", .entry = 0x85CDAF, .end = 0x85CDE5, .rtl = true, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_func_85CDAF, ALL_OUTPUTS, .fuzz = fuzz_func_85CDAF},
   {.name = "func_8A869A", .entry = 0x8A869A, .end = 0x8A86AB, .source = "src/misc.c", .needM16 = true,

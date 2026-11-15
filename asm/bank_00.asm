@@ -12995,7 +12995,7 @@ decompress_near:
     rep.b #$20                  ; $80FBCD
     plb                         ; $80FBCF
     rtl                         ; $80FBD0
-    jsl.l $8A8000               ; $80FBD1
+    jsl.l func_8A8000           ; $80FBD1
     jmp.w $8934                 ; $80FBD5
 oam_clear_long:
     jsr.w oam_clear             ; $80FBD8

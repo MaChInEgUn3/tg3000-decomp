@@ -184,6 +184,21 @@ void func_80B556(uint8_t a, uint16_t x, uint16_t y);
 // ($038E:$0390, $03BD:$03BF), then func_8AC03D. Returns its carry.
 bool func_8ABF76(void);
 
+// The inverse: func_8AC024, then bcd_to_binary of $038E:$0390 into $038E and of
+// $03BD:$03BF into $03BD. Returns the second result.
+uint16_t func_8ABF4E(void);
+
+// Ten entries at the word index x of the tables $06C0, $07C0, $05C0, $08C0 (two rows of
+// five): $06C0 = D+$7A, +$10, ... per row (the original chains its ADCs, so a carry out of
+// one row's sums adds 1 to the next sum), $07C0 = D+$7C (first row) and D+$7C + $10
+// (second), $05C0 = 1, $08C0 = the tiles $04AA, $04AC, $04AE, $04C0 ... $04CC. Returns
+// x + $14.
+uint16_t func_8A9202(uint16_t x);
+
+// Two empty long routines (a lone RTL each).
+void func_8A8000(void);
+void func_8A987F(void);
+
 // Append the words (a, x, y, D+$14) to the four tables $1900, $1940, $19C0, $1980 at
 // index D+$8C, then advance it: D+$8C = ((index + 2) & $3F) + D+$8A (32 entries in a
 // ring, D+$8A choosing the ring). Returns the new index.

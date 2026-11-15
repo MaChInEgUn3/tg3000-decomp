@@ -1,6 +1,7 @@
 ; bank $8A (file offset $050000)
 org $8A8000
 
+func_8A8000:
     rtl                         ; $8A8000
 clear_dp_scratch:
     ldx.w #$007E                ; $8A8001
@@ -376,7 +377,7 @@ CODE_8A86BC:
     lda.b $7E                   ; $8A86E2
     adc.w #$0014                ; $8A86E4
     sta.b $7A                   ; $8A86E7
-    jsr.w $9202                 ; $8A86E9
+    jsr.w func_8A9202           ; $8A86E9
     clc                         ; $8A86EC
     lda.b $84                   ; $8A86ED
     adc.w #$0020                ; $8A86EF
@@ -384,7 +385,7 @@ CODE_8A86BC:
     lda.b $7E                   ; $8A86F4
     adc.w #$00C8                ; $8A86F6
     sta.b $7A                   ; $8A86F9
-    jsr.w $9202                 ; $8A86FB
+    jsr.w func_8A9202           ; $8A86FB
     clc                         ; $8A86FE
     lda.b $84                   ; $8A86FF
     sta.b $7C                   ; $8A8701
@@ -1553,6 +1554,7 @@ CODE_8A91F7:
     brl CODE_8A9146             ; $8A91FE
 CODE_8A9201:
     rtl                         ; $8A9201
+func_8A9202:
     lda.b $7C                   ; $8A9202
     pha                         ; $8A9204
     lda.b $7A                   ; $8A9205
@@ -1843,7 +1845,7 @@ CODE_8A9686:
     plb                         ; $8A969B
     lda.w #$0100                ; $8A969C
     tcd                         ; $8A969F
-    jsl.l $8A987F               ; $8A96A0
+    jsl.l func_8A987F           ; $8A96A0
     plb                         ; $8A96A4
     lda.w #$0000                ; $8A96A5
     tcd                         ; $8A96A8
@@ -2029,6 +2031,7 @@ star_spawn_8a:
     lda.w #$7F00                ; $8A9878
     sta.w $0F04,y               ; $8A987B
     rts                         ; $8A987E
+func_8A987F:
     rtl                         ; $8A987F
     clc                         ; $8A9880
     adc.l $810024               ; $8A9881
@@ -3901,7 +3904,7 @@ CODE_8ABC9B:
     inc.w $0D7C                 ; $8ABE88
     jsl.l func_8A8EEF           ; $8ABE8B
     jsr.w clear_tilemap_7f      ; $8ABE8F
-    jsr.w $BF4E                 ; $8ABE92
+    jsr.w func_8ABF4E           ; $8ABE92
     lda.w #$FC5F                ; $8ABE95
     sta.w $0008                 ; $8ABE98
     inc.b $8E                   ; $8ABE9B
@@ -3972,6 +3975,7 @@ CODE_8ABF46:
     bne CODE_8ABF32             ; $8ABF49
     rep.b #$20                  ; $8ABF4B
     rts                         ; $8ABF4D
+func_8ABF4E:
     jsr.w func_8AC024           ; $8ABF4E
     lda.w $038E                 ; $8ABF51
     sta.b $44                   ; $8ABF54

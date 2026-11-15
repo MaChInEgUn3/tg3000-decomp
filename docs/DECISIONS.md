@@ -755,6 +755,18 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   (resets the `$01C6-$01FA` block, a superset of `func_80B58D`'s stores) and
   `func_8ABF76` (`binary_to_bcd5` of `$038E` and `$03BD` in place, then `func_8AC03D`).
 
+## Hardware-free batch 12 (port-batch-12, 2026-11-15)
+
+- `func_8A9202` (786 calls): ten entries of four object tables (`$06C0/$07C0/$05C0/$08C0`)
+  in two rows of five. Its x positions come from a chain of `ADC #$10` without CLC in
+  between, and the second row starts again from `D+$7A` keeping the last carry; the C
+  carries it the same way (the fuzz puts `D+$7A` near `$FFFF` to exercise it).
+- `func_8ABF4E`: the inverse of `func_8ABF76` (`func_8AC024`, then `bcd_to_binary` of
+  both numbers in place); `bcd_to_binary`'s adapter is split so that both share its C/V
+  model. `func_8A8000`, `func_8A987F`: lone RTLs.
+- Next in line: `$85:BC20` (18,507 calls, swaps of `$00E0/$00E4`, `$1E32/$1E36`, ...) and
+  `$80:D6F3` (math unit).
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other
