@@ -518,6 +518,42 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   (fog or horizon, probably). Its one unexecuted byte run (`$82:ACCB`, `LDA #$0000`) is
   fuzz-only.
 
+## DSP-4 command catalogue (2026-11-15)
+
+- `tools/refbench --dsp4-catalogue FILE` runs StackBlender's clean-room chip as a *shadow*
+  of the real firmware, fed the same data writes; its busy flag gives command boundaries
+  (valid while it agrees with the chip), and every byte the firmware returns is compared
+  with the shadow's. Per command: count, input/output bytes, which instructions write and
+  read, and how many runs had a different byte. (Measuring tool only: the shadow's private
+  fields are read by including its header with `private` defined as `public`.)
+- **The game uses 10 commands.** First 30,000 frames of the TAS (before any shadow drift):
+
+  | cmd | runs | runs with a different byte | in → out bytes | written / read by |
+  |---|---|---|---|---|
+  | `$00` multiply | 1,278,666 | 28 | 4 → 4 | 43 sites (`$82:A590`…) |
+  | `$0A` (car physics) | 163,630 | **0** | 6 → 7 | `$81:F90E`…, `$83:E8B2`… |
+  | `$03` (sprites start) | 9,600 | **0** | 10 → 5 | `$82:CBE1`, `$82:D8FA`… |
+  | `$0B` (one sprite) | 9,600 | **0** | 6 → 5 | `$82:D8FA`… |
+  | `$11` | 3,392 | **0** | 8 → 1 | `$81:E72B`… |
+  | `$01` road, one track | 9,311 | 3 | ~258 → 468-946 | `$85:B53B`… / `$85:B641`… |
+  | `$07` road, rows given | 9,596 | 278 | ~354 → 360-834 | `$85:B95F`… / `$85:BA47`… |
+  | `$06` high sprite table | 9,306 | 411 | 0 → 31 | `$82:AE1C` / `$82:AE21`… |
+  | `$09` sprites | 9,600 | 2,454 | up to 4,754 → 2,864 | `$82:CC8F`… / `$82:DDDD`… |
+  | `$08` road, two tracks | 9,595 | **6,907** | ~600 → up to 1,003 | `$81:861A`… / `$81:878D`, `$81:89FA`… |
+
+  The 28 multiply runs that differ are drift (our `dsp4_multiply` matches the firmware in
+  all 15.9M), i.e. the shadow's boundaries slipped after a road command differed.
+- Whole TAS: from frame ~57,800 even `$0A`/`$03`/`$0B`/`$11` start to differ, all at once
+  and with merged input runs of 100,000+ bytes — the shadow has drifted out of step with the
+  chip, so the whole-TAS counts measure the drift, not the commands. The first difference
+  of all is at frame 1,385 (command `$01`, read at `$85:B73B`).
+- **Owner decision pending:** port the road commands by adapting snes-dsp4 (GPL-3.0-or-later,
+  clean room; keeps its copyright notice in `src/` and in the ports) and fix the commands
+  above with this oracle, or write our own by measurement. Either way the firmware stays an
+  oracle only (outputs compared; its program is never read or disassembled), and stream
+  routines (`$81:89F5` drains what `$08` started) need the chip's state handed to a sample
+  (a snapshot at entry, or a replay of the original's words).
+
 ## Coverage sources (2026-11-14)
 
 - **Only runs that are known to follow the game's intended path feed

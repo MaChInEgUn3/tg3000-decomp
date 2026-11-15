@@ -28,7 +28,14 @@
 // dsp4_multiply (the first mismatches go to FILE; totals to stderr).
 #include "libsnes.hpp"
 
+#include <cstddef>
+#include <cstdint>
+#include <vector>
+// The catalogue reads the clean-room chip's busy flag and command (a measuring tool only;
+// the chip's code is not modified)
+#define private public
 #include "dsp4/Dsp4.h"
+#undef private
 
 #include <cstdio>
 #include <cstdlib>
@@ -199,8 +206,12 @@ static void finishCapture() {
   cap.active = false;
 }
 
+static bool catalogueOn;
+static void catalogueAccess(unsigned addr, unsigned char v, bool write);
+
 static void rwHook(unsigned addr, unsigned char v, bool write) {
   if(!isDsp4Data(addr)) return;
+  if(catalogueOn) catalogueAccess(addr, v, write);
   if(write && isCommand0Site(lastPc) && !(cap.active && cap.nw == 1)) {  // a new command $0000
     finishCapture();
     cap = MulCapture{};
@@ -220,6 +231,98 @@ static void rwHook(unsigned addr, unsigned char v, bool write) {
     return;
   }
   finishCapture();
+}
+
+// ---- DSP-4 catalogue: the clean-room chip runs as a shadow of the firmware, fed the same
+// data writes; its busy flag gives command boundaries, and each byte the firmware returns
+// is compared with the shadow's ----
+struct CmdStats {
+  unsigned long count, mismatched, readBytes, wrongBytes;
+  int minIn, maxIn, minOut, maxOut;
+  uint32_t writers[8], readers[8];
+  int nWriters, nReaders;
+  long firstBadFrame;
+};
+static dsp4::Dsp4 shadow;
+static CmdStats cmdStats[32];
+static long curFrame;
+static int curCmd = -1, curIn, curOut;
+static bool curBad;
+static long firstMismatchFrame = -1;
+static int firstMismatchCmd = -1;
+static uint32_t firstMismatchPc;
+static unsigned long idleReads;
+
+static void notePc(uint32_t* list, int* n, uint32_t pc) {
+  for(int i = 0; i < *n; i++) if(list[i] == pc) return;
+  if(*n < 8) list[(*n)++] = pc;
+}
+
+static void endCommand() {
+  if(curCmd < 0) return;
+  CmdStats& c = cmdStats[curCmd];
+  c.count++;
+  if(curBad) c.mismatched++;
+  if(c.count == 1 || curIn < c.minIn) c.minIn = curIn;
+  if(curIn > c.maxIn) c.maxIn = curIn;
+  if(c.count == 1 || curOut < c.minOut) c.minOut = curOut;
+  if(curOut > c.maxOut) c.maxOut = curOut;
+  curCmd = -1;
+}
+
+static void catalogueAccess(unsigned addr, unsigned char v, bool write) {
+  bool wasBusy = shadow.m.busy != 0;
+  if(write) {
+    shadow.writeData(v);
+    if(!wasBusy && shadow.m.busy) {  // a command word just completed
+      endCommand();
+      curCmd = shadow.m.command & 31;
+      curIn = curOut = 0;
+      curBad = false;
+      notePc(cmdStats[curCmd].writers, &cmdStats[curCmd].nWriters, lastPc);
+    } else if(curCmd >= 0) {
+      curIn++;
+      notePc(cmdStats[curCmd].writers, &cmdStats[curCmd].nWriters, lastPc);
+    }
+  } else {
+    uint8_t mine = shadow.readData();
+    if(curCmd < 0) idleReads++;
+    else {
+      CmdStats& c = cmdStats[curCmd];
+      curOut++;
+      c.readBytes++;
+      notePc(c.readers, &c.nReaders, lastPc);
+      if(mine != v) {
+        c.wrongBytes++;
+        if(!curBad && c.firstBadFrame == 0) c.firstBadFrame = curFrame;
+        curBad = true;
+        if(firstMismatchFrame < 0) { firstMismatchFrame = curFrame; firstMismatchCmd = curCmd; firstMismatchPc = lastPc; }
+      }
+    }
+  }
+  if(wasBusy && !shadow.m.busy) endCommand();
+  (void)addr;
+}
+
+static void writeCatalogue(const std::string& path) {
+  endCommand();
+  FILE* f = std::fopen(path.c_str(), "w");
+  if(f == nullptr) { std::perror(path.c_str()); return; }
+  std::fprintf(f, "# cmd  count  mismatched  bytes-read  wrong-bytes  in-bytes  out-bytes  first-bad-frame  writers / readers (instruction PCs)\n");
+  for(int k = 0; k < 32; k++) {
+    CmdStats& c = cmdStats[k];
+    if(c.count == 0) continue;
+    std::fprintf(f, "$%02X %9lu %9lu %11lu %11lu  %d-%d  %d-%d  %ld  w:", k, c.count, c.mismatched, c.readBytes, c.wrongBytes,
+                 c.minIn, c.maxIn, c.minOut, c.maxOut, c.firstBadFrame);
+    for(int i = 0; i < c.nWriters; i++) std::fprintf(f, " %06X", c.writers[i]);
+    std::fprintf(f, " r:");
+    for(int i = 0; i < c.nReaders; i++) std::fprintf(f, " %06X", c.readers[i]);
+    std::fprintf(f, "\n");
+  }
+  std::fprintf(f, "# reads with no command running: %lu\n", idleReads);
+  if(firstMismatchFrame >= 0)
+    std::fprintf(f, "# first mismatch: frame %ld, command $%02X, at $%06X\n", firstMismatchFrame, firstMismatchCmd, firstMismatchPc);
+  std::fclose(f);
 }
 
 static std::string firmwarePath;
@@ -292,7 +395,7 @@ int main(int argc, char** argv) {
   }
   long maxFrames = -1, every = 0, wramAt = -1, offset = 0;
   bool p2pad = false, bizhawk = false;
-  std::string coveragePath, mulPath;
+  std::string coveragePath, mulPath, cataloguePath;
   const char* dumpDir = nullptr;
   const char* wramFile = nullptr;
   FILE* hashes = nullptr;
@@ -307,6 +410,7 @@ int main(int argc, char** argv) {
     else if(!std::strcmp(argv[i], "--bizhawk")) bizhawk = true;
     else if(!std::strcmp(argv[i], "--coverage") && i + 1 < argc) coveragePath = argv[++i];
     else if(!std::strcmp(argv[i], "--dsp4-mul") && i + 1 < argc) mulPath = argv[++i];
+    else if(!std::strcmp(argv[i], "--dsp4-catalogue") && i + 1 < argc) cataloguePath = argv[++i];
     else if(!std::strcmp(argv[i], "--wram-at") && i + 2 < argc) { wramAt = std::atol(argv[++i]); wramFile = argv[++i]; }
     else { std::fprintf(stderr, "unknown option %s\n", argv[i]); return 2; }
   }
@@ -321,10 +425,9 @@ int main(int argc, char** argv) {
   coverageOn = !coveragePath.empty();
   SNES::refbench_exec_hook = execHook;
   if(coverageOn) SNES::refbench_read_hook = covRead;
-  if(!mulPath.empty()) {
-    mulLog = std::fopen(mulPath.c_str(), "w");
-    SNES::refbench_rw_hook = rwHook;
-  }
+  if(!mulPath.empty()) mulLog = std::fopen(mulPath.c_str(), "w");
+  catalogueOn = !cataloguePath.empty();
+  if(!mulPath.empty() || catalogueOn) SNES::refbench_rw_hook = rwHook;
   FILE* log = std::fopen(argv[2], "r");
   if(log == nullptr) { std::perror(argv[2]); return 1; }
 
@@ -399,6 +502,7 @@ int main(int argc, char** argv) {
     else if(reset) snes_reset();
     snes_run();
     frame++;
+    curFrame = frame;
     unsigned long writes = SNES::necdsp_writes - writesBefore;
     writesBefore = SNES::necdsp_writes;
     if(writes > 0) racing++;
@@ -411,6 +515,7 @@ int main(int argc, char** argv) {
   }
   std::fclose(log);
   if(hashes) std::fclose(hashes);
+  if(catalogueOn) writeCatalogue(cataloguePath);
   if(!mulPath.empty()) {
     finishCapture();
     std::fprintf(stderr, "DSP-4 command $0000: %lu cases, %lu match dsp4_multiply, %lu differ (%lu with skipped bytes)\n",
