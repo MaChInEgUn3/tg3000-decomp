@@ -22,3 +22,8 @@ uint16_t wait_flag_76(uint16_t dp) {
 
 // TG3000_ROUTINE($8A:B212) wait_one_frame
 void wait_one_frame(void) { wait_frames(1); }
+
+// TG3000_ROUTINE($85:95BD) irq_ack_only
+//
+// The original reads $4210 (BIT) to acknowledge; the platform acknowledges for itself.
+void irq_ack_only(void) {}

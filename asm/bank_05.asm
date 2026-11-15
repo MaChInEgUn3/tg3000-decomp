@@ -1312,6 +1312,7 @@ CODE_858A84:
     plb                         ; $8593A5
     rts                         ; $8593A6
     incbin !baserom:$293A7..$295BD
+irq_ack_only:
     rep.b #$20                  ; $8595BD
     phb                         ; $8595BF
     phk                         ; $8595C0

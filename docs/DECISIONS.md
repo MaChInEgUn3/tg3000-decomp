@@ -868,7 +868,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   change the C.
 - **No two enabled channels ever share a target** (0 cases), so platform calls can be
   keyed by target and mode, not by channel number.
-- **Next:** the interface. The data says the game's HDMA is (a) per-line tables of scroll,
+- **Handler rows in the differential test (hdma-3, 2026-11-15):**
+  - **Entry and return:** a row with `.rti` is entered at the vector target and returns
+    with RTI to the pushed PC and bank, with SP back past the interrupt frame. The adapter
+    restores P from the frame (`Regs.sp` gives it the entry SP), with the M and X widths;
+    8-bit index registers drop their high bytes.
+  - **Acknowledge reads:** reads of `$4210-$4212` are free in these rows. If the C needed
+    their value, its outputs would differ and the comparison would catch it.
+  - **Inside a waiter's recording:** handlers entered while a waiting sample records its
+    interrupts are now sampled too, and only samples that began inside the handler see its
+    instructions and accesses. Before this, those entries were skipped.
+  - **Fuzz:** it pushes an interrupt frame (PB, PC = `$8000`, a random P with decimal off).
+    Each case now also clears the CPU's decimal flag: without it, an RTI case left decimal
+    mode on and broke every later routine's fuzz, which is how it was found.
+  - **First handler:** `irq_ack_only` (IRQ `$85:95BD`, acknowledge and return): live 2/2,
+    fuzz 500/500. A negative row that leaves a WRAM byte behind fails.
+ (a) per-line tables of scroll,
   window, palette and Mode 7 parameters, built in WRAM by game code, and (b) a CPU-timed
   BG-mode split. Both are platform services for the ports (`video_*`), to be designed
   from these tables when the first table-building routine (`$85:BC20`) is ported.

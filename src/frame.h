@@ -17,4 +17,10 @@ uint16_t wait_flag_76(uint16_t dp);
 // wait_frames(1), the caller's A kept.
 void wait_one_frame(void);
 
+// Interrupt handlers (docs/DECISIONS.md, "HDMA, measured"): called by the platform where the
+// console takes the interrupt.
+
+// IRQ $85:95BD: acknowledges the interrupt and returns; nothing else.
+void irq_ack_only(void);
+
 #endif

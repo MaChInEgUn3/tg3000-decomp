@@ -88,7 +88,7 @@ static const char* const ppuFieldName[PF_COUNT] = {
 typedef struct {
   int idx;
   Regs entryRegs;
-  uint16_t entrySp, minSp, retPc;
+  uint16_t entrySp, minSp, retPc, retSp;
   uint8_t retBank;
   uint32_t interruptsAtEntry, insns;
   bool hwAccess, mathWritten, leftExtent, setupPending, vramAdrPending, effectOverflow;
@@ -120,6 +120,8 @@ static int irqOwner = -1;  // depth of the sample that records them
 static int irqCount, irqReplayed, irqLimit;
 static bool irqActive, irqOverflow;
 static uint16_t irqReturnSp;
+static int irqBaseDepth;  // samples from this depth on began inside the handler being recorded
+static int accessBase;    // the first sample a hardware access belongs to
 static uint32_t irqSeen;
 static jmp_buf cAbort;
 static bool cWaitedTooLong;
@@ -177,7 +179,7 @@ static bool ppuFieldWrite(uint32_t adr) {
   bool scroll = a >= 0x210D && a <= 0x2110, m7 = a == 0x210D || a == 0x210E || (a >= 0x211B && a <= 0x2120);
   if(!scroll && !m7) return false;
   bool hofs = scroll && (a & 1);  // $210D/$210F: horizontal; $210E/$2110: vertical
-  for(int k = 0; k < depth; k++) {
+  for(int k = accessBase; k < depth; k++) {
     Sample* smp = &samples[k];
     uint16_t fresh = 0, stale = 0;
     if(m7) {
@@ -242,7 +244,7 @@ static void recordKick(uint8_t val) {
       // a fixed source writes the same byte to both halves of every word
       e = (Effect){EFFECT_VRAM_FILL, ppu->vramPointer, peekByte(src), size};
     }
-    for(int k = 0; k < depth; k++) {
+    for(int k = accessBase; k < depth; k++) {
       Sample* smp = &samples[k];
       if(smp->effectCount < MAX_EFFECTS) smp->effects[smp->effectCount++] = e;
       else smp->effectOverflow = true;
@@ -277,7 +279,7 @@ static uint32_t norm(uint32_t adr) {  // ROM banks $00-$3F/$40-$7D -> $80+ mirro
 
 static Regs readRegs(const Cpu* cpu) {
   Regs r = {cpu->a, cpu->x, cpu->y, cpu->dp, cpu->db, cpu->n, cpu->v, cpu->z, cpu->c,
-            cpu->e || cpu->mf, cpu->e || cpu->xf, cpu->e};
+            cpu->e || cpu->mf, cpu->e || cpu->xf, cpu->e, cpu->sp};
   return r;
 }
 
@@ -327,9 +329,12 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
 }
 
 void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
-  if(depth == 0 || irqActive) return;  // a handler's hardware is its own
+  // a handler recorded for a waiting sample: its hardware is its own, and only the samples
+  // that began inside it see it
+  accessBase = (irqOwner >= 0 && irqActive) ? irqBaseDepth : 0;
+  if(depth <= accessBase) return;
   if(isDsp4(adr)) {  // before the ROM test: $30:8000 reads look like ROM reads to it
-    for(int k = 0; k < depth; k++) {
+    for(int k = accessBase; k < depth; k++) {
       Sample* smp = &samples[k];
       if(smp->hwAccess || dsp4Step(smp, adr, val, write)) continue;
       smp->hwWhy = "DSP-4 traffic other than whole multiplies";
@@ -342,7 +347,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   if(write && ppuFieldWrite(adr)) return;
   if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x420B) {
     recordKick(val);
-    for(int k = 0; k < depth; k++) samples[k].setupPending = samples[k].vramAdrPending = false;
+    for(int k = accessBase; k < depth; k++) samples[k].setupPending = samples[k].vramAdrPending = false;
     return;
   }
   if(((adr >> 16) & 0x7F) < 0x40 && (write ? ((adr & 0xFFFF) == 0x2118 || (adr & 0xFFFF) == 0x2119)
@@ -351,9 +356,11 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
     else mode7ProductRead(adr);
     return;
   }
-  for(int k = 0; k < depth; k++) {
+  for(int k = accessBase; k < depth; k++) {
     Sample* smp = &samples[k];
     if(smp->hwAccess) continue;
+    uint16_t lo16 = adr & 0xFFFF;
+    if(!write && table[smp->idx].rti && ((adr >> 16) & 0x7F) < 0x40 && lo16 >= 0x4210 && lo16 <= 0x4212) continue;
     if(isMathReg(adr, write)) {
       if(write) { smp->mathWritten = true; continue; }
       if(smp->mathWritten) continue;
@@ -380,7 +387,7 @@ static void vramWordWrite(uint32_t adr, uint8_t val) {
   const Ppu* ppu = snes->ppu;
   bool mode = ppu->vramIncrementOnHigh && ppu->vramIncrement == 1 && ppu->vramRemapMode == 0;
   bool high = (adr & 0xFFFF) == 0x2119;
-  for(int k = 0; k < depth; k++) {
+  for(int k = accessBase; k < depth; k++) {
     Sample* smp = &samples[k];
     if(smp->hwAccess) continue;
     const char* why = NULL;
@@ -411,7 +418,7 @@ static void vramWordWrite(uint32_t adr, uint8_t val) {
 // written inside the sample, from bytes written inside it.
 static void mode7ProductRead(uint32_t adr) {
   uint16_t need = (uint16_t)(1u << PF_M7A | 1u << PF_M7B);
-  for(int k = 0; k < depth; k++) {
+  for(int k = accessBase; k < depth; k++) {
     Sample* smp = &samples[k];
     if(smp->hwAccess || ((smp->ppuWritten & need) == need && !(smp->ppuStale & need))) continue;
     smp->hwWhy = "reads a Mode 7 product it did not set up";
@@ -630,8 +637,14 @@ static void startSample(int idx, const Cpu* cpu) {
     .idx = idx, .entryRegs = readRegs(cpu), .entrySp = sp, .minSp = sp,
     .retPc = (uint16_t)((snes->ram[(uint16_t)(sp + 1)] | (snes->ram[(uint16_t)(sp + 2)] << 8)) + 1),
     .retBank = r->rtl ? snes->ram[(uint16_t)(sp + 3)] : cpu->k,
+    .retSp = (uint16_t)(sp + (r->rtl ? 3 : 2)),
     .interruptsAtEntry = cpu_interruptCount,
   };
+  if(r->rti) {  // the interrupt frame: P, PC (low, high), PB
+    smp->retPc = (uint16_t)(snes->ram[(uint16_t)(sp + 2)] | (snes->ram[(uint16_t)(sp + 3)] << 8));
+    smp->retBank = snes->ram[(uint16_t)(sp + 4)];
+    smp->retSp = (uint16_t)(sp + 4);
+  }
   for(int f = 0; f < PF_COUNT; f++) smp->ppuStart[f] = ppuFieldValue(f);
   // A waiting routine records the interrupts it waits through, unless an outer waiting
   // sample already does (a wipe that waits through wait_frames): the outer one keeps them
@@ -696,9 +709,10 @@ static void watchAll(const Cpu* cpu) {
 
 // Every entry of a registered routine counts and is checked against its contract; one in
 // SAMPLE_STRIDE becomes a compared sample, nested inside other samples if need be.
-static void checkEntries(Cpu* cpu, uint32_t pc) {
+static void checkEntries(Cpu* cpu, uint32_t pc, bool inHandler) {
   for(int i = 0; i < tableCount; i++) {
     if(table[i].entry != pc) continue;
+    if(inHandler && !table[i].rti) return;  // inside a recorded handler: only handler rows
     Stats* s = &stats[i];
     Regs in = readRegs(cpu);
     noteContract(s, &table[i], &in);
@@ -728,27 +742,28 @@ void difftest_on_insn(Cpu* cpu) {
         else {
           memcpy(irqPre[irqCount], snes->ram, TG3000_WRAM_SIZE);
           irqActive = true;
+          irqBaseDepth = depth;
           irqReturnSp = (uint16_t)(cpu->sp + (cpu->e ? 3 : 4));
         }
       }
     }
-    if(irqActive) {
-      for(int k = 0; k < depth; k++) if(cpu->sp < samples[k].minSp) samples[k].minSp = cpu->sp;
-      return;
-    }
   }
+  // inside a handler while a waiting sample records it, only the handler's own samples
+  // (interrupt-handler rows) go on; the others just see its stack use
+  bool inHandler = irqOwner >= 0 && irqActive;
+  int base = inHandler ? irqBaseDepth : 0;
+  if(inHandler) for(int k = 0; k < base && k < depth; k++) if(cpu->sp < samples[k].minSp) samples[k].minSp = cpu->sp;
   // the innermost sample that has returned (normally the innermost one)
-  for(int k = depth - 1; k >= 0; k--) {
+  for(int k = depth - 1; k >= base; k--) {
     Sample* smp = &samples[k];
-    uint16_t back = table[smp->idx].rtl ? 3 : 2;
-    if(cpu->pc == smp->retPc && cpu->k == smp->retBank && cpu->sp == (uint16_t)(smp->entrySp + back)) {
+    if(cpu->pc == smp->retPc && cpu->k == smp->retBank && cpu->sp == smp->retSp) {
       for(int j = depth - 1; j > k; j--) stats[samples[j].idx].abandoned++;  // left without returning
       depth = k + 1;
       finishSample(k, cpu);
       break;
     }
   }
-  for(int k = 0; k < depth; k++) {
+  for(int k = base; k < depth; k++) {
     Sample* smp = &samples[k];
     const Routine* r = &table[smp->idx];
     if(pc >= r->entry && pc < r->end) stats[smp->idx].visited[pc - r->entry] = true;
@@ -765,8 +780,8 @@ void difftest_on_insn(Cpu* cpu) {
       break;
     }
   }
-  watchAll(cpu);
-  if(!fuzzing) checkEntries(cpu, pc);
+  if(!inHandler) watchAll(cpu);
+  if(!fuzzing) checkEntries(cpu, pc, inHandler);
 }
 
 void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
@@ -824,12 +839,18 @@ void difftest_fuzz(int iterations) {
       Cpu* cpu = snes->cpu;
       cpu->nmiWanted = cpu->irqWanted = cpu->intWanted = false;
       cpu->i = true;
+      cpu->d = false;  // binary mode (an earlier case's RTI may have restored a P with D set)
       cpu->e = false;
       cpu->mf = in.m8; cpu->xf = in.x8;
       cpu->a = in.a; cpu->x = in.x; cpu->y = in.y; cpu->dp = in.d; cpu->db = in.db;
       cpu->n = in.n; cpu->v = in.v; cpu->z = in.z; cpu->c = in.c;
       // sentinel return to $8000 of the entry bank (a BRA * trap), stack at $1F00
-      if(r->rtl) {
+      if(r->rti) {  // an interrupt frame: PB, PC = $8000, a random P
+        snes->ram[0x1F00] = r->entry >> 16;
+        snes->ram[0x1EFF] = 0x80; snes->ram[0x1EFE] = 0x00;
+        snes->ram[0x1EFD] = (uint8_t)(fuzzRandom() & ~0x08);  // decimal mode off
+        cpu->sp = 0x1EFC;
+      } else if(r->rtl) {
         snes->ram[0x1F00] = r->entry >> 16;
         snes->ram[0x1EFF] = 0x7F; snes->ram[0x1EFE] = 0xFF;
         cpu->sp = 0x1EFD;

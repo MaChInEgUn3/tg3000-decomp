@@ -14,6 +14,7 @@ typedef struct {
   uint16_t a, x, y, d;
   uint8_t db;
   bool n, v, z, c, m8, x8, e;
+  uint16_t sp;  // at entry (an interrupt handler's adapter reads the pushed P through it)
 } Regs;
 
 // A ported routine: where the original lives and how to call the C for it.
@@ -22,6 +23,9 @@ typedef struct {
   uint32_t entry;          // CPU address, $80-$FF mirror
   uint32_t end;            // extent [entry, end): instruction starts in it must all be covered
   bool rtl;                // returns with RTL (else RTS)
+  bool rti;                // an interrupt handler entered at its vector target: returns with
+                           // RTI to the pushed PC (its reads of $4210-$4212, the interrupt
+                           // acknowledges, are free)
   const char* source;      // src/ file holding the C, hashed into the results
   bool needM16, needX16;   // entry contract: register widths the C assumes (else either)
   // Run the C from `in` (g_ram already holds the entry WRAM); fill the outputs in `out`

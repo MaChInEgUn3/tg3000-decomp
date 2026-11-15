@@ -1406,6 +1406,27 @@ static void fuzz_scroll_tables_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   wr16ram(ram, 0x1E40, (uint16_t)rnd());
 }
 
+// Interrupt handlers return with RTI: P comes back from the interrupt frame (at SP + 1 on
+// entry), with its M and X widths; the registers they save they restore.
+static void restoreP(const Regs* in, Regs* out) {
+  uint8_t p = rd8(in->sp + 1u);
+  out->n = p & 0x80; out->v = p & 0x40; out->z = p & 0x02; out->c = p & 0x01;
+  out->m8 = p & 0x20; out->x8 = p & 0x10;
+  if(out->x8) { out->x &= 0xFF; out->y &= 0xFF; }  // 8-bit index registers drop their high bytes
+}
+
+// ---- irq_ack_only ($85:95BD) ----
+static void call_irq_ack_only(const Regs* in, Regs* out) {
+  irq_ack_only();
+  restoreP(in, out);
+}
+
+// Negative test: irq_ack_only that leaves a byte behind (the RTI row must see it).
+static void call_irq_ack_only_wrong(const Regs* in, Regs* out) {
+  wr8(0x1F80, (uint8_t)(rd8(0x1F80) + 1));
+  restoreP(in, out);
+}
+
 static void call_func_8A8000(const Regs* in, Regs* out) { (void)in; (void)out; func_8A8000(); }
 static void call_func_8A987F(const Regs* in, Regs* out) { (void)in; (void)out; func_8A987F(); }
 
@@ -2751,6 +2772,8 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_func_82AD12, ALL_OUTPUTS, .fuzz = fuzz_func_82AD12},
   {.name = "binary_to_bcd5", .entry = 0x8ABFD0, .end = 0x8AC004, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_binary_to_bcd5, ALL_OUTPUTS, .fuzz = fuzz_binary_to_bcd5},
+  {.name = "irq_ack_only", .entry = 0x8595BD, .end = 0x8595C7, .rti = true, .source = "src/frame.c",
+   .call = call_irq_ack_only, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "scroll_tables_build", .entry = 0x85BC20, .end = 0x85BED1, .rtl = true, .source = "src/scroll_tables.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_scroll_tables_build, ALL_OUTPUTS,
    .fuzz = fuzz_scroll_tables_build},
@@ -3096,5 +3119,7 @@ const Routine negativeRoutines[] = {
    .fixedD = true, .call = call_mode7_zoom_view_wrong, ALL_OUTPUTS, .fuzz = fuzz_mode7_zoom_view},
   {.name = "draw_meter_wrong", .entry = 0x80DA5F, .end = 0x80DAAE, .source = "src/hud.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_draw_meter_wrong, ALL_OUTPUTS, .fuzz = fuzz_draw_meter},
+  {.name = "irq_ack_only_wrong", .entry = 0x8595BD, .end = 0x8595C7, .rti = true, .source = "src/frame.c",
+   .call = call_irq_ack_only_wrong, ALL_OUTPUTS, .fuzz = fuzz_nothing},
 };
 const int negativeRoutineCount = sizeof negativeRoutines / sizeof negativeRoutines[0];
