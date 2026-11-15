@@ -1541,6 +1541,69 @@ static void fuzz_func_82A9B7(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x028D, (uint16_t)rnd());
 }
 
+// the first $7E:4E2D value: bits 8-23 of the product - $B00, at most $3000 (by sign)
+static uint16_t cap_after_first(uint16_t pv) {
+  uint16_t v = (uint16_t)(pv - 0x0B00);
+  return ((uint16_t)(v - 0x3000) & 0x8000) ? v : 0x3000;
+}
+
+// ---- func_82AC52 ($82:AC52) ----  three exits: $0244 bit 0 clear (A = $0244 >> 1, C = 0,
+// V of the first SBC #$B00); bit 2 clear (A = $0244, N of it, Z = 1, C/V of SBC $14); else
+// A = the stored $7E:4E2D (N/Z of its CMP or of LDA #$3000, C of the CMP, V of SBC #$B00).
+static void call_func_82AC52(const Regs* in, Regs* out) {
+  (void)in;
+  uint32_t p = (uint32_t)dsp4_multiply((int16_t)rd16(0x0213), 0x0300);
+  uint16_t pv = (uint16_t)(p >> 8), flags = rd16(0x0244);
+  uint32_t a = ((uint32_t)rd16(0xFAB6) << 16) | rd16(0xFAB4), b = ((uint32_t)rd16(0x0226) << 16) | rd16(0x0224);
+  uint16_t far = (uint16_t)((a - b) >> 16);
+  if(far & 0x8000) far = 0;
+  uint16_t far2 = (uint16_t)(far << 1);
+  func_82AC52();
+  Regs t;
+  if(!(flags & 1)) {
+    out->a = (uint16_t)(flags >> 1);
+    setNZ16(out, out->a);
+    out->c = false;
+    setSbc16(&t, pv, 0x0B00);
+    out->v = t.v;
+    return;
+  }
+  if(!(flags & 4)) {
+    out->a = flags;
+    out->n = (flags & 0x8000) != 0;
+    out->z = true;
+    setSbc16(out, 0xB0, far2);
+    return;
+  }
+  uint16_t stored = rd16(0x4E2D);
+  // the quotient's value before the clamp, from the first $7E:4E2D value
+  uint16_t w0 = (uint16_t)(cap_after_first(pv) + 0x0B00);
+  if(w0 & 0x8000) w0 = 0;
+  uint16_t d = (uint16_t)(rd16(0xFAB6) - rd16(0x0226));
+  if(d & 0x8000) d = 0;
+  d = (uint16_t)(d + 0x10);
+  if(d >= 0xD0) d = 0xD0;
+  uint16_t q4 = (uint16_t)((uint16_t)(w0 / (uint8_t)d) << 4);
+  uint16_t qv = (uint16_t)(q4 - 0x0B00);
+  out->a = stored;
+  setSbc16(&t, q4, 0x0B00);
+  out->v = t.v;
+  out->c = qv >= 0x3000;
+  if((uint16_t)(qv - 0x3000) & 0x8000) { out->n = true; out->z = false; }
+  else { out->n = false; out->z = false; }
+}
+
+static void fuzz_func_82AC52(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0213, (uint16_t)rnd());
+  wr16ram(ram, 0x0244, (uint16_t)rnd());
+  uint16_t hi = (uint16_t)rnd();
+  wr16ram(ram, 0x0226, hi);
+  wr16ram(ram, 0x0224, (uint16_t)rnd());
+  wr16ram(ram, 0xFAB6, (uint16_t)(hi + (int16_t)(rnd() % 0x200 - 0x40)));  // near, mostly ahead
+  wr16ram(ram, 0xFAB4, (uint16_t)rnd());
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1760,6 +1823,8 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_func_82AB3F, ALL_OUTPUTS, .fuzz = fuzz_func_82AB3F},
   {.name = "func_82A9B7", .entry = 0x82A9B7, .end = 0x82AA7B, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_func_82A9B7, ALL_OUTPUTS, .fuzz = fuzz_func_82A9B7},
+  {.name = "func_82AC52", .entry = 0x82AC52, .end = 0x82AD0E, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_func_82AC52, ALL_OUTPUTS, .fuzz = fuzz_func_82AC52},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

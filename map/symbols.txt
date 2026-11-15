@@ -100,3 +100,4 @@ func    83FDCD   func_83FDCD         ; disabled hit test: always C = 0 -> src/mi
 func    82EA49   func_82EA49         ; bank-$85 word for A: row (A>>6)&$FF * 10 (DSP-4) + $0198 -> $84 table -> src/misc.c
 func    82AB3F   func_82AB3F         ; two lerps at fraction $FAB5,x/256 ($34EC/$36EC tables), DSP-4 high words -> src/misc.c
 func    82A9B7   func_82A9B7         ; camera-like targets via func_82AB3F + DSP-4 scale by $0293; $028B/$028D approach them -> src/misc.c
+func    82AC52   func_82AC52         ; $7E:4E2D/$4E35 from a DSP-4 product and the CPU divider (distance-based) -> src/misc.c

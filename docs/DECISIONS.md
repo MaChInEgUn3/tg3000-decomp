@@ -512,6 +512,11 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   following something, probably). A static scan of the DSP-4 roots found the other
   multiply-only ones: `$82:AC52`, `$82:ADC2`, `$82:A672`; the rest (`$81:89F5`, `$81:8527`,
   `$82:D267`, `$81:F887` …) use the road commands (`$0A` and others), not ported yet.
+- `func_82AC52` ($82:AC52, 18,521 calls): `$7E:4E2D` from the bits 8-23 of `$0213 × $300`
+  (DSP-4) and, by `$0244`'s bits, `$7E:4E35` and a new `$7E:4E2D` from the distance to
+  `$0224/$0226` (a 32-bit compare, then the CPU's 16/8 divider) — a distance-driven value
+  (fog or horizon, probably). Its one unexecuted byte run (`$82:ACCB`, `LDA #$0000`) is
+  fuzz-only.
 
 ## Coverage sources (2026-11-14)
 

@@ -296,7 +296,7 @@ CODE_828642:
     jsr.w $AB9D                 ; $828645
     jsl.l $83E241               ; $828648
     jsl.l $81E812               ; $82864C
-    jsr.w $AC52                 ; $828650
+    jsr.w func_82AC52           ; $828650
     lda.w #$0001                ; $828653
 CODE_828656:
     bit.w $00B8                 ; $828656
@@ -1582,6 +1582,7 @@ CODE_82AC30:
     jsr.w $AD12                 ; $82AC4E
 CODE_82AC51:
     rts                         ; $82AC51
+func_82AC52:
     lda.w #$0000                ; $82AC52
     sta.l $308000               ; $82AC55
     lda.w $0213                 ; $82AC59

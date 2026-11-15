@@ -206,4 +206,11 @@ uint16_t func_82AB3F(uint16_t x, uint16_t y);
 // $0116 and $0118 by at most $1E9E * 4 (judged by sign, as the original). Returns $028D.
 uint16_t func_82A9B7(void);
 
+// $7E:4E2D = (bits 8-23 of $0213 * $300, a DSP-4 multiply) - $B00, at most $3000 (by
+// sign). If $0244 bit 0: $7E:4E35 = ($B0 - 2 * the high word of the 32-bit distance
+// $7E:FAB4 - $0224, both at least 0) & $F8. If also bit 2: $7E:4E2D = ((its value + $B00,
+// at least 0) / (high word of $FAB6 - $0226, at least 0, + $10, at most $D0)) * 16 - $B00,
+// at most $3000 (the division on the CPU's divider). $0114 is left as scratch.
+void func_82AC52(void);
+
 #endif

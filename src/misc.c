@@ -560,3 +560,32 @@ uint16_t func_82A9B7(void) {
   wr16(0x028D, approach(rd16(0x028D), rd16(DP + 0x18), step));
   return rd16(0x028D);
 }
+
+// v unless v - $3000 is non-negative (by sign, as the original's BMI), then $3000.
+static uint16_t cap_3000(uint16_t v) { return ((uint16_t)(v - 0x3000) & 0x8000) ? v : 0x3000; }
+
+// TG3000_ROUTINE($82:AC52) func_82AC52
+void func_82AC52(void) {
+  uint32_t p = (uint32_t)dsp4_multiply((int16_t)rd16(0x0213), 0x0300);
+  wr16(DP + 0x14, (uint16_t)((p >> 8) & 0xFF));  // scratch: the product's byte 1
+  wr16(0x4E2D, cap_3000((uint16_t)((uint16_t)(p >> 8) - 0x0B00)));  // bits 8-23 of the product
+  uint16_t flags = rd16(0x0244);
+  if(!(flags & 1)) return;
+  // the high word of the 32-bit difference $7E:FAB4/$FAB6 - $0224/$0226, at least 0
+  uint32_t a = ((uint32_t)rd16(0xFAB6) << 16) | rd16(0xFAB4), b = ((uint32_t)rd16(0x0226) << 16) | rd16(0x0224);
+  uint16_t far = (uint16_t)((a - b) >> 16);
+  if(far & 0x8000) far = 0;
+  wr16(DP + 0x14, (uint16_t)(far << 1));
+  uint16_t near = (uint16_t)(0xB0 - (uint16_t)(far << 1));
+  if(near & 0x8000) near = 0;
+  wr16(0x4E35, (uint16_t)(near & 0xF8));
+  if(!(flags & 4)) return;
+  uint16_t w = (uint16_t)(rd16(0x4E2D) + 0x0B00);
+  if(w & 0x8000) w = 0;
+  uint16_t d = (uint16_t)(rd16(0xFAB6) - rd16(0x0226));
+  if(d & 0x8000) d = 0;
+  d = (uint16_t)(d + 0x10);
+  if(d >= 0xD0) d = 0xD0;
+  uint16_t q = (uint16_t)(w / (uint8_t)d);  // the CPU's 16 / 8 divider
+  wr16(0x4E2D, cap_3000((uint16_t)((uint16_t)(q << 4) - 0x0B00)));
+}
