@@ -833,3 +833,37 @@ void binary_to_bcd5(void) {
 
 // TG3000_ROUTINE($82:F380) func_82F380
 void func_82F380(void) {}
+
+// TG3000_ROUTINE($82:FB1C) func_82FB1C
+void func_82FB1C(void) {}
+
+static bool shift32(uint16_t lo_adr, uint16_t hi_adr, bool left) {
+  uint16_t lo = rd16(lo_adr), hi = rd16(hi_adr);
+  bool out = false;
+  for(int i = 0; i < 12; i++) {
+    if(left) {  // ASL lo, ROL hi
+      out = hi >> 15;
+      hi = (uint16_t)(hi << 1 | lo >> 15);
+      lo = (uint16_t)(lo << 1);
+    } else {    // LSR hi, ROR lo
+      out = lo & 1;
+      lo = (uint16_t)(lo >> 1 | (hi & 1) << 15);
+      hi >>= 1;
+    }
+  }
+  wr16(lo_adr, lo);
+  wr16(hi_adr, hi);
+  return out;
+}
+
+// TG3000_ROUTINE($8A:C03D) func_8AC03D
+bool func_8AC03D(void) {
+  shift32(0x038E, 0x0390, true);
+  return shift32(0x03BD, 0x03BF, true);
+}
+
+// TG3000_ROUTINE($8A:C024) func_8AC024
+bool func_8AC024(void) {
+  shift32(0x038E, 0x0390, false);
+  return shift32(0x03BD, 0x03BF, false);
+}

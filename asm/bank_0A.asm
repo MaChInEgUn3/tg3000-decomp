@@ -2521,7 +2521,7 @@ CODE_8A9E96:
     jsl.l $8081C8               ; $8A9EAE
     jsr.w $A06D                 ; $8A9EB2
     jsl.l clear_vram            ; $8A9EB5
-    jsr.w $BA55                 ; $8A9EB9
+    jsr.w func_8ABA55           ; $8A9EB9
     jsr.w func_8AB994           ; $8A9EBC
     jsr.w $BACB                 ; $8A9EBF
     jsr.w wipe_columns          ; $8A9EC2
@@ -3608,6 +3608,7 @@ func_8AB994:
     jsl.l decompress_to_vram_long; $8AB9AA
     rts                         ; $8AB9AE
     incbin !baserom:$539AF..$53A55
+func_8ABA55:
     ldx.w #$EE52                ; $8ABA55
     ldy.w #$4000                ; $8ABA58
     lda.w #$0096                ; $8ABA5B
@@ -3838,7 +3839,7 @@ CODE_8ABC9B:
     ldy.w #$1000                ; $8ABE63
     lda.w #$0088                ; $8ABE66
     jsl.l decompress_to_vram_long; $8ABE69
-    jsr.w $BA55                 ; $8ABE6D
+    jsr.w func_8ABA55           ; $8ABE6D
     lda.w #$8560                ; $8ABE70
     ldx.w #$FA37                ; $8ABE73
     ldy.w #$0040                ; $8ABE76
@@ -3921,7 +3922,7 @@ CODE_8ABF46:
     bne CODE_8ABF32             ; $8ABF49
     rep.b #$20                  ; $8ABF4B
     rts                         ; $8ABF4D
-    jsr.w $C024                 ; $8ABF4E
+    jsr.w func_8AC024           ; $8ABF4E
     lda.w $038E                 ; $8ABF51
     sta.b $44                   ; $8ABF54
     lda.w $0390                 ; $8ABF56
@@ -3951,7 +3952,7 @@ CODE_8ABF46:
     sta.w $03BD                 ; $8ABF92
     lda.b $46                   ; $8ABF95
     sta.w $03BF                 ; $8ABF97
-    jsr.w $C03D                 ; $8ABF9A
+    jsr.w func_8AC03D           ; $8ABF9A
     rts                         ; $8ABF9D
 bcd_to_binary:
     stz.b $42                   ; $8ABF9E
@@ -4018,6 +4019,7 @@ CODE_8ABFFC:
     bne CODE_8ABFFC             ; $8AC001
     rts                         ; $8AC003
     incbin !baserom:$54004..$54024
+func_8AC024:
     ldy.w #$000C                ; $8AC024
 CODE_8AC027:
     lsr.w $0390                 ; $8AC027
@@ -4031,6 +4033,7 @@ CODE_8AC033:
     dey                         ; $8AC039
     bne CODE_8AC033             ; $8AC03A
     rts                         ; $8AC03C
+func_8AC03D:
     ldy.w #$000C                ; $8AC03D
 CODE_8AC040:
     asl.w $038E                 ; $8AC040
@@ -4055,7 +4058,7 @@ CODE_8AC04C:
     lda.w #$008A                ; $8AC06C
     jsl.l $8081C8               ; $8AC06F
     jsl.l clear_vram            ; $8AC073
-    jsr.w $BA55                 ; $8AC077
+    jsr.w func_8ABA55           ; $8AC077
     ldy.w #$0800                ; $8AC07A
     ldx.w #$F861                ; $8AC07D
     lda.w #$0087                ; $8AC080

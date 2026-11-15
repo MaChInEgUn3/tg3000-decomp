@@ -38,6 +38,10 @@ uint16_t decompress_to_vram(uint16_t dp, uint8_t src_bank, uint16_t src, uint16_
 // second one's result.
 uint16_t func_8AB994(uint16_t dp);
 
+// decompress_to_vram of $96:EE52 to VRAM $4000 and of $85:FA8B to VRAM $7000, then 512
+// bytes of palette from $8A:C658 to colour 0.
+void func_8ABA55(uint16_t dp);
+
 // Fill all of video RAM with the byte at $8A:8E19 (both bytes of every word).
 void clear_vram(void);
 

@@ -55,6 +55,10 @@ func    8ABFD0   binary_to_bcd5      ; $0142 -> BCD in $0144/$0146 -> src/misc.c
 func    82AD12   func_82AD12         ; $0463/$0465 = A/X unless $047C bit 15 -> src/misc.c
 func    8A8232   func_8A8232         ; $014A = ($0136 >> 2) + $0108 -> src/misc.c
 func    82F380   func_82F380         ; empty (RTS) -> src/misc.c
+func    8AC03D   func_8AC03D         ; $0390:$038E and $03BF:$03BD <<= 12 -> src/misc.c
+func    8AC024   func_8AC024         ; $0390:$038E and $03BF:$03BD >>= 12 -> src/misc.c
+func    8ABA55   func_8ABA55         ; two decompress_to_vram, palette from $8A:C658 -> src/video_dma.c
+func    82FB1C   func_82FB1C         ; empty (RTS) -> src/misc.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

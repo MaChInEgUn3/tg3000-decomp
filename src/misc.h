@@ -135,6 +135,14 @@ void binary_to_bcd5(void);
 
 // An empty routine (RTS).
 void func_82F380(void);
+// Another one.
+void func_82FB1C(void);
+
+// Shift the 32-bit numbers $0390:$038E and $03BF:$03BD left (func_8AC03D) or right
+// (func_8AC024) by 12 bits, one bit at a time. Return the last bit shifted out of the
+// second number.
+bool func_8AC03D(void);
+bool func_8AC024(void);
 
 // Append the words (a, x, y, D+$14) to the four tables $1900, $1940, $19C0, $1980 at
 // index D+$8C, then advance it: D+$8C = ((index + 2) & $3F) + D+$8A (32 entries in a

@@ -1127,8 +1127,32 @@ static void fuzz_binary_to_bcd5(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x42, (k & 3) == 0 ? (uint16_t)(rnd() % 100) : (k & 3) == 1 ? 0xFFFF : (uint16_t)rnd());
 }
 
-// ---- func_82F380 ----  RTS: nothing changes
+// ---- func_82F380 / func_82FB1C ----  RTS: nothing changes
 static void call_func_82F380(const Regs* in, Regs* out) { (void)in; (void)out; func_82F380(); }
+static void call_func_82FB1C(const Regs* in, Regs* out) { (void)in; (void)out; func_82FB1C(); }
+
+// ---- func_8AC03D / func_8AC024 ----  Y = 0, N Z of the last DEY, C = the last bit out
+static void call_func_8AC03D(const Regs* in, Regs* out) {
+  (void)in;
+  out->c = func_8AC03D();
+  out->y = 0;
+  out->n = false;
+  out->z = true;
+}
+
+static void call_func_8AC024(const Regs* in, Regs* out) {
+  (void)in;
+  out->c = func_8AC024();
+  out->y = 0;
+  out->n = false;
+  out->z = true;
+}
+
+static void fuzz_shift32(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const uint16_t words[4] = {0x038E, 0x0390, 0x03BD, 0x03BF};
+  for(int i = 0; i < 4; i++) wr16ram(ram, words[i], (uint16_t)rnd());
+}
 
 static void fuzz_func_8ABFBC(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
@@ -2209,6 +2233,17 @@ static void call_decompress_to_vram(const Regs* in, Regs* out) {
   out->v = false;
 }
 
+// ---- func_8ABA55 ----  as upload_cgram_now (A = $0001: colour 0 in the high byte, X = $2202)
+static void call_func_8ABA55(const Regs* in, Regs* out) {
+  func_8ABA55(in->d);
+  out->x = 0x2202;
+  out->a = 0x0001;
+  out->y = 0x0200;
+  out->n = out->z = false;
+  out->c = true;
+  out->v = false;
+}
+
 // ---- func_8AB994 ----  as decompress_to_vram's second call (Y = $1000)
 static void call_func_8AB994(const Regs* in, Regs* out) {
   out->x = func_8AB994(in->d);
@@ -2423,6 +2458,14 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_func_82AD12, ALL_OUTPUTS, .fuzz = fuzz_func_82AD12},
   {.name = "binary_to_bcd5", .entry = 0x8ABFD0, .end = 0x8AC004, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_binary_to_bcd5, ALL_OUTPUTS, .fuzz = fuzz_binary_to_bcd5},
+  {.name = "func_82FB1C", .entry = 0x82FB1C, .end = 0x82FB1D, .source = "src/misc.c",
+   .call = call_func_82FB1C, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_8AC03D", .entry = 0x8AC03D, .end = 0x8AC056, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_func_8AC03D, ALL_OUTPUTS, .fuzz = fuzz_shift32},
+  {.name = "func_8AC024", .entry = 0x8AC024, .end = 0x8AC03D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_func_8AC024, ALL_OUTPUTS, .fuzz = fuzz_shift32},
+  {.name = "func_8ABA55", .entry = 0x8ABA55, .end = 0x8ABA7D, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_8ABA55, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "func_82F380", .entry = 0x82F380, .end = 0x82F381, .source = "src/misc.c",
    .call = call_func_82F380, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "upload_tiles_c280", .entry = 0x8A8D81, .end = 0x8A8DA0, .source = "src/video_dma.c", .needM16 = true,

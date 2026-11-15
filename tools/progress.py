@@ -67,6 +67,43 @@ def ported_routines():
     return count, stale
 
 
+def verified_code_bytes():
+    """ROM code bytes (rom_map "code") inside the extents of the routines map/verified.txt
+    lists as verified and current: [entry, end) minus holes, from the bench's registry
+    (tools/bench/routines.c, `routines[]` only). Overlapping extents count once."""
+    reg_path = os.path.join(ROOT, "tools", "bench", "routines.c")
+    ver_path = os.path.join(ROOT, "map", "verified.txt")
+    map_path = os.path.join(ROOT, "map", "rom_map.txt")
+    if not (os.path.exists(reg_path) and os.path.exists(ver_path) and os.path.exists(map_path)):
+        return 0
+    good = set()
+    for line in open(ver_path):
+        parts = line.split()
+        if line.startswith("#") or len(parts) < 8 or parts[7] != "verified":
+            continue
+        if verification_hash(parts[2]) == int(parts[3], 16):
+            good.add(int(parts[0], 16))
+    text = open(reg_path).read()
+    text = text[text.index("const Routine routines[]"):text.index("const int routineCount")]
+    covered = set()
+    for row in re.split(r"\n\s*\{\.name = ", text)[1:]:
+        m = re.search(r"\.entry = 0x([0-9A-Fa-f]+), \.end = 0x([0-9A-Fa-f]+)", row)
+        if not m or int(m.group(1), 16) not in good:
+            continue
+        holes = [(int(a, 16), int(b, 16)) for a, b in re.findall(r"\{0x([0-9A-Fa-f]+), 0x([0-9A-Fa-f]+)\}", row)]
+        for adr in range(int(m.group(1), 16), int(m.group(2), 16)):
+            if not any(a <= adr < b for a, b in holes):
+                covered.add(((adr >> 16) & 0x7F) << 15 | (adr & 0x7FFF))
+    code = bytearray(ROM_SIZE)
+    for line in open(map_path):
+        parts = line.split()
+        if line.startswith("#") or len(parts) < 3 or parts[2] != "code":
+            continue
+        for o in range(int(parts[0], 16), int(parts[1], 16)):
+            code[o] = 1
+    return sum(1 for o in covered if code[o])
+
+
 def pct(n, d):
     return f"{100 * n / d:.2f}%" if d else "n/a"
 
@@ -75,18 +112,21 @@ def block(lang):
     code, data = classified_bytes()
     known = code + data
     ported, _ = ported_routines()
+    in_c = verified_code_bytes()
     rows = {
         "en": [
             ("ROM bytes classified (code + data)", f"**{known:,} / {ROM_SIZE:,} ({pct(known, ROM_SIZE)})**"),
             ("Code bytes", f"{code:,} (`0x{code:X}`)"),
             ("Data bytes", f"{data:,} (`0x{data:X}`)"),
             ("Routine entry points in C, verified by the differential test", f"**{ported:,}**"),
+            ("Code bytes inside verified C routines", f"**{in_c:,} / {code:,} ({pct(in_c, code)})**"),
         ],
         "pt": [
             ("Bytes da ROM classificados (código + dados)", f"**{known:,} / {ROM_SIZE:,} ({pct(known, ROM_SIZE)})**"),
             ("Bytes de código", f"{code:,} (`0x{code:X}`)"),
             ("Bytes de dados", f"{data:,} (`0x{data:X}`)"),
             ("Pontos de entrada de rotinas em C, aprovados no teste diferencial", f"**{ported:,}**"),
+            ("Bytes de código dentro de rotinas em C aprovadas", f"**{in_c:,} / {code:,} ({pct(in_c, code)})**"),
         ],
     }[lang]
     head = ("| Metric | Current |" if lang == "en" else "| Métrica | Atual |")

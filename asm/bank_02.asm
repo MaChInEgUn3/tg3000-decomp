@@ -5036,6 +5036,7 @@ CODE_82FAE9:
 CODE_82FB0F:
     rts                         ; $82FB0F
     incbin !baserom:$17B10..$17B1C
+func_82FB1C:
     rts                         ; $82FB1C
     bit.w $1E68                 ; $82FB1D
     bpl CODE_82FB53             ; $82FB20

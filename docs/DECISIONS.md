@@ -714,7 +714,9 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - `func_8AA4BE`: `func_8AB680` for each pointer of a zero-terminated table (through DB,
   `D+$4A` re-read each time). `func_8AC0F2`: five lines of tile text from `$8A:C44F...`.
   `func_8AB994`: two `decompress_to_vram` calls from bank `$88`; its one live entry is
-  interrupted, so it is verified on the fuzz (same ROM inputs, WRAM around them random).
+  interrupted, so it is verified on the fuzz alone, and its fuzz (`fuzz_nothing`) only
+  varies the registers and flags: in effect one distinct case, zero live samples. The
+  same holds for `func_8ABA55` (batch 10).
   `oam_clear_long` ($80:FBD8) and `wait_one_frame` ($8A:B212): wrappers.
 - `$81:8527` was listed as portable but streams DSP-4 words: it waits for the DSP-4
   work (the census marks it `dsp4`).
@@ -731,6 +733,18 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - Still in asm for now: `$8A:8290`, `$8A:9F76`, `$8A:A32B`, `$8A:A381`, `$80:9DD0` (each
   branches into bytes no recorded run executes; they need the static-code route and an
   aimed fuzz) and `$81:8527` (DSP-4).
+
+## Batch 10 and the C-coverage figure (port-batch-10, 2026-11-15)
+
+- `func_8AC03D` / `func_8AC024`: the 32-bit numbers `$0390:$038E` and `$03BF:$03BD`
+  shifted left / right by 12. `func_8ABA55`: two `decompress_to_vram` calls (from `$96`
+  and `$85`) and a 512-byte palette upload from `$8A:C658`; all three of its live
+  entries are interrupted (see `func_8AB994` above for what that leaves).
+  `func_82FB1C`: another lone RTS.
+- **`tools/progress.py` now reports the code bytes inside verified C routines** (the
+  extents `[entry, end)` minus holes from the registry, for rows of `map/verified.txt`
+  that are verified and current, intersected with the map's code bytes; overlaps count
+  once). It replaces the ad-hoc estimate given to the owner earlier.
 
 ## Statically found code (map-2, 2026-11-15)
 

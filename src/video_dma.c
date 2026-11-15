@@ -97,3 +97,10 @@ uint16_t func_8AB994(uint16_t dp) {
   decompress_to_vram(dp, 0x88, 0xFEC3, 0x0800);
   return decompress_to_vram(dp, 0x88, 0xF87F, 0x1000);
 }
+
+// TG3000_ROUTINE($8A:BA55) func_8ABA55
+void func_8ABA55(uint16_t dp) {
+  decompress_to_vram(dp, 0x96, 0xEE52, 0x4000);
+  decompress_to_vram(dp, 0x85, 0xFA8B, 0x7000);
+  upload_cgram_now(0x00, 0x8A, 0xC658, 0x0200);
+}
