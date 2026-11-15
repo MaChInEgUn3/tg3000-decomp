@@ -617,7 +617,12 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `$8A:8BB5` that the map calls data (no recorded run takes it; the fuzz does, and fuzz
   runs do not feed coverage). Full movie 263/263 live (it is not reached in race 1), fuzz
   500/500, paths 73/73. Unlike `mode7_zoom_view` it writes while the picture is drawn
-  (lines 31-240); the breakdown is in the verify log and below.
+  (lines 31-240) — but with the screen blanked every time (0 of 4,208 writes while the
+  picture is drawn; BG modes 1 and 2 at the time; HDMA on `$2121` only; 102 of 263
+  samples changed a field), so "applies at the port's next frame" is exact for it too.
+- **Mode at the time of the write:** neither routine runs in BG mode 7 when it writes
+  (modes 0/1 and 1/2): the mode is set elsewhere (likely from the NMI), so the names say
+  what the routines write, not the mode on screen at that moment.
 
 ## Coverage sources (2026-11-14)
 
