@@ -4151,7 +4151,7 @@ CODE_82E330:
     clc                         ; $82E38D
     adc.w #$45EC                ; $82E38E
     sta.w $F833,y               ; $82E391
-    jsl.l $85CDAF               ; $82E394
+    jsl.l func_85CDAF           ; $82E394
     iny                         ; $82E398
     iny                         ; $82E399
     tya                         ; $82E39A
@@ -4196,7 +4196,7 @@ CODE_82E3A4:
     clc                         ; $82E3F3
     adc.w #$495C                ; $82E3F4
     sta.w $F833,y               ; $82E3F7
-    jsl.l $85CDAF               ; $82E3FA
+    jsl.l func_85CDAF           ; $82E3FA
     iny                         ; $82E3FE
     iny                         ; $82E3FF
     tya                         ; $82E400

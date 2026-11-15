@@ -746,6 +746,15 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   that are verified and current, intersected with the map's code bytes; overlaps count
   once). It replaces the ad-hoc estimate given to the owner earlier.
 
+## Hardware-free batch 11 (port-batch-11, 2026-11-15)
+
+- After the static-route units unlocked their callers: `func_85CDAF` (long, DB = `$7E`:
+  marks the earlier copies of an entry of the word-table pair `$7E:F533/$7E:F733` by
+  setting bit 15, walking a byte-wrapped index from `$00FE`), three one-line
+  direct-page computations (`func_8A869A`, `func_8A823D`, `func_8A8325`), `func_80B556`
+  (resets the `$01C6-$01FA` block, a superset of `func_80B58D`'s stores) and
+  `func_8ABF76` (`binary_to_bcd5` of `$038E` and `$03BD` in place, then `func_8AC03D`).
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

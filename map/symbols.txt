@@ -63,6 +63,12 @@ func    8AA32B   func_8AA32B         ; $0D23 + table[D+$3C - 10] from the object
 func    8AA381   func_8AA381         ; bits 11/10 of $000E..$001A -> object flags, func_8AA48D -> src/misc.c
 func    8A8290   func_8A8290         ; every 8th count: D+$64 through 1,2,3,4,3,2 -> src/misc.c
 func    809DD0   func_809DD0         ; label + number sprites ($3C00 or $3E00 base) -> src/text.c
+func    85CDAF   func_85CDAF         ; mark earlier copies of an entry of $7E:F533/$F733 (long) -> src/misc.c
+func    8A869A   func_8A869A         ; $013A = $2A - ($013C >> 4) -> src/misc.c
+func    8A823D   func_8A823D         ; $014C = ($0138 >> 2) - $49 + $0164 -> src/misc.c
+func    8A8325   func_8A8325         ; $0600/$0700 from $013C/$013E -> src/misc.c
+func    80B556   func_80B556         ; reset the $01C6-$01FA block -> src/misc.c
+func    8ABF76   func_8ABF76         ; $038E, $03BD to 32-bit BCD in place, then func_8AC03D -> src/misc.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

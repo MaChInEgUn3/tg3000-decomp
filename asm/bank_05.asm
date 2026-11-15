@@ -2960,6 +2960,7 @@ CODE_85BEB6:
     sta.w $1558,y               ; $85BECD
     rtl                         ; $85BED0
     incbin !baserom:$2BED1..$2CDAF
+func_85CDAF:
     sty.b $14                   ; $85CDAF
     lda.w $F533,y               ; $85CDB1
     sta.b $16                   ; $85CDB4

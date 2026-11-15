@@ -1362,7 +1362,7 @@ CODE_808D6A:
     tay                         ; $808D70
     ldx.b $50                   ; $808D71
     lda.w #$0085                ; $808D73
-    jsr.w $B556                 ; $808D76
+    jsr.w func_80B556           ; $808D76
     stz.b $48                   ; $808D79
     lda.w #$0000                ; $808D7B
     sta.b $4A                   ; $808D7E
@@ -5414,6 +5414,7 @@ func_80B537:
     adc.b $8A                   ; $80B551
     sta.b $8C                   ; $80B553
     rts                         ; $80B555
+func_80B556:
     stx.b $CC                   ; $80B556
     sep.b #$20                  ; $80B558
     sta.b $CE                   ; $80B55A
@@ -11665,7 +11666,7 @@ CODE_80EF94:
     ldx.w #$D750                ; $80EFFC
     lda.w #$0081                ; $80EFFF
     ldy.w #$05C4                ; $80F002
-    jsr.w $B556                 ; $80F005
+    jsr.w func_80B556           ; $80F005
     lda.w #$0080                ; $80F008
     sta.b $E5                   ; $80F00B
     lda.w #$001C                ; $80F00D

@@ -162,6 +162,28 @@ int func_8AA381(uint16_t x);
 // value the original leaves in A (0; the count's low 3 bits; or the word).
 uint16_t func_8A8290(void);
 
+// Mark the earlier copies of entry `y` in the pair of word tables $7E:F533 / $7E:F733:
+// walking from the index $00FE (in bytes, wrapping at $100) up to `y`, every entry equal
+// to entry y in both tables gets bit 15 set in its $F733 word. D+$14 = y, D+$16/D+$18 =
+// the entry. Returns whether the walk ran (the index $00FE was not already y).
+bool func_85CDAF(uint16_t y);
+
+// $013A = $2A - ($013C >> 4).
+uint16_t func_8A869A(void);
+// $014C = ($0138 >> 2) - $49 + $0164.
+uint16_t func_8A823D(void);
+// $0600 = ($013C >> 2) - $CA, $0700 = ($013E >> 2) + $1B. Returns the second.
+uint16_t func_8A8325(void);
+
+// Reset a block of direct-page state: $01CC = x, byte $01CE = a, $01C8 = y, $01CA = 0,
+// the eight words $01CF-$01DD = $FFFF, $01C6 = $01E3 = 0, $01E5 = $0100, $01E1 = 9,
+// $01F6 = $01F8 = 0, $01F9 = $19.
+void func_80B556(uint8_t a, uint16_t x, uint16_t y);
+
+// binary_to_bcd5 of the words $038E and $03BD, each result back in place as 32 bits
+// ($038E:$0390, $03BD:$03BF), then func_8AC03D. Returns its carry.
+bool func_8ABF76(void);
+
 // Append the words (a, x, y, D+$14) to the four tables $1900, $1940, $19C0, $1980 at
 // index D+$8C, then advance it: D+$8C = ((index + 2) & $3F) + D+$8A (32 entries in a
 // ring, D+$8A choosing the ring). Returns the new index.

@@ -55,11 +55,11 @@ CODE_8A803B:
     sta.w $050C                 ; $8A8082
     jsr.w $82C0                 ; $8A8085
     jsr.w func_8A8232           ; $8A8088
-    jsr.w $823D                 ; $8A808B
+    jsr.w func_8A823D           ; $8A808B
     jsr.w func_8A8290           ; $8A808E
     jsr.w $824B                 ; $8A8091
     jsr.w $867C                 ; $8A8094
-    jsr.w $869A                 ; $8A8097
+    jsr.w func_8A869A           ; $8A8097
     jsr.w $86AB                 ; $8A809A
     jsr.w $898F                 ; $8A809D
     jsl.l $8A8E1B               ; $8A80A0
@@ -102,13 +102,13 @@ CODE_8A8142:
     tsb.w $0026                 ; $8A8148
     jsr.w $82C0                 ; $8A814B
     jsr.w func_8A8232           ; $8A814E
-    jsr.w $823D                 ; $8A8151
+    jsr.w func_8A823D           ; $8A8151
     jsr.w func_8A8290           ; $8A8154
     jsr.w $824B                 ; $8A8157
     jsr.w $867C                 ; $8A815A
     jsr.w $86AB                 ; $8A815D
     jsr.w $898F                 ; $8A8160
-    jsr.w $869A                 ; $8A8163
+    jsr.w func_8A869A           ; $8A8163
     jsl.l $8A8E1B               ; $8A8166
     lda.b $58                   ; $8A816A
     bne CODE_8A8179             ; $8A816C
@@ -175,6 +175,7 @@ func_8A8232:
     adc.w #$0108                ; $8A8237
     sta.b $4A                   ; $8A823A
     rts                         ; $8A823C
+func_8A823D:
     lda.b $38                   ; $8A823D
     lsr a                       ; $8A823F
     lsr a                       ; $8A8240
@@ -261,7 +262,7 @@ CODE_8A82C7:
     lda.w #$82EC                ; $8A82E3
     sta.b $44                   ; $8A82E6
 CODE_8A82E8:
-    jsr.w $8325                 ; $8A82E8
+    jsr.w func_8A8325           ; $8A82E8
     rts                         ; $8A82EB
     stz.b $54                   ; $8A82EC
     lda.b $3C                   ; $8A82EE
@@ -280,7 +281,7 @@ CODE_8A82E8:
     beq CODE_8A830B             ; $8A8307
     dec.b $56                   ; $8A8309
 CODE_8A830B:
-    jsr.w $8325                 ; $8A830B
+    jsr.w func_8A8325           ; $8A830B
     dec.b $46                   ; $8A830E
     bne CODE_8A8321             ; $8A8310
     lda.w #$0008                ; $8A8312
@@ -292,6 +293,7 @@ CODE_8A830B:
 CODE_8A8321:
     rts                         ; $8A8321
     incbin !baserom:$50322..$50325
+func_8A8325:
     lda.b $3C                   ; $8A8325
     lsr a                       ; $8A8327
     lsr a                       ; $8A8328
@@ -327,6 +329,7 @@ CODE_8A85CB:
     inc a                       ; $8A8696
     sta.b $18                   ; $8A8697
     rts                         ; $8A8699
+func_8A869A:
     lda.b $3C                   ; $8A869A
     lsr a                       ; $8A869C
     lsr a                       ; $8A869D
@@ -3904,7 +3907,7 @@ CODE_8ABC9B:
     inc.b $8E                   ; $8ABE9B
     jsr.w $BB99                 ; $8ABE9D
     jsr.w $BC8A                 ; $8ABEA0
-    jsr.w $BF76                 ; $8ABEA3
+    jsr.w func_8ABF76           ; $8ABEA3
     ldx.w #$0000                ; $8ABEA6
     ldy.w #$001F                ; $8ABEA9
     stx.b $3E                   ; $8ABEAC
@@ -3985,6 +3988,7 @@ CODE_8ABF46:
     lda.b $42                   ; $8ABF70
     sta.w $03BD                 ; $8ABF72
     rts                         ; $8ABF75
+func_8ABF76:
     lda.w $038E                 ; $8ABF76
     sta.b $42                   ; $8ABF79
     jsr.w binary_to_bcd5        ; $8ABF7B

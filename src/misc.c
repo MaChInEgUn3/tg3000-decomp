@@ -936,3 +936,69 @@ uint16_t func_8A8290(void) {
   wr16(DP + 0x50, x == 12 ? 0 : x);
   return v;
 }
+
+// TG3000_ROUTINE($85:CDAF) func_85CDAF (long)
+bool func_85CDAF(uint16_t y) {
+  wr16(DP + 0x14, y);
+  uint16_t a = rd16((uint16_t)(0xF533 + y)), b = rd16((uint16_t)(0xF733 + y));
+  wr16(DP + 0x16, a);
+  wr16(DP + 0x18, b);
+  uint16_t i = rd16(0x00FE);
+  if(i == y) return false;
+  do {
+    if(rd16((uint16_t)(0xF733 + i)) == b && rd16((uint16_t)(0xF533 + i)) == a)
+      wr16((uint16_t)(0xF733 + i), (uint16_t)(rd16((uint16_t)(0xF733 + i)) | 0x8000));
+    i = (uint16_t)((i + 2) & 0xFF);
+  } while(i != y);
+  return true;
+}
+
+// TG3000_ROUTINE($8A:869A) func_8A869A
+uint16_t func_8A869A(void) {
+  uint16_t v = (uint16_t)(0x2A - (rd16(DP + 0x3C) >> 4));
+  wr16(DP + 0x3A, v);
+  return v;
+}
+
+// TG3000_ROUTINE($8A:823D) func_8A823D
+uint16_t func_8A823D(void) {
+  uint16_t v = (uint16_t)((rd16(DP + 0x38) >> 2) + 0xFFB7 + rd16(DP + 0x64));
+  wr16(DP + 0x4C, v);
+  return v;
+}
+
+// TG3000_ROUTINE($8A:8325) func_8A8325
+uint16_t func_8A8325(void) {
+  wr16(0x0600, (uint16_t)((rd16(DP + 0x3C) >> 2) - 0xCA));
+  uint16_t v = (uint16_t)((rd16(DP + 0x3E) >> 2) + 0x1B);
+  wr16(0x0700, v);
+  return v;
+}
+
+// TG3000_ROUTINE($80:B556) func_80B556
+void func_80B556(uint8_t a, uint16_t x, uint16_t y) {
+  wr16(DP + 0xCC, x);
+  wr8(DP + 0xCE, a);
+  wr16(DP + 0xC8, y);
+  wr16(DP + 0xCA, 0);
+  for(uint16_t i = 0xCF; i <= 0xDD; i = (uint16_t)(i + 2)) wr16(DP + i, 0xFFFF);
+  wr16(DP + 0xC6, 0);
+  wr16(DP + 0xE3, 0);
+  wr16(DP + 0xE5, 0x0100);
+  wr16(DP + 0xE1, 9);
+  wr16(DP + 0xF6, 0);
+  wr16(DP + 0xF8, 0);
+  wr16(DP + 0xF9, 0x0019);
+}
+
+// TG3000_ROUTINE($8A:BF76) func_8ABF76
+bool func_8ABF76(void) {
+  static const uint16_t words[2] = {0x038E, 0x03BD};
+  for(int i = 0; i < 2; i++) {
+    wr16(DP + 0x42, rd16(words[i]));
+    binary_to_bcd5();
+    wr16(words[i], rd16(DP + 0x44));
+    wr16((uint16_t)(words[i] + 2), rd16(DP + 0x46));
+  }
+  return func_8AC03D();
+}

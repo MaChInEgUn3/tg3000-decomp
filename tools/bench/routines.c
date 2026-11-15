@@ -1237,6 +1237,83 @@ static void fuzz_func_8A8290(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x50, (k & 0x18) ? (uint16_t)(2 * (rnd() % 6)) : (uint16_t)(rnd() % 0x100));
 }
 
+// ---- func_85CDAF (long) ----  Y = the entry index, N Z C of the CPY that ended it
+// (equal). A = the walk's last index (= Y), or entry y's $F733 word when it did not run.
+static void call_func_85CDAF(const Regs* in, Regs* out) {
+  uint16_t b = rd16((uint16_t)(0xF733 + in->y));
+  out->a = func_85CDAF(in->y) ? in->y : b;
+  out->n = false;
+  out->z = out->c = true;
+}
+
+// an even entry index below $100 and a start index, the tables drawn from a few values so
+// that copies occur
+static void fuzz_func_85CDAF(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->y = (uint16_t)(2 * (rnd() % 128));
+  wr16ram(ram, 0x00FE, (rnd() & 7) ? (uint16_t)(2 * (rnd() % 128)) : r->y);
+  uint16_t pick[2][3] = {{(uint16_t)rnd(), (uint16_t)rnd(), (uint16_t)rnd()}, {(uint16_t)rnd(), (uint16_t)rnd(), (uint16_t)rnd()}};
+  for(uint16_t i = 0; i < 0x100; i = (uint16_t)(i + 2)) {
+    wr16ram(ram, (uint32_t)(0xF533 + i), pick[0][rnd() % 3]);
+    wr16ram(ram, (uint32_t)(0xF733 + i), pick[1][rnd() % 3]);
+  }
+}
+
+// ---- func_8A869A / func_8A823D / func_8A8325 ----  A = the (last) result, N Z C V of its ADC
+static void call_func_8A869A(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t q = (uint16_t)(-(rd16(DP + 0x3C) >> 4));
+  out->a = func_8A869A();
+  setNZ16(out, out->a);
+  setAdc16(out, q, 0x2A);
+}
+
+static void call_func_8A823D(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t t = (uint16_t)((rd16(DP + 0x38) >> 2) + 0xFFB7), m = rd16(DP + 0x64);
+  out->a = func_8A823D();
+  setNZ16(out, out->a);
+  setAdc16(out, t, m);
+}
+
+static void call_func_8A8325(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t q = (uint16_t)(rd16(DP + 0x3E) >> 2);
+  out->a = func_8A8325();
+  setNZ16(out, out->a);
+  setAdc16(out, q, 0x1B);
+}
+
+static void fuzz_dp_words(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const uint8_t words[5] = {0x38, 0x3C, 0x3E, 0x64, 0x00};
+  for(int i = 0; i < 4; i++) wr16ram(ram, DP + words[i], (uint16_t)rnd());
+}
+
+// ---- func_80B556 ----  A = $19 (N Z of its LDA)
+static void call_func_80B556(const Regs* in, Regs* out) {
+  func_80B556((uint8_t)in->a, in->x, in->y);
+  out->a = 0x0019;
+  setNZ16(out, 0x0019);
+}
+
+// ---- func_8ABF76 ----  as func_8AC03D after it: Y = 0, N = 0, Z = 1, C = its carry; A =
+// the second number's high word, X = $FFFE (binary_to_bcd5), V = 0 (binary_to_bcd5's SBC)
+static void call_func_8ABF76(const Regs* in, Regs* out) {
+  (void)in;
+  out->c = func_8ABF76();
+  out->a = rd16(DP + 0x46);
+  out->x = 0xFFFE;
+  out->y = 0;
+  out->n = out->v = false;
+  out->z = true;
+}
+
+static void fuzz_func_8ABF76(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x038E, (rnd() & 3) ? (uint16_t)rnd() : (uint16_t)(rnd() % 100));
+  wr16ram(ram, 0x03BD, (rnd() & 3) ? (uint16_t)rnd() : 0xFFFF);
+}
+
 static void fuzz_shift32(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   static const uint16_t words[4] = {0x038E, 0x0390, 0x03BD, 0x03BF};
@@ -2573,6 +2650,18 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_func_82AD12, ALL_OUTPUTS, .fuzz = fuzz_func_82AD12},
   {.name = "binary_to_bcd5", .entry = 0x8ABFD0, .end = 0x8AC004, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_binary_to_bcd5, ALL_OUTPUTS, .fuzz = fuzz_binary_to_bcd5},
+  {.name = "func_85CDAF", .entry = 0x85CDAF, .end = 0x85CDE5, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_func_85CDAF, ALL_OUTPUTS, .fuzz = fuzz_func_85CDAF},
+  {.name = "func_8A869A", .entry = 0x8A869A, .end = 0x8A86AB, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_func_8A869A, ALL_OUTPUTS, .fuzz = fuzz_dp_words},
+  {.name = "func_8A823D", .entry = 0x8A823D, .end = 0x8A824B, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_func_8A823D, ALL_OUTPUTS, .fuzz = fuzz_dp_words},
+  {.name = "func_8A8325", .entry = 0x8A8325, .end = 0x8A833C, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .lowWramDb = true, .call = call_func_8A8325, ALL_OUTPUTS, .fuzz = fuzz_dp_words},
+  {.name = "func_80B556", .entry = 0x80B556, .end = 0x80B58D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_80B556, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_8ABF76", .entry = 0x8ABF76, .end = 0x8ABF9E, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_func_8ABF76, ALL_OUTPUTS, .fuzz = fuzz_func_8ABF76},
   {.name = "func_8A8290", .entry = 0x8A8290, .end = 0x8A82B4, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_func_8A8290, ALL_OUTPUTS, .fuzz = fuzz_func_8A8290},
   {.name = "func_809DD0", .entry = 0x809DD0, .end = 0x809E3A, .source = "src/text.c", .needM16 = true,
