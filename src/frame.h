@@ -11,4 +11,7 @@
 // as the original does). Returns the counter value it waited for.
 uint16_t wait_frames(uint16_t n);
 
+// Set bit 4 of D+$76 and wait until an interrupt sets its bit 3. Returns D+$76.
+uint16_t wait_flag_76(uint16_t dp);
+
 #endif

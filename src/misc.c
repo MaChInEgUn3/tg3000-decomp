@@ -714,3 +714,53 @@ void byte_buffer_decimal2(void) {
   if((uint16_t)(v - 10) & 0x8000) byte_buffer_push(0x20);
   byte_buffer_decimal(v);
 }
+
+// TG3000_ROUTINE($80:894E) func_80894E
+void func_80894E(void) {
+  static const uint16_t sources[4] = {0x01FB, 0x01FC, 0x02FB, 0x02FC};
+  uint16_t w = rd16(0x1B24);
+  for(int i = 0; i < 4; i++) w = func_80899F(rd8(sources[i]), w);
+  wr16(0x1B24, w);
+  for(int i = 0; i < 4; i++) wr8(sources[i], 0);
+  uint16_t r = rd16(0x1B26);
+  if(w == r) return;
+  wr16(0x0466, 0);
+  wr16(0x0465, 0xFF00);
+  wr16(0x0463, (uint16_t)(rd16(0x1B30 + r) | 0xFF00));
+  wr16(0x1B26, (uint16_t)((r + 1) & 7));
+}
+
+// TG3000_ROUTINE($80:86C9) binary_to_bcd
+uint32_t binary_to_bcd(uint16_t value) {
+  uint32_t bcd = 0;
+  for(int i = 0; i < 8; i++) {
+    bcd = bcd >> 4 | (uint32_t)(value % 10) << 28;
+    value = (uint16_t)(value / 10);
+  }
+  wr16(DP + 0x16, (uint16_t)bcd);
+  wr16(DP + 0x18, (uint16_t)(bcd >> 16));
+  return bcd;
+}
+
+// TG3000_ROUTINE($8A:A005) func_8AA005
+uint16_t func_8AA005(void) {
+  wr16(DP + 0x56, 0);
+  wr16(DP + 0x58, 0);
+  func_8AA022(rd16(0x0018));
+  func_8AA022(rd16(0x0014));
+  func_8AA022(rd16(0x0010));
+  return func_8AA022(rd16(0x000C));
+}
+
+// TG3000_ROUTINE($80:E0C8) func_80E0C8
+uint16_t func_80E0C8(uint16_t a) {
+  uint16_t d = (uint16_t)(a << 1);
+  return (uint16_t)(d < 0x40 ? d + 0xB990 : d + 0x2400);
+}
+
+// TG3000_ROUTINE($80:83E8) oam_clear
+void oam_clear(void) {
+  for(uint16_t x = 0x0200; x != 0; x = (uint16_t)(x - 2)) wr16(0x08FE + x, 0xE0E0);
+  wr16(0x0172, 0);
+  wr16(0x0174, 0);
+}

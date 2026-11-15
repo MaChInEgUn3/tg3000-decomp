@@ -37,6 +37,12 @@ func    8AA022   func_8AA022         ; shift !bit0 into $0156, count it in $0158
 func    80B7BB   func_80B7BB         ; $01CF-$01DB words equal to $01DD -> $FFFF -> src/misc.c
 func    8A9A81   byte_buffer_decimal2 ; $015E in two columns -> src/misc.c
 func    82841E   wait_frames_82      ; wait_frames, copy in bank $82 -> src/frame.c
+func    80894E   func_80894E         ; queue $01FB/$01FC/$02FB/$02FC, hand one on to $0463 -> src/misc.c
+func    8086C9   binary_to_bcd       ; A -> 8 BCD digits in D+$16/D+$18 (CPU divider) -> src/misc.c
+func    8AA005   func_8AA005         ; func_8AA022 of $0018, $0014, $0010, $000C -> src/misc.c
+func    80E0C8   func_80E0C8         ; 2a + $B990 below $40, else 2a + $2400 -> src/misc.c
+func    8083E8   oam_clear           ; sprite table to $E0, slot indices 0 -> src/misc.c
+func    80B950   wait_flag_76        ; set bit 4 of D+$76, wait for bit 3 -> src/frame.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

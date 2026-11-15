@@ -692,6 +692,20 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `byte_buffer_decimal2` ($8A:9A81: two columns, a space below 10) and `wait_frames_82`
   ($82:841E: a third byte-identical copy of `wait_frames`, C shared).
 
+## Hardware-free batch 7 (port-batch-7, 2026-11-15)
+
+- `func_80894E` (14,600 calls): the four request bytes `$01FB/$01FC/$02FB/$02FC` go into
+  the 8-byte ring at `$1B30` and are cleared; one queued byte per call comes out to
+  `$0463` (with `$FF` above it, `$0465 = $FF00`, `$0467 = 0`). `$01FB` is what
+  `func_80E4C5/DB` set to `$11/$13`; the shape (requests queued, one per frame handed
+  on) suggests sound requests, not yet confirmed, so the names stay neutral.
+- `binary_to_bcd` ($80:86C9): eight divisions by 10 on the CPU divider (the math-unit
+  rule), the remainders shifted into `D+$18:D+$16` as BCD; the C divides natively.
+- `func_8AA005`: four `func_8AA022` calls on the words `$0018/$0014/$0010/$000C`.
+  `func_80E0C8`: `2a + $B990` below `$40`, else `2a + $2400`. `oam_clear` ($80:83E8):
+  the whole sprite table to `$E0`, slot indices reset. `wait_flag_76` ($80:B950, waits
+  for interrupts): sets bit 4 of `D+$76`, waits for bit 3.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

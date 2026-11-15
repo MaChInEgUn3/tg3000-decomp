@@ -89,6 +89,26 @@ void func_80B7BB(void);
 // byte_buffer_decimal of $015E, after a space if it is below 10 (signed): two columns.
 void byte_buffer_decimal2(void);
 
+// Queue the request bytes $01FB, $01FC, $02FB, $02FC (non-zero ones; func_80899F into the
+// ring at $1B30, write index $1B24) and clear them; then, if the ring is not empty, take
+// one (read index $1B26): $0463 = it | $FF00, $0465 = $FF00, $0467 = 0 (byte).
+void func_80894E(void);
+
+// The 8 decimal digits of `value` as BCD, ones in the low nibble, by dividing by 10 on
+// the CPU divider; left in D+$16 (low word) and D+$18 (high word). Returns it.
+uint32_t binary_to_bcd(uint16_t value);
+
+// $0156 = $0158 = 0, then func_8AA022 of the words $0018, $0014, $0010, $000C in turn.
+// Returns the final $0158.
+uint16_t func_8AA005(void);
+
+// 2a + $B990 when 2a < $40, else 2a + $2400.
+uint16_t func_80E0C8(uint16_t a);
+
+// Hide every sprite: fill the 512-byte table at $0900 with $E0 and reset the slot
+// indices $0172 and $0174.
+void oam_clear(void);
+
 // Append the words (a, x, y, D+$14) to the four tables $1900, $1940, $19C0, $1980 at
 // index D+$8C, then advance it: D+$8C = ((index + 2) & $3F) + D+$8A (32 entries in a
 // ring, D+$8A choosing the ring). Returns the new index.

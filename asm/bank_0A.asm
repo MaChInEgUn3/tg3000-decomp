@@ -2643,6 +2643,7 @@ CODE_8A9FE4:
     plx                         ; $8A9FE7
     rts                         ; $8A9FE8
     incbin !baserom:$51FE9..$52005
+func_8AA005:
     stz.b $56                   ; $8AA005
     stz.b $58                   ; $8AA007
     lda.w $0018                 ; $8AA009
@@ -2682,7 +2683,7 @@ CODE_8AA033:
     bne CODE_8AA069             ; $8AA064
     inc.w $0166                 ; $8AA066
 CODE_8AA069:
-    jsr.w $A005                 ; $8AA069
+    jsr.w func_8AA005           ; $8AA069
     rtl                         ; $8AA06C
     jsr.w $A09F                 ; $8AA06D
     sep.b #$10                  ; $8AA070

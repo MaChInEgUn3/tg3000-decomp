@@ -369,6 +369,7 @@ upload_cgram_now:
     sta.w $420B                 ; $8083E2
     rep.b #$20                  ; $8083E5
     rtl                         ; $8083E7
+oam_clear:
     ldx.w #$0200                ; $8083E8
     lda.w #$E0E0                ; $8083EB
 CODE_8083EE:
@@ -733,6 +734,7 @@ CODE_8086B5:
     bne CODE_8086B5             ; $8086C4
     rep.b #$20                  ; $8086C6
     rts                         ; $8086C8
+binary_to_bcd:
     stz.b $16                   ; $8086C9
     stz.b $18                   ; $8086CB
     ldx.w #$0008                ; $8086CD
@@ -1016,7 +1018,7 @@ CODE_808931:
     bne CODE_80893F             ; $808939
     jsl.l $8386FB               ; $80893B
 CODE_80893F:
-    jsr.w $894E                 ; $80893F
+    jsr.w func_80894E           ; $80893F
     jsl.l $86DFE1               ; $808942
     inc.b $24                   ; $808946
     pld                         ; $808948
@@ -1025,6 +1027,7 @@ CODE_80893F:
     pla                         ; $80894B
     plb                         ; $80894C
     rti                         ; $80894D
+func_80894E:
     ldx.w $1B24                 ; $80894E
     lda.w $01FB                 ; $808951
     jsr.w func_80899F           ; $808954
@@ -1488,7 +1491,7 @@ CODE_808E96:
     inx                         ; $808E9F
     dey                         ; $808EA0
     bne CODE_808E96             ; $808EA1
-    jsr.w $B950                 ; $808EA3
+    jsr.w wait_flag_76          ; $808EA3
     lda.w #$8934                ; $808EA6
     sta.w $0008                 ; $808EA9
     lda.w #$89B2                ; $808EAC
@@ -5853,6 +5856,7 @@ CODE_80B8CF:
     cli                         ; $80B94D
     rts                         ; $80B94E
     rts                         ; $80B94F
+wait_flag_76:
     lda.w #$0010                ; $80B950
     tsb.b $76                   ; $80B953
     lda.w #$0008                ; $80B955
@@ -8200,7 +8204,7 @@ CODE_80D165:
 CODE_80D178:
     lda.b $4E                   ; $80D178
     bne CODE_80D178             ; $80D17A
-    jsr.w $B950                 ; $80D17C
+    jsr.w wait_flag_76          ; $80D17C
     lda.w #$00FF                ; $80D17F
     trb.w $036A                 ; $80D182
     phb                         ; $80D185
@@ -8277,7 +8281,7 @@ CODE_80D214:
     bne CODE_80D214             ; $80D236
     jsr.w $DCBB                 ; $80D238
     jsr.w star_layers_init      ; $80D23B
-    jsr.w $83E8                 ; $80D23E
+    jsr.w oam_clear             ; $80D23E
 CODE_80D241:
     lda.b $16                   ; $80D241
     beq CODE_80D241             ; $80D243
@@ -8945,7 +8949,7 @@ CODE_80D85C:
     lda.w #$2200                ; $80D85C
     sta.b $14                   ; $80D85F
     lda.b $28                   ; $80D861
-    jsr.w $86C9                 ; $80D863
+    jsr.w binary_to_bcd         ; $80D863
     ldy.w #$4846                ; $80D866
     jsr.w $8667                 ; $80D869
     lda.w #$2200                ; $80D86C
@@ -8965,7 +8969,7 @@ CODE_80D85C:
     rol a                       ; $80D88D
     asl.b $16                   ; $80D88E
     adc.b $28                   ; $80D890
-    jsr.w $86C9                 ; $80D892
+    jsr.w binary_to_bcd         ; $80D892
     ldy.w #$5046                ; $80D895
     jsr.w $8667                 ; $80D898
     lda.w #$2200                ; $80D89B
@@ -8980,7 +8984,7 @@ CODE_80D85C:
     sta.w $211C                 ; $80D8B0
     rep.b #$20                  ; $80D8B3
     lda.w $2135                 ; $80D8B5
-    jsr.w $86C9                 ; $80D8B8
+    jsr.w binary_to_bcd         ; $80D8B8
     ldy.w #$2CD2                ; $80D8BB
     jsr.w sprite_number         ; $80D8BE
     lda.w #$2200                ; $80D8C1
@@ -8998,7 +9002,7 @@ CODE_80D85C:
     rep.b #$20                  ; $80D8DD
     lda.w $2135                 ; $80D8DF
     rol a                       ; $80D8E2
-    jsr.w $86C9                 ; $80D8E3
+    jsr.w binary_to_bcd         ; $80D8E3
     ldy.w #$7662                ; $80D8E6
     jsr.w sprite_number_right   ; $80D8E9
     lda.w $0368                 ; $80D8EC
@@ -9705,7 +9709,7 @@ CODE_80DE9E:
     jmp.w $DFA8                 ; $80DEA5
 CODE_80DEA8:
     lda.w $C3EA,y               ; $80DEA8
-    jsr.w $E0C8                 ; $80DEAB
+    jsr.w func_80E0C8           ; $80DEAB
     tay                         ; $80DEAE
     pea.w $817F                 ; $80DEAF
     plb                         ; $80DEB2
@@ -9761,7 +9765,7 @@ CODE_80DEA8:
     plb                         ; $80DF34
     jmp.w $DFDC                 ; $80DF35
     lda.w $C3EA,y               ; $80DF38
-    jsr.w $E0C8                 ; $80DF3B
+    jsr.w func_80E0C8           ; $80DF3B
     tay                         ; $80DF3E
     pea.w $817F                 ; $80DF3F
     plb                         ; $80DF42
@@ -9805,7 +9809,7 @@ CODE_80DEA8:
     plb                         ; $80DFA4
     jmp.w $DFDC                 ; $80DFA5
     lda.w $C3EA,y               ; $80DFA8
-    jsr.w $E0C8                 ; $80DFAB
+    jsr.w func_80E0C8           ; $80DFAB
     clc                         ; $80DFAE
     adc.w #$0040                ; $80DFAF
     tay                         ; $80DFB2
@@ -9938,6 +9942,7 @@ CODE_80E035:
     sta.b $80                   ; $80E0C1
     dec.b $7A                   ; $80E0C3
     jmp.w $DD5D                 ; $80E0C5
+func_80E0C8:
     asl a                       ; $80E0C8
     cmp.w #$0040                ; $80E0C9
     bcs CODE_80E0D2             ; $80E0CC
@@ -10825,7 +10830,7 @@ CODE_80E86A:
     jmp.w $E87A                 ; $80E874
 CODE_80E877:
     jmp.w $E7FE                 ; $80E877
-    jsr.w $B950                 ; $80E87A
+    jsr.w wait_flag_76          ; $80E87A
     sei                         ; $80E87D
     lda.w #$8934                ; $80E87E
     sta.w $0008                 ; $80E881
@@ -11621,7 +11626,7 @@ CODE_80EF94:
     stz.w $2118                 ; $80EF94
     dex                         ; $80EF97
     bne CODE_80EF94             ; $80EF98
-    jsr.w $83E8                 ; $80EF9A
+    jsr.w oam_clear             ; $80EF9A
     phb                         ; $80EF9D
     ldx.w #$95C3                ; $80EF9E
     ldy.w #$0600                ; $80EFA1
@@ -12989,7 +12994,7 @@ decompress_near:
     rtl                         ; $80FBD0
     jsl.l $8A8000               ; $80FBD1
     jmp.w $8934                 ; $80FBD5
-    jsr.w $83E8                 ; $80FBD8
+    jsr.w oam_clear             ; $80FBD8
     rtl                         ; $80FBDB
     rep.b #$30                  ; $80FBDC
     phb                         ; $80FBDE
