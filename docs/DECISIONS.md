@@ -620,6 +620,25 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   (lines 31-240) — but with the screen blanked every time (0 of 4,208 writes while the
   picture is drawn; BG modes 1 and 2 at the time; HDMA on `$2121` only; 102 of 263
   samples changed a field), so "applies at the port's next frame" is exact for it too.
+- **Mode 7 multiplier** (`$2134-$2136`, matrix A × high byte of B): a read is the
+  routine's own work when it wrote A and B inside the sample from bytes written inside it;
+  the C computes the product natively *and* sets A and B as the original left them, so
+  the end-state comparison covers them (a single write to B leaves the latch, the
+  previous byte, as B's low byte; the C sets that too).
+- **Direct VRAM words** (`video_write_vram_word`): each `$2118`/`$2119` pair under VMAIN
+  = `$80` is one effect (address, word), in order with the DMA effects; `$2116/7` set up
+  for them no longer count as a DMA left unstarted. A word written while the screen is
+  drawn fails the sample (the console drops it; no scanlines in the C). The fuzz now runs
+  each case under forced blank, as the game does its VRAM work; live samples keep the
+  game's own timing. Effects per sample: up to 64, and more than that fails the sample
+  (it used to drop the rest silently).
+- `draw_meter` ($80:DA5F, `src/hud.c`): a 10-tile bar at tilemap word `$00C2` whose length
+  in eighths is value × 10 / 256 + 2 (D+$28; product on the PPU multiplier): full tiles
+  `$0847`, one partial `$0840 + n`, empty `$0848`. Race movie 461/461 live (lines 240-249,
+  in vblank), fuzz 500/500 (values that keep the bar inside its ten tiles: past 80
+  eighths the original's empty fill runs round its 16-bit counter, about 65,000 words),
+  paths 39/39. Negative variant with the partial tile an eighth short fails ("original
+  VRAM word $C2 <- $000842, C ... $000841").
 - **Mode at the time of the write:** neither routine runs in BG mode 7 when it writes
   (modes 0/1 and 1/2): the mode is set elsewhere (likely from the NMI), so the names say
   what the routines write, not the mode on screen at that moment.

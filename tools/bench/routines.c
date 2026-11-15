@@ -15,6 +15,7 @@
 #include "decompress.h"
 #include "dsp4.h"
 #include "frame.h"
+#include "hud.h"
 #include "misc.h"
 #include "sprites.h"
 #include "track.h"
@@ -178,6 +179,35 @@ static void fuzz_mode7_view(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   uint16_t y = (k >> 2) % 3 == 0 ? (uint16_t)(0xFFBE + (rnd() & 3)) : (k >> 2) % 3 == 1 ? (uint16_t)(0x7FBE + (rnd() & 3)) : (uint16_t)rnd();
   ram[(uint16_t)(r->d + VIEW_BG2_Y)] = (uint8_t)y;
   ram[(uint16_t)(r->d + VIEW_BG2_Y + 1)] = (uint8_t)(y >> 8);
+}
+
+// ---- draw_meter ($80:DA5F) ----  exits with Y = 0, N = 0, Z = 1 (the last DEY or TYA);
+// A = 0 if the ten tiles were used up before the empty fill, else $0848 (the empty tile);
+// X = 0 after the full-tile loop, or $00C2 (the VRAM address) if there were none;
+// C, V: after a partial tile those of its ADC (both clear), else C = bit 2 of the length
+// (the last LSR) and V as on entry.
+static void call_draw_meter(const Regs* in, Regs* out) {
+  uint16_t length = draw_meter(in->d);
+  uint16_t full = length >> 3;
+  bool part = length & 7;
+  uint16_t left = (uint16_t)(METER_TILES - full - (part ? 1 : 0));
+  out->y = 0;
+  out->x = full ? 0 : METER_VRAM;
+  out->a = left ? METER_EMPTY : 0;
+  out->n = false;
+  out->z = true;
+  out->c = part ? false : (length >> 2) & 1;
+  if(part) out->v = false;
+}
+
+// values whose bar fits in the ten tiles (-51 to 2022: longer ones run the empty fill
+// round the 16-bit counter, 65,000-odd words), with the edges of each tile
+static void fuzz_draw_meter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint32_t k = rnd();
+  int16_t v = (k & 3) == 0 ? (int16_t)(-51 + (int)(rnd() % 80)) : (k & 3) == 1 ? (int16_t)(1990 + (int)(rnd() % 33))
+            : (int16_t)(-51 + (int)(rnd() % 2074));
+  ram[(uint16_t)(r->d + METER_VALUE)] = (uint8_t)v;
+  ram[(uint16_t)(r->d + METER_VALUE + 1)] = (uint8_t)((uint16_t)v >> 8);
 }
 
 // ---- upload_vram_now ($80:83AD, long call) ----
@@ -1814,6 +1844,31 @@ static void call_mode7_zoom_view_wrong(const Regs* in, Regs* out) {
   out->z = out->c = hi == 0;
 }
 
+// Negative test: draw_meter with the partial tile one eighth short (the VRAM word
+// comparison must see it).
+static void call_draw_meter_wrong(const Regs* in, Regs* out) {
+  int16_t value = (int16_t)rd16((uint16_t)(in->d + METER_VALUE));
+  video_set_m7a(value);
+  video_set_m7b((int16_t)(0x0A00 | (uint8_t)((uint16_t)value >> 8)));
+  uint16_t length = (uint16_t)(((int32_t)value * 10) >> 8) + 2;
+  wr16((uint16_t)(in->d + METER_SCRATCH), length);
+  uint16_t left = METER_TILES, vram = METER_VRAM;
+  for(uint16_t full = length >> 3; full != 0; full--, left--) video_write_vram_word(vram++, METER_FULL);
+  if(length & 7) {
+    video_write_vram_word(vram++, (uint16_t)(METER_PART + (length & 7) - 1));
+    left--;
+  }
+  for(; left != 0; left--) video_write_vram_word(vram++, METER_EMPTY);
+  bool part = length & 7;
+  out->y = 0;
+  out->x = (length >> 3) ? 0 : METER_VRAM;
+  out->a = (uint16_t)(METER_TILES - (length >> 3) - (part ? 1 : 0)) ? METER_EMPTY : 0;
+  out->n = false;
+  out->z = true;
+  out->c = part ? false : (length >> 2) & 1;
+  if(part) out->v = false;
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1866,6 +1921,8 @@ const Routine routines[] = {
    .fixedD = true, .call = call_mode7_zoom_view, ALL_OUTPUTS, .fuzz = fuzz_mode7_zoom_view},
   {.name = "mode7_view", .entry = 0x8A8B0A, .end = 0x8A8BB6, .source = "src/scale.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_mode7_view, ALL_OUTPUTS, .fuzz = fuzz_mode7_view},
+  {.name = "draw_meter", .entry = 0x80DA5F, .end = 0x80DAAE, .source = "src/hud.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_draw_meter, ALL_OUTPUTS, .fuzz = fuzz_draw_meter},
   {.name = "upload_vram_now", .entry = 0x8083AD, .end = 0x8083CB, .rtl = true, .source = "src/video_dma.c",
    .needM16 = true, .needX16 = true, .call = call_upload_vram_now, ALL_OUTPUTS, .fuzz = fuzz_upload_vram_now},
   {.name = "upload_cgram_now", .entry = 0x8083CB, .end = 0x8083E8, .rtl = true, .source = "src/video_dma.c",
@@ -2094,5 +2151,7 @@ const Routine negativeRoutines[] = {
    .lowWramDb = true, .waitsForInterrupts = true, .call = call_wait_frames_wrong, ALL_OUTPUTS},
   {.name = "mode7_zoom_view_wrong", .entry = 0x80F38D, .end = 0x80F3C4, .source = "src/scale.c", .needM16 = true,
    .fixedD = true, .call = call_mode7_zoom_view_wrong, ALL_OUTPUTS, .fuzz = fuzz_mode7_zoom_view},
+  {.name = "draw_meter_wrong", .entry = 0x80DA5F, .end = 0x80DAAE, .source = "src/hud.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_draw_meter_wrong, ALL_OUTPUTS, .fuzz = fuzz_draw_meter},
 };
 const int negativeRoutineCount = sizeof negativeRoutines / sizeof negativeRoutines[0];

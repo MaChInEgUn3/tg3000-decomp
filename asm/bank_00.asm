@@ -8431,7 +8431,7 @@ CODE_80D24B:
     lda.w #$0072                ; $80D3F0
     sta.b $7A                   ; $80D3F3
     jsr.w $D6A0                 ; $80D3F5
-    jsr.w $DA5F                 ; $80D3F8
+    jsr.w draw_meter            ; $80D3F8
     jsr.w $D823                 ; $80D3FB
     jsr.w $89D1                 ; $80D3FE
     lda.w #$0002                ; $80D401
@@ -8479,7 +8479,7 @@ CODE_80D46F:
     lda.w #$0001                ; $80D46F
     jsr.w wait_frames           ; $80D472
     cli                         ; $80D475
-    jsr.w $DA5F                 ; $80D476
+    jsr.w draw_meter            ; $80D476
     lda.b $22                   ; $80D479
     sta.b $20                   ; $80D47B
     lda.b $2A                   ; $80D47D
@@ -9154,6 +9154,7 @@ CODE_80DA34:
 CODE_80DA5B:
     sty.w $0174                 ; $80DA5B
     rts                         ; $80DA5E
+draw_meter:
     sep.b #$20                  ; $80DA5F
     lda.b $28                   ; $80DA61
     sta.w $211B                 ; $80DA63

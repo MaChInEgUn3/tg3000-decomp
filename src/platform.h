@@ -20,6 +20,11 @@ void video_upload_vram(uint16_t vram_word, uint32_t src, uint32_t size);
 // $2118/$2119, VMAIN = $80.)
 void video_fill_vram(uint16_t vram_word, uint8_t value, uint32_t size);
 
+// Write one word to video RAM at word address `vram_word`. (The original writes $2118 then
+// $2119 with VMAIN = $80; the console takes it only in vblank or under forced blank, which
+// is when the game does it.)
+void video_write_vram_word(uint16_t vram_word, uint16_t value);
+
 // Copy `size` bytes (1-65536) from `src` into the palette starting at colour `index`;
 // each colour is two bytes, low byte first (BGR555).
 void video_upload_cgram(uint8_t index, uint32_t src, uint32_t size);

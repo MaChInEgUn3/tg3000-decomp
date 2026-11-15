@@ -74,7 +74,7 @@ static Stats* stats;
 // one's sample gets its own sample too (it would otherwise never be sampled once its
 // callers are registered).
 #define MAX_DEPTH 4
-#define MAX_EFFECTS 32
+#define MAX_EFFECTS 64
 typedef struct { int kind; uint32_t target, src, size; } Effect;
 
 // PPU fields the C sets through platform calls (src/platform.h): the original's register
@@ -91,7 +91,9 @@ typedef struct {
   uint16_t entrySp, minSp, retPc;
   uint8_t retBank;
   uint32_t interruptsAtEntry, insns;
-  bool hwAccess, mathWritten, leftExtent, setupPending;
+  bool hwAccess, mathWritten, leftExtent, setupPending, vramAdrPending, effectOverflow;
+  bool vramLowSet;  // a $2118 byte waiting for its $2119 half
+  uint8_t vramLow;
   uint8_t dsp4State;  // where the routine is in a DSP-4 multiply (0 = idle; see dsp4Step)
   uint32_t hwAccessAdr, leftExtentPc;
   const char* hwWhy;
@@ -139,12 +141,17 @@ void difftest_replay_interrupt(void) {
 // The C's platform calls, recorded while it runs.
 static Effect cEffects[MAX_EFFECTS];
 static int cEffectCount;
+static bool cEffectOverflow;
 static bool collectingC;
 
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size) {
-  if(!collectingC || cEffectCount >= MAX_EFFECTS) return;
+  if(!collectingC) return;
+  if(cEffectCount >= MAX_EFFECTS) { cEffectOverflow = true; return; }
   cEffects[cEffectCount++] = (Effect){kind, target, src, size};
 }
+
+static void vramWordWrite(uint32_t adr, uint8_t val);
+static void mode7ProductRead(uint32_t adr);
 
 static uint16_t cPpuWritten, cPpu[PF_COUNT];
 
@@ -208,7 +215,7 @@ static bool ppuFieldWrite(uint32_t adr) {
 
 static const char* effectName(int kind) {
   return kind == EFFECT_VRAM ? "VRAM upload" : kind == EFFECT_CGRAM ? "CGRAM upload" :
-         kind == EFFECT_VRAM_FILL ? "VRAM fill" : "other DMA";
+         kind == EFFECT_VRAM_FILL ? "VRAM fill" : kind == EFFECT_VRAM_WORD ? "VRAM word" : "other DMA";
 }
 
 // A write of `val` to MDMAEN ($420B): one effect per channel started, read from the
@@ -238,6 +245,7 @@ static void recordKick(uint8_t val) {
     for(int k = 0; k < depth; k++) {
       Sample* smp = &samples[k];
       if(smp->effectCount < MAX_EFFECTS) smp->effects[smp->effectCount++] = e;
+      else smp->effectOverflow = true;
     }
   }
 }
@@ -334,7 +342,13 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   if(write && ppuFieldWrite(adr)) return;
   if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x420B) {
     recordKick(val);
-    for(int k = 0; k < depth; k++) samples[k].setupPending = false;
+    for(int k = 0; k < depth; k++) samples[k].setupPending = samples[k].vramAdrPending = false;
+    return;
+  }
+  if(((adr >> 16) & 0x7F) < 0x40 && (write ? ((adr & 0xFFFF) == 0x2118 || (adr & 0xFFFF) == 0x2119)
+                                             : ((adr & 0xFFFF) >= 0x2134 && (adr & 0xFFFF) <= 0x2136))) {
+    if(write) vramWordWrite(adr, val);
+    else mode7ProductRead(adr);
     return;
   }
   for(int k = 0; k < depth; k++) {
@@ -345,11 +359,62 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
       if(smp->mathWritten) continue;
       smp->hwWhy = "reads a multiply/divide result it did not start";
     } else if(write && isUploadSetup(adr)) {
-      smp->setupPending = true;
+      uint16_t a16 = adr & 0xFFFF;
+      if(a16 == 0x2116 || a16 == 0x2117) smp->vramAdrPending = true;  // a DMA or a word write uses it
+      else smp->setupPending = true;
       continue;
     } else {
       smp->hwWhy = "hardware access (not supported by this routine's C)";
     }
+    smp->hwAccess = true;
+    smp->hwAccessAdr = adr;
+  }
+}
+
+// A CPU write to VMDATA ($2118 low, $2119 high): with VMAIN = $80 (increment by one word
+// after the high byte, no remapping) each pair is one word written at the VRAM address
+// (the hook runs before the PPU takes the write, so the pointer is this word's). The
+// console only stores it in vblank or under forced blank; a word written while the screen
+// is drawn is lost there, which the C (no scanlines) cannot reproduce.
+static void vramWordWrite(uint32_t adr, uint8_t val) {
+  const Ppu* ppu = snes->ppu;
+  bool mode = ppu->vramIncrementOnHigh && ppu->vramIncrement == 1 && ppu->vramRemapMode == 0;
+  bool high = (adr & 0xFFFF) == 0x2119;
+  for(int k = 0; k < depth; k++) {
+    Sample* smp = &samples[k];
+    if(smp->hwAccess) continue;
+    const char* why = NULL;
+    if(!mode) why = "VRAM data written under a VMAIN mode the C does not model";
+    else if(high && !smp->vramLowSet) why = "VRAM high byte written without its low byte";
+    else if(high && !ppu->forcedBlank && !snes->inVblank) why = "VRAM word written while the screen is drawn (the console drops it)";
+    if(why) {
+      smp->hwWhy = why;
+      smp->hwAccess = true;
+      smp->hwAccessAdr = adr;
+      continue;
+    }
+    if(!high) {
+      smp->vramLow = val;
+      smp->vramLowSet = true;
+      continue;
+    }
+    smp->vramLowSet = false;
+    smp->vramAdrPending = false;
+    if(smp->effectCount < MAX_EFFECTS)
+      smp->effects[smp->effectCount++] = (Effect){EFFECT_VRAM_WORD, ppu->vramPointer, (uint32_t)(smp->vramLow | val << 8), 1};
+    else smp->effectOverflow = true;
+  }
+}
+
+// A read of the Mode 7 product ($2134-$2136: matrix A times the high byte of B): the C
+// computes it natively, so the read is the routine's own work provided both operands were
+// written inside the sample, from bytes written inside it.
+static void mode7ProductRead(uint32_t adr) {
+  uint16_t need = (uint16_t)(1u << PF_M7A | 1u << PF_M7B);
+  for(int k = 0; k < depth; k++) {
+    Sample* smp = &samples[k];
+    if(smp->hwAccess || ((smp->ppuWritten & need) == need && !(smp->ppuStale & need))) continue;
+    smp->hwWhy = "reads a Mode 7 product it did not set up";
     smp->hwAccess = true;
     smp->hwAccessAdr = adr;
   }
@@ -400,6 +465,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   memcpy(g_ram, sampleRam[k], sizeof g_ram);
   Regs out = smp->entryRegs;
   cEffectCount = 0;
+  cEffectOverflow = false;
   cPpuWritten = 0;
   collectingC = true;
   irqReplayed = 0;
@@ -412,6 +478,10 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
     return false;
   }
   while(irqReplayed < irqLimit) applyIrq(irqReplayed++);  // interrupts after the C's last wait
+  if(cEffectOverflow) {
+    snprintf(why, whyLen, "the C made more than %d hardware effects", MAX_EFFECTS);
+    return false;
+  }
   for(int i = 0; i < smp->effectCount || i < cEffectCount; i++) {
     if(i >= smp->effectCount || i >= cEffectCount) {
       snprintf(why, whyLen, "%d hardware effect(s) in the original, %d from the C", smp->effectCount, cEffectCount);
@@ -508,7 +578,13 @@ static void finishSample(int k, const Cpu* cpu) {
     snprintf(why, sizeof why, "a PPU register write completed a latch byte written before the routine (fields %04X)",
       smp->ppuStale);
     ok = false;
-  } else if(smp->setupPending) {
+  } else if(smp->effectOverflow) {
+    snprintf(why, sizeof why, "more than %d hardware effects", MAX_EFFECTS);
+    ok = false;
+  } else if(smp->vramLowSet) {
+    snprintf(why, sizeof why, "VRAM low byte written without its high byte (not modelled)");
+    ok = false;
+  } else if(smp->setupPending || smp->vramAdrPending) {
     snprintf(why, sizeof why, "DMA/PPU address set up but no DMA started afterwards (not modelled)");
     ok = false;
   } else if(smp->leftExtent) {
@@ -735,6 +811,9 @@ void difftest_fuzz(int iterations) {
       snes->hIrqEnabled = snes->vIrqEnabled = false;
       for(int ch = 0; ch < 8; ch++) snes->dma->channel[ch].hdmaActive = false;
       dsp4_bridge_reset();  // and the DSP-4 waits for a command
+      // the screen blanked, as when the game writes VRAM itself: the console takes VRAM data
+      // at any line then (the live samples check the game's own timing)
+      snes->ppu->forcedBlank = true;
       snes->dma->hdmaInitRequested = snes->dma->hdmaRunRequested = false;
       s->fuzzRequested++;
       Contract c = s->contracts[k % s->contractCount];
