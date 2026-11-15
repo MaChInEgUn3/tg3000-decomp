@@ -1349,6 +1349,29 @@ static void fuzz_func_8A9202(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x7C, (uint16_t)rnd());
 }
 
+// ---- func_80D6F3 ----  A = the result (N Z of its last LDA/INC), C of the CMP |d_y| vs
+// |d_x|, V of the SBC D+$36
+static void call_func_80D6F3(const Regs* in, Regs* out) {
+  uint16_t dx = (uint16_t)(((in->a & 0xFF) << 8) - rd16(DP + 0x34));
+  uint16_t ax = (dx & 0x8000) ? (uint16_t)-dx : dx;
+  uint16_t hy = (uint16_t)(in->a & 0xFF00), y0 = rd16(DP + 0x36), dy = (uint16_t)(hy - y0);
+  uint16_t ay = (dy & 0x8000) ? (uint16_t)-dy : dy;
+  out->a = func_80D6F3(in->a);
+  setNZ16(out, out->a);
+  out->c = ay >= ax;
+  out->v = ((hy ^ y0) & (hy ^ dy) & 0x8000) != 0;
+}
+
+// both signs of each difference, the two axes either way, and small longer axes (a zero
+// divisor)
+static void fuzz_func_80D6F3(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint32_t k = rnd();
+  uint16_t x = (uint16_t)rnd(), y = (uint16_t)rnd();
+  wr16ram(ram, DP + 0x34, x);
+  wr16ram(ram, DP + 0x36, y);
+  if((k & 3) == 0) r->a = (uint16_t)(((y + (rnd() % 0x200) - 0x100) & 0xFF00) | ((x >> 8) + rnd() % 3 - 1) % 256);
+}
+
 static void call_func_8A8000(const Regs* in, Regs* out) { (void)in; (void)out; func_8A8000(); }
 static void call_func_8A987F(const Regs* in, Regs* out) { (void)in; (void)out; func_8A987F(); }
 
@@ -2694,6 +2717,8 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_func_82AD12, ALL_OUTPUTS, .fuzz = fuzz_func_82AD12},
   {.name = "binary_to_bcd5", .entry = 0x8ABFD0, .end = 0x8AC004, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_binary_to_bcd5, ALL_OUTPUTS, .fuzz = fuzz_binary_to_bcd5},
+  {.name = "func_80D6F3", .entry = 0x80D6F3, .end = 0x80D784, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_80D6F3, ALL_OUTPUTS, .fuzz = fuzz_func_80D6F3},
   {.name = "func_8ABF4E", .entry = 0x8ABF4E, .end = 0x8ABF76, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_func_8ABF4E, ALL_OUTPUTS, .fuzz = fuzz_func_8ABF4E},
   {.name = "func_8A9202", .entry = 0x8A9202, .end = 0x8A92CF, .source = "src/misc.c", .needM16 = true,

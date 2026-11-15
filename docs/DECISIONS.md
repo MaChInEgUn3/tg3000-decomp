@@ -789,6 +789,13 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     four BNEs, calling only the verified `func_8AA48D`. Live 88/88, fuzz 500/500, paths
     64/64. The four branches now assemble as `bne CODE_8AA3C2`.
   - Parked: `$8A:9F76` (its unexecuted bytes call `$8A:AE9B`, itself never executed).
+  - `func_80D6F3` (math unit): a step toward a target from the 8.8 position `D+$34/$36`,
+    $0100 along the longer axis and |shorter| / (|longer| >> 8) on the CPU divider along
+    the other (a zero divisor gives `$FFFF`, as the hardware). Its four negations
+    (`$80:D700`, `$80:D712`, `$80:D767`, `$80:D773`, 4-8 bytes each) never ran in a
+    recorded movie; the fuzz covers them: live 1/1, fuzz 500/500, paths 74/74.
+  - Not yet: `$85:BC20` (18,507 calls) builds double-buffered HDMA tables and has several
+    unexecuted stretches; it goes with the HDMA unit.
   - `func_8A8290`: everything past its first test, `$8A:8295-$8A:82B3` (a counter that
     every 8th call steps `D+$64` through the cycle 1, 2, 3, 4, 3, 2 at `$8A:82B4`; the
     table stays unclassified). No recorded run reaches it with `D+$54` set.

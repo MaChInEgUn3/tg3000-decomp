@@ -195,6 +195,15 @@ uint16_t func_8ABF4E(void);
 // x + $14.
 uint16_t func_8A9202(uint16_t x);
 
+// A step toward the target (x, y) = (low byte, high byte of `target`) from the 8.8
+// position D+$34 / D+$36: d = (x << 8) - D+$34 and (y << 8) - D+$36 (kept in D+$16 / D+$18),
+// and the step (D+$38, D+$3A) is $0100 along the longer axis and |shorter| / (|longer| >>
+// 8) along the other (the CPU divider: a zero divisor gives $FFFF), each with the sign of
+// its d. The low bytes of D+$34 and D+$36 are then set to the value it leaves in A (d_y, or
+// the negated D+$3A when d_y is negative). D+$14 = |d_x|, D+$26 = the divisor. The longer
+// axis is chosen by the sign of |d_y| - |d_x|. Returns A.
+uint16_t func_80D6F3(uint16_t target);
+
 // Two empty long routines (a lone RTL each).
 void func_8A8000(void);
 void func_8A987F(void);

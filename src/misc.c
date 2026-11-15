@@ -1043,3 +1043,42 @@ void func_8A8000(void) {}
 
 // TG3000_ROUTINE($8A:987F) func_8A987F
 void func_8A987F(void) {}
+
+static uint16_t divide16by8(uint16_t dividend, uint8_t divisor) {  // the CPU divider
+  return divisor ? (uint16_t)(dividend / divisor) : 0xFFFF;
+}
+
+// TG3000_ROUTINE($80:D6F3) func_80D6F3
+//
+// Its four negations ($80:D700, $80:D712, $80:D767, $80:D773) run in no recorded movie;
+// they are checked by the fuzz.
+uint16_t func_80D6F3(uint16_t target) {
+  wr16(DP + 0x26, target);
+  uint16_t dx = (uint16_t)(((target & 0xFF) << 8) - rd16(DP + 0x34));
+  wr16(DP + 0x16, dx);
+  uint16_t ax = (dx & 0x8000) ? (uint16_t)-dx : dx;
+  wr16(DP + 0x14, ax);
+  uint16_t dy = (uint16_t)((target & 0xFF00) - rd16(DP + 0x36));
+  wr16(DP + 0x18, dy);
+  uint16_t ay = (dy & 0x8000) ? (uint16_t)-dy : dy;
+  if(!((uint16_t)(ay - ax) & 0x8000)) {  // CMP + BMI: the sign of the difference
+    uint8_t d = (uint8_t)(ay >> 8);
+    wr16(DP + 0x26, d);
+    wr16(DP + 0x38, divide16by8(ax & 0xFF00, d));
+    wr16(DP + 0x3A, 0x0100);
+  } else {
+    uint8_t d = (uint8_t)(ax >> 8);
+    wr16(DP + 0x26, d);
+    wr16(DP + 0x3A, divide16by8(ay, d));
+    wr16(DP + 0x38, 0x0100);
+  }
+  if(dx & 0x8000) wr16(DP + 0x38, (uint16_t)-rd16(DP + 0x38));
+  uint16_t a = dy;
+  if(dy & 0x8000) {
+    a = (uint16_t)-rd16(DP + 0x3A);
+    wr16(DP + 0x3A, a);
+  }
+  wr8(DP + 0x34, (uint8_t)a);
+  wr8(DP + 0x36, (uint8_t)a);
+  return a;
+}

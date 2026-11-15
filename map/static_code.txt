@@ -6,3 +6,7 @@
 8A:A345 8A:A34C m8x16 ; func_8AA32B's bit-7 path ($8A:A343 BEQ falls into it): executed by its difftest fuzz, matched by src/misc.c
 8A:A3C2 8A:A3F4 m16x16 ; func_8AA381's bit-11 path (four BNEs at $8A:A387-$8A:A39F): executed by its difftest fuzz, matched by src/misc.c
 8A:8295 8A:82B4 m16x16 ; func_8A8290 past its first test ($8A:8292 BNE +1): executed by its difftest fuzz, matched by src/misc.c ($8A:82B4 on is its 6-word table)
+80:D700 80:D704 m16x16 ; func_80D6F3: negate d_x ($80:D6FE BPL skips it): executed by its difftest fuzz, matched by src/misc.c
+80:D712 80:D716 m16x16 ; func_80D6F3: negate d_y ($80:D710 BPL): same
+80:D767 80:D76F m16x16 ; func_80D6F3: negate the x step ($80:D765 BPL): same
+80:D773 80:D77B m16x16 ; func_80D6F3: negate the y step ($80:D771 BPL): same

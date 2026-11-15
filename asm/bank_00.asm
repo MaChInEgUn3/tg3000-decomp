@@ -8455,7 +8455,7 @@ CODE_80D24B:
     asl a                       ; $80D40A
     tax                         ; $80D40B
     lda.w $CB14,x               ; $80D40C
-    jsr.w $D6F3                 ; $80D40F
+    jsr.w func_80D6F3           ; $80D40F
     ldx.w $0444                 ; $80D412
     lda.l $84A240,x             ; $80D415
     and.w #$00FF                ; $80D419
@@ -8791,6 +8791,7 @@ CODE_80D6D7:
     sta.b $22                   ; $80D6EE
     sta.b $20                   ; $80D6F0
     rts                         ; $80D6F2
+func_80D6F3:
     sta.b $26                   ; $80D6F3
     and.w #$00FF                ; $80D6F5
     xba                         ; $80D6F8
@@ -8798,7 +8799,8 @@ CODE_80D6D7:
     sbc.b $34                   ; $80D6FA
     sta.b $16                   ; $80D6FC
     bpl CODE_80D704             ; $80D6FE
-    incbin !baserom:$5700..$5704
+    eor.w #$FFFF                ; $80D700 static
+    inc a                       ; $80D703 static
 CODE_80D704:
     sta.b $14                   ; $80D704
     lda.b $26                   ; $80D706
@@ -8807,7 +8809,8 @@ CODE_80D704:
     sbc.b $36                   ; $80D70C
     sta.b $18                   ; $80D70E
     bpl CODE_80D716             ; $80D710
-    incbin !baserom:$5712..$5716
+    eor.w #$FFFF                ; $80D712 static
+    inc a                       ; $80D715 static
 CODE_80D716:
     cmp.b $14                   ; $80D716
     bmi CODE_80D742             ; $80D718
@@ -8852,11 +8855,17 @@ CODE_80D742:
 CODE_80D763:
     lda.b $16                   ; $80D763
     bpl CODE_80D76F             ; $80D765
-    incbin !baserom:$5767..$576F
+    lda.b $38                   ; $80D767 static
+    eor.w #$FFFF                ; $80D769 static
+    inc a                       ; $80D76C static
+    sta.b $38                   ; $80D76D static
 CODE_80D76F:
     lda.b $18                   ; $80D76F
     bpl CODE_80D77B             ; $80D771
-    incbin !baserom:$5773..$577B
+    lda.b $3A                   ; $80D773 static
+    eor.w #$FFFF                ; $80D775 static
+    inc a                       ; $80D778 static
+    sta.b $3A                   ; $80D779 static
 CODE_80D77B:
     sep.b #$20                  ; $80D77B
     sta.b $34                   ; $80D77D
@@ -9289,7 +9298,7 @@ CODE_80DB40:
     lda.b $14                   ; $80DB51
     pha                         ; $80DB53
     lda.w $CB14,x               ; $80DB54
-    jsr.w $D6F3                 ; $80DB57
+    jsr.w func_80D6F3           ; $80DB57
     pla                         ; $80DB5A
     sta.b $14                   ; $80DB5B
     plx                         ; $80DB5D
