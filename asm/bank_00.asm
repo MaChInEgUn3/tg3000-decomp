@@ -1027,13 +1027,13 @@ CODE_80893F:
     rti                         ; $80894D
     ldx.w $1B24                 ; $80894E
     lda.w $01FB                 ; $808951
-    jsr.w $899F                 ; $808954
+    jsr.w func_80899F           ; $808954
     lda.w $01FC                 ; $808957
-    jsr.w $899F                 ; $80895A
+    jsr.w func_80899F           ; $80895A
     lda.w $02FB                 ; $80895D
-    jsr.w $899F                 ; $808960
+    jsr.w func_80899F           ; $808960
     lda.w $02FC                 ; $808963
-    jsr.w $899F                 ; $808966
+    jsr.w func_80899F           ; $808966
     stx.w $1B24                 ; $808969
     lda.w #$00FF                ; $80896C
     trb.w $01FB                 ; $80896F
@@ -1056,6 +1056,7 @@ CODE_80893F:
     stx.w $1B26                 ; $80899B
 CODE_80899E:
     rts                         ; $80899E
+func_80899F:
     and.w #$00FF                ; $80899F
     beq CODE_8089B1             ; $8089A2
     sep.b #$20                  ; $8089A4
@@ -5586,7 +5587,7 @@ CODE_80B6A1:
 CODE_80B6AD:
     inc.b $CA                   ; $80B6AD
     inc.b $CA                   ; $80B6AF
-    jsr.w $B7BB                 ; $80B6B1
+    jsr.w func_80B7BB           ; $80B6B1
     lda.w #$0009                ; $80B6B4
     sta.b $E1                   ; $80B6B7
     jmp.w $B5A4                 ; $80B6B9
@@ -5609,7 +5610,7 @@ CODE_80B6AD:
     sta.b $DD                   ; $80B6FD
     lda.w #$0010                ; $80B6FF
     sta.b $E1                   ; $80B702
-    jsr.w $B7BB                 ; $80B704
+    jsr.w func_80B7BB           ; $80B704
     bra CODE_80B727             ; $80B707
 CODE_80B709:
     lda.b $E1                   ; $80B709
@@ -5622,7 +5623,7 @@ CODE_80B709:
     lda.w #$284C                ; $80B716
     sta.b $DF                   ; $80B719
     stx.b $DD                   ; $80B71B
-    jsr.w $B7BB                 ; $80B71D
+    jsr.w func_80B7BB           ; $80B71D
     bra CODE_80B727             ; $80B720
 CODE_80B722:
     lda.w #$FFFF                ; $80B722
@@ -5649,7 +5650,7 @@ CODE_80B73F:
     sta.b $DD                   ; $80B74A
     lda.w #$0010                ; $80B74C
     sta.b $E1                   ; $80B74F
-    jsr.w $B7BB                 ; $80B751
+    jsr.w func_80B7BB           ; $80B751
     bra CODE_80B774             ; $80B754
 CODE_80B756:
     lda.b $E1                   ; $80B756
@@ -5662,7 +5663,7 @@ CODE_80B756:
     lda.w #$284C                ; $80B763
     sta.b $DF                   ; $80B766
     stx.b $DD                   ; $80B768
-    jsr.w $B7BB                 ; $80B76A
+    jsr.w func_80B7BB           ; $80B76A
     bra CODE_80B774             ; $80B76D
 CODE_80B76F:
     lda.w #$FFFF                ; $80B76F
@@ -5703,6 +5704,7 @@ CODE_80B798:
 CODE_80B7B5:
     lda.w #$0001                ; $80B7B5
     jmp.w $B63A                 ; $80B7B8
+func_80B7BB:
     lda.b $DD                   ; $80B7BB
     ldy.w #$FFFF                ; $80B7BD
     ldx.w #$000E                ; $80B7C0

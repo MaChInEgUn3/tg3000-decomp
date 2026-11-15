@@ -2073,7 +2073,7 @@ CODE_8A9913:
     jsr.w func_8A9BB5           ; $8A9913
     bcs CODE_8A993E             ; $8A9916
     inc.b $5E                   ; $8A9918
-    jsr.w $9A81                 ; $8A991A
+    jsr.w byte_buffer_decimal2  ; $8A991A
     jsr.w byte_buffer_space     ; $8A991D
     jsr.w $99E2                 ; $8A9920
     lda.w #$0016                ; $8A9923
@@ -2195,6 +2195,7 @@ CODE_8A9A74:
     plx                         ; $8A9A7E
     pla                         ; $8A9A7F
     rts                         ; $8A9A80
+byte_buffer_decimal2:
     lda.b $5E                   ; $8A9A81
     cmp.w #$000A                ; $8A9A83
     bpl CODE_8A9A93             ; $8A9A86
@@ -2645,14 +2646,15 @@ CODE_8A9FE4:
     stz.b $56                   ; $8AA005
     stz.b $58                   ; $8AA007
     lda.w $0018                 ; $8AA009
-    jsr.w $A022                 ; $8AA00C
+    jsr.w func_8AA022           ; $8AA00C
     lda.w $0014                 ; $8AA00F
-    jsr.w $A022                 ; $8AA012
+    jsr.w func_8AA022           ; $8AA012
     lda.w $0010                 ; $8AA015
-    jsr.w $A022                 ; $8AA018
+    jsr.w func_8AA022           ; $8AA018
     lda.w $000C                 ; $8AA01B
-    jsr.w $A022                 ; $8AA01E
+    jsr.w func_8AA022           ; $8AA01E
     rts                         ; $8AA021
+func_8AA022:
     eor.w #$0001                ; $8AA022
     and.w #$0001                ; $8AA025
     bne CODE_8AA033             ; $8AA028
@@ -3917,14 +3919,14 @@ CODE_8ABF46:
     sta.b $44                   ; $8ABF54
     lda.w $0390                 ; $8ABF56
     sta.b $46                   ; $8ABF59
-    jsr.w $BF9E                 ; $8ABF5B
+    jsr.w bcd_to_binary         ; $8ABF5B
     lda.b $42                   ; $8ABF5E
     sta.w $038E                 ; $8ABF60
     lda.w $03BD                 ; $8ABF63
     sta.b $44                   ; $8ABF66
     lda.w $03BF                 ; $8ABF68
     sta.b $46                   ; $8ABF6B
-    jsr.w $BF9E                 ; $8ABF6D
+    jsr.w bcd_to_binary         ; $8ABF6D
     lda.b $42                   ; $8ABF70
     sta.w $03BD                 ; $8ABF72
     rts                         ; $8ABF75
@@ -3944,6 +3946,7 @@ CODE_8ABF46:
     sta.w $03BF                 ; $8ABF97
     jsr.w $C03D                 ; $8ABF9A
     rts                         ; $8ABF9D
+bcd_to_binary:
     stz.b $42                   ; $8ABF9E
     ldx.w #$0000                ; $8ABFA0
 CODE_8ABFA3:

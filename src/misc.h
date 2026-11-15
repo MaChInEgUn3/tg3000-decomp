@@ -69,6 +69,26 @@ void func_80B58D(uint8_t a, uint16_t x);
 // out): bits 16-19 of the original number.
 uint16_t func_8ABFBC(uint16_t low, bool* carry);
 
+// $0142 = the five BCD digits of $0144 (four nibbles, low first) and $0146 (its low
+// nibble) as a binary number (weights 1, 10, 100, 1000, 10000 at $8A:CABA), taking the
+// digits off with func_8ABFBC (which shifts $0144-$0146 right by 4 each time). Returns
+// the A it leaves: the last sum, or 0 if the last digit was 0.
+uint16_t bcd_to_binary(uint16_t a);
+
+// If the byte `b` is not zero: store it at $1B30 + x (an 8-byte ring) and return
+// (x + 1) & 7; else return x.
+uint16_t func_80899F(uint8_t b, uint16_t x);
+
+// Shift the inverse of bit 0 of `a` into the word $0156 (from the right) and add it to
+// the word $0158. Returns the new $0158.
+uint16_t func_8AA022(uint16_t a);
+
+// Set to $FFFF each of the seven words $01CF-$01DB that equals $01DD.
+void func_80B7BB(void);
+
+// byte_buffer_decimal of $015E, after a space if it is below 10 (signed): two columns.
+void byte_buffer_decimal2(void);
+
 // Append the words (a, x, y, D+$14) to the four tables $1900, $1940, $19C0, $1980 at
 // index D+$8C, then advance it: D+$8C = ((index + 2) & $3F) + D+$8A (32 entries in a
 // ring, D+$8A choosing the ring). Returns the new index.

@@ -831,6 +831,94 @@ static void call_func_8ABFBC(const Regs* in, Regs* out) {
   setNZ16(out, in->y);
 }
 
+// ---- bcd_to_binary ($8A:BF9E) ----  A as it leaves it, X = 10, Y = 0, N Z C of the final
+// CPX #10 (equal); V of the last ADC of a weight (the digits are the nibbles of $0144 and
+// the low nibble of $0146), or as on entry if every digit was 0.
+static void call_bcd_to_binary(const Regs* in, Regs* out) {
+  uint16_t lo = rd16(DP + 0x44), hi = rd16(DP + 0x46), sum = 0;
+  for(int i = 0; i < 5; i++) {
+    uint16_t digit = i < 4 ? (lo >> (4 * i)) & 0xF : hi & 0xF, w = rom16(0x8ACABA + 2 * i);
+    for(; digit != 0; digit--) {
+      setAdc16(out, sum, w);
+      sum = (uint16_t)(sum + w);
+    }
+  }
+  out->a = bcd_to_binary(in->a);
+  out->x = 10;
+  out->y = 0;
+  out->n = false;
+  out->z = out->c = true;
+}
+
+// ---- func_80899F ----  A = 0 (Z) when the byte is 0, else A = X = the new index (N Z from
+// its AND #7); C V as on entry
+static void call_func_80899F(const Regs* in, Regs* out) {
+  uint8_t b = (uint8_t)in->a;
+  out->x = func_80899F(b, in->x);
+  out->a = b ? out->x : 0;
+  setNZ16(out, out->a);
+}
+
+static void fuzz_func_80899F(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  uint32_t k = rnd();
+  r->x = (k & 3) ? (uint16_t)(rnd() & 7) : (uint16_t)(rnd() % 0x4C0);
+  if((k & 0x30) == 0) r->a &= 0xFF00;
+}
+
+// ---- func_8AA022 ----  A = the new $0158, N Z C V of its ADC
+static void call_func_8AA022(const Regs* in, Regs* out) {
+  uint16_t old = rd16(DP + 0x58);
+  out->a = func_8AA022(in->a);
+  setNZ16(out, out->a);
+  setAdc16(out, (uint16_t)((in->a ^ 1) & 1), old);
+}
+
+static void fuzz_func_8AA022(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x56, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x58, (rnd() & 1) ? 0xFFFF : (uint16_t)rnd());
+}
+
+// ---- func_80B7BB ----  A = $01DD, X = 0, Y = $FFFF, N Z of the last DEX (zero), C of the
+// last CMP (with $01CF, before it is cleared); V as on entry
+static void call_func_80B7BB(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t v = rd16(DP + 0xDD), cf = rd16(DP + 0xCF);
+  func_80B7BB();
+  out->a = v;
+  out->x = 0;
+  out->y = 0xFFFF;
+  out->n = false;
+  out->z = true;
+  out->c = v >= cf;
+}
+
+// words drawn from a few values so that some equal $01DD
+static void fuzz_func_80B7BB(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t pick[3] = {(uint16_t)rnd(), (uint16_t)rnd(), 0xFFFF};
+  for(uint16_t a = 0xCF; a <= 0xDD; a = (uint16_t)(a + 2)) wr16ram(ram, DP + a, pick[rnd() % 3]);
+}
+
+// ---- byte_buffer_decimal2 ($8A:9A81) ----  as byte_buffer_decimal of $015E (A = it)
+static void call_byte_buffer_decimal2(const Regs* in, Regs* out) {
+  uint16_t v = rd16(DP + 0x5E);
+  byte_buffer_decimal2();
+  out->a = v;
+  setNZ16(out, v);
+  out->c = true;
+  if(v != 0) out->v = false;
+  (void)in;
+}
+
+static void fuzz_byte_buffer_decimal2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_byte_buffer_push(r, ram, rnd);
+  uint32_t k = rnd();
+  uint16_t v = (k & 3) == 0 ? (uint16_t)(rnd() % 10) : (k & 3) == 1 ? (uint16_t)(0x8000 + rnd() % 12) : (uint16_t)rnd();
+  wr16ram(ram, DP + 0x5E, (k & 4) ? (uint16_t)(rnd() % 100) : v);
+}
+
 static void fuzz_func_8ABFBC(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   wr16ram(ram, DP + 0x44, (uint16_t)rnd());
@@ -2083,6 +2171,19 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_mode7_view, ALL_OUTPUTS, .fuzz = fuzz_mode7_view},
   {.name = "draw_meter", .entry = 0x80DA5F, .end = 0x80DAAE, .source = "src/hud.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_draw_meter, ALL_OUTPUTS, .fuzz = fuzz_draw_meter},
+  {.name = "bcd_to_binary", .entry = 0x8ABF9E, .end = 0x8ABFBC, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_bcd_to_binary, ALL_OUTPUTS, .fuzz = fuzz_func_8ABFBC},
+  {.name = "func_80899F", .entry = 0x80899F, .end = 0x8089B2, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_func_80899F, ALL_OUTPUTS, .fuzz = fuzz_func_80899F},
+  {.name = "func_8AA022", .entry = 0x8AA022, .end = 0x8AA03C, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_func_8AA022, ALL_OUTPUTS, .fuzz = fuzz_func_8AA022},
+  {.name = "func_80B7BB", .entry = 0x80B7BB, .end = 0x80B7CE, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_80B7BB, ALL_OUTPUTS, .fuzz = fuzz_func_80B7BB},
+  {.name = "byte_buffer_decimal2", .entry = 0x8A9A81, .end = 0x8A9A99, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_byte_buffer_decimal2, ALL_OUTPUTS,
+   .fuzz = fuzz_byte_buffer_decimal2},
+  {.name = "wait_frames_82", .entry = 0x82841E, .end = 0x828428, .source = "src/frame.c", .needM16 = true,
+   .lowWramDb = true, .waitsForInterrupts = true, .call = call_wait_frames, ALL_OUTPUTS},
   {.name = "byte_buffer_pad", .entry = 0x8A99B4, .end = 0x8A99BE, .source = "src/misc.c", .needM16 = true,
    .fixedD = true, .call = call_byte_buffer_pad, ALL_OUTPUTS, .fuzz = fuzz_byte_buffer_pad},
   {.name = "byte_buffer_end", .entry = 0x8A99D6, .end = 0x8A99E2, .source = "src/misc.c", .needM16 = true,

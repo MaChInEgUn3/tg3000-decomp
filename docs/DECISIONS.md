@@ -681,6 +681,17 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   passes 0), as for `decompress_to_vram`.
 - `$8A:A381` and `$80:9DD0` stay in asm: each has branches into bytes no run executes.
 
+## Hardware-free batch 6 (port-batch-6, 2026-11-15)
+
+- Re-running `tools/portable.py` after batch 5 unlocked new callers. Ported:
+  `bcd_to_binary` ($8A:BF9E: five BCD nibbles of `$0144/$0146` to binary in `$0142`,
+  weights 1-10000 at `$8A:CABA`, through `func_8ABFBC`), `func_80899F` (a byte into the
+  8-byte ring at `$1B30`, skipped when zero; 58,000 calls in the 60k movie),
+  `func_8AA022` (the inverse of A's bit 0 shifted into `$0156`, counted in `$0158`),
+  `func_80B7BB` (clears to `$FFFF` the words `$01CF-$01DB` equal to `$01DD`),
+  `byte_buffer_decimal2` ($8A:9A81: two columns, a space below 10) and `wait_frames_82`
+  ($82:841E: a third byte-identical copy of `wait_frames`, C shared).
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

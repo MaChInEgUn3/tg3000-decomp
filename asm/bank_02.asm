@@ -14,7 +14,7 @@ org $828000
     rep.b #$20                  ; $828351
     stz.w $420B                 ; $828353
     lda.w #$0001                ; $828356
-    jsr.w $841E                 ; $828359
+    jsr.w wait_frames_82        ; $828359
     lda.w #$8623                ; $82835C
     sta.w $0001                 ; $82835F
     sep.b #$20                  ; $828362
@@ -61,7 +61,7 @@ CODE_8283A7:
     lda.w $032F                 ; $8283C1
     sta.w $03DA                 ; $8283C4
     lda.w #$0001                ; $8283C7
-    jsr.w $841E                 ; $8283CA
+    jsr.w wait_frames_82        ; $8283CA
     stz.w $0026                 ; $8283CD
     stz.w $0196                 ; $8283D0
     stz.w $0198                 ; $8283D3
@@ -92,6 +92,7 @@ CODE_8283A7:
     pld                         ; $828416
     rtl                         ; $828417
     incbin !baserom:$10418..$1041E
+wait_frames_82:
     clc                         ; $82841E
     adc.w $0024                 ; $82841F
 CODE_828422:
@@ -254,7 +255,7 @@ CODE_82856D:
     jsr.w $AF33                 ; $8285D0
     jsr.w $8961                 ; $8285D3
     lda.w #$0001                ; $8285D6
-    jsr.w $841E                 ; $8285D9
+    jsr.w wait_frames_82        ; $8285D9
     stz.w $4315                 ; $8285DC
     stz.w $4325                 ; $8285DF
     stz.w $4335                 ; $8285E2
@@ -282,7 +283,7 @@ CODE_82856D:
     lda.w #$0001                ; $828621
     sta.w $1E9E                 ; $828624
     lda.w #$0001                ; $828627
-    jsr.w $841E                 ; $82862A
+    jsr.w wait_frames_82        ; $82862A
     lda.w #$0012                ; $82862D
     ldx.w #$4000                ; $828630
     jsr.w $AD12                 ; $828633
@@ -408,7 +409,7 @@ CODE_82877F:
     stz.w $420B                 ; $82877F
     sei                         ; $828782
     lda.w #$0001                ; $828783
-    jsr.w $841E                 ; $828786
+    jsr.w wait_frames_82        ; $828786
     rts                         ; $828789
     incbin !baserom:$1078A..$10923
     stz.b $86                   ; $828923

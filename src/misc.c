@@ -665,3 +665,52 @@ uint16_t func_8ABFBC(uint16_t low, bool* carry) {
   wr16(DP + 0x44, mid);
   return lsr_n(low, 12, carry);
 }
+
+#define BCD_WEIGHTS 0x8ACABA  // 1, 10, 100, 1000, 10000
+
+// TG3000_ROUTINE($8A:BF9E) bcd_to_binary
+uint16_t bcd_to_binary(uint16_t a) {
+  uint16_t sum = 0;
+  wr16(DP + 0x42, 0);
+  for(uint16_t i = 0; i != 10; i = (uint16_t)(i + 2)) {
+    bool carry;
+    uint16_t digit = func_8ABFBC(a, &carry);
+    a = digit;
+    for(; digit != 0; digit--) {
+      sum = (uint16_t)(sum + rom16(BCD_WEIGHTS + i));
+      wr16(DP + 0x42, sum);
+      a = sum;
+    }
+  }
+  return a;
+}
+
+// TG3000_ROUTINE($80:899F) func_80899F
+uint16_t func_80899F(uint8_t b, uint16_t x) {
+  if(b == 0) return x;
+  wr8(0x1B30 + x, b);
+  return (uint16_t)((x + 1) & 7);
+}
+
+// TG3000_ROUTINE($8A:A022) func_8AA022
+uint16_t func_8AA022(uint16_t a) {
+  uint16_t bit = (uint16_t)((a ^ 1) & 1);
+  wr16(DP + 0x56, (uint16_t)(rd16(DP + 0x56) << 1 | bit));
+  uint16_t sum = (uint16_t)(rd16(DP + 0x58) + bit);
+  wr16(DP + 0x58, sum);
+  return sum;
+}
+
+// TG3000_ROUTINE($80:B7BB) func_80B7BB
+void func_80B7BB(void) {
+  uint16_t v = rd16(DP + 0xDD);
+  for(uint16_t x = 14; x != 0; x = (uint16_t)(x - 2))
+    if(rd16(DP + 0xCD + x) == v) wr16(DP + 0xCD + x, 0xFFFF);
+}
+
+// TG3000_ROUTINE($8A:9A81) byte_buffer_decimal2
+void byte_buffer_decimal2(void) {
+  uint16_t v = rd16(DP + 0x5E);
+  if((uint16_t)(v - 10) & 0x8000) byte_buffer_push(0x20);
+  byte_buffer_decimal(v);
+}
