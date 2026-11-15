@@ -879,7 +879,11 @@ static void call_sprite_text_centered(const Regs* in, Regs* out) {
 
 static void fuzz_sprite_text_centered(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_sprite_text(r, ram, rnd);
-  if(ram[0x1C00] == 0) { ram[0x1C00] = 'A'; ram[0x1C01] = 0; }  // the game never centres ""
+  // the game never centres a string without a glyph ("", only spaces or bytes with bit 7
+  // set): there the original's do-while walks all of memory
+  bool glyph = false;
+  for(int i = 0; ram[0x1C00 + i] != 0; i++) if(ram[0x1C00 + i] != 0x20 && ram[0x1C00 + i] < 0x80) glyph = true;
+  if(!glyph) { ram[0x1C00] = 'A'; ram[0x1C01] = 0; }
 }
 
 // ---- sprite_number ($80:84F0) ----  A = low word, X = high word, Y = x; exits with Y =

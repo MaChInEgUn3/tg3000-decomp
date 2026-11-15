@@ -45,7 +45,7 @@ typedef struct {
 } Contract;
 
 typedef struct {
-  unsigned long entries, samples, pass, fail, interrupted, abandoned, fuzzPass, fuzzFail;
+  unsigned long entries, samples, pass, fail, interrupted, abandoned, fuzzPass, fuzzFail, fuzzRequested;
   bool contractBroken;
   Contract contracts[MAX_CONTRACTS];
   int contractCount;
@@ -555,19 +555,26 @@ void difftest_fuzz(int iterations) {
   irqOwner = -1;
   snes->nmiEnabled = false;
   snes->hIrqEnabled = snes->vIrqEnabled = false;
-  // Every routine's fuzz starts from the same RAM (as the live run left it): what one
-  // routine's cases leave behind must not change another routine's cases.
+  // Every fuzz case starts from the same RAM (as the live run left it): what one case
+  // leaves behind must not change another's.
   static uint8_t base[TG3000_WRAM_SIZE];
   memcpy(base, snes->ram, sizeof base);
   for(int i = 0; i < tableCount; i++) {
     const Routine* r = &table[i];
     Stats* s = &stats[i];
     if(r->fuzz == NULL || s->contractCount == 0) continue;
-    memcpy(snes->ram, base, sizeof base);
     // Each routine's inputs depend only on its own entry, not on its place in the
     // registry: adding a routine must not change what the others are tested with.
     fuzzSeed = 0x13579BDFu ^ (r->entry * 2654435761u);
     for(int k = 0; k < iterations; k++) {
+      // each case starts clean: the same WRAM, and no interrupt or HDMA that an earlier
+      // case (or the game) left enabled can run during it
+      memcpy(snes->ram, base, sizeof base);
+      snes->nmiEnabled = false;
+      snes->hIrqEnabled = snes->vIrqEnabled = false;
+      for(int ch = 0; ch < 8; ch++) snes->dma->channel[ch].hdmaActive = false;
+      snes->dma->hdmaInitRequested = snes->dma->hdmaRunRequested = false;
+      s->fuzzRequested++;
       Contract c = s->contracts[k % s->contractCount];
       Regs in = {(uint16_t)fuzzRandom(), (uint16_t)fuzzRandom(), (uint16_t)fuzzRandom(), c.d, c.db,
                  fuzzRandom() & 1, fuzzRandom() & 1, fuzzRandom() & 1, fuzzRandom() & 1, c.m8, c.x8, false};
@@ -654,12 +661,17 @@ bool difftest_report(const char* resultsPath) {
     }
     if(liveFlags[0] == '\0') strcpy(liveFlags, "-");
     snprintf(flagNote, sizeof flagNote, "flags live %s (of %lu returns watched)", liveFlags, s->watched);
-    bool ok = flagsOk && s->fail == 0 && s->fuzzFail == 0 && (s->pass + s->fuzzPass) > 0 && seen == need && !s->contractBroken;
+    // a fuzz case that was interrupted or abandoned was neither compared nor passed: the
+    // harness lost it, and a lost case may hide a deviation (e.g. an input on which the
+    // original runs away), so it fails the routine
+    unsigned long fuzzLost = s->fuzzRequested - (s->fuzzPass + s->fuzzFail);
+    bool ok = flagsOk && s->fail == 0 && s->fuzzFail == 0 && fuzzLost == 0 && (s->pass + s->fuzzPass) > 0 &&
+              seen == need && !s->contractBroken;
     const char* status = !reached ? "unreached" : ok ? "verified" : "failed";
     if(reached) allOk &= ok;  // a routine this run never reached is reported, not failed
-    printf("difftest %-16s $%06X: %s  live %lu/%lu pass (%lu entries, %lu interrupted, %lu abandoned), fuzz %lu/%lu, paths %d/%d%s\n",
+    printf("difftest %-16s $%06X: %s  live %lu/%lu pass (%lu entries, %lu interrupted, %lu abandoned), fuzz %lu/%lu (%lu lost), paths %d/%d%s\n",
       r->name, r->entry, !reached ? "UNREACHED" : ok ? "PASS" : "FAIL", s->pass, s->samples, s->entries, s->interrupted, s->abandoned,
-      s->fuzzPass, s->fuzzPass + s->fuzzFail, seen, need, s->contractBroken ? ", ENTRY CONTRACT BROKEN" : "");
+      s->fuzzPass, s->fuzzPass + s->fuzzFail, fuzzLost, seen, need, s->contractBroken ? ", ENTRY CONTRACT BROKEN" : "");
     for(int c = 0; c < s->contractCount; c++) {
       Contract* k = &s->contracts[c];
       printf("    entry state: D=%04X DB=%02X %s %s%s\n", k->d, k->db, k->m8 ? "m8" : "m16", k->x8 ? "x8" : "x16", k->e ? " emu" : "");
