@@ -1563,6 +1563,10 @@ static void call_nmi_tail_wrong(const Regs* in, Regs* out) {
   restoreNmiFrame(in, out);
 }
 
+// ---- nmi_target_80FBD1 / nmi_target_80FC5F ----  as nmi_tail
+static void call_nmi_target_80FBD1(const Regs* in, Regs* out) { nmi_target_80FBD1(); restoreNmiFrame(in, out); }
+static void call_nmi_target_80FC5F(const Regs* in, Regs* out) { nmi_target_80FC5F(); restoreNmiFrame(in, out); }
+
 // ---- nmi_tail ($80:8934) ----
 static void call_nmi_tail(const Regs* in, Regs* out) {
   nmi_tail();
@@ -1588,6 +1592,53 @@ static void fuzz_func_8ABF76(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   wr16ram(ram, 0x038E, (rnd() & 3) ? (uint16_t)rnd() : (uint16_t)(rnd() % 100));
   wr16ram(ram, 0x03BD, (rnd() & 3) ? (uint16_t)rnd() : 0xFFFF);
+}
+
+// ---- oam_from_objects ($8A:8E1B, long) ----  X = $100, Y = the new end (N Z of its LDY); A =
+// $E000 after hiding leftovers (C = 1 from the loop's last CPY), else the end with C of the
+// CMP end vs the last end; V as on entry
+static void call_oam_from_objects(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t last = rd16(0x0130);
+  uint16_t end = oam_from_objects();
+  bool hid = end != last && ((uint16_t)(end - last) & 0x8000);
+  out->x = 0x0100;
+  out->y = end;
+  setNZ16(out, end);
+  out->a = hid ? 0xE000 : end;
+  out->c = hid ? true : end >= last;
+}
+
+// slots in use or not, x across the $100 boundary, y on both sides of $F0 and negative
+static void fuzz_objects(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint16_t x = 0; x < 0x100; x = (uint16_t)(x + 2)) {
+    uint32_t k = rnd();
+    wr16ram(ram, (uint16_t)(0x0500 + x), (k & 3) == 0 ? 0 : (k & 4) ? (uint16_t)(0x8000 | rnd()) : (uint16_t)(1 + rnd() % 0x7FFF));
+    wr16ram(ram, (uint16_t)(0x0600 + x), (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(0x0700 + x), (k & 0x18) == 0 ? (uint16_t)(0x00E8 + rnd() % 16) : (k & 0x18) == 8 ? (uint16_t)(0x8000 | rnd()) : (uint16_t)(rnd() % 0xF0));
+    wr16ram(ram, (uint16_t)(0x0800 + x), (uint16_t)rnd());
+  }
+  wr16ram(ram, 0x0130, (uint16_t)(4 * (rnd() % 129)));
+}
+
+// ---- func_8AA050 (long) ----  as func_8AA005 after it; with D+$8E set, X = $100 and Y = the
+// new sprite end (oam_from_objects's)
+static void call_func_8AA050(const Regs* in, Regs* out) {
+  (void)in;
+  bool on = rd16(DP + 0x8E) != 0;
+  uint16_t b[4] = {rd16(0x0018), rd16(0x0014), rd16(0x0010), rd16(0x000C)};
+  uint16_t before = 0;
+  for(int i = 0; i < 3; i++) before = (uint16_t)(before + ((b[i] ^ 1) & 1));
+  out->a = func_8AA050();
+  setNZ16(out, out->a);
+  setAdc16(out, (uint16_t)((b[3] ^ 1) & 1), before);
+  if(on) { out->x = 0x0100; out->y = rd16(0x012A); }
+}
+
+static void fuzz_func_8AA050(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_objects(r, ram, rnd);
+  wr16ram(ram, DP + 0x8E, (rnd() & 1) ? 0 : (uint16_t)rnd());
 }
 
 static void fuzz_shift32(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -2939,7 +2990,16 @@ const Routine routines[] = {
    .call = call_sound_send_message, ALL_OUTPUTS},
   {.name = "sound_frame", .entry = 0x86DFE1, .end = 0x86DFFB, .rtl = true, .source = "src/sound.c", .needM16 = true,
    .lowWramDb = true, .call = call_sound_frame, ALL_OUTPUTS},
-  // no fuzz: it sends the sound message, whose handshake needs the sound CPU
+  {.name = "oam_from_objects", .entry = 0x8A8E1B, .end = 0x8A8EEF, .rtl = true, .source = "src/sprites.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_oam_from_objects, ALL_OUTPUTS,
+   .fuzz = fuzz_objects},
+  {.name = "func_8AA050", .entry = 0x8AA050, .end = 0x8AA06D, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8AA050, ALL_OUTPUTS, .fuzz = fuzz_func_8AA050},
+  // no fuzz for the NMI rows: they send the sound message, whose handshake needs the sound CPU
+  {.name = "nmi_target_80FBD1", .entry = 0x80FBD1, .end = 0x80FBD8, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_target_80FBD1, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}}},
+  {.name = "nmi_target_80FC5F", .entry = 0x80FC5F, .end = 0x80FC7D, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_target_80FC5F, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}}},
   {.name = "nmi_tail", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .fixedD = false, .call = call_nmi_tail, ALL_OUTPUTS},
   {.name = "irq_ack_only", .entry = 0x8595BD, .end = 0x8595C7, .rti = true, .source = "src/frame.c",

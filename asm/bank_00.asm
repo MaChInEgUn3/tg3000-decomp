@@ -13005,6 +13005,7 @@ decompress_near:
     rep.b #$20                  ; $80FBCD
     plb                         ; $80FBCF
     rtl                         ; $80FBD0
+nmi_target_80FBD1:
     jsl.l func_8A8000           ; $80FBD1
     jmp.w nmi_tail              ; $80FBD5
 oam_clear_long:
@@ -13058,6 +13059,7 @@ CODE_80FC4D:
     stz.w $420B                 ; $80FC59
     rep.b #$20                  ; $80FC5C
     rtl                         ; $80FC5E
+nmi_target_80FC5F:
     lda.w #$0002                ; $80FC5F
     tsb.w $0026                 ; $80FC62
     rep.b #$30                  ; $80FC65
@@ -13067,7 +13069,7 @@ CODE_80FC4D:
     plb                         ; $80FC6C
     lda.w #$0100                ; $80FC6D
     tcd                         ; $80FC70
-    jsl.l $8AA050               ; $80FC71
+    jsl.l func_8AA050           ; $80FC71
     plb                         ; $80FC75
     lda.w #$0000                ; $80FC76
     tcd                         ; $80FC79

@@ -857,8 +857,11 @@ void difftest_on_insn(Cpu* cpu) {
     const Routine* r = &table[smp->idx];
     if(pc >= r->entry && pc < r->end) stats[smp->idx].visited[pc - r->entry] = true;
     if(cpu->sp < smp->minSp) smp->minSp = cpu->sp;
-    // at the routine's own stack depth, every instruction must lie inside its extent
-    if(cpu->sp == smp->entrySp && (pc < r->entry || pc >= r->end) && !smp->leftExtent) {
+    // at the routine's own stack depth, every instruction must lie inside its extent (or a
+    // range it tail-jumps into)
+    bool inside = pc >= r->entry && pc < r->end;
+    for(int t = 0; t < 2; t++) if(r->alsoIn[t][1] && pc >= r->alsoIn[t][0] && pc < r->alsoIn[t][1]) inside = true;
+    if(cpu->sp == smp->entrySp && !inside && !smp->leftExtent) {
       smp->leftExtent = true;
       smp->leftExtentPc = pc;
     }

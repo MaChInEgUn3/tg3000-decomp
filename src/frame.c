@@ -40,3 +40,16 @@ void nmi_tail(void) {
   sound_frame();
   wr16(FRAME_COUNTER, (uint16_t)(rd16(FRAME_COUNTER) + 1));
 }
+
+// TG3000_ROUTINE($80:FBD1) nmi_target_80FBD1
+void nmi_target_80FBD1(void) {
+  func_8A8000();
+  nmi_tail();
+}
+
+// TG3000_ROUTINE($80:FC5F) nmi_target_80FC5F
+void nmi_target_80FC5F(void) {
+  wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
+  func_8AA050();
+  nmi_tail();
+}

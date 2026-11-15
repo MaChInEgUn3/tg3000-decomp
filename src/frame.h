@@ -28,4 +28,10 @@ void irq_ack_only(void);
 // sound message (sound_frame), count the frame (FRAME_COUNTER).
 void nmi_tail(void);
 
+// NMI dispatch targets that end in nmi_tail.
+// $80:FBD1: func_8A8000, then the tail.
+void nmi_target_80FBD1(void);
+// $80:FC5F: set bit 1 of $0026, func_8AA050 (with D = $0100, DB = $8A), then the tail.
+void nmi_target_80FC5F(void);
+
 #endif

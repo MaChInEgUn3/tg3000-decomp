@@ -3,6 +3,8 @@
 
 #include "dsp4.h"
 #include "frame.h"
+#include "sprites.h"
+#include "video_dma.h"
 #include "tg3000.h"
 #include "util.h"
 
@@ -1081,4 +1083,16 @@ uint16_t func_80D6F3(uint16_t target) {
   wr8(DP + 0x34, (uint8_t)a);
   wr8(DP + 0x36, (uint8_t)a);
   return a;
+}
+
+// TG3000_ROUTINE($8A:A050) func_8AA050 (long)
+uint16_t func_8AA050(void) {
+  if(rd16(DP + 0x8E) != 0) {
+    upload_7f_to_3000();
+    oam_from_objects();
+    uint16_t n = (uint16_t)(rd16(0x0164) + 1);
+    wr16(0x0164, n);
+    if((n & 7) == 0) wr16(0x0166, (uint16_t)(rd16(0x0166) + 1));
+  }
+  return func_8AA005();
 }

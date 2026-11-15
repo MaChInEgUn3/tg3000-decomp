@@ -41,7 +41,7 @@ CODE_8A803B:
     jsr.w $8828                 ; $8A8058
     jsr.w $891C                 ; $8A805B
     jsr.w mode7_view            ; $8A805E
-    jsl.l $8A8E1B               ; $8A8061
+    jsl.l oam_from_objects      ; $8A8061
     jsr.w $8787                 ; $8A8065
     lda.w #$0087                ; $8A8068
     sta.b $46                   ; $8A806B
@@ -63,7 +63,7 @@ CODE_8A803B:
     jsr.w func_8A869A           ; $8A8097
     jsr.w $86AB                 ; $8A809A
     jsr.w $898F                 ; $8A809D
-    jsl.l $8A8E1B               ; $8A80A0
+    jsl.l oam_from_objects      ; $8A80A0
     lda.w #$0004                ; $8A80A4
     sta.b $8A                   ; $8A80A7
     sep.b #$20                  ; $8A80A9
@@ -110,7 +110,7 @@ CODE_8A8142:
     jsr.w $86AB                 ; $8A815D
     jsr.w $898F                 ; $8A8160
     jsr.w func_8A869A           ; $8A8163
-    jsl.l $8A8E1B               ; $8A8166
+    jsl.l oam_from_objects      ; $8A8166
     lda.b $58                   ; $8A816A
     bne CODE_8A8179             ; $8A816C
     lda.b $8C                   ; $8A816E
@@ -1074,6 +1074,7 @@ clear_vram:
     rep.b #$20                  ; $8A8E16
     rtl                         ; $8A8E18
     incbin !baserom:$50E19..$50E1B
+oam_from_objects:
     rep.b #$30                  ; $8A8E1B
     stz.w $0B00                 ; $8A8E1D
     stz.w $0B02                 ; $8A8E20
@@ -2701,10 +2702,11 @@ CODE_8AA033:
     sta.b $58                   ; $8AA039
     rts                         ; $8AA03B
     incbin !baserom:$5203C..$52050
+func_8AA050:
     lda.b $8E                   ; $8AA050
     beq CODE_8AA069             ; $8AA052
     jsr.w upload_7f_to_3000     ; $8AA054
-    jsl.l $8A8E1B               ; $8AA057
+    jsl.l oam_from_objects      ; $8AA057
     inc.w $0164                 ; $8AA05B
     lda.w $0164                 ; $8AA05E
     and.w #$0007                ; $8AA061

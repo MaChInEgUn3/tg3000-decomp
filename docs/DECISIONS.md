@@ -994,6 +994,20 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   handler sampling of hdma-3 now reaches; paths 13/13. It has no fuzz, because of the
   sound handshake. A negative variant that skips the frame count fails.
 
+## NMI targets, first two (nmi-2, 2026-11-15)
+
+- **Tail jumps:** a row's `.alsoIn` lists ranges it may continue into at its own stack
+  depth. A dispatch target that ends with `jmp nmi_tail` declares the tail's extent; the
+  C calls `nmi_tail()`.
+- `oam_from_objects` ($8A:8E1B, long; 1,578 calls in the 60k movie) turns the 128-slot
+  object table (`$0500` used/size, `$0600` x, `$0700` y, `$0800` tile) into sprite
+  entries and their high-table bits. Its body sits after its own RTL. Race movie
+  140/140, fuzz 500/500, paths 92/92.
+- `func_8AA050` (long): `upload_7f_to_3000`, `oam_from_objects` and two counters when
+  `$018E` is set, then `func_8AA005`.
+- `nmi_target_80FC5F` (190/190, paths 14/14) and `nmi_target_80FBD1`: the first two NMI
+  dispatch targets in C, each its own work and then `nmi_tail`.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

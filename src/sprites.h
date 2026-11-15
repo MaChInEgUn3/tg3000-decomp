@@ -28,4 +28,13 @@ void oam_finish(uint16_t dp);
 void oam_finish_0b00_near(uint16_t dp);
 void oam_finish_near(uint16_t dp);
 
+// $8A:8E1B (long; D = $0100, DB = $8A): turn the 128-slot object table into sprites. A
+// slot is in use when its word at $0500 is not 0; $0600 holds x (9 bits), $0700 y (skipped
+// when negative or $F0 and over), $0800 the tile word. Each used slot takes the next
+// sprite entry at $0900 + D+$2A (x, y bytes, then the tile word) and its two bits in the
+// high table at $0B00 + D+$28: the x high bit (D+$2C mask) when x >= $100, and the size bit
+// (D+$2E mask) when $0500 is not negative. Entries left over from the last frame (up to
+// D+$30) are hidden ($E000), and D+$30 = the new end. Returns it.
+uint16_t oam_from_objects(void);
+
 #endif

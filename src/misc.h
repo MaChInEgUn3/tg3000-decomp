@@ -162,6 +162,10 @@ int func_8AA381(uint16_t x);
 // value the original leaves in A (0; the count's low 3 bits; or the word).
 uint16_t func_8A8290(void);
 
+// $8A:A050 (long; D = $0100): when D+$8E is not 0, upload_7f_to_3000, oam_from_objects
+// and count $0164 (every 8th count also $0166); then func_8AA005. Returns its result.
+uint16_t func_8AA050(void);
+
 // Mark the earlier copies of entry `y` in the pair of word tables $7E:F533 / $7E:F733:
 // walking from the index $00FE (in bytes, wrapping at $100) up to `y`, every entry equal
 // to entry y in both tables gets bit 15 set in its $F733 word. D+$14 = y, D+$16/D+$18 =
