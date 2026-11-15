@@ -467,6 +467,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - **Value already in hand:** with the firmware, bsnes is a reference for the DSP-4's
   exact output, which is what the native DSP-4 C will be checked against later.
 
+## DSP-4 as native C (2026-11-15)
+
+- `src/dsp4.c` holds the chip's commands as plain functions; ports call them instead of
+  talking to `$30:8000`. First: **command `$0000` = `dsp4_multiply`**, the signed
+  16 × 16 → 32-bit product (low word read first). The game uses it as its multiplier:
+  43 call sites (`LDA #$0000 / STA $30:8000` followed by two operands).
+- **Oracle:** `tools/refbench --dsp4-mul FILE` captures every command `$0000` the game
+  sends on the reference bench (the real firmware), with its operands and the result
+  bytes the chip returns, and checks them against `dsp4_multiply` as the TAS runs
+  (a CPU bus hook carrying values was added to the bsnes patch; the run's WRAM hashes are
+  unchanged by it). The whole TAS (450,994 frames): **15,431,275 multiplies, all equal**
+  to `dsp4_multiply`, and the run's WRAM identical frame by frame to the earlier sync run.
+
 ## Coverage sources (2026-11-14)
 
 - **Only runs that are known to follow the game's intended path feed

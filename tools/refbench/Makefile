@@ -21,9 +21,12 @@ $(BSNES)/out/libsnes.a:
 	$(MAKE) -C $(BSNES) platform=x target=libsnes profile=compatibility compiler=$(CC) \
 	  cpp="$(BSNES_CPP)" BIZWINCFLAGS="$(BSNES_CFLAGS)" build
 
-$(OUT)/refbench: refbench.cpp $(OUT)/Dsp4.o $(OUT)/png.o $(BSNES)/out/libsnes.a | $(OUT)
-	$(CXX) -O2 -Wall -std=c++17 -I$(BSNES)/target-libsnes -I$(D4) -I../bench -o $@ \
-	  refbench.cpp $(OUT)/Dsp4.o $(OUT)/png.o $(BSNES)/out/libsnes.a -ldl
+$(OUT)/refbench: refbench.cpp $(OUT)/Dsp4.o $(OUT)/png.o $(OUT)/src_dsp4.o $(BSNES)/out/libsnes.a | $(OUT)
+	$(CXX) -O2 -Wall -std=c++17 -I$(BSNES)/target-libsnes -I$(D4) -I../bench -I$(ROOT)/src -o $@ \
+	  refbench.cpp $(OUT)/Dsp4.o $(OUT)/png.o $(OUT)/src_dsp4.o $(BSNES)/out/libsnes.a -ldl
+
+$(OUT)/src_dsp4.o: $(ROOT)/src/dsp4.c $(ROOT)/src/dsp4.h | $(OUT)
+	$(CC) -O2 -std=c99 -Wall -I$(ROOT)/src -c $< -o $@
 
 $(OUT)/Dsp4.o: $(D4)/dsp4/Dsp4.cpp | $(OUT)
 	$(CXX) -O2 -std=c++17 -I$(D4) -c $< -o $@

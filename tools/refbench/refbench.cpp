@@ -24,6 +24,8 @@
 // leave both ports with libsnes's default joypads.
 // --coverage FILE OR-merges execution coverage into FILE (and FILE.ram), in the main
 // bench's format (tools/bench/coverage.h), for tools/map.py.
+// --dsp4-mul FILE checks every DSP-4 command $0000 the game sends against src/dsp4.c's
+// dsp4_multiply (the first mismatches go to FILE; totals to stderr).
 #include "libsnes.hpp"
 
 #include "dsp4/Dsp4.h"
@@ -36,6 +38,7 @@
 
 extern "C" {
 #include "png.h"
+#include "dsp4.h"
 }
 
 namespace SNES {
@@ -46,6 +49,7 @@ extern void (*necdsp_hle_write)(unsigned char data);
 extern unsigned long necdsp_writes;
 extern void (*refbench_exec_hook)(unsigned pc, bool e, bool m, bool x);
 extern void (*refbench_read_hook)(unsigned addr);
+extern void (*refbench_rw_hook)(unsigned addr, unsigned char value, bool write);
 }
 
 // libsnes.cpp calls BizHawk's process wrapper (a Windows IPC layer, not built here).
@@ -54,6 +58,9 @@ void pwrap_init() {}
 static dsp4::Dsp4 chip;
 static unsigned char hleRead(bool data) { return data ? chip.readData() : chip.readStatus(); }
 static void hleWrite(unsigned char v) { chip.writeData(v); }
+
+static uint32_t lastPc;   // the instruction being executed (from the exec hook)
+static bool coverageOn;
 
 // ---- coverage, same file format and flags as tools/bench/coverage.c ----
 enum { COV_START = 0x01, COV_CODE = 0x02, COV_READ = 0x04, COV_M8X8 = 0x08, COV_M8X16 = 0x10,
@@ -104,6 +111,11 @@ static void covExec(unsigned pc, bool e, bool m, bool x) {
   }
 }
 
+static void execHook(unsigned pc, bool e, bool m, bool x) {
+  lastPc = pc & 0xFFFFFF;
+  if(coverageOn) covExec(pc, e, m, x);
+}
+
 static void covRead(unsigned addr) {
   int32_t off = romOffset(addr);
   if(off >= 0) covFlags[off] |= COV_READ;
@@ -135,6 +147,63 @@ static bool covMergeSave(const std::string& path) {
     if(covRamExec[x >> 3] & (1 << (x & 7))) std::fprintf(r, "%02X:%04X\n", x >> 16, x & 0xFFFF);
   std::fclose(r);
   return ok;
+}
+
+// ---- DSP-4 oracle: every command $0000 the game sends (an "LDA #$0000 / STA $30:8000"
+// at the instruction) is captured with its two operands and the result bytes the chip
+// returns, and checked against the native dsp4_multiply (src/dsp4.c) ----
+struct MulCapture { bool active; uint32_t pc; uint8_t w[8]; int nw; uint8_t r[4]; int nr; };
+static MulCapture cap;
+static unsigned long mulCases, mulMatch, mulMismatch;
+static FILE* mulLog;
+
+static bool isDsp4Data(unsigned a) {
+  uint8_t b = (a >> 16) & 0x7F;
+  uint16_t adr = uint16_t(a);
+  return b >= 0x30 && b < 0x40 && adr >= 0x8000 && adr < 0xC000;
+}
+
+static bool isCommand0Site(uint32_t pc) {
+  int32_t off = romOffset(pc);
+  if(off < 3) return false;
+  const uint8_t* p = &romImage[off];
+  return p[0] == 0x8F && p[1] == 0x00 && p[2] == 0x80 && p[3] == 0x30 && p[-3] == 0xA9 && p[-2] == 0 && p[-1] == 0;
+}
+
+static void finishCapture() {
+  if(cap.active && cap.nw >= 6 && cap.nr >= 2) {
+    int16_t a = int16_t(cap.w[2] | cap.w[3] << 8), b = int16_t(cap.w[4] | cap.w[5] << 8);
+    uint32_t p = uint32_t(dsp4_multiply(a, b));
+    bool ok = true;
+    for(int i = 0; i < cap.nr; i++) if(cap.r[i] != uint8_t(p >> (8 * i))) ok = false;
+    mulCases++;
+    if(ok) mulMatch++;
+    else {
+      mulMismatch++;
+      if(mulLog && mulMismatch <= 50) {
+        std::fprintf(mulLog, "mismatch at $%06X: %d * %d: chip", cap.pc, a, b);
+        for(int i = 0; i < cap.nr; i++) std::fprintf(mulLog, " %02X", cap.r[i]);
+        std::fprintf(mulLog, ", C %08X\n", p);
+      }
+    }
+  }
+  cap.active = false;
+}
+
+static void rwHook(unsigned addr, unsigned char v, bool write) {
+  if(!isDsp4Data(addr)) return;
+  if(write) {
+    if(isCommand0Site(lastPc) && !(cap.active && cap.nw == 1)) {  // a new command $0000
+      finishCapture();
+      cap = MulCapture{true, lastPc, {0}, 0, {0}, 0};
+    } else if(cap.active && cap.nw >= 6) {  // the next command (another kind) began
+      finishCapture();
+      return;
+    }
+    if(cap.active && cap.nw < 8) cap.w[cap.nw++] = v;
+  } else if(cap.active && cap.nw >= 6 && cap.nr < 4) {
+    cap.r[cap.nr++] = v;
+  }
 }
 
 static std::string firmwarePath;
@@ -207,7 +276,7 @@ int main(int argc, char** argv) {
   }
   long maxFrames = -1, every = 0, wramAt = -1, offset = 0;
   bool p2pad = false, bizhawk = false;
-  std::string coveragePath;
+  std::string coveragePath, mulPath;
   const char* dumpDir = nullptr;
   const char* wramFile = nullptr;
   FILE* hashes = nullptr;
@@ -221,6 +290,7 @@ int main(int argc, char** argv) {
     else if(!std::strcmp(argv[i], "--p2-pad")) p2pad = true;
     else if(!std::strcmp(argv[i], "--bizhawk")) bizhawk = true;
     else if(!std::strcmp(argv[i], "--coverage") && i + 1 < argc) coveragePath = argv[++i];
+    else if(!std::strcmp(argv[i], "--dsp4-mul") && i + 1 < argc) mulPath = argv[++i];
     else if(!std::strcmp(argv[i], "--wram-at") && i + 2 < argc) { wramAt = std::atol(argv[++i]); wramFile = argv[++i]; }
     else { std::fprintf(stderr, "unknown option %s\n", argv[i]); return 2; }
   }
@@ -232,9 +302,12 @@ int main(int argc, char** argv) {
   std::fclose(f);
   romImage = rom;
   romImage.resize(kRomSize);
-  if(!coveragePath.empty()) {
-    SNES::refbench_exec_hook = covExec;
-    SNES::refbench_read_hook = covRead;
+  coverageOn = !coveragePath.empty();
+  SNES::refbench_exec_hook = execHook;
+  if(coverageOn) SNES::refbench_read_hook = covRead;
+  if(!mulPath.empty()) {
+    mulLog = std::fopen(mulPath.c_str(), "w");
+    SNES::refbench_rw_hook = rwHook;
   }
   FILE* log = std::fopen(argv[2], "r");
   if(log == nullptr) { std::perror(argv[2]); return 1; }
@@ -322,6 +395,11 @@ int main(int argc, char** argv) {
   }
   std::fclose(log);
   if(hashes) std::fclose(hashes);
+  if(!mulPath.empty()) {
+    finishCapture();
+    std::fprintf(stderr, "DSP-4 command $0000: %lu cases, %lu match dsp4_multiply, %lu differ\n", mulCases, mulMatch, mulMismatch);
+    if(mulLog) std::fclose(mulLog);
+  }
   if(!coveragePath.empty()) {
     if(!covMergeSave(coveragePath)) return 1;
     unsigned code = 0, starts = 0, read = 0;

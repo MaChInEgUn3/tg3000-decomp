@@ -30,6 +30,7 @@ tools/bench/selftest.sh         # determinism + fresh-process save/load + race r
 python3 -I tools/listing.py && tools/build_asm.sh   # asm/ -> exact ROM (SHA-1 + code-from-text proof)
 tools/refbench/fetch.sh && make -C tools/refbench    # TAS reference: bsnes from BizHawk 1.9.4
 build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --coverage traces/coverage.bin
+build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --dsp4-mul /tmp/mul.txt   # src/dsp4.c vs the chip
 ```
 
 Frame dumps are game assets: write them outside the repo (they are also ignored).

@@ -34,22 +34,23 @@ index 0b11d594c..293190bb0 100644
    if(regs.sr.drc == 0) {
      //16-bit
 diff --git a/libsnes/bsnes/snes/cpu/cpu.cpp b/libsnes/bsnes/snes/cpu/cpu.cpp
-index 8457b7974..3eeede783 100644
+index 8457b7974..964b2458b 100644
 --- a/libsnes/bsnes/snes/cpu/cpu.cpp
 +++ b/libsnes/bsnes/snes/cpu/cpu.cpp
-@@ -3,6 +3,11 @@
+@@ -3,6 +3,12 @@
  #define CPU_CPP
  namespace SNES {
  
 +// tg3000-decomp reference bench: coverage hooks (instruction starts and bus reads).
 +void (*refbench_exec_hook)(unsigned pc, bool e, bool m, bool x) = 0;
 +void (*refbench_read_hook)(unsigned addr) = 0;
++void (*refbench_rw_hook)(unsigned addr, unsigned char value, bool write) = 0;  // CPU bus accesses with values
 +
 +
  CPU cpu;
  
  #include "serialization.cpp"
-@@ -55,12 +60,12 @@ void CPU::Enter() { cpu.enter(); }
+@@ -55,12 +61,12 @@ void CPU::Enter() { cpu.enter(); }
  
  void CPU::enter() {
    while(true) {
@@ -66,7 +67,7 @@ index 8457b7974..3eeede783 100644
        }
      }
  
-@@ -90,6 +95,7 @@ void CPU::enter() {
+@@ -90,6 +96,7 @@ void CPU::enter() {
  
  void CPU::op_step() {
    debugger.op_exec(regs.pc.d);
@@ -87,10 +88,10 @@ index e8cdb3ecc..6573b2a75 100644
    return bus.read(abus);
  }
 diff --git a/libsnes/bsnes/snes/cpu/memory/memory.cpp b/libsnes/bsnes/snes/cpu/memory/memory.cpp
-index 7e5c0c691..df88a8d42 100644
+index 7e5c0c691..efa57c892 100644
 --- a/libsnes/bsnes/snes/cpu/memory/memory.cpp
 +++ b/libsnes/bsnes/snes/cpu/memory/memory.cpp
-@@ -12,6 +12,7 @@ void CPU::op_io() {
+@@ -12,11 +12,13 @@ void CPU::op_io() {
  
  uint8 CPU::op_read(uint32 addr) {
    debugger.op_read(addr);
@@ -98,6 +99,20 @@ index 7e5c0c691..df88a8d42 100644
  
    status.clock_count = speed(addr);
    dma_edge();
+   add_clocks(status.clock_count - 4);
+   regs.mdr = bus.read(addr);
++  if(refbench_rw_hook) refbench_rw_hook(addr, regs.mdr, false);
+   add_clocks(4);
+   alu_edge();
+   return regs.mdr;
+@@ -24,6 +26,7 @@ uint8 CPU::op_read(uint32 addr) {
+ 
+ void CPU::op_write(uint32 addr, uint8 data) {
+   debugger.op_write(addr, data);
++  if(refbench_rw_hook) refbench_rw_hook(addr, data, true);
+ 
+   alu_edge();
+   status.clock_count = speed(addr);
 diff --git a/libsnes/bsnes/target-libsnes/Makefile b/libsnes/bsnes/target-libsnes/Makefile
 index 9ebdc9bde..be2bd597c 100644
 --- a/libsnes/bsnes/target-libsnes/Makefile
