@@ -767,6 +767,40 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - Next in line: `$85:BC20` (18,507 calls, swaps of `$00E0/$00E4`, `$1E32/$1E36`, ...) and
   `$80:D6F3` (math unit).
 
+## HDMA, measured (hdma-1, 2026-11-15)
+
+- **Instrument:** `bench ... --hdma-report FILE` (`tools/bench/hdma.c`) records, over a
+  run: every channel configuration enabled in `$420C` at the end of each frame (B-bus
+  target, mode, direct/indirect, table start); the instructions that write `$420C`,
+  `$43x0-$43xA` and `$2105` (with whether the write lands in vblank); and the last CPU
+  writers of the first 64 bytes of each WRAM table. It does not take part in the
+  differential test. Over the 60k movie (9.5 min): 47 configurations.
+- **The race** (`$420C = $70` from `$85:8671`, 44,316 frames): channel 4 → `$2126`
+  (window 1, mode 4 indirect, table `$7E:4CCC`), channel 5 → `$210D` and channel 6 →
+  `$210F` (BG1/BG2 horizontal scroll per line, mode 3 indirect, tables in low WRAM
+  around `$06B3-$076A`, three sets in rotation). `$2105 = $09` (mode 1, BG3 priority)
+  is written in vblank by `$85:86F7` and `$85:876F`. `$85:BC20` (18,507 calls) is among
+  the writers of the scroll tables, with `$80:E00A`, `$80:8C53/$8C5C` and `$8A:8AF5`.
+- **Mode 7 screens:** channels 1-4 → `$211B`, `$211D`, `$211F`, `$210D` (mode 3: the
+  whole matrix and offsets per line, a perspective plane) from tables at `$81:CBF9-CC0E`;
+  and **`$2105` is switched by the CPU in the middle of the frame**: `$07` by `$80:BB3C`
+  (vblank) and `$01`/`$07` by `$80:BD2D` while drawing (4,190 and 2,492 frames): an IRQ
+  split between a mode-1 and a mode-7 part of the screen. A port needs a per-line (or
+  per-region) BG mode for those screens; this is now measured, not guessed.
+- Menus/intro use HDMA on `$2105`, `$212C`, `$210B`, `$2107`, `$2121` (palette per line,
+  indirect from `$7E:2C00`), `$2126/$2128` (windows), `$2132` (fixed colour).
+- **Consequence for the PPU end-state rule:** HDMA writes reach the PPU without going
+  through the CPU access hook, so a routine that writes a field HDMA also targets in the
+  same frame would be compared against HDMA's value. None of the verified routines does
+  (their fields: Mode 7 matrix/offsets and BG1/BG2 scroll, written in vblank or under
+  forced blank, while the race HDMA starts at line 0); a sample should fail rather than
+  pass when HDMA targeted one of its fields during it — to add with the first routine
+  that needs it.
+- **Next:** the interface. The data says the game's HDMA is (a) per-line tables of scroll,
+  window, palette and Mode 7 parameters, built in WRAM by game code, and (b) a CPU-timed
+  BG-mode split. Both are platform services for the ports (`video_*`), to be designed
+  from these tables when the first table-building routine (`$85:BC20`) is ported.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other
