@@ -796,6 +796,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   forced blank, while the race HDMA starts at line 0); a sample should fail rather than
   pass when HDMA targeted one of its fields during it — to add with the first routine
   that needs it.
+- **The table builder needs no interface:** `scroll_tables_build` ($85:BC20, long, 585
+  calls in the race movie) is plain WRAM work. It rotates three buffers per table and
+  writes the two indirect tables (line count with bit 7 for a repeat run, then a
+  pointer), from the end backwards. The bands are, from the top:
+  - an optional band for a negative `$0242`/`$1EF2`;
+  - the horizon height from `$7E:4CFE`/`$7E:4D4A` (indexed by `$0164`/`$0168`), with
+    pointers from `$1E3E`/`$1E40`;
+  - two bands at `$0237 + $B0` and `$0237 + $70`;
+  - fixed pointers `$A5D8`/`$A5DC`/`$A7D8`/`$A968`, split at 127 lines.
+
+  Live 185/185, fuzz 500/500, paths 313/313. Ten short stretches no recorded run reaches
+  are now static code. What will need the interface is the channel setup that points
+  HDMA at these tables.
 - **Next:** the interface. The data says the game's HDMA is (a) per-line tables of scroll,
   window, palette and Mode 7 parameters, built in WRAM by game code, and (b) a CPU-timed
   BG-mode split. Both are platform services for the ports (`video_*`), to be designed

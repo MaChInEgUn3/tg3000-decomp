@@ -10,6 +10,7 @@
 #include <stddef.h>
 
 #include "rng.h"
+#include "scroll_tables.h"
 #include "scale.h"
 #include "line_tables.h"
 #include "decompress.h"
@@ -1372,6 +1373,39 @@ static void fuzz_func_80D6F3(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   if((k & 3) == 0) r->a = (uint16_t)(((y + (rnd() % 0x200) - 0x100) & 0xFF00) | ((x >> 8) + rnd() % 3 - 1) % 256);
 }
 
+// ---- scroll_tables_build ($85:BC20, long) ----  A = the last value stored (N Z C V of its
+// SBC #$70), Y = the new $00E0, X = $0168
+static void call_scroll_tables_build(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t t = (uint16_t)(0xBB - rd16(0x0237));
+  out->a = scroll_tables_build();
+  out->y = rd16(0x00E0);
+  out->x = rd16(0x0168);
+  setNZ16(out, out->a);
+  setSbc16(out, t, 0x70);
+}
+
+// buffers in low WRAM away from the direct page, both signs of $0242/$1EF2 and of the two
+// $0237 bands, zero height bytes
+static void fuzz_scroll_tables_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint32_t k = rnd();
+  wr16ram(ram, 0x00E0, (uint16_t)(0x20 * (rnd() % 4)));
+  wr16ram(ram, 0x00E4, (uint16_t)(0x20 * (rnd() % 4)));
+  static const uint16_t heads[6] = {0x1E2E, 0x1E32, 0x1E36, 0x1E30, 0x1E34, 0x1E38};
+  for(int i = 0; i < 6; i++) wr16ram(ram, heads[i], (uint16_t)(0x0600 + 0x40 * i + 0x30 + rnd() % 8));
+  wr16ram(ram, 0x0242, (k & 1) ? (uint16_t)-(int)(rnd() % 0x120) : (uint16_t)(rnd() & 0x7FFF));
+  wr16ram(ram, 0x1EF2, (k & 2) ? (uint16_t)-(int)(rnd() % 0x120) : (uint16_t)(rnd() & 0x7FFF));
+  uint16_t i1 = (uint16_t)(rnd() % 0x40), i2 = (uint16_t)(rnd() % 0x40);
+  wr16ram(ram, 0x0164, i1);
+  wr16ram(ram, 0x0168, i2);
+  ram[0x4CFE + i1] = (k & 4) ? 0 : (uint8_t)rnd();
+  ram[0x4D4A + i2] = (k & 8) ? 0 : (uint8_t)rnd();
+  wr16ram(ram, 0x0237, (k & 0x30) == 0 ? (uint16_t)(0xFF00 + rnd() % 0x100) : (uint16_t)(rnd() % 0x100 - 0x40));
+  wr16ram(ram, 0x1E3E, (uint16_t)rnd());
+  wr16ram(ram, 0x1E40, (uint16_t)rnd());
+}
+
 static void call_func_8A8000(const Regs* in, Regs* out) { (void)in; (void)out; func_8A8000(); }
 static void call_func_8A987F(const Regs* in, Regs* out) { (void)in; (void)out; func_8A987F(); }
 
@@ -2717,6 +2751,9 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_func_82AD12, ALL_OUTPUTS, .fuzz = fuzz_func_82AD12},
   {.name = "binary_to_bcd5", .entry = 0x8ABFD0, .end = 0x8AC004, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_binary_to_bcd5, ALL_OUTPUTS, .fuzz = fuzz_binary_to_bcd5},
+  {.name = "scroll_tables_build", .entry = 0x85BC20, .end = 0x85BED1, .rtl = true, .source = "src/scroll_tables.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_scroll_tables_build, ALL_OUTPUTS,
+   .fuzz = fuzz_scroll_tables_build},
   {.name = "func_80D6F3", .entry = 0x80D6F3, .end = 0x80D784, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_func_80D6F3, ALL_OUTPUTS, .fuzz = fuzz_func_80D6F3},
   {.name = "func_8ABF4E", .entry = 0x8ABF4E, .end = 0x8ABF76, .source = "src/misc.c", .needM16 = true,

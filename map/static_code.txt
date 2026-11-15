@@ -10,3 +10,13 @@
 80:D712 80:D716 m16x16 ; func_80D6F3: negate d_y ($80:D710 BPL): same
 80:D767 80:D76F m16x16 ; func_80D6F3: negate the x step ($80:D765 BPL): same
 80:D773 80:D77B m16x16 ; func_80D6F3: negate the y step ($80:D771 BPL): same
+85:BC6C 85:BCAB m16x16 ; scroll_tables_build: the band for a negative $0242 ($85:BC6A BPL skips it): executed by its difftest fuzz, matched by src/scroll_tables.c
+85:BCBB 85:BCBE m16x16 ; scroll_tables_build: a zero height byte counts as $DC: same
+85:BCC4 85:BCC7 m16x16 ; scroll_tables_build: a negative height becomes 0: same
+85:BCFD 85:BD00 m16x16 ; scroll_tables_build: a negative $0237 + $B0 becomes 0: same
+85:BD2A 85:BD2D m16x16 ; scroll_tables_build: a negative $0237 + $70 becomes 0: same
+85:BDA9 85:BDE8 m16x16 ; scroll_tables_build, second table: the band for a negative $1EF2: same
+85:BDF8 85:BDFB m16x16 ; scroll_tables_build, second table: zero height byte: same
+85:BE01 85:BE04 m16x16 ; scroll_tables_build, second table: negative height: same
+85:BE3A 85:BE3D m16x16 ; scroll_tables_build, second table: negative $0237 + $B0: same
+85:BE67 85:BE6A m16x16 ; scroll_tables_build, second table: negative $0237 + $70: same
