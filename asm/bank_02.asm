@@ -140,26 +140,26 @@ CODE_828422:
     ldx.w #$85F5                ; $828496
     ldy.w #$5AC0                ; $828499
     lda.w #$008F                ; $82849C
-    jsl.l $80837D               ; $82849F
+    jsl.l decompress_to_vram_long; $82849F
     lda.w $01E4                 ; $8284A3
     bmi CODE_8284C8             ; $8284A6
     bne CODE_8284B9             ; $8284A8
     ldx.w #$9093                ; $8284AA
     ldy.w #$0000                ; $8284AD
     lda.w #$009C                ; $8284B0
-    jsl.l $80837D               ; $8284B3
+    jsl.l decompress_to_vram_long; $8284B3
     bra CODE_8284D5             ; $8284B7
 CODE_8284B9:
     ldx.w #$A04F                ; $8284B9
     ldy.w #$0000                ; $8284BC
     lda.w #$009C                ; $8284BF
-    jsl.l $80837D               ; $8284C2
+    jsl.l decompress_to_vram_long; $8284C2
     bra CODE_8284D5             ; $8284C6
 CODE_8284C8:
     ldx.w #$9F2A                ; $8284C8
     ldy.w #$0000                ; $8284CB
     lda.w #$009D                ; $8284CE
-    jsl.l $80837D               ; $8284D1
+    jsl.l decompress_to_vram_long; $8284D1
 CODE_8284D5:
     ldx.w #$8B3D                ; $8284D5
     ldy.w #$0000                ; $8284D8
@@ -199,7 +199,7 @@ CODE_8284D5:
     ldx.w #$B3D5                ; $82853E
     ldy.w #$0EE0                ; $828541
     lda.w #$0099                ; $828544
-    jsl.l $80837D               ; $828547
+    jsl.l decompress_to_vram_long; $828547
     lda.w $047C                 ; $82854B
     bmi CODE_82856D             ; $82854E
     jsl.l $84A4CD               ; $828550

@@ -321,8 +321,10 @@ CODE_808377:
     cmp.w $0024                 ; $808377
     bne CODE_808377             ; $80837A
     rts                         ; $80837C
-    jsr.w $8381                 ; $80837D
+decompress_to_vram_long:
+    jsr.w decompress_to_vram    ; $80837D
     rtl                         ; $808380
+decompress_to_vram:
     ora.w #$7F00                ; $808381
     phy                         ; $808384
     ldy.w #$0000                ; $808385
@@ -1193,19 +1195,19 @@ CODE_808B59:
     ldy.w #$0010                ; $808BE3
     ldx.w #$8000                ; $808BE6
     lda.w #$008D                ; $808BE9
-    jsr.w $8381                 ; $808BEC
+    jsr.w decompress_to_vram    ; $808BEC
     ldy.w #$1310                ; $808BEF
     ldx.w #$8000                ; $808BF2
     lda.w #$0088                ; $808BF5
-    jsr.w $8381                 ; $808BF8
+    jsr.w decompress_to_vram    ; $808BF8
     ldy.w #$2000                ; $808BFB
     ldx.w #$8190                ; $808BFE
     lda.w #$0087                ; $808C01
-    jsr.w $8381                 ; $808C04
+    jsr.w decompress_to_vram    ; $808C04
     ldy.w #$2500                ; $808C07
     ldx.w #$895F                ; $808C0A
     lda.w #$008D                ; $808C0D
-    jsr.w $8381                 ; $808C10
+    jsr.w decompress_to_vram    ; $808C10
     stz.w $2116                 ; $808C13
     ldx.w #$0010                ; $808C16
 CODE_808C19:
@@ -10399,7 +10401,7 @@ CODE_80E46B:
     ldx.w #$8601                ; $80E4EF
     ldy.w #$4000                ; $80E4F2
     lda.w #$0088                ; $80E4F5
-    jsr.w $8381                 ; $80E4F8
+    jsr.w decompress_to_vram    ; $80E4F8
     ldx.w #$8C7D                ; $80E4FB
     ldy.w #$0000                ; $80E4FE
     lda.w #$7F88                ; $80E501
@@ -11486,11 +11488,11 @@ CODE_80EDD9:
     ldx.w #$8000                ; $80EE68
     ldy.w #$5010                ; $80EE6B
     lda.w #$008D                ; $80EE6E
-    jsr.w $8381                 ; $80EE71
+    jsr.w decompress_to_vram    ; $80EE71
     ldx.w #$AADF                ; $80EE74
     ldy.w #$7400                ; $80EE77
     lda.w #$0091                ; $80EE7A
-    jsr.w $8381                 ; $80EE7D
+    jsr.w decompress_to_vram    ; $80EE7D
     ldx.w #$AB17                ; $80EE80
     ldy.w #$2000                ; $80EE83
     lda.w #$7E91                ; $80EE86

@@ -24,4 +24,10 @@ void upload_tiles_3700(uint16_t entry, uint16_t offset);
 void upload_tiles_7700(uint16_t entry, uint16_t offset);
 void upload_tiles_7b00(uint16_t entry, uint16_t offset);
 
+// Unpack the stream at `src_bank`:`src` (the game's compression, see decompress) to
+// $7F:0000 and copy the result to video RAM from word `vram_word`. Returns the address
+// just past the stream. (The original takes the source bank in A's low byte and ORs A with
+// $7F00 for the destination bank; the game's high byte is always below $80, i.e. $7F.)
+uint16_t decompress_to_vram(uint16_t dp, uint8_t src_bank, uint16_t src, uint16_t vram_word);
+
 #endif

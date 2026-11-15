@@ -698,14 +698,16 @@ static void call_decompress(const Regs* in, Regs* out) {
 
 // A random but valid stream at $7E:4000 unpacking to $7F:2100, after 8 KB of random
 // bytes the back references can reach.
-static void fuzz_decompress(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
-  for(int i = 0; i < 0x2100; i++) ram[0x10000 + i] = (uint8_t)rnd();
-  uint32_t p = 0x4000, y = 0x2100;
+// A random stream at $7E:4000 unpacking from `y`; without back references (commands
+// $80-$FF) when the destination starts at 0, where they would reach before the buffer.
+static void fuzz_decompress_stream(uint8_t* ram, uint32_t (*rnd)(void), uint32_t y, bool backrefs) {
+  uint32_t p = 0x4000, end = y + 0x1700;
   int commands = 4 + (int)(rnd() % 24);
-  for(int c = 0; c < commands && y < 0x3800; c++) {
-    switch(rnd() % 8) {
+  for(int c = 0; c < commands && y < end; c++) {
+    // from 0, the first command is a literal run: the repeats re-read the bytes before them
+    switch((!backrefs && c == 0) ? 0 : rnd() % (backrefs ? 8 : 5)) {
       case 0: {
-        uint8_t n = (uint8_t)(1 + rnd() % 0x3F);
+        uint8_t n = (uint8_t)((!backrefs && c == 0 ? 4 : 1) + rnd() % 0x3C);
         ram[p++] = n;
         for(int i = 0; i < n; i++) ram[p++] = (uint8_t)rnd();
         y += n;
@@ -734,6 +736,11 @@ static void fuzz_decompress(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
     }
   }
   ram[p] = 0;
+}
+
+static void fuzz_decompress(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  for(int i = 0; i < 0x2100; i++) ram[0x10000 + i] = (uint8_t)rnd();
+  fuzz_decompress_stream(ram, rnd, 0x2100, true);
   r->a = 0x7F7E;
   r->x = 0x4000;
   r->y = 0x2100;
@@ -1604,6 +1611,28 @@ static void fuzz_func_82AC52(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0xFAB4, (uint16_t)rnd());
 }
 
+// ---- decompress_to_vram ($80:8381; $80:837D long) ----  A low byte = source bank, X =
+// source, Y = VRAM word. Exits with A = Y's high byte : $01 (the last LDA #$01, N = Z = 0),
+// X = the end of the stream, Y = 0, and decompress's C/V for a destination of 0: those of
+// ~0 + length + 1, i.e. C = 1, V = 0.
+static void call_decompress_to_vram(const Regs* in, Regs* out) {
+  out->x = decompress_to_vram(in->d, (uint8_t)in->a, in->x, in->y);
+  out->a = (uint16_t)((in->y & 0xFF00) | 0x01);
+  out->y = 0;
+  out->n = out->z = false;
+  out->c = true;
+  out->v = false;
+}
+
+static void fuzz_decompress_to_vram(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_decompress_stream(ram, rnd, 0, false);  // unpacks to $7F:0000
+  // the original ORs A with $7F00 for the destination bank: the game's A high byte is
+  // below $80 (bank $7F); $80 or more would make it bank $FF
+  r->a = (uint16_t)((rnd() & 0x7F00) | 0x7E);
+  r->x = 0x4000;
+  r->y = (uint16_t)(rnd() & 0x7FFF);
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1825,6 +1854,10 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_func_82A9B7, ALL_OUTPUTS, .fuzz = fuzz_func_82A9B7},
   {.name = "func_82AC52", .entry = 0x82AC52, .end = 0x82AD0E, .source = "src/misc.c", .needM16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_func_82AC52, ALL_OUTPUTS, .fuzz = fuzz_func_82AC52},
+  {.name = "decompress_to_vram", .entry = 0x808381, .end = 0x8083AD, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .call = call_decompress_to_vram, ALL_OUTPUTS, .fuzz = fuzz_decompress_to_vram},
+  {.name = "decompress_to_vram_long", .entry = 0x80837D, .end = 0x808381, .rtl = true, .source = "src/video_dma.c",
+   .needM16 = true, .needX16 = true, .call = call_decompress_to_vram, ALL_OUTPUTS, .fuzz = fuzz_decompress_to_vram},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

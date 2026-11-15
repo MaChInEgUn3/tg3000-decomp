@@ -567,15 +567,15 @@ CODE_8A88BB:
     lda.w #$007E                ; $8A891C
     ldx.w #$8256                ; $8A891F
     ldy.w #$2000                ; $8A8922
-    jsl.l $80837D               ; $8A8925
+    jsl.l decompress_to_vram_long; $8A8925
     lda.w #$007E                ; $8A8929
     ldx.w #$B385                ; $8A892C
     ldy.w #$2A00                ; $8A892F
-    jsl.l $80837D               ; $8A8932
+    jsl.l decompress_to_vram_long; $8A8932
     lda.w #$007E                ; $8A8936
     ldx.w #$9F07                ; $8A8939
     ldy.w #$3000                ; $8A893C
-    jsl.l $80837D               ; $8A893F
+    jsl.l decompress_to_vram_long; $8A893F
     lda.w #$007E                ; $8A8943
     sta.b $14                   ; $8A8946
     ldx.w #$A071                ; $8A8948
@@ -1638,7 +1638,7 @@ func_8A92CF:
     ldx.w #$8601                ; $8A94F2
     ldy.w #$1000                ; $8A94F5
     lda.w #$0088                ; $8A94F8
-    jsl.l $80837D               ; $8A94FB
+    jsl.l decompress_to_vram_long; $8A94FB
     lda.w #$8660                ; $8A94FF
     ldx.w #$F40B                ; $8A9502
     ldy.w #$0040                ; $8A9505
@@ -1650,7 +1650,7 @@ func_8A92CF:
     ldx.w #$AADF                ; $8A9519
     ldy.w #$7400                ; $8A951C
     lda.w #$0091                ; $8A951F
-    jsl.l $80837D               ; $8A9522
+    jsl.l decompress_to_vram_long; $8A9522
     rep.b #$20                  ; $8A9526
     ldx.w #$0000                ; $8A9528
     ldy.w #$3800                ; $8A952B
@@ -1686,7 +1686,7 @@ CODE_8A954E:
     ldy.w #$0800                ; $8A9573
     ldx.w #$F861                ; $8A9576
     lda.w #$0087                ; $8A9579
-    jsl.l $80837D               ; $8A957C
+    jsl.l decompress_to_vram_long; $8A957C
     plb                         ; $8A9580
     jsr.w clear_tilemap_7f      ; $8A9581
     inc.b $6A                   ; $8A9584
@@ -3575,21 +3575,21 @@ CODE_8AB98A:
     ldy.w #$0800                ; $8AB994
     ldx.w #$FEC3                ; $8AB997
     lda.w #$0088                ; $8AB99A
-    jsl.l $80837D               ; $8AB99D
+    jsl.l decompress_to_vram_long; $8AB99D
     ldy.w #$1000                ; $8AB9A1
     ldx.w #$F87F                ; $8AB9A4
     lda.w #$0088                ; $8AB9A7
-    jsl.l $80837D               ; $8AB9AA
+    jsl.l decompress_to_vram_long; $8AB9AA
     rts                         ; $8AB9AE
     incbin !baserom:$539AF..$53A55
     ldx.w #$EE52                ; $8ABA55
     ldy.w #$4000                ; $8ABA58
     lda.w #$0096                ; $8ABA5B
-    jsl.l $80837D               ; $8ABA5E
+    jsl.l decompress_to_vram_long; $8ABA5E
     ldx.w #$FA8B                ; $8ABA62
     ldy.w #$7000                ; $8ABA65
     lda.w #$0085                ; $8ABA68
-    jsl.l $80837D               ; $8ABA6B
+    jsl.l decompress_to_vram_long; $8ABA6B
     lda.w #$8A00                ; $8ABA6F
     ldx.w #$C658                ; $8ABA72
     ldy.w #$0200                ; $8ABA75
@@ -3811,7 +3811,7 @@ CODE_8ABC9B:
     ldx.w #$8601                ; $8ABE60
     ldy.w #$1000                ; $8ABE63
     lda.w #$0088                ; $8ABE66
-    jsl.l $80837D               ; $8ABE69
+    jsl.l decompress_to_vram_long; $8ABE69
     jsr.w $BA55                 ; $8ABE6D
     lda.w #$8560                ; $8ABE70
     ldx.w #$FA37                ; $8ABE73
@@ -4030,12 +4030,12 @@ CODE_8AC04C:
     ldy.w #$0800                ; $8AC07A
     ldx.w #$F861                ; $8AC07D
     lda.w #$0087                ; $8AC080
-    jsl.l $80837D               ; $8AC083
+    jsl.l decompress_to_vram_long; $8AC083
     jsr.w $C24B                 ; $8AC087
     ldy.w #$0000                ; $8AC08A
     ldx.w #$F5BC                ; $8AC08D
     lda.w #$0087                ; $8AC090
-    jsl.l $80837D               ; $8AC093
+    jsl.l decompress_to_vram_long; $8AC093
     jsl.l func_8A8EEF           ; $8AC097
     jsr.w clear_tilemap_7f      ; $8AC09B
     lda.w #$FC5F                ; $8AC09E

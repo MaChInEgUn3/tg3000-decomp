@@ -2,6 +2,7 @@
 // Immediate uploads to video memory (outside the VRAM transfer queue).
 #include "video_dma.h"
 
+#include "decompress.h"
 #include "platform.h"
 #include "tg3000.h"
 
@@ -50,3 +51,12 @@ void upload_tiles_7b00(uint16_t entry, uint16_t offset) { upload_tiles(TILE_OFFS
 
 // Two more variants at $8A:8D81 / $8A:8DA0 (+$20, VRAM $C280 / $C680) are not ported until
 // a movie runs them and shows their data bank.
+
+// TG3000_ROUTINE($80:8381) decompress_to_vram
+// TG3000_ROUTINE($80:837D) decompress_to_vram (long call)
+uint16_t decompress_to_vram(uint16_t dp, uint8_t src_bank, uint16_t src, uint16_t vram_word) {
+  uint16_t end;
+  uint16_t len = decompress_near(dp, src_bank, src, 0x7F, 0x0000, &end);
+  video_upload_vram(vram_word, 0x7F0000, len ? len : 0x10000);
+  return end;
+}

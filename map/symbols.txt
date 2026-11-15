@@ -15,6 +15,8 @@ ram     7E1940   vram_queue_src
 ram     7E1980   vram_queue_bank
 ram     7E19C0   vram_queue_dest
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
+func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
+func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c
 func    8083AD   upload_vram_now     ; JSL: DMA ch0 A bytes from D+$14:X to VRAM word Y -> src/video_dma.c
 func    8083CB   upload_cgram_now    ; JSL: DMA ch0 Y bytes from A.hi:X to CGRAM index A.lo -> src/video_dma.c
 func    80FA3F   star_spawn          ; random x/y, depth $7F00 at $0F00+Y -> src/stars.c

@@ -553,6 +553,13 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   oracle only (outputs compared; its program is never read or disassembled), and stream
   routines (`$81:89F5` drains what `$08` started) need the chip's state handed to a sample
   (a snapshot at entry, or a replay of the original's words).
+- `decompress_to_vram` ($80:8381, long entry `$80:837D`): unpack a stream to `$7F:0000`
+  and DMA the result to VRAM — in C, `decompress_near` then the `video_upload_vram`
+  platform call, compared with the original's DMA as before. Its destination bank is
+  `A | $7F00` (always `$7F` in the game; the fuzz keeps A's high byte below `$80`). Fuzz
+  streams for a destination at 0 have no back references and open with a literal run (the
+  real ones never reach before the buffer); the decompressor's own fuzz still covers those.
+  Only 3 live samples (most of its 87 calls are interrupted during the unpacking).
 
 ## Coverage sources (2026-11-14)
 
