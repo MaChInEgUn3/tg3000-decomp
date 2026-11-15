@@ -3,6 +3,8 @@
 #include "video_dma.h"
 
 #include "decompress.h"
+#include "line_tables.h"
+#include "scale.h"
 #include "platform.h"
 #include "tg3000.h"
 
@@ -65,3 +67,18 @@ uint16_t decompress_to_vram(uint16_t dp, uint8_t src_bank, uint16_t src, uint16_
 void clear_vram(void) {
   video_fill_vram(0x0000, rom8(0x8A8E19), 0x10000);  // the fill byte is kept in the ROM
 }
+
+// Upload one of the two 1184-byte halves of the picture built at $7E:2000, then step the
+// frame counter $013E and rebuild the line tables (inverse_scale, func_80F745).
+static uint16_t upload_half(uint16_t vram_word, uint32_t src) {
+  video_upload_vram(vram_word, src, 0x04A0);
+  wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
+  inverse_scale(DP);
+  return func_80F745();
+}
+
+// TG3000_ROUTINE($80:F3C4) func_80F3C4
+uint16_t func_80F3C4(void) { return upload_half(0x3100, 0x7E2000); }
+
+// TG3000_ROUTINE($80:F3F4) func_80F3F4
+uint16_t func_80F3F4(void) { return upload_half(0x3350, 0x7E24A0); }

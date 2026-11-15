@@ -104,3 +104,5 @@ func    82AB3F   func_82AB3F         ; two lerps at fraction $FAB5,x/256 ($34EC/
 func    82A9B7   func_82A9B7         ; camera-like targets via func_82AB3F + DSP-4 scale by $0293; $028B/$028D approach them -> src/misc.c
 func    82AC52   func_82AC52         ; $7E:4E2D/$4E35 from a DSP-4 product and the CPU divider (distance-based) -> src/misc.c
 func    8A8DEC   clear_vram          ; fill all VRAM with the byte at $8A:8E19 (fixed-source DMA; long) -> src/video_dma.c
+func    80F3C4   func_80F3C4         ; upload $7E:2000 x$4A0 to VRAM $3100; $013E++; line tables -> src/video_dma.c
+func    80F3F4   func_80F3F4         ; upload $7E:24A0 x$4A0 to VRAM $3350; $013E++; line tables -> src/video_dma.c

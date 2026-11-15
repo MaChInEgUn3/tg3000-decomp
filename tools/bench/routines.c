@@ -1643,6 +1643,75 @@ static void call_clear_vram(const Regs* in, Regs* out) {
   out->n = out->z = false;
 }
 
+// V as func_80F745 leaves it (dead for its own callers, live here): from its last SBC/ADC —
+// ($013A & $FF00) - ($0138 & $FF00); then n - $7F if n = that difference's high byte + 1 is
+// $80 or more; then $0114 + $FF01 if $0132's high byte is set (a run no movie reaches,
+// decoded from ROM); then, if $0138's high byte m is set, (2m - 1) - $0116, and $0114 +
+// $FF01 when that is not 0. None of these inputs is written by the routine. When $013A is
+// 0 it returns early and V is what it was before (`before`).
+//
+// V as inverse_scale leaves it: that of its last SBC $017A in the division loop, or as on
+// entry if the loop never subtracts (or the divisor is $100).
+static bool v_after_inverse_scale(bool before) {
+  uint16_t divisor = rd16(DP + 0x7A);
+  if(divisor == 0x0100) return before;
+  uint16_t rem = 0x0200;
+  bool v = before;
+  for(int bit = 0; bit < 8; bit++) {
+    if(rem >= divisor) {
+      Regs t;
+      setSbc16(&t, rem, divisor);
+      v = t.v;
+      rem = (uint16_t)(rem - divisor);
+    }
+    rem = (uint16_t)(rem << 1);
+  }
+  return v;
+}
+static bool v_after_func_80F745(bool before) {
+  if(rd16(DP + 0x3A) == 0) return before;  // its early exit leaves V alone
+  uint16_t s38 = rd16(DP + 0x38), s3A = rd16(DP + 0x3A), s32 = rd16(DP + 0x32);
+  uint16_t s14 = rd16(DP + 0x14), s16 = rd16(DP + 0x16);
+  Regs t;
+  setSbc16(&t, (uint16_t)(s3A & 0xFF00), (uint16_t)(s38 & 0xFF00));
+  bool v = t.v;
+  uint16_t n = (uint16_t)((((uint16_t)((s3A & 0xFF00) - (s38 & 0xFF00))) >> 8) & 0xFF) + 1;
+  if(n >= 0x80) { setSbc16(&t, n, 0x7F); v = t.v; }
+  if(s32 & 0xFF00) { setAdc16(&t, s14, 0xFF01); v = t.v; }
+  uint16_t m = (uint16_t)((s38 >> 8) & 0xFF);
+  if(m != 0) {
+    uint16_t k = (uint16_t)(2 * m - 1);
+    setSbc16(&t, k, s16);
+    v = t.v;
+    if((uint16_t)(k - s16) != 0) { setAdc16(&t, s14, 0xFF01); v = t.v; }
+  }
+  return v;
+}
+
+// ---- func_80F3C4 / func_80F3F4 ----  as func_80F745 leaves them (A = its result, X = $0134,
+// N/Z of X, V as above), then C = 0 from the CLC.
+static void call_func_80F3C4(const Regs* in, Regs* out) {
+  out->a = func_80F3C4();
+  out->x = rd16(DP + 0x34);
+  setNZ16(out, out->x);
+  out->v = v_after_func_80F745(v_after_inverse_scale(in->v));
+  out->c = false;
+}
+
+static void call_func_80F3F4(const Regs* in, Regs* out) {
+  out->a = func_80F3F4();
+  out->x = rd16(DP + 0x34);
+  setNZ16(out, out->x);
+  out->v = v_after_func_80F745(v_after_inverse_scale(in->v));
+  out->c = false;
+}
+
+static void fuzz_upload_half(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_inverse_scale(r, ram, rnd);
+  fuzz_func_80F745(r, ram, rnd);
+  wr16ram(ram, DP + 0x3E, (uint16_t)rnd());
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1870,6 +1939,10 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .call = call_decompress_to_vram, ALL_OUTPUTS, .fuzz = fuzz_decompress_to_vram},
   {.name = "clear_vram", .entry = 0x8A8DEC, .end = 0x8A8E19, .rtl = true, .source = "src/video_dma.c",
    .call = call_clear_vram, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "func_80F3C4", .entry = 0x80F3C4, .end = 0x80F3F4, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_80F3C4, ALL_OUTPUTS, .fuzz = fuzz_upload_half},
+  {.name = "func_80F3F4", .entry = 0x80F3F4, .end = 0x80F424, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_80F3F4, ALL_OUTPUTS, .fuzz = fuzz_upload_half},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

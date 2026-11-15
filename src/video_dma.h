@@ -33,4 +33,9 @@ uint16_t decompress_to_vram(uint16_t dp, uint8_t src_bank, uint16_t src, uint16_
 // Fill all of video RAM with the byte at $8A:8E19 (both bytes of every word).
 void clear_vram(void);
 
+// Upload the first ($7E:2000 to VRAM $3100) or second ($7E:24A0 to $3350) 1184-byte half
+// of a picture, then $013E += 1, inverse_scale and func_80F745 (whose result is returned).
+uint16_t func_80F3C4(void);
+uint16_t func_80F3F4(void);
+
 #endif

@@ -12047,6 +12047,7 @@ CODE_80F385:
     sta.w $210E                 ; $80F3BE
     rep.b #$20                  ; $80F3C1
     rts                         ; $80F3C3
+func_80F3C4:
     lda.w #$1801                ; $80F3C4
     sta.w $4300                 ; $80F3C7
     lda.w #$2000                ; $80F3CA
@@ -12066,6 +12067,7 @@ CODE_80F385:
     jsr.w func_80F745           ; $80F3EF
     clc                         ; $80F3F2
     rts                         ; $80F3F3
+func_80F3F4:
     lda.w #$1801                ; $80F3F4
     sta.w $4300                 ; $80F3F7
     lda.w #$24A0                ; $80F3FA

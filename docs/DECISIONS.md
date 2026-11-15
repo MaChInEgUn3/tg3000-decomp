@@ -566,6 +566,13 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   (its value read from the source) and compares it with the C's call. First user:
   `clear_vram` ($8A:8DEC, the whole 64 KB from the byte at `$8A:8E19`). Its live calls are
   all interrupted (a 64 KB DMA outlasts a frame), so the fuzz (interrupts off) verifies it.
+- `func_80F3C4` / `func_80F3F4` ($80:F3C4, $80:F3F4): upload one half of a picture built
+  at `$7E:2000` (1,184 bytes each, to VRAM `$3100` / `$3350`), step `$013E` and rebuild
+  the line tables. With one call each in the movie, all flags count as live, and V had
+  never been modelled after `func_80F745` (dead for its own callers): the adapters now
+  derive it — from `func_80F745`'s last SBC/ADC (one of them in a run no movie reaches,
+  decoded from ROM), or, on its early exit (`$013A` = 0), from `inverse_scale`'s last
+  SBC, or as on entry.
 
 ## Coverage sources (2026-11-14)
 
