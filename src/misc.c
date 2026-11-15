@@ -919,3 +919,20 @@ int func_8AA381(uint16_t x) {
   }
   return 0;
 }
+
+// TG3000_ROUTINE($8A:8290) func_8A8290
+//
+// Everything past the first test ($8A:8295) runs in no recorded movie; it is checked by
+// the fuzz.
+uint16_t func_8A8290(void) {
+  if(rd16(DP + 0x54) == 0) return 0;
+  uint16_t count = (uint16_t)(rd16(DP + 0x52) + 1);
+  wr16(DP + 0x52, count);
+  if(count & 7) return (uint16_t)(count & 7);
+  uint16_t x = rd16(DP + 0x50);
+  uint16_t v = bus_rd16(0x8A82B4 + (uint32_t)x);  // LDA long,X: the index may carry into $8B
+  wr16(DP + 0x64, v);
+  x = (uint16_t)(x + 2);
+  wr16(DP + 0x50, x == 12 ? 0 : x);
+  return v;
+}

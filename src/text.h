@@ -78,6 +78,12 @@ uint16_t sprite_number_right(uint32_t value, uint16_t x);
 // text_print_tiles_at's result.
 uint16_t func_8AC0F2(void);
 
+// A label and a number as sprites: the string at $80:9E3A at x = $5C5C + D+$E7 and the
+// 32-bit number $0390:$038E (+ D+$94) at x = $5C94 + D+$E7, with the sprite base D+$14 =
+// $3C00; when bit 1 of D+$76 is set and bit 2 clear, the string at $80:9E42 and base
+// $3E00 instead. Returns sprite_number's result.
+uint16_t func_809DD0(void);
+
 // The sprite group at $81:CBB8 placed from D+$22, D+$24, D+$7C, D+$7E and D+$E8 (high
 // bytes of the first two signed): D+$14 = ((D+$7C - hi(D+$22)) & $FF) - $100, D+$16 =
 // ((rotl16(swap(D+$7E)) + $24) & $FF) + D+$E8 - hi(D+$24), D+$18 = $F000. Returns

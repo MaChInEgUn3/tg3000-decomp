@@ -56,7 +56,7 @@ CODE_8A803B:
     jsr.w $82C0                 ; $8A8085
     jsr.w func_8A8232           ; $8A8088
     jsr.w $823D                 ; $8A808B
-    jsr.w $8290                 ; $8A808E
+    jsr.w func_8A8290           ; $8A808E
     jsr.w $824B                 ; $8A8091
     jsr.w $867C                 ; $8A8094
     jsr.w $869A                 ; $8A8097
@@ -103,7 +103,7 @@ CODE_8A8142:
     jsr.w $82C0                 ; $8A814B
     jsr.w func_8A8232           ; $8A814E
     jsr.w $823D                 ; $8A8151
-    jsr.w $8290                 ; $8A8154
+    jsr.w func_8A8290           ; $8A8154
     jsr.w $824B                 ; $8A8157
     jsr.w $867C                 ; $8A815A
     jsr.w $86AB                 ; $8A815D
@@ -216,10 +216,29 @@ CODE_8A8253:
     lda.w $070A                 ; $8A8289
     sta.w $070C                 ; $8A828C
     rts                         ; $8A828F
+func_8A8290:
     lda.b $54                   ; $8A8290
-    db $D0,$01 ; bne            ; $8A8292
+    bne CODE_8A8295             ; $8A8292
     rts                         ; $8A8294
-    incbin !baserom:$50295..$502C0
+CODE_8A8295:
+    inc.b $52                   ; $8A8295 static
+    lda.b $52                   ; $8A8297 static
+    and.w #$0007                ; $8A8299 static
+    beq CODE_8A829F             ; $8A829C static
+    rts                         ; $8A829E static
+CODE_8A829F:
+    ldx.b $50                   ; $8A829F static
+    lda.l $8A82B4,x             ; $8A82A1 static
+    sta.b $64                   ; $8A82A5 static
+    inx                         ; $8A82A7 static
+    inx                         ; $8A82A8 static
+    cpx.w #$000C                ; $8A82A9 static
+    bne CODE_8A82B1             ; $8A82AC static
+    ldx.w #$0000                ; $8A82AE static
+CODE_8A82B1:
+    stx.b $50                   ; $8A82B1 static
+    rts                         ; $8A82B3 static
+    incbin !baserom:$502B4..$502C0
     lda.b $48                   ; $8A82C0
     beq CODE_8A82C7             ; $8A82C2
     dec.b $48                   ; $8A82C4

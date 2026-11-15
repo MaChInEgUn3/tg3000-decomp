@@ -266,3 +266,18 @@ uint16_t func_8AC0F2(void) {
   wr16(DP + 0x90, 1);
   return text_print_tiles_at(0x8AC49B, 6, 26);
 }
+
+// TG3000_ROUTINE($80:9DD0) func_809DD0
+//
+// The $3E00 variant ($80:9DDC) runs in no recorded movie; it is checked by the fuzz.
+uint16_t func_809DD0(void) {
+  uint16_t flags = rd16(DP + 0x76);
+  bool alt = (flags & 0x0002) && !(flags & 0x0004);
+  uint16_t base = alt ? 0x3E00 : 0x3C00;
+  wr16(SPRITE_TEXT_BASE, base);
+  sprite_text(alt ? 0x809E42 : 0x809E3A, (uint16_t)(0x5C5C + rd16(DP + 0xE7)));
+  uint16_t i = rd16(DP + 0x94);
+  wr16(SPRITE_TEXT_BASE, base);
+  uint32_t value = (uint32_t)rd16((uint16_t)(0x0390 + i)) << 16 | rd16((uint16_t)(0x038E + i));
+  return sprite_number(value, (uint16_t)(0x5C94 + rd16(DP + 0xE7)));
+}

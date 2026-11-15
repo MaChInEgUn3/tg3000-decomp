@@ -157,6 +157,11 @@ uint8_t func_8AA32B(uint16_t x);
 // (no bit found).
 int func_8AA381(uint16_t x);
 
+// If D+$54 is not zero, count D+$52 up; every 8th count, D+$64 = the next word of the
+// cycle 1, 2, 3, 4, 3, 2 at $8A:82B4 (index D+$50, in bytes, wrapping at 12). Returns the
+// value the original leaves in A (0; the count's low 3 bits; or the word).
+uint16_t func_8A8290(void);
+
 // Append the words (a, x, y, D+$14) to the four tables $1900, $1940, $19C0, $1980 at
 // index D+$8C, then advance it: D+$8C = ((index + 2) & $3F) + D+$8A (32 entries in a
 // ring, D+$8A choosing the ring). Returns the new index.

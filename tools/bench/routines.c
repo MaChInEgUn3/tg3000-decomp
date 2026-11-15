@@ -1206,6 +1206,37 @@ static void fuzz_func_8AA381(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->x = (uint16_t)(2 * (rnd() % 32));
 }
 
+// ---- func_8A8290 ----  D+$54 = 0: A = 0 (N Z of its LDA). Count not a multiple of 8: A =
+// its low 3 bits (N Z of the AND). Else A = the word, X = the new index, N Z C of the
+// CPX #12 (or of the LDX #0 after it, C = 1 from the CPX). V as on entry.
+static void call_func_8A8290(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t on = rd16(DP + 0x54), count = (uint16_t)(rd16(DP + 0x52) + 1), x = (uint16_t)(rd16(DP + 0x50) + 2);
+  out->a = func_8A8290();
+  if(on == 0 || (count & 7)) {
+    setNZ16(out, out->a);
+    return;
+  }
+  if(x == 12) {
+    out->x = 0;
+    out->n = false;
+    out->z = out->c = true;
+  } else {
+    out->x = x;
+    setNZ16(out, (uint16_t)(x - 12));
+    out->c = x >= 12;
+  }
+}
+
+// D+$54 on and off, the count often one short of a multiple of 8, the index in the cycle
+static void fuzz_func_8A8290(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint32_t k = rnd();
+  wr16ram(ram, DP + 0x54, (k & 3) == 0 ? 0 : (uint16_t)rnd());
+  wr16ram(ram, DP + 0x52, (k & 4) ? (uint16_t)(8 * rnd() + 7) : (uint16_t)rnd());
+  wr16ram(ram, DP + 0x50, (k & 0x18) ? (uint16_t)(2 * (rnd() % 6)) : (uint16_t)(rnd() % 0x100));
+}
+
 static void fuzz_shift32(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   static const uint16_t words[4] = {0x038E, 0x0390, 0x03BD, 0x03BF};
@@ -1529,6 +1560,32 @@ static void fuzz_sprite_number(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->y = (uint16_t)rnd();
   wr16ram(ram, DP + 0x74, (uint16_t)(4 * (rnd() % 32)));
   wr16ram(ram, DP + 0x14, (uint16_t)rnd());
+}
+
+// ---- func_809DD0 ----  as sprite_number of its number
+static void call_func_809DD0(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t i = rd16(DP + 0x94);
+  uint32_t value = (uint32_t)rd16((uint16_t)(0x0390 + i)) << 16 | rd16((uint16_t)(0x038E + i));
+  out->y = func_809DD0();
+  out->a = 0;
+  out->x = value == 0 ? 0xFFFE : 0xFFFF;
+  setNZ16(out, out->y);
+  out->c = value == 0;
+  uint16_t w = rom8(0x8085E5 + 0x34 + (value & 0xF));
+  setAdc16(out, w, (uint16_t)(out->y - w));
+}
+
+// both strings (bits 1 and 2 of D+$76), any number, a word index into the numbers
+static void fuzz_func_809DD0(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_sprite_number(r, ram, rnd);
+  wr16ram(ram, DP + 0x76, (uint16_t)rnd());
+  uint16_t i = (uint16_t)(4 * (rnd() % 16));
+  wr16ram(ram, DP + 0x94, i);
+  uint32_t k = rnd();
+  wr16ram(ram, (uint16_t)(0x038E + i), (k & 3) == 0 ? 0 : (uint16_t)rnd());
+  wr16ram(ram, (uint16_t)(0x0390 + i), (k & 4) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, DP + 0xE7, (uint16_t)rnd());
 }
 
 // ---- sprite_group ($80:B49E) ----  A low byte = table bank, X = table address; D = $0100
@@ -2516,6 +2573,10 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_func_82AD12, ALL_OUTPUTS, .fuzz = fuzz_func_82AD12},
   {.name = "binary_to_bcd5", .entry = 0x8ABFD0, .end = 0x8AC004, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_binary_to_bcd5, ALL_OUTPUTS, .fuzz = fuzz_binary_to_bcd5},
+  {.name = "func_8A8290", .entry = 0x8A8290, .end = 0x8A82B4, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_8A8290, ALL_OUTPUTS, .fuzz = fuzz_func_8A8290},
+  {.name = "func_809DD0", .entry = 0x809DD0, .end = 0x809E3A, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_809DD0, ALL_OUTPUTS, .fuzz = fuzz_func_809DD0},
   {.name = "func_8AA32B", .entry = 0x8AA32B, .end = 0x8AA37A, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_func_8AA32B, ALL_OUTPUTS, .fuzz = fuzz_func_8AA32B},
   {.name = "func_8AA381", .entry = 0x8AA381, .end = 0x8AA419, .source = "src/misc.c", .needM16 = true,

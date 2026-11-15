@@ -768,6 +768,16 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     four BNEs, calling only the verified `func_8AA48D`. Live 88/88, fuzz 500/500, paths
     64/64. The four branches now assemble as `bne CODE_8AA3C2`.
   - Parked: `$8A:9F76` (its unexecuted bytes call `$8A:AE9B`, itself never executed).
+  - `func_8A8290`: everything past its first test, `$8A:8295-$8A:82B3` (a counter that
+    every 8th call steps `D+$64` through the cycle 1, 2, 3, 4, 3, 2 at `$8A:82B4`; the
+    table stays unclassified). No recorded run reaches it with `D+$54` set.
+  - `func_809DD0` (2,875 calls): its `$3E00` variant `$80:9DDC-$80:9E0A`, the same label
+    and number with another sprite base and the string at `$80:9E42`; it calls only the
+    verified `sprite_text` and `sprite_number`. Live 664/664, fuzz 500/500, paths 49/49.
+    Its 47 bytes are **not** added to `static_code.txt`: the map classifies them as
+    *data* (some recorded run reads them), and a static range must lie on unknown bytes.
+    The C covers them (the fuzz runs them); the map keeps what the runs saw, and who
+    reads those bytes is an open question.
 
 ## Coverage sources (2026-11-14)
 

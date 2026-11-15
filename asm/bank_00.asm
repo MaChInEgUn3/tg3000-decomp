@@ -1425,7 +1425,7 @@ CODE_808DEC:
     sbc.w #$0100                ; $808DF6
     sta.b $4A                   ; $808DF9
 CODE_808DFB:
-    jsr.w $9DD0                 ; $808DFB
+    jsr.w func_809DD0           ; $808DFB
     jsr.w func_808FFC           ; $808DFE
     jsr.w oam_finish_near       ; $808E01
     lda.w #$C1C0                ; $808E04
@@ -1510,11 +1510,11 @@ CODE_808EC6:
     jsl.l func_80E4C5           ; $808EC6
     stz.b $4C                   ; $808ECA
     jsr.w $9BF2                 ; $808ECC
-    jsr.w $9DD0                 ; $808ECF
+    jsr.w func_809DD0           ; $808ECF
     jsr.w func_808FFC           ; $808ED2
     jsr.w oam_finish_near       ; $808ED5
     jsr.w func_808FFC           ; $808ED8
-    jsr.w $9DD0                 ; $808EDB
+    jsr.w func_809DD0           ; $808EDB
     jsr.w oam_finish_near       ; $808EDE
     stz.b $3E                   ; $808EE1
     stz.b $40                   ; $808EE3
@@ -1582,7 +1582,7 @@ CODE_808F5F:
     beq CODE_808F5F             ; $808F62
     jsr.w $9F40                 ; $808F64
     jsr.w $9E49                 ; $808F67
-    jsr.w $9DD0                 ; $808F6A
+    jsr.w func_809DD0           ; $808F6A
     jsr.w oam_finish_near       ; $808F6D
     lda.b $0C                   ; $808F70
     bit.w #$0900                ; $808F72
@@ -2250,7 +2250,7 @@ CODE_809853:
     jsr.w $A251                 ; $809860
     jsr.w $9F40                 ; $809863
     jsr.w $9E49                 ; $809866
-    jsr.w $9DD0                 ; $809869
+    jsr.w func_809DD0           ; $809869
     jsr.w oam_finish_near       ; $80986C
     rts                         ; $80986F
 CODE_809870:
@@ -2512,7 +2512,7 @@ CODE_809B74:
     jsr.w $A251                 ; $809B83
     jsr.w $9F40                 ; $809B86
     jsr.w $9E49                 ; $809B89
-    jsr.w $9DD0                 ; $809B8C
+    jsr.w func_809DD0           ; $809B8C
     jsr.w oam_finish_near       ; $809B8F
     lda.b $4E                   ; $809B92
     cmp.w #$FFC2                ; $809B94
@@ -2551,7 +2551,7 @@ CODE_809BCC:
     jsr.w $A251                 ; $809BDB
     jsr.w $9F40                 ; $809BDE
     jsr.w $9E49                 ; $809BE1
-    jsr.w $9DD0                 ; $809BE4
+    jsr.w func_809DD0           ; $809BE4
     jsr.w oam_finish_near       ; $809BE7
     lda.b $4E                   ; $809BEA
     cmp.w #$0018                ; $809BEC
@@ -2802,6 +2802,7 @@ CODE_809BCC:
     tay                         ; $809DC9
     lda.w #$03C0                ; $809DCA
     jmp.w func_80B537           ; $809DCD
+func_809DD0:
     lda.b $76                   ; $809DD0
     bit.w #$0002                ; $809DD2
     beq CODE_809E0B             ; $809DD5
@@ -5108,7 +5109,7 @@ CODE_80B183:
     beq CODE_80B198             ; $80B18A
     jsr.w $9F40                 ; $80B18C
     jsr.w $9E49                 ; $80B18F
-    jsr.w $9DD0                 ; $80B192
+    jsr.w func_809DD0           ; $80B192
     jsr.w oam_finish_near       ; $80B195
 CODE_80B198:
     lda.b $8C                   ; $80B198
