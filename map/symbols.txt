@@ -94,3 +94,4 @@ func    8A8EEF   func_8A8EEF         ; $0130 = 0, clear $0500-$05FF, clear_sprit
 func    8A9BAA   func_8A9BAA         ; $0154 += $10, $0156 -= 1 -> src/misc.c
 func    8A9BE2   func_8A9BE2         ; $0168 = largest slot kind at $041C (BMI compare) -> src/misc.c
 func    8AB680   func_8AB680         ; 8-byte records at DB:A+4: $1516+[4] = [6] -> src/misc.c
+func    83FC05   func_83FC05         ; overlap test of $7E:8CB3 entry $011A vs kind $011C limits (D=$0200); C = hit -> src/misc.c

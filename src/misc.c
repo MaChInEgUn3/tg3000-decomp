@@ -442,3 +442,22 @@ void func_8AB680(uint32_t list) {
     wr16(DP + 0x60, at);
   }
 }
+
+// TG3000_ROUTINE($83:FC05) func_83FC05
+bool func_83FC05(uint16_t dp) {
+  uint16_t x = rd16(0x011A), kind = rd16(0x011C);
+  uint16_t v = (uint16_t)(rd8(0x8CB3 + (uint32_t)x) << 4);
+  if(v & 0x0800) v |= 0xF000;  // a signed 12-bit value
+  wr16(0x0128, v);
+  // the original tests the sign of each difference (BPL/BMI), not a signed compare
+  uint16_t d = (uint16_t)(v - rd16(dp + 0x06));
+  if(!(d & 0x8000)) {
+    if(!((uint16_t)(d - bus_rd16(0x8380CE + kind)) & 0x8000)) return false;
+  } else {
+    if((uint16_t)(d - bus_rd16(0x8380CC + kind)) & 0x8000) return false;
+  }
+  uint16_t h = (uint16_t)(-(uint16_t)((rd8(0x8CB5 + (uint32_t)x) & 0xF0) >> 1));
+  uint16_t e = (uint16_t)(h - bus_rd16(0x81012C));
+  if(!(e & 0x8000)) return ((uint16_t)(e - bus_rd16(0x83826E + kind)) & 0x8000) != 0;
+  return !((uint16_t)(e - bus_rd16(0x83826C + kind)) & 0x8000);
+}

@@ -678,6 +678,12 @@ bool difftest_report(const char* resultsPath) {
     }
     printf("    %s; mismatches N%lu V%lu Z%lu C%lu\n", flagNote, s->flagMismatch[0], s->flagMismatch[1], s->flagMismatch[2], s->flagMismatch[3]);
     if(s->firstFailure[0]) printf("    first failure: %s\n", s->firstFailure);
+    if(reached && seen < need) {  // which instruction starts no sample reached
+      printf("    paths not reached:");
+      for(int k = 0, shown = 0; k < MAX_EXTENT && shown < 8; k++)
+        if(s->starts[k] && !s->visited[k]) { printf(" $%06X", (unsigned)(r->entry + k)); shown++; }
+      printf("\n");
+    }
     for(int f = 0; f < 4; f++) {
       bool live = s->live[f] > 0 || s->watched < MIN_WATCHED;
       if(live && s->firstFlagFailure[f][0]) printf("    first live-flag failure: %s\n", s->firstFlagFailure[f]);

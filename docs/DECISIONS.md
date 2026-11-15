@@ -697,6 +697,14 @@ differing bytes, and the instruction cap per sample rose to 4M (long unpacks).
   `func_8A9BE2` (the largest slot kind, by the sign of the difference as the original's
   BMI does — not a true signed compare) and `func_8AB680` (a list of 8-byte records
   setting `$1516` + offset).
+- `func_83FC05` ($83:FC05; D = `$0200`, DB = `$30`): an overlap test — the entry's
+  12-bit signed position (byte `$7E:8CB3`+X × 16, kept in `$0128`) minus D+`$06`, then
+  −(high nibble of `$8CB5`+X) × 8 minus `$012C`, each checked against per-kind limits in
+  bank `$83` by the sign of the difference (BPL/BMI, not a signed compare); carry = hit.
+  It was listed as sharing a tail with `$83:FD8A`/`$83:FDCD`; it does not (all its exits
+  are its own). **`$83:FD8A`'s tail (`$83:FE16`) is the first root that talks to the
+  DSP-4**: command 0 (two 16-bit operands written to `$30:8000`, a 32-bit product read
+  back) — the reference bench with the real firmware is the oracle for porting it.
 
 ## Coverage without a player (2026-11-13)
 

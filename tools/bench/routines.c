@@ -1319,6 +1319,48 @@ static void fuzz_func_8AB680(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, (uint16_t)(0x1C00 + 8 * n), 0);
 }
 
+// ---- func_83FC05 ($83:FC05) ----  D = $0200. Exits with C = the result, X = $011C, A =
+// the last difference (vertical, or horizontal once the first test passed), N/Z of the
+// last CMP, V of the last SBC.
+static void call_func_83FC05(const Regs* in, Regs* out) {
+  uint16_t x = rd16(0x011A), kind = rd16(0x011C);
+  uint16_t v = (uint16_t)(rd8(0x8CB3 + (uint32_t)x) << 4);
+  if(v & 0x0800) v |= 0xF000;
+  uint16_t base = rd16((uint16_t)(in->d + 0x06)), d = (uint16_t)(v - base);
+  bool first = !(d & 0x8000) ? ((uint16_t)(d - bus_rd16(0x8380CE + kind)) & 0x8000) != 0
+                              : !((uint16_t)(d - bus_rd16(0x8380CC + kind)) & 0x8000);
+  uint16_t h = (uint16_t)(-(uint16_t)((rd8(0x8CB5 + (uint32_t)x) & 0xF0) >> 1));
+  uint16_t sub = bus_rd16(0x81012C), e = (uint16_t)(h - sub);
+  bool hit = func_83FC05(in->d);
+  out->x = kind;
+  if(!first) {
+    out->a = d;
+    setSbc16(out, v, base);
+    setNZ16(out, (uint16_t)(d - bus_rd16((d & 0x8000) ? 0x8380CC + kind : 0x8380CE + kind)));
+  } else {
+    out->a = e;
+    setSbc16(out, h, sub);
+    setNZ16(out, (uint16_t)(e - bus_rd16((e & 0x8000) ? 0x83826C + kind : 0x83826E + kind)));
+  }
+  out->c = hit;
+}
+
+static void fuzz_func_83FC05(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint16_t x = (uint16_t)(rnd() % 0x200), kind = (uint16_t)(4 * (rnd() % 16));
+  wr16ram(ram, 0x011A, x);
+  wr16ram(ram, 0x011C, kind);
+  ram[0x8CB3 + x] = (uint8_t)rnd();
+  ram[0x8CB5 + x] = (uint8_t)rnd();
+  // aim both differences near the limits (within +-48) most of the time: the limits are
+  // a few dozen units wide, so uniform values almost never land inside them
+  uint16_t v = (uint16_t)(ram[0x8CB3 + x] << 4);
+  if(v & 0x0800) v |= 0xF000;
+  uint16_t h = (uint16_t)(-(uint16_t)((ram[0x8CB5 + x] & 0xF0) >> 1));
+  bool aim = rnd() % 4 != 0;
+  wr16ram(ram, (uint16_t)(r->d + 0x06), aim ? (uint16_t)(v - (int16_t)(rnd() % 97 - 48)) : (uint16_t)rnd());
+  wr16ram(ram, 0x012C, aim ? (uint16_t)(h - (int16_t)(rnd() % 97 - 48)) : (uint16_t)rnd());
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1522,6 +1564,8 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_func_8A9BE2, ALL_OUTPUTS, .fuzz = fuzz_func_8A9BE2},
   {.name = "func_8AB680", .entry = 0x8AB680, .end = 0x8AB6AA, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x8A, .fixedD = true, .call = call_func_8AB680, ALL_OUTPUTS, .fuzz = fuzz_func_8AB680},
+  {.name = "func_83FC05", .entry = 0x83FC05, .end = 0x83FC65, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_func_83FC05, ALL_OUTPUTS, .fuzz = fuzz_func_83FC05},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

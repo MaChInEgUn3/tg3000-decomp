@@ -2464,7 +2464,7 @@ CODE_83FAB0:
 CODE_83FAD5:
     clc                         ; $83FAD5
     rts                         ; $83FAD6
-    jsr.w $FC05                 ; $83FAD7
+    jsr.w func_83FC05           ; $83FAD7
     bcc CODE_83FB14             ; $83FADA
     ldx.w $011A                 ; $83FADC
     lda.w #$0000                ; $83FADF
@@ -2489,7 +2489,7 @@ CODE_83FAD5:
     sta.b $33                   ; $83FB12
 CODE_83FB14:
     rts                         ; $83FB14
-    jsr.w $FC05                 ; $83FB15
+    jsr.w func_83FC05           ; $83FB15
     bcc CODE_83FB49             ; $83FB18
     ldx.w $1F2E                 ; $83FB1A
     lda.b $4E                   ; $83FB1D
@@ -2510,7 +2510,7 @@ CODE_83FB14:
     sta.b $33                   ; $83FB47
 CODE_83FB49:
     rts                         ; $83FB49
-    jsr.w $FC05                 ; $83FB4A
+    jsr.w func_83FC05           ; $83FB4A
     bcc CODE_83FB75             ; $83FB4D
     ldx.w $011A                 ; $83FB4F
     lda.w #$0000                ; $83FB52
@@ -2536,6 +2536,7 @@ CODE_83FB75:
     sta.b $33                   ; $83FBEF
     rts                         ; $83FBF1
     incbin !baserom:$1FBF2..$1FC05
+func_83FC05:
     ldx.w $011A                 ; $83FC05
     lda.l $7E8CB3,x             ; $83FC08
     and.w #$00FF                ; $83FC0C

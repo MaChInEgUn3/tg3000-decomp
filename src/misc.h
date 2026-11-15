@@ -170,4 +170,12 @@ uint16_t func_8A9BE2(void);
 // record pointer.
 void func_8AB680(uint32_t list);
 
+// Overlap test for the entry at $011A of the $7E:8CB3 table (D = `dp`, $0200 in the
+// game): its 12-bit signed value (the byte at $8CB3, times 16) goes to $0128 and, minus
+// D+$06, must lie within the kind's limits ($83:80CC below, $83:80CE above; kind offset
+// $011C); then -(high nibble of the byte at $8CB5) * 8 minus $012C must lie within
+// $83:826C/$83:826E. "Within" is judged by the sign of each difference, as the original's
+// BPL/BMI do. Returns true when both hold (the original's carry).
+bool func_83FC05(uint16_t dp);
+
 #endif
