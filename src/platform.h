@@ -52,9 +52,11 @@ void video_set_bg1_vofs(uint16_t value);
 void video_set_bg2_hofs(uint16_t value);
 void video_set_bg2_vofs(uint16_t value);
 
-// Return after the next interrupt has run: the platform does the frame's work (what the
-// original's NMI and IRQ handlers do) and then comes back. Game code that waits for
-// "the next frame" calls this in a loop until its own frame counter has moved on.
+// Return after the next interrupt has run. On the console the NMI and IRQ handlers do
+// the frame's work; they are game code too (ported to C like the rest), so a port
+// presents the frame here and then runs the game's NMI code, and runs its IRQ code at
+// the line the game asked for (see docs/DECISIONS.md, "HDMA, measured"). Game code that
+// waits for "the next frame" calls this in a loop until its own frame counter has moved on.
 void platform_wait_vblank(void);
 
 #endif

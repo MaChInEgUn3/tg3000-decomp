@@ -556,6 +556,11 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   oracle only (outputs compared; its program is never read or disassembled), and stream
   routines (`$81:89F5` drains what `$08` started) need the chip's state handed to a sample
   (a snapshot at entry, or a replay of the original's words).
+- **Sources, decided by the owner (2026-11-15):** if measurement against the firmware is
+  not enough (the road commands `$08`/`$09`), other sources may inform the C ("pode fazer
+  o que for necessário"), provided their licence is compatible with GPL-3.0-or-later
+  (checked before reading them) and they are credited. The firmware itself stays an
+  oracle (outputs compared, its program not read).
 - `decompress_to_vram` ($80:8381, long entry `$80:837D`): unpack a stream to `$7F:0000`
   and DMA the result to VRAM — in C, `decompress_near` then the `video_upload_vram`
   platform call, compared with the original's DMA as before. Its destination bank is
@@ -782,11 +787,17 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   is written in vblank by `$85:86F7` and `$85:876F`. `$85:BC20` (18,507 calls) is among
   the writers of the scroll tables, with `$80:E00A`, `$80:8C53/$8C5C` and `$8A:8AF5`.
 - **Mode 7 screens:** channels 1-4 → `$211B`, `$211D`, `$211F`, `$210D` (mode 3: the
-  whole matrix and offsets per line, a perspective plane) from tables at `$81:CBF9-CC0E`;
-  and **`$2105` is switched by the CPU in the middle of the frame**: `$07` by `$80:BB3C`
-  (vblank) and `$01`/`$07` by `$80:BD2D` while drawing (4,190 and 2,492 frames): an IRQ
-  split between a mode-1 and a mode-7 part of the screen. A port needs a per-line (or
-  per-region) BG mode for those screens; this is now measured, not guessed.
+  whole matrix and offsets per line, a perspective plane) from tables at `$81:CBF9-CC0E`.
+  **The screen is split by HDMA, not by the CPU** (corrected 2026-11-15: an earlier
+  version of this note said the CPU switched `$2105` mid-frame). The CPU writes `$2105`
+  while drawing at `$80:BD2D`, but with the value `$80:BB3C` already wrote in vblank
+  (same mode, 4,190 and 2,492 frames); only `$80:81F2` (7 times, screen transitions) and
+  `$80:F016` (once) write a new mode while drawing. The split comes from channel 1 →
+  `$2105` with ROM tables: `$81:D712` = mode 7 for lines 0-183, mode 1 from 184;
+  `$8A:88DE` = mode 7 for 168 lines, then mode 2; `$81:D719` = mode 1 throughout. A port
+  needs the BG mode per line (from such a table), not a CPU-timed split.
+- The intro's channel 5 → `$2105/$2106` (mode 1) reads the WRAM table at `$0D00`, whose
+  values `mode7_view` patches at `$0D01/$0D04/$0D07`: BG mode and mosaic per band.
 - Menus/intro use HDMA on `$2105`, `$212C`, `$210B`, `$2107`, `$2121` (palette per line,
   indirect from `$7E:2C00`), `$2126/$2128` (windows), `$2132` (fixed colour).
 - **Consequence for the PPU end-state rule:** HDMA writes reach the PPU without going
@@ -809,6 +820,20 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   Live 185/185, fuzz 500/500, paths 313/313. Ten short stretches no recorded run reaches
   are now static code. What will need the interface is the channel setup that points
   HDMA at these tables.
+- **Table writers** are now listed by walking each table to its terminator (they were
+  the first 64 bytes, more than a table holds, so the earlier list had extra writers).
+- **The interrupt handlers are game code** (decided 2026-11-15, advisor): the NMI and IRQ
+  handlers are ported to C in `src/` like any routine, with the bench comparing them on
+  their own rows. In a port, `platform_wait_vblank()` presents the frame and then runs
+  the game's NMI C; the IRQ C runs at the line the game asked for. So the ports'
+  renderers are line-ordered (they apply what the handlers set from that line on).
+  Before designing their platform calls, measure: the census's single `irq` row split by
+  its dispatch targets; which DMA registers each mid-frame kick (`$85:87BA`) inherits from
+  the NMI's setup; whether the CPU ever writes an enabled table on lines 0-224 (if not,
+  "the port reads tables once per frame" is exact); and whether two enabled channels ever
+  share a target (if not, calls keyed by target, not channel). The harness then needs
+  RTI rows, an input replay (joypad, `$4210-$4212`, APU ports), and HDMA configuration
+  compared by end state at the `$420C` write.
 - **Next:** the interface. The data says the game's HDMA is (a) per-line tables of scroll,
   window, palette and Mode 7 parameters, built in WRAM by game code, and (b) a CPU-timed
   BG-mode split. Both are platform services for the ports (`video_*`), to be designed

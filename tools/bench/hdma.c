@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // HDMA measurement: per frame, the configuration of every channel enabled in $420C
 // (B-bus target, mode, indirect, table address); the instruction addresses that write
-// $420C, the channel registers $43x0-$43xA and $2105 (BG mode, with the scanline); and,
-// for tables in WRAM, which instructions last wrote their first 64 bytes. CPU writes only:
-// a table filled by DMA shows no writer.
+// $420C, the channel registers $43x0-$43xA and $2105 (BG mode: in vblank or while
+// drawing, and whether a write while drawing changes the mode); and, for tables in WRAM,
+// which instructions last wrote their bytes, walking each table to its terminator. CPU
+// writes only: a table filled by DMA shows no writer.
 #include "hdma.h"
 
 #include <stdio.h>
@@ -80,7 +81,11 @@ void hdma_on_access(uint32_t adr, uint8_t val, bool write) {
   uint16_t a = adr & 0xFFFF;
   if(a == 0x420C) note(&enableWrites, pc, val, 0, 0);
   else if(a >= 0x4300 && a <= 0x437F && (a & 0xF) <= 0xA) note(&regWrites, (a >> 4) & 7, a & 0xF, pc, 0);
-  else if(a == 0x2105) note(&modeWrites, val, pc, snes->vPos >= 225 ? 1 : 0, 0);
+  else if(a == 0x2105) {
+    // 0 = in vblank, 1 = while drawing with the same mode, 2 = while drawing, a new mode
+    uint32_t when = snes->vPos >= 225 ? 0 : (val & 7) == (snes->ppu->mode & 7) ? 1 : 2;
+    note(&modeWrites, val, pc, when, 0);
+  }
 }
 
 void hdma_on_frame(int frame) {
@@ -92,9 +97,18 @@ void hdma_on_frame(int frame) {
     note(&configs, (uint32_t)c, (uint32_t)ch->bAdr << 8 | ch->mode, ch->indirect ? (0x100u | ch->indBank) : 0, table);
     int w = wramIndex(table);
     if(w < 0) continue;
-    for(int k = 0; k < 64; k++) {
-      uint32_t who = writer[(w + k) & 0x1FFFF];
-      if(who) note(&tableWriters, (uint32_t)c, table, who, 0);
+    // bytes per line for the transfer mode (direct tables), 2 for an indirect pointer
+    static const int unit[8] = {1, 2, 2, 4, 4, 4, 2, 4};
+    int u = ch->indirect ? 2 : unit[ch->mode & 7];
+    for(int k = 0, guard = 0; guard < 128; guard++) {
+      uint8_t count = snes->ram[(w + k) & 0x1FFFF];
+      int len = 1 + (count == 0 ? 0 : ch->indirect ? 2 : (count & 0x80) ? (count & 0x7F) * u : u);
+      for(int b = 0; b < len; b++) {
+        uint32_t who = writer[(w + k + b) & 0x1FFFF];
+        if(who) note(&tableWriters, (uint32_t)c, table, who, 0);
+      }
+      if(count == 0) break;
+      k += len;
     }
   }
 }
@@ -112,7 +126,8 @@ static void rowConfig(FILE* f, Item* it) {
 static void rowReg(FILE* f, Item* it) { fprintf(f, "ch%u $43%u%X by $%06X x%u\n", it->key[0], it->key[0], it->key[1], it->key[2], it->count); }
 static void rowEnable(FILE* f, Item* it) { fprintf(f, "$420C = $%02X by $%06X x%u (frames %u..%u)\n", it->key[1], it->key[0], it->count, it->first, it->last); }
 static void rowMode(FILE* f, Item* it) {
-  fprintf(f, "$2105 = $%02X by $%06X %s x%u (frames %u..%u)\n", it->key[0], it->key[1], it->key[2] ? "in vblank" : "while drawing",
+  static const char* const when[3] = {"in vblank", "while drawing, same mode", "while drawing, NEW MODE"};
+  fprintf(f, "$2105 = $%02X by $%06X %s x%u (frames %u..%u)\n", it->key[0], it->key[1], when[it->key[2]],
     it->count, it->first, it->last);
 }
 static void rowWriter(FILE* f, Item* it) { fprintf(f, "ch%u table $%06X written by $%06X (%u frame-bytes)\n", it->key[0], it->key[1], it->key[2], it->count); }
@@ -125,7 +140,7 @@ bool hdma_save(const char* path) {
   dump(f, "$420C (HDMA enable) writers", &enableWrites, rowEnable);
   dump(f, "channel register writers", &regWrites, rowReg);
   dump(f, "$2105 (BG mode) writers", &modeWrites, rowMode);
-  dump(f, "last CPU writers of the first 64 bytes of WRAM tables", &tableWriters, rowWriter);
+  dump(f, "last CPU writers of the bytes of WRAM tables (to the terminator)", &tableWriters, rowWriter);
   fclose(f);
   return true;
 }
