@@ -573,6 +573,11 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   derive it — from `func_80F745`'s last SBC/ADC (one of them in a run no movie reaches,
   decoded from ROM), or, on its early exit (`$013A` = 0), from `inverse_scale`'s last
   SBC, or as on entry.
+- `upload_slice` ($80:F4AD … $80:F561, 16 entries 12 bytes apart): slice k of a picture
+  built from `$7E:3040` (1,556 bytes from `$7E:3040 + k × $614` to VRAM `k × $30A`), then
+  the same tail as `func_80F3C4` (at `$80:F56D`). One C function with the slice as its
+  argument; in the harness each entry's extent runs to the shared tail with the following
+  entries as a hole.
 
 ## Coverage sources (2026-11-14)
 

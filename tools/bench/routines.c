@@ -1712,6 +1712,20 @@ static void fuzz_upload_half(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x3E, (uint16_t)rnd());
 }
 
+// ---- upload_slice ($80:F4AD + 12 * k) ----  as func_80F3C4, with Y = the slice's VRAM word.
+#define SLICE_ADAPTER(k) \
+  static void call_upload_slice_##k(const Regs* in, Regs* out) { \
+    out->a = upload_slice(k); \
+    out->x = rd16(DP + 0x34); \
+    out->y = (uint16_t)((k) * 0x030A); \
+    setNZ16(out, out->x); \
+    out->v = v_after_func_80F745(v_after_inverse_scale(in->v)); \
+    out->c = false; \
+  }
+SLICE_ADAPTER(0) SLICE_ADAPTER(1) SLICE_ADAPTER(2) SLICE_ADAPTER(3) SLICE_ADAPTER(4) SLICE_ADAPTER(5)
+SLICE_ADAPTER(6) SLICE_ADAPTER(7) SLICE_ADAPTER(8) SLICE_ADAPTER(9) SLICE_ADAPTER(10) SLICE_ADAPTER(11)
+SLICE_ADAPTER(12) SLICE_ADAPTER(13) SLICE_ADAPTER(14) SLICE_ADAPTER(15)
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1943,6 +1957,39 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_80F3C4, ALL_OUTPUTS, .fuzz = fuzz_upload_half},
   {.name = "func_80F3F4", .entry = 0x80F3F4, .end = 0x80F424, .source = "src/video_dma.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_80F3F4, ALL_OUTPUTS, .fuzz = fuzz_upload_half},
+  // 16 entries, 12 bytes apart, sharing the tail at $80:F56D: the entries after each one are a hole
+  {.name = "upload_slice_0", .entry = 0x80F4AD, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_0, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F4B9, 0x80F56D}}},
+  {.name = "upload_slice_1", .entry = 0x80F4B9, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_1, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F4C5, 0x80F56D}}},
+  {.name = "upload_slice_2", .entry = 0x80F4C5, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_2, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F4D1, 0x80F56D}}},
+  {.name = "upload_slice_3", .entry = 0x80F4D1, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_3, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F4DD, 0x80F56D}}},
+  {.name = "upload_slice_4", .entry = 0x80F4DD, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_4, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F4E9, 0x80F56D}}},
+  {.name = "upload_slice_5", .entry = 0x80F4E9, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_5, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F4F5, 0x80F56D}}},
+  {.name = "upload_slice_6", .entry = 0x80F4F5, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_6, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F501, 0x80F56D}}},
+  {.name = "upload_slice_7", .entry = 0x80F501, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_7, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F50D, 0x80F56D}}},
+  {.name = "upload_slice_8", .entry = 0x80F50D, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_8, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F519, 0x80F56D}}},
+  {.name = "upload_slice_9", .entry = 0x80F519, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_9, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F525, 0x80F56D}}},
+  {.name = "upload_slice_10", .entry = 0x80F525, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_10, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F531, 0x80F56D}}},
+  {.name = "upload_slice_11", .entry = 0x80F531, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_11, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F53D, 0x80F56D}}},
+  {.name = "upload_slice_12", .entry = 0x80F53D, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_12, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F549, 0x80F56D}}},
+  {.name = "upload_slice_13", .entry = 0x80F549, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_13, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F555, 0x80F56D}}},
+  {.name = "upload_slice_14", .entry = 0x80F555, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_14, ALL_OUTPUTS, .fuzz = fuzz_upload_half, .holes = {{0x80F561, 0x80F56D}}},
+  {.name = "upload_slice_15", .entry = 0x80F561, .end = 0x80F595, .source = "src/video_dma.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_upload_slice_15, ALL_OUTPUTS, .fuzz = fuzz_upload_half},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

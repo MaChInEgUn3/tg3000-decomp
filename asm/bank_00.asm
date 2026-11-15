@@ -12137,66 +12137,82 @@ func_80F3F4:
     jsr.w func_80F745           ; $80F4A8
     clc                         ; $80F4AB
     rts                         ; $80F4AC
+upload_slice_0:
     ldx.w #$3040                ; $80F4AD
     ldy.w #$0000                ; $80F4B0
     lda.w #$007E                ; $80F4B3
     jmp.w $F56D                 ; $80F4B6
+upload_slice_1:
     ldx.w #$3654                ; $80F4B9
     ldy.w #$030A                ; $80F4BC
     lda.w #$007E                ; $80F4BF
     jmp.w $F56D                 ; $80F4C2
+upload_slice_2:
     ldx.w #$3C68                ; $80F4C5
     ldy.w #$0614                ; $80F4C8
     lda.w #$007E                ; $80F4CB
     jmp.w $F56D                 ; $80F4CE
+upload_slice_3:
     ldx.w #$427C                ; $80F4D1
     ldy.w #$091E                ; $80F4D4
     lda.w #$007E                ; $80F4D7
     jmp.w $F56D                 ; $80F4DA
+upload_slice_4:
     ldx.w #$4890                ; $80F4DD
     ldy.w #$0C28                ; $80F4E0
     lda.w #$007E                ; $80F4E3
     jmp.w $F56D                 ; $80F4E6
+upload_slice_5:
     ldx.w #$4EA4                ; $80F4E9
     ldy.w #$0F32                ; $80F4EC
     lda.w #$007E                ; $80F4EF
     jmp.w $F56D                 ; $80F4F2
+upload_slice_6:
     ldx.w #$54B8                ; $80F4F5
     ldy.w #$123C                ; $80F4F8
     lda.w #$007E                ; $80F4FB
     jmp.w $F56D                 ; $80F4FE
+upload_slice_7:
     ldx.w #$5ACC                ; $80F501
     ldy.w #$1546                ; $80F504
     lda.w #$007E                ; $80F507
     jmp.w $F56D                 ; $80F50A
+upload_slice_8:
     ldx.w #$60E0                ; $80F50D
     ldy.w #$1850                ; $80F510
     lda.w #$007E                ; $80F513
     jmp.w $F56D                 ; $80F516
+upload_slice_9:
     ldx.w #$66F4                ; $80F519
     ldy.w #$1B5A                ; $80F51C
     lda.w #$007E                ; $80F51F
     jmp.w $F56D                 ; $80F522
+upload_slice_10:
     ldx.w #$6D08                ; $80F525
     ldy.w #$1E64                ; $80F528
     lda.w #$007E                ; $80F52B
     jmp.w $F56D                 ; $80F52E
+upload_slice_11:
     ldx.w #$731C                ; $80F531
     ldy.w #$216E                ; $80F534
     lda.w #$007E                ; $80F537
     jmp.w $F56D                 ; $80F53A
+upload_slice_12:
     ldx.w #$7930                ; $80F53D
     ldy.w #$2478                ; $80F540
     lda.w #$007E                ; $80F543
     jmp.w $F56D                 ; $80F546
+upload_slice_13:
     ldx.w #$7F44                ; $80F549
     ldy.w #$2782                ; $80F54C
     lda.w #$007E                ; $80F54F
     jmp.w $F56D                 ; $80F552
+upload_slice_14:
     ldx.w #$8558                ; $80F555
     ldy.w #$2A8C                ; $80F558
     lda.w #$007E                ; $80F55B
     jmp.w $F56D                 ; $80F55E
+upload_slice_15:
     ldx.w #$8B6C                ; $80F561
     ldy.w #$2D96                ; $80F564
     lda.w #$007E                ; $80F567

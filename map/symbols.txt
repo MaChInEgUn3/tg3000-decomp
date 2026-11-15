@@ -106,3 +106,19 @@ func    82AC52   func_82AC52         ; $7E:4E2D/$4E35 from a DSP-4 product and t
 func    8A8DEC   clear_vram          ; fill all VRAM with the byte at $8A:8E19 (fixed-source DMA; long) -> src/video_dma.c
 func    80F3C4   func_80F3C4         ; upload $7E:2000 x$4A0 to VRAM $3100; $013E++; line tables -> src/video_dma.c
 func    80F3F4   func_80F3F4         ; upload $7E:24A0 x$4A0 to VRAM $3350; $013E++; line tables -> src/video_dma.c
+func    80F4AD   upload_slice_0       ; slice 0 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F4B9   upload_slice_1       ; slice 1 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F4C5   upload_slice_2       ; slice 2 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F4D1   upload_slice_3       ; slice 3 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F4DD   upload_slice_4       ; slice 4 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F4E9   upload_slice_5       ; slice 5 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F4F5   upload_slice_6       ; slice 6 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F501   upload_slice_7       ; slice 7 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F50D   upload_slice_8       ; slice 8 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F519   upload_slice_9       ; slice 9 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F525   upload_slice_10      ; slice 10 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F531   upload_slice_11      ; slice 11 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F53D   upload_slice_12      ; slice 12 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F549   upload_slice_13      ; slice 13 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F555   upload_slice_14      ; slice 14 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    80F561   upload_slice_15      ; slice 15 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c

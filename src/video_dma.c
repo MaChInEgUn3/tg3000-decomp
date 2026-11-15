@@ -68,17 +68,23 @@ void clear_vram(void) {
   video_fill_vram(0x0000, rom8(0x8A8E19), 0x10000);  // the fill byte is kept in the ROM
 }
 
-// Upload one of the two 1184-byte halves of the picture built at $7E:2000, then step the
-// frame counter $013E and rebuild the line tables (inverse_scale, func_80F745).
-static uint16_t upload_half(uint16_t vram_word, uint32_t src) {
-  video_upload_vram(vram_word, src, 0x04A0);
+// Upload part of a picture built in WRAM, then step the frame counter $013E and rebuild
+// the line tables (inverse_scale, func_80F745).
+static uint16_t upload_half_sized(uint16_t vram_word, uint32_t src, uint32_t size) {
+  video_upload_vram(vram_word, src, size);
   wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
   inverse_scale(DP);
   return func_80F745();
 }
 
 // TG3000_ROUTINE($80:F3C4) func_80F3C4
-uint16_t func_80F3C4(void) { return upload_half(0x3100, 0x7E2000); }
+uint16_t func_80F3C4(void) { return upload_half_sized(0x3100, 0x7E2000, 0x04A0); }
 
 // TG3000_ROUTINE($80:F3F4) func_80F3F4
-uint16_t func_80F3F4(void) { return upload_half(0x3350, 0x7E24A0); }
+uint16_t func_80F3F4(void) { return upload_half_sized(0x3350, 0x7E24A0, 0x04A0); }
+
+// TG3000_ROUTINE($80:F4AD) upload_slice: slice 0 (and $80:F4B9, $80:F4C5, ... every 12
+// bytes up to $80:F561 for slices 1-15; they share the tail at $80:F56D)
+uint16_t upload_slice(int slice) {
+  return upload_half_sized((uint16_t)(slice * 0x030A), 0x7E3040 + (uint32_t)slice * 0x0614, 0x0614);
+}

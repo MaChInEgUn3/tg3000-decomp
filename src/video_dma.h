@@ -38,4 +38,9 @@ void clear_vram(void);
 uint16_t func_80F3C4(void);
 uint16_t func_80F3F4(void);
 
+// Upload slice `slice` (0-15) of a picture built from $7E:3040: 1556 bytes from
+// $7E:3040 + slice * $614 to VRAM word slice * $30A; then as func_80F3C4 ($013E += 1, line
+// tables). Returns func_80F745's result. (16 entries in the original, $80:F4AD + 12 * slice.)
+uint16_t upload_slice(int slice);
+
 #endif
