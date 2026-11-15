@@ -596,14 +596,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   are not re-implemented: a sample whose last write to a field completed a latch byte
   written *before* the sample fails ("completed a latch byte written before the
   routine"), because its result depends on state the C does not get.
-- **Timing:** a port has no scanlines. The harness logs the scanlines of each routine's
-  PPU field writes in live samples; the first one (`mode7_zoom_view`) writes on lines
-  247-250 only (vblank), so "takes effect from the next frame" is the contract so far.
-  A routine that writes mid-frame will need a line argument; none yet.
+- **Timing:** a port has no scanlines, and the setters take no line argument: the C
+  cannot know the line, and the end-state comparison does not depend on it. The harness
+  reports, per routine, the scanlines of the original's field writes, how many land while
+  the picture is drawn (line < 225, screen on), the BG modes, the HDMA targets active at
+  the time, and how many samples changed a field. A write's timing is invisible when the
+  screen is blanked, the value does not change, or HDMA rewrites that field every line;
+  otherwise the console shows one frame split at that line, which a port that applies it
+  at its next frame does not — a fidelity note for the ports, not an interface change.
 - `mode7_zoom_view` ($80:F38D, `src/scale.c`): Mode 7 with no rotation, A = D = the
   scale D+$7A, offset ($80 − x, $6F − y) for the centre bytes D+$3D/D+$3B. Race movie
   350/350 live, fuzz 500/500 (both sides of the offsets' borrow), paths 25/25. Negative
   variant with the offsets swapped fails ("PPU M7HOFS: original 1FC0, C 006F").
+  Its writes are all in vblank (lines 247-250, 0 of 2,800 while drawing), in BG modes 0
+  and 1, with HDMA on `$2110` only; 34 of 350 samples changed a field.
+- `mode7_view` ($8A:8B0A, `src/scale.c`): the full matrix from D+$14..$1B, centre
+  ($80, $40), BG2 horizontal scroll D+$3A, patches of the `$0D00`/`$0D20` line tables
+  (3-byte entries, the shape of HDMA tables), `$0D2A`, and BG2's vertical scroll by bit 2
+  of the scene's 8-byte entry at `$8A:9351`. The set-bit path is code at `$8A:8B9D`–
+  `$8A:8BB5` that the map calls data (no recorded run takes it; the fuzz does, and fuzz
+  runs do not feed coverage). Full movie 263/263 live (it is not reached in race 1), fuzz
+  500/500, paths 73/73. Unlike `mode7_zoom_view` it writes while the picture is drawn
+  (lines 31-240); the breakdown is in the verify log and below.
 
 ## Coverage sources (2026-11-14)
 

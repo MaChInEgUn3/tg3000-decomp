@@ -52,8 +52,8 @@ enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3, EFFECT_VRAM_FILL =
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size);
 void difftest_replay_interrupt(void);
 
-// PPU fields (Mode 7 matrix and offsets, BG1 scroll) set by the C, compared by end state.
-enum { PF_M7A, PF_M7B, PF_M7C, PF_M7D, PF_M7X, PF_M7Y, PF_M7H, PF_M7V, PF_BG1H, PF_BG1V, PF_COUNT };
+// PPU fields (Mode 7 matrix and offsets, BG1/BG2 scroll) set by the C, compared by end state.
+enum { PF_M7A, PF_M7B, PF_M7C, PF_M7D, PF_M7X, PF_M7Y, PF_M7H, PF_M7V, PF_BG1H, PF_BG1V, PF_BG2H, PF_BG2V, PF_COUNT };
 void difftest_ppu_field(int field, uint16_t value);  // platform_wait_vblank() on the bench
 
 void difftest_init(Snes* snes, const uint8_t* rom, bool negative);

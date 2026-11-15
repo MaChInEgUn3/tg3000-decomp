@@ -39,7 +39,7 @@ CODE_8A803B:
     jsl.l func_8A8EEF           ; $8A8054
     jsr.w $8828                 ; $8A8058
     jsr.w $891C                 ; $8A805B
-    jsr.w $8B0A                 ; $8A805E
+    jsr.w mode7_view            ; $8A805E
     jsl.l $8A8E1B               ; $8A8061
     jsr.w $8787                 ; $8A8065
     lda.w #$0087                ; $8A8068
@@ -92,7 +92,7 @@ CODE_8A803B:
     jsr.w $8181                 ; $8A80E7
     lda.w #$0001                ; $8A80EA
     jsl.l $8A8BB6               ; $8A80ED
-    jsr.w $8B0A                 ; $8A80F1
+    jsr.w mode7_view            ; $8A80F1
     lda.b $5A                   ; $8A80F4
     beq CODE_8A8142             ; $8A80F6
     incbin !baserom:$500F8..$50142
@@ -734,6 +734,7 @@ CODE_8A8AEE:
     sta.b $3C                   ; $8A8B06
     ply                         ; $8A8B08
     rts                         ; $8A8B09
+mode7_view:
     lda.b $4C                   ; $8A8B0A
     sta.w $0D01                 ; $8A8B0C
     sta.w $0D04                 ; $8A8B0F

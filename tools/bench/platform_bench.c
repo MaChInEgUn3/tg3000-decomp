@@ -19,7 +19,13 @@ void video_upload_cgram(uint8_t index, uint32_t src, uint32_t size) {
 
 // PPU registers: recorded as the fields the bench's PPU decodes from the same writes.
 void video_set_m7a(int16_t value) { difftest_ppu_field(PF_M7A, (uint16_t)value); }
+void video_set_m7b(int16_t value) { difftest_ppu_field(PF_M7B, (uint16_t)value); }
+void video_set_m7c(int16_t value) { difftest_ppu_field(PF_M7C, (uint16_t)value); }
 void video_set_m7d(int16_t value) { difftest_ppu_field(PF_M7D, (uint16_t)value); }
+void video_set_m7x(int16_t value) { difftest_ppu_field(PF_M7X, (uint16_t)value); }
+void video_set_m7y(int16_t value) { difftest_ppu_field(PF_M7Y, (uint16_t)value); }
+void video_set_bg2_hofs(uint16_t value) { difftest_ppu_field(PF_BG2H, value); }
+void video_set_bg2_vofs(uint16_t value) { difftest_ppu_field(PF_BG2V, value); }
 
 void video_set_bg1_hofs(uint16_t value) {
   difftest_ppu_field(PF_BG1H, value);

@@ -129,6 +129,57 @@ static void fuzz_mode7_zoom_view(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   ram[(uint16_t)(r->d + ZOOM_CENTRE_Y)] = (k >> 17) & 1 ? (uint8_t)(0x6E + (rnd() & 3)) : (uint8_t)rnd();
 }
 
+// ---- mode7_view ($8A:8B0A) ----  exits with X = 8 * the scene index and A = D+$62,
+// N Z C from CMP #$FFC0 on it, except after the vertical scroll write of the set-bit path
+// (8-bit loads of D+$62, D+$63: A's low byte = D+$63, N Z from it); V from the
+// ADC #$0200 on the scroll.
+static void call_mode7_view(const Regs* in, Regs* out) {
+  uint16_t scroll = rd16((uint16_t)(in->d + VIEW_SCROLL));
+  uint16_t scene = (uint16_t)(rd16(VIEW_SCENE) << 3);
+  bool follow = bus_rd16(0x8A9351 + scene) & 0x0004;
+  uint16_t y = mode7_view(in->d);
+  bool keep = !((uint16_t)(y + 0x40) & 0x8000);
+  uint16_t sum = (uint16_t)(scroll + 0x0200);
+  out->x = scene;
+  out->a = y;
+  out->c = y >= 0xFFC0;
+  out->v = ((scroll ^ sum) & (0x0200 ^ sum) & 0x8000) != 0;
+  if(follow && keep) {
+    uint8_t hi = (uint8_t)(y >> 8);
+    out->a = (uint16_t)(hi << 8 | hi);
+    out->n = hi & 0x80;
+    out->z = hi == 0;
+  } else {
+    out->n = !keep;
+    out->z = y == 0xFFC0;
+  }
+}
+
+// both values of the scene bit (the index kept below $1195 so the table read stays in ROM
+// or the bank $8B WRAM mirror, away from the lines the routine writes first), D+$62 around both edges of the $0D0A test, any matrix
+static void fuzz_mode7_view(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  for(int i = 0; i < 4; i++) {
+    uint32_t k = rnd();
+    ram[(uint16_t)(r->d + VIEW_MATRIX + 2 * i)] = (uint8_t)k;
+    ram[(uint16_t)(r->d + VIEW_MATRIX + 2 * i + 1)] = (uint8_t)(k >> 8);
+  }
+  uint16_t words[3] = {VIEW_SCROLL, VIEW_LINE_A, VIEW_LINE_B};
+  for(int i = 0; i < 3; i++) {
+    uint32_t k = rnd();
+    if(i == 0 && (k & 0x30000) == 0) k = (k & 0x01FF) | 0x7E00;  // the ADC's overflow
+    ram[(uint16_t)(r->d + words[i])] = (uint8_t)k;
+    ram[(uint16_t)(r->d + words[i] + 1)] = (uint8_t)(k >> 8);
+  }
+  uint32_t k = rnd();
+  uint16_t scene = (k & 3) ? (uint16_t)(rnd() % 0x200) : (uint16_t)(rnd() % 0x1195);
+  if(scene >= 0x0F30 && scene < 0x0F40) scene = 0;  // its entry would be the $0D00 lines just written
+  ram[VIEW_SCENE] = (uint8_t)scene;
+  ram[VIEW_SCENE + 1] = (uint8_t)(scene >> 8);
+  uint16_t y = (k >> 2) % 3 == 0 ? (uint16_t)(0xFFBE + (rnd() & 3)) : (k >> 2) % 3 == 1 ? (uint16_t)(0x7FBE + (rnd() & 3)) : (uint16_t)rnd();
+  ram[(uint16_t)(r->d + VIEW_BG2_Y)] = (uint8_t)y;
+  ram[(uint16_t)(r->d + VIEW_BG2_Y + 1)] = (uint8_t)(y >> 8);
+}
+
 // ---- upload_vram_now ($80:83AD, long call) ----
 // A = size, X = source, D+$14 = source bank, Y = VRAM word address. Exits with
 // A = $1801 (the DMA mode word, then LDA #$01 in 8-bit), N = Z = 0; X, Y kept.
@@ -1813,6 +1864,8 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .call = call_inverse_scale, ALL_OUTPUTS, .fuzz = fuzz_inverse_scale},
   {.name = "mode7_zoom_view", .entry = 0x80F38D, .end = 0x80F3C4, .source = "src/scale.c", .needM16 = true,
    .fixedD = true, .call = call_mode7_zoom_view, ALL_OUTPUTS, .fuzz = fuzz_mode7_zoom_view},
+  {.name = "mode7_view", .entry = 0x8A8B0A, .end = 0x8A8BB6, .source = "src/scale.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_mode7_view, ALL_OUTPUTS, .fuzz = fuzz_mode7_view},
   {.name = "upload_vram_now", .entry = 0x8083AD, .end = 0x8083CB, .rtl = true, .source = "src/video_dma.c",
    .needM16 = true, .needX16 = true, .call = call_upload_vram_now, ALL_OUTPUTS, .fuzz = fuzz_upload_vram_now},
   {.name = "upload_cgram_now", .entry = 0x8083CB, .end = 0x8083E8, .rtl = true, .source = "src/video_dma.c",

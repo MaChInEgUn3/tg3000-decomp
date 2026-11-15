@@ -55,8 +55,14 @@ typedef struct {
   // flags: compared separately; a mismatch only fails the routine if the flag is live
   unsigned long watched, live[4], dead[4], flagMismatch[4];
   char firstFlagFailure[4][160];
-  int ppuLineMin, ppuLineMax;  // scanlines of the original's PPU field writes (live samples)
+  // the original's PPU field writes in live samples: scanlines, how many while the picture
+  // is being drawn (line < 225, screen on), BG modes, HDMA targets at the time, and how
+  // many samples changed a field's value
+  int ppuLineMin, ppuLineMax;
   bool ppuLines;
+  unsigned long ppuWrites, ppuDrawn, ppuSamplesChanged;
+  uint8_t ppuModes;
+  uint8_t ppuHdma[32];  // B-bus addresses ($21xx) of HDMA channels active at the writes
 } Stats;
 
 static Snes* snes;
@@ -75,9 +81,9 @@ typedef struct { int kind; uint32_t target, src, size; } Effect;
 // writes are compared by end state, as the bench's PPU decoded them (which fields were
 // written, and their final values). Bits of each field that the PPU keeps:
 static const uint16_t ppuFieldMask[PF_COUNT] = {
-  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x03FF, 0x03FF};
+  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x03FF, 0x03FF, 0x03FF, 0x03FF};
 static const char* const ppuFieldName[PF_COUNT] = {
-  "M7A", "M7B", "M7C", "M7D", "M7X", "M7Y", "M7HOFS", "M7VOFS", "BG1HOFS", "BG1VOFS"};
+  "M7A", "M7B", "M7C", "M7D", "M7X", "M7Y", "M7HOFS", "M7VOFS", "BG1HOFS", "BG1VOFS", "BG2HOFS", "BG2VOFS"};
 
 typedef struct {
   int idx;
@@ -93,7 +99,7 @@ typedef struct {
   int effectCount;
   // PPU fields written (bit per PF_*), and those whose last write combined a latch byte
   // written before the sample (the result depends on state the C does not get)
-  uint16_t ppuWritten, ppuStale, ppuEnd[PF_COUNT];
+  uint16_t ppuWritten, ppuStale, ppuStart[PF_COUNT], ppuEnd[PF_COUNT];
   bool m7Latch, scrollLatch, scrollLatch2;  // latch bytes written inside the sample
 } Sample;
 
@@ -151,34 +157,50 @@ void difftest_ppu_field(int field, uint16_t value) {
 static uint16_t ppuFieldValue(int field) {
   const Ppu* ppu = snes->ppu;
   if(field <= PF_M7V) return (uint16_t)ppu->m7matrix[field];
-  return field == PF_BG1H ? ppu->bgLayer[0].hScroll : ppu->bgLayer[0].vScroll;
+  const BgLayer* bg = &ppu->bgLayer[(field - PF_BG1H) / 2];
+  return (field - PF_BG1H) % 2 == 0 ? bg->hScroll : bg->vScroll;
 }
 
 // A write to a PPU register the C models as fields: $210D/$210E (BG1 scroll, also the
-// Mode 7 offset) and $211B-$2120 (Mode 7 matrix and centre). Each is written twice, low
+// Mode 7 offset), $210F/$2110 (BG2 scroll) and $211B-$2120 (Mode 7 matrix and centre). Each is written twice, low
 // byte then high, through latches shared between registers (LakeSnes's ppu_write).
 static bool ppuFieldWrite(uint32_t adr) {
   if(((adr >> 16) & 0x7F) >= 0x40) return false;
   uint16_t a = adr & 0xFFFF;
-  if(a != 0x210D && a != 0x210E && (a < 0x211B || a > 0x2120)) return false;
+  bool scroll = a >= 0x210D && a <= 0x2110, m7 = a == 0x210D || a == 0x210E || (a >= 0x211B && a <= 0x2120);
+  if(!scroll && !m7) return false;
+  bool hofs = scroll && (a & 1);  // $210D/$210F: horizontal; $210E/$2110: vertical
   for(int k = 0; k < depth; k++) {
     Sample* smp = &samples[k];
     uint16_t fresh = 0, stale = 0;
-    int m7 = a == 0x210D ? PF_M7H : a == 0x210E ? PF_M7V : a - 0x211B;
-    *(smp->m7Latch ? &fresh : &stale) |= (uint16_t)(1u << m7);
-    if(a == 0x210D) *(smp->scrollLatch && smp->scrollLatch2 ? &fresh : &stale) |= 1u << PF_BG1H;
-    if(a == 0x210E) *(smp->scrollLatch ? &fresh : &stale) |= 1u << PF_BG1V;
+    if(m7) {
+      int f = a == 0x210D ? PF_M7H : a == 0x210E ? PF_M7V : a - 0x211B;
+      *(smp->m7Latch ? &fresh : &stale) |= (uint16_t)(1u << f);
+      smp->m7Latch = true;
+    }
+    if(scroll) {  // BGnHOFS takes both scroll latches, BGnVOFS the first one
+      int f = PF_BG1H + (a - 0x210D);
+      bool ok = smp->scrollLatch && (!hofs || smp->scrollLatch2);
+      *(ok ? &fresh : &stale) |= (uint16_t)(1u << f);
+      smp->scrollLatch = true;
+      if(hofs) smp->scrollLatch2 = true;
+    }
     smp->ppuWritten |= fresh | stale;
     smp->ppuStale = (uint16_t)((smp->ppuStale & ~fresh) | stale);
-    smp->m7Latch = true;
-    if(a == 0x210D || a == 0x210E) smp->scrollLatch = true;
-    if(a == 0x210D) smp->scrollLatch2 = true;
     if(!fuzzing) {
       Stats* s = &stats[smp->idx];
       int line = snes->vPos;
       if(!s->ppuLines || line < s->ppuLineMin) s->ppuLineMin = line;
       if(!s->ppuLines || line > s->ppuLineMax) s->ppuLineMax = line;
       s->ppuLines = true;
+      const Ppu* ppu = snes->ppu;
+      s->ppuWrites++;
+      if(line < 225 && !ppu->forcedBlank && ppu->brightness != 0) s->ppuDrawn++;
+      s->ppuModes |= (uint8_t)(1u << (ppu->mode & 7));
+      for(int c = 0; c < 8; c++) {
+        const DmaChannel* ch = &snes->dma->channel[c];
+        if(ch->hdmaActive && !ch->terminated) s->ppuHdma[ch->bAdr >> 3] |= (uint8_t)(1u << (ch->bAdr & 7));
+      }
     }
   }
   return true;
@@ -404,7 +426,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
     }
   }
   if(cPpuWritten != smp->ppuWritten) {
-    snprintf(why, whyLen, "PPU fields written: original %04X, C %04X (bits: M7A..M7VOFS, BG1HOFS, BG1VOFS)",
+    snprintf(why, whyLen, "PPU fields written: original %04X, C %04X (bits: M7A..M7VOFS, BG1HOFS..BG2VOFS)",
       smp->ppuWritten, cPpuWritten);
     return false;
   }
@@ -453,6 +475,14 @@ static void finishSample(int k, const Cpu* cpu) {
   if(owner) irqOwner = -1;
   memcpy(afterRam, snes->ram, sizeof afterRam);
   for(int f = 0; f < PF_COUNT; f++) smp->ppuEnd[f] = ppuFieldValue(f);
+  if(!fuzzing) {
+    for(int f = 0; f < PF_COUNT; f++) {
+      if((smp->ppuWritten & (1u << f)) && ((smp->ppuEnd[f] ^ smp->ppuStart[f]) & ppuFieldMask[f])) {
+        s->ppuSamplesChanged++;
+        break;
+      }
+    }
+  }
   Regs after = readRegs(cpu);
   if(table[idx].waitsForInterrupts) {
     if(!owner || irqOverflow || irqActive) { s->abandoned++; return; }
@@ -526,6 +556,7 @@ static void startSample(int idx, const Cpu* cpu) {
     .retBank = r->rtl ? snes->ram[(uint16_t)(sp + 3)] : cpu->k,
     .interruptsAtEntry = cpu_interruptCount,
   };
+  for(int f = 0; f < PF_COUNT; f++) smp->ppuStart[f] = ppuFieldValue(f);
   // A waiting routine records the interrupts it waits through, unless an outer waiting
   // sample already does (a wipe that waits through wait_frames): the outer one keeps them
   // and the inner one goes unsampled. (An owner index at or past k is stale.)
@@ -809,7 +840,15 @@ bool difftest_report(const char* resultsPath) {
     }
     printf("    %s; mismatches N%lu V%lu Z%lu C%lu\n", flagNote, s->flagMismatch[0], s->flagMismatch[1], s->flagMismatch[2], s->flagMismatch[3]);
     if(s->firstFailure[0]) printf("    first failure: %s\n", s->firstFailure);
-    if(s->ppuLines) printf("    PPU field writes on scanlines %d..%d (live samples)\n", s->ppuLineMin, s->ppuLineMax);
+    if(s->ppuLines) {
+      printf("    PPU field writes on scanlines %d..%d (live samples): %lu of %lu while drawing, BG modes", s->ppuLineMin,
+        s->ppuLineMax, s->ppuDrawn, s->ppuWrites);
+      for(int m = 0; m < 8; m++) if(s->ppuModes & (1u << m)) printf(" %d", m);
+      printf(", HDMA to");
+      bool any = false;
+      for(int b = 0; b < 256; b++) if(s->ppuHdma[b >> 3] & (1u << (b & 7))) { printf(" $21%02X", b); any = true; }
+      printf("%s; %lu sample(s) changed a field\n", any ? "" : " none", s->ppuSamplesChanged);
+    }
     if(reached && seen < need) {  // which instruction starts no sample reached
       printf("    paths not reached:");
       for(int k = 0, shown = 0; k < MAX_EXTENT && shown < 8; k++)
