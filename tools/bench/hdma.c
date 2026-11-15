@@ -24,6 +24,20 @@ typedef struct { uint32_t key[4]; uint32_t count; uint32_t first, last; } Item;
 typedef struct { Item* items; int32_t* slots; int n; bool full; } Set;
 
 static Set configs, regWrites, enableWrites, modeWrites, tableWriters;
+static Set handlers, handlerWrites, handlerCalls, kickInherits, tableRaces, sharedTargets, dispatches;
+
+// Interrupt handlers: the vectors jump to trampolines at $0000 (NMI) and $0004 (IRQ) in
+// WRAM, which JML to the current handler. One record per handler instance in progress.
+typedef struct {
+  bool active;
+  uint32_t target, entrySp, insns;
+  uint8_t written[8];  // $43x0-$43x7 written by this instance (bit per register)
+} Handler;
+static Handler current[2];  // [0] NMI, [1] IRQ (an IRQ inside the NMI gets its own)
+static int handlerDepth;
+static uint32_t prevPc;
+static bool afterCall, afterIndirect;
+static uint8_t* tableByte;  // bytes of enabled tables and their indirect data, last frame
 
 static uint32_t hashKey(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
   uint32_t h = 2166136261u;
@@ -58,12 +72,53 @@ static void note(Set* s, uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
 void hdma_start(Snes* s) {
   snes = s;
   writer = calloc(0x20000, sizeof *writer);
+  tableByte = calloc(0x20000, 1);
+}
+
+static int wramIndex(uint32_t adr);
+
+static uint8_t peek(uint32_t adr) {  // ROM or WRAM, without side effects (else 0)
+  int w = wramIndex(adr);
+  if(w >= 0) return snes->ram[w];
+  uint8_t bank = (adr >> 16) & 0x7F;
+  if(bank < 0x7E && ((adr & 0xFFFF) >= 0x8000 || bank >= 0x40))
+    return snes->cart->rom[((uint32_t)bank << 15 | (adr & 0x7FFF)) & 0xFFFFF];
+  return 0;
 }
 
 void hdma_on_insn(Cpu* cpu) {
   uint8_t bank = cpu->k;
   if(bank < 0x7E) bank |= 0x80;
   pc = (uint32_t)bank << 16 | cpu->pc;
+  // the first instruction after a trampoline is the handler's
+  if(prevPc == 0x800000 || prevPc == 0x800004) {
+    if(handlerDepth == 2) { current[0] = current[1]; handlerDepth = 1; }  // never blocks a new entry
+    Handler* h = &current[handlerDepth++];
+    *h = (Handler){true, pc, (uint32_t)(uint16_t)(cpu->sp + (cpu->e ? 3 : 4)), 0, {0}};
+    note(&handlers, pc, prevPc == 0x800000 ? 0 : 1, 0, 0);
+  }
+  if(afterCall && handlerDepth > 0) note(&handlerCalls, current[handlerDepth - 1].target, pc, 0, 0);
+  if(afterIndirect && handlerDepth > 0) note(&dispatches, current[handlerDepth - 1].target, pc, prevPc, 0);
+  afterCall = afterIndirect = false;
+  if(handlerDepth > 0) {
+    Handler* h = &current[handlerDepth - 1];
+    h->insns++;
+    uint8_t opcode = peek(((uint32_t)cpu->k << 16) | cpu->pc);
+    if(opcode == 0x20 || opcode == 0x22 || opcode == 0xFC) afterCall = true;  // JSR, JSL, JSR (abs,X)
+    if(opcode == 0x6C || opcode == 0x7C || opcode == 0xDC || opcode == 0xFC) afterIndirect = true;
+    if(opcode == 0x40) {  // RTI: every handler whose frame this returns from is done
+      uint32_t after = (uint16_t)(cpu->sp + (cpu->e ? 3 : 4));
+      bool first = true;
+      while(handlerDepth > 0 && current[handlerDepth - 1].entrySp <= after) {
+        Handler* t = &current[handlerDepth - 1];
+        if(first) note(&handlers, t->target, 2, t->insns, 0);  // size: one record per distinct length
+        first = false;
+        t->active = false;
+        handlerDepth--;
+      }
+    }
+  }
+  prevPc = pc;
 }
 
 static int wramIndex(uint32_t adr) {
@@ -76,9 +131,25 @@ static int wramIndex(uint32_t adr) {
 void hdma_on_access(uint32_t adr, uint8_t val, bool write) {
   if(!write) return;
   int w = wramIndex(adr);
-  if(w >= 0) { writer[w] = pc; return; }
+  if(w >= 0) {
+    writer[w] = pc;
+    if(tableByte[w] && snes->vPos < 225) note(&tableRaces, (uint32_t)w, pc, tableByte[w] - 1, 0);
+    return;
+  }
   if(((adr >> 16) & 0x7F) >= 0x40) return;
   uint16_t a = adr & 0xFFFF;
+  if(handlerDepth > 0) {
+    Handler* h = &current[handlerDepth - 1];
+    if((a >= 0x2100 && a < 0x2200) || (a >= 0x4200 && a < 0x4380)) note(&handlerWrites, h->target, a, 0, 0);
+    if(a >= 0x4300 && a <= 0x437F && (a & 0xF) < 8) h->written[(a >> 4) & 7] |= (uint8_t)(1u << (a & 0xF));
+    if(a == 0x420B) {  // a DMA kick: which of the used registers did this instance not set?
+      for(int c = 0; c < 8; c++) {
+        if(!(val & (1 << c))) continue;
+        uint8_t inherited = (uint8_t)(~h->written[c] & 0x7F);  // $43x0-$43x6
+        note(&kickInherits, h->target, (uint32_t)c, inherited, pc);
+      }
+    }
+  }
   if(a == 0x420C) note(&enableWrites, pc, val, 0, 0);
   else if(a >= 0x4300 && a <= 0x437F && (a & 0xF) <= 0xA) note(&regWrites, (a >> 4) & 7, a & 0xF, pc, 0);
   else if(a == 0x2105) {
@@ -90,6 +161,15 @@ void hdma_on_access(uint32_t adr, uint8_t val, bool write) {
 
 void hdma_on_frame(int frame) {
   frames = (uint32_t)frame;
+  memset(tableByte, 0, 0x20000);
+  for(int c = 0; c < 8; c++) {
+    DmaChannel* a = &snes->dma->channel[c];
+    if(!a->hdmaActive) continue;
+    for(int d = c + 1; d < 8; d++) {
+      DmaChannel* b = &snes->dma->channel[d];
+      if(b->hdmaActive && b->bAdr == a->bAdr) note(&sharedTargets, (uint32_t)c, (uint32_t)d, a->bAdr, 0);
+    }
+  }
   for(int c = 0; c < 8; c++) {
     DmaChannel* ch = &snes->dma->channel[c];
     if(!ch->hdmaActive) continue;
@@ -106,6 +186,13 @@ void hdma_on_frame(int frame) {
       for(int b = 0; b < len; b++) {
         uint32_t who = writer[(w + k + b) & 0x1FFFF];
         if(who) note(&tableWriters, (uint32_t)c, table, who, 0);
+        tableByte[(w + k + b) & 0x1FFFF] = (uint8_t)(c + 1);
+      }
+      if(ch->indirect && count != 0) {  // the data the entry points at, if in WRAM
+        uint16_t ptr = (uint16_t)(snes->ram[(w + k + 1) & 0x1FFFF] | snes->ram[(w + k + 2) & 0x1FFFF] << 8);
+        int d = wramIndex((uint32_t)ch->indBank << 16 | ptr);
+        int n = (count & 0x80) ? (count & 0x7F) * unit[ch->mode & 7] : unit[ch->mode & 7];
+        if(d >= 0) for(int b = 0; b < n; b++) tableByte[(d + b) & 0x1FFFF] = (uint8_t)(c + 1);
       }
       if(count == 0) break;
       k += len;
@@ -130,6 +217,25 @@ static void rowMode(FILE* f, Item* it) {
   fprintf(f, "$2105 = $%02X by $%06X %s x%u (frames %u..%u)\n", it->key[0], it->key[1], when[it->key[2]],
     it->count, it->first, it->last);
 }
+static void rowHandler(FILE* f, Item* it) {
+  if(it->key[1] == 2) fprintf(f, "  $%06X ran %u instructions x%u\n", it->key[0], it->key[2], it->count);
+  else fprintf(f, "%s handler $%06X entered x%u (frames %u..%u)\n", it->key[1] ? "IRQ" : "NMI", it->key[0], it->count, it->first, it->last);
+}
+static void rowHandlerWrite(FILE* f, Item* it) { fprintf(f, "$%06X writes $%04X x%u\n", it->key[0], it->key[1], it->count); }
+static void rowHandlerCall(FILE* f, Item* it) { fprintf(f, "$%06X calls $%06X x%u\n", it->key[0], it->key[1], it->count); }
+static void rowInherit(FILE* f, Item* it) {
+  fprintf(f, "$%06X kick at $%06X: ch%u inherits $43%u0-6 mask %02X (bit n = $43%un not written by this instance) x%u\n",
+    it->key[0], it->key[3], it->key[1], it->key[1], it->key[2], it->key[1], it->count);
+}
+static void rowRace(FILE* f, Item* it) {
+  fprintf(f, "WRAM $%05X (ch%u table or data) written while drawing by $%06X x%u (frames %u..%u)\n", it->key[0], it->key[2],
+    it->key[1], it->count, it->first, it->last);
+}
+static void rowDispatch(FILE* f, Item* it) {
+  fprintf(f, "$%06X jumps indirectly at $%06X to $%06X x%u (frames %u..%u)\n", it->key[0], it->key[2], it->key[1], it->count,
+    it->first, it->last);
+}
+static void rowShared(FILE* f, Item* it) { fprintf(f, "ch%u and ch%u both target $21%02X x%u\n", it->key[0], it->key[1], it->key[2], it->count); }
 static void rowWriter(FILE* f, Item* it) { fprintf(f, "ch%u table $%06X written by $%06X (%u frame-bytes)\n", it->key[0], it->key[1], it->key[2], it->count); }
 
 bool hdma_save(const char* path) {
@@ -141,6 +247,13 @@ bool hdma_save(const char* path) {
   dump(f, "channel register writers", &regWrites, rowReg);
   dump(f, "$2105 (BG mode) writers", &modeWrites, rowMode);
   dump(f, "last CPU writers of the bytes of WRAM tables (to the terminator)", &tableWriters, rowWriter);
+  dump(f, "interrupt handlers (entered through the $0000/$0004 trampolines) and their lengths", &handlers, rowHandler);
+  dump(f, "indirect jumps inside handlers (their dispatch)", &dispatches, rowDispatch);
+  dump(f, "hardware registers each handler writes", &handlerWrites, rowHandlerWrite);
+  dump(f, "routines each handler calls (JSR/JSL)", &handlerCalls, rowHandlerCall);
+  dump(f, "DMA kicks inside handlers: registers the kick uses but the instance did not write", &kickInherits, rowInherit);
+  dump(f, "CPU writes while drawing into an enabled table or its indirect data", &tableRaces, rowRace);
+  dump(f, "enabled channels sharing a target", &sharedTargets, rowShared);
   fclose(f);
   return true;
 }

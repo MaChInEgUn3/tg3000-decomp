@@ -834,6 +834,40 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   share a target (if not, calls keyed by target, not channel). The harness then needs
   RTI rows, an input replay (joypad, `$4210-$4212`, APU ports), and HDMA configuration
   compared by end state at the `$420C` write.
+- **Handlers, measured (hdma-2, 2026-11-15; `--hdma-report` over the 60k movie):** the
+  vectors point at WRAM trampolines (`$0000` NMI, `$0004` IRQ) that jump to the current
+  handler. Two NMI handlers and five IRQ handlers:
+  - `$80:8807` (NMI outside the race, 14,587 frames) shares a prologue and dispatches at
+    `$80:8931` to `$80:8934`, `$80:FC5F`, `$80:B97B`, `$80:E175`, `$80:D784`, `$80:E28C`,
+    `$80:FC14`, `$80:FBD1`;
+  - `$85:8377` (the race NMI, 45,360 frames) dispatches at `$85:8387` to `$85:838A` or
+    `$85:83CE` (44,316 frames);
+  - IRQ `$85:87BA` (603,666 entries: about 14 per race frame), `$80:BC9B` (6,682),
+    `$80:E3F7` (1,995), `$80:E48A` (1,970), `$85:95BD` (12).
+
+  `$80:BC9B` does long work inside the interrupt: it dispatches at `$80:BE29` to
+  `$80:B94F` or `$80:C5E0`, and the decompressor's command jumps run in it. A handler that
+  runs game work of that size will need its own row model (to measure before porting).
+- **DMA kicks inside handlers set all of their registers themselves, except the race
+  IRQ** `$85:87BA`: its kick on channels 1, 2, 3 (and 7) writes only the size low byte
+  (`$43x5`) and inherits target, mode and source from the race NMI's setup. The source
+  address advances across the kicks of one frame. So on each IRQ line, the next slice of
+  a source set up once per frame goes to the same target (CGRAM via `$2121`: a palette
+  change per band). For the platform this is a named stream (target, source, slice
+  sizes), not a register image.
+- **Tables written while drawing:** the CPU does rewrite enabled tables mid-frame, so
+  "the port reads tables once per frame" is *not* exact:
+  - `$80:DC08-$80:DCB7` (`func_80DC5A`'s family) write `$7F:0100-$7F:0174` and
+    `$7F:000A-003E` (channels 2/3: windows) while drawing;
+  - `$80:FA9A-$80:FAD5` write `$15BC-$1671` and `$1503-$158E` (channel 7);
+  - `$8A:9C5E` writes `$0D01-$0D29`.
+
+  On the console, lines below the beam show the new values in the same frame; a port
+  that samples tables at the start of the frame shows them one frame later. This is a
+  fidelity note for the ports: up to one frame, on intro/menu screens. It does not
+  change the C.
+- **No two enabled channels ever share a target** (0 cases), so platform calls can be
+  keyed by target and mode, not by channel number.
 - **Next:** the interface. The data says the game's HDMA is (a) per-line tables of scroll,
   window, palette and Mode 7 parameters, built in WRAM by game code, and (b) a CPU-timed
   BG-mode split. Both are platform services for the ports (`video_*`), to be designed
