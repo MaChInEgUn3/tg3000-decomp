@@ -60,3 +60,8 @@ uint16_t decompress_to_vram(uint16_t dp, uint8_t src_bank, uint16_t src, uint16_
   video_upload_vram(vram_word, 0x7F0000, len ? len : 0x10000);
   return end;
 }
+
+// TG3000_ROUTINE($8A:8DEC) clear_vram (long call)
+void clear_vram(void) {
+  video_fill_vram(0x0000, rom8(0x8A8E19), 0x10000);  // the fill byte is kept in the ROM
+}

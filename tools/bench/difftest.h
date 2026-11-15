@@ -48,7 +48,7 @@ typedef struct {
 
 // Hardware effects, in canonical form: what the original did through DMA and what the C
 // asked the platform for (tools/bench/platform_bench.c) must be the same list.
-enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3 };
+enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3, EFFECT_VRAM_FILL = 4 };
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size);
 void difftest_replay_interrupt(void);  // platform_wait_vblank() on the bench
 

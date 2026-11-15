@@ -15,6 +15,11 @@
 // (The original does this with DMA in mode 1 to $2118 with VMAIN = $80.)
 void video_upload_vram(uint16_t vram_word, uint32_t src, uint32_t size);
 
+// Fill `size` bytes (1-65536) of video RAM from word address `vram_word` with `value`
+// (both bytes of every word). (The original does this with a fixed-source DMA to
+// $2118/$2119, VMAIN = $80.)
+void video_fill_vram(uint16_t vram_word, uint8_t value, uint32_t size);
+
 // Copy `size` bytes (1-65536) from `src` into the palette starting at colour `index`;
 // each colour is two bytes, low byte first (BGR555).
 void video_upload_cgram(uint8_t index, uint32_t src, uint32_t size);

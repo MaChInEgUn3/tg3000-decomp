@@ -127,12 +127,15 @@ void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size) {
 }
 
 static const char* effectName(int kind) {
-  return kind == EFFECT_VRAM ? "VRAM upload" : kind == EFFECT_CGRAM ? "CGRAM upload" : "other DMA";
+  return kind == EFFECT_VRAM ? "VRAM upload" : kind == EFFECT_CGRAM ? "CGRAM upload" :
+         kind == EFFECT_VRAM_FILL ? "VRAM fill" : "other DMA";
 }
 
 // A write of `val` to MDMAEN ($420B): one effect per channel started, read from the
 // channel's registers and the PPU's address state as they are at the kick, for every
 // sample in progress (an inner routine's upload is also its caller's).
+static uint8_t peekByte(uint32_t adr);
+
 static void recordKick(uint8_t val) {
   for(int c = 0; c < 8; c++) {
     if(!(val & (1 << c))) continue;
@@ -147,6 +150,10 @@ static void recordKick(uint8_t val) {
       e = (Effect){EFFECT_VRAM, ppu->vramPointer, src, size};
     } else if(plain && ch->bAdr == 0x22 && (ch->mode == 0 || ch->mode == 2) && !ppu->cgramSecondWrite) {
       e = (Effect){EFFECT_CGRAM, ppu->cgramPointer, src, size};
+    } else if(!ch->fromB && ch->fixed && ch->bAdr == 0x18 && ch->mode == 1 && ppu->vramIncrementOnHigh &&
+              ppu->vramIncrement == 1 && ppu->vramRemapMode == 0) {
+      // a fixed source writes the same byte to both halves of every word
+      e = (Effect){EFFECT_VRAM_FILL, ppu->vramPointer, peekByte(src), size};
     }
     for(int k = 0; k < depth; k++) {
       Sample* smp = &samples[k];

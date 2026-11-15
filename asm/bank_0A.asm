@@ -23,7 +23,7 @@ CODE_8A8004:
     lda.w #$FBD1                ; $8A8028
     sta.w $0008                 ; $8A802B
     jsl.l clear_dp_scratch      ; $8A802E
-    jsl.l $8A8DEC               ; $8A8032
+    jsl.l clear_vram            ; $8A8032
     stz.b $8C                   ; $8A8036
     ldx.w #$001E                ; $8A8038
 CODE_8A803B:
@@ -1015,6 +1015,7 @@ CODE_8A8D64:
     jsl.l upload_cgram_now      ; $8A8DE6
     plx                         ; $8A8DEA
     rts                         ; $8A8DEB
+clear_vram:
     sep.b #$20                  ; $8A8DEC
     rep.b #$10                  ; $8A8DEE
     ldx.w #$0000                ; $8A8DF0
@@ -1626,7 +1627,7 @@ func_8A92CF:
     jsl.l $8A9BF6               ; $8A94C9
     jsl.l $8A98B4               ; $8A94CD
     jsl.l $8A9908               ; $8A94D1
-    jsl.l $8A8DEC               ; $8A94D5
+    jsl.l clear_vram            ; $8A94D5
     stz.w $0196                 ; $8A94D9
     stz.w $0198                 ; $8A94DC
     stz.w $019A                 ; $8A94DF
@@ -2499,7 +2500,7 @@ CODE_8A9E96:
     lda.w #$008A                ; $8A9EAB
     jsl.l $8081C8               ; $8A9EAE
     jsr.w $A06D                 ; $8A9EB2
-    jsl.l $8A8DEC               ; $8A9EB5
+    jsl.l clear_vram            ; $8A9EB5
     jsr.w $BA55                 ; $8A9EB9
     jsr.w $B994                 ; $8A9EBC
     jsr.w $BACB                 ; $8A9EBF
@@ -3803,7 +3804,7 @@ CODE_8ABC9B:
     ldx.w #$C4B0                ; $8ABE47
     lda.w #$008A                ; $8ABE4A
     jsl.l $8081C8               ; $8ABE4D
-    jsl.l $8A8DEC               ; $8ABE51
+    jsl.l clear_vram            ; $8ABE51
     jsr.w $BAE3                 ; $8ABE55
     jsr.w $B18C                 ; $8ABE58
     jsr.w wipe_columns          ; $8ABE5B
@@ -4025,7 +4026,7 @@ CODE_8AC04C:
     ldx.w #$C4B0                ; $8AC069
     lda.w #$008A                ; $8AC06C
     jsl.l $8081C8               ; $8AC06F
-    jsl.l $8A8DEC               ; $8AC073
+    jsl.l clear_vram            ; $8AC073
     jsr.w $BA55                 ; $8AC077
     ldy.w #$0800                ; $8AC07A
     ldx.w #$F861                ; $8AC07D

@@ -560,6 +560,12 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   streams for a destination at 0 have no back references and open with a literal run (the
   real ones never reach before the buffer); the decompressor's own fuzz still covers those.
   Only 3 live samples (most of its 87 calls are interrupted during the unpacking).
+- **A third video call:** `video_fill_vram(vram_word, value, size)` — fill VRAM with one
+  byte in both halves of every word. The original does it with a fixed-source DMA (mode 1 to
+  `$2118`, `$4300` = `$09`); the harness now records such a DMA as a `VRAM fill` effect
+  (its value read from the source) and compares it with the C's call. First user:
+  `clear_vram` ($8A:8DEC, the whole 64 KB from the byte at `$8A:8E19`). Its live calls are
+  all interrupted (a 64 KB DMA outlasts a frame), so the fuzz (interrupts off) verifies it.
 
 ## Coverage sources (2026-11-14)
 

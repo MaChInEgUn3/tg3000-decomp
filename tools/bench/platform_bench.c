@@ -9,6 +9,10 @@ void video_upload_vram(uint16_t vram_word, uint32_t src, uint32_t size) {
   difftest_effect(EFFECT_VRAM, vram_word, src, size);
 }
 
+void video_fill_vram(uint16_t vram_word, uint8_t value, uint32_t size) {
+  difftest_effect(EFFECT_VRAM_FILL, vram_word, value, size);
+}
+
 void video_upload_cgram(uint8_t index, uint32_t src, uint32_t size) {
   difftest_effect(EFFECT_CGRAM, index, src, size);
 }

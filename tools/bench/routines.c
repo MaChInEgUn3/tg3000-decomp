@@ -1633,6 +1633,16 @@ static void fuzz_decompress_to_vram(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   r->y = (uint16_t)(rnd() & 0x7FFF);
 }
 
+// ---- clear_vram ($8A:8DEC, long) ----  SEP #$20 / REP #$10 first, REP #$20 last; exits
+// with A = its high byte : $01 (N = Z = 0 from the 8-bit LDA #$01), X = 0, 16-bit registers.
+static void call_clear_vram(const Regs* in, Regs* out) {
+  clear_vram();
+  out->a = (uint16_t)((in->a & 0xFF00) | 0x01);
+  out->x = 0;
+  out->m8 = out->x8 = false;
+  out->n = out->z = false;
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1858,6 +1868,8 @@ const Routine routines[] = {
    .needX16 = true, .call = call_decompress_to_vram, ALL_OUTPUTS, .fuzz = fuzz_decompress_to_vram},
   {.name = "decompress_to_vram_long", .entry = 0x80837D, .end = 0x808381, .rtl = true, .source = "src/video_dma.c",
    .needM16 = true, .needX16 = true, .call = call_decompress_to_vram, ALL_OUTPUTS, .fuzz = fuzz_decompress_to_vram},
+  {.name = "clear_vram", .entry = 0x8A8DEC, .end = 0x8A8E19, .rtl = true, .source = "src/video_dma.c",
+   .call = call_clear_vram, ALL_OUTPUTS, .fuzz = fuzz_nothing},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 
