@@ -922,6 +922,32 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   The sound request bytes queued by `func_80894E` (`$0463`, with `$FF` above it) are the
   ones this message carries: the earlier guess, now confirmed.
 
+## Sound interface, first calls (sound-1, 2026-11-15)
+
+- **Platform calls** (`src/platform.h`):
+  - `sound_send_frame(msg[16])`: the frame's message to the sound driver, in the order
+    the original writes the bytes;
+  - `sound_is_ready()`: the original's `$77` on `$2141`;
+  - `video_is_pal()`: bit 4 of `$213F`.
+
+  The handshake waits belong to the platform.
+- **Harness:** APU port writes are effects (port, value), in order with the DMA effects,
+  so the C's message must produce the same sixteen writes. Reads of `$2140-$2143` and
+  `$213F` are inputs: the harness records them and serves them to the C's input calls
+  in order, the first unread value of each register. A value repeated by a polling loop
+  counts as one input. If the C asks for more than the original read, the sample fails.
+  The two handshake routines have no fuzz, because the fuzz runs the main CPU alone and
+  the sound CPU would never answer.
+- **Ported** (`src/sound.c`):
+  - `sound_fade_step` ($86:DFAE): the master-volume fade, clamped at `$7F` and 0. Live
+    2,365/2,365, fuzz 500/500.
+  - `sound_send_message` ($86:DFFB): builds the message, then clears the two request
+    slots. Live 2,350/2,350, paths 60/60.
+  - `sound_frame` ($86:DFE1, long): the fade, then the message when `$046E` bit 7 is set
+    and the driver is ready. Live 2,399/2,399, paths 12/12.
+
+  A negative variant with the two request groups swapped fails at effect 8.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

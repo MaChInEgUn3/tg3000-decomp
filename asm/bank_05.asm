@@ -385,7 +385,7 @@ CODE_8583AE:
 CODE_8583B7:
     sta.w $2100                 ; $8583B7
     rep.b #$20                  ; $8583BA
-    jsl.l $86DFE1               ; $8583BC
+    jsl.l sound_frame           ; $8583BC
     jsl.l $8396CD               ; $8583C0
     inc.b $24                   ; $8583C4
     inc.b $BA                   ; $8583C6

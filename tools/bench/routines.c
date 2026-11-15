@@ -11,6 +11,7 @@
 
 #include "rng.h"
 #include "scroll_tables.h"
+#include "sound.h"
 #include "scale.h"
 #include "line_tables.h"
 #include "decompress.h"
@@ -1406,6 +1407,70 @@ static void fuzz_scroll_tables_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   wr16ram(ram, 0x1E40, (uint16_t)rnd());
 }
 
+// ---- sound_fade_step ($86:DFAE) ----  A = high byte of 2 * fade : the new volume; N Z of
+// the ADC (or of the LDA #$7F / #$00 that clamps it), C V of the 8-bit ADC
+static void call_sound_fade_step(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t fade = rd16(SOUND_FADE);
+  uint8_t x = (uint8_t)(fade << 1), m = rd8(SOUND_VOLUME);
+  uint16_t sum = (uint16_t)(x + m);
+  uint8_t r = (uint8_t)sum;
+  uint8_t v = sound_fade_step();
+  out->a = (uint16_t)(((uint16_t)(fade << 1) & 0xFF00) | v);
+  out->n = false;
+  out->z = v == 0;
+  out->c = sum > 0xFF;
+  out->v = (~(x ^ m) & (x ^ r) & 0x80) != 0;
+}
+
+static void fuzz_sound_fade_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint32_t k = rnd();
+  wr16ram(ram, SOUND_FADE, (k & 3) == 0 ? 0 : (k & 4) ? (uint16_t)(rnd() % 8) : (uint16_t)-(int)(rnd() % 8));
+  ram[SOUND_VOLUME] = (uint8_t)(rnd() & 0x7F);
+}
+
+// ---- sound_send_message ($86:DFFB) ----  PHP/PLP: flags as on entry; A = its high byte :
+// $FF, X = byte $0469, Y = byte $046B (8-bit loads under SEP #$30)
+static void call_sound_send_message(const Regs* in, Regs* out) {
+  uint8_t x = rd8(0x0469), y = rd8(0x046B);
+  sound_send_message();
+  out->a = (uint16_t)((in->a & 0xFF00) | 0xFF);
+  out->x = x;
+  out->y = y;
+}
+
+// ---- sound_frame ($86:DFE1, long) ----  PHP/PLP: flags as on entry. A = the word $046D;
+// with bit 15 set, its high byte : $77 (the readiness test), or : $FF and X, Y as
+// sound_send_message when it sent
+static void call_sound_frame(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t en = rd16(SOUND_ENABLE);
+  uint8_t x = rd8(0x0469), y = rd8(0x046B);
+  bool sent = sound_frame();
+  out->a = !(en & 0x8000) ? en : (uint16_t)((en & 0xFF00) | (sent ? 0xFF : 0x77));
+  if(sent) { out->x = x; out->y = y; }
+}
+
+// Negative test: the message with the two request groups swapped (the APU effects must
+// see it).
+static void call_sound_send_message_wrong(const Regs* in, Regs* out) {
+  uint8_t msg[16] = {
+    rd8(0x045C), rd8(0x045D), rd8(0x045F), (uint8_t)((video_is_pal() ? 0x02 : 0) | rd8(SOUND_FLAGS) | 0x80),
+    rd8(0x0461), rd8(0x045E), rd8(0x0460), (uint8_t)(rd8(0x0462) & 0x7F),
+    rd8(0x0469), rd8(0x046C), rd8(0x046B), (uint8_t)(rd8(SOUND_REQUEST_B) | 0x80),
+    rd8(0x0464), rd8(0x0467), rd8(0x0466), (uint8_t)(rd8(SOUND_REQUEST_A) & 0x7F),
+  };
+  uint8_t x = rd8(0x0469), y = rd8(0x046B);
+  sound_send_frame(msg);
+  wr8(SOUND_REQUEST_A, 0);
+  wr8(SOUND_REQUEST_B, 0);
+  wr8(0x045F, 0xFF);
+  out->a = (uint16_t)((in->a & 0xFF00) | 0xFF);
+  out->x = x;
+  out->y = y;
+}
+
 // Interrupt handlers return with RTI: P comes back from the interrupt frame (at SP + 1 on
 // entry), with its M and X widths; the registers they save they restore.
 static void restoreP(const Regs* in, Regs* out) {
@@ -2772,6 +2837,13 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_func_82AD12, ALL_OUTPUTS, .fuzz = fuzz_func_82AD12},
   {.name = "binary_to_bcd5", .entry = 0x8ABFD0, .end = 0x8AC004, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_binary_to_bcd5, ALL_OUTPUTS, .fuzz = fuzz_binary_to_bcd5},
+  {.name = "sound_fade_step", .entry = 0x86DFAE, .end = 0x86DFE1, .source = "src/sound.c", .needM16 = true,
+   .lowWramDb = true, .call = call_sound_fade_step, ALL_OUTPUTS, .fuzz = fuzz_sound_fade_step},
+  // no fuzz: the fuzz runs the CPU alone, so the sound CPU never answers the handshake
+  {.name = "sound_send_message", .entry = 0x86DFFB, .end = 0x86E096, .source = "src/sound.c", .lowWramDb = true,
+   .call = call_sound_send_message, ALL_OUTPUTS},
+  {.name = "sound_frame", .entry = 0x86DFE1, .end = 0x86DFFB, .rtl = true, .source = "src/sound.c", .needM16 = true,
+   .lowWramDb = true, .call = call_sound_frame, ALL_OUTPUTS},
   {.name = "irq_ack_only", .entry = 0x8595BD, .end = 0x8595C7, .rti = true, .source = "src/frame.c",
    .call = call_irq_ack_only, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "scroll_tables_build", .entry = 0x85BC20, .end = 0x85BED1, .rtl = true, .source = "src/scroll_tables.c",
@@ -3121,5 +3193,7 @@ const Routine negativeRoutines[] = {
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_draw_meter_wrong, ALL_OUTPUTS, .fuzz = fuzz_draw_meter},
   {.name = "irq_ack_only_wrong", .entry = 0x8595BD, .end = 0x8595C7, .rti = true, .source = "src/frame.c",
    .call = call_irq_ack_only_wrong, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "sound_send_message_wrong", .entry = 0x86DFFB, .end = 0x86E096, .source = "src/sound.c", .lowWramDb = true,
+   .call = call_sound_send_message_wrong, ALL_OUTPUTS},
 };
 const int negativeRoutineCount = sizeof negativeRoutines / sizeof negativeRoutines[0];

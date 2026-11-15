@@ -94,6 +94,10 @@ typedef struct {
   bool hwAccess, mathWritten, leftExtent, setupPending, vramAdrPending, effectOverflow;
   bool vramLowSet;  // a $2118 byte waiting for its $2119 half
   uint8_t vramLow;
+  // reads of input registers, in order (served to the C by difftest_input)
+  struct { uint16_t reg; uint8_t val; } inputs[256];
+  int nInputs;
+  bool inputOverflow;
   uint8_t dsp4State;  // where the routine is in a DSP-4 multiply (0 = idle; see dsp4Step)
   uint32_t hwAccessAdr, leftExtentPc;
   const char* hwWhy;
@@ -106,6 +110,7 @@ typedef struct {
 } Sample;
 
 static Sample samples[MAX_DEPTH];
+
 static uint8_t sampleRam[MAX_DEPTH][TG3000_WRAM_SIZE];  // WRAM at each sample's entry
 static int depth;
 static bool fuzzing;
@@ -144,7 +149,36 @@ void difftest_replay_interrupt(void) {
 static Effect cEffects[MAX_EFFECTS];
 static int cEffectCount;
 static bool cEffectOverflow;
+static void* cSample;  // the sample the C is being compared with
+static bool cInputUsed[256], cInputMissing;
+static uint16_t cMissingReg;
+
+
+// Input registers whose values the C receives through platform calls (difftest_input):
+// the APU ports and $213F (the PPU status with the 50/60 Hz flag).
+static bool isInputReg(uint32_t adr) {
+  if(((adr >> 16) & 0x7F) >= 0x40) return false;
+  uint16_t a = adr & 0xFFFF;
+  return a == 0x213F || (a >= 0x2140 && a <= 0x217F);
+}
 static bool collectingC;
+
+static uint8_t inputFor(void* p, uint16_t reg) {
+  Sample* smp = p;
+  for(int i = 0; i < smp->nInputs; i++) {
+    if(smp->inputs[i].reg != reg || cInputUsed[i]) continue;
+    cInputUsed[i] = true;
+    return smp->inputs[i].val;
+  }
+  if(!cInputMissing) cMissingReg = reg;
+  cInputMissing = true;
+  return 0;
+}
+
+uint8_t difftest_input(uint16_t reg) {
+  if(!collectingC || cSample == NULL) return 0;
+  return inputFor(cSample, reg);
+}
 
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size) {
   if(!collectingC) return;
@@ -217,7 +251,8 @@ static bool ppuFieldWrite(uint32_t adr) {
 
 static const char* effectName(int kind) {
   return kind == EFFECT_VRAM ? "VRAM upload" : kind == EFFECT_CGRAM ? "CGRAM upload" :
-         kind == EFFECT_VRAM_FILL ? "VRAM fill" : kind == EFFECT_VRAM_WORD ? "VRAM word" : "other DMA";
+         kind == EFFECT_VRAM_FILL ? "VRAM fill" : kind == EFFECT_VRAM_WORD ? "VRAM word" :
+         kind == EFFECT_APU ? "APU port write" : "other DMA";
 }
 
 // A write of `val` to MDMAEN ($420B): one effect per channel started, read from the
@@ -345,6 +380,28 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   }
   if(isWram(adr) || (!write && isRom(adr))) return;
   if(write && ppuFieldWrite(adr)) return;
+  bool apuPort = isInputReg(adr) && (adr & 0xFFFF) != 0x213F;
+  if((write && apuPort) || (!write && isInputReg(adr))) {
+    // APU port writes are effects (port, value) in order; input reads are recorded
+    for(int k = accessBase; k < depth; k++) {
+      Sample* smp = &samples[k];
+      if(write) {
+        if(smp->effectCount < MAX_EFFECTS) smp->effects[smp->effectCount++] = (Effect){EFFECT_APU, (adr & 3), val, 1};
+        else smp->effectOverflow = true;
+      } else {
+        // a value repeated by a polling loop is one input: only changes are recorded
+        uint16_t reg = (adr & 0xFFFF) == 0x213F ? 0x213F : (uint16_t)(0x2140 + (adr & 3));
+        int last = -1;
+        for(int i = smp->nInputs - 1; i >= 0 && last < 0; i--) if(smp->inputs[i].reg == reg) last = i;
+        if(last >= 0 && smp->inputs[last].val == val) continue;
+        if(smp->nInputs < 256) {
+          smp->inputs[smp->nInputs].reg = reg;
+          smp->inputs[smp->nInputs++].val = val;
+        } else smp->inputOverflow = true;
+      }
+    }
+    return;
+  }
   if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x420B) {
     recordKick(val);
     for(int k = accessBase; k < depth; k++) samples[k].setupPending = samples[k].vramAdrPending = false;
@@ -473,6 +530,9 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   Regs out = smp->entryRegs;
   cEffectCount = 0;
   cEffectOverflow = false;
+  cSample = smp;
+  memset(cInputUsed, 0, sizeof cInputUsed);
+  cInputMissing = false;
   cPpuWritten = 0;
   collectingC = true;
   irqReplayed = 0;
@@ -485,6 +545,10 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
     return false;
   }
   while(irqReplayed < irqLimit) applyIrq(irqReplayed++);  // interrupts after the C's last wait
+  if(cInputMissing) {
+    snprintf(why, whyLen, "the C read $%04X more times than the original", cMissingReg);
+    return false;
+  }
   if(cEffectOverflow) {
     snprintf(why, whyLen, "the C made more than %d hardware effects", MAX_EFFECTS);
     return false;
@@ -584,6 +648,9 @@ static void finishSample(int k, const Cpu* cpu) {
   } else if(smp->ppuStale) {
     snprintf(why, sizeof why, "a PPU register write completed a latch byte written before the routine (fields %04X)",
       smp->ppuStale);
+    ok = false;
+  } else if(smp->inputOverflow) {
+    snprintf(why, sizeof why, "more than 256 input reads");
     ok = false;
   } else if(smp->effectOverflow) {
     snprintf(why, sizeof why, "more than %d hardware effects", MAX_EFFECTS);

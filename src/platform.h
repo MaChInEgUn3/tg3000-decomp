@@ -8,6 +8,7 @@
 #ifndef TG3000_PLATFORM_H
 #define TG3000_PLATFORM_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // Copy `size` bytes (1-65536) from `src` into video RAM starting at word address
@@ -51,6 +52,20 @@ void video_set_bg1_vofs(uint16_t value);
 // BG2 horizontal / vertical scroll ($210F / $2110): 10 bits.
 void video_set_bg2_hofs(uint16_t value);
 void video_set_bg2_vofs(uint16_t value);
+
+// Sound (docs/DECISIONS.md, "The APU ports, measured"). The game talks to its sound
+// driver through a 16-byte message per frame; a port gives it to its own driver.
+//
+// Send the frame's message: four groups of four bytes, each group in the order the
+// original writes them ($2141, $2142, $2143, then $2140, bit 7 of the last byte
+// alternating group to group). Returns once the driver has taken it.
+void sound_send_frame(const uint8_t msg[16]);
+
+// Whether the sound driver is ready for a message (the original: $77 on $2141).
+bool sound_is_ready(void);
+
+// Whether the console runs at 50 Hz (the original: bit 4 of $213F).
+bool video_is_pal(void);
 
 // Return after the next interrupt has run. On the console the NMI and IRQ handlers do
 // the frame's work; they are game code too (ported to C like the rest), so a port

@@ -131,7 +131,7 @@ CODE_86DE26:
 CODE_86DE46:
     cmp.w $0024                 ; $86DE46
     beq CODE_86DE46             ; $86DE49
-    jsr.w $DFFB                 ; $86DE4B
+    jsr.w sound_send_message    ; $86DE4B
     jsr.w $E0F0                 ; $86DE4E
     lda.l $810473               ; $86DE51
     clc                         ; $86DE55
@@ -221,7 +221,7 @@ CODE_86DF1B:
 CODE_86DF22:
     cmp.w $0024                 ; $86DF22
     beq CODE_86DF22             ; $86DF25
-    jsr.w $DFFB                 ; $86DF27
+    jsr.w sound_send_message    ; $86DF27
     jsr.w $E2B4                 ; $86DF2A
     lda.l $810473               ; $86DF2D
     tay                         ; $86DF31
@@ -246,7 +246,7 @@ CODE_86DF41:
 CODE_86DF62:
     cmp.w $0024                 ; $86DF62
     beq CODE_86DF62             ; $86DF65
-    jsr.w $DFFB                 ; $86DF67
+    jsr.w sound_send_message    ; $86DF67
     jsr.w $E0F0                 ; $86DF6A
     lda.w #$0077                ; $86DF6D
 CODE_86DF70:
@@ -271,6 +271,7 @@ CODE_86DF70:
     pld                         ; $86DFAB
     plb                         ; $86DFAC
     rtl                         ; $86DFAD
+sound_fade_step:
     lda.w $03E0                 ; $86DFAE
     bmi CODE_86DFCA             ; $86DFB1
     asl a                       ; $86DFB3
@@ -298,8 +299,9 @@ CODE_86DFDB:
     sta.w $045C                 ; $86DFDB
     rep.b #$20                  ; $86DFDE
     rts                         ; $86DFE0
+sound_frame:
     php                         ; $86DFE1
-    jsr.w $DFAE                 ; $86DFE2
+    jsr.w sound_fade_step       ; $86DFE2
     lda.l $81046D               ; $86DFE5
     bpl CODE_86DFF9             ; $86DFE9
     sep.b #$20                  ; $86DFEB
@@ -307,10 +309,11 @@ CODE_86DFDB:
     cmp.w $2141                 ; $86DFEF
     bne CODE_86DFF9             ; $86DFF2
     rep.b #$20                  ; $86DFF4
-    jsr.w $DFFB                 ; $86DFF6
+    jsr.w sound_send_message    ; $86DFF6
 CODE_86DFF9:
     plp                         ; $86DFF9
     rtl                         ; $86DFFA
+sound_send_message:
     php                         ; $86DFFB
     sep.b #$30                  ; $86DFFC
     lda.b #$77                  ; $86DFFE

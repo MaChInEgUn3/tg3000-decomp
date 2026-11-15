@@ -76,6 +76,9 @@ func    8A987F   func_8A987F         ; empty (RTL) -> src/misc.c
 func    80D6F3   func_80D6F3         ; step toward a target (CPU divider) -> src/misc.c
 func    85BC20   scroll_tables_build ; the race's two per-line scroll HDMA tables (long) -> src/scroll_tables.c
 func    8595BD   irq_ack_only        ; IRQ handler: acknowledge, RTI -> src/frame.c
+func    86DFAE   sound_fade_step     ; master volume fade ($045C by $03E0) -> src/sound.c
+func    86DFFB   sound_send_message  ; the 16-byte message to the sound driver -> src/sound.c
+func    86DFE1   sound_frame         ; fade, then the message when enabled and ready (long) -> src/sound.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

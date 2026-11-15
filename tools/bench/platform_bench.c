@@ -41,6 +41,17 @@ void video_set_bg1_vofs(uint16_t value) {
   difftest_ppu_field(PF_M7V, value);
 }
 
+// Sound: the message as the original's sixteen port writes, in its order; the handshake
+// it waits on is the platform's.
+void sound_send_frame(const uint8_t msg[16]) {
+  static const uint8_t port[4] = {1, 2, 3, 0};
+  for(int i = 0; i < 16; i++) difftest_effect(EFFECT_APU, port[i & 3], msg[i], 1);
+}
+
+// Inputs come from what the original read (difftest_input replays it in order).
+bool sound_is_ready(void) { return difftest_input(0x2141) == 0x77; }
+bool video_is_pal(void) { return (difftest_input(0x213F) & 0x10) != 0; }
+
 // The bench replays, in order, the WRAM changes each interrupt made while the original
 // routine was waiting (recorded by the differential test).
 void platform_wait_vblank(void) { difftest_replay_interrupt(); }

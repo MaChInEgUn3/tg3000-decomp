@@ -1019,7 +1019,7 @@ CODE_808931:
     jsl.l $8386FB               ; $80893B
 CODE_80893F:
     jsr.w func_80894E           ; $80893F
-    jsl.l $86DFE1               ; $808942
+    jsl.l sound_frame           ; $808942
     inc.b $24                   ; $808946
     pld                         ; $808948
     ply                         ; $808949

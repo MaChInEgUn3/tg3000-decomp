@@ -52,9 +52,14 @@ typedef struct {
 
 // Hardware effects, in canonical form: what the original did through DMA and what the C
 // asked the platform for (tools/bench/platform_bench.c) must be the same list.
-enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3, EFFECT_VRAM_FILL = 4, EFFECT_VRAM_WORD = 5 };
+enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3, EFFECT_VRAM_FILL = 4, EFFECT_VRAM_WORD = 5, EFFECT_APU = 6 };
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size);
 void difftest_replay_interrupt(void);
+
+// Inputs: the values the original read from an input register ($2140-$2143, $213F), served
+// to the C in order (the first unread value of that register). Returns 0 and fails the
+// sample if the original read no more of it.
+uint8_t difftest_input(uint16_t reg);
 
 // PPU fields (Mode 7 matrix and offsets, BG1/BG2 scroll) set by the C, compared by end state.
 enum { PF_M7A, PF_M7B, PF_M7C, PF_M7D, PF_M7X, PF_M7Y, PF_M7H, PF_M7V, PF_BG1H, PF_BG1V, PF_BG2H, PF_BG2V, PF_COUNT };
