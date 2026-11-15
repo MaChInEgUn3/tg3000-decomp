@@ -2411,10 +2411,10 @@ CODE_83FA4D:
     jmp.w $FA63                 ; $83FA59
 CODE_83FA5C:
     lda.w $0128                 ; $83FA5C
-    jsr.w $FD8A                 ; $83FA5F
+    jsr.w func_83FD8A           ; $83FA5F
     rts                         ; $83FA62
     lda.w $0128                 ; $83FA63
-    jsr.w $FDCD                 ; $83FA66
+    jsr.w func_83FDCD           ; $83FA66
     rts                         ; $83FA69
     stz.w $012A                 ; $83FA6A
     ldx.w $011A                 ; $83FA6D
@@ -2608,63 +2608,63 @@ CODE_83FC7E:
     jmp.w ($FC90,x)             ; $83FC8D
     incbin !baserom:$1FC90..$1FC98
     lda.w $0128                 ; $83FC98
-    jsr.w $FD8A                 ; $83FC9B
+    jsr.w func_83FD8A           ; $83FC9B
     bcs CODE_83FCCB             ; $83FC9E
     lda.w $0128                 ; $83FCA0
     eor.w #$FFFF                ; $83FCA3
     inc a                       ; $83FCA6
     sta.w $0128                 ; $83FCA7
-    jsr.w $FD8A                 ; $83FCAA
+    jsr.w func_83FD8A           ; $83FCAA
     bcs CODE_83FCCB             ; $83FCAD
     lda.w $0128                 ; $83FCAF
     sec                         ; $83FCB2
     sbc.w #$0080                ; $83FCB3
     sta.w $0128                 ; $83FCB6
-    jsr.w $FD8A                 ; $83FCB9
+    jsr.w func_83FD8A           ; $83FCB9
     bcs CODE_83FCCB             ; $83FCBC
     lda.w $0128                 ; $83FCBE
     eor.w #$FFFF                ; $83FCC1
     inc a                       ; $83FCC4
     sta.w $0128                 ; $83FCC5
-    jsr.w $FD8A                 ; $83FCC8
+    jsr.w func_83FD8A           ; $83FCC8
 CODE_83FCCB:
     rts                         ; $83FCCB
     lda.w $0128                 ; $83FCCC
-    jsr.w $FD8A                 ; $83FCCF
+    jsr.w func_83FD8A           ; $83FCCF
     bcs CODE_83FCF1             ; $83FCD2
     lda.w $0128                 ; $83FCD4
-    jsr.w $FDCD                 ; $83FCD7
+    jsr.w func_83FDCD           ; $83FCD7
     bcs CODE_83FCF1             ; $83FCDA
     lda.w $0128                 ; $83FCDC
     eor.w #$FFFF                ; $83FCDF
     inc a                       ; $83FCE2
     sta.w $0128                 ; $83FCE3
-    jsr.w $FD8A                 ; $83FCE6
+    jsr.w func_83FD8A           ; $83FCE6
     bcs CODE_83FCF1             ; $83FCE9
     lda.w $0128                 ; $83FCEB
-    jsr.w $FDCD                 ; $83FCEE
+    jsr.w func_83FDCD           ; $83FCEE
 CODE_83FCF1:
     rts                         ; $83FCF1
     lda.w $0128                 ; $83FCF2
-    jsr.w $FDCD                 ; $83FCF5
+    jsr.w func_83FDCD           ; $83FCF5
     bcs CODE_83FD25             ; $83FCF8
     lda.w $0128                 ; $83FCFA
     eor.w #$FFFF                ; $83FCFD
     inc a                       ; $83FD00
     sta.w $0128                 ; $83FD01
-    jsr.w $FDCD                 ; $83FD04
+    jsr.w func_83FDCD           ; $83FD04
     bcs CODE_83FD25             ; $83FD07
     lda.w $0128                 ; $83FD09
     sec                         ; $83FD0C
     sbc.w #$0080                ; $83FD0D
     sta.w $0128                 ; $83FD10
-    jsr.w $FDCD                 ; $83FD13
+    jsr.w func_83FDCD           ; $83FD13
     bcs CODE_83FD25             ; $83FD16
     lda.w $0128                 ; $83FD18
     eor.w #$FFFF                ; $83FD1B
     inc a                       ; $83FD1E
     sta.w $0128                 ; $83FD1F
-    jsr.w $FDCD                 ; $83FD22
+    jsr.w func_83FDCD           ; $83FD22
 CODE_83FD25:
     rts                         ; $83FD25
     sep.b #$20                  ; $83FD26
@@ -2711,6 +2711,7 @@ CODE_83FD25:
     sta.b $5E                   ; $83FD87
 CODE_83FD89:
     rts                         ; $83FD89
+func_83FD8A:
     bit.w $0120                 ; $83FD8A
     bmi CODE_83FDAC             ; $83FD8D
     sec                         ; $83FD8F
@@ -2738,6 +2739,7 @@ CODE_83FDC1:
     cmp.l $83826E,x             ; $83FDC4
     bpl CODE_83FDAC             ; $83FDC8
     jmp.w $FE16                 ; $83FDCA
+func_83FDCD:
     bit.w $0120                 ; $83FDCD
     bmi CODE_83FDF5             ; $83FDD0
     bra CODE_83FDF5             ; $83FDD2

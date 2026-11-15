@@ -1361,6 +1361,96 @@ static void fuzz_func_83FC05(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x012C, aim ? (uint16_t)(h - (int16_t)(rnd() % 97 - 48)) : (uint16_t)rnd());
 }
 
+// ---- func_83FD8A ($83:FD8A) ----  D = $0200, A = position. Exits:
+//   $0120 bit 15 set: A kept, N/V/Z of the BIT, C = 0;
+//   a limit not met: A = the difference tested, X = $011C, N/Z of its CMP, V of its SBC, C = 0;
+//   a hit: A = the old D+$18, X = $1EBE, Y = 0, N/Z of the final ROR of D+$16, C = 1, V of
+//   the D+$5A ADC (or of the BIT $1F31 when the multiply was skipped).
+static void call_func_83FD8A(const Regs* in, Regs* out) {
+  uint16_t dp = in->d, a = in->a, f120 = rd16(0x0120), kind = rd16(0x011C);
+  uint16_t base = rd16((uint16_t)(dp + 0x06)), d = (uint16_t)(a - base);
+  uint16_t pos = rd16(0x012A), sub = bus_rd16(0x81012C), e = (uint16_t)(pos - sub);
+  uint16_t old18 = rd16((uint16_t)(dp + 0x18)), x1EBE = rd16(0x1EBE), f1F31 = rd16(0x1F31);
+  uint16_t old5A = rd16((uint16_t)(dp + 0x5A));
+  uint32_t p = (uint32_t)(int32_t)(int16_t)(rd16((uint16_t)(dp + 0x0F)) >> 1) * (int32_t)(int16_t)rd16(0x1F30);
+  bool hit = func_83FD8A(dp, a);
+  out->c = hit;
+  if(f120 & 0x8000) {
+    out->n = true;
+    out->v = (f120 & 0x4000) != 0;
+    out->z = (a & f120) == 0;
+    return;
+  }
+  if(!hit) {
+    out->x = kind;
+    bool firstFails = !(d & 0x8000) ? !((uint16_t)(d - bus_rd16(0x8380CE + kind)) & 0x8000)
+                                     : ((uint16_t)(d - bus_rd16(0x8380CC + kind)) & 0x8000) != 0;
+    Regs t;
+    if(firstFails) {
+      out->a = d;
+      setSbc16(&t, a, base);
+      setNZ16(out, (uint16_t)(d - bus_rd16((d & 0x8000) ? 0x8380CC + kind : 0x8380CE + kind)));
+    } else {
+      out->a = e;
+      setSbc16(&t, pos, sub);
+      setNZ16(out, (uint16_t)(e - bus_rd16((e & 0x8000) ? 0x83826C + kind : 0x83826E + kind)));
+    }
+    out->v = t.v;
+    out->c = false;
+    return;
+  }
+  out->a = old18;
+  out->x = x1EBE;
+  out->y = 0;
+  setNZ16(out, rd16((uint16_t)(dp + 0x16)));
+  if(!(f1F31 & 0x8000)) {
+    uint16_t top = (uint16_t)((p >> 15) & 0xFFFF), cin = (uint16_t)(p >> 31);
+    uint32_t sum = (uint32_t)top + old5A + cin;
+    out->v = (~(top ^ old5A) & (top ^ (uint16_t)sum) & 0x8000) != 0;
+  } else {
+    out->v = (f1F31 & 0x4000) != 0;
+  }
+  out->c = true;
+}
+
+static void fuzz_func_83FD8A(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint16_t kind = (uint16_t)(4 * (rnd() % 16));
+  wr16ram(ram, 0x011C, kind);
+  wr16ram(ram, 0x0120, (uint16_t)((rnd() % 8 == 0) ? rnd() : rnd() & 0x7FFF));
+  uint16_t base = (uint16_t)rnd(), sub = (uint16_t)rnd();
+  bool aim = rnd() % 4 != 0;  // near the limits most of the time (they are a few dozen wide)
+  wr16ram(ram, (uint16_t)(r->d + 0x06), base);
+  r->a = aim ? (uint16_t)(base + (int16_t)(rnd() % 97 - 48)) : (uint16_t)rnd();
+  wr16ram(ram, 0x012C, sub);
+  wr16ram(ram, 0x012A, aim ? (uint16_t)(sub + (int16_t)(rnd() % 97 - 48)) : (uint16_t)rnd());
+  for(int o = 0x0F; o <= 0x1C; o++) ram[(uint16_t)(r->d + o)] = (uint8_t)rnd();
+  if(rnd() & 1) wr16ram(ram, (uint16_t)(r->d + 0x1A), 0);              // "no side yet"
+  if(rnd() & 1) wr16ram(ram, (uint16_t)(r->d + 0x10), (uint16_t)(rnd() % 0x100));  // near $60
+  wr16ram(ram, (uint16_t)(r->d + 0x5A), (uint16_t)rnd());
+  wr16ram(ram, (uint16_t)(r->d + 0x7C), (uint16_t)rnd());
+  wr16ram(ram, (uint16_t)(r->d + 0x23), (uint16_t)((rnd() & 1) ? 0 : rnd() % 0x40));
+  wr16ram(ram, 0x047C, (uint16_t)((rnd() % 4 == 0) ? rnd() : rnd() & 0x7FFF));
+  wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 0x20));
+  wr16ram(ram, 0x1EBE, (uint16_t)rnd());
+  wr16ram(ram, 0x1F30, (uint16_t)rnd());
+  ram[0x1F32] = (uint8_t)rnd();
+  wr16ram(ram, 0x0128, (uint16_t)rnd());
+}
+
+// ---- func_83FDCD ($83:FDCD) ----  A kept, N/V/Z of BIT $0120, C = 0.
+static void call_func_83FDCD(const Regs* in, Regs* out) {
+  uint16_t f = rd16(0x0120);
+  out->c = func_83FDCD();
+  out->n = (f & 0x8000) != 0;
+  out->v = (f & 0x4000) != 0;
+  out->z = (in->a & f) == 0;
+}
+
+static void fuzz_func_83FDCD(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0120, (uint16_t)rnd());
+}
+
 // Negative test: rng_next with one XOR constant off. --difftest-negative must FAIL.
 static uint16_t rng_next_wrong(uint16_t state, bool* carry) {
   uint32_t s = rd32(state);
@@ -1566,6 +1656,14 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x8A, .fixedD = true, .call = call_func_8AB680, ALL_OUTPUTS, .fuzz = fuzz_func_8AB680},
   {.name = "func_83FC05", .entry = 0x83FC05, .end = 0x83FC65, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_func_83FC05, ALL_OUTPUTS, .fuzz = fuzz_func_83FC05},
+  // its hit tail is at $83:FE16; $83:FDCD-$83:FE15 (another routine and unknown bytes) is a hole
+  {.name = "func_83FD8A", .entry = 0x83FD8A, .end = 0x83FE9A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_func_83FD8A, ALL_OUTPUTS, .fuzz = fuzz_func_83FD8A,
+   .holes = {{0x83FDCD, 0x83FE16}}},
+  // the bytes after its BRA are never run (a disabled test): a hole
+  {.name = "func_83FDCD", .entry = 0x83FDCD, .end = 0x83FDF7, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .call = call_func_83FDCD, ALL_OUTPUTS, .fuzz = fuzz_func_83FDCD,
+   .holes = {{0x83FDD4, 0x83FDF5}}},
 };
 const int routineCount = sizeof routines / sizeof routines[0];
 

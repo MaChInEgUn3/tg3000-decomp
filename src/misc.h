@@ -178,4 +178,16 @@ void func_8AB680(uint32_t list);
 // BPL/BMI do. Returns true when both hold (the original's carry).
 bool func_83FC05(uint16_t dp);
 
+// The object hit test with the position in `a` (D = `dp`, $0200 in the game): unless $0120
+// has bit 15 set, a - D+$06 and $012A - $012C must lie within the kind's limits (as in
+// func_83FC05). On a hit: clears bit 3 of D+$7C, requests effect $FF23 for $1EBE through
+// func_83FE9A, adds (D+$0F / 2) * $1F30 / 32768 to D+$5A (DSP-4 multiply; saturating;
+// skipped when $1F31 has bit 15 set), sets D+$1A to 2 (behind, $0128 < 0) or 3 if it was 0
+// and D+$10 >= $60, D+$1C to $1000 or $F000, and halves the signed 32-bit D+$18:D+$16.
+// Returns whether it hit.
+bool func_83FD8A(uint16_t dp, uint16_t a);
+
+// $83:FDCD: always "no hit" (its test was disabled: a BRA skips it).
+bool func_83FDCD(void);
+
 #endif

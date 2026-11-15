@@ -479,6 +479,21 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   (a CPU bus hook carrying values was added to the bsnes patch; the run's WRAM hashes are
   unchanged by it). The whole TAS (450,994 frames): **15,431,275 multiplies, all equal**
   to `dsp4_multiply`, and the run's WRAM identical frame by frame to the earlier sync run.
+- **The harness accepts whole multiplies:** a routine's traffic to `$30-$3F:8000+` passes
+  when it is made of complete command-`$0000` transactions (the word `$0000`, two operands,
+  four result bytes read back; status reads free) — anything else, or a multiply left
+  unfinished, fails the sample as hardware the C cannot reproduce. Each fuzz case also
+  resets the bench's DSP-4 so no earlier case leaves it mid-command.
+- First routine using it: `func_83FD8A` ($83:FD8A, the object hit test with the position
+  in A; its hit tail at `$83:FE16` adds `(D+$0F / 2) × $1F30 / 32768` to D+`$5A` with
+  `dsp4_multiply`, saturating). Two of its byte runs never ran in a movie and were decoded
+  from ROM (fuzz-only): `$83:FDB8` (the negative-side limit test, as in `func_83FC05`)
+  and `$83:FE50` (`LDA #$FFFF`, the saturation). In the 60k movie `$1F31` always has
+  bit 15 set, so the multiply itself is reached only by the fuzz (and checked against the
+  chip by the refbench oracle). The first gated run showed the harness counting none of
+  its result reads: reads of `$30:8000` were filtered out as ROM reads before the DSP-4
+  check; the DSP-4 test now comes first. `func_83FDCD` ($83:FDCD) always answers
+  "no hit": an unconditional BRA skips its 33-byte test (dead code, a hole in its extent).
 
 ## Coverage sources (2026-11-14)
 

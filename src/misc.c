@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "misc.h"
 
+#include "dsp4.h"
 #include "frame.h"
 #include "tg3000.h"
 #include "util.h"
@@ -461,3 +462,41 @@ bool func_83FC05(uint16_t dp) {
   if(!(e & 0x8000)) return ((uint16_t)(e - bus_rd16(0x83826E + kind)) & 0x8000) != 0;
   return !((uint16_t)(e - bus_rd16(0x83826C + kind)) & 0x8000);
 }
+
+// TG3000_ROUTINE($83:FD8A) func_83FD8A
+bool func_83FD8A(uint16_t dp, uint16_t a) {
+  if(rd16(0x0120) & 0x8000) return false;
+  uint16_t kind = rd16(0x011C);
+  // the same limits as func_83FC05, judged by the sign of each difference
+  uint16_t d = (uint16_t)(a - rd16(dp + 0x06));
+  if(!(d & 0x8000)) {
+    if(!((uint16_t)(d - bus_rd16(0x8380CE + kind)) & 0x8000)) return false;
+  } else if((uint16_t)(d - bus_rd16(0x8380CC + kind)) & 0x8000) return false;
+  uint16_t e = (uint16_t)(rd16(0x012A) - bus_rd16(0x81012C));
+  if(!(e & 0x8000)) {
+    if(!((uint16_t)(e - bus_rd16(0x83826E + kind)) & 0x8000)) return false;
+  } else if((uint16_t)(e - bus_rd16(0x83826C + kind)) & 0x8000) return false;
+
+  // a hit
+  wr16(dp + 0x7C, (uint16_t)(rd16(dp + 0x7C) & ~0x0008));
+  func_83FE9A(dp, 0xFF23, rd16(0x1EBE), 0);
+  if(!(rd16(0x1F31) & 0x8000)) {
+    // D+$5A += (D+$0F / 2) * $1F30 / 32768, saturating at $FFFF (the product's bits 15-30,
+    // with bit 31 as the carry in)
+    uint32_t p = (uint32_t)dsp4_multiply((int16_t)(rd16(dp + 0x0F) >> 1), (int16_t)rd16(0x1F30));
+    uint16_t top = (uint16_t)((p >> 15) & 0xFFFF);
+    uint32_t sum = (uint32_t)top + rd16(dp + 0x5A) + (p >> 31);
+    wr16(dp + 0x5A, sum > 0xFFFF ? 0xFFFF : (uint16_t)sum);
+  }
+  bool behind = (rd16(0x0128) & 0x8000) != 0;
+  if(!((uint16_t)(rd16(dp + 0x10) - 0x60) & 0x8000) && rd16(dp + 0x1A) == 0) wr16(dp + 0x1A, behind ? 2 : 3);
+  wr16(dp + 0x1C, behind ? 0x1000 : 0xF000);
+  uint32_t v = ((uint32_t)rd16(dp + 0x18) << 16) | rd16(dp + 0x16);  // halved, keeping the sign
+  v = (v >> 1) | (v & 0x80000000u);
+  wr16(dp + 0x18, (uint16_t)(v >> 16));
+  wr16(dp + 0x16, (uint16_t)v);
+  return true;
+}
+
+// TG3000_ROUTINE($83:FDCD) func_83FDCD
+bool func_83FDCD(void) { return false; }

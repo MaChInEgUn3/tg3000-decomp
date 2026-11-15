@@ -9,6 +9,7 @@
 // movie, so every branch is reached. A routine passes only if every instruction start in
 // its extent ran in a compared sample.
 #include "difftest.h"
+#include "dsp4_bridge.h"
 
 #include <setjmp.h>
 #include <stdio.h>
@@ -75,6 +76,7 @@ typedef struct {
   uint8_t retBank;
   uint32_t interruptsAtEntry, insns;
   bool hwAccess, mathWritten, leftExtent, setupPending;
+  uint8_t dsp4State;  // where the routine is in a DSP-4 multiply (0 = idle; see dsp4Step)
   uint32_t hwAccessAdr, leftExtentPc;
   const char* hwWhy;
   Effect effects[MAX_EFFECTS];  // hardware effects of the original, from its DMA kicks
@@ -204,8 +206,43 @@ static bool isMathReg(uint32_t adr, bool write) {
   return write ? (a >= 0x4202 && a <= 0x4206) : (a >= 0x4214 && a <= 0x4217);
 }
 
+// The DSP-4 at $30-$3F:8000 (data below $C000, status above). The C calls the chip's
+// commands as native functions (src/dsp4.c), so a routine's DSP-4 traffic is its own work
+// when it is made of whole commands the C has: so far command $0000, the multiply (the
+// word $0000, two 16-bit operands, then the 32-bit product read back). Status reads are
+// free. Anything else, or a multiply left unfinished, is a hardware access the C cannot
+// reproduce. Returns whether the access fits.
+static bool isDsp4(uint32_t adr) {
+  uint8_t bank = (adr >> 16) & 0x7F;
+  return bank >= 0x30 && bank < 0x40 && (adr & 0xFFFF) >= 0x8000;
+}
+
+static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
+  if((adr & 0xFFFF) >= 0xC000) return !write;          // status: reads only
+  uint8_t st = smp->dsp4State;
+  if(write) {
+    if(st < 2) { if(val != 0) return false; }          // the command word $0000
+    else if(st >= 6) return false;                     // writing while results are due
+    smp->dsp4State = (uint8_t)(st + 1);
+    return true;
+  }
+  if(st < 6) return false;                             // reading before the operands are in
+  smp->dsp4State = st == 9 ? 0 : (uint8_t)(st + 1);    // 4 result bytes, then idle
+  return true;
+}
+
 void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   if(depth == 0 || irqActive) return;  // a handler's hardware is its own
+  if(isDsp4(adr)) {  // before the ROM test: $30:8000 reads look like ROM reads to it
+    for(int k = 0; k < depth; k++) {
+      Sample* smp = &samples[k];
+      if(smp->hwAccess || dsp4Step(smp, adr, val, write)) continue;
+      smp->hwWhy = "DSP-4 traffic other than whole multiplies";
+      smp->hwAccess = true;
+      smp->hwAccessAdr = adr;
+    }
+    return;
+  }
   if(isWram(adr) || (!write && isRom(adr))) return;
   if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x420B) {
     recordKick(val);
@@ -345,6 +382,14 @@ static void finishSample(int k, const Cpu* cpu) {
   char why[320] = "";
   bool ok;
   uint8_t flagDiff = 0;
+  if(!smp->hwAccess && smp->dsp4State != 0) {
+    static char unfinished[96];
+    snprintf(unfinished, sizeof unfinished, "a DSP-4 multiply left unfinished (%d of 6 bytes written, %d of 4 read)",
+      smp->dsp4State < 6 ? smp->dsp4State : 6, smp->dsp4State < 6 ? 0 : smp->dsp4State - 6);
+    smp->hwAccess = true;
+    smp->hwWhy = unfinished;
+    smp->hwAccessAdr = 0x308000;
+  }
   if(smp->hwAccess) {
     snprintf(why, sizeof why, "%s at $%06X", smp->hwWhy, smp->hwAccessAdr);
     ok = false;
@@ -573,6 +618,7 @@ void difftest_fuzz(int iterations) {
       snes->nmiEnabled = false;
       snes->hIrqEnabled = snes->vIrqEnabled = false;
       for(int ch = 0; ch < 8; ch++) snes->dma->channel[ch].hdmaActive = false;
+      dsp4_bridge_reset();  // and the DSP-4 waits for a command
       snes->dma->hdmaInitRequested = snes->dma->hdmaRunRequested = false;
       s->fuzzRequested++;
       Contract c = s->contracts[k % s->contractCount];

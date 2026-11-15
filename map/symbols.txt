@@ -95,3 +95,5 @@ func    8A9BAA   func_8A9BAA         ; $0154 += $10, $0156 -= 1 -> src/misc.c
 func    8A9BE2   func_8A9BE2         ; $0168 = largest slot kind at $041C (BMI compare) -> src/misc.c
 func    8AB680   func_8AB680         ; 8-byte records at DB:A+4: $1516+[4] = [6] -> src/misc.c
 func    83FC05   func_83FC05         ; overlap test of $7E:8CB3 entry $011A vs kind $011C limits (D=$0200); C = hit -> src/misc.c
+func    83FD8A   func_83FD8A         ; hit test (A = position) + hit response with a DSP-4 multiply; C = hit -> src/misc.c
+func    83FDCD   func_83FDCD         ; disabled hit test: always C = 0 -> src/misc.c
