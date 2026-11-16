@@ -1160,6 +1160,17 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   when `$1F32` is negative. race1: live 445/445, fuzz 500/500, paths 32/32.
 - Neither has register outputs: the race NMI overwrites A, X and Y after both.
 
+## `race_cycle_blocks` (race-nmi-3, 2026-11-16)
+
+- **`$85:9147`**, called by the race NMI every fourth frame, sets DB = `$7E` and works on
+  `$7E:2000-$7E:213F`. That is WRAM: the `$21xx` operands in it are not PPU registers.
+  - The area is five groups of eight 8-byte blocks. Each block becomes four copies of the
+    next block's first word, and the last block gets the first block's. So each group's
+    pattern moves by one block every fourth frame.
+  - It has no register outputs (the next instructions of the race NMI overwrite A and the
+    flags, and its tail restores X and Y). The carry it leaves is the caller's, untouched.
+  - race1: live 112/112, fuzz 500/500, paths 206/206.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

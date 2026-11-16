@@ -72,3 +72,18 @@ void func_838989(void) {
 
 // TG3000_ROUTINE($83:96D5) func_838989_long (long)
 void func_838989_long(void) { func_838989(); }
+
+// TG3000_ROUTINE($85:9147) race_cycle_blocks
+//
+// Five groups of 64 bytes at $7E:2000-$7E:213F, each eight blocks of 8 bytes (four
+// words). Every block becomes four copies of the next block's first word; the last block
+// gets the first block's. The race NMI runs it every fourth frame.
+void race_cycle_blocks(void) {
+  for(uint32_t group = 0x2000; group < 0x2140; group += 0x40) {
+    uint16_t first = rd16(group);
+    for(uint32_t k = 0; k < 8; k++) {
+      uint16_t next = k < 7 ? rd16(group + 8 * (k + 1)) : first;
+      for(uint32_t w = 0; w < 8; w += 2) wr16(group + 8 * k + w, next);
+    }
+  }
+}

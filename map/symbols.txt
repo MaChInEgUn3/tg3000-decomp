@@ -98,6 +98,7 @@ func    838644   race_upload_queue_drain ; send the race VRAM queue ($7E:F433..)
 func    8396D1   race_upload_queue_drain_long ; race_upload_queue_drain (long) -> src/race_frame.c
 func    838989   func_838989         ; 24-bit $00D4 += $01CC (unless paused), words at $1536/$1556 -> src/race_frame.c
 func    8396D5   func_838989_long    ; func_838989 (long) -> src/race_frame.c
+func    859147   race_cycle_blocks   ; every 4th race frame: cycle the 8-byte blocks of $7E:2000-$213F -> src/race_frame.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

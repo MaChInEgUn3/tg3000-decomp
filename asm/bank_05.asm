@@ -752,7 +752,7 @@ CODE_85878B:
     lda.b $24                   ; $85878B
     and.w #$0003                ; $85878D
     bne CODE_858795             ; $858790
-    jsr.w $9147                 ; $858792
+    jsr.w race_cycle_blocks     ; $858792
 CODE_858795:
     bit.w $047C                 ; $858795
     bmi CODE_8587B7             ; $858798
@@ -1106,6 +1106,7 @@ CODE_858A84:
     plb                         ; $858AAC
     rtl                         ; $858AAD
     incbin !baserom:$28AAE..$29147
+race_cycle_blocks:
     phb                         ; $859147
     pea.w $7E7E                 ; $859148
     plb                         ; $85914B

@@ -23,5 +23,6 @@ bool race_upload_queue_drain(void);       // true: a flag word was written
 bool race_upload_queue_drain_long(void);  // $83:96D1
 void func_838989(void);
 void func_838989_long(void);              // $83:96D5
+void race_cycle_blocks(void);             // $85:9147
 
 #endif

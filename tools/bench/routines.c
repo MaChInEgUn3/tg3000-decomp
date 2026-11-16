@@ -1580,6 +1580,14 @@ static void call_race_upload_queue_drain_long(const Regs* in, Regs* out) { (void
 static void call_func_838989(const Regs* in, Regs* out) { (void)in; (void)out; func_838989(); }
 static void call_func_838989_long(const Regs* in, Regs* out) { (void)in; (void)out; func_838989_long(); }
 
+// ---- race_cycle_blocks ($85:9147) ----  no register outputs (the race NMI's next
+// instructions overwrite A and the flags, and the tail restores X and Y)
+static void call_race_cycle_blocks(const Regs* in, Regs* out) { (void)in; (void)out; race_cycle_blocks(); }
+static void fuzz_race_cycle_blocks(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t i = 0x2000; i < 0x2140; i++) ram[i] = (uint8_t)rnd();
+}
+
 // a queue of up to 23 transfers (some skipped, some with a flag word) and a budget that
 // is spent, short, or already gone
 static void fuzz_race_upload_queue(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -3124,6 +3132,8 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989, .fuzz = fuzz_func_838989},
   {.name = "func_838989_long", .entry = 0x8396D5, .end = 0x8396D9, .rtl = true, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989_long, .fuzz = fuzz_func_838989},
+  {.name = "race_cycle_blocks", .entry = 0x859147, .end = 0x8593A7, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .call = call_race_cycle_blocks, .fuzz = fuzz_race_cycle_blocks},
   {.name = "sound_fade_step", .entry = 0x86DFAE, .end = 0x86DFE1, .source = "src/sound.c", .needM16 = true,
    .lowWramDb = true, .call = call_sound_fade_step, ALL_OUTPUTS, .fuzz = fuzz_sound_fade_step},
   // no fuzz: the fuzz runs the CPU alone, so the sound CPU never answers the handshake
