@@ -1309,6 +1309,48 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - All 153 earlier rows pass under the channel model: none kicks a channel it set up only
   in part.
 
+## The race NMI's full frame (race-nmi-5, 2026-11-16)
+
+- **`nmi_race_full` ($85:83CE)**, the race NMI's frame on most race frames (40,316 of
+  45,360 on the 60k movie), ends in `nmi_race_tail`. Its frame DMA budget at `$00FC` is
+  3.5 KB.
+  - **When the game asks for it** (`$00B8` bit 0, flipping the double-buffer flag
+    `$00B4`): it sends the VRAM transfers described at `$1DFE-$1E04` and
+    `$1E52-$1E56`, 400 bytes from `$7E:230C`, and one from the table at `$86:C8AC`
+    (picked by `$1F24`). It sets the BG1/BG2 scroll tables' addresses and copies the
+    per-frame values.
+  - **Every time:** the sprite table, two palette blocks and colour 0; the race VRAM
+    queue; colours 7, `$21`, `$31`; and `race_hud_draw` when the budget is still whole.
+  - **Channels:**
+    - HDMA slot 4 is the window shape (indirect from `$7E:4CCC`); slots 5 and 6 are the
+      BG1/BG2 scroll (bank `$83`);
+    - streams: slots 1 and 3 are colours from `$7E:$C8`/`$7E:$CC`, slot 2 the CGRAM
+      address byte `$83:8D35`, slot 7 the BG mode bytes;
+    - `$420C = $70`.
+  - **Then:** the windows and colour math, and the race clock (`$5A-$5C`, BCD). It sets
+    the first band's raster IRQ from the band table, or line `$FF` when there is none.
+    Every fourth frame it runs `race_cycle_blocks`, and it queues the sound request.
+  - **The clock:** the original adds in decimal mode (SED). The C adds BCD digit by
+    digit, which is exact for valid BCD operands. The fuzz writes only valid BCD clocks,
+    because for other digits the only reference would be what LakeSnes does.
+  - **Two stretches that never ran** join `static_code.txt`, and the fuzz runs both:
+    - `$85:86DA`, the clock's carry on the +2 step;
+    - `$85:8702-$85:8750`, the first band starting within 4 lines (low byte of
+      `$0486,x` 1-4), sent from the NMI. It repeats `irq_race_band`'s kick, but on
+      channels set up in the same sample.
+  - race1: live 445/445, fuzz 500/500, paths 382/382. The negative row (slot 4's
+    indirect bank `$7F`) fails on `$4347`.
+- **Harness:**
+  - **The CGRAM address within one kick:** the channels of one kick run in order, and
+    the CGRAM address moves on with every colour sent. A byte sent to `$2121` sets it.
+    The original's effects and the C's are both decoded that way.
+  - **A C stream kick of slots it set up in the same sample** (all of mode, target and
+    source claimed) gives plain effects, as the original's kick of channels it set up
+    does. Either way the kicked slots' setup counts as used.
+  - New calls `dma_hdma_set_mode` and `dma_hdma_set_bank`, the parts of a setup on
+    their own: the race NMI sets slots 5 and 6's table address only on requested
+    frames.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

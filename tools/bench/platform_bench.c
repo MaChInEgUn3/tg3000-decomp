@@ -60,6 +60,11 @@ static void claimSetup(int slot, uint8_t mode, uint8_t target, uint32_t adr) {
 }
 void dma_hdma_setup(int slot, uint8_t mode, uint8_t target, uint32_t table) { claimSetup(slot, mode, target, table); }
 void dma_hdma_set_indirect_bank(int slot, uint8_t bank) { difftest_dma_claim(slot, 7, bank); }
+void dma_hdma_set_mode(int slot, uint8_t mode, uint8_t target) {
+  difftest_dma_claim(slot, 0, mode);
+  difftest_dma_claim(slot, 1, target);
+}
+void dma_hdma_set_bank(int slot, uint8_t bank) { difftest_dma_claim(slot, 4, bank); }
 void dma_hdma_set_table(int slot, uint16_t table) {
   difftest_dma_claim(slot, 2, (uint8_t)table);
   difftest_dma_claim(slot, 3, (uint8_t)(table >> 8));

@@ -26,5 +26,6 @@ void func_838989_long(void);              // $83:96D5
 void race_cycle_blocks(void);             // $85:9147
 void race_hud_draw(void);                 // $85:8814 (long)
 void irq_race_band(void);                 // $85:87BA, the race's raster IRQ
+void nmi_race_full(void);                 // $85:83CE, the race NMI's full frame (then its tail)
 
 #endif

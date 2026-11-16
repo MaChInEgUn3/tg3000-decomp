@@ -40,6 +40,9 @@ void video_set_vram_increment(uint8_t value);
 void dma_hdma_setup(int slot, uint8_t mode, uint8_t target, uint32_t table);
 void dma_hdma_set_indirect_bank(int slot, uint8_t bank);
 void dma_hdma_set_table(int slot, uint16_t table);
+// (the parts of a setup on their own: mode and target; the table's bank)
+void dma_hdma_set_mode(int slot, uint8_t mode, uint8_t target);
+void dma_hdma_set_bank(int slot, uint8_t bank);
 void video_hdma_enable(uint8_t slots);
 // - Streams: a source read in chunks over the frame (the race sends a palette band per
 //   raster line this way). Setup; each slot's next chunk size; send the next chunk of

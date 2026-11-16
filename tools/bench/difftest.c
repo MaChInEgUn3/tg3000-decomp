@@ -255,11 +255,35 @@ static Effect streamEffect(uint8_t mask, uint16_t cgPtr, const uint32_t* sizes) 
   return (Effect){EFFECT_STREAM, (uint32_t)mask | (uint32_t)cgPtr << 8, lo, hi};
 }
 
+static uint8_t peekByte(uint32_t adr);
+
+// Slots the C set up in this sample (mode, target, source claimed) are sent like the
+// original's uploads, decoded the same way; the others are stream kicks. Either way a
+// kicked slot's setup is used up (no longer left set up).
 void difftest_stream_kick(uint8_t mask) {
   if(!collectingC) return;
   uint16_t ptr = cCgPtr >= 0 ? (uint16_t)cCgPtr : ((Sample*)cSample)->cgPtrEntry;
+  uint8_t stream = 0;
+  for(int c = 0; c < 8; c++) {
+    if(!(mask & (1 << c))) continue;
+    if((cChanClaim[c] & 0x1F) != 0x1F) { stream |= (uint8_t)(1 << c); continue; }
+    uint8_t dmap = cChanVal[c][0], target = cChanVal[c][1];
+    uint32_t src = (uint32_t)cChanVal[c][4] << 16 | (uint32_t)cChanVal[c][3] << 8 | cChanVal[c][2];
+    uint32_t size = cStreamSize[c] ? cStreamSize[c] : 0x10000;
+    bool fromB = dmap & 0x80, fixed = dmap & 0x08, decrement = dmap & 0x10;
+    Effect e = {EFFECT_RAW_DMA, ((uint32_t)target << 8) | (dmap & 7), src, size};
+    if(!fromB && !fixed && !decrement && target == 0x22 && ((dmap & 7) == 0 || (dmap & 7) == 2))
+      e = (Effect){EFFECT_CGRAM, ptr, src, size};
+    if(!fromB && target == 0x22) ptr = (uint16_t)((ptr + size / 2) & 0xFF);
+    else if(!fromB && target == 0x21) ptr = peekByte(fixed ? src : src + size - 1);
+    if(cEffectCount >= MAX_EFFECTS) { cEffectOverflow = true; return; }
+    cEffects[cEffectCount++] = e;
+    cChanClaim[c] = 0;
+  }
+  cCgPtr = ptr;
+  if(!stream) return;
   if(cEffectCount >= MAX_EFFECTS) { cEffectOverflow = true; return; }
-  cEffects[cEffectCount++] = streamEffect(mask, ptr, cStreamSize);
+  cEffects[cEffectCount++] = streamEffect(stream, ptr, cStreamSize);
 }
 
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size) {
@@ -379,6 +403,9 @@ static uint8_t peekByte(uint32_t adr);
 static void recordKick(uint8_t val) {
   Effect plainEffect[8];
   uint32_t sizes[8] = {0};
+  // the channels of one kick run in order: the CGRAM address moves on with each colour
+  // written, and a byte sent to $2121 sets it
+  uint16_t cgPtr = snes->ppu->cgramPointer;
   for(int c = 0; c < 8; c++) {
     if(!(val & (1 << c))) continue;
     DmaChannel* ch = &snes->dma->channel[c];
@@ -392,7 +419,7 @@ static void recordKick(uint8_t val) {
        ppu->vramRemapMode == 0) {
       e = (Effect){EFFECT_VRAM, ppu->vramPointer, src, size};
     } else if(plain && ch->bAdr == 0x22 && (ch->mode == 0 || ch->mode == 2) && !ppu->cgramSecondWrite) {
-      e = (Effect){EFFECT_CGRAM, ppu->cgramPointer, src, size};
+      e = (Effect){EFFECT_CGRAM, cgPtr, src, size};
     } else if(plain && ch->bAdr == 0x04 && (ch->mode == 0 || ch->mode == 2) && !ppu->oamSecondWrite) {
       // the sprite table, from the OAM word address (bit 8: the high table) set at the kick
       e = (Effect){EFFECT_OAM, (uint32_t)(ppu->oamInHigh ? 0x100 : 0) | ppu->oamAdr, src, size};
@@ -402,6 +429,8 @@ static void recordKick(uint8_t val) {
       e = (Effect){EFFECT_VRAM_FILL, ppu->vramPointer, peekByte(src), size};
     }
     plainEffect[c] = e;
+    if(!ch->fromB && ch->bAdr == 0x22) cgPtr = (uint16_t)((cgPtr + size / 2) & 0xFF);
+    else if(!ch->fromB && ch->bAdr == 0x21) cgPtr = peekByte(ch->fixed ? src : src + size - 1);
   }
   for(int k = accessBase; k < depth; k++) {
     Sample* smp = &samples[k];

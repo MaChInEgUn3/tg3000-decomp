@@ -1749,6 +1749,52 @@ static void fuzz_nmi_quiet(uint8_t* ram, uint32_t (*rnd)(void)) {
   ram[0x046E] = (uint8_t)(rnd() & 0x7F);
 }
 
+// ---- nmi_race_full ($85:83CE) ----  then its tail, which restores the NMI frame
+static void call_nmi_race_full(const Regs* in, Regs* out) { nmi_race_full(); restoreNmiFrame(in, out); }
+
+// Negative test: the window table's indirect bank wrong
+static void call_nmi_race_full_wrong(const Regs* in, Regs* out) {
+  nmi_race_full();
+  dma_hdma_set_indirect_bank(4, 0x7F);
+  restoreNmiFrame(in, out);
+}
+
+// Everything the full frame reads: both halves of the request, the transfers, the queue,
+// the HUD, the clock (valid BCD only: the original adds in decimal mode, and LakeSnes's
+// result for other digits is the only reference), the band table (first band at line 0,
+// 1-4: the never-run path, the middle, or below the last raster line), the sound request.
+static void fuzz_nmi_race_full(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_nmi_race_tail(r, ram, rnd);
+  fuzz_race_upload_queue(r, ram, rnd);
+  fuzz_race_hud_draw(r, ram, rnd);
+  fuzz_func_838989(r, ram, rnd);
+  wr16ram(ram, 0x00B8, (uint16_t)rnd());
+  wr16ram(ram, 0x00B4, (uint16_t)(rnd() & 1));
+  wr16ram(ram, 0x1E02, (uint16_t)((rnd() & 3) == 0 ? 0 : (rnd() % 0x200) * 2));
+  wr16ram(ram, 0x1E54, (uint16_t)((rnd() & 3) == 0 ? 0 : (rnd() % 0x200) * 2));
+  static const uint16_t picks[5] = {0x8000, 0, 6, 12, 18};
+  wr16ram(ram, 0x1F24, picks[rnd() % 5]);
+  wr16ram(ram, 0x024A, (uint16_t)rnd());
+  wr16ram(ram, 0x0244, (uint16_t)rnd());
+  wr16ram(ram, 0x0060, (uint16_t)(1 + rnd() % 3));
+  uint16_t clock = 0;
+  for(int d = 0; d < 4; d++) clock |= (uint16_t)((rnd() % 10) << (4 * d));
+  if((rnd() & 3) == 0) clock = (uint16_t)(0x5998 + (rnd() & 1));
+  wr16ram(ram, 0x005A, clock);
+  for(int i = 0; i < 2; i++) {  // the band index the request copies, and the current one
+    uint16_t band = (uint16_t)(rnd() % 0x20);
+    wr16ram(ram, i ? 0x00BE : 0x00C0, band);
+    static const uint8_t firsts[6] = {0, 1, 4, 5, 0xDB, 0xDC};
+    ram[0x0486 + band] = (rnd() & 1) ? firsts[rnd() % 6] : (uint8_t)rnd();
+    ram[0x0486 + band + 1] = (rnd() & 3) == 0 ? 0 : (uint8_t)rnd();
+    static const uint8_t slots[4] = {0x02, 0x04, 0x08, 0x80};
+    uint8_t mask = 0;
+    for(int s2 = 0; s2 < 4; s2++) if(rnd() & 1) mask |= slots[s2];
+    ram[0x0596 + band] = mask;
+  }
+  wr16ram(ram, 0x047C, (uint16_t)rnd());
+}
+
 static void fuzz_nmi_tail(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   fuzz_nmi_quiet(ram, rnd);
@@ -3256,6 +3302,9 @@ const Routine routines[] = {
   {.name = "nmi_target_80D784", .entry = 0x80D784, .end = 0x80D823, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80D784, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
    .fuzz = fuzz_nmi_tail},
+  {.name = "nmi_race_full", .entry = 0x8583CE, .end = 0x8587BA, .rti = true, .rtiFrame = 9, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_race_full, ALL_OUTPUTS, .alsoIn = {{0x85838A, 0x8583CE}},
+   .fuzz = fuzz_nmi_race_full},
   {.name = "nmi_race_tail", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_tail, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_target_80E175", .entry = 0x80E175, .end = 0x80E28C, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
@@ -3631,6 +3680,9 @@ const Routine negativeRoutines[] = {
    .needM16 = true, .needX16 = true, .call = call_race_hud_draw_wrong, .fuzz = fuzz_race_hud_draw},
   {.name = "irq_race_band_wrong", .entry = 0x8587BA, .end = 0x858812, .rti = true, .source = "src/race_frame.c",
    .call = call_irq_race_band_wrong, ALL_OUTPUTS},
+  {.name = "nmi_race_full_wrong", .entry = 0x8583CE, .end = 0x8587BA, .rti = true, .rtiFrame = 9, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_race_full_wrong, ALL_OUTPUTS, .alsoIn = {{0x85838A, 0x8583CE}},
+   .fuzz = fuzz_nmi_race_full},
   {.name = "nmi_race_tail_wrong", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_tail_wrong, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_tail_wrong", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",

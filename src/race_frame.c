@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "race_frame.h"
 
+#include "frame.h"
 #include "platform.h"
 #include "tg3000.h"
 
@@ -226,4 +227,189 @@ void irq_race_band(void) {
     platform_set_irq_v(0x00FF);
     platform_set_irq_h(0x0078);
   }
+}
+
+// A four-digit BCD add (the 65816's ADC in decimal mode, for valid BCD operands): the low
+// four digits of the sum.
+static uint16_t bcd_add(uint16_t a, uint16_t b) {
+  uint16_t sum = 0;
+  unsigned carry = 0;
+  for(int shift = 0; shift < 16; shift += 4) {
+    unsigned d = ((a >> shift) & 0xF) + ((b >> shift) & 0xF) + carry;
+    carry = d > 9;
+    if(carry) d -= 10;
+    sum |= (uint16_t)(d << shift);
+  }
+  return sum;
+}
+
+// The race's band table: per band, the line it starts on ($0486, from $00BE; 0 ends it)
+// and the stream slots its IRQ sends ($0596).
+static void race_bands_start(void) {
+  uint16_t band = rd16(0x00BE);
+  wr16(0x00BC, band);
+  uint16_t first = rd8((uint32_t)(0x0486 + band));
+  bool raster = false;
+  uint16_t line = 0;
+  if(first) {
+    uint16_t top = (uint16_t)(first - 4);
+    wr16(0x002E, top);
+    video_set_bg_mode(0x09);
+    if(top == 0 || (top & 0x8000)) {
+      // the first band starts within 4 lines: send its chunk now
+      dma_stream_size(2, 1);
+      dma_stream_size(7, 1);
+      dma_stream_size(1, 8);
+      dma_stream_size(3, 8);
+      video_set_cgram_address(0x21);
+      dma_stream_kick(rd8((uint32_t)(0x0596 + band)));
+      band = (uint16_t)(band + 1);
+      wr16(0x00BC, band);
+      line = rd8((uint32_t)(0x0486 + band));
+      if(line) {
+        platform_set_irq_v(line);
+        wr16(0x0005, 0x87BA);  // the IRQ trampoline: irq_race_band
+        platform_set_irq_h(0x0065);
+      } else {
+        platform_set_irq_v(0x00FF);
+        platform_set_irq_h(0x0078);
+      }
+      return;
+    }
+    if(!((uint16_t)(top - 0x00D8) & 0x8000)) raster = false;  // at or below line $DC: none
+    else { raster = true; line = (uint16_t)(top + 4); }
+  }
+  if(raster) {
+    wr16(0x0005, 0x87BA);
+    platform_set_irq_v(line);
+    platform_set_irq_h(0x0065);
+    video_set_bg_mode(0x09);
+  } else {
+    platform_set_irq_v(0x00FF);
+    platform_set_irq_h(0x0078);
+    video_set_bg_mode(0x29);
+  }
+}
+
+// TG3000_ROUTINE($85:83CE) nmi_race_full
+//
+// The race NMI's full frame (the race NMI $85:8377 dispatches here through $0008), then
+// its tail. The frame has a DMA budget at $00FC (3.5 KB).
+// - Every second request ($00B8 bit 0; $00B4 flips the double buffers): the VRAM
+//   transfers described at $1DFE-$1E04 and $1E52-$1E56, 400 bytes from $7E:230C, one
+//   from the table at $86:C8AC picked by $1F24, and the copies of the per-frame values.
+// - The sprite table (from $1576 or $1796 by $00B4), two palette blocks and colour 0.
+// - The race VRAM queue, colours 7, $21, $31, the HUD when the budget is still whole.
+// - HDMA: the window shape (slot 4, indirect from $7E:4CCC), BG1 and BG2 scroll (slots 5
+//   and 6, tables at $1E46 / $1E48 in bank $83); the streams the raster IRQ sends from
+//   (slots 1-3: colours from $7E:$C8 / $83:8D35 / $7E:$CC; slot 7: the BG mode bytes).
+// - Windows and colour math, the race clock in BCD ($5A-$5C; the original adds in decimal
+//   mode, so the clock must hold valid BCD), the bands' raster IRQ, every fourth frame
+//   race_cycle_blocks, the sound request.
+void nmi_race_full(void) {
+  wr16(RACE_DMA_BUDGET, 0x0E00);
+  uint16_t req = rd16(0x00B8);
+  wr16(0x00B8, (uint16_t)(req & ~0x0001));
+  if(req & 0x0001) {
+    wr16(0x00B4, (uint16_t)(rd16(0x00B4) ^ 0x0001));
+    uint16_t scroll = rd16(0x1E4E);
+    wr16(0x4CD0, scroll);
+    wr16(0x4CD3, (uint16_t)(scroll + 0x01B0));
+    wr16(0x00C8, rd16(0x016C));
+    wr16(0x00CC, rd16(0x0170));
+    wr16(0x00BE, rd16(0x00C0));
+    dma_hdma_set_table(5, rd16(0x1E46));
+    dma_hdma_set_table(6, rd16(0x1E48));
+    uint16_t size = rd16(0x1E02);
+    if(size) {
+      wr16(RACE_DMA_BUDGET, (uint16_t)(rd16(RACE_DMA_BUDGET) - size));
+      video_upload_vram(rd16(0x1E00), (uint32_t)rd8(0x1E04) << 16 | rd16(0x1DFE), size);
+    }
+    video_upload_vram(0x57A0, 0x7E230C, 0x0190);
+    wr16(RACE_DMA_BUDGET, (uint16_t)(rd16(RACE_DMA_BUDGET) - 0x0190));
+    size = rd16(0x1E54);
+    if(size) {
+      wr16(RACE_DMA_BUDGET, (uint16_t)(rd16(RACE_DMA_BUDGET) - size));
+      video_upload_vram(0x1000, (uint32_t)rd8(0x1E56) << 16 | rd16(0x1E52), size);
+    }
+    uint16_t pick = rd16(0x1F24);
+    if(!(pick & 0x8000)) {
+      size = rom16(0x86C8AE + (uint32_t)pick);
+      wr16(RACE_DMA_BUDGET, (uint16_t)(rd16(RACE_DMA_BUDGET) - size));
+      video_upload_vram(0x1380, (uint32_t)rom8(0x86C8B0 + (uint32_t)pick) << 16 | rom16(0x86C8AC + (uint32_t)pick),
+                        size ? size : 0x10000);
+    }
+    wr16(0x00EC, rd16(0x0174));
+    wr16(0x00EE, rd16(0x0176));
+    wr16(0x00F4, rd16(0x017C));
+    wr16(0x00F6, rd16(0x017E));
+    wr16(0x01CC, rd16(0x01CE));
+    wr16(0x01B0, rd16(0x01B6));
+    wr16(0x01B2, rd16(0x01B8));
+    wr16(0x01B4, rd16(0x01BA));
+    wr16(0x00E2, rd16(0x01DC));
+  }
+  uint16_t sprites = rd16(0x00B4) ? 0x1576 : 0x1796;
+  video_set_oam_address(0x0000);
+  video_upload_oam(0x0000, 0x810000 | sprites, 0x0220);
+  video_set_obj_select(0x00);
+  video_set_oam_address(0x0000);
+  uint16_t pal = rd16(0x024A);
+  video_upload_cgram(0xF1, (uint32_t)((pal & 0x8000) ? 0x93 : 0x7E) << 16 | pal, 0x001E);
+  video_upload_cgram(0x71, 0x7E6A35, 0x00FE);
+  video_set_color(0, rd16(0x6A33));
+  wr16(0x024A, 0x2140);
+  race_upload_queue_drain_long();
+  video_set_color(7, rd16(0x00A0));
+  uint16_t c = rd16(0x003A);
+  video_set_color(0x21, c);
+  video_set_color(0x31, c);
+  if(!((uint16_t)(rd16(RACE_DMA_BUDGET) - 0x0E00) & 0x8000)) {
+    uint16_t b8 = rd16(0x00B8);
+    wr16(0x00B8, (uint16_t)(b8 & ~0x0004));
+    if(b8 & 0x0004) race_hud_draw();
+  }
+  dma_hdma_set_mode(5, 0x43, 0x0D);
+  dma_hdma_set_mode(6, 0x43, 0x0F);
+  dma_hdma_setup(4, 0x44, 0x26, 0x7E4CCC);
+  dma_stream_setup(1, 0x00, 0x22, 0x7E0000 | rd16(0x00C8));
+  dma_stream_setup(2, 0x08, 0x21, 0x838D35);
+  dma_stream_setup(3, 0x00, 0x22, 0x7E0000 | rd16(0x00CC));
+  dma_stream_setup(7, 0x00, 0x05, rd16(0x00B4) ? 0x7E047E : 0x7E0480);
+  dma_hdma_set_bank(5, 0x83);
+  dma_hdma_set_bank(6, 0x83);
+  dma_hdma_set_indirect_bank(5, 0x83);
+  dma_hdma_set_indirect_bank(6, 0x83);
+  dma_hdma_set_indirect_bank(4, 0x7E);
+  video_hdma_enable(0x70);
+  func_838989_long();
+  video_set_window_bg12(rd8(0x01B0));
+  video_set_window_obj(rd8(0x01B1));
+  video_set_fixed_color(rd8(0x01B4));
+  video_set_fixed_color(rd8(0x01B5));
+  video_set_color_math(rd8(0x01B2));  // a 16-bit write: $2131 and $2132
+  video_set_fixed_color(rd8(0x01B3));
+  if(!(rd16(0x0026) & 0x0010) && (rd16(0x0244) & 0x0008)) {  // the race clock
+    uint16_t tick = (uint16_t)(rd16(0x0060) - 1);
+    wr16(0x0060, tick);
+    uint16_t step = 2;
+    if(tick == 0) {
+      wr16(0x0060, 3);
+      step = 1;
+    }
+    uint16_t clock = bcd_add(rd16(0x005A), step);
+    wr16(0x005A, clock);
+    if(clock >= 0x6000) {
+      wr16(0x005A, (uint16_t)(clock - 0x6000));
+      wr16(0x005C, (uint16_t)(rd16(0x005C) + 1));
+    }
+  }
+  race_bands_start();
+  if(!(rd16(0x0024) & 0x0003)) race_cycle_blocks();
+  if(!(rd16(0x047C) & 0x8000)) {  // the sound request
+    wr16(0x0460, (uint16_t)((rd16(0x4E35) & 0x00F8) | 0x0006));
+    wr16(0x0461, rd16(0x4E2D));
+    wr8(0x045B, (uint8_t)(rd8(0x045B) | 0x20));
+  }
+  nmi_race_tail();
 }

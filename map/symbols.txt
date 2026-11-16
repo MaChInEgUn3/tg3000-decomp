@@ -103,6 +103,7 @@ func    8396D5   func_838989_long    ; func_838989 (long) -> src/race_frame.c
 func    859147   race_cycle_blocks   ; every 4th race frame: cycle the 8-byte blocks of $7E:2000-$213F -> src/race_frame.c
 func    858814   race_hud_draw       ; race HUD tilemap words: bar, clock digits, counters, gauge, lights, two strips (long) -> src/race_frame.c
 func    8587BA   irq_race_band       ; race raster IRQ: next chunk of the palette/BG-mode streams, next band's line -> src/race_frame.c
+func    8583CE   nmi_race_full       ; race NMI full frame: VRAM/OAM/CGRAM sends, HDMA + streams, clock, bands, then the tail -> src/race_frame.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

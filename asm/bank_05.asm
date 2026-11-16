@@ -397,6 +397,7 @@ CODE_8583B7:
     pla                         ; $8583CB
     plb                         ; $8583CC
     rti                         ; $8583CD
+nmi_race_full:
     lda.w #$0E00                ; $8583CE
     sta.b $FC                   ; $8583D1
     lda.w #$0001                ; $8583D3
@@ -703,7 +704,8 @@ CODE_8586CC:
     sec                         ; $8586D4
     sbc.w #$6000                ; $8586D5
     bcc CODE_8586DE             ; $8586D8
-    incbin !baserom:$286DA..$286DE
+    sta.b $5A                   ; $8586DA static
+    inc.b $5C                   ; $8586DC static
 CODE_8586DE:
     cld                         ; $8586DE
 CODE_8586DF:
@@ -720,9 +722,39 @@ CODE_8586DF:
     sta.w $2105                 ; $8586F7
     rep.b #$20                  ; $8586FA
     lda.b $2E                   ; $8586FC
-    db $F0,$02 ; beq            ; $8586FE
+    beq CODE_858702             ; $8586FE
     bpl CODE_858751             ; $858700
-    incbin !baserom:$28702..$28751
+CODE_858702:
+    ldx.w $00BC                 ; $858702 static
+    lda.w #$0001                ; $858705 static
+    sta.w $4325                 ; $858708 static
+    sta.w $4375                 ; $85870B static
+    lda.w #$0008                ; $85870E static
+    sta.w $4315                 ; $858711 static
+    sta.w $4335                 ; $858714 static
+    sep.b #$20                  ; $858717 static
+    lda.b #$21                  ; $858719 static
+    sta.w $2121                 ; $85871B static
+    lda.w $0596,x               ; $85871E static
+    sta.w $420B                 ; $858721 static
+    rep.b #$20                  ; $858724 static
+    inx                         ; $858726 static
+    stx.w $00BC                 ; $858727 static
+    lda.w $0486,x               ; $85872A static
+    and.w #$00FF                ; $85872D static
+    beq CODE_858743             ; $858730 static
+    sta.w $4209                 ; $858732 static
+    lda.w #$87BA                ; $858735 static
+    sta.w $0005                 ; $858738 static
+    lda.w #$0065                ; $85873B static
+    sta.w $4207                 ; $85873E static
+    bra CODE_85878B             ; $858741 static
+CODE_858743:
+    lda.w #$00FF                ; $858743 static
+    sta.w $4209                 ; $858746 static
+    lda.w #$0078                ; $858749 static
+    sta.w $4207                 ; $85874C static
+    bra CODE_85878B             ; $85874F static
 CODE_858751:
     cmp.w #$00D8                ; $858751
 CODE_858754:
