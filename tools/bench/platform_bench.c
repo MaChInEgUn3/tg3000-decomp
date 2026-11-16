@@ -48,6 +48,7 @@ void video_set_bg_map(int bg, uint8_t value) { difftest_reg((uint16_t)(0x2106 + 
 void video_set_bg_tiles(int pair, uint8_t value) { difftest_reg((uint16_t)(0x210B + pair), value); }
 void video_set_obj_select(uint8_t value) { difftest_reg(0x2101, value); }
 void video_set_display(uint8_t value) { difftest_reg(0x2100, value); }
+void video_set_vram_increment(uint8_t value) { difftest_reg(0x2115, value); }
 void video_set_oam_address(uint16_t value) {
   difftest_reg(0x2102, (uint8_t)value);
   difftest_reg(0x2103, (uint8_t)(value >> 8));

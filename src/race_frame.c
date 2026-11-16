@@ -87,3 +87,113 @@ void race_cycle_blocks(void) {
     }
   }
 }
+
+// The race HUD's tilemap words, written one after another from an address.
+static uint16_t hud_at, hud_step;
+static void hud_from(uint16_t vram_word) { hud_at = vram_word; }
+static void hud_put(uint16_t tile) {
+  video_write_vram_word(hud_at, tile);
+  hud_at = (uint16_t)(hud_at + hud_step);
+}
+
+// TG3000_ROUTINE($85:8814) race_hud_draw (long)
+//
+// The race NMI runs it when the frame's DMA budget allows: the HUD's tilemap words in
+// VRAM. A 7-word bar from $003E (two units per word, the half word at the end), the
+// words in $0042-$004C and $1E94-$1E98, the BCD clock $5A-$5C as digit tiles, the
+// $0235 counter (capped at $1F06), a column from $006C-$0074, the rows $0080-$008E and
+// $00A4-$00AA, the gauge from $025B/$025C, five lights with the one at $014C lit, and two
+// 26-byte strips from $7E:4E61 (or, when the $7E:4E4E accumulator goes negative,
+// $83:A5A4). Tables in bank $83 ($A422.., the digits at $A484 and $A498) and bank $85.
+void race_hud_draw(void) {
+  hud_step = 1;
+  hud_from(0x7E0F);
+  hud_put(rd16(0x1E94));
+  hud_from(0x7C62);
+  uint16_t bar = rd16(0x003E), y = 0;
+  for(uint16_t x = bar & 0xFFFE; x; x = (uint16_t)(x - 2)) {
+    hud_put(rom16(0x83A422 + y));
+    y = (uint16_t)(y + 2);
+  }
+  if(bar & 1) {
+    hud_put(rom16(0x83A430 + y));
+    y = (uint16_t)(y + 2);
+  }
+  for(; y != 0x000E; y = (uint16_t)(y + 2)) hud_put(rom16(0x83A43E));
+  hud_from(0x7F21);
+  hud_put(rd16(0x1E96));
+  hud_put(rd16(0x0042));
+  hud_put(rd16(0x0046));
+  hud_put(rd16(0x004A));
+  hud_from(0x7F41);
+  hud_put(rd16(0x1E98));
+  hud_put(rd16(0x0044));
+  hud_put(rd16(0x0048));
+  hud_put(rd16(0x004C));
+  // the clock's digits: $5C low digit, $5B both, $5A both
+  hud_from(0x7C4D);
+  hud_put(rom16(0x83A498 + (uint32_t)(rd8(0x005C) & 0x0F) * 2));
+  hud_from(0x7C4F);
+  hud_put(rom16(0x83A484 + (uint32_t)((rd8(0x005B) & 0xF0) >> 3)));
+  hud_put(rom16(0x83A498 + (uint32_t)(rd8(0x005B) & 0x0F) * 2));
+  hud_from(0x7C52);
+  hud_put(rom16(0x83A484 + (uint32_t)((rd8(0x005A) & 0xF0) >> 3)));
+  hud_put(rom16(0x83A484 + (uint32_t)(rd8(0x005A) & 0x0F) * 2));
+  hud_from(0x7C22);
+  hud_put(rd16(0x0064));
+  hud_put(rd16(0x0066));
+  hud_from(0x7C3A);
+  uint16_t count = rd16(0x0235);
+  if(count & 0x8000) count = 0;
+  count = (uint16_t)(count + 1);
+  if(!((uint16_t)(count - rd16(0x1F06)) & 0x8000)) count = rd16(0x1F06);
+  hud_put(rom16(0x83A484 + (uint16_t)(count << 1)));
+  video_set_vram_increment(0x81);  // a column
+  hud_step = 32;
+  hud_from(0x7EDE);
+  for(uint16_t a = 0x006C; a <= 0x0074; a += 2) hud_put(rd16(a));
+  video_set_vram_increment(0x80);
+  hud_step = 1;
+  hud_from(0x5AE0);
+  for(uint16_t a = 0x0080; a <= 0x008E; a += 2) hud_put(rd16(a));
+  hud_from(0x7F3C);
+  hud_put(rd16(0x00A4));
+  hud_put(rd16(0x00A6));
+  hud_from(0x7F5C);
+  hud_put(rd16(0x00A8));
+  hud_put(rd16(0x00AA));
+  uint16_t gauge = rd16(0x025B);  // its high byte is $025C, the count below
+  if(gauge & 0x8000) {
+    uint32_t x = (uint32_t)((gauge & 0x7E00) >> 8);
+    hud_from(0x7F3B);
+    hud_put(rom16(0x858AC1 + x));
+    hud_from(0x7F57);
+    for(int i = 0; i < 4; i++) hud_put(rom16(0x858ABB));
+    hud_put(rom16(0x858AD9 + x));
+  } else {
+    hud_from(0x7F3B);
+    hud_put(rom16(0x858ABB));
+    hud_from(0x7F57);
+    uint16_t k = (uint16_t)(0x000A - rd16(0x025C));
+    while(k) {  // k / 2 full segments, then a half one when k is odd
+      if(--k == 0) {
+        hud_put(rom16(0x858ABD));
+        break;
+      }
+      hud_put(rom16(0x858ABB));
+      k--;
+    }
+    for(int16_t e = (int16_t)(rd16(0x025C) - 2); e >= 0; e = (int16_t)(e - 2)) hud_put(rom16(0x858ABF));
+  }
+  hud_from(0x7C76);  // five lights, the one at $014C lit
+  uint16_t lit = (uint16_t)(rd16(0x014C) + 1);
+  for(int i = 0; i < 5; i++) {
+    lit = (uint16_t)(lit - 1);
+    hud_put(lit == 0 ? 0x295E : 0x0157);
+  }
+  uint8_t acc = (uint8_t)(rd8(0x4E4D) + rd8(0x4E4E));
+  wr8(0x4E4E, acc);
+  uint32_t strip = (acc & 0x80) ? 0x83A5A4 : 0x7E4E61;
+  video_upload_vram(0x7DE9, strip, 0x1A);
+  video_upload_vram(0x7E09, strip + 0x1A, 0x1A);
+}

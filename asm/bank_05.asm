@@ -609,7 +609,7 @@ CODE_85855E:
     lda.w #$0004                ; $8585E1
     trb.w $00B8                 ; $8585E4
     beq CODE_8585ED             ; $8585E7
-    jsl.l $858814               ; $8585E9
+    jsl.l race_hud_draw         ; $8585E9
 CODE_8585ED:
     lda.w #$0D43                ; $8585ED
     sta.w $4350                 ; $8585F0
@@ -813,6 +813,7 @@ CODE_858802:
     plb                         ; $858810
     rti                         ; $858811
     incbin !baserom:$28812..$28814
+race_hud_draw:
     phb                         ; $858814
     pea.w $8383                 ; $858815
     plb                         ; $858818
@@ -1072,7 +1073,7 @@ CODE_858A50:
     tya                         ; $858A53
     dex                         ; $858A54
     bne CODE_858A5A             ; $858A55
-    incbin !baserom:$28A57..$28A5A
+    lda.w #$295E                ; $858A57 static
 CODE_858A5A:
     sta.w $2118                 ; $858A5A
     sep.b #$20                  ; $858A5D

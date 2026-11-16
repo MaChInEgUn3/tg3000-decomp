@@ -76,7 +76,7 @@ static Stats* stats;
 // one's sample gets its own sample too (it would otherwise never be sampled once its
 // callers are registered).
 #define MAX_DEPTH 4
-#define MAX_EFFECTS 64
+#define MAX_EFFECTS 128
 typedef struct { int kind; uint32_t target, src, size; } Effect;
 
 // PPU fields the C sets through platform calls (src/platform.h): the original's register
@@ -92,7 +92,7 @@ static const char* const ppuFieldName[PF_COUNT] = {
 static const uint16_t byteRegs[] = {0x212C, 0x212D, 0x2123, 0x2124, 0x2125, 0x2130, 0x2131,
                                     0x4200, 0x4207, 0x4208, 0x4209, 0x420A,
                                     0x2101, 0x2105, 0x2107, 0x2108, 0x2109, 0x210A, 0x210B, 0x210C,
-                                    0x2100, 0x2102, 0x2103};
+                                    0x2100, 0x2102, 0x2103, 0x2115};
 #define N_BYTE_REGS ((int)(sizeof byteRegs / sizeof byteRegs[0]))
 static int byteRegIndex(uint32_t adr) {
   if(((adr >> 16) & 0x7F) >= 0x40) return -1;
@@ -537,14 +537,15 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   }
 }
 
-// A CPU write to VMDATA ($2118 low, $2119 high): with VMAIN = $80 (increment by one word
-// after the high byte, no remapping) each pair is one word written at the VRAM address
+// A CPU write to VMDATA ($2118 low, $2119 high): with VMAIN = $80 or $81 (increment by one
+// word or by 32 words, a column, after the high byte, no remapping) each pair is one word
+// written at the VRAM address
 // (the hook runs before the PPU takes the write, so the pointer is this word's). The
 // console only stores it in vblank or under forced blank; a word written while the screen
 // is drawn is lost there, which the C (no scanlines) cannot reproduce.
 static void vramWordWrite(uint32_t adr, uint8_t val) {
   const Ppu* ppu = snes->ppu;
-  bool mode = ppu->vramIncrementOnHigh && ppu->vramIncrement == 1 && ppu->vramRemapMode == 0;
+  bool mode = ppu->vramIncrementOnHigh && (ppu->vramIncrement == 1 || ppu->vramIncrement == 32) && ppu->vramRemapMode == 0;
   bool high = (adr & 0xFFFF) == 0x2119;
   for(int k = accessBase; k < depth; k++) {
     Sample* smp = &samples[k];

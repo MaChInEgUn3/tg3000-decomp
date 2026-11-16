@@ -1580,6 +1580,34 @@ static void call_race_upload_queue_drain_long(const Regs* in, Regs* out) { (void
 static void call_func_838989(const Regs* in, Regs* out) { (void)in; (void)out; func_838989(); }
 static void call_func_838989_long(const Regs* in, Regs* out) { (void)in; (void)out; func_838989_long(); }
 
+// ---- race_hud_draw ($85:8814) ----  no register outputs (the race NMI loads A and X next)
+static void call_race_hud_draw(const Regs* in, Regs* out) { (void)in; (void)out; race_hud_draw(); }
+
+// Negative test: the five lights one place off
+static void call_race_hud_draw_wrong(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  wr16(0x014C, (uint16_t)(rd16(0x014C) + 1));
+  race_hud_draw();
+  wr16(0x014C, (uint16_t)(rd16(0x014C) - 1));
+}
+
+// the bar, the gauge and its count in range (the original loops for ever past them), the
+// lights 0-5 (5: the never-run fifth light), the strip accumulator either sign
+static void fuzz_race_hud_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x003E, (uint16_t)(rnd() % 15));
+  wr16ram(ram, 0x014C, (uint16_t)(rnd() % 6));
+  wr16ram(ram, 0x025B, (uint16_t)rnd());
+  wr16ram(ram, 0x025C, (uint16_t)(rnd() % 11));
+  if((rnd() & 3) == 0) ram[0x025C] |= 0x80;  // the word at $025B negative: the other gauge
+  wr16ram(ram, 0x0235, (uint16_t)((rnd() & 3) == 0 ? 0x8000 | rnd() : rnd() % 12));
+  wr16ram(ram, 0x1F06, (uint16_t)(1 + rnd() % 10));
+  for(uint32_t a = 0x0042; a <= 0x00AA; a++) ram[a] = (uint8_t)rnd();
+  ram[0x4E4D] = (uint8_t)rnd();
+  ram[0x4E4E] = (uint8_t)rnd();
+}
+
 // ---- race_cycle_blocks ($85:9147) ----  no register outputs (the race NMI's next
 // instructions overwrite A and the flags, and the tail restores X and Y)
 static void call_race_cycle_blocks(const Regs* in, Regs* out) { (void)in; (void)out; race_cycle_blocks(); }
@@ -3171,6 +3199,8 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989, .fuzz = fuzz_func_838989},
   {.name = "func_838989_long", .entry = 0x8396D5, .end = 0x8396D9, .rtl = true, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989_long, .fuzz = fuzz_func_838989},
+  {.name = "race_hud_draw", .entry = 0x858814, .end = 0x858AAE, .rtl = true, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .call = call_race_hud_draw, .fuzz = fuzz_race_hud_draw},
   {.name = "race_cycle_blocks", .entry = 0x859147, .end = 0x8593A7, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .call = call_race_cycle_blocks, .fuzz = fuzz_race_cycle_blocks},
   {.name = "sound_fade_step", .entry = 0x86DFAE, .end = 0x86DFE1, .source = "src/sound.c", .needM16 = true,
@@ -3569,6 +3599,8 @@ const Routine negativeRoutines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_pads_read_wrong, ALL_OUTPUTS, .fuzz = fuzz_pads},
   {.name = "nmi_prologue_wrong", .entry = 0x808807, .end = 0x808931, .rti = true, .endAt = 0x808931, .source = "src/frame.c",
    .call = call_nmi_prologue_wrong, .fuzz = fuzz_nmi_prologue},
+  {.name = "race_hud_draw_wrong", .entry = 0x858814, .end = 0x858AAE, .rtl = true, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .call = call_race_hud_draw_wrong, .fuzz = fuzz_race_hud_draw},
   {.name = "nmi_race_tail_wrong", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_tail_wrong, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_tail_wrong", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",

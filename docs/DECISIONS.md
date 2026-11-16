@@ -1216,6 +1216,58 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - A PHP whose value is pulled by PLA would be missed; none exists in the code
     classified so far.
 
+## The race HUD and the channel survey (race-nmi-4, 2026-11-16)
+
+- **`race_hud_draw` ($85:8814)**, called by the race NMI's full frame when the frame's
+  DMA budget allows, writes the HUD's tilemap words to VRAM. It writes:
+  - a 7-word bar from `$003E`, the words at `$0042-$004C` and `$1E94-$1E98`;
+  - the BCD clock `$5A-$5C` as digit tiles, and the `$0235` count capped at `$1F06`;
+  - a column from `$006C-$0074` (VMAIN `$81`), and the rows `$0080-$008E` and
+    `$00A4-$00AA`;
+  - the gauge from the word at `$025B`, whose high byte `$025C` is also its count;
+  - five lights with the one at `$014C` lit;
+  - two 26-byte strips from `$7E:4E61`, or from `$83:A5A4` when the 8-bit accumulator
+    `$7E:4E4E` (+= `$7E:4E4D`) goes negative.
+
+  race1: live 195/195, fuzz 500/500, paths 274/274. The negative row (the lights one
+  place off) fails on the light's VRAM word.
+  - The fuzz keeps the bar at 0-14 and the gauge count at 0-10. Past those, the original
+    loops until its 16-bit index wraps.
+  - The fifth light's `LDA #$295E` (`$85:8A57`) never ran: it joins `static_code.txt`,
+    and the fuzz runs it.
+- **Harness:**
+  - VRAM words can be written with VMAIN `$81` (a step of 32 words, a tilemap column).
+    The C names each word's address, so only the mode check changed;
+  - `$2115` (VMAIN) is a byte register, set by `video_set_vram_increment`;
+  - a sample may hold 128 effects (was 64).
+- **The flag watch after flags-1:** compared with the list before nmi-5 (`c8fdafd`),
+  six rows went from a live flag to none: `func_80894E` (NVZC), `func_80899F`,
+  `pads_read`, `pads_read_long`, `sound_fade_step` (V) and `race_cycle_blocks` (C). Each
+  of those flags reached only `sound_frame`'s PHP (or, for `sound_fade_step`, a PLP that
+  replaces it) before the RTI. Their C matched those flags anyway.
+- **Survey of the DMA channel writers (`--hdma-report`, 60k movie), for the channel
+  model:**
+  - **Enabled without being set up:** `$8A:95F5` enables channel 2 (`$420C = $04`)
+    without writing any of its registers. The setup is sticky across routines, so the
+    channel state must be part of the platform's state, not of each call.
+  - **Partly set up:** `$80:F122` (channels 6, 7) and `$80:F3C7` (channels 1, 3) write
+    only the table address (`$43x2/3`). `$85:840E` writes the table address of channels
+    5 and 6 every race frame, and the rest of them later in the same frame. `$82:85DC`
+    writes only the sizes of channels 1-3. So the calls need a "new table address" form
+    besides the full setup.
+  - **The counters `$43x8-$43xA`:** only `$80:D1AF` writes one (`$431A`, the exit of the
+    two-task screen, already parked).
+  - No small routine both sets up a channel and enables it. They all sit inside large
+    scene setups, and the race NMI's full frame is the main user.
+  - The plan (advisor): each channel is an opaque slot (`$420C` is a mask of them).
+    Registers written after a channel's last kick are claimed at the sample's end by C
+    calls with the same decoded fields: an HDMA setup, a new table address, or a stream
+    (mode, target, source) for the IRQ's later `send(slot, size)`.
+    - `$420C` joins the byte registers.
+    - The "set up but no DMA started" failure is waived only for claimed channels.
+    - The comparison is at the sample's end, not at the `$420C` write as the handler
+      model section said.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

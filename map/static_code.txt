@@ -21,3 +21,4 @@
 85:BE3A 85:BE3D m16x16 ; scroll_tables_build, second table: negative $0237 + $B0: same
 85:BE67 85:BE6A m16x16 ; scroll_tables_build, second table: negative $0237 + $70: same
 83:878F 83:8796 m16x16 ; pads_read: multitap pad A reads as absent ($83:878D BEQ skips it): executed by its difftest fuzz (random pad states), matched by src/pads.c
+85:8A57 85:8A5A m16x16 ; race_hud_draw: the fifth light's LDA #$295E ($85:8A55 BNE skips it; the four before it ran): executed by its difftest fuzz, matched by src/race_frame.c

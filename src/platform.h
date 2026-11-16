@@ -26,6 +26,11 @@ void video_fill_vram(uint16_t vram_word, uint8_t value, uint32_t size);
 // is when the game does it.)
 void video_write_vram_word(uint16_t vram_word, uint16_t value);
 
+// The VRAM address step ($2115 VMAIN, raw byte): $80 = one word, $81 = 32 words (a
+// tilemap column), after the high byte. Uploads and word writes name their addresses;
+// this is compared as the last value written.
+void video_set_vram_increment(uint8_t value);
+
 // Copy `size` bytes (1-65536) from `src` into the palette starting at colour `index`;
 // each colour is two bytes, low byte first (BGR555).
 void video_upload_cgram(uint8_t index, uint32_t src, uint32_t size);
