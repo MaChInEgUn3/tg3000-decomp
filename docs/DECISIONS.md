@@ -845,9 +845,11 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - IRQ `$85:87BA` (603,666 entries: about 14 per race frame), `$80:BC9B` (6,682),
     `$80:E3F7` (1,995), `$80:E48A` (1,970), `$85:95BD` (12).
 
-  `$80:BC9B` does long work inside the interrupt: it dispatches at `$80:BE29` to
-  `$80:B94F` or `$80:C5E0`, and the decompressor's command jumps run in it. A handler that
-  runs game work of that size will need its own row model (to measure before porting).
+  `$80:BC9B` (and the NMI target `$80:B97B`) switch stacks between two game tasks; see
+  "Two-task screens" below. (An earlier note here said `$80:BC9B` "does long work inside
+  the interrupt", the decompressor included. That was wrong: the tracker followed the
+  handler across its stack switch into the task it resumes. A handler instance now ends
+  at its first RTI; `$80:BC9B` runs 156 to 203 instructions.)
 - **DMA kicks inside handlers set all of their registers themselves, except the race
   IRQ** `$85:87BA`: its kick on channels 1, 2, 3 (and 7) writes only the size low byte
   (`$43x5`) and inherits target, mode and source from the race NMI's setup. The source
@@ -1097,6 +1099,61 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `nmi_target_80FBD1` and `nmi_target_80FC5F`. `nmi_target_80E28C` keeps no fuzz: it sets
   `$4200 = $B1` itself, so the NMI it enables interrupts the fuzz case (23 of 500 were
   lost). Its live samples cover all 130 paths.
+
+## Two-task screens (task-1, 2026-11-16)
+
+- **What they are:** one screen runs the game as two tasks, each with its own stack and
+  direct page: task 1 has D = `$0100` and the stack near `$1FF0`, task 2 has D = `$0200`
+  and a stack seeded at `$1D8C` by `$80:B8F7`. Task 1 reads the port-1 pad (`$000C` into
+  `$010C`), task 2 the port-2 pad (`$0010` into `$020C`). The frame dump shows the screen
+  split into a top and a bottom panel. So these are probably the two players' halves,
+  but the 1-player autopilot is the only movie that reaches the screen so far.
+- **The switch:**
+  - the NMI target `$80:B97B` saves task 2's SP in `$0278` and loads task 1's from
+    `$0178`. It also drains one task's VRAM queue: task 1's (`$018C`/`$018E`) on even
+    frames, task 2's (`$028C`/`$028E`) on odd ones. Then it reloads the PPU, sets the
+    V-timer for line `$6C` with IRQ `$80:BC9B`, and calls task 1's callback
+    `jsr ($01EC)`;
+  - the IRQ `$80:BC9B` does the reverse at line `$6C` (SP to `$0178`, `$0278` into SP)
+    and calls `jsr ($02EC)`.
+
+  Each task gets one slice per frame: task 1 from vblank to line 108, task 2 from line
+  108 to vblank. The callbacks are `$80:B94F` or `$80:C5E0`.
+- **Measured (60k movie, `--hdma-report`, which logs the PC each switch interrupted):**
+  - the switch is preemptive. Most switches land in a frame wait (task 1 in
+    `wait_frames` 5,438 times; task 2 in its idle loop at `$80:B95E` 6,502 times), but
+    about 1,000 land mid-work: `sprite_text`, `decompress` (`$82:FB70`), the sprite
+    packers at `$81:80xx`, `$80:C2xx-$80:C4xx`. On one frame both tasks were inside
+    `decompress`;
+  - **no WRAM byte is shared:** outside the handlers and the two stacks, no byte is
+    written by both tasks, and none is written by one and read by the other. Two bytes
+    are read by both and written by neither. Per-task state goes through D; shared
+    routines use only D-relative or per-task buffers;
+  - **hardware registers:** only task 1 touches any. It uses the divider (`$4204-$4206`,
+    `$4214/$4215`) and the mode-7 multiplier (`$211B/$211C`, `$2135/$2136`) at
+    `$80:C37D-$80:C3AE`. No handler on these screens writes those registers. The
+    multiplier's write latch is shared with the BG1 scroll registers that both handlers
+    write, so an interrupt between the two `$211B` writes would corrupt the operand. The
+    window is about 15 instructions, and no switch ever landed in it (the closest were
+    at `$80:C369` and `$80:C3BC`). The exit code at `$80:D198` writes `$2110` and waits
+    on `$431A` when the screen ends.
+- **What it means for the C:** each task is ordinary blocking C. A task runs until it
+  waits for the frame. A port can run task 1, then task 2, to their waits in each frame,
+  because neither sees the other's state. Where a slice ends mid-work, the one
+  difference is when the other task's VRAM queue entries and sprites appear, the same
+  kind of up-to-one-frame difference the "Tables written while drawing" note records. It
+  does not change the C.
+- **What the harness still needs before `$80:B97B` and `$80:BC9B` can be rows:** both
+  return through the other task's stack.
+  - The RTI row model takes PC and SP from the entry stack's frame. It has to end the
+    sample at the handler's own RTI and restore from the frame at the loaded SP.
+  - The stack exclusion window `(minSp, entrySp]` assumes one stack. After a switch it
+    would hide the WRAM between the stacks, or fail on the other stack's pushes. It needs
+    one window per stack, and rows that run `TCS`/`TXS` without declaring it must fail.
+- **Instrument:** the `--hdma-report` adds three sections: where each task was when
+  switched out, the WRAM both tasks use with at least one writing (merged ranges,
+  stacks left out, with byte counts per use pattern), and the hardware registers each
+  task touches.
 
 ## Statically found code (map-2, 2026-11-15)
 
