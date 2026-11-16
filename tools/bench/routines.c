@@ -18,6 +18,7 @@
 #include "dsp4.h"
 #include "frame.h"
 #include "pads.h"
+#include "race_frame.h"
 #include "hud.h"
 #include "misc.h"
 #include "sprites.h"
@@ -1571,19 +1572,62 @@ static void call_nmi_target_80E28C(const Regs* in, Regs* out) { nmi_target_80E28
 static void call_nmi_target_80E175(const Regs* in, Regs* out) { nmi_target_80E175(); restoreNmiFrame(in, out); }
 static void call_nmi_target_80D784(const Regs* in, Regs* out) { nmi_target_80D784(); restoreNmiFrame(in, out); }
 
-// ---- nmi_race_light ($85:838A) ----  the race NMI's prologue pushed the same frame
-static void call_nmi_race_light(const Regs* in, Regs* out) { nmi_race_light(); restoreNmiFrame(in, out); }
+// ---- race_upload_queue_drain ($83:8644) / func_838989 ($83:8989) and their long forms ----
+// no register outputs: the race NMI overwrites A, X and Y after both
+// (after a flag word the original's PEA/PLB pair leaves DB = $83)
+static void call_race_upload_queue_drain(const Regs* in, Regs* out) { (void)in; if(race_upload_queue_drain()) out->db = 0x83; }
+static void call_race_upload_queue_drain_long(const Regs* in, Regs* out) { (void)in; if(race_upload_queue_drain_long()) out->db = 0x83; }
+static void call_func_838989(const Regs* in, Regs* out) { (void)in; (void)out; func_838989(); }
+static void call_func_838989_long(const Regs* in, Regs* out) { (void)in; (void)out; func_838989_long(); }
+
+// a queue of up to 23 transfers (some skipped, some with a flag word) and a budget that
+// is spent, short, or already gone
+static void fuzz_race_upload_queue(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x00FC, (rnd() & 7) == 0 ? (uint16_t)(0x10000 - (rnd() & 0xFF)) : (uint16_t)(rnd() % 0x1800));
+  uint16_t tail = (uint16_t)(rnd() & 0xFE), n = (uint16_t)(rnd() % 24);
+  wr16ram(ram, 0x00FE, tail);
+  wr16ram(ram, 0x0100, (uint16_t)((tail + 2 * n) & 0xFE));
+  for(uint16_t i = 0; i < n; i++) {
+    uint16_t x = (uint16_t)((tail + 2 * i) & 0xFE);
+    wr16ram(ram, (uint32_t)(0xF433 + x), (uint16_t)((rnd() & 31) == 0 ? 0 : 2 + (rnd() % 0x400) * 2));
+    wr16ram(ram, (uint32_t)(0xF533 + x), (uint16_t)rnd());
+    wr16ram(ram, (uint32_t)(0xF633 + x), (uint16_t)(rnd() & 0x7FFF));
+    wr16ram(ram, (uint32_t)(0xF733 + x), (uint16_t)(((rnd() & 7) == 0 ? 0x8000 : 0) | (rnd() & 0xFF)));
+    wr16ram(ram, (uint32_t)(0xF833 + x), (uint16_t)((rnd() & 3) == 0 ? 0x2000 + (rnd() & 0x0FFE) : 0));
+    wr16ram(ram, (uint32_t)(0xF933 + x), (uint16_t)rnd());
+  }
+  // a queue of only skipped entries sets channel 7's mode and sends nothing: the harness
+  // does not model a DMA set up and never started (never seen live; the race NMI rewrites
+  // channel 7 before its next kick), so keep one entry live
+  bool any = false;
+  for(uint16_t i = 0; i < n; i++) any |= !(ram[0xF733 + ((tail + 2 * i) & 0xFE) + 1] & 0x80);
+  if(n && !any) ram[0xF733 + tail + 1] &= 0x7F;
+}
+
+static void fuzz_func_838989(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0026, (uint16_t)rnd());
+  wr16ram(ram, 0x01CC, (uint16_t)rnd());
+  wr16ram(ram, 0x00D4, (uint16_t)rnd());
+  ram[0x00D6] = (uint8_t)rnd();
+  wr16ram(ram, 0x1F32, (uint16_t)rnd());
+  wr16ram(ram, 0x00E2, (uint16_t)(rnd() & 0x1E));
+}
+
+// ---- nmi_race_tail ($85:838A) ----  the race NMI's prologue pushed the same frame
+static void call_nmi_race_tail(const Regs* in, Regs* out) { nmi_race_tail(); restoreNmiFrame(in, out); }
 
 // Negative test: brightness 0 written as is, without the forced blank (the $2100 byte)
-static void call_nmi_race_light_wrong(const Regs* in, Regs* out) {
-  nmi_race_light();
+static void call_nmi_race_tail_wrong(const Regs* in, Regs* out) {
+  nmi_race_tail();
   if(rd8(0x014B) == 0) video_set_display(0x00);
   restoreNmiFrame(in, out);
 }
 
 // the fade on (either direction, sometimes landing on the target) or off; brightness 0 often
 static void fuzz_nmi_quiet(uint8_t* ram, uint32_t (*rnd)(void));
-static void fuzz_nmi_race_light(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+static void fuzz_nmi_race_tail(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   fuzz_nmi_quiet(ram, rnd);
   uint16_t target = (uint16_t)(rnd() & 0x0F00), level = (uint16_t)(rnd() & 0x0FFF);
@@ -3072,6 +3116,14 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_pads_read_long, ALL_OUTPUTS, .fuzz = fuzz_pads},
   {.name = "pads_read_long_2", .entry = 0x8396CD, .end = 0x8396D1, .rtl = true, .source = "src/pads.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_pads_read_long_2, ALL_OUTPUTS, .fuzz = fuzz_pads},
+  {.name = "race_upload_queue_drain", .entry = 0x838644, .end = 0x8386FB, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .call = call_race_upload_queue_drain, .fuzz = fuzz_race_upload_queue},
+  {.name = "race_upload_queue_drain_long", .entry = 0x8396D1, .end = 0x8396D5, .rtl = true, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .call = call_race_upload_queue_drain_long, .fuzz = fuzz_race_upload_queue},
+  {.name = "func_838989", .entry = 0x838989, .end = 0x8389D1, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989, .fuzz = fuzz_func_838989},
+  {.name = "func_838989_long", .entry = 0x8396D5, .end = 0x8396D9, .rtl = true, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989_long, .fuzz = fuzz_func_838989},
   {.name = "sound_fade_step", .entry = 0x86DFAE, .end = 0x86DFE1, .source = "src/sound.c", .needM16 = true,
    .lowWramDb = true, .call = call_sound_fade_step, ALL_OUTPUTS, .fuzz = fuzz_sound_fade_step},
   // no fuzz: the fuzz runs the CPU alone, so the sound CPU never answers the handshake
@@ -3097,8 +3149,8 @@ const Routine routines[] = {
   {.name = "nmi_target_80D784", .entry = 0x80D784, .end = 0x80D823, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80D784, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
    .fuzz = fuzz_nmi_tail},
-  {.name = "nmi_race_light", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
-   .needM16 = true, .needX16 = true, .call = call_nmi_race_light, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_light},
+  {.name = "nmi_race_tail", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_race_tail, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_target_80E175", .entry = 0x80E175, .end = 0x80E28C, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80E175, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
    .fuzz = fuzz_nmi_target_80E175},
@@ -3462,8 +3514,8 @@ const Routine negativeRoutines[] = {
    .call = call_sound_send_message_wrong, ALL_OUTPUTS},
   {.name = "pads_read_wrong", .entry = 0x8386FF, .end = 0x8387C1, .source = "src/pads.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_pads_read_wrong, ALL_OUTPUTS, .fuzz = fuzz_pads},
-  {.name = "nmi_race_light_wrong", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
-   .needM16 = true, .needX16 = true, .call = call_nmi_race_light_wrong, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_light},
+  {.name = "nmi_race_tail_wrong", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_race_tail_wrong, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_tail_wrong", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_tail_wrong, ALL_OUTPUTS},
   {.name = "irq_split_bottom_wrong", .entry = 0x80E48A, .end = 0x80E4C5, .rti = true, .source = "src/frame.c",

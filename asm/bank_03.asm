@@ -2,6 +2,7 @@
 org $838000
 
     incbin !baserom:$18000..$18644
+race_upload_queue_drain:
     lda.b $FC                   ; $838644
     bmi CODE_8386B6             ; $838646
     beq CODE_8386B6             ; $838648
@@ -279,6 +280,7 @@ pads_read_pair:
     sta.b $22                   ; $838867
     rts                         ; $838869
     incbin !baserom:$1886A..$18989
+func_838989:
     ldx.b $E2                   ; $838989
     lda.w $0026                 ; $83898B
     bit.w #$0010                ; $83898E
@@ -318,9 +320,11 @@ CODE_8389D0:
 pads_read_long_2:
     jsr.w pads_read             ; $8396CD
     rtl                         ; $8396D0
-    jsr.w $8644                 ; $8396D1
+race_upload_queue_drain_long:
+    jsr.w race_upload_queue_drain; $8396D1
     rtl                         ; $8396D4
-    jsr.w $8989                 ; $8396D5
+func_838989_long:
+    jsr.w func_838989           ; $8396D5
     rtl                         ; $8396D8
     incbin !baserom:$196D9..$1E241
     lda.w $1E9E                 ; $83E241

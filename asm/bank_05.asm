@@ -361,7 +361,7 @@ CODE_85836F:
     lda.w #$0000                ; $858383
     tcd                         ; $858386
     jmp.w ($0008)               ; $858387
-nmi_race_light:
+nmi_race_tail:
     lda.w $4210                 ; $85838A
     cli                         ; $85838D
     lda.w $0146                 ; $85838E
@@ -579,7 +579,7 @@ CODE_85855E:
     rep.b #$20                  ; $85859B
     lda.w #$2140                ; $85859D
     sta.w $024A                 ; $8585A0
-    jsl.l $8396D1               ; $8585A3
+    jsl.l race_upload_queue_drain_long; $8585A3
     sep.b #$20                  ; $8585A7
     lda.b #$07                  ; $8585A9
     sta.w $2121                 ; $8585AB
@@ -659,7 +659,7 @@ CODE_858643:
     lda.b #$70                  ; $85866F
     sta.w $420C                 ; $858671
     rep.b #$20                  ; $858674
-    jsl.l $8396D5               ; $858676
+    jsl.l func_838989_long      ; $858676
     sep.b #$20                  ; $85867A
     lda.w $01B0                 ; $85867C
     sta.w $2123                 ; $85867F
@@ -767,7 +767,7 @@ CODE_858795:
     tsb.w $045B                 ; $8587B2
     rep.b #$20                  ; $8587B5
 CODE_8587B7:
-    jmp.w nmi_race_light        ; $8587B7
+    jmp.w nmi_race_tail         ; $8587B7
     rep.b #$10                  ; $8587BA
     sep.b #$20                  ; $8587BC
     phb                         ; $8587BE

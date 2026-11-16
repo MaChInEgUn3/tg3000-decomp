@@ -1100,12 +1100,16 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `$4200 = $B1` itself, so the NMI it enables interrupts the fuzz case (23 of 500 were
   lost). Its live samples cover all 130 paths.
 
-## The race NMI's light frame (race-nmi-1, 2026-11-16)
+## The race NMI's tail (race-nmi-1, 2026-11-16)
 
 - **The race NMI** `$85:8377` pushes the common frame (DB, A, X, Y, D) and sets D = 0. It
-  then dispatches through `$0008` to `$85:838A` (the light frame) or `$85:83CE` (the
-  full frame: the race's DMA and HDMA setup, still assembly).
-- **`nmi_race_light` ($85:838A):**
+  then dispatches through `$0008` to `$85:838A` or `$85:83CE`. `$85:83CE` is the full
+  frame: the race's DMA and HDMA setup. It ends by jumping to `$85:838A` (`$85:87B7`).
+  So `$85:838A` is the tail of every race frame (45,360 entries on the 60k movie). It
+  is reached directly on 1,044 frames and through `$85:83CE` on the rest. (This unit
+  first called it the "light frame", `nmi_race_light`. That was wrong, and race-nmi-2
+  renamed it.)
+- **`nmi_race_tail` ($85:838A):**
   - it steps the brightness fade (`$014A` towards `$0148` by `$0146`, then stops on the
     target) and writes the display;
   - then it runs `sound_frame` and the pads (through `pads_read_long_2` at `$83:96CD`, a
@@ -1116,6 +1120,45 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     written without the forced blank) fails on the `$2100` byte.
 - **`$2100` (display: forced blank, brightness) joins the byte registers**, with the
   setter `video_set_display`.
+
+## The race NMI's full frame, first pieces (race-nmi-2, 2026-11-16)
+
+- **What `$85:83CE` does** (still assembly; it ends by jumping to `nmi_race_tail`):
+  - it sends up to three VRAM transfers described at `$1DFE-$1E04` and `$1E52-$1E56`, a
+    fixed 400 bytes from `$7E:230C`, and one from a table at `$86:C8AC` picked by
+    `$1F24`, all on channel 7;
+  - it drains the race VRAM queue (`race_upload_queue_drain`), sends the sprite table
+    (OAM, from `$1576` or `$1796` by the double-buffer flag `$00B4`), and sends three
+    palette blocks;
+  - it writes colours 0, 7, `$21` and `$31` directly and runs `func_838989`;
+  - it sets up HDMA channels 1-6 (enabling 4, 5 and 6) and the window and colour-math
+    registers;
+  - it advances a BCD clock (`$5A/$5C`, in decimal mode) and sets the BG mode and the
+    IRQ line for the race IRQ `$85:87BA` from `$0486,x`;
+  - every fourth frame it calls `$85:9147`, and it queues a sound message.
+
+  Two stretches of it have never run (`$85:86DA`, `$85:8702-$85:8750`).
+  - **Still missing before it can be C:** a platform call for the sprite table (OAM) and
+    a model of HDMA channel setup.
+- **`race_upload_queue_drain` ($83:8644, long form `$83:96D1`):**
+  - it sends the race's VRAM queue (a ring of 128 entries in parallel word tables at
+    `$7E:F433-$7E:F9B2`) while the frame's DMA budget `$FC` lasts. A whole transfer costs
+    its size + 100;
+  - a transfer that does not fit sends what the budget allows. Its entry keeps the rest
+    for the next frame, and the budget becomes 0;
+  - an entry can carry a word to store in `$7E` once it is sent. That path ends with a
+    PEA/PLB pair that leaves DB = `$83`, so the C returns whether it stored one and the
+    adapter sets DB.
+
+  race1: live 446/446, fuzz 500/500, paths 75/75. The fuzz keeps at least one entry
+  live, because a queue of only skipped entries sets channel 7's mode and sends nothing.
+  The harness does not model that leftover, it was never seen live, and the race NMI
+  rewrites channel 7 before its next kick.
+- **`func_838989` ($83:8989, long form `$83:96D5`):** unless paused, it adds the signed
+  word `$01CC` to the 24-bit value at `$00D4`. Then it writes the upper word + `$3C` to
+  `$1536,x` and `$1556,x` (X = `$00E2`), or the upper word less an eighth to the first
+  when `$1F32` is negative. race1: live 445/445, fuzz 500/500, paths 32/32.
+- Neither has register outputs: the race NMI overwrites A, X and Y after both.
 
 ## Two-task screens (task-1, 2026-11-16)
 

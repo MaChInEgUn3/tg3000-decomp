@@ -42,12 +42,13 @@ void nmi_tail(void) {
   wr16(FRAME_COUNTER, (uint16_t)(rd16(FRAME_COUNTER) + 1));
 }
 
-// TG3000_ROUTINE($85:838A) nmi_race_light
+// TG3000_ROUTINE($85:838A) nmi_race_tail
 //
-// The race NMI's light frame (the race NMI $85:8377 dispatches through $0008): the
+// The race NMI's tail, run on every race frame: the race NMI $85:8377 dispatches through
+// $0008 either here or to the full frame $85:83CE, which ends by jumping here. The
 // brightness fade, the display, sound, pads, and the frame counters. The original enables
 // IRQs here (CLI), so the race's raster IRQs may start before it returns.
-void nmi_race_light(void) {
+void nmi_race_tail(void) {
   uint16_t step = rd16(0x0146);
   if(step) {  // fade $014A towards $0148 by `step`, stopping at it
     uint16_t level = (uint16_t)(rd16(0x014A) + step);
