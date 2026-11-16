@@ -2,6 +2,7 @@
 #include "frame.h"
 
 #include "misc.h"
+#include "video_dma.h"
 #include "pads.h"
 #include "platform.h"
 #include "sound.h"
@@ -211,5 +212,24 @@ void nmi_target_80E175(void) {
       wr16(BAND_DP + 0x16, 0);
     }
   }
+  nmi_tail();
+}
+
+// TG3000_ROUTINE($80:D784) nmi_target_80D784
+void nmi_target_80D784(void) {
+  for(int i = 0; i < 7; i++) wr8((uint16_t)(0x1B00 + i), rom8(0x81C207 + (uint32_t)i));  // MVN
+  video_upload_vram(0x0000, 0x7F0000, 0x0800);
+  video_upload_vram(0x0800, 0x7F0800, 0x0800);
+  video_set_main_screen(0x02);
+  video_set_bg_map(2, 0x03);
+  video_set_bg_map(1, 0x51);
+  video_set_bg_map(3, 0x59);
+  video_set_bg_mode(0x09);
+  video_set_obj_select(0x03);
+  video_set_bg_tiles(1, 0x03);
+  video_set_bg3_hofs(0);
+  video_set_bg3_vofs(0xFFFF);
+  video_set_color_math_control(0x02);
+  video_set_color(2, 0x0000);
   nmi_tail();
 }

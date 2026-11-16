@@ -55,5 +55,9 @@ void nmi_target_80E28C(void);
 // for a band that opens by 4 lines a frame ($0114, up to $3A, then $0116 = 1); then the
 // tail.
 void nmi_target_80E175(void);
+// $80:D784: copy the 7-byte table at $81:C207 to $1B00, upload 4 KB from $7F:0000 to VRAM
+// $0000, set the screen up (mode $09, maps $51/$03/$59, tiles $03 for BG3/4, sprites $03,
+// main screen BG2, BG3 scrolled to (0, $3FF), $2130 = $02, colour 2 black); then the tail.
+void nmi_target_80D784(void);
 
 #endif

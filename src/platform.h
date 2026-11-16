@@ -53,8 +53,17 @@ void video_set_bg1_vofs(uint16_t value);
 void video_set_bg2_hofs(uint16_t value);
 void video_set_bg2_vofs(uint16_t value);
 
-// BG3 horizontal scroll ($2111): 10 bits.
+// BG3 horizontal / vertical scroll ($2111 / $2112): 10 bits.
 void video_set_bg3_hofs(uint16_t value);
+void video_set_bg3_vofs(uint16_t value);
+
+// Screen layout (raw bytes): the BG mode ($2105), each BG's tilemap address and size
+// ($2107-$210A, bg 1-4), the BG tile addresses ($210B for BG1/BG2, $210C for BG3/BG4),
+// and the sprites' size and tile address ($2101).
+void video_set_bg_mode(uint8_t value);
+void video_set_bg_map(int bg, uint8_t value);
+void video_set_bg_tiles(int pair, uint8_t value);  // pair 0: BG1/BG2, 1: BG3/BG4
+void video_set_obj_select(uint8_t value);
 
 // The layers on the main and sub screens ($212C / $212D): bits 0-3 BG1-BG4, bit 4 sprites.
 void video_set_main_screen(uint8_t layers);

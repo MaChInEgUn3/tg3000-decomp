@@ -1082,6 +1082,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   run took (heights `$34-$37` and `$3A`): live 10/10, fuzz 500/500, paths 134/134. The
   other NMI rows can take the same fuzz.
 
+## NMI target $80:D784, quiet fuzz for the NMI rows (nmi-4, 2026-11-16)
+
+- **More byte registers:** `$2101` (sprite size and tiles), `$2105` (BG mode) and
+  `$2107-$210C` (tilemaps and tile addresses) join the table, with the setters
+  `video_set_obj_select`, `video_set_bg_mode`, `video_set_bg_map(bg)` and
+  `video_set_bg_tiles(pair)`. The table's masks are now 32 bits wide. The BG3 vertical
+  scroll joins the fields.
+- **`nmi_target_80D784`:** it copies a 7-byte table (`$81:C207` to `$1B00`, an MVN),
+  uploads 4 KB from `$7F:0000` to VRAM and sets the screen up (mode `$09`, BG maps,
+  sprites, BG3 scroll, colour 2), then runs the tail. Live 1/1, fuzz 500/500, paths
+  61/61.
+- **Fuzz with the sound message off** now covers `nmi_tail` (500/500),
+  `nmi_target_80FBD1` and `nmi_target_80FC5F`. `nmi_target_80E28C` keeps no fuzz: it sets
+  `$4200 = $B1` itself, so the NMI it enables interrupts the fuzz case (23 of 500 were
+  lost). Its live samples cover all 130 paths.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

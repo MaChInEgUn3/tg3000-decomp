@@ -88,7 +88,8 @@ static const char* const ppuFieldName[PF_COUNT] = {
 
 // Pure byte registers: their state is the last byte written.
 static const uint16_t byteRegs[] = {0x212C, 0x212D, 0x2123, 0x2124, 0x2125, 0x2130, 0x2131,
-                                    0x4200, 0x4207, 0x4208, 0x4209, 0x420A};
+                                    0x4200, 0x4207, 0x4208, 0x4209, 0x420A,
+                                    0x2101, 0x2105, 0x2107, 0x2108, 0x2109, 0x210A, 0x210B, 0x210C};
 #define N_BYTE_REGS ((int)(sizeof byteRegs / sizeof byteRegs[0]))
 static int byteRegIndex(uint32_t adr) {
   if(((adr >> 16) & 0x7F) >= 0x40) return -1;
@@ -121,8 +122,8 @@ typedef struct {
   uint32_t ppuWritten, ppuStale;
   uint16_t ppuStart[PF_COUNT], ppuEnd[PF_COUNT];
   uint32_t ppuPending;  // fields written by the last instruction: read back at the next one
-  uint16_t regWritten;  // byte registers written (bit per byteRegs entry) and their last values
-  uint8_t regVal[16];
+  uint32_t regWritten;  // byte registers written (bit per byteRegs entry) and their last values
+  uint8_t regVal[32];
   bool m7Latch, scrollLatch, scrollLatch2;  // latch bytes written inside the sample
 } Sample;
 
@@ -227,14 +228,14 @@ static void mode7ProductRead(uint32_t adr);
 
 static uint32_t cPpuWritten;
 static uint16_t cPpu[PF_COUNT];
-static uint16_t cRegWritten;
-static uint8_t cRegVal[16];
+static uint32_t cRegWritten;
+static uint8_t cRegVal[32];
 
 void difftest_reg(uint16_t adr, uint8_t value) {
   if(!collectingC) return;
   int i = byteRegIndex(adr);
   if(i < 0) return;
-  cRegWritten |= (uint16_t)(1u << i);
+  cRegWritten |= 1u << i;
   cRegVal[i] = value;
 }
 
@@ -451,7 +452,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   int bri = write ? byteRegIndex(adr) : -1;
   if(bri >= 0) {
     for(int k = accessBase; k < depth; k++) {
-      samples[k].regWritten |= (uint16_t)(1u << bri);
+      samples[k].regWritten |= 1u << bri;
       samples[k].regVal[bri] = val;
     }
     return;
@@ -688,7 +689,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
     }
   }
   if(cRegWritten != smp->regWritten) {
-    snprintf(why, whyLen, "byte registers written: original %04X, C %04X", smp->regWritten, cRegWritten);
+    snprintf(why, whyLen, "byte registers written: original %05X, C %05X", (unsigned)smp->regWritten, (unsigned)cRegWritten);
     return false;
   }
   for(int i = 0; i < N_BYTE_REGS; i++) {

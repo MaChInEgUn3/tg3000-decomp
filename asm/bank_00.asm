@@ -8873,6 +8873,7 @@ CODE_80D77B:
     sta.b $36                   ; $80D77F
     rep.b #$20                  ; $80D781
     rts                         ; $80D783
+nmi_target_80D784:
     phb                         ; $80D784
     ldx.w #$C207                ; $80D785
     ldy.w #$1B00                ; $80D788

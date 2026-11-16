@@ -1568,13 +1568,28 @@ static void call_nmi_target_80FBD1(const Regs* in, Regs* out) { nmi_target_80FBD
 static void call_nmi_target_80FC5F(const Regs* in, Regs* out) { nmi_target_80FC5F(); restoreNmiFrame(in, out); }
 static void call_nmi_target_80E28C(const Regs* in, Regs* out) { nmi_target_80E28C(); restoreNmiFrame(in, out); }
 static void call_nmi_target_80E175(const Regs* in, Regs* out) { nmi_target_80E175(); restoreNmiFrame(in, out); }
+static void call_nmi_target_80D784(const Regs* in, Regs* out) { nmi_target_80D784(); restoreNmiFrame(in, out); }
 
 // NMI rows can fuzz when the tail sends no sound message (bit 15 of $046D clear): then
 // nothing waits for the sound CPU
+static void fuzz_func_8AA050(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+
 static void fuzz_nmi_quiet(uint8_t* ram, uint32_t (*rnd)(void)) {
   ram[0x046D] = (uint8_t)rnd();
   ram[0x046E] = (uint8_t)(rnd() & 0x7F);
 }
+
+static void fuzz_nmi_tail(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  fuzz_nmi_quiet(ram, rnd);
+  wr16ram(ram, 0x0026, (uint16_t)rnd());
+}
+
+static void fuzz_nmi_target_80FC5F(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_8AA050(r, ram, rnd);
+  fuzz_nmi_quiet(ram, rnd);
+}
+
 
 // the band height on every value up to $3A (the paths at $34-$37 and $3A), opening or done
 static void fuzz_nmi_target_80E175(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -3042,18 +3057,24 @@ const Routine routines[] = {
    .fuzz = fuzz_objects},
   {.name = "func_8AA050", .entry = 0x8AA050, .end = 0x8AA06D, .rtl = true, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8AA050, ALL_OUTPUTS, .fuzz = fuzz_func_8AA050},
-  // no fuzz for the NMI rows: they send the sound message, whose handshake needs the sound CPU
+  // NMI rows fuzz with the sound message off (fuzz_nmi_quiet)
   {.name = "nmi_target_80FBD1", .entry = 0x80FBD1, .end = 0x80FBD8, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
-   .needM16 = true, .needX16 = true, .call = call_nmi_target_80FBD1, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}}},
+   .needM16 = true, .needX16 = true, .call = call_nmi_target_80FBD1, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
+   .fuzz = fuzz_nmi_tail},
   {.name = "nmi_target_80FC5F", .entry = 0x80FC5F, .end = 0x80FC7D, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
-   .needM16 = true, .needX16 = true, .call = call_nmi_target_80FC5F, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}}},
+   .needM16 = true, .needX16 = true, .call = call_nmi_target_80FC5F, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
+   .fuzz = fuzz_nmi_target_80FC5F},
   {.name = "nmi_target_80E28C", .entry = 0x80E28C, .end = 0x80E3F7, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
+   // no fuzz: it enables the NMI itself ($4200 = $B1), which then interrupts the case
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80E28C, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}}},
+  {.name = "nmi_target_80D784", .entry = 0x80D784, .end = 0x80D823, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_target_80D784, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
+   .fuzz = fuzz_nmi_tail},
   {.name = "nmi_target_80E175", .entry = 0x80E175, .end = 0x80E28C, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80E175, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
    .fuzz = fuzz_nmi_target_80E175},
   {.name = "nmi_tail", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
-   .needM16 = true, .needX16 = true, .fixedD = false, .call = call_nmi_tail, ALL_OUTPUTS},
+   .needM16 = true, .needX16 = true, .fixedD = false, .call = call_nmi_tail, ALL_OUTPUTS, .fuzz = fuzz_nmi_tail},
   // no fuzz: it waits (WAI) for the next interrupt, which the fuzz never raises
   {.name = "irq_split_top", .entry = 0x80E3F7, .end = 0x80E48A, .rti = true, .source = "src/frame.c",
    .call = call_irq_split_top, ALL_OUTPUTS},
