@@ -3826,6 +3826,7 @@ CODE_8ABC82:
     dex                         ; $8ABC86
     bpl CODE_8ABC82             ; $8ABC87
     rts                         ; $8ABC89
+password_encode:
     ldy.w #$0000                ; $8ABC8A
 CODE_8ABC8D:
     iny                         ; $8ABC8D
@@ -3913,7 +3914,7 @@ CODE_8ABC9B:
     sta.w $0008                 ; $8ABE98
     inc.b $8E                   ; $8ABE9B
     jsr.w $BB99                 ; $8ABE9D
-    jsr.w $BC8A                 ; $8ABEA0
+    jsr.w password_encode       ; $8ABEA0
     jsr.w func_8ABF76           ; $8ABEA3
     ldx.w #$0000                ; $8ABEA6
     ldy.w #$001F                ; $8ABEA9

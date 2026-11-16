@@ -2505,12 +2505,40 @@ static void call_func_8ABB5C(const Regs* in, Regs* out) {
   setNZ16(out, in->y);
 }
 
+// ---- password_encode ($8A:BC8A) ----  A = the number of bits; X, Y and A out; N and Z
+// from the last INX
+// The V flag the original leaves: the signed overflow of its count division's last `- 5`
+// (the only instruction there that writes V; the C has no flags).
+static bool password_count_overflow(uint16_t bits) {
+  uint16_t rest = bits, before;
+  do {
+    before = rest;
+    rest = (uint16_t)(rest - 5);
+  } while(!(rest & 0x8000));
+  return ((before ^ 5) & (before ^ rest) & 0x8000) != 0;
+}
+
+static void call_password_encode(const Regs* in, Regs* out) {
+  out->a = password_encode(in->a, &out->x, &out->y);
+  setNZ16(out, out->x);
+  out->c = false;  // the tail's last LSR shifts out bit 4 of a value masked with $03E0
+  out->v = password_count_overflow(in->a);
+}
+
+static void fuzz_password_encode(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+
 static void fuzz_big_number(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(int i = 0; i < 32; i++) ram[0x0DAC + i] = (uint8_t)rnd();
   r->y = (uint16_t)(1 + rnd() % 24);
   wr16ram(ram, DP + 0x46, (uint16_t)rnd());
   wr16ram(ram, DP + 0x84, (uint16_t)rnd());
   wr16ram(ram, DP + 0x92, (uint16_t)rnd());
+}
+
+// the bits to encode (up to 160), the big number, the feed word, the two tail fields
+static void fuzz_password_encode(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_big_number(r, ram, rnd);
+  r->a = (uint16_t)(rnd() % 161);
 }
 
 // ---- func_8ABBF4 ($8A:BBF4) ----  A = bits, Y = count; exits with A and Y kept (N/Z from
@@ -3623,6 +3651,9 @@ const Routine routines[] = {
    .holes = {{0x818101, 0x81810A}}},
   {.name = "func_8ABB5C", .entry = 0x8ABB5C, .end = 0x8ABB99, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8ABB5C, ALL_OUTPUTS, .fuzz = fuzz_big_number},
+  {.name = "password_encode", .entry = 0x8ABC8A, .end = 0x8ABCEA, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .db = 0x8A, .call = call_password_encode, ALL_OUTPUTS,
+   .fuzz = fuzz_password_encode},
   {.name = "func_8ABBF4", .entry = 0x8ABBF4, .end = 0x8ABC32, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8ABBF4, ALL_OUTPUTS, .fuzz = fuzz_big_number},
   {.name = "func_81FBB1", .entry = 0x81FBB1, .end = 0x81FC72, .source = "src/track.c", .needM16 = true,

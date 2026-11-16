@@ -1434,6 +1434,25 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the bench's chip is the stand-in, not the firmware. Each command proved in refbench
     is to be routed in the bridge to `src/dsp4.c`.
 
+## The password text (password-1, 2026-11-16)
+
+- **`password_encode` ($8A:BC8A)** writes the password text at `$0D40`:
+  - `bits / 5 + 1` characters of 5 bits each, shifted out of the big number by
+    `func_8ABB5C`, each picked from the 32-entry table at `$8A:BC5F`;
+  - then two characters from `$0192` (bits 0-4, then 5-9), then a 0 word.
+
+  The first shift's carry in is the borrow of the count division (done by subtraction).
+  Each later shift's carry in is what the previous one left.
+- **Its flags are read by the caller** (N, V, Z, C live):
+  - C is always 0 (the tail's last LSR shifts out a bit its mask cleared);
+  - V is the overflow of the division's last `- 5`.
+
+  The adapter computes both. The game C has no flags, so this stays in the bench.
+- 60k: live 1/1, fuzz 500/500, paths 46/46.
+- **The other entries `portable.py` lists** (`$80:98C4`-`$80:9C0B`, money and menu code
+  with BCD) never run on the 60k movie, only on the TAS. So they wait for bench coverage
+  (explore-1, tas-2).
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

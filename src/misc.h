@@ -302,6 +302,12 @@ uint16_t func_83EA9B(uint16_t i);
 // $0146 bit taken in *carry.
 uint16_t func_8ABB5C(uint16_t count, bool* carry);
 
+// The password text at $0D40: (bits / 5) + 1 characters of 5 bits each, shifted out of
+// the big number (func_8ABB5C), then two characters from $0192 (its bits 0-4 and 5-9),
+// then a 0 word; characters from the 32-entry table at $8A:BC5F. Returns the last
+// character word; *x the offset of the terminating word, *y the last table index.
+uint16_t password_encode(uint16_t bits, uint16_t* x, uint16_t* y);
+
 // Shift the 256-bit number left `count` times (0 means 65536), feeding in the bits of
 // `bits` from bit 0 up; after each shift $0184 += 1 and func_8ABC32 ($0192 += $0DCA).
 void func_8ABBF4(uint16_t bits, uint16_t count);

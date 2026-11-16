@@ -1113,3 +1113,41 @@ void hdma_window_tables_init(void) {
   wr8(0x0D30, 0x00);
   for(uint16_t a = 0x0D23; a <= 0x0D2F; a += 2) wr8(a, 0xE0);
 }
+
+// TG3000_ROUTINE($8A:BC8A) password_encode
+//
+// The first shift's carry in is the borrow of the count division (bits / 5 by
+// subtraction), the next ones what the previous shift left.
+uint16_t password_encode(uint16_t bits, uint16_t* x, uint16_t* y) {
+  uint16_t chars = 0, rest = bits;
+  bool carry;
+  do {
+    chars++;
+    carry = rest >= 5;
+    rest = (uint16_t)(rest - 5);
+  } while(!(rest & 0x8000));
+  wr16(DP + 0x42, (uint16_t)(chars - 1));
+  uint16_t at = 0;
+  uint16_t left;
+  do {
+    uint16_t index = func_8ABB5C(5, &carry);
+    wr8((uint32_t)(0x0D40 + at), rom8(0x8ABC5F + index));
+    at++;
+    left = (uint16_t)(rd16(DP + 0x42) - 1);
+    wr16(DP + 0x42, left);
+  } while(!(left & 0x8000));
+  wr8((uint32_t)(0x0D40 + at), 0);
+  wr8((uint32_t)(0x0D41 + at), 0);
+  uint16_t index = rd16(DP + 0x92) & 0x001F;
+  wr16((uint32_t)(0x0D40 + at), (uint16_t)(rom8(0x8ABC5F + index) | rd16((uint32_t)(0x0D40 + at))));
+  at++;
+  index = (uint16_t)((rd16(DP + 0x92) & 0x03E0) >> 5);
+  uint16_t last = (uint16_t)(rom8(0x8ABC5F + index) | rd16((uint32_t)(0x0D40 + at)));
+  wr16((uint32_t)(0x0D40 + at), last);
+  at++;
+  wr16((uint32_t)(0x0D40 + at), 0);
+  *x = at;
+  *y = index;
+  return last;
+}
+
