@@ -1565,6 +1565,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   60k movie, and all 5 are interrupted. So it needs a movie that reaches it without an
   interrupt, or the fuzz alone.
 
+## The player's limits across the road (road-2, 2026-11-16)
+
+- **`player_road_limits` ($83:E8AB)** is the other `$0A` user (536 entries on the 60k
+  movie). It runs with D = `$0200`, so some of its variables are `$02xx` through the
+  direct page and others `$01xx` absolute.
+  - It takes the road's edges at the car's place from command `$0A` on the near row,
+    then the far row, keeping the wider of the two.
+  - It keeps clear of the car in front by `$20`, on the side the flag `$0244` bit 1
+    says, and moves that flag over.
+  - A pushed side sets both limits there; a bend shifts them.
+  - Its middle (`$011C`) can be pinned to a limit by two side flags.
+  - Finally it flags in `$1E9C` which way the car is more than `$18` off the middle.
+- **Five stretches that never ran** decode as coherent code: the far row's two wider
+  left edges, the pushed side, and the two side flags. They join `static_code.txt`, and
+  the fuzz runs them all.
+- 60k: live 179/179, fuzz 500/500, paths 216/216.
+- **Its negative row (the bend flag's bit read wrong) is not reached on race1**, the
+  selftest's movie, so the selftest does not exercise it. It was run on the 60k movie
+  before this commit and failed, as it must. Unreached negative rows in the selftest
+  are a known gap: a negative run over the 60k movie would close it.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

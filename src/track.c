@@ -145,3 +145,93 @@ void car_road_step(uint16_t car) {
   uint16_t r = (uint16_t)(boost - step);
   wr16(0xFAE6 + c, (r & 0x8000) ? 0 : r);
 }
+
+// N of a - b, as the original's CMP tests it (not a signed compare)
+static bool below(uint16_t a, uint16_t b) { return ((uint16_t)(a - b) & 0x8000) != 0; }
+
+// TG3000_ROUTINE($83:E8AB) player_road_limits
+void player_road_limits(void) {
+  const uint32_t dp = 0x0200;
+  int16_t edge[4];
+  uint16_t t = (uint16_t)((rd16(dp + 0x24) & 0xFF00) >> 1);
+  uint16_t row = (uint16_t)(rd16(dp + 0x26) << 1);
+  uint16_t near = rd16(0xD1C3 + (uint32_t)row);
+  dsp4_edges(t, near, near, edge);
+  for(int j = 0; j < 4; j++) wr16(0x0114 + 2 * (uint32_t)j, (uint16_t)edge[j]);
+  uint16_t far = rd16(0xD1B3 + (uint32_t)row);
+  dsp4_edges(t, far, far, edge);
+  if(below((uint16_t)edge[0], rd16(0x0114))) wr16(0x0114, (uint16_t)edge[0]);   // the wider of the two
+  if(!below((uint16_t)edge[1], rd16(0x0116))) wr16(0x0116, (uint16_t)edge[1]);
+  if(below((uint16_t)edge[2], rd16(0x0118))) wr16(0x0118, (uint16_t)edge[2]);
+  if(!below((uint16_t)edge[3], rd16(0x011A))) wr16(0x011A, (uint16_t)edge[3]);
+  if(!rd16(0x1ECE)) wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | 0x0001));
+  // the car in front: keep clear of it by $20, on the side flag $0244 bit 1 says
+  uint16_t ahead = rd16(0xFACD + (uint32_t)rd16(0x1EBA));
+  uint16_t at = rd16(0xFABB + (uint32_t)ahead);
+  uint16_t side = rd16(dp + 0x44);
+  bool pass_left;  // true: limit the right side ($0116 = at - $20); false: the left ($0114 = at + $20)
+  bool decided = true;
+  if(side & 0x0002) {
+    if(!below((uint16_t)(at - 0x80), rd16(0x0114)) || !below((uint16_t)(at + 0x80), rd16(0x0116))) {
+      pass_left = true;
+    } else if(below((uint16_t)(at + 0x80), rd16(0x0114))) {
+      decided = false;
+      pass_left = false;
+    } else {
+      wr16(dp + 0x44, (uint16_t)(rd16(dp + 0x44) & ~0x0002));
+      pass_left = false;
+    }
+  } else {
+    if(below((uint16_t)(at + 0x80), rd16(0x0116)) || below((uint16_t)(at - 0x80), rd16(0x0114))) {
+      pass_left = false;
+    } else if(!below((uint16_t)(at - 0x80), rd16(0x0116))) {
+      decided = false;
+      pass_left = false;
+    } else {
+      wr16(dp + 0x44, (uint16_t)(rd16(dp + 0x44) | 0x0002));
+      pass_left = true;
+    }
+  }
+  if(decided) {
+    if(pass_left) wr16(0x0116, (uint16_t)(at - 0x20));
+    else wr16(0x0114, (uint16_t)(at + 0x20));
+  }
+  wr16(0x011E, 0);
+  if(!(rd16(0x1F31) & 0x8000)) {
+    uint16_t kind = (uint16_t)((rd16(dp + 0x1A) & 0x7FFF) - 1);
+    if(kind != 0 && kind != 5 && (rd8(dp + 0x53) != 0)) {  // a pushed side: both limits at it
+      uint16_t push = (uint16_t)(rd8(dp + 0xB1) << 4);
+      if(push & 0x0800) push |= 0xF000;
+      wr16(0x0114, push);
+      wr16(0x0116, push);
+    }
+    wr16(0x011E, 0);
+    if(rd16(0x1F2C) & 0x0001) {  // the road bends: everything shifts by the bend
+      uint16_t bend = rd16(0x3DEC + (uint32_t)rd16(0x1EBC));
+      wr16(dp + 0x14, (uint16_t)(rd16(dp + 0x14) - bend));
+      wr16(dp + 0x16, (uint16_t)(rd16(dp + 0x16) - bend));
+      wr16(0x011E, (uint16_t)(0 - bend));
+    }
+  }
+  uint16_t width = (uint16_t)(rd16(0x0116) - rd16(0x0114));
+  uint16_t middle = (uint16_t)(((width >> 1) | (width & 0x8000)) + rd16(0x0114) + rd16(0x011E));
+  wr16(0x011C, middle);
+  uint32_t lane = rd16(0x1EBC);
+  for(uint32_t flag = 0x3B08; ; flag = 0x3AEC) {  // two side flags: keep to the left or right limit
+    uint16_t f = rd16(flag + lane);
+    if(f) {
+      if(f & 0x8000) {
+        wr16(dp + 0x44, (uint16_t)(rd16(dp + 0x44) & ~0x0002));
+        wr16(0x011C, rd16(0x0116));
+      } else {
+        wr16(dp + 0x44, (uint16_t)(rd16(dp + 0x44) | 0x0002));
+        wr16(0x011C, rd16(0x0114));
+      }
+    }
+    if(flag == 0x3AEC) break;
+  }
+  uint16_t off = (uint16_t)((rd16(0x011C) - rd16(dp + 0x06)) << 1);
+  if(!below(off, 0xFFD0) && below(off, 0x0030)) off = 0;  // within $18 of the middle: none
+  if(off & 0x8000) wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | 0x0004));
+  else if(off) wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | 0x0008));
+}

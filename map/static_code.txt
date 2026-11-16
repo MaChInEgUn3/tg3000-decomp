@@ -24,3 +24,8 @@
 85:8A57 85:8A5A m16x16 ; race_hud_draw: the fifth light's LDA #$295E ($85:8A55 BNE skips it; the four before it ran): executed by its difftest fuzz, matched by src/race_frame.c
 85:86DA 85:86DE m16x16 ; nmi_race_full: the race clock's carry into $5C on the +2 step ($85:86D8 BCC skips it; the +1 step's copy at $85:86C6 ran): executed by its difftest fuzz, matched by src/race_frame.c
 85:8702 85:8751 m16x16 ; nmi_race_full: the first band within 4 lines, sent from the NMI ($85:86FE BEQ / $85:8700 BPL fall into it; it repeats irq_race_band's stream kick): executed by its difftest fuzz, matched by src/race_frame.c
+83:E921 83:E924 m16x16 ; player_road_limits: the far row's left edge wider than the near row's ($83:E91F BPL skips it; the right-edge copy at $83:E92C ran): executed by its difftest fuzz, matched by src/track.c
+83:E937 83:E93A m16x16 ; player_road_limits: the far row's second left edge wider ($83:E935 BPL): same
+83:E9DF 83:E9F6 m16x16 ; player_road_limits: a pushed side ($83:E9DD BEQ skips it): same
+83:EA3E 83:EA55 m16x16 ; player_road_limits: the first side flag set ($83:EA3C BEQ skips it): same
+83:EA5B 83:EA72 m16x16 ; player_road_limits: the second side flag set ($83:EA59 BEQ skips it): same

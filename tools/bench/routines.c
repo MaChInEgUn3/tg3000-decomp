@@ -2639,6 +2639,48 @@ static void fuzz_car_road_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(uint32_t a = 0xD1B3; a < 0xD1B3 + 0x1600; a++) ram[a] = (uint8_t)rnd();
 }
 
+// ---- player_road_limits ($83:E8AB) ----  no register outputs (it restores DB itself)
+static void call_player_road_limits(const Regs* in, Regs* out) { (void)in; (void)out; player_road_limits(); }
+
+// Negative test: the bend flag's bit read as bit 1
+static void call_player_road_limits_wrong(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  uint16_t bend = rd16(0x1F2C);
+  wr16(0x1F2C, (uint16_t)(bend ^ 0x0001));
+  player_road_limits();
+  wr16(0x1F2C, bend);
+}
+
+// the rows (any words: the bench answers $0A with dsp4_edges), the car in front, the side
+// and push flags (the never-run push and side-flag paths too), the bend
+static void fuzz_player_road_limits(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0224, (uint16_t)rnd());
+  wr16ram(ram, 0x0226, (uint16_t)(rnd() % 0x800));
+  for(uint32_t a = 0xD1B3; a < 0xD1C5 + 0x1000; a++) ram[a] = (uint8_t)rnd();
+  wr16ram(ram, 0x1ECE, (rnd() & 3) == 0 ? 1 : 0);
+  wr16ram(ram, 0x1E9C, (uint16_t)rnd());
+  uint16_t car = (uint16_t)(0x35 * (rnd() % 20)), ahead = (uint16_t)(0x35 * (rnd() % 20));
+  wr16ram(ram, 0x1EBA, car);
+  wr16ram(ram, 0xFACD + (uint32_t)car, ahead);
+  wr16ram(ram, 0xFABB + (uint32_t)ahead, (uint16_t)((int16_t)(rnd() % 0x400) - 0x200));
+  wr16ram(ram, 0x0244, (uint16_t)rnd());
+  wr16ram(ram, 0x1F31, (uint16_t)rnd());
+  wr16ram(ram, 0x021A, (uint16_t)((rnd() & 1) ? rnd() % 8 : rnd()));
+  ram[0x0253] = (rnd() & 1) ? 0 : (uint8_t)rnd();
+  ram[0x02B1] = (uint8_t)rnd();
+  wr16ram(ram, 0x1F2C, (uint16_t)rnd());
+  uint16_t lane = (uint16_t)((rnd() % 14) * 2);
+  wr16ram(ram, 0x1EBC, lane);
+  wr16ram(ram, 0x3DEC + lane, (uint16_t)((int16_t)(rnd() % 0x100) - 0x80));
+  wr16ram(ram, 0x3B08 + lane, (rnd() & 1) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, 0x3AEC + lane, (rnd() & 1) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, 0x0206, (uint16_t)((int16_t)(rnd() % 0x400) - 0x200));
+  wr16ram(ram, 0x0214, (uint16_t)rnd());
+  wr16ram(ram, 0x0216, (uint16_t)rnd());
+}
+
 // ---- take_nibble16 ($80:85CA) ----  A = the nibble (N/Z from the last ROL), C = 0.
 static void call_take_nibble16(const Regs* in, Regs* out) {
   (void)in;
@@ -3691,6 +3733,8 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_func_81FBB1, ALL_OUTPUTS, .fuzz = fuzz_func_81FBB1},
   {.name = "car_road_step", .entry = 0x81F887, .end = 0x81FA8F, .source = "src/track.c", .needM16 = true,
    .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_car_road_step, .fuzz = fuzz_car_road_step},
+  {.name = "player_road_limits", .entry = 0x83E8AB, .end = 0x83EA9B, .source = "src/track.c", .needM16 = true,
+   .needX16 = true, .call = call_player_road_limits, .fuzz = fuzz_player_road_limits},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
@@ -3810,6 +3854,8 @@ const Routine negativeRoutines[] = {
    .call = call_video_load_screen_wrong, ALL_OUTPUTS, .fuzz = fuzz_video_load_screen},
   {.name = "car_road_step_wrong", .entry = 0x81F887, .end = 0x81FA8F, .source = "src/track.c", .needM16 = true,
    .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_car_road_step_wrong, .fuzz = fuzz_car_road_step},
+  {.name = "player_road_limits_wrong", .entry = 0x83E8AB, .end = 0x83EA9B, .source = "src/track.c", .needM16 = true,
+   .needX16 = true, .call = call_player_road_limits_wrong, .fuzz = fuzz_player_road_limits},
   {.name = "nmi_race_tail_wrong", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_tail_wrong, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_tail_wrong", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",

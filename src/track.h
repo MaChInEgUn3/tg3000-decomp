@@ -27,4 +27,11 @@ bool func_81FBB1(uint16_t car);
 // and the road's edges from command $0A); nothing while $1ECE is set. ($81:F887)
 void car_road_step(uint16_t car);
 
+// The player car's limits across the road ($0114 left, $0116 right, their middle $011C)
+// from the road's edges at its place ($0A on the near row, then on the far row: the
+// widest of the two), the car in front, a pushed side, and the side flags; then which
+// way the car is off the middle ($1E9C bits 2/3). The original runs with D = $0200.
+// ($83:E8AB)
+void player_road_limits(void);
+
 #endif
