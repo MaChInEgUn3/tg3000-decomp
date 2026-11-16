@@ -53,6 +53,20 @@ void video_set_bg1_vofs(uint16_t value);
 void video_set_bg2_hofs(uint16_t value);
 void video_set_bg2_vofs(uint16_t value);
 
+// BG3 horizontal scroll ($2111): 10 bits.
+void video_set_bg3_hofs(uint16_t value);
+
+// The layers on the main and sub screens ($212C / $212D): bits 0-3 BG1-BG4, bit 4 sprites.
+void video_set_main_screen(uint8_t layers);
+void video_set_sub_screen(uint8_t layers);
+
+// Colour math: which layers it applies to and how ($2131 CGADSUB, raw byte).
+void video_set_color_math(uint8_t value);
+
+// The horizontal position of the line interrupt ($4207/$4208, 9 bits). A handler may
+// move the interrupt position; the next interrupt of the same frame follows the new one.
+void platform_set_irq_h(uint16_t dot);
+
 // Sound (docs/DECISIONS.md, "The APU ports, measured"). The game talks to its sound
 // driver through a 16-byte message per frame; a port gives it to its own driver.
 //

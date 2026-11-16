@@ -23,6 +23,11 @@ void wait_one_frame(void);
 // IRQ $85:95BD: acknowledges the interrupt and returns; nothing else.
 void irq_ack_only(void);
 
+// IRQ $80:E48A, the second split of the screen $80:E28C sets up: the next line interrupt
+// at dot $100, then (on the console, after a WAI for it) BG1-BG3 scroll back to 0, main
+// screen BG1-BG3 and sprites, no sub screen, colour math on BG1 and the backdrop ($05).
+void irq_split_bottom(void);
+
 // $80:8934, the NMI's common tail (most of its dispatch targets end here): read the pads
 // unless bit 2 of $0026 is set, step the sound request queue (func_80894E), send the
 // sound message (sound_frame), count the frame (FRAME_COUNTER).

@@ -1573,6 +1573,20 @@ static void call_nmi_tail(const Regs* in, Regs* out) {
   restoreNmiFrame(in, out);
 }
 
+// ---- irq_split_bottom ($80:E48A) ----  saves and restores DB, A, X, Y itself (PHB..PLB);
+// P from the frame
+static void call_irq_split_bottom(const Regs* in, Regs* out) {
+  irq_split_bottom();
+  restoreP(in, out);
+}
+
+// Negative test: one layer off the main screen (the byte-register comparison must see it).
+static void call_irq_split_bottom_wrong(const Regs* in, Regs* out) {
+  irq_split_bottom();
+  video_set_main_screen(0x13);
+  restoreP(in, out);
+}
+
 // ---- irq_ack_only ($85:95BD) ----
 static void call_irq_ack_only(const Regs* in, Regs* out) {
   irq_ack_only();
@@ -3002,6 +3016,9 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80FC5F, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}}},
   {.name = "nmi_tail", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .fixedD = false, .call = call_nmi_tail, ALL_OUTPUTS},
+  // no fuzz: it waits (WAI) for the next interrupt, which the fuzz never raises
+  {.name = "irq_split_bottom", .entry = 0x80E48A, .end = 0x80E4C5, .rti = true, .source = "src/frame.c",
+   .call = call_irq_split_bottom, ALL_OUTPUTS},
   {.name = "irq_ack_only", .entry = 0x8595BD, .end = 0x8595C7, .rti = true, .source = "src/frame.c",
    .call = call_irq_ack_only, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "scroll_tables_build", .entry = 0x85BC20, .end = 0x85BED1, .rtl = true, .source = "src/scroll_tables.c",
@@ -3357,5 +3374,7 @@ const Routine negativeRoutines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_pads_read_wrong, ALL_OUTPUTS, .fuzz = fuzz_pads},
   {.name = "nmi_tail_wrong", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_tail_wrong, ALL_OUTPUTS},
+  {.name = "irq_split_bottom_wrong", .entry = 0x80E48A, .end = 0x80E4C5, .rti = true, .source = "src/frame.c",
+   .call = call_irq_split_bottom_wrong, ALL_OUTPUTS},
 };
 const int negativeRoutineCount = sizeof negativeRoutines / sizeof negativeRoutines[0];

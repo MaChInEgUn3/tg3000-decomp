@@ -1008,6 +1008,33 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - `nmi_target_80FC5F` (190/190, paths 14/14) and `nmi_target_80FBD1`: the first two NMI
   dispatch targets in C, each its own work and then `nmi_tail`.
 
+## Raster interrupts, first (raster-1, 2026-11-15)
+
+- **Byte registers:** `$212C/$212D`, `$2123-$2125`, `$2130/$2131`, `$4200` and
+  `$4207-$420A` hold the last byte written, with no latch. The harness keeps, per sample,
+  which of them the original wrote and their last values, and the C's typed platform
+  calls must match both ways. A negative row that drops a layer fails.
+- **Fields are read when written:** a field's value is now taken at the instruction after
+  the routine's last write to it, not at the return, because HDMA keeps writing the same
+  registers on later lines (here channel 4 feeds `$210F`). The BG3 scroll (`$2111/$2112`)
+  joins the fields.
+- **The IRQ model:**
+  - **When:** the interrupt position is a pair of byte registers (`platform_set_irq_h`,
+    and the V one with the first handler that sets it). A handler may move it, and the
+    next interrupt of the same frame follows.
+  - **Which handler:** the trampoline bytes at `$0005-$0007` stay plain WRAM; a game-side
+    dispatcher maps them to the C handlers.
+  - **The `wai`:** inside the handler it only lines its writes up with the horizontal
+    blank of the interrupt's line. `irq_split_bottom` writes on line 179, at dots
+    1,070-1,242 of 1,364. So a port runs the IRQ C for line V after line V is drawn, and
+    the `wai` is a comment in the C.
+  - **Fuzz:** these rows have none, because the fuzz never raises the interrupt a `wai`
+    waits for. A `wai` resumed with I set does not count as an interrupt on the bench, so
+    the samples are kept.
+- **First raster handler:** `irq_split_bottom` (IRQ `$80:E48A`, the bottom of the screen
+  `$80:E28C` sets up). It sets the next interrupt's dot to `$100`, scroll 0 for BG1-BG3,
+  main screen `$17`, no sub screen, colour math `$05`. Race movie 459/459, paths 29/29.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

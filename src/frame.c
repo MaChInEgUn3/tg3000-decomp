@@ -53,3 +53,18 @@ void nmi_target_80FC5F(void) {
   func_8AA050();
   nmi_tail();
 }
+
+// TG3000_ROUTINE($80:E48A) irq_split_bottom
+//
+// The original waits (WAI) for the next interrupt, at the dot it has just set, before its
+// register writes, so that they land in that line's horizontal blank; a port applies them
+// from the line after this one (docs/DECISIONS.md, "Raster interrupts").
+void irq_split_bottom(void) {
+  platform_set_irq_h(0x0100);
+  video_set_bg2_hofs(0);
+  video_set_bg1_hofs(0);
+  video_set_bg3_hofs(0);
+  video_set_main_screen(0x17);
+  video_set_sub_screen(0x00);
+  video_set_color_math(0x05);
+}

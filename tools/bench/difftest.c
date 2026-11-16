@@ -58,7 +58,7 @@ typedef struct {
   // the original's PPU field writes in live samples: scanlines, how many while the picture
   // is being drawn (line < 225, screen on), BG modes, HDMA targets at the time, and how
   // many samples changed a field's value
-  int ppuLineMin, ppuLineMax;
+  int ppuLineMin, ppuLineMax, ppuDotMin, ppuDotMax;
   bool ppuLines;
   unsigned long ppuWrites, ppuDrawn, ppuSamplesChanged;
   uint8_t ppuModes;
@@ -81,9 +81,20 @@ typedef struct { int kind; uint32_t target, src, size; } Effect;
 // writes are compared by end state, as the bench's PPU decoded them (which fields were
 // written, and their final values). Bits of each field that the PPU keeps:
 static const uint16_t ppuFieldMask[PF_COUNT] = {
-  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x03FF, 0x03FF, 0x03FF, 0x03FF};
+  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF};
 static const char* const ppuFieldName[PF_COUNT] = {
-  "M7A", "M7B", "M7C", "M7D", "M7X", "M7Y", "M7HOFS", "M7VOFS", "BG1HOFS", "BG1VOFS", "BG2HOFS", "BG2VOFS"};
+  "M7A", "M7B", "M7C", "M7D", "M7X", "M7Y", "M7HOFS", "M7VOFS", "BG1HOFS", "BG1VOFS", "BG2HOFS", "BG2VOFS",
+  "BG3HOFS", "BG3VOFS"};
+
+// Pure byte registers: their state is the last byte written.
+static const uint16_t byteRegs[] = {0x212C, 0x212D, 0x2123, 0x2124, 0x2125, 0x2130, 0x2131,
+                                    0x4200, 0x4207, 0x4208, 0x4209, 0x420A};
+#define N_BYTE_REGS ((int)(sizeof byteRegs / sizeof byteRegs[0]))
+static int byteRegIndex(uint32_t adr) {
+  if(((adr >> 16) & 0x7F) >= 0x40) return -1;
+  for(int i = 0; i < N_BYTE_REGS; i++) if(byteRegs[i] == (adr & 0xFFFF)) return i;
+  return -1;
+}
 
 typedef struct {
   int idx;
@@ -106,6 +117,9 @@ typedef struct {
   // PPU fields written (bit per PF_*), and those whose last write combined a latch byte
   // written before the sample (the result depends on state the C does not get)
   uint16_t ppuWritten, ppuStale, ppuStart[PF_COUNT], ppuEnd[PF_COUNT];
+  uint16_t ppuPending;  // fields written by the last instruction: read back at the next one
+  uint16_t regWritten;  // byte registers written (bit per byteRegs entry) and their last values
+  uint8_t regVal[16];
   bool m7Latch, scrollLatch, scrollLatch2;  // latch bytes written inside the sample
 } Sample;
 
@@ -208,6 +222,16 @@ static void vramWordWrite(uint32_t adr, uint8_t val);
 static void mode7ProductRead(uint32_t adr);
 
 static uint16_t cPpuWritten, cPpu[PF_COUNT];
+static uint16_t cRegWritten;
+static uint8_t cRegVal[16];
+
+void difftest_reg(uint16_t adr, uint8_t value) {
+  if(!collectingC) return;
+  int i = byteRegIndex(adr);
+  if(i < 0) return;
+  cRegWritten |= (uint16_t)(1u << i);
+  cRegVal[i] = value;
+}
 
 void difftest_ppu_field(int field, uint16_t value) {
   if(!collectingC) return;
@@ -218,17 +242,17 @@ void difftest_ppu_field(int field, uint16_t value) {
 static uint16_t ppuFieldValue(int field) {
   const Ppu* ppu = snes->ppu;
   if(field <= PF_M7V) return (uint16_t)ppu->m7matrix[field];
-  const BgLayer* bg = &ppu->bgLayer[(field - PF_BG1H) / 2];
+  const BgLayer* bg = &ppu->bgLayer[(field - PF_BG1H) / 2];  // BG1-BG3
   return (field - PF_BG1H) % 2 == 0 ? bg->hScroll : bg->vScroll;
 }
 
 // A write to a PPU register the C models as fields: $210D/$210E (BG1 scroll, also the
-// Mode 7 offset), $210F/$2110 (BG2 scroll) and $211B-$2120 (Mode 7 matrix and centre). Each is written twice, low
+// Mode 7 offset), $210F-$2112 (BG2, BG3 scroll) and $211B-$2120 (Mode 7 matrix and centre). Each is written twice, low
 // byte then high, through latches shared between registers (LakeSnes's ppu_write).
 static bool ppuFieldWrite(uint32_t adr) {
   if(((adr >> 16) & 0x7F) >= 0x40) return false;
   uint16_t a = adr & 0xFFFF;
-  bool scroll = a >= 0x210D && a <= 0x2110, m7 = a == 0x210D || a == 0x210E || (a >= 0x211B && a <= 0x2120);
+  bool scroll = a >= 0x210D && a <= 0x2112, m7 = a == 0x210D || a == 0x210E || (a >= 0x211B && a <= 0x2120);
   if(!scroll && !m7) return false;
   bool hofs = scroll && (a & 1);  // $210D/$210F: horizontal; $210E/$2110: vertical
   for(int k = accessBase; k < depth; k++) {
@@ -248,9 +272,13 @@ static bool ppuFieldWrite(uint32_t adr) {
     }
     smp->ppuWritten |= fresh | stale;
     smp->ppuStale = (uint16_t)((smp->ppuStale & ~fresh) | stale);
+    smp->ppuPending |= fresh | stale;  // the field's value once this write lands
     if(!fuzzing && cpu_interruptCount == smp->interruptsAtEntry) {  // not a handler's write
       Stats* s = &stats[smp->idx];
       int line = snes->vPos;
+      int dot = snes->hPos;
+      if(!s->ppuLines || dot < s->ppuDotMin) s->ppuDotMin = dot;
+      if(!s->ppuLines || dot > s->ppuDotMax) s->ppuDotMax = dot;
       if(!s->ppuLines || line < s->ppuLineMin) s->ppuLineMin = line;
       if(!s->ppuLines || line > s->ppuLineMax) s->ppuLineMax = line;
       s->ppuLines = true;
@@ -398,6 +426,14 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   }
   if(isWram(adr) || (!write && isRom(adr))) return;
   if(write && ppuFieldWrite(adr)) return;
+  int bri = write ? byteRegIndex(adr) : -1;
+  if(bri >= 0) {
+    for(int k = accessBase; k < depth; k++) {
+      samples[k].regWritten |= (uint16_t)(1u << bri);
+      samples[k].regVal[bri] = val;
+    }
+    return;
+  }
   if(write && isJoypadProtocolWrite(adr)) return;
   uint16_t lo = adr & 0xFFFF;
   bool apuPort = lo >= 0x2140 && lo <= 0x217F && ((adr >> 16) & 0x7F) < 0x40;
@@ -551,6 +587,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   Regs out = smp->entryRegs;
   cEffectCount = 0;
   cEffectOverflow = false;
+  cRegWritten = 0;
   cSample = smp;
   memset(cInputUsed, 0, sizeof cInputUsed);
   cInputMissing = false;
@@ -600,6 +637,16 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
       return false;
     }
   }
+  if(cRegWritten != smp->regWritten) {
+    snprintf(why, whyLen, "byte registers written: original %04X, C %04X", smp->regWritten, cRegWritten);
+    return false;
+  }
+  for(int i = 0; i < N_BYTE_REGS; i++) {
+    if((smp->regWritten & (1u << i)) && smp->regVal[i] != cRegVal[i]) {
+      snprintf(why, whyLen, "$%04X: original %02X, C %02X", byteRegs[i], smp->regVal[i], cRegVal[i]);
+      return false;
+    }
+  }
   int diffs = 0, shown = 0;
   size_t used = 0;
   for(uint32_t i = 0; i < TG3000_WRAM_SIZE; i++) {
@@ -636,7 +683,8 @@ static void finishSample(int k, const Cpu* cpu) {
   depth = k;
   if(owner) irqOwner = -1;
   memcpy(afterRam, snes->ram, sizeof afterRam);
-  for(int f = 0; f < PF_COUNT; f++) smp->ppuEnd[f] = ppuFieldValue(f);
+  for(int f = 0; f < PF_COUNT; f++) if(smp->ppuPending & (1u << f)) smp->ppuEnd[f] = ppuFieldValue(f);
+  smp->ppuPending = 0;
   if(!fuzzing && cpu_interruptCount == smp->interruptsAtEntry) {
     for(int f = 0; f < PF_COUNT; f++) {
       if((smp->ppuWritten & (1u << f)) && ((smp->ppuEnd[f] ^ smp->ppuStart[f]) & ppuFieldMask[f])) {
@@ -842,6 +890,13 @@ void difftest_on_insn(Cpu* cpu) {
   bool inHandler = irqOwner >= 0 && irqActive;
   int base = inHandler ? irqBaseDepth : 0;
   if(inHandler) for(int k = 0; k < base && k < depth; k++) if(cpu->sp < samples[k].minSp) samples[k].minSp = cpu->sp;
+  // fields written by the previous instruction have landed: keep their values now (HDMA may
+  // rewrite them later in the frame)
+  for(int k = 0; k < depth; k++) {
+    Sample* smp = &samples[k];
+    for(int f = 0; smp->ppuPending && f < PF_COUNT; f++)
+      if(smp->ppuPending & (1u << f)) { smp->ppuEnd[f] = ppuFieldValue(f); smp->ppuPending &= (uint16_t)~(1u << f); }
+  }
   // the innermost sample that has returned (normally the innermost one)
   for(int k = depth - 1; k >= base; k--) {
     Sample* smp = &samples[k];
@@ -1037,8 +1092,8 @@ bool difftest_report(const char* resultsPath) {
     printf("    %s; mismatches N%lu V%lu Z%lu C%lu\n", flagNote, s->flagMismatch[0], s->flagMismatch[1], s->flagMismatch[2], s->flagMismatch[3]);
     if(s->firstFailure[0]) printf("    first failure: %s\n", s->firstFailure);
     if(s->ppuLines) {
-      printf("    PPU field writes on scanlines %d..%d (live samples): %lu of %lu while drawing, BG modes", s->ppuLineMin,
-        s->ppuLineMax, s->ppuDrawn, s->ppuWrites);
+      printf("    PPU field writes on scanlines %d..%d, h %d..%d (live samples): %lu of %lu while drawing, BG modes", s->ppuLineMin,
+        s->ppuLineMax, s->ppuDotMin, s->ppuDotMax, s->ppuDrawn, s->ppuWrites);
       for(int m = 0; m < 8; m++) if(s->ppuModes & (1u << m)) printf(" %d", m);
       printf(", HDMA to");
       bool any = false;

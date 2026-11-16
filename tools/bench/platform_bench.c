@@ -41,6 +41,18 @@ void video_set_bg1_vofs(uint16_t value) {
   difftest_ppu_field(PF_M7V, value);
 }
 
+void video_set_bg3_hofs(uint16_t value) { difftest_ppu_field(PF_BG3H, value); }
+
+// Byte registers: recorded as the bytes the original writes.
+void video_set_main_screen(uint8_t layers) { difftest_reg(0x212C, layers); }
+void video_set_sub_screen(uint8_t layers) { difftest_reg(0x212D, layers); }
+void video_set_color_math(uint8_t value) { difftest_reg(0x2131, value); }
+
+void platform_set_irq_h(uint16_t dot) {
+  difftest_reg(0x4207, (uint8_t)dot);
+  difftest_reg(0x4208, (uint8_t)(dot >> 8));
+}
+
 // Sound: the message as the original's sixteen port writes, in its order; the handshake
 // it waits on is the platform's.
 void sound_send_frame(const uint8_t msg[16]) {

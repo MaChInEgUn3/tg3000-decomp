@@ -10378,6 +10378,7 @@ CODE_80E46B:
     pla                         ; $80E487
     plb                         ; $80E488
     rti                         ; $80E489
+irq_split_bottom:
     rep.b #$30                  ; $80E48A
     phb                         ; $80E48C
     pha                         ; $80E48D
