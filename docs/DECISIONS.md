@@ -1053,6 +1053,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   Always: fixed colour black, `$2130 = $02`, windows `$AA/$0A/$0A`. Race movie 461/461,
   paths 62/62. A negative row with colour 0 one step off fails.
 
+## The split screen, complete (raster-3, 2026-11-16)
+
+- `nmi_target_80E28C` ($80:E28C), the NMI side of the screen whose two raster IRQs are
+  `irq_split_top` and `irq_split_bottom`:
+  - it shrinks the split height `$017A` by 4 per frame to 0;
+  - rebuilds the HDMA tables at `$1B00`, `$0D00`, `$0D28` and `$0D14` for it, as
+    overlapping word writes kept in the original's order;
+  - sets up the line interrupt (line `$7E`, dot `$10`, the trampoline to `$80:E3F7`) and
+    the top of the screen: scroll 0, colour 0, colour math with the fixed colour from
+    `$017C/$017D`, windows and layers;
+  - then runs `nmi_tail`.
+
+  Race movie 460/460, paths 130/130, writes in vblank (lines 227-231). With it the whole
+  effect is C: the NMI prepares it, the first IRQ splits the screen at line `$7E` and
+  schedules the second, and the second restores the bottom part at line `$B3`.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

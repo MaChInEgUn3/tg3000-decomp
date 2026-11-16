@@ -10179,6 +10179,7 @@ CODE_80E283:
     sta.b $16                   ; $80E286
     pld                         ; $80E288
     jmp.w nmi_tail              ; $80E289
+nmi_target_80E28C:
     lda.w $017A                 ; $80E28C
     sec                         ; $80E28F
     sbc.w #$0004                ; $80E290

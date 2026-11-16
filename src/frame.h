@@ -45,5 +45,11 @@ void nmi_tail(void);
 void nmi_target_80FBD1(void);
 // $80:FC5F: set bit 1 of $0026, func_8AA050 (with D = $0100, DB = $8A), then the tail.
 void nmi_target_80FC5F(void);
+// $80:E28C: the split screen. $017A (the split's height) shrinks by 4 to 0; the HDMA
+// tables at $1B00, $0D00, $0D28 and $0D14 are rebuilt for it; the line interrupt is set up
+// (line $7E, dot $10, irq_split_top through the trampoline at $0005), the top of the screen
+// gets scroll 0, colour 0 = $1BE6, colour math $17 / $12 with the fixed colour from $017C
+// and $017D, windows $22/$02/$82, layers $17/$00; then the tail.
+void nmi_target_80E28C(void);
 
 #endif

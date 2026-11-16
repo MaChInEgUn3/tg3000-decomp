@@ -93,3 +93,63 @@ void irq_split_top(void) {
   video_set_window_bg34(0x0A);
   video_set_window_obj(0x0A);
 }
+
+// TG3000_ROUTINE($80:E28C) nmi_target_80E28C
+//
+// The table writes are words that overlap byte-wise (an entry is a count byte and a word);
+// they are made in the original's order.
+void nmi_target_80E28C(void) {
+  uint16_t v = (uint16_t)(rd16(0x017A) - 4);
+  if(v & 0x8000) v = 0;
+  wr16(0x017A, v);
+  uint16_t x = 0;
+  bool tail_rows = true;  // the rows at $80:E311
+  if(v == 0) {
+    wr16(0x1B00, 0x0072); wr16(0x0D00, 0x0072); wr16(0x0D28, 0x0072);
+    wr16(0x1B01, 0xFFFF); wr16(0x0D01, 0x0009); wr16(0x0D29, 0x0017);
+    x = 3;
+  } else {
+    wr16(0x1B00, v); wr16(0x0D00, v); wr16(0x0D28, v);
+    wr16(0x1B01, (uint16_t)(0xFFFF - v)); wr16(0x0D01, 0x0001); wr16(0x0D29, 0x0000);
+    uint16_t rest = (uint16_t)(0x72 - v);
+    if(rest == 0) {
+      tail_rows = false;
+    } else {
+      wr16(0x1B03, rest); wr16(0x0D03, rest); wr16(0x0D2B, rest);
+      wr16(0x1B04, 0xFFFF); wr16(0x0D04, 0x0009); wr16(0x0D2C, 0x0017);
+      x = 6;
+    }
+  }
+  if(tail_rows) {
+    uint16_t a = (uint16_t)(0x72 - v);
+    if(a >= 0x6E) a = 0;
+    wr16((uint16_t)(0x1B00 + x), a); wr16((uint16_t)(0x0D00 + x), a); wr16((uint16_t)(0x0D28 + x), a);
+    wr16((uint16_t)(0x1B01 + x), 0xFFFF); wr16((uint16_t)(0x0D01 + x), 0x0009); wr16((uint16_t)(0x0D29 + x), 0x0017);
+  }
+  wr16((uint16_t)(0x1B03 + x), 1); wr16((uint16_t)(0x0D03 + x), 1); wr16((uint16_t)(0x0D2B + x), 1);
+  wr16((uint16_t)(0x1B04 + x), (uint16_t)(0xFFFB + v));
+  wr16((uint16_t)(0x0D04 + x), 1); wr16((uint16_t)(0x0D2C + x), 0);
+  wr16((uint16_t)(0x1B06 + x), 0); wr16((uint16_t)(0x0D06 + x), 0); wr16((uint16_t)(0x0D2E + x), 0);
+  wr16(0x0D14, 0x0072); wr16(0x0D15, 0);
+  wr16(0x0D17, (uint16_t)(0x72 - v)); wr16(0x0D18, 0);
+  wr16(0x0D1A, 1); wr16(0x0D1B, 0); wr16(0x0D1D, 0);
+  platform_set_interrupts(0xB1);
+  platform_set_irq_v(0x007E);
+  platform_set_irq_h(0x0010);
+  wr16(0x0006, 0x8000);  // the IRQ trampoline's JML target: $80:E3F7 (irq_split_top)
+  wr16(0x0005, 0xE3F7);
+  video_set_bg1_hofs(0);
+  video_set_bg2_hofs(0);
+  video_set_bg3_hofs(0);
+  video_set_color(0, 0x1BE6);
+  video_set_color_math(0x17);
+  video_set_fixed_color(rd8(0x017C));
+  video_set_fixed_color(rd8(0x017D));
+  video_set_color_math_control(0x12);
+  video_set_window_bg12(0x22);
+  video_set_window_bg34(0x02);
+  video_set_window_obj(0x82);
+  video_set_main_screen(0x17);
+  video_set_sub_screen(0x00);
+  nmi_tail();
+}
