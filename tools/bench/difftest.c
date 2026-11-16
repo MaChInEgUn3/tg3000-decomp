@@ -386,6 +386,12 @@ typedef struct {
   int count;
   uint32_t interrupts;
   int32_t pausedUntilSp;
+  // PHP ... PLP pairs entered since the return: inside one, a flag written is shadowed
+  // (the PLP brings the watched value back), not dead; the matching PLP (by SP) restores
+  // the shadow mask the PHP saw
+  uint8_t shadow;
+  int phpDepth;
+  struct { uint16_t sp; uint8_t shadow; } php[4];
 } Watch;
 static Watch* watches;
 
@@ -885,7 +891,7 @@ static void resolveFlags(int idx, uint8_t mask, bool live) {
 
 // One instruction after a live sample of routine idx returned: which flags does it read
 // before writing them? Interrupt handlers are skipped (they restore P with RTI).
-static void watchStep(int idx, const Cpu* cpu, uint8_t reads, uint8_t writes) {
+static void watchStep(int idx, const Cpu* cpu, uint8_t op, uint8_t reads, uint8_t writes) {
   Watch* w = &watches[idx];
   if(cpu_interruptCount != w->interrupts) {
     w->interrupts = cpu_interruptCount;
@@ -896,8 +902,19 @@ static void watchStep(int idx, const Cpu* cpu, uint8_t reads, uint8_t writes) {
     w->pausedUntilSp = -1;
   }
   if(++w->count > (table[idx].endAt ? WATCH_CAP_HANDLER : WATCH_CAP)) { resolveFlags(idx, FN | FV | FZ | FC, true); return; }
+  if(op == 0x08 && w->phpDepth < 4) {  // PHP: the flags are saved, not read
+    w->php[w->phpDepth].sp = cpu->sp;
+    w->php[w->phpDepth++].shadow = w->shadow;
+    return;
+  }
+  if(op == 0x28 && w->phpDepth > 0 && cpu->sp == (uint16_t)(w->php[w->phpDepth - 1].sp - 1)) {
+    w->shadow = w->php[--w->phpDepth].shadow;  // PLP of that PHP: the saved flags are back
+    return;
+  }
+  reads &= (uint8_t)~w->shadow;  // a shadowed flag holds a value written since the PHP
   if(reads) resolveFlags(idx, reads, true);
-  if(w->active && writes) resolveFlags(idx, writes, false);
+  if(w->phpDepth > 0) w->shadow |= writes;
+  else if(w->active && writes) resolveFlags(idx, writes, false);
 }
 
 // Inside a handler that a waiting sample records, only the watches of rows that end inside
@@ -906,16 +923,12 @@ static void watchAll(const Cpu* cpu, bool inHandler) {
   uint32_t pc = ((uint32_t)cpu->k << 16) | cpu->pc;
   uint8_t op = peekByte(pc);
   uint8_t reads = opFlagsRead[op], writes = opFlagsWritten[op];
-  // PHP ... PLP: the flags pass through the pair (the game's 5 PHPs are each matched by a
-  // PLP of the same value), so neither reads nor writes them
-  if(op == 0x08) reads = 0;
-  if(op == 0x28) writes = 0;
   if(op == 0xC2 || op == 0xE2) {
     uint8_t p = peekByte((pc & 0xFF0000) | (uint16_t)(pc + 1));
     writes = (p & 0x80 ? FN : 0) | (p & 0x40 ? FV : 0) | (p & 0x02 ? FZ : 0) | (p & 0x01 ? FC : 0);
   }
   for(int i = 0; i < tableCount; i++) {
-    if(watches[i].active && (!inHandler || table[i].endAt)) watchStep(i, cpu, reads, writes);
+    if(watches[i].active && (!inHandler || table[i].endAt)) watchStep(i, cpu, op, reads, writes);
   }
 }
 

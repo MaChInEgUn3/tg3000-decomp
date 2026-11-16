@@ -1205,9 +1205,16 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - **PHP/PLP in the flag liveness:** PHP counted as reading every flag, so a flag that
   passed through `sound_frame` (PHP ... PLP) looked live. The game has five PHPs, each
   at a routine's start and matched by a PLP of the same value, so the flags pass through
-  the pair unchanged. The watch now treats PHP as reading none and PLP as writing none.
-  A PHP whose value is pulled by PLA would be missed; none exists in the code classified
-  so far.
+  the pair unchanged.
+  - **First version (nmi-5):** the watch treated PHP as reading none and PLP as writing
+    none. That left a hole (advisor): a flag written between the two counted as dead,
+    though the PLP brings the watched value back for a later read.
+  - **Now (flags-1):** a PHP saves the watch's state. Inside the pair a flag write only
+    shadows that flag (later reads of it are of the new value). The PLP that pulls that
+    PHP's byte (matched by SP) restores the state the PHP saw. Reads of flags not
+    shadowed are live as before.
+  - A PHP whose value is pulled by PLA would be missed; none exists in the code
+    classified so far.
 
 ## Two-task screens (task-1, 2026-11-16)
 
@@ -1235,7 +1242,9 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     packers at `$81:80xx`, `$80:C2xx-$80:C4xx`. On one frame both tasks were inside
     `decompress`;
   - **no WRAM byte is shared:** outside the handlers and the two stacks, no byte is
-    written by both tasks, and none is written by one and read by the other. Two bytes
+    written by both tasks, and none is written by one and read by the other. (Measured
+    with the 1-player autopilot, where task 2 is nearly idle. The report must be rerun
+    when a movie drives pad 2.) Two bytes
     are read by both and written by neither. Per-task state goes through D; shared
     routines use only D-relative or per-task buffers;
   - **hardware registers:** only task 1 touches any. It uses the divider (`$4204-$4206`,
