@@ -84,6 +84,28 @@ void video_set_bg2_vofs(uint16_t value);
 // BG3 horizontal / vertical scroll ($2111 / $2112): 10 bits.
 void video_set_bg3_hofs(uint16_t value);
 void video_set_bg3_vofs(uint16_t value);
+// BG4 horizontal / vertical scroll ($2113 / $2114): 10 bits.
+void video_set_bg4_hofs(uint16_t value);
+void video_set_bg4_vofs(uint16_t value);
+
+// More screen registers, raw bytes compared as the last value written: mosaic ($2106),
+// mode 7 settings ($211A), the two windows' edges ($2126 + edge: 0/1 window 1 left/right,
+// 2/3 window 2), the window mask logic for BGs and sprites ($212A/$212B), the window
+// masks of the main and sub screens ($212E/$212F), the screen settings ($2133: interlace,
+// overscan, pseudo-hires), and the ROM access speed ($420D).
+void video_set_mosaic(uint8_t value);
+void video_set_m7_select(uint8_t value);
+void video_set_window_position(int edge, uint8_t value);
+void video_set_window_logic_bg(uint8_t value);
+void video_set_window_logic_obj(uint8_t value);
+void video_set_main_window_mask(uint8_t value);
+void video_set_sub_window_mask(uint8_t value);
+void video_set_screen_init(uint8_t value);
+void platform_set_rom_speed(uint8_t value);
+
+// The VRAM address ($2116/$2117) when it is set and left for a later routine's writes;
+// uploads and word writes name their own addresses.
+void video_set_vram_address(uint16_t word);
 
 // Screen layout (raw bytes): the BG mode ($2105), each BG's tilemap address and size
 // ($2107-$210A, bg 1-4), the BG tile addresses ($210B for BG1/BG2, $210C for BG3/BG4),

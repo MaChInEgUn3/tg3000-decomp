@@ -58,7 +58,7 @@ CODE_808058:
     plb                         ; $808062
     ldx.w #$80A0                ; $808063
     lda.w #$0080                ; $808066
-    jsr.w $81CC                 ; $808069
+    jsr.w video_load_screen     ; $808069
     jsl.l $86DD85               ; $80806C
     jsr.w $80E4                 ; $808070
     sep.b #$20                  ; $808073
@@ -167,8 +167,9 @@ CODE_80819F:
     mvn $7E,$81                 ; $8081C3
     plb                         ; $8081C6
     rtl                         ; $8081C7
-    jsr.w $81CC                 ; $8081C8
+    jsr.w video_load_screen     ; $8081C8
     rtl                         ; $8081CB
+video_load_screen:
     sep.b #$20                  ; $8081CC
     phb                         ; $8081CE
     pha                         ; $8081CF
@@ -1194,7 +1195,7 @@ CODE_808B59:
     stz.w $019A                 ; $808BC5
     ldx.w #$A26F                ; $808BC8
     lda.w #$0084                ; $808BCB
-    jsr.w $81CC                 ; $808BCE
+    jsr.w video_load_screen     ; $808BCE
     lda.w #$0001                ; $808BD1
     jsr.w wait_frames           ; $808BD4
     ldx.w #$8B62                ; $808BD7
@@ -6413,7 +6414,7 @@ CODE_80BE1D:
     stz.w $019A                 ; $80BE32
     ldx.w #$A26F                ; $80BE35
     lda.w #$0084                ; $80BE38
-    jsr.w $81CC                 ; $80BE3B
+    jsr.w video_load_screen     ; $80BE3B
     lda.w #$0001                ; $80BE3E
     jsr.w wait_frames           ; $80BE41
     phb                         ; $80BE44
@@ -6468,7 +6469,7 @@ CODE_80BEB1:
     stz.w $019A                 ; $80BEC6
     ldx.w #$A26F                ; $80BEC9
     lda.w #$0084                ; $80BECC
-    jsr.w $81CC                 ; $80BECF
+    jsr.w video_load_screen     ; $80BECF
     lda.w #$0001                ; $80BED2
     jsr.w wait_frames           ; $80BED5
     phb                         ; $80BED8
@@ -10432,7 +10433,7 @@ func_80E4DB:
     rtl                         ; $80E4E5
     ldx.w #$CB74                ; $80E4E6
     lda.w #$0081                ; $80E4E9
-    jsr.w $81CC                 ; $80E4EC
+    jsr.w video_load_screen     ; $80E4EC
     ldx.w #$8601                ; $80E4EF
     ldy.w #$4000                ; $80E4F2
     lda.w #$0088                ; $80E4F5
@@ -11520,7 +11521,7 @@ CODE_80EDD9:
     stz.w $019A                 ; $80EE5C
     ldx.w #$FB5C                ; $80EE5F
     lda.w #$0080                ; $80EE62
-    jsr.w $81CC                 ; $80EE65
+    jsr.w video_load_screen     ; $80EE65
     ldx.w #$8000                ; $80EE68
     ldy.w #$5010                ; $80EE6B
     lda.w #$008D                ; $80EE6E

@@ -83,16 +83,18 @@ typedef struct { int kind; uint32_t target, src, size; } Effect;
 // writes are compared by end state, as the bench's PPU decoded them (which fields were
 // written, and their final values). Bits of each field that the PPU keeps:
 static const uint16_t ppuFieldMask[PF_COUNT] = {
-  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x1F, 0x1F, 0x1F};
+  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x1F, 0x1F, 0x1F};
 static const char* const ppuFieldName[PF_COUNT] = {
   "M7A", "M7B", "M7C", "M7D", "M7X", "M7Y", "M7HOFS", "M7VOFS", "BG1HOFS", "BG1VOFS", "BG2HOFS", "BG2VOFS",
-  "BG3HOFS", "BG3VOFS", "COLDATA red", "COLDATA green", "COLDATA blue"};
+  "BG3HOFS", "BG3VOFS", "BG4HOFS", "BG4VOFS", "COLDATA red", "COLDATA green", "COLDATA blue"};
 
 // Pure byte registers: their state is the last byte written.
 static const uint16_t byteRegs[] = {0x212C, 0x212D, 0x2123, 0x2124, 0x2125, 0x2130, 0x2131,
                                     0x4200, 0x4207, 0x4208, 0x4209, 0x420A,
                                     0x2101, 0x2105, 0x2107, 0x2108, 0x2109, 0x210A, 0x210B, 0x210C,
-                                    0x2100, 0x2102, 0x2103, 0x2115, 0x420C};
+                                    0x2100, 0x2102, 0x2103, 0x2115, 0x420C,
+                                    0x2106, 0x211A, 0x2126, 0x2127, 0x2128, 0x2129, 0x212A, 0x212B,
+                                    0x212E, 0x212F, 0x2133, 0x420D};
 #define N_BYTE_REGS ((int)(sizeof byteRegs / sizeof byteRegs[0]))
 static int byteRegIndex(uint32_t adr) {
   if(((adr >> 16) & 0x7F) >= 0x40) return -1;
@@ -110,6 +112,8 @@ typedef struct {
   bool vramLowSet;  // a $2118 byte waiting for its $2119 half
   uint8_t vramLow;
   bool cgLowSet, cgAdrPending;  // a $2122 byte waiting for its second one; $2121 set, unused
+  uint16_t vramAdr;  // the address bytes last written to $2116/$2117, and $2121
+  uint8_t cgAdr;
   uint8_t cgLow;
   // reads of input registers, in order (served to the C by difftest_input)
   struct { uint16_t reg; uint8_t val; } inputs[256];
@@ -126,8 +130,8 @@ typedef struct {
   uint32_t ppuWritten, ppuStale;
   uint16_t ppuStart[PF_COUNT], ppuEnd[PF_COUNT];
   uint32_t ppuPending;  // fields written by the last instruction: read back at the next one
-  uint32_t regWritten;  // byte registers written (bit per byteRegs entry) and their last values
-  uint8_t regVal[32];
+  uint64_t regWritten;  // byte registers written (bit per byteRegs entry) and their last values
+  uint8_t regVal[64];
   // DMA channels: registers written in the sample (bits 0-7 for $43x0-$43x7), those left
   // set up after the channel's last kick (0-4 and 7: the sizes are a kick's own), and the
   // values; the CGRAM address at entry (a stream kick records the one at the kick)
@@ -187,6 +191,9 @@ static void* cSample;  // the sample the C is being compared with
 static uint8_t cChanClaim[8], cChanVal[8][8];
 static uint32_t cStreamSize[8];
 static int32_t cCgPtr;  // the C's CGRAM address (-1: the one at entry)
+// an address the C set and nothing used yet (-1: none), compared with the original's
+// $2116/$2117 or $2121 left written but unused
+static int32_t cVramAdrClaim, cCgAdrClaim;
 static bool cInputUsed[256], cInputMissing;
 static uint16_t cMissingReg;
 
@@ -241,7 +248,12 @@ void difftest_dma_claim(int slot, int reg, uint8_t value) {
   cChanVal[slot][reg] = value;
 }
 void difftest_stream_size(int slot, uint32_t size) { if(collectingC && slot >= 0 && slot < 8) cStreamSize[slot] = size; }
-void difftest_cgram_address(uint8_t index) { if(collectingC) cCgPtr = index; }
+void difftest_cgram_address(uint8_t index) {
+  if(!collectingC) return;
+  cCgPtr = index;
+  cCgAdrClaim = index;
+}
+void difftest_vram_address(uint16_t word) { if(collectingC) cVramAdrClaim = word; }
 
 // A stream kick, packed: target = mask | CGRAM address << 8; src = the sizes of slots 0-3
 // (a byte each), size = those of slots 4-7. Sizes above 255 are not modelled.
@@ -262,6 +274,7 @@ static uint8_t peekByte(uint32_t adr);
 // kicked slot's setup is used up (no longer left set up).
 void difftest_stream_kick(uint8_t mask) {
   if(!collectingC) return;
+  cCgAdrClaim = -1;
   uint16_t ptr = cCgPtr >= 0 ? (uint16_t)cCgPtr : ((Sample*)cSample)->cgPtrEntry;
   uint8_t stream = 0;
   for(int c = 0; c < 8; c++) {
@@ -288,6 +301,8 @@ void difftest_stream_kick(uint8_t mask) {
 
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size) {
   if(!collectingC) return;
+  if(kind == EFFECT_VRAM || kind == EFFECT_VRAM_FILL || kind == EFFECT_VRAM_WORD) cVramAdrClaim = -1;
+  if(kind == EFFECT_CGRAM || kind == EFFECT_CGRAM_WORD) cCgAdrClaim = -1;
   if(cEffectCount >= MAX_EFFECTS) { cEffectOverflow = true; return; }
   cEffects[cEffectCount++] = (Effect){kind, target, src, size};
 }
@@ -298,14 +313,14 @@ static void mode7ProductRead(uint32_t adr);
 
 static uint32_t cPpuWritten;
 static uint16_t cPpu[PF_COUNT];
-static uint32_t cRegWritten;
-static uint8_t cRegVal[32];
+static uint64_t cRegWritten;
+static uint8_t cRegVal[64];
 
 void difftest_reg(uint16_t adr, uint8_t value) {
   if(!collectingC) return;
   int i = byteRegIndex(adr);
   if(i < 0) return;
-  cRegWritten |= 1u << i;
+  cRegWritten |= 1ull << i;
   cRegVal[i] = value;
 }
 
@@ -344,7 +359,7 @@ static bool ppuFieldWrite(uint32_t adr, uint8_t val) {
     }
     return true;
   }
-  bool scroll = a >= 0x210D && a <= 0x2112, m7 = a == 0x210D || a == 0x210E || (a >= 0x211B && a <= 0x2120);
+  bool scroll = a >= 0x210D && a <= 0x2114, m7 = a == 0x210D || a == 0x210E || (a >= 0x211B && a <= 0x2120);
   if(!scroll && !m7) return false;
   bool hofs = scroll && (a & 1);  // $210D/$210F: horizontal; $210E/$2110: vertical
   for(int k = accessBase; k < depth; k++) {
@@ -576,7 +591,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   int bri = write ? byteRegIndex(adr) : -1;
   if(bri >= 0) {
     for(int k = accessBase; k < depth; k++) {
-      samples[k].regWritten |= 1u << bri;
+      samples[k].regWritten |= 1ull << bri;
       samples[k].regVal[bri] = val;
     }
     return;
@@ -648,8 +663,13 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
       smp->hwWhy = "reads a multiply/divide result it did not start";
     } else if(write && isUploadSetup(adr)) {
       uint16_t a16 = adr & 0xFFFF;
-      if(a16 == 0x2116 || a16 == 0x2117) smp->vramAdrPending = true;  // a DMA or a word write uses it
-      else if(a16 == 0x2121) smp->cgAdrPending = true;                // a DMA or a colour write uses it
+      if(a16 == 0x2116 || a16 == 0x2117) {  // a DMA or a word write uses it
+        smp->vramAdrPending = true;
+        smp->vramAdr = a16 == 0x2116 ? (uint16_t)((smp->vramAdr & 0xFF00) | val) : (uint16_t)((smp->vramAdr & 0x00FF) | val << 8);
+      } else if(a16 == 0x2121) {  // a DMA or a colour write uses it
+        smp->cgAdrPending = true;
+        smp->cgAdr = val;
+      }
       else smp->setupPending = true;
       continue;
     } else {
@@ -787,6 +807,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   memset(cChanClaim, 0, sizeof cChanClaim);
   memset(cStreamSize, 0, sizeof cStreamSize);
   cCgPtr = -1;
+  cVramAdrClaim = cCgAdrClaim = -1;
   cSample = smp;
   memset(cInputUsed, 0, sizeof cInputUsed);
   cInputMissing = false;
@@ -837,14 +858,25 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
     }
   }
   if(cRegWritten != smp->regWritten) {
-    snprintf(why, whyLen, "byte registers written: original %05X, C %05X", (unsigned)smp->regWritten, (unsigned)cRegWritten);
+    snprintf(why, whyLen, "byte registers written: original %llX, C %llX", (unsigned long long)smp->regWritten,
+      (unsigned long long)cRegWritten);
     return false;
   }
   for(int i = 0; i < N_BYTE_REGS; i++) {
-    if((smp->regWritten & (1u << i)) && smp->regVal[i] != cRegVal[i]) {
+    if((smp->regWritten & (1ull << i)) && smp->regVal[i] != cRegVal[i]) {
       snprintf(why, whyLen, "$%04X: original %02X, C %02X", byteRegs[i], smp->regVal[i], cRegVal[i]);
       return false;
     }
+  }
+  if(smp->vramAdrPending != (cVramAdrClaim >= 0) || (smp->vramAdrPending && smp->vramAdr != (uint16_t)cVramAdrClaim)) {
+    snprintf(why, whyLen, "VRAM address left set: original %s $%04X, C %s $%04X", smp->vramAdrPending ? "yes" : "no",
+      smp->vramAdr, cVramAdrClaim >= 0 ? "yes" : "no", (unsigned)(cVramAdrClaim & 0xFFFF));
+    return false;
+  }
+  if(smp->cgAdrPending != (cCgAdrClaim >= 0) || (smp->cgAdrPending && smp->cgAdr != (uint8_t)cCgAdrClaim)) {
+    snprintf(why, whyLen, "CGRAM address left set: original %s $%02X, C %s $%02X", smp->cgAdrPending ? "yes" : "no",
+      smp->cgAdr, cCgAdrClaim >= 0 ? "yes" : "no", (unsigned)(cCgAdrClaim & 0xFF));
+    return false;
   }
   for(int c = 0; c < 8; c++) {
     if(smp->chanPrepared[c] != cChanClaim[c]) {
@@ -942,7 +974,7 @@ static void finishSample(int k, const Cpu* cpu) {
   } else if(smp->cgLowSet) {
     snprintf(why, sizeof why, "a colour's first byte written without its second (not modelled)");
     ok = false;
-  } else if(smp->setupPending || smp->vramAdrPending || smp->cgAdrPending) {
+  } else if(smp->setupPending) {
     snprintf(why, sizeof why, "DMA/PPU address set up but no DMA started afterwards (not modelled)");
     ok = false;
   } else if(smp->leftExtent) {
@@ -1208,6 +1240,12 @@ void difftest_fuzz(int iterations) {
   // leaves behind must not change another's.
   static uint8_t base[TG3000_WRAM_SIZE];
   memcpy(base, snes->ram, sizeof base);
+  // and the same PPU and DMA state: a case that writes PPU registers (video_load_screen
+  // writes all of them) must not set the stage for the next routine's cases
+  static Ppu ppuBase;
+  static Dma dmaBase;
+  memcpy(&ppuBase, snes->ppu, sizeof ppuBase);
+  memcpy(&dmaBase, snes->dma, sizeof dmaBase);
   for(int i = 0; i < tableCount; i++) {
     const Routine* r = &table[i];
     Stats* s = &stats[i];
@@ -1219,6 +1257,8 @@ void difftest_fuzz(int iterations) {
       // each case starts clean: the same WRAM, and no interrupt or HDMA that an earlier
       // case (or the game) left enabled can run during it
       memcpy(snes->ram, base, sizeof base);
+      memcpy(snes->ppu, &ppuBase, sizeof ppuBase);
+      memcpy(snes->dma, &dmaBase, sizeof dmaBase);
       snes->nmiEnabled = false;
       snes->hIrqEnabled = snes->vIrqEnabled = false;
       for(int ch = 0; ch < 8; ch++) snes->dma->channel[ch].hdmaActive = false;

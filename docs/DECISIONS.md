@@ -1351,6 +1351,34 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     their own: the race NMI sets slots 5 and 6's table address only on requested
     frames.
 
+## The screen register image (screen-1, 2026-11-16)
+
+- **`video_load_screen` ($80:81CC)**, the top of the roots list, writes every screen
+  register from a 68-byte image (bank in A, address in X), `$2100` to `$420D`, in
+  order. It turns DMA and HDMA off first. Its six callers pass images in ROM banks
+  `$80`, `$81` and `$84`.
+  - The original makes the image's bank its data bank for the register writes too. An
+    image in a WRAM bank would be written over itself, so the fuzz puts its images in
+    low WRAM through banks `$00`/`$80`, which map the registers.
+  - race1: live 3/3, fuzz 500/500, paths 145/145. On the 60k movie: live 11/11. The
+    negative row (window 1's left edge from the next byte) fails on `$2126`.
+- **More registers in the harness:**
+  - byte registers (last value written): mosaic `$2106`, mode 7 settings `$211A`, window
+    edges `$2126-$2129`, window logic `$212A/$212B`, window masks `$212E/$212F`, screen
+    settings `$2133`, ROM speed `$420D`. The mask is now 64 bits wide (harness only;
+    the game's C keeps its 16/32-bit rule);
+  - the BG4 scroll as PPU fields (`$2113/$2114`), with the same latch rules as the other
+    scrolls.
+- **Addresses left set:** the VRAM address (`$2116/$2117`) or the CGRAM address
+  (`$2121`) written and then used by nothing in the sample is compared at the end with
+  `video_set_vram_address` / `video_set_cgram_address`. A C upload, colour or stream
+  kick uses the address up, as a DMA or data write does in the original. This replaces
+  the "address set up but no DMA started" failure for them.
+- **Fuzz cases start from the same PPU and DMA state** as well as the same WRAM.
+  `video_load_screen`'s fuzz wrote a random VMAIN that the next routine's cases
+  inherited (`race_hud_draw` then failed one case on "a VMAIN mode the C does not
+  model"). All 156 race1 rows pass with the restore.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

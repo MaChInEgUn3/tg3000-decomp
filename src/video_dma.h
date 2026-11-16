@@ -55,4 +55,10 @@ uint16_t func_80F3F4(void);
 // tables). Returns func_80F745's result. (16 entries in the original, $80:F4AD + 12 * slice.)
 uint16_t upload_slice(int slice);
 
+// The screen's whole register state from a 68-byte image at `image` (bank:address): the
+// display, sprites, OAM address, BG mode, mosaic, tilemaps and tile addresses, all scrolls,
+// the VRAM step and address, mode 7, the CGRAM address, windows, layers, colour math,
+// screen settings, interrupts and their timers, ROM speed. HDMA off. ($80:81CC)
+void video_load_screen(uint32_t image);
+
 #endif

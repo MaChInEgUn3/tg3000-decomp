@@ -1580,6 +1580,33 @@ static void call_race_upload_queue_drain_long(const Regs* in, Regs* out) { (void
 static void call_func_838989(const Regs* in, Regs* out) { (void)in; (void)out; func_838989(); }
 static void call_func_838989_long(const Regs* in, Regs* out) { (void)in; (void)out; func_838989_long(); }
 
+// ---- video_load_screen ($80:81CC) ----  A = image bank (low byte), X = image address; A's
+// low byte ends as the image's last byte; PLB leaves N and Z from the caller's DB
+static void call_video_load_screen(const Regs* in, Regs* out) {
+  uint32_t image = (uint32_t)(in->a & 0xFF) << 16 | in->x;
+  video_load_screen(image);
+  out->a = (uint16_t)((in->a & 0xFF00) | bus_rd8(image + 0x43));
+  out->n = in->db & 0x80;
+  out->z = in->db == 0;
+}
+
+// Negative test: the window positions shifted by one register
+static void call_video_load_screen_wrong(const Regs* in, Regs* out) {
+  call_video_load_screen(in, out);
+  uint32_t image = (uint32_t)(in->a & 0xFF) << 16 | in->x;
+  video_set_window_position(0, bus_rd8(image + 0x31));
+}
+
+// an image of random bytes in low WRAM through bank $00 or $80 (the original's data bank is
+// the image's, and its register writes need a bank that maps the I/O registers), with no
+// interrupt enabled ($4200: the fuzz runs without interrupts)
+static void fuzz_video_load_screen(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (uint16_t)((r->a & 0xFF00) | ((rnd() & 1) ? 0x80 : 0x00));
+  r->x = (uint16_t)(0x0C00 + (rnd() & 0x0700));
+  for(int i = 0; i < 0x44; i++) ram[r->x + i] = (uint8_t)rnd();
+  ram[r->x + 0x3E] &= 0x01;
+}
+
 // ---- race_hud_draw ($85:8814) ----  no register outputs (the race NMI loads A and X next)
 static void call_race_hud_draw(const Regs* in, Regs* out) { (void)in; (void)out; race_hud_draw(); }
 
@@ -3271,6 +3298,8 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989, .fuzz = fuzz_func_838989},
   {.name = "func_838989_long", .entry = 0x8396D5, .end = 0x8396D9, .rtl = true, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989_long, .fuzz = fuzz_func_838989},
+  {.name = "video_load_screen", .entry = 0x8081CC, .end = 0x808373, .source = "src/video_dma.c",
+   .call = call_video_load_screen, ALL_OUTPUTS, .fuzz = fuzz_video_load_screen},
   {.name = "race_hud_draw", .entry = 0x858814, .end = 0x858AAE, .rtl = true, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .call = call_race_hud_draw, .fuzz = fuzz_race_hud_draw},
   {.name = "irq_race_band", .entry = 0x8587BA, .end = 0x858812, .rti = true, .source = "src/race_frame.c",
@@ -3683,6 +3712,8 @@ const Routine negativeRoutines[] = {
   {.name = "nmi_race_full_wrong", .entry = 0x8583CE, .end = 0x8587BA, .rti = true, .rtiFrame = 9, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_full_wrong, ALL_OUTPUTS, .alsoIn = {{0x85838A, 0x8583CE}},
    .fuzz = fuzz_nmi_race_full},
+  {.name = "video_load_screen_wrong", .entry = 0x8081CC, .end = 0x808373, .source = "src/video_dma.c",
+   .call = call_video_load_screen_wrong, ALL_OUTPUTS, .fuzz = fuzz_video_load_screen},
   {.name = "nmi_race_tail_wrong", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_tail_wrong, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_tail_wrong", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",

@@ -104,3 +104,62 @@ void func_8ABA55(uint16_t dp) {
   decompress_to_vram(dp, 0x85, 0xFA8B, 0x7000);
   upload_cgram_now(0x00, 0x8A, 0xC658, 0x0200);
 }
+
+// TG3000_ROUTINE($80:81CC) video_load_screen
+//
+// The original takes the image's bank in A and its address in X and writes the registers
+// in order, $2100 to $420D; the two-byte ones (scrolls, mode 7) take their low then high
+// byte. It first stops any DMA and HDMA ($420B, $420C = 0). It makes the image's bank its
+// data bank for the writes too, so the bank must map the I/O registers (the game's images
+// are in ROM banks $80, $81 and $84; one in WRAM bank $7E would be written over itself).
+void video_load_screen(uint32_t image) {
+#define B(i) bus_rd8(image + (i))
+#define W(i) ((uint16_t)(B(i) | B((i) + 1) << 8))
+  video_hdma_enable(0x00);
+  video_set_display(B(0x00));
+  video_set_obj_select(B(0x01));
+  video_set_oam_address(W(0x02));
+  video_set_bg_mode(B(0x04));
+  video_set_mosaic(B(0x05));
+  for(int bg = 1; bg <= 4; bg++) video_set_bg_map(bg, B(0x05 + bg));
+  video_set_bg_tiles(0, B(0x0A));
+  video_set_bg_tiles(1, B(0x0B));
+  video_set_bg1_hofs(W(0x0C));
+  video_set_bg1_vofs(W(0x0E));
+  video_set_bg2_hofs(W(0x10));
+  video_set_bg2_vofs(W(0x12));
+  video_set_bg3_hofs(W(0x14));
+  video_set_bg3_vofs(W(0x16));
+  video_set_bg4_hofs(W(0x18));
+  video_set_bg4_vofs(W(0x1A));
+  video_set_vram_increment(B(0x1C));
+  video_set_vram_address(W(0x1D));
+  video_set_m7_select(B(0x1F));
+  video_set_m7a((int16_t)W(0x20));
+  video_set_m7b((int16_t)W(0x22));
+  video_set_m7c((int16_t)W(0x24));
+  video_set_m7d((int16_t)W(0x26));
+  video_set_m7x((int16_t)W(0x28));
+  video_set_m7y((int16_t)W(0x2A));
+  video_set_cgram_address(B(0x2C));
+  video_set_window_bg12(B(0x2D));
+  video_set_window_bg34(B(0x2E));
+  video_set_window_obj(B(0x2F));
+  for(int edge = 0; edge < 4; edge++) video_set_window_position(edge, B(0x30 + edge));
+  video_set_window_logic_bg(B(0x34));
+  video_set_window_logic_obj(B(0x35));
+  video_set_main_screen(B(0x36));
+  video_set_sub_screen(B(0x37));
+  video_set_main_window_mask(B(0x38));
+  video_set_sub_window_mask(B(0x39));
+  video_set_color_math_control(B(0x3A));
+  video_set_color_math(B(0x3B));
+  video_set_fixed_color(B(0x3C));
+  video_set_screen_init(B(0x3D));
+  platform_set_interrupts(B(0x3E));
+  platform_set_irq_h(W(0x3F));
+  platform_set_irq_v(W(0x41));
+  platform_set_rom_speed(B(0x43));
+#undef B
+#undef W
+}

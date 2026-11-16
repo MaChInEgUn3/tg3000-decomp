@@ -74,7 +74,7 @@ uint8_t difftest_input(uint16_t reg);
 int difftest_input_peek(uint16_t reg, int n);
 
 // PPU fields (Mode 7 matrix and offsets, BG1/BG2 scroll) set by the C, compared by end state.
-enum { PF_M7A, PF_M7B, PF_M7C, PF_M7D, PF_M7X, PF_M7Y, PF_M7H, PF_M7V, PF_BG1H, PF_BG1V, PF_BG2H, PF_BG2V, PF_BG3H, PF_BG3V, PF_FIXR, PF_FIXG, PF_FIXB, PF_COUNT };
+enum { PF_M7A, PF_M7B, PF_M7C, PF_M7D, PF_M7X, PF_M7Y, PF_M7H, PF_M7V, PF_BG1H, PF_BG1V, PF_BG2H, PF_BG2V, PF_BG3H, PF_BG3V, PF_BG4H, PF_BG4V, PF_FIXR, PF_FIXG, PF_FIXB, PF_COUNT };
 void difftest_ppu_field(int field, uint16_t value);
 
 // Registers whose state is the last byte written (layer enables, windows, colour math,
@@ -88,6 +88,7 @@ void difftest_dma_claim(int slot, int reg, uint8_t value);  // reg 0-4 or 7 of $
 void difftest_stream_size(int slot, uint32_t size);
 void difftest_stream_kick(uint8_t mask);
 void difftest_cgram_address(uint8_t index);
+void difftest_vram_address(uint16_t word);
 
 void difftest_init(Snes* snes, const uint8_t* rom, bool negative);
 void difftest_on_insn(Cpu* cpu);              // from the CPU trace hook

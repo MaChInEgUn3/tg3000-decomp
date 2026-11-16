@@ -43,6 +43,18 @@ void video_set_bg1_vofs(uint16_t value) {
 
 void video_set_bg3_hofs(uint16_t value) { difftest_ppu_field(PF_BG3H, value); }
 void video_set_bg3_vofs(uint16_t value) { difftest_ppu_field(PF_BG3V, value); }
+void video_set_bg4_hofs(uint16_t value) { difftest_ppu_field(PF_BG4H, value); }
+void video_set_bg4_vofs(uint16_t value) { difftest_ppu_field(PF_BG4V, value); }
+void video_set_mosaic(uint8_t value) { difftest_reg(0x2106, value); }
+void video_set_m7_select(uint8_t value) { difftest_reg(0x211A, value); }
+void video_set_window_position(int edge, uint8_t value) { difftest_reg((uint16_t)(0x2126 + edge), value); }
+void video_set_window_logic_bg(uint8_t value) { difftest_reg(0x212A, value); }
+void video_set_window_logic_obj(uint8_t value) { difftest_reg(0x212B, value); }
+void video_set_main_window_mask(uint8_t value) { difftest_reg(0x212E, value); }
+void video_set_sub_window_mask(uint8_t value) { difftest_reg(0x212F, value); }
+void video_set_screen_init(uint8_t value) { difftest_reg(0x2133, value); }
+void platform_set_rom_speed(uint8_t value) { difftest_reg(0x420D, value); }
+void video_set_vram_address(uint16_t word) { difftest_vram_address(word); }
 void video_set_bg_mode(uint8_t value) { difftest_reg(0x2105, value); }
 void video_set_bg_map(int bg, uint8_t value) { difftest_reg((uint16_t)(0x2106 + bg), value); }
 void video_set_bg_tiles(int pair, uint8_t value) { difftest_reg((uint16_t)(0x210B + pair), value); }
