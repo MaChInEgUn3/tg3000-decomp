@@ -1143,8 +1143,9 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   difference is when the other task's VRAM queue entries and sprites appear, the same
   kind of up-to-one-frame difference the "Tables written while drawing" note records. It
   does not change the C.
-- **What the harness still needs before `$80:B97B` and `$80:BC9B` can be rows:** both
-  return through the other task's stack.
+- **What the harness still needs before `$80:B97B` and `$80:BC9B` can be rows (the
+  stack window and the undeclared-switch check are done, see "Stack switches in the
+  differential test" below):** both return through the other task's stack.
   - The RTI row model takes PC and SP from the entry stack's frame. It has to end the
     sample at the handler's own RTI and restore from the frame at the loaded SP.
   - The stack exclusion window `(minSp, entrySp]` assumes one stack. After a switch it
@@ -1154,6 +1155,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   switched out, the WRAM both tasks use with at least one writing (merged ranges,
   stacks left out, with byte counts per use pattern), and the hardware registers each
   task touches.
+
+## Stack switches in the differential test (task-2, 2026-11-16)
+
+- **The hole:** a waiting routine's stack window `(minSp, entrySp]` grew with every SP the
+  handlers it recorded used. On the two-task screens a handler switches to the other
+  task's stack, so `minSp` dropped to that stack (`$1D88`), and the window hid all WRAM
+  between the two stacks (`$1D89` up to the waiter's own frame) from the comparison.
+- **The fix:**
+  - inside a recorded handler, an SP load (TCS/TXS) above the interrupt frame, or more
+    than `STACK_REACH` ($100) bytes below it, marks the handler as on a foreign stack;
+  - until it loads SP back near its frame, its stack use does not widen the window. The
+    other task's WRAM changes are still in the recording, so the C's replay must produce
+    them;
+  - the report counts the passing samples that waited through such a switch:
+    `wait_frames` 681, `queue_unpacked_upload` 3 and `wait_flag_76` 1 on the race1 movie.
+    All still pass with the narrower window.
+- **Undeclared switches fail:** a sample whose own code (not an interrupt that landed in
+  it) loads SP above its return frame, or more than $100 below its entry SP, fails at
+  once with "an undeclared stack switch". The samples inside it are counted as
+  abandoned. No verified routine does this. The rows for `$80:B97B` and `$80:BC9B` will
+  declare their switch (the save and load words, the bytes popped from the new stack),
+  and their return will be read from the frame at the loaded SP.
 
 ## Statically found code (map-2, 2026-11-15)
 

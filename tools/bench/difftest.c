@@ -61,6 +61,7 @@ typedef struct {
   int ppuLineMin, ppuLineMax, ppuDotMin, ppuDotMax;
   bool ppuLines;
   unsigned long ppuWrites, ppuDrawn, ppuSamplesChanged;
+  unsigned long foreignStack;  // passing samples that waited through a switch to another task's stack
   uint8_t ppuModes;
   uint8_t ppuHdma[32];  // B-bus addresses ($21xx) of HDMA channels active at the writes
 } Stats;
@@ -114,6 +115,7 @@ typedef struct {
   bool inputOverflow;
   uint8_t dsp4State;  // where the routine is in a DSP-4 multiply (0 = idle; see dsp4Step)
   uint32_t hwAccessAdr, leftExtentPc;
+  bool foreignStack;  // a handler it recorded switched to another stack (two-task screens)
   const char* hwWhy;
   Effect effects[MAX_EFFECTS];  // hardware effects of the original, from its DMA kicks
   int effectCount;
@@ -144,6 +146,13 @@ static int irqCount, irqReplayed, irqLimit;
 static bool irqActive, irqOverflow;
 static uint16_t irqReturnSp;
 static int irqBaseDepth;  // samples from this depth on began inside the handler being recorded
+// A recorded handler that loads SP (TCS/TXS) far from its own frame has switched to another
+// task's stack (the two-task screens): its stack use is not the waiting sample's, so it
+// does not widen that sample's stack window. A routine's own stack stays within
+// STACK_REACH bytes below its entry; a row that loads SP outside that fails.
+#define STACK_REACH 0x100
+static bool irqForeign;
+static uint8_t lastOp;  // the opcode of the instruction just executed
 static int accessBase;    // the first sample a hardware access belongs to
 static uint32_t irqSeen;
 static jmp_buf cAbort;
@@ -809,7 +818,7 @@ static void finishSample(int k, const Cpu* cpu) {
     s->watched++;
   }
   if(fuzzing) { if(ok) s->fuzzPass++; else s->fuzzFail++; }
-  else { s->samples++; if(ok) s->pass++; else s->fail++; }
+  else { s->samples++; if(ok) s->pass++; else s->fail++; if(ok && smp->foreignStack) s->foreignStack++; }
   if(!ok && s->firstFailure[0] == '\0') {
     snprintf(s->firstFailure, sizeof s->firstFailure, "%s%s at D=%04X A=%04X X=%04X Y=%04X: %s",
       fuzzing ? "fuzz " : "", table[idx].name, smp->entryRegs.d, smp->entryRegs.a, smp->entryRegs.x,
@@ -933,6 +942,7 @@ void difftest_on_insn(Cpu* cpu) {
         else {
           memcpy(irqPre[irqCount], snes->ram, TG3000_WRAM_SIZE);
           irqActive = true;
+          irqForeign = false;
           irqBaseDepth = depth;
           irqReturnSp = (uint16_t)(cpu->sp + (cpu->e ? 3 : 4));
         }
@@ -943,7 +953,11 @@ void difftest_on_insn(Cpu* cpu) {
   // (interrupt-handler rows) go on; the others just see its stack use
   bool inHandler = irqOwner >= 0 && irqActive;
   int base = inHandler ? irqBaseDepth : 0;
-  if(inHandler) for(int k = 0; k < base && k < depth; k++) if(cpu->sp < samples[k].minSp) samples[k].minSp = cpu->sp;
+  bool loadedSp = lastOp == 0x1B || lastOp == 0x9A;  // TCS, TXS
+  if(inHandler && loadedSp)
+    irqForeign = cpu->sp > irqReturnSp || (int)irqReturnSp - (int)cpu->sp > STACK_REACH;
+  if(inHandler && !irqForeign) for(int k = 0; k < base && k < depth; k++) if(cpu->sp < samples[k].minSp) samples[k].minSp = cpu->sp;
+  if(inHandler && irqForeign && irqOwner >= 0 && irqOwner < depth) samples[irqOwner].foreignStack = true;
   // fields written by the previous instruction have landed: keep their values now (HDMA may
   // rewrite them later in the frame)
   for(int k = 0; k < depth; k++) {
@@ -964,6 +978,20 @@ void difftest_on_insn(Cpu* cpu) {
   for(int k = base; k < depth; k++) {
     Sample* smp = &samples[k];
     const Routine* r = &table[smp->idx];
+    // (inside an interrupt that landed in the sample, the stack is the handler's: such a
+    // sample is not compared, or, for a waiting routine, the recording covers it)
+    if(loadedSp && cpu_interruptCount == smp->interruptsAtEntry && (cpu->sp > smp->retSp || (int)smp->entrySp - (int)cpu->sp > STACK_REACH)) {
+      // it switched stacks: fail it (and the samples inside it) now, it will not return here
+      Stats* s = &stats[smp->idx];
+      if(fuzzing) s->fuzzFail++; else { s->samples++; s->fail++; }
+      if(s->firstFailure[0] == '\0')
+        snprintf(s->firstFailure, sizeof s->firstFailure, "%s%s loaded SP = $%04X (entry SP $%04X) before $%06X: an undeclared stack switch",
+          fuzzing ? "fuzz " : "", r->name, cpu->sp, smp->entrySp, pc);
+      for(int j = depth - 1; j > k; j--) stats[samples[j].idx].abandoned++;
+      if(irqOwner >= k) irqOwner = -1;
+      depth = k;
+      break;
+    }
     if(pc >= r->entry && pc < r->end) stats[smp->idx].visited[pc - r->entry] = true;
     if(cpu->sp < smp->minSp) smp->minSp = cpu->sp;
     // at the routine's own stack depth, every instruction must lie inside its extent (or a
@@ -983,6 +1011,7 @@ void difftest_on_insn(Cpu* cpu) {
   }
   if(!inHandler) watchAll(cpu);
   if(!fuzzing) checkEntries(cpu, pc, inHandler);
+  lastOp = peekByte(((uint32_t)cpu->k << 16) | cpu->pc);
 }
 
 void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
@@ -1145,6 +1174,8 @@ bool difftest_report(const char* resultsPath) {
     }
     printf("    %s; mismatches N%lu V%lu Z%lu C%lu\n", flagNote, s->flagMismatch[0], s->flagMismatch[1], s->flagMismatch[2], s->flagMismatch[3]);
     if(s->firstFailure[0]) printf("    first failure: %s\n", s->firstFailure);
+    if(s->foreignStack)
+      printf("    %lu passing sample(s) waited through a switch to the other task's stack (left out of the stack window)\n", s->foreignStack);
     if(s->ppuLines) {
       printf("    PPU field writes on scanlines %d..%d, h %d..%d (live samples): %lu of %lu while drawing, BG modes", s->ppuLineMin,
         s->ppuLineMax, s->ppuDotMin, s->ppuDotMax, s->ppuDrawn, s->ppuWrites);
