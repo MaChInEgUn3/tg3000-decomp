@@ -1583,8 +1583,11 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - 60k: live 179/179, fuzz 500/500, paths 216/216.
 - **Its negative row (the bend flag's bit read wrong) is not reached on race1**, the
   selftest's movie, so the selftest does not exercise it. It was run on the 60k movie
-  before this commit and failed, as it must. Unreached negative rows in the selftest
-  are a known gap: a negative run over the 60k movie would close it.
+  before this commit and failed, as it must.
+- **Closed right after (neg-1):** `tools/verify_all.sh` now also runs every negative row
+  over the 60k movie, in parallel with the verification itself (the same wall time). It
+  fails if any deliberately wrong C passes or is never reached. All 19 fail over the full
+  movie.
 
 ## Two-task screens (task-1, 2026-11-16)
 
