@@ -1623,6 +1623,45 @@ static void fuzz_func_838989(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x00E2, (uint16_t)(rnd() & 0x1E));
 }
 
+// ---- nmi_prologue ($80:8807) / nmi_race_prologue ($85:8377) ----  rows that end at the
+// dispatch (endAt): the targets start with D = 0 and the handler's data bank
+static void call_nmi_prologue(const Regs* in, Regs* out) { (void)in; nmi_prologue(); out->d = 0; out->db = 0x81; }
+static void call_nmi_race_prologue(const Regs* in, Regs* out) { (void)in; nmi_race_prologue(); out->d = 0; out->db = 0x85; }
+
+// Negative test: the sprite table sent a second time, one word further into OAM
+static void call_nmi_prologue_wrong(const Regs* in, Regs* out) {
+  (void)in;
+  bool oam = rd16(0x0026) & 0x0002;
+  nmi_prologue();
+  if(oam) video_upload_oam(0x0001, 0x810900, 0x0220);
+  out->d = 0;
+  out->db = 0x81;
+}
+
+// the palette and sprite flags, the fade, and a queue of up to 8 transfers against the
+// budget the two uploads leave
+static void fuzz_nmi_prologue(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0026, (uint16_t)rnd());
+  uint16_t target = (uint16_t)(rnd() & 0x0F00), level = (uint16_t)(rnd() & 0x0FFF);
+  uint16_t step = (rnd() & 3) == 0 ? 0 : (uint16_t)((rnd() & 1) ? (rnd() & 0x1FF) : -(int)(rnd() & 0x1FF));
+  if((rnd() & 3) == 0) level = (uint16_t)(target - step);
+  wr16ram(ram, 0x0196, step);
+  wr16ram(ram, 0x0198, target);
+  wr16ram(ram, 0x019A, level);
+  if((rnd() & 3) == 0) ram[0x019B] = 0;
+  uint16_t tail = (uint16_t)(rnd() & 0x3E), n = (uint16_t)(rnd() % 9);
+  wr16ram(ram, 0x002A, tail);
+  wr16ram(ram, 0x0028, (uint16_t)((tail + 2 * n) & 0x3E));
+  for(uint16_t i = 0; i < n; i++) {
+    uint16_t x = (uint16_t)((tail + 2 * i) & 0x3E);
+    wr16ram(ram, (uint32_t)(0x1900 + x), (uint16_t)((rnd() & 31) == 0 ? 0x2000 : 2 + (rnd() % 0x400) * 2));
+    wr16ram(ram, (uint32_t)(0x1940 + x), (uint16_t)rnd());
+    wr16ram(ram, (uint32_t)(0x1980 + x), (uint16_t)(rnd() & 0xFF));
+    wr16ram(ram, (uint32_t)(0x19C0 + x), (uint16_t)(rnd() & 0x7FFF));
+  }
+}
+
 // ---- nmi_race_tail ($85:838A) ----  the race NMI's prologue pushed the same frame
 static void call_nmi_race_tail(const Regs* in, Regs* out) { nmi_race_tail(); restoreNmiFrame(in, out); }
 
@@ -3164,6 +3203,10 @@ const Routine routines[] = {
   {.name = "nmi_target_80E175", .entry = 0x80E175, .end = 0x80E28C, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80E175, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
    .fuzz = fuzz_nmi_target_80E175},
+  {.name = "nmi_prologue", .entry = 0x808807, .end = 0x808931, .rti = true, .endAt = 0x808931, .source = "src/frame.c",
+   .call = call_nmi_prologue, .fuzz = fuzz_nmi_prologue},
+  {.name = "nmi_race_prologue", .entry = 0x858377, .end = 0x858387, .rti = true, .endAt = 0x858387, .source = "src/frame.c",
+   .call = call_nmi_race_prologue, .fuzz = fuzz_nmi_prologue},
   {.name = "nmi_tail", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .fixedD = false, .call = call_nmi_tail, ALL_OUTPUTS, .fuzz = fuzz_nmi_tail},
   // no fuzz: it waits (WAI) for the next interrupt, which the fuzz never raises
@@ -3524,6 +3567,8 @@ const Routine negativeRoutines[] = {
    .call = call_sound_send_message_wrong, ALL_OUTPUTS},
   {.name = "pads_read_wrong", .entry = 0x8386FF, .end = 0x8387C1, .source = "src/pads.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_pads_read_wrong, ALL_OUTPUTS, .fuzz = fuzz_pads},
+  {.name = "nmi_prologue_wrong", .entry = 0x808807, .end = 0x808931, .rti = true, .endAt = 0x808931, .source = "src/frame.c",
+   .call = call_nmi_prologue_wrong, .fuzz = fuzz_nmi_prologue},
   {.name = "nmi_race_tail_wrong", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_tail_wrong, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_tail_wrong", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",

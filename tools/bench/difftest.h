@@ -30,6 +30,9 @@ typedef struct {
                            // interrupt frame (D, Y, X, A, DB = 9 for the common NMI prologue)
   uint32_t alsoIn[2][2];   // [start, end) ranges the routine may continue into at its own
                            // stack depth: a tail jump into another (verified) routine
+  uint32_t endAt;          // a handler's prologue: the sample ends when it reaches this
+                           // instruction (its dispatch, an indirect jump to the target, which
+                           // has its own row); D and DB are compared there
   const char* source;      // src/ file holding the C, hashed into the results
   bool needM16, needX16;   // entry contract: register widths the C assumes (else either)
   // Run the C from `in` (g_ram already holds the entry WRAM); fill the outputs in `out`
@@ -57,7 +60,7 @@ typedef struct {
 // Hardware effects, in canonical form: what the original did through DMA and what the C
 // asked the platform for (tools/bench/platform_bench.c) must be the same list.
 enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3, EFFECT_VRAM_FILL = 4, EFFECT_VRAM_WORD = 5, EFFECT_APU = 6,
-       EFFECT_CGRAM_WORD = 7 };
+       EFFECT_CGRAM_WORD = 7, EFFECT_OAM = 8 };
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size);
 void difftest_replay_interrupt(void);
 

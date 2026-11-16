@@ -5,7 +5,7 @@ func    8087E9   rng_next            ; 32-bit LFSR at D+$10 -> src/rng.c
 func    8A988C   rng_next_8a         ; identical copy of rng_next in bank $8A -> src/rng.c
 ram     7E0110   rng_state           ; 4 bytes, rng_next's state (D = $0100)
 func    8083FC   vram_queue_push     ; queue a VRAM DMA transfer -> src/vram_queue.c
-func    8088B9   vram_queue_drain    ; NMI part that sends queued transfers (not ported yet)
+func    8088B9   vram_queue_drain    ; NMI part that sends queued transfers within the budget $2C (in nmi_prologue's row) -> src/vram_queue.c
 func    8AA25D   take_slot           ; Y = word at D+$8C, then += 2 -> src/util.c
 func    8AB15E   lsr_n               ; A >>= Y, one bit at a time -> src/util.c
 ram     7E0028   vram_queue_head     ; byte offset, even, $00-$3E
@@ -94,6 +94,8 @@ func    80E28C   nmi_target_80E28C   ; NMI target: split-screen tables, IRQ setu
 func    80E175   nmi_target_80E175   ; NMI target: the opening band's HDMA table at $1B00, nmi_tail -> src/frame.c
 func    80D784   nmi_target_80D784   ; NMI target: table copy, 4 KB to VRAM, screen setup, nmi_tail -> src/frame.c
 func    85838A   nmi_race_tail       ; race NMI tail: fade, $2100, sound, pads, counters -> src/frame.c
+func    808807   nmi_prologue        ; NMI outside the race up to its dispatch: fade, $2100, palette, OAM, VRAM queue -> src/frame.c
+func    858377   nmi_race_prologue   ; race NMI up to its dispatch: saves, D = 0, DB = $85 (nothing for the C) -> src/frame.c
 func    838644   race_upload_queue_drain ; send the race VRAM queue ($7E:F433..) within the DMA budget $FC -> src/race_frame.c
 func    8396D1   race_upload_queue_drain_long ; race_upload_queue_drain (long) -> src/race_frame.c
 func    838989   func_838989         ; 24-bit $00D4 += $01CC (unless paused), words at $1536/$1556 -> src/race_frame.c

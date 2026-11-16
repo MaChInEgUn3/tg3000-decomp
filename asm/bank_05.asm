@@ -349,6 +349,7 @@ CODE_85836F:
     lda.l $83965F,x             ; $85836F
     sta.w $1F34                 ; $858373
     rtl                         ; $858376
+nmi_race_prologue:
     rep.b #$30                  ; $858377
     phb                         ; $858379
     pha                         ; $85837A

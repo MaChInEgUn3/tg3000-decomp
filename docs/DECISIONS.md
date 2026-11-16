@@ -1171,6 +1171,44 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     flags, and its tail restores X and Y). The carry it leaves is the caller's, untouched.
   - race1: live 112/112, fuzz 500/500, paths 206/206.
 
+## NMI prologues, the sprite table, PHP/PLP liveness (nmi-5, 2026-11-16)
+
+- **Rows that end at a dispatch (`endAt`):** a handler's prologue ends at its indirect
+  jump to the current target, and each target already has its own row. Such a row starts
+  at the vector target (`.rti`) and finishes when the PC reaches `endAt`. There it
+  compares WRAM, effects and byte registers, and D and DB, the targets' entry state.
+  - In C, the port's handler calls the prologue and then the target. The frame the
+    original pushes is the targets' business (their adapters restore from it).
+  - The flag watch of such a row follows the target up to its RTI, which writes every
+    flag. It runs inside a handler that a waiting sample records, and its cap is 20,000
+    instructions instead of 400.
+- **`nmi_prologue` ($80:8807):**
+  - it runs the brightness fade (`$019A` towards `$0198`) and writes the display;
+  - when `$0026` asks for them, it sends the palette (`$81:0500`, 512 bytes, CGRAM 0)
+    and the sprite table (`$81:0900`, 544 bytes, OAM 0). Each costs `$280` of the
+    frame's 4 KB VRAM budget at `$002C`;
+  - then it drains the VRAM queue within what is left (`vram_queue_drain`, `$80:88B9`,
+    now C).
+
+  A queued transfer of size 0, or a split when the budget is already 0, sends 65,536
+  bytes (the DMA size register's 0), as the original does. race1: live 2,616/2,616, fuzz
+  500/500, paths 131/131. The negative row (the sprite table sent a second time, one word
+  further in) fails.
+- **`nmi_race_prologue` ($85:8377):** it only saves, sets D = 0 and DB = `$85`, and
+  dispatches. Its C is empty. race1: live 511/511, fuzz 500/500.
+- **The sprite table on the platform:**
+  - `video_set_oam_address(word)` writes `$2102/$2103`. Both are now byte registers,
+    compared as the last value;
+  - `video_upload_oam(oam_word, src, size)` is a new effect (`EFFECT_OAM`). The bench
+    reads it from a DMA kick to `$2104` (mode 0 or 2) whose target is the OAM word
+    address at the kick (bit 8 = the high table).
+- **PHP/PLP in the flag liveness:** PHP counted as reading every flag, so a flag that
+  passed through `sound_frame` (PHP ... PLP) looked live. The game has five PHPs, each
+  at a routine's start and matched by a PLP of the same value, so the flags pass through
+  the pair unchanged. The watch now treats PHP as reading none and PLP as writing none.
+  A PHP whose value is pulled by PLA would be missed; none exists in the code classified
+  so far.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

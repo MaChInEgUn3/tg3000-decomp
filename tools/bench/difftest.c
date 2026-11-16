@@ -33,6 +33,7 @@ const uint8_t* g_rom;
 #define MAX_CONTRACTS 8
 #define MAX_INSNS 4000000    // a sample that runs longer is abandoned
 #define WATCH_CAP 400        // flag liveness: instructions watched after a return
+#define WATCH_CAP_HANDLER 20000  // after a prologue's end: its target runs to its RTI (which writes all flags)
 #define MIN_WATCHED 100      // fewer watched returns than this: every flag counts as live
 
 enum { FN = 8, FV = 4, FZ = 2, FC = 1 };
@@ -91,7 +92,7 @@ static const char* const ppuFieldName[PF_COUNT] = {
 static const uint16_t byteRegs[] = {0x212C, 0x212D, 0x2123, 0x2124, 0x2125, 0x2130, 0x2131,
                                     0x4200, 0x4207, 0x4208, 0x4209, 0x420A,
                                     0x2101, 0x2105, 0x2107, 0x2108, 0x2109, 0x210A, 0x210B, 0x210C,
-                                    0x2100};
+                                    0x2100, 0x2102, 0x2103};
 #define N_BYTE_REGS ((int)(sizeof byteRegs / sizeof byteRegs[0]))
 static int byteRegIndex(uint32_t adr) {
   if(((adr >> 16) & 0x7F) >= 0x40) return -1;
@@ -330,7 +331,8 @@ static bool ppuFieldWrite(uint32_t adr, uint8_t val) {
 static const char* effectName(int kind) {
   return kind == EFFECT_VRAM ? "VRAM upload" : kind == EFFECT_CGRAM ? "CGRAM upload" :
          kind == EFFECT_VRAM_FILL ? "VRAM fill" : kind == EFFECT_VRAM_WORD ? "VRAM word" :
-         kind == EFFECT_APU ? "APU port write" : kind == EFFECT_CGRAM_WORD ? "CGRAM colour" : "other DMA";
+         kind == EFFECT_APU ? "APU port write" : kind == EFFECT_CGRAM_WORD ? "CGRAM colour" :
+         kind == EFFECT_OAM ? "OAM upload" : "other DMA";
 }
 
 // A write of `val` to MDMAEN ($420B): one effect per channel started, read from the
@@ -352,6 +354,9 @@ static void recordKick(uint8_t val) {
       e = (Effect){EFFECT_VRAM, ppu->vramPointer, src, size};
     } else if(plain && ch->bAdr == 0x22 && (ch->mode == 0 || ch->mode == 2) && !ppu->cgramSecondWrite) {
       e = (Effect){EFFECT_CGRAM, ppu->cgramPointer, src, size};
+    } else if(plain && ch->bAdr == 0x04 && (ch->mode == 0 || ch->mode == 2) && !ppu->oamSecondWrite) {
+      // the sprite table, from the OAM word address (bit 8: the high table) set at the kick
+      e = (Effect){EFFECT_OAM, (uint32_t)(ppu->oamInHigh ? 0x100 : 0) | ppu->oamAdr, src, size};
     } else if(!ch->fromB && ch->fixed && ch->bAdr == 0x18 && ch->mode == 1 && ppu->vramIncrementOnHigh &&
               ppu->vramIncrement == 1 && ppu->vramRemapMode == 0) {
       // a fixed source writes the same byte to both halves of every word
@@ -890,21 +895,27 @@ static void watchStep(int idx, const Cpu* cpu, uint8_t reads, uint8_t writes) {
     if(cpu->sp != (uint16_t)w->pausedUntilSp) return;
     w->pausedUntilSp = -1;
   }
-  if(++w->count > WATCH_CAP) { resolveFlags(idx, FN | FV | FZ | FC, true); return; }
+  if(++w->count > (table[idx].endAt ? WATCH_CAP_HANDLER : WATCH_CAP)) { resolveFlags(idx, FN | FV | FZ | FC, true); return; }
   if(reads) resolveFlags(idx, reads, true);
   if(w->active && writes) resolveFlags(idx, writes, false);
 }
 
-static void watchAll(const Cpu* cpu) {
+// Inside a handler that a waiting sample records, only the watches of rows that end inside
+// the handler (endAt: a prologue's flags flow into its target, up to the RTI) go on.
+static void watchAll(const Cpu* cpu, bool inHandler) {
   uint32_t pc = ((uint32_t)cpu->k << 16) | cpu->pc;
   uint8_t op = peekByte(pc);
   uint8_t reads = opFlagsRead[op], writes = opFlagsWritten[op];
+  // PHP ... PLP: the flags pass through the pair (the game's 5 PHPs are each matched by a
+  // PLP of the same value), so neither reads nor writes them
+  if(op == 0x08) reads = 0;
+  if(op == 0x28) writes = 0;
   if(op == 0xC2 || op == 0xE2) {
     uint8_t p = peekByte((pc & 0xFF0000) | (uint16_t)(pc + 1));
     writes = (p & 0x80 ? FN : 0) | (p & 0x40 ? FV : 0) | (p & 0x02 ? FZ : 0) | (p & 0x01 ? FC : 0);
   }
   for(int i = 0; i < tableCount; i++) {
-    if(watches[i].active) watchStep(i, cpu, reads, writes);
+    if(watches[i].active && (!inHandler || table[i].endAt)) watchStep(i, cpu, reads, writes);
   }
 }
 
@@ -969,7 +980,8 @@ void difftest_on_insn(Cpu* cpu) {
   // the innermost sample that has returned (normally the innermost one)
   for(int k = depth - 1; k >= base; k--) {
     Sample* smp = &samples[k];
-    if(cpu->pc == smp->retPc && cpu->k == smp->retBank && cpu->sp == smp->retSp) {
+    bool ended = table[smp->idx].endAt != 0 && pc == table[smp->idx].endAt && k == depth - 1;
+    if(ended || (cpu->pc == smp->retPc && cpu->k == smp->retBank && cpu->sp == smp->retSp)) {
       for(int j = depth - 1; j > k; j--) stats[samples[j].idx].abandoned++;  // left without returning
       depth = k + 1;
       finishSample(k, cpu);
@@ -1010,7 +1022,7 @@ void difftest_on_insn(Cpu* cpu) {
       break;
     }
   }
-  if(!inHandler) watchAll(cpu);
+  watchAll(cpu, inHandler);
   if(!fuzzing) checkEntries(cpu, pc, inHandler);
   lastOp = peekByte(((uint32_t)cpu->k << 16) | cpu->pc);
 }

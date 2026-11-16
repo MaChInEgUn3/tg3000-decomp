@@ -48,6 +48,11 @@ void video_set_bg_map(int bg, uint8_t value) { difftest_reg((uint16_t)(0x2106 + 
 void video_set_bg_tiles(int pair, uint8_t value) { difftest_reg((uint16_t)(0x210B + pair), value); }
 void video_set_obj_select(uint8_t value) { difftest_reg(0x2101, value); }
 void video_set_display(uint8_t value) { difftest_reg(0x2100, value); }
+void video_set_oam_address(uint16_t value) {
+  difftest_reg(0x2102, (uint8_t)value);
+  difftest_reg(0x2103, (uint8_t)(value >> 8));
+}
+void video_upload_oam(uint16_t oam_word, uint32_t src, uint32_t size) { difftest_effect(EFFECT_OAM, oam_word, src, size); }
 
 // Byte registers: recorded as the bytes the original writes.
 void video_set_main_screen(uint8_t layers) { difftest_reg(0x212C, layers); }

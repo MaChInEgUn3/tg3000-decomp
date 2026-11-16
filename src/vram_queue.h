@@ -18,4 +18,9 @@
 // Returns the new head.
 uint16_t vram_queue_push(uint16_t size, uint16_t dest, uint16_t src, uint16_t src_bank);
 
+// The NMI's part ($80:88B9): send queued transfers while the byte budget at $002C lasts.
+// A transfer that does not fit sends what the budget allows and keeps the rest queued.
+#define VRAM_QUEUE_BUDGET 0x002C
+void vram_queue_drain(void);
+
 #endif

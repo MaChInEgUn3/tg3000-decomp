@@ -3,6 +3,7 @@
 
 #include "misc.h"
 #include "video_dma.h"
+#include "vram_queue.h"
 #include "pads.h"
 #include "platform.h"
 #include "sound.h"
@@ -41,6 +42,51 @@ void nmi_tail(void) {
   sound_frame();
   wr16(FRAME_COUNTER, (uint16_t)(rd16(FRAME_COUNTER) + 1));
 }
+
+// TG3000_ROUTINE($80:8807) nmi_prologue
+//
+// The NMI outside the race, up to its dispatch: the original saves the registers, sets
+// DB = $81 and D = 0, and ends by jumping through $0008 to the current target (each has
+// its own row; in C the caller calls the target after this). The brightness fade
+// ($019A towards $0198 by $0196) and the display; the palette ($81:0500, 512 bytes) and
+// the sprite table ($81:0900, 544 bytes) when their flags in $0026 ask, each costing
+// $280 of the frame's VRAM budget (4 KB); then the VRAM queue within the rest.
+void nmi_prologue(void) {
+  wr16(VRAM_QUEUE_BUDGET, 0x1000);
+  uint16_t step = rd16(0x0196);
+  if(step) {  // fade $019A towards $0198 by `step`, stopping at it
+    uint16_t level = (uint16_t)(rd16(0x019A) + step);
+    wr16(0x019A, level);
+    uint16_t past = (uint16_t)(level - rd16(0x0198));
+    if(past == 0 || !((past ^ step) & 0x8000)) {
+      wr16(0x019A, rd16(0x0198));
+      wr16(0x0196, 0);
+    }
+  }
+  uint8_t brightness = rd8(0x019B);
+  video_set_display(brightness ? brightness : 0x80);  // brightness 0: forced blank
+  uint16_t flags = rd16(0x0026);
+  wr16(0x0026, (uint16_t)(flags & ~0x0001));
+  if(flags & 0x0001) {
+    video_upload_cgram(0, 0x810500, 0x0200);
+    wr16(VRAM_QUEUE_BUDGET, (uint16_t)(rd16(VRAM_QUEUE_BUDGET) - 0x0280));
+  }
+  flags = rd16(0x0026);
+  wr16(0x0026, (uint16_t)(flags & ~0x0002));
+  if(flags & 0x0002) {
+    video_set_oam_address(0x0000);
+    video_upload_oam(0x0000, 0x810900, 0x0220);
+    video_set_oam_address(0x0000);
+    wr16(VRAM_QUEUE_BUDGET, (uint16_t)(rd16(VRAM_QUEUE_BUDGET) - 0x0280));
+  }
+  vram_queue_drain();
+}
+
+// TG3000_ROUTINE($85:8377) nmi_race_prologue
+//
+// The race NMI up to its dispatch through $0008 (to $85:838A or $85:83CE): the original
+// only saves the registers and sets D = 0, DB = $85, so there is nothing to do in C.
+void nmi_race_prologue(void) {}
 
 // TG3000_ROUTINE($85:838A) nmi_race_tail
 //

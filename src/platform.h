@@ -68,6 +68,13 @@ void video_set_obj_select(uint8_t value);
 // The display ($2100, raw byte): bit 7 forced blank, bits 0-3 brightness.
 void video_set_display(uint8_t value);
 
+// The sprite table (OAM). Its address ($2102/$2103, raw word: bits 0-8 the word address,
+// bit 8 set = the 32-byte high table, bit 15 = priority rotation), compared as the last
+// value written; and an upload of `size` bytes (1-65536) from `src` starting at OAM word
+// `oam_word` (the original: DMA to $2104 after setting the address).
+void video_set_oam_address(uint16_t value);
+void video_upload_oam(uint16_t oam_word, uint32_t src, uint32_t size);
+
 // The layers on the main and sub screens ($212C / $212D): bits 0-3 BG1-BG4, bit 4 sprites.
 void video_set_main_screen(uint8_t layers);
 void video_set_sub_screen(uint8_t layers);
