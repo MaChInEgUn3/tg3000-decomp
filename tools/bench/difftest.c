@@ -586,6 +586,7 @@ static bool isMathReg(uint32_t adr, bool write) {
 static const struct { uint8_t cmd, in, out; bool writeSkips; } dsp4Commands[] = {
   {0x00, 4, 4, true},   // dsp4_multiply
   {0x0A, 6, 8, false},  // dsp4_edges
+  {0x11, 8, 2, false},  // dsp4_row
 };
 static bool isDsp4(uint32_t adr) {
   uint8_t bank = (adr >> 16) & 0x7F;

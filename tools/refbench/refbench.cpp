@@ -291,6 +291,12 @@ static void cmdlogFlush() {
     for(int j = 0; j < 4; j++)
       if(uint16_t(mine[j]) != uint16_t(cmdlogOut[2 * j] | cmdlogOut[2 * j + 1] << 8)) { cmdlogWrong++; break; }
   }
+  if(cmdlogCmd == 0x11 && cmdlogNIn == 8 && cmdlogNOut >= 2) {
+    int16_t edge[4];
+    for(int j = 0; j < 4; j++) edge[j] = int16_t(cmdlogIn[2 * j] | cmdlogIn[2 * j + 1] << 8);
+    cmdlogRuns++;
+    if(dsp4_row(edge) != uint16_t(cmdlogOut[0] | cmdlogOut[1] << 8)) cmdlogWrong++;
+  }
   for(int i = 0; i < cmdlogNIn; i++) std::fprintf(cmdlog, "%02X", cmdlogIn[i]);
   std::fprintf(cmdlog, " ");
   for(int i = 0; i < cmdlogNOut; i++) std::fprintf(cmdlog, "%02X", cmdlogOut[i]);

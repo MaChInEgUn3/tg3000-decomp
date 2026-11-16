@@ -1539,6 +1539,32 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     with evidence and fuzz;
   - then `$11` (`$81:E631`), measured the same way.
 
+## DSP-4 command $11 (dsp4-11, 2026-11-16)
+
+- **Measured** like `$0A` (`refbench --dsp4-cmdlog 11`, first 50,000 TAS frames): 5,696
+  runs, 90 distinct inputs, pure. Four words in, the edges `$16`, `$18`, `$1A`, `$1C` of
+  `$81:E631`'s loop; one word out, read 16-bit at `$81:E756`. (The catalogue's "1 byte
+  out" counted only up to the shadow's busy flag.)
+- **The command is `$0A`'s inverse:** it turns four edges into a row word.
+  - Each edge becomes a signed 4-bit width of 48: `floor(edge / 48)` for edges 0 and 2,
+    `floor((edge - 1) / 48)` for edges 1 and 3.
+  - Edge 0 goes in bits 15-12, ..., edge 3 in bits 3-0.
+  - Plain floor division disagrees on 3 of the 90 inputs: 240, 288 and 336 as edge 1
+    give 4, 5, 6, not 5, 6, 7.
+  - The data cannot tell "minus 1 for edges 1 and 3" from "minus 1 for positive edges".
+    In every run edges 0 and 2 are negative, and no edge 1 or 3 is a negative multiple
+    of 48. The C takes the first; the domain note in `src/dsp4.h` says so.
+- **`dsp4_row` (src/dsp4.c):** refbench checks it on every run: **5,696 runs, 0
+  differ.**
+- **In the harness:**
+  - `$11` joins the difftest's command table (8 in, 2 out);
+  - the bench bridge's routing is now a table (`$0A` → `dsp4_edges`, `$11` →
+    `dsp4_row`), so the bench chip answers `$11` with our C too. The stand-in is exact on
+    it, so the game's own runs are unchanged (race1: all 159 rows pass).
+- **No row uses it yet.** Its only user, `$81:E631` (a track setup), runs 5 times on the
+  60k movie, and all 5 are interrupted. So it needs a movie that reaches it without an
+  interrupt, or the fuzz alone.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

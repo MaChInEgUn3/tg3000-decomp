@@ -21,4 +21,12 @@ int32_t dsp4_multiply(int16_t a, int16_t b);
 // measured one (docs/DECISIONS.md, "DSP-4 command $0A").
 void dsp4_edges(uint16_t t, uint16_t near, uint16_t far, int16_t out[4]);
 
+// Command $0011, the inverse of $000A: a row word from four edges, each edge to a signed
+// 4-bit width of 48 (floor(edge / 48) for edges 0 and 2, floor((edge - 1) / 48) for edges
+// 1 and 3), edge 0 in bits 15-12 ... edge 3 in bits 3-0. Measured on the firmware over the
+// TAS (90 distinct inputs, all within -364..364). The data cannot tell "minus 1 for edges 1
+// and 3" from "minus 1 for positive edges": no edge 1 or 3 there is a negative multiple of
+// 48 and no edge 0 or 2 is positive (docs/DECISIONS.md, "DSP-4 command $11").
+uint16_t dsp4_row(const int16_t edge[4]);
+
 #endif

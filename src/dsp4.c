@@ -18,3 +18,11 @@ void dsp4_edges(uint16_t t, uint16_t near, uint16_t far, int16_t out[4]) {
     out[j] = (int16_t)(a + step);
   }
 }
+
+static int dsp4_floor_div48(int32_t v) { return v >= 0 ? (int)(v / 48) : -(int)((-v + 47) / 48); }
+
+uint16_t dsp4_row(const int16_t edge[4]) {
+  uint16_t row = 0;
+  for(int j = 0; j < 4; j++) row = (uint16_t)((row << 4) | (dsp4_floor_div48((int32_t)edge[j] - (j & 1)) & 0xF));
+  return row;
+}

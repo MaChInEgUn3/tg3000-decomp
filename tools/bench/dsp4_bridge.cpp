@@ -23,23 +23,42 @@ static dsp4::Dsp4 chip;
 
 // Commands proved on the firmware (refbench) are answered by the native C (src/dsp4.c)
 // instead of the clean-room chip: the chip still gets every byte, so it stays in step, but
-// the game reads ours. So far: $0A (dsp4_edges).
-static bool routed;
-static uint8_t routedIn[6], routedOut[8];
+// the game reads ours.
+static void answerEdges(const uint8_t* in, uint8_t* out) {
+	int16_t edge[4];
+	dsp4_edges(uint16_t(in[0] | in[1] << 8), uint16_t(in[2] | in[3] << 8), uint16_t(in[4] | in[5] << 8), edge);
+	for(int j = 0; j < 4; j++) {
+		out[2 * j] = uint8_t(edge[j]);
+		out[2 * j + 1] = uint8_t(uint16_t(edge[j]) >> 8);
+	}
+}
+static void answerRow(const uint8_t* in, uint8_t* out) {
+	int16_t edge[4];
+	for(int j = 0; j < 4; j++) edge[j] = int16_t(in[2 * j] | in[2 * j + 1] << 8);
+	const uint16_t row = dsp4_row(edge);
+	out[0] = uint8_t(row);
+	out[1] = uint8_t(row >> 8);
+}
+static const struct { int cmd, in, out; void (*answer)(const uint8_t*, uint8_t*); } routes[] = {
+	{0x0A, 6, 8, answerEdges},
+	{0x11, 8, 2, answerRow},
+};
+static int routed = -1;  // index into routes, or -1
+static uint8_t routedIn[16], routedOut[16];
 static int routedNIn, routedNOut = -1;
 
 extern "C" void dsp4_bridge_reset(void) {
 	chip.reset();
-	routed = false;
+	routed = -1;
 	routedNOut = -1;
 }
 
 extern "C" uint8_t dsp4_bridge_read(uint8_t bank, uint16_t adr) {
 	const bool data = adr < 0xC000;
 	uint8_t val = data ? chip.readData() : chip.readStatus();
-	if(data && routed && routedNOut >= 0) {
+	if(data && routed >= 0 && routedNOut >= 0) {
 		val = routedOut[routedNOut++];
-		if(routedNOut == 8) routed = false;
+		if(routedNOut == routes[routed].out) routed = -1;
 	}
 	bench_log_dsp4(false, data, bank, adr, val);
 	return val;
@@ -50,24 +69,20 @@ extern "C" void dsp4_bridge_write(uint8_t bank, uint16_t adr, uint8_t val) {
 	if(data) {  // writes to the status register are ignored, as on the chip
 		const bool wasBusy = chip.m.busy != 0;
 		chip.writeData(val);
-		if(!wasBusy && chip.m.busy && (chip.m.command & 31) == 0x0A) {
-			routed = true;
+		if(!wasBusy && chip.m.busy) {
+			routed = -1;
+			for(int r = 0; r < int(sizeof routes / sizeof routes[0]); r++)
+				if((chip.m.command & 31) == routes[r].cmd) routed = r;
 			routedNIn = 0;
 			routedNOut = -1;
-		} else if(routed && routedNOut < 0) {
+		} else if(routed >= 0 && routedNOut < 0) {
 			routedIn[routedNIn++] = val;
-			if(routedNIn == 6) {
-				int16_t edge[4];
-				dsp4_edges(uint16_t(routedIn[0] | routedIn[1] << 8), uint16_t(routedIn[2] | routedIn[3] << 8),
-				           uint16_t(routedIn[4] | routedIn[5] << 8), edge);
-				for(int j = 0; j < 4; j++) {
-					routedOut[2 * j] = uint8_t(edge[j]);
-					routedOut[2 * j + 1] = uint8_t(uint16_t(edge[j]) >> 8);
-				}
+			if(routedNIn == routes[routed].in) {
+				routes[routed].answer(routedIn, routedOut);
 				routedNOut = 0;
 			}
-		} else if(routed) {
-			routed = false;  // a write where results were due: not this command's use any more
+		} else if(routed >= 0) {
+			routed = -1;  // a write where results were due: not this command's use any more
 		}
 	}
 	bench_log_dsp4(true, data, bank, adr, val);
