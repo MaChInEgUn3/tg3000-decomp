@@ -68,3 +68,28 @@ void irq_split_bottom(void) {
   video_set_sub_screen(0x00);
   video_set_color_math(0x05);
 }
+
+// TG3000_ROUTINE($80:E3F7) irq_split_top
+void irq_split_top(void) {
+  if(rd16(0x017A) < 0x64) {
+    platform_set_irq_h(0x0100);
+    uint16_t scroll = rd16(0x0120);  // (after the WAI; see irq_split_bottom)
+    video_set_bg2_hofs(scroll);
+    video_set_bg1_hofs(scroll);
+    video_set_bg3_hofs(scroll);
+    video_set_main_screen(0x17);
+    video_set_sub_screen(0x10);
+    video_set_color_math(0x05);
+    video_set_color(0, 0x7CC6);
+    platform_set_interrupts(0xB1);
+    platform_set_irq_v(0x00B3);
+    platform_set_irq_h(0x0010);
+    wr16(0x0006, 0x8000);  // the IRQ trampoline's JML target: $80:E48A
+    wr16(0x0005, 0xE48A);
+  }
+  video_set_fixed_color(0xE0);
+  video_set_color_math_control(0x02);
+  video_set_window_bg12(0xAA);
+  video_set_window_bg34(0x0A);
+  video_set_window_obj(0x0A);
+}

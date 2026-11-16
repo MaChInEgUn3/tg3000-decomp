@@ -56,7 +56,8 @@ typedef struct {
 
 // Hardware effects, in canonical form: what the original did through DMA and what the C
 // asked the platform for (tools/bench/platform_bench.c) must be the same list.
-enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3, EFFECT_VRAM_FILL = 4, EFFECT_VRAM_WORD = 5, EFFECT_APU = 6 };
+enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3, EFFECT_VRAM_FILL = 4, EFFECT_VRAM_WORD = 5, EFFECT_APU = 6,
+       EFFECT_CGRAM_WORD = 7 };
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size);
 void difftest_replay_interrupt(void);
 
@@ -70,7 +71,7 @@ uint8_t difftest_input(uint16_t reg);
 int difftest_input_peek(uint16_t reg, int n);
 
 // PPU fields (Mode 7 matrix and offsets, BG1/BG2 scroll) set by the C, compared by end state.
-enum { PF_M7A, PF_M7B, PF_M7C, PF_M7D, PF_M7X, PF_M7Y, PF_M7H, PF_M7V, PF_BG1H, PF_BG1V, PF_BG2H, PF_BG2V, PF_BG3H, PF_BG3V, PF_COUNT };
+enum { PF_M7A, PF_M7B, PF_M7C, PF_M7D, PF_M7X, PF_M7Y, PF_M7H, PF_M7V, PF_BG1H, PF_BG1V, PF_BG2H, PF_BG2V, PF_BG3H, PF_BG3V, PF_FIXR, PF_FIXG, PF_FIXB, PF_COUNT };
 void difftest_ppu_field(int field, uint16_t value);
 
 // Registers whose state is the last byte written (layer enables, windows, colour math,

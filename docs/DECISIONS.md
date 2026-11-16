@@ -1035,6 +1035,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `$80:E28C` sets up). It sets the next interrupt's dot to `$100`, scroll 0 for BG1-BG3,
   main screen `$17`, no sub screen, colour math `$05`. Race movie 459/459, paths 29/29.
 
+## Raster interrupts, the top split (raster-2, 2026-11-16)
+
+- **Colours:** `$2121` then two `$2122` writes are one effect (index, colour), and they
+  consume the `$2121` setup as a VRAM word consumes `$2116`. A colour completed from a
+  byte written before the routine fails the sample.
+- **The fixed colour** (`$2132`) is three fields (red, green, blue), each written when its
+  select bit is set. The setter takes the raw byte. The field masks are now 32 bits wide.
+- **Interrupt control** (`$4200`, `$4209/$420A`) joins the byte-register table, through
+  `platform_set_interrupts` and `platform_set_irq_v`.
+- **`irq_split_top`** (IRQ `$80:E3F7`), while `$017A` is below 100:
+  - BG1-BG3 scrolled by `$0120`, layers `$17/$10`, colour math `$05`, colour 0 =
+    `$7CC6`;
+  - the next interrupt at line `$B3`, dot `$10`, handled by `irq_split_bottom` (the
+    trampoline bytes `$0005-$0007` are written as WRAM).
+
+  Always: fixed colour black, `$2130 = $02`, windows `$AA/$0A/$0A`. Race movie 461/461,
+  paths 62/62. A negative row with colour 0 one step off fails.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

@@ -60,8 +60,28 @@ void video_set_bg3_hofs(uint16_t value);
 void video_set_main_screen(uint8_t layers);
 void video_set_sub_screen(uint8_t layers);
 
-// Colour math: which layers it applies to and how ($2131 CGADSUB, raw byte).
+// Colour math: which layers it applies to and how ($2131 CGADSUB, raw byte), and its
+// window and source control ($2130 CGWSEL, raw byte).
 void video_set_color_math(uint8_t value);
+void video_set_color_math_control(uint8_t value);
+
+// The fixed colour for colour math ($2132, raw byte): bits 7/6/5 select blue/green/red,
+// and those channels take the low 5 bits.
+void video_set_fixed_color(uint8_t value);
+
+// Window masks ($2123 BG1/BG2, $2124 BG3/BG4, $2125 sprites/colour; raw bytes).
+void video_set_window_bg12(uint8_t value);
+void video_set_window_bg34(uint8_t value);
+void video_set_window_obj(uint8_t value);
+
+// One palette colour (BGR555), as the original writes it through $2121/$2122.
+void video_set_color(uint8_t index, uint16_t bgr);
+
+// The interrupt enables ($4200: bit 7 NMI, bits 5-4 the line interrupt's H/V mode, bit 0
+// the automatic joypad read; raw byte), and the line of the line interrupt ($4209/$420A,
+// 9 bits).
+void platform_set_interrupts(uint8_t value);
+void platform_set_irq_v(uint16_t line);
 
 // The horizontal position of the line interrupt ($4207/$4208, 9 bits). A handler may
 // move the interrupt position; the next interrupt of the same frame follows the new one.

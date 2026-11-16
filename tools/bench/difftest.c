@@ -81,10 +81,10 @@ typedef struct { int kind; uint32_t target, src, size; } Effect;
 // writes are compared by end state, as the bench's PPU decoded them (which fields were
 // written, and their final values). Bits of each field that the PPU keeps:
 static const uint16_t ppuFieldMask[PF_COUNT] = {
-  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF};
+  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x1FFF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x03FF, 0x1F, 0x1F, 0x1F};
 static const char* const ppuFieldName[PF_COUNT] = {
   "M7A", "M7B", "M7C", "M7D", "M7X", "M7Y", "M7HOFS", "M7VOFS", "BG1HOFS", "BG1VOFS", "BG2HOFS", "BG2VOFS",
-  "BG3HOFS", "BG3VOFS"};
+  "BG3HOFS", "BG3VOFS", "COLDATA red", "COLDATA green", "COLDATA blue"};
 
 // Pure byte registers: their state is the last byte written.
 static const uint16_t byteRegs[] = {0x212C, 0x212D, 0x2123, 0x2124, 0x2125, 0x2130, 0x2131,
@@ -105,6 +105,8 @@ typedef struct {
   bool hwAccess, mathWritten, leftExtent, setupPending, vramAdrPending, effectOverflow;
   bool vramLowSet;  // a $2118 byte waiting for its $2119 half
   uint8_t vramLow;
+  bool cgLowSet, cgAdrPending;  // a $2122 byte waiting for its second one; $2121 set, unused
+  uint8_t cgLow;
   // reads of input registers, in order (served to the C by difftest_input)
   struct { uint16_t reg; uint8_t val; } inputs[256];
   int nInputs;
@@ -116,8 +118,9 @@ typedef struct {
   int effectCount;
   // PPU fields written (bit per PF_*), and those whose last write combined a latch byte
   // written before the sample (the result depends on state the C does not get)
-  uint16_t ppuWritten, ppuStale, ppuStart[PF_COUNT], ppuEnd[PF_COUNT];
-  uint16_t ppuPending;  // fields written by the last instruction: read back at the next one
+  uint32_t ppuWritten, ppuStale;
+  uint16_t ppuStart[PF_COUNT], ppuEnd[PF_COUNT];
+  uint32_t ppuPending;  // fields written by the last instruction: read back at the next one
   uint16_t regWritten;  // byte registers written (bit per byteRegs entry) and their last values
   uint8_t regVal[16];
   bool m7Latch, scrollLatch, scrollLatch2;  // latch bytes written inside the sample
@@ -219,9 +222,11 @@ void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size) {
 }
 
 static void vramWordWrite(uint32_t adr, uint8_t val);
+static void cgramWordWrite(uint32_t adr, uint8_t val);
 static void mode7ProductRead(uint32_t adr);
 
-static uint16_t cPpuWritten, cPpu[PF_COUNT];
+static uint32_t cPpuWritten;
+static uint16_t cPpu[PF_COUNT];
 static uint16_t cRegWritten;
 static uint8_t cRegVal[16];
 
@@ -235,13 +240,16 @@ void difftest_reg(uint16_t adr, uint8_t value) {
 
 void difftest_ppu_field(int field, uint16_t value) {
   if(!collectingC) return;
-  cPpuWritten |= (uint16_t)(1u << field);
+  cPpuWritten |= 1u << field;
   cPpu[field] = value;
 }
 
 static uint16_t ppuFieldValue(int field) {
   const Ppu* ppu = snes->ppu;
   if(field <= PF_M7V) return (uint16_t)ppu->m7matrix[field];
+  if(field == PF_FIXR) return ppu->fixedColorR;
+  if(field == PF_FIXG) return ppu->fixedColorG;
+  if(field == PF_FIXB) return ppu->fixedColorB;
   const BgLayer* bg = &ppu->bgLayer[(field - PF_BG1H) / 2];  // BG1-BG3
   return (field - PF_BG1H) % 2 == 0 ? bg->hScroll : bg->vScroll;
 }
@@ -249,29 +257,42 @@ static uint16_t ppuFieldValue(int field) {
 // A write to a PPU register the C models as fields: $210D/$210E (BG1 scroll, also the
 // Mode 7 offset), $210F-$2112 (BG2, BG3 scroll) and $211B-$2120 (Mode 7 matrix and centre). Each is written twice, low
 // byte then high, through latches shared between registers (LakeSnes's ppu_write).
-static bool ppuFieldWrite(uint32_t adr) {
+static bool ppuFieldWrite(uint32_t adr, uint8_t val) {
   if(((adr >> 16) & 0x7F) >= 0x40) return false;
   uint16_t a = adr & 0xFFFF;
+  if(a == 0x2132) {  // the fixed colour: each channel whose select bit is set takes the value
+    for(int k = accessBase; k < depth; k++) {
+      Sample* smp = &samples[k];
+      uint32_t f = 0;
+      if(val & 0x20) f |= 1u << PF_FIXR;
+      if(val & 0x40) f |= 1u << PF_FIXG;
+      if(val & 0x80) f |= 1u << PF_FIXB;
+      smp->ppuWritten |= f;
+      smp->ppuStale &= ~f;
+      smp->ppuPending |= f;
+    }
+    return true;
+  }
   bool scroll = a >= 0x210D && a <= 0x2112, m7 = a == 0x210D || a == 0x210E || (a >= 0x211B && a <= 0x2120);
   if(!scroll && !m7) return false;
   bool hofs = scroll && (a & 1);  // $210D/$210F: horizontal; $210E/$2110: vertical
   for(int k = accessBase; k < depth; k++) {
     Sample* smp = &samples[k];
-    uint16_t fresh = 0, stale = 0;
+    uint32_t fresh = 0, stale = 0;
     if(m7) {
       int f = a == 0x210D ? PF_M7H : a == 0x210E ? PF_M7V : a - 0x211B;
-      *(smp->m7Latch ? &fresh : &stale) |= (uint16_t)(1u << f);
+      *(smp->m7Latch ? &fresh : &stale) |= 1u << f;
       smp->m7Latch = true;
     }
     if(scroll) {  // BGnHOFS takes both scroll latches, BGnVOFS the first one
       int f = PF_BG1H + (a - 0x210D);
       bool ok = smp->scrollLatch && (!hofs || smp->scrollLatch2);
-      *(ok ? &fresh : &stale) |= (uint16_t)(1u << f);
+      *(ok ? &fresh : &stale) |= 1u << f;
       smp->scrollLatch = true;
       if(hofs) smp->scrollLatch2 = true;
     }
     smp->ppuWritten |= fresh | stale;
-    smp->ppuStale = (uint16_t)((smp->ppuStale & ~fresh) | stale);
+    smp->ppuStale = (smp->ppuStale & ~fresh) | stale;
     smp->ppuPending |= fresh | stale;  // the field's value once this write lands
     if(!fuzzing && cpu_interruptCount == smp->interruptsAtEntry) {  // not a handler's write
       Stats* s = &stats[smp->idx];
@@ -298,7 +319,7 @@ static bool ppuFieldWrite(uint32_t adr) {
 static const char* effectName(int kind) {
   return kind == EFFECT_VRAM ? "VRAM upload" : kind == EFFECT_CGRAM ? "CGRAM upload" :
          kind == EFFECT_VRAM_FILL ? "VRAM fill" : kind == EFFECT_VRAM_WORD ? "VRAM word" :
-         kind == EFFECT_APU ? "APU port write" : "other DMA";
+         kind == EFFECT_APU ? "APU port write" : kind == EFFECT_CGRAM_WORD ? "CGRAM colour" : "other DMA";
 }
 
 // A write of `val` to MDMAEN ($420B): one effect per channel started, read from the
@@ -425,7 +446,8 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
     return;
   }
   if(isWram(adr) || (!write && isRom(adr))) return;
-  if(write && ppuFieldWrite(adr)) return;
+  if(write && ppuFieldWrite(adr, val)) return;
+  if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x2122) { cgramWordWrite(adr, val); return; }
   int bri = write ? byteRegIndex(adr) : -1;
   if(bri >= 0) {
     for(int k = accessBase; k < depth; k++) {
@@ -461,7 +483,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   }
   if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x420B) {
     recordKick(val);
-    for(int k = accessBase; k < depth; k++) samples[k].setupPending = samples[k].vramAdrPending = false;
+    for(int k = accessBase; k < depth; k++) samples[k].setupPending = samples[k].vramAdrPending = samples[k].cgAdrPending = false;
     return;
   }
   if(((adr >> 16) & 0x7F) < 0x40 && (write ? ((adr & 0xFFFF) == 0x2118 || (adr & 0xFFFF) == 0x2119)
@@ -482,6 +504,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
     } else if(write && isUploadSetup(adr)) {
       uint16_t a16 = adr & 0xFFFF;
       if(a16 == 0x2116 || a16 == 0x2117) smp->vramAdrPending = true;  // a DMA or a word write uses it
+      else if(a16 == 0x2121) smp->cgAdrPending = true;                // a DMA or a colour write uses it
       else smp->setupPending = true;
       continue;
     } else {
@@ -527,11 +550,38 @@ static void vramWordWrite(uint32_t adr, uint8_t val) {
   }
 }
 
+// A CPU write to CGDATA ($2122): two of them are one colour, stored at the CGRAM address on
+// the second (the hook runs before the PPU takes it, so the pointer is that colour's). An
+// effect (index, colour). The first byte must have been written inside the sample.
+static void cgramWordWrite(uint32_t adr, uint8_t val) {
+  const Ppu* ppu = snes->ppu;
+  for(int k = accessBase; k < depth; k++) {
+    Sample* smp = &samples[k];
+    if(smp->hwAccess) continue;
+    if(!ppu->cgramSecondWrite) {
+      smp->cgLow = val;
+      smp->cgLowSet = true;
+      continue;
+    }
+    if(!smp->cgLowSet) {
+      smp->hwWhy = "a colour completed from a byte written before the routine";
+      smp->hwAccess = true;
+      smp->hwAccessAdr = adr;
+      continue;
+    }
+    smp->cgLowSet = false;
+    smp->cgAdrPending = false;
+    if(smp->effectCount < MAX_EFFECTS)
+      smp->effects[smp->effectCount++] = (Effect){EFFECT_CGRAM_WORD, ppu->cgramPointer, (uint32_t)(smp->cgLow | val << 8), 1};
+    else smp->effectOverflow = true;
+  }
+}
+
 // A read of the Mode 7 product ($2134-$2136: matrix A times the high byte of B): the C
 // computes it natively, so the read is the routine's own work provided both operands were
 // written inside the sample, from bytes written inside it.
 static void mode7ProductRead(uint32_t adr) {
-  uint16_t need = (uint16_t)(1u << PF_M7A | 1u << PF_M7B);
+  uint32_t need = 1u << PF_M7A | 1u << PF_M7B;
   for(int k = accessBase; k < depth; k++) {
     Sample* smp = &samples[k];
     if(smp->hwAccess || ((smp->ppuWritten & need) == need && !(smp->ppuStale & need))) continue;
@@ -625,8 +675,8 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
     }
   }
   if(cPpuWritten != smp->ppuWritten) {
-    snprintf(why, whyLen, "PPU fields written: original %04X, C %04X (bits: M7A..M7VOFS, BG1HOFS..BG2VOFS)",
-      smp->ppuWritten, cPpuWritten);
+    snprintf(why, whyLen, "PPU fields written: original %05X, C %05X (bits: M7A..M7VOFS, BG1HOFS..BG3VOFS, COLDATA R G B)",
+      (unsigned)smp->ppuWritten, (unsigned)cPpuWritten);
     return false;
   }
   for(int f = 0; f < PF_COUNT; f++) {
@@ -715,8 +765,8 @@ static void finishSample(int k, const Cpu* cpu) {
     snprintf(why, sizeof why, "%s at $%06X", smp->hwWhy, smp->hwAccessAdr);
     ok = false;
   } else if(smp->ppuStale) {
-    snprintf(why, sizeof why, "a PPU register write completed a latch byte written before the routine (fields %04X)",
-      smp->ppuStale);
+    snprintf(why, sizeof why, "a PPU register write completed a latch byte written before the routine (fields %05X)",
+      (unsigned)smp->ppuStale);
     ok = false;
   } else if(smp->inputOverflow) {
     snprintf(why, sizeof why, "more than 256 input reads");
@@ -727,7 +777,10 @@ static void finishSample(int k, const Cpu* cpu) {
   } else if(smp->vramLowSet) {
     snprintf(why, sizeof why, "VRAM low byte written without its high byte (not modelled)");
     ok = false;
-  } else if(smp->setupPending || smp->vramAdrPending) {
+  } else if(smp->cgLowSet) {
+    snprintf(why, sizeof why, "a colour's first byte written without its second (not modelled)");
+    ok = false;
+  } else if(smp->setupPending || smp->vramAdrPending || smp->cgAdrPending) {
     snprintf(why, sizeof why, "DMA/PPU address set up but no DMA started afterwards (not modelled)");
     ok = false;
   } else if(smp->leftExtent) {
@@ -895,7 +948,7 @@ void difftest_on_insn(Cpu* cpu) {
   for(int k = 0; k < depth; k++) {
     Sample* smp = &samples[k];
     for(int f = 0; smp->ppuPending && f < PF_COUNT; f++)
-      if(smp->ppuPending & (1u << f)) { smp->ppuEnd[f] = ppuFieldValue(f); smp->ppuPending &= (uint16_t)~(1u << f); }
+      if(smp->ppuPending & (1u << f)) { smp->ppuEnd[f] = ppuFieldValue(f); smp->ppuPending &= ~(1u << f); }
   }
   // the innermost sample that has returned (normally the innermost one)
   for(int k = depth - 1; k >= base; k--) {

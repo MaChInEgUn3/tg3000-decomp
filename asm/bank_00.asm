@@ -10315,6 +10315,7 @@ CODE_80E33B:
     lda.w #$0017                ; $80E3EE
     sta.w $212C                 ; $80E3F1
     jmp.w nmi_tail              ; $80E3F4
+irq_split_top:
     rep.b #$30                  ; $80E3F7
     phb                         ; $80E3F9
     pha                         ; $80E3FA

@@ -48,6 +48,25 @@ void video_set_main_screen(uint8_t layers) { difftest_reg(0x212C, layers); }
 void video_set_sub_screen(uint8_t layers) { difftest_reg(0x212D, layers); }
 void video_set_color_math(uint8_t value) { difftest_reg(0x2131, value); }
 
+void video_set_color_math_control(uint8_t value) { difftest_reg(0x2130, value); }
+void video_set_window_bg12(uint8_t value) { difftest_reg(0x2123, value); }
+void video_set_window_bg34(uint8_t value) { difftest_reg(0x2124, value); }
+void video_set_window_obj(uint8_t value) { difftest_reg(0x2125, value); }
+void platform_set_interrupts(uint8_t value) { difftest_reg(0x4200, value); }
+
+void video_set_fixed_color(uint8_t value) {
+  if(value & 0x20) difftest_ppu_field(PF_FIXR, value & 0x1F);
+  if(value & 0x40) difftest_ppu_field(PF_FIXG, value & 0x1F);
+  if(value & 0x80) difftest_ppu_field(PF_FIXB, value & 0x1F);
+}
+
+void video_set_color(uint8_t index, uint16_t bgr) { difftest_effect(EFFECT_CGRAM_WORD, index, bgr, 1); }
+
+void platform_set_irq_v(uint16_t line) {
+  difftest_reg(0x4209, (uint8_t)line);
+  difftest_reg(0x420A, (uint8_t)(line >> 8));
+}
+
 void platform_set_irq_h(uint16_t dot) {
   difftest_reg(0x4207, (uint8_t)dot);
   difftest_reg(0x4208, (uint8_t)(dot >> 8));

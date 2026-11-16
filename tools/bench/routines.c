@@ -1573,6 +1573,21 @@ static void call_nmi_tail(const Regs* in, Regs* out) {
   restoreNmiFrame(in, out);
 }
 
+// ---- irq_split_top ($80:E3F7) ----  saves and restores DB, A, X, Y itself; P from the frame
+static void call_irq_split_top(const Regs* in, Regs* out) {
+  irq_split_top();
+  restoreP(in, out);
+}
+
+// Negative test: colour 0 one step off (the CGRAM colour effect must see it); when the split
+// is off it writes no colour, so those samples pass
+static void call_irq_split_top_wrong(const Regs* in, Regs* out) {
+  bool on = rd16(0x017A) < 0x64;
+  irq_split_top();
+  if(on) video_set_color(0, 0x7CC7);
+  restoreP(in, out);
+}
+
 // ---- irq_split_bottom ($80:E48A) ----  saves and restores DB, A, X, Y itself (PHB..PLB);
 // P from the frame
 static void call_irq_split_bottom(const Regs* in, Regs* out) {
@@ -3017,6 +3032,8 @@ const Routine routines[] = {
   {.name = "nmi_tail", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .fixedD = false, .call = call_nmi_tail, ALL_OUTPUTS},
   // no fuzz: it waits (WAI) for the next interrupt, which the fuzz never raises
+  {.name = "irq_split_top", .entry = 0x80E3F7, .end = 0x80E48A, .rti = true, .source = "src/frame.c",
+   .call = call_irq_split_top, ALL_OUTPUTS},
   {.name = "irq_split_bottom", .entry = 0x80E48A, .end = 0x80E4C5, .rti = true, .source = "src/frame.c",
    .call = call_irq_split_bottom, ALL_OUTPUTS},
   {.name = "irq_ack_only", .entry = 0x8595BD, .end = 0x8595C7, .rti = true, .source = "src/frame.c",
@@ -3376,5 +3393,7 @@ const Routine negativeRoutines[] = {
    .needM16 = true, .needX16 = true, .call = call_nmi_tail_wrong, ALL_OUTPUTS},
   {.name = "irq_split_bottom_wrong", .entry = 0x80E48A, .end = 0x80E4C5, .rti = true, .source = "src/frame.c",
    .call = call_irq_split_bottom_wrong, ALL_OUTPUTS},
+  {.name = "irq_split_top_wrong", .entry = 0x80E3F7, .end = 0x80E48A, .rti = true, .source = "src/frame.c",
+   .call = call_irq_split_top_wrong, ALL_OUTPUTS},
 };
 const int negativeRoutineCount = sizeof negativeRoutines / sizeof negativeRoutines[0];
