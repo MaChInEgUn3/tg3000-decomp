@@ -10034,6 +10034,7 @@ star_random_y:
     and.w #$FF00                ; $80E16E
     sta.w $0F02,x               ; $80E171
     rts                         ; $80E174
+nmi_target_80E175:
     phd                         ; $80E175
     lda.w #$0100                ; $80E176
     tcd                         ; $80E179

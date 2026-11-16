@@ -1069,6 +1069,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   effect is C: the NMI prepares it, the first IRQ splits the screen at line `$7E` and
   schedules the second, and the second restores the bottom part at line `$B3`.
 
+## NMI target $80:E175 (nmi-3, 2026-11-16)
+
+- `nmi_target_80E175` (runs with D = `$0100`): until `$0116` is set, it rebuilds the HDMA
+  table at `$1B00` for a band that opens 4 lines a frame (`$0114`, up to `$3A`, then
+  `$0116 = 1`), then runs `nmi_tail`. One path shortens a repeat run: it adds to the run's
+  count byte in 8 bits, and when that gives `$80` it decrements only the low byte of the
+  index it has pushed. The C does the same.
+- **NMI rows can fuzz** after all. The tail's sound message is only sent when bit 15 of
+  `$046D` is set; with it clear, nothing waits for the sound CPU. The fuzz clears it and
+  draws the band height over every value up to `$3A`. That reached the paths no recorded
+  run took (heights `$34-$37` and `$3A`): live 10/10, fuzz 500/500, paths 134/134. The
+  other NMI rows can take the same fuzz.
+
 ## Statically found code (map-2, 2026-11-15)
 
 - **`map/static_code.txt`** lists code that no trusted run executed but that other

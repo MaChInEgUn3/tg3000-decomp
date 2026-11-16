@@ -51,5 +51,9 @@ void nmi_target_80FC5F(void);
 // gets scroll 0, colour 0 = $1BE6, colour math $17 / $12 with the fixed colour from $017C
 // and $017D, windows $22/$02/$82, layers $17/$00; then the tail.
 void nmi_target_80E28C(void);
+// $80:E175 (D = $0100 while it runs): until $0116 is set, rebuild the HDMA table at $1B00
+// for a band that opens by 4 lines a frame ($0114, up to $3A, then $0116 = 1); then the
+// tail.
+void nmi_target_80E175(void);
 
 #endif

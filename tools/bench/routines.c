@@ -1567,6 +1567,23 @@ static void call_nmi_tail_wrong(const Regs* in, Regs* out) {
 static void call_nmi_target_80FBD1(const Regs* in, Regs* out) { nmi_target_80FBD1(); restoreNmiFrame(in, out); }
 static void call_nmi_target_80FC5F(const Regs* in, Regs* out) { nmi_target_80FC5F(); restoreNmiFrame(in, out); }
 static void call_nmi_target_80E28C(const Regs* in, Regs* out) { nmi_target_80E28C(); restoreNmiFrame(in, out); }
+static void call_nmi_target_80E175(const Regs* in, Regs* out) { nmi_target_80E175(); restoreNmiFrame(in, out); }
+
+// NMI rows can fuzz when the tail sends no sound message (bit 15 of $046D clear): then
+// nothing waits for the sound CPU
+static void fuzz_nmi_quiet(uint8_t* ram, uint32_t (*rnd)(void)) {
+  ram[0x046D] = (uint8_t)rnd();
+  ram[0x046E] = (uint8_t)(rnd() & 0x7F);
+}
+
+// the band height on every value up to $3A (the paths at $34-$37 and $3A), opening or done
+static void fuzz_nmi_target_80E175(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  fuzz_nmi_quiet(ram, rnd);
+  wr16ram(ram, 0x0114, (uint16_t)(rnd() % 0x3B));
+  wr16ram(ram, 0x0116, (rnd() & 7) ? 0 : 1);
+  wr16ram(ram, 0x0118, (uint16_t)(rnd() % 0x20));
+}
 
 // ---- nmi_tail ($80:8934) ----
 static void call_nmi_tail(const Regs* in, Regs* out) {
@@ -3032,6 +3049,9 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80FC5F, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}}},
   {.name = "nmi_target_80E28C", .entry = 0x80E28C, .end = 0x80E3F7, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80E28C, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}}},
+  {.name = "nmi_target_80E175", .entry = 0x80E175, .end = 0x80E28C, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_target_80E175, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
+   .fuzz = fuzz_nmi_target_80E175},
   {.name = "nmi_tail", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .fixedD = false, .call = call_nmi_tail, ALL_OUTPUTS},
   // no fuzz: it waits (WAI) for the next interrupt, which the fuzz never raises

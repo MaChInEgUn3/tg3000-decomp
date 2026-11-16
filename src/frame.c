@@ -153,3 +153,63 @@ void nmi_target_80E28C(void) {
   video_set_sub_screen(0x00);
   nmi_tail();
 }
+
+#define BAND_DP 0x0100  // D while $80:E175 runs
+#define BAND_TABLE 0x1B00
+
+// TG3000_ROUTINE($80:E175) nmi_target_80E175
+//
+// As in $80:E28C, the table is written as overlapping words in the original's order.
+void nmi_target_80E175(void) {
+  if(rd16(BAND_DP + 0x16) == 0) {
+    uint16_t h = rd16(BAND_DP + 0x14), x = 0;
+    wr16(BAND_TABLE + x, (uint16_t)(h + 0x38)); x = 1;
+    wr16(BAND_TABLE + x, (uint16_t)(0xFFDF - h)); x = 3;
+    uint16_t a = (uint16_t)(0x34 - h);
+    if(a != 0 && !(a & 0x8000)) {  // the band is still opening above line $34
+      wr16((uint16_t)(BAND_TABLE + x), a); x = 4;
+      wr16((uint16_t)(BAND_TABLE + x), 0x001F); x = 6;
+      wr16((uint16_t)(BAND_TABLE + x), 0x0088);
+      for(uint16_t k = 0, p = 0xFFEB; k < 8; k++, p--) wr16((uint16_t)(BAND_TABLE + 1 + 2 * k + x), p);
+      wr16((uint16_t)(BAND_TABLE + 0x11 + x), (uint16_t)(0x38 - h));
+      wr16((uint16_t)(BAND_TABLE + 0x12 + x), 0xFF6B);
+      wr16((uint16_t)(BAND_TABLE + 0x14 + x), 0x0001);
+      wr16((uint16_t)(BAND_TABLE + 0x15 + x), (uint16_t)(0xFFAB + h));
+      wr16((uint16_t)(BAND_TABLE + 0x17 + x), 0);
+    } else {
+      a = (uint16_t)(a + 8);
+      if(a != 0) {  // a repeat run of a lines, each pointing one entry lower
+        wr16(BAND_DP + 0x18, x);
+        wr16((uint16_t)(BAND_TABLE + x), (uint16_t)(a | 0x80)); x++;
+        uint16_t p = (uint16_t)((a & 0x7F) + 0xFFE3);
+        for(uint16_t n = a; n != 0; n--, p--, x = (uint16_t)(x + 2)) wr16((uint16_t)(BAND_TABLE + x), p);
+      }
+      a = (uint16_t)(0x38 - h);
+      if(a == 0 || (a & 0x8000)) {  // shorten that run instead
+        wr16(BAND_DP + 0x1A, a);
+        wr16(BAND_DP + 0x16, (uint16_t)(a << 1));
+        uint16_t next = (uint16_t)(x + rd16(BAND_DP + 0x16));
+        uint16_t at = (uint16_t)(BAND_TABLE + rd16(BAND_DP + 0x18));
+        uint8_t count = (uint8_t)(rd8(at) + (uint8_t)a);
+        wr8(at, count);
+        if(count == 0x80) next = (uint16_t)((next & 0xFF00) | (uint8_t)(next - 1));  // DEC of its low byte on the stack
+        x = next;
+      } else {
+        wr16((uint16_t)(BAND_TABLE + x), a); x++;
+        wr16((uint16_t)(BAND_TABLE + x), 0xFF6B); x = (uint16_t)(x + 2);
+      }
+      wr16((uint16_t)(BAND_TABLE + x), 0x0001);
+      wr16((uint16_t)(BAND_TABLE + 1 + x), (uint16_t)(0xFFAB + h));
+      wr16((uint16_t)(BAND_TABLE + 3 + x), 0);
+    }
+    if(h == 0x3A) {
+      wr16(BAND_DP + 0x16, 1);
+    } else {
+      h = (uint16_t)(h + 4);
+      if(h >= 0x3A) h = 0x3A;
+      wr16(BAND_DP + 0x14, h);
+      wr16(BAND_DP + 0x16, 0);
+    }
+  }
+  nmi_tail();
+}

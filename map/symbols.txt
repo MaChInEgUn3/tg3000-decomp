@@ -90,6 +90,7 @@ func    80FC5F   nmi_target_80FC5F   ; NMI target: $0026 |= 2, func_8AA050, nmi_
 func    80E48A   irq_split_bottom    ; IRQ: the screen's lower part (scroll 0, layers, colour math) -> src/frame.c
 func    80E3F7   irq_split_top       ; IRQ: the screen's upper split (scroll, layers, colour 0, next IRQ) -> src/frame.c
 func    80E28C   nmi_target_80E28C   ; NMI target: split-screen tables, IRQ setup, top-part registers, nmi_tail -> src/frame.c
+func    80E175   nmi_target_80E175   ; NMI target: the opening band's HDMA table at $1B00, nmi_tail -> src/frame.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c
