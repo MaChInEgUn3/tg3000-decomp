@@ -270,14 +270,51 @@ static void endCommand() {
   curCmd = -1;
 }
 
+// ---- one command's runs, as the game sees them: from the command word (boundary from the
+// shadow, valid while the shadow agrees for that command), every byte the game writes, then
+// every byte it reads from the firmware, until it writes again (outputs only: the chip's
+// memory and program are never read) ----
+static int cmdlogCmd = -1;
+static FILE* cmdlog;
+static bool cmdlogOn;
+static uint8_t cmdlogIn[64], cmdlogOut[64];
+static int cmdlogNIn, cmdlogNOut;
+static unsigned long cmdlogRuns, cmdlogWrong;
+static void cmdlogFlush() {
+  if(!cmdlogOn) return;
+  // commands with a native function: check it on this run (src/dsp4.c)
+  if(cmdlogCmd == 0x0A && cmdlogNIn == 6 && cmdlogNOut >= 8) {
+    int16_t mine[4];
+    dsp4_edges(uint16_t(cmdlogIn[0] | cmdlogIn[1] << 8), uint16_t(cmdlogIn[2] | cmdlogIn[3] << 8),
+               uint16_t(cmdlogIn[4] | cmdlogIn[5] << 8), mine);
+    cmdlogRuns++;
+    for(int j = 0; j < 4; j++)
+      if(uint16_t(mine[j]) != uint16_t(cmdlogOut[2 * j] | cmdlogOut[2 * j + 1] << 8)) { cmdlogWrong++; break; }
+  }
+  for(int i = 0; i < cmdlogNIn; i++) std::fprintf(cmdlog, "%02X", cmdlogIn[i]);
+  std::fprintf(cmdlog, " ");
+  for(int i = 0; i < cmdlogNOut; i++) std::fprintf(cmdlog, "%02X", cmdlogOut[i]);
+  std::fprintf(cmdlog, "\n");
+  cmdlogOn = false;
+}
+
 static void catalogueAccess(unsigned addr, unsigned char v, bool write) {
   bool wasBusy = shadow.m.busy != 0;
+  if(cmdlog != nullptr) {
+    if(write && cmdlogOn && cmdlogNOut > 0) cmdlogFlush();
+    else if(write && cmdlogOn && cmdlogNIn < 64) cmdlogIn[cmdlogNIn++] = v;
+    else if(!write && cmdlogOn && cmdlogNOut < 64) cmdlogOut[cmdlogNOut++] = v;
+  }
   if(write) {
     shadow.writeData(v);
     if(!wasBusy && shadow.m.busy) {  // a command word just completed
       endCommand();
       curCmd = shadow.m.command & 31;
       curIn = curOut = 0;
+      if(cmdlog != nullptr) {
+        cmdlogFlush();
+        if(curCmd == cmdlogCmd) { cmdlogOn = true; cmdlogNIn = cmdlogNOut = 0; }
+      }
       curBad = false;
       notePc(cmdStats[curCmd].writers, &cmdStats[curCmd].nWriters, lastPc);
     } else if(curCmd >= 0) {
@@ -395,7 +432,7 @@ int main(int argc, char** argv) {
   }
   long maxFrames = -1, every = 0, wramAt = -1, offset = 0;
   bool p2pad = false, bizhawk = false;
-  std::string coveragePath, mulPath, cataloguePath;
+  std::string coveragePath, mulPath, cataloguePath, cmdlogPath;
   const char* dumpDir = nullptr;
   const char* wramFile = nullptr;
   FILE* hashes = nullptr;
@@ -411,6 +448,10 @@ int main(int argc, char** argv) {
     else if(!std::strcmp(argv[i], "--coverage") && i + 1 < argc) coveragePath = argv[++i];
     else if(!std::strcmp(argv[i], "--dsp4-mul") && i + 1 < argc) mulPath = argv[++i];
     else if(!std::strcmp(argv[i], "--dsp4-catalogue") && i + 1 < argc) cataloguePath = argv[++i];
+    else if(!std::strcmp(argv[i], "--dsp4-cmdlog") && i + 2 < argc) {
+      cmdlogCmd = (int)std::strtol(argv[++i], nullptr, 16);
+      cmdlogPath = argv[++i];
+    }
     else if(!std::strcmp(argv[i], "--wram-at") && i + 2 < argc) { wramAt = std::atol(argv[++i]); wramFile = argv[++i]; }
     else { std::fprintf(stderr, "unknown option %s\n", argv[i]); return 2; }
   }
@@ -426,6 +467,10 @@ int main(int argc, char** argv) {
   SNES::refbench_exec_hook = execHook;
   if(coverageOn) SNES::refbench_read_hook = covRead;
   if(!mulPath.empty()) mulLog = std::fopen(mulPath.c_str(), "w");
+  if(!cmdlogPath.empty()) {  // needs the shadow for the boundaries
+    cmdlog = std::fopen(cmdlogPath.c_str(), "w");
+    if(cataloguePath.empty()) cataloguePath = cmdlogPath + ".catalogue";
+  }
   catalogueOn = !cataloguePath.empty();
   if(!mulPath.empty() || catalogueOn) SNES::refbench_rw_hook = rwHook;
   FILE* log = std::fopen(argv[2], "r");
@@ -516,6 +561,12 @@ int main(int argc, char** argv) {
   std::fclose(log);
   if(hashes) std::fclose(hashes);
   if(catalogueOn) writeCatalogue(cataloguePath);
+  if(cmdlog != nullptr) {
+    cmdlogFlush();
+    std::fclose(cmdlog);
+    if(cmdlogRuns) std::fprintf(stderr, "dsp4 command $%02X: %lu runs checked against src/dsp4.c, %lu differ\n", cmdlogCmd,
+                                cmdlogRuns, cmdlogWrong);
+  }
   if(!mulPath.empty()) {
     finishCapture();
     std::fprintf(stderr, "DSP-4 command $0000: %lu cases, %lu match dsp4_multiply, %lu differ (%lu with skipped bytes)\n",

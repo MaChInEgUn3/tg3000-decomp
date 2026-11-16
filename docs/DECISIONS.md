@@ -1453,6 +1453,49 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   with BCD) never run on the 60k movie, only on the TAS. So they wait for bench coverage
   (explore-1, tas-2).
 
+## DSP-4 command $0A (dsp4-0a, 2026-11-16)
+
+- **Why it is first** (advisor's order):
+  - it is one of the fixed-size commands the stand-in never missed;
+  - its users are `$81:F887` (351,807 entries on the 60k movie, the road under each
+    car) and `$83:E8AB`;
+  - `$11` comes next (`$81:E631`). Then the sprite group (`$03/$0B/$06/$09`), then the
+    road.
+
+  The two DSP-4 roots `roots.py` lists (`$82:D934`, `$85:B828`) sit inside `$09` and
+  the road commands, so they are not the start.
+- **Measured, outputs only:** `refbench --dsp4-cmdlog CMD FILE` logs each run of one
+  command as the game sees it: from the command word (the boundary given by the shadow,
+  valid while the shadow agrees for that command), the bytes the game writes, then the
+  bytes it reads from the firmware. The chip's memory and program stay unread.
+  - **The run:** first 50,000 TAS frames, 281,548 runs of `$0A`, 4,281 distinct inputs.
+  - **Pure:** equal inputs always gave equal outputs.
+- **The command:** three words in (t, a near row, a far row) and four words out.
+  - Each row word holds four signed 4-bit widths (bits 15-12, 11-8, 7-4, 3-0), each
+    worth 48.
+  - Output j goes from the near row's width j to the far row's:
+    `near_j + floor((far_j - near_j) * t / $8000)`.
+  - The game sends t = (a position's high byte) >> 1, so t is a multiple of `$80` below
+    `$8000`.
+  - So: four road edges between two rows of the track, interpolated at the car's place.
+    Rounding to nearest, or truncating toward 0, each disagree with the chip about 1,300
+    times.
+- **`dsp4_edges` (src/dsp4.c)** is that formula. refbench checks it on every run it
+  logs: **281,548 runs, 0 differ.**
+- **The domain:**
+  - in every run, widths 0 and 2 are -7..-1, widths 1 and 3 are 0..7, and t is as above;
+  - the rows come from a 20-value table the game builds (`$7E:D1B3`);
+  - outside that domain the formula is the natural extension, not a measured one, like
+    never-run code.
+
+  If the chip ever needs checking there, chosen inputs fed to the idle chip are still
+  outputs only (not done).
+- **Next:**
+  - the bench's chip is the stand-in, and it is exact on `$0A`;
+  - the differential test's DSP-4 recogniser becomes a command table (command, bytes
+    in, bytes out) for the commands in `src/dsp4.c`;
+  - then `$81:F887` and `$83:E8AB` can be rows.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and
