@@ -274,7 +274,13 @@ static uint8_t peekByte(uint32_t adr);
 // kicked slot's setup is used up (no longer left set up).
 void difftest_stream_kick(uint8_t mask) {
   if(!collectingC) return;
-  cCgAdrClaim = -1;
+  // the CGRAM address is used only by slots to $2121/$2122: those the C set up here by
+  // their claimed target, the others by the target the routine left them with
+  for(int c = 0; c < 8; c++) {
+    if(!(mask & (1 << c))) continue;
+    uint8_t target = (cChanClaim[c] & 0x02) ? cChanVal[c][1] : snes->dma->channel[c].bAdr;
+    if(target == 0x21 || target == 0x22) cCgAdrClaim = -1;
+  }
   uint16_t ptr = cCgPtr >= 0 ? (uint16_t)cCgPtr : ((Sample*)cSample)->cgPtrEntry;
   uint8_t stream = 0;
   for(int c = 0; c < 8; c++) {
@@ -415,6 +421,27 @@ static const char* effectName(int kind) {
 // sample in progress (an inner routine's upload is also its caller's).
 static uint8_t peekByte(uint32_t adr);
 
+// The CGRAM address the kick model expects after a kick (-1: none), checked against the
+// PPU at the first instruction after the transfers ran: the model that decodes the
+// original's effects must agree with the hardware.
+static int32_t cgPtrAfterKick = -1;
+
+static void checkCgPtrAfterKick(void) {
+  if(cgPtrAfterKick < 0 || snes->dma->dmaState != 0) return;  // once the kick's transfers have run
+  if((uint16_t)cgPtrAfterKick != snes->ppu->cgramPointer) {
+    static char msg[96];
+    snprintf(msg, sizeof msg, "the CGRAM address after a kick: model %02X, PPU %02X", (unsigned)cgPtrAfterKick,
+      snes->ppu->cgramPointer);
+    for(int k = 0; k < depth; k++) {
+      if(samples[k].hwAccess) continue;
+      samples[k].hwAccess = true;
+      samples[k].hwWhy = msg;
+      samples[k].hwAccessAdr = 0x420B;
+    }
+  }
+  cgPtrAfterKick = -1;
+}
+
 static void recordKick(uint8_t val) {
   Effect plainEffect[8];
   uint32_t sizes[8] = {0};
@@ -447,6 +474,7 @@ static void recordKick(uint8_t val) {
     if(!ch->fromB && ch->bAdr == 0x22) cgPtr = (uint16_t)((cgPtr + size / 2) & 0xFF);
     else if(!ch->fromB && ch->bAdr == 0x21) cgPtr = peekByte(ch->fixed ? src : src + size - 1);
   }
+  cgPtrAfterKick = cgPtr;
   for(int k = accessBase; k < depth; k++) {
     Sample* smp = &samples[k];
     // per channel: set up in this sample (mode, target, source: an upload), or wholly
@@ -571,6 +599,10 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
 }
 
 void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
+  // a CGRAM access right after a kick: the check must see the address before it moves
+  if(cgPtrAfterKick >= 0 && ((adr >> 16) & 0x7F) < 0x40 && ((adr & 0xFFFF) == 0x2121 || (adr & 0xFFFF) == 0x2122 ||
+                             (adr & 0xFFFF) == 0x213B))
+    checkCgPtrAfterKick();
   // a handler recorded for a waiting sample: its hardware is its own, and only the samples
   // that began inside it see it
   accessBase = (irqOwner >= 0 && irqActive) ? irqBaseDepth : 0;
@@ -643,7 +675,20 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   }
   if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x420B) {
     recordKick(val);
-    for(int k = accessBase; k < depth; k++) samples[k].setupPending = samples[k].vramAdrPending = samples[k].cgAdrPending = false;
+    // a kick uses the VRAM address only through a channel to $2118/$2119, the CGRAM address
+    // only through one to $2121/$2122
+    bool vram = false, cg = false;
+    for(int c = 0; c < 8; c++) {
+      if(!(val & (1 << c))) continue;
+      uint8_t b = snes->dma->channel[c].bAdr;
+      vram |= b == 0x18 || b == 0x19;
+      cg |= b == 0x21 || b == 0x22;
+    }
+    for(int k = accessBase; k < depth; k++) {
+      samples[k].setupPending = false;
+      if(vram) samples[k].vramAdrPending = false;
+      if(cg) samples[k].cgAdrPending = false;
+    }
     return;
   }
   if(((adr >> 16) & 0x7F) < 0x40 && (write ? ((adr & 0xFFFF) == 0x2118 || (adr & 0xFFFF) == 0x2119)
@@ -1128,6 +1173,7 @@ static void checkEntries(Cpu* cpu, uint32_t pc, bool inHandler) {
 
 void difftest_on_insn(Cpu* cpu) {
   uint32_t pc = norm(((uint32_t)cpu->k << 16) | cpu->pc);
+  checkCgPtrAfterKick();
   if(irqOwner >= 0) {
     if(irqActive && cpu->sp == irqReturnSp) {  // the handler has returned (RTI)
       memcpy(irqPost[irqCount++], snes->ram, TG3000_WRAM_SIZE);

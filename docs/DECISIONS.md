@@ -1391,6 +1391,49 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - Both leaves run once on the 60k movie and take no inputs. Their fuzz only varies the
   registers and flags around them.
 
+## Harness loose ends; the APU uploads parked; what next (review-2, 2026-11-16)
+
+- **A kick uses an address only through its channels' targets.** Before, any `$420B`
+  write, even 0 or an OAM kick, cleared the original's "VRAM/CGRAM address left set"
+  flags, while the C's claim cleared only on a matching upload. So an address left for a
+  later routine could go uncompared. Now:
+  - on both sides, a kick clears the VRAM flag only through a channel to `$2118/$2119`,
+    and the CGRAM flag only through one to `$2121/$2122`;
+  - the C's stream kick tells by the slot's target: the claimed one for slots it set up,
+    else the channel's.
+
+  The first run under the narrower rule caught `nmi_race_full`'s never-run band path.
+  There a kick with no CGRAM slot leaves `$2121 = $21` set, and the C had cleared its
+  claim.
+- **The CGRAM address model is checked against the PPU.** Both sides decoded the
+  address across one kick with the same model (dma-1), so nothing checked it.
+  - After a kick, once LakeSnes has run the transfers (its DMA state back to idle), the
+    modelled end address must equal the PPU's. The check runs at the first instruction
+    after the transfers, or at the next CGRAM register access, whichever comes first.
+  - A mismatch fails every sample in progress. None fails now.
+  - (The first try checked at the very next instruction. LakeSnes runs the transfers
+    after the kick's own instruction, so that check was too early.)
+- **The APU scene uploads are parked** (advisor) until a port designs the sound
+  interface, as "The APU ports, measured" already said:
+  - almost none of their entries could be compared: `$86:E37E` is interrupted in 133 of
+    147 entries, `$86:E1E6` in 15 of 20, and `$86:E1BA` in 2 of 2;
+  - the handshake rules out fuzz;
+  - one sample holds thousands of port writes, against 128 effects;
+  - `$86:E105` is a BRK on a handshake timeout, and `$86:E15F` calls two never-run
+    senders for blocks under 3 bytes.
+
+  When their turn comes, the bench should decode the port traffic into blocks
+  (destination, size, data), the way kicks become uploads.
+- **Next, in order:**
+  - the hardware-free routines `tools/portable.py` lists now. It had not run since the
+    display, OAM, VMAIN, channel and screen registers were added. Among them: `$80:99D1`
+    (14 callers), `$80:9C0B` (10), `$80:9ABB`, `$80:993E`, `$80:98C4`, `$80:9957` (9
+    each), `$8A:BB99`, `$80:8635`, `$8A:BC8A`, `$80:DAED`;
+  - then DSP-4, starting from the fixed-size commands the stand-in never missed (`$0A`,
+    `$11`), not from the two DSP-4 roots;
+  - the bench's chip is the stand-in, not the firmware. Each command proved in refbench
+    is to be routed in the bridge to `src/dsp4.c`.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and
