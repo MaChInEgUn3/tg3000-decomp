@@ -82,6 +82,7 @@ func    86DFE1   sound_frame         ; fade, then the message when enabled and r
 func    8387C1   pads_read_pair      ; read a multitap pair into $0020/$0022 -> src/pads.c
 func    8386FF   pads_read           ; read the five pads into their (held, pressed) pairs -> src/pads.c
 func    8386FB   pads_read_long      ; pads_read (long) -> src/pads.c
+func    8396CD   pads_read_long_2    ; pads_read (long), a second copy -> src/pads.c
 func    808934   nmi_tail            ; NMI common tail: pads, sound queue, sound message, frame count, RTI -> src/frame.c
 func    8A8E1B   oam_from_objects    ; the 128-slot object table to sprites (long) -> src/sprites.c
 func    8AA050   func_8AA050         ; upload + oam_from_objects + counters, then func_8AA005 (long) -> src/misc.c
@@ -92,6 +93,7 @@ func    80E3F7   irq_split_top       ; IRQ: the screen's upper split (scroll, la
 func    80E28C   nmi_target_80E28C   ; NMI target: split-screen tables, IRQ setup, top-part registers, nmi_tail -> src/frame.c
 func    80E175   nmi_target_80E175   ; NMI target: the opening band's HDMA table at $1B00, nmi_tail -> src/frame.c
 func    80D784   nmi_target_80D784   ; NMI target: table copy, 4 KB to VRAM, screen setup, nmi_tail -> src/frame.c
+func    85838A   nmi_race_light      ; race NMI light frame: fade, $2100, sound, pads, counters -> src/frame.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
 func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_dma.c
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c

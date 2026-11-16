@@ -21,5 +21,6 @@ void pads_read(void);
 
 // $83:86FB: the same, by a long call.
 void pads_read_long(void);
+void pads_read_long_2(void);  // $83:96CD, the same
 
 #endif

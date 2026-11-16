@@ -65,6 +65,9 @@ void video_set_bg_map(int bg, uint8_t value);
 void video_set_bg_tiles(int pair, uint8_t value);  // pair 0: BG1/BG2, 1: BG3/BG4
 void video_set_obj_select(uint8_t value);
 
+// The display ($2100, raw byte): bit 7 forced blank, bits 0-3 brightness.
+void video_set_display(uint8_t value);
+
 // The layers on the main and sub screens ($212C / $212D): bits 0-3 BG1-BG4, bit 4 sprites.
 void video_set_main_screen(uint8_t layers);
 void video_set_sub_screen(uint8_t layers);

@@ -315,6 +315,7 @@ CODE_8389AE:
 CODE_8389D0:
     rts                         ; $8389D0
     incbin !baserom:$189D1..$196CD
+pads_read_long_2:
     jsr.w pads_read             ; $8396CD
     rtl                         ; $8396D0
     jsr.w $8644                 ; $8396D1

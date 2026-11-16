@@ -1100,6 +1100,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `$4200 = $B1` itself, so the NMI it enables interrupts the fuzz case (23 of 500 were
   lost). Its live samples cover all 130 paths.
 
+## The race NMI's light frame (race-nmi-1, 2026-11-16)
+
+- **The race NMI** `$85:8377` pushes the common frame (DB, A, X, Y, D) and sets D = 0. It
+  then dispatches through `$0008` to `$85:838A` (the light frame) or `$85:83CE` (the
+  full frame: the race's DMA and HDMA setup, still assembly).
+- **`nmi_race_light` ($85:838A):**
+  - it steps the brightness fade (`$014A` towards `$0148` by `$0146`, then stops on the
+    target) and writes the display;
+  - then it runs `sound_frame` and the pads (through `pads_read_long_2` at `$83:96CD`, a
+    second copy of `pads_read_long`) and counts the frame in `$0024` and `$00BA`;
+  - it runs CLI, so the race's raster IRQs can start before its RTI. The C has no
+    interrupt flag: on a port, the IRQ C runs at its line regardless;
+  - race1: live 513/513, fuzz 500/500, paths 31/31. The negative row (brightness 0
+    written without the forced blank) fails on the `$2100` byte.
+- **`$2100` (display: forced blank, brightness) joins the byte registers**, with the
+  setter `video_set_display`.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

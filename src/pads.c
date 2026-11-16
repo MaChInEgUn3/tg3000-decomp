@@ -45,3 +45,6 @@ void pads_read(void) {
 
 // TG3000_ROUTINE($83:86FB) pads_read_long (long)
 void pads_read_long(void) { pads_read(); }
+
+// TG3000_ROUTINE($83:96CD) pads_read_long_2 (long): a second copy of pads_read_long
+void pads_read_long_2(void) { pads_read(); }

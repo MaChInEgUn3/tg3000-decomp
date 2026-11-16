@@ -59,5 +59,6 @@ void nmi_target_80E175(void);
 // $0000, set the screen up (mode $09, maps $51/$03/$59, tiles $03 for BG3/4, sprites $03,
 // main screen BG2, BG3 scrolled to (0, $3FF), $2130 = $02, colour 2 black); then the tail.
 void nmi_target_80D784(void);
+void nmi_race_light(void);  // $85:838A: the race NMI's light frame
 
 #endif

@@ -361,6 +361,7 @@ CODE_85836F:
     lda.w #$0000                ; $858383
     tcd                         ; $858386
     jmp.w ($0008)               ; $858387
+nmi_race_light:
     lda.w $4210                 ; $85838A
     cli                         ; $85838D
     lda.w $0146                 ; $85838E
@@ -386,7 +387,7 @@ CODE_8583B7:
     sta.w $2100                 ; $8583B7
     rep.b #$20                  ; $8583BA
     jsl.l sound_frame           ; $8583BC
-    jsl.l $8396CD               ; $8583C0
+    jsl.l pads_read_long_2      ; $8583C0
     inc.b $24                   ; $8583C4
     inc.b $BA                   ; $8583C6
     pld                         ; $8583C8
@@ -766,7 +767,7 @@ CODE_858795:
     tsb.w $045B                 ; $8587B2
     rep.b #$20                  ; $8587B5
 CODE_8587B7:
-    jmp.w $838A                 ; $8587B7
+    jmp.w nmi_race_light        ; $8587B7
     rep.b #$10                  ; $8587BA
     sep.b #$20                  ; $8587BC
     phb                         ; $8587BE

@@ -90,7 +90,8 @@ static const char* const ppuFieldName[PF_COUNT] = {
 // Pure byte registers: their state is the last byte written.
 static const uint16_t byteRegs[] = {0x212C, 0x212D, 0x2123, 0x2124, 0x2125, 0x2130, 0x2131,
                                     0x4200, 0x4207, 0x4208, 0x4209, 0x420A,
-                                    0x2101, 0x2105, 0x2107, 0x2108, 0x2109, 0x210A, 0x210B, 0x210C};
+                                    0x2101, 0x2105, 0x2107, 0x2108, 0x2109, 0x210A, 0x210B, 0x210C,
+                                    0x2100};
 #define N_BYTE_REGS ((int)(sizeof byteRegs / sizeof byteRegs[0]))
 static int byteRegIndex(uint32_t adr) {
   if(((adr >> 16) & 0x7F) >= 0x40) return -1;
