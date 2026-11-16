@@ -217,3 +217,4 @@ func    80F561   upload_slice_15      ; slice 15 of the $7E:3040 picture -> VRAM
 func    8ABAF2   fade_in_start       ; fade up: target $0F00, step $0080 -> src/misc.c
 func    8AA09F   hdma_window_tables_init ; the window HDMA tables at $0D00/$0D20 -> src/misc.c
 func    8ABC8A   password_encode     ; password text at $0D40 from the big number and $0192 -> src/misc.c
+func    81F887   car_road_step       ; a car's frame on the road: distance, segment step, sideways and edges ($0A), speed -> src/track.c

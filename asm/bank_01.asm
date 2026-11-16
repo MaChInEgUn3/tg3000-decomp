@@ -2376,6 +2376,7 @@ CODE_81F4A2:
 CODE_81F4AC:
     rts                         ; $81F4AC
     incbin !baserom:$F4AD..$F887
+car_road_step:
     lda.w #$FFFF                ; $81F887
     sta.w $FAC7,y               ; $81F88A
     lda.w $1ECE                 ; $81F88D

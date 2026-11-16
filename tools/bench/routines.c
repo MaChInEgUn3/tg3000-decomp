@@ -2608,6 +2608,37 @@ static void fuzz_func_81FBB1(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_rng_state(ram, rnd);
 }
 
+// ---- car_road_step ($81:F887) ----  Y = the car; no register outputs (its caller loads A,
+// X and Y next)
+static void call_car_road_step(const Regs* in, Regs* out) { (void)out; car_road_step(in->y); }
+
+// Negative test: the road rows' right widths one step wider while the C reads them (the
+// table restored after, so only the edges and what follows from them differ)
+static void call_car_road_step_wrong(const Regs* in, Regs* out) {
+  (void)out;
+  for(uint32_t a = 0xD1B3; a < 0xD1B3 + 0x1600; a += 2) wr8(a, (uint8_t)(rd8(a) + 1));
+  car_road_step(in->y);
+  for(uint32_t a = 0xD1B3; a < 0xD1B3 + 0x1600; a += 2) wr8(a, (uint8_t)(rd8(a) - 1));
+}
+
+// a car on a segment table (as func_81FBB1's fuzz), the frame step, speeds and drift, the
+// car ahead, the road rows around (any words: the bench answers $0A with dsp4_edges)
+static void fuzz_car_road_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_81FBB1(r, ram, rnd);
+  uint16_t car = r->y;
+  wr16ram(ram, 0x1ECE, (rnd() & 7) == 0 ? 1 : 0);
+  wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 0x300));
+  static const uint16_t fields[] = {0xFAB4, 0xFAB9, 0xFABB, 0xFAC9, 0xFACB, 0xFAD7, 0xFAD9, 0xFADB, 0xFAE9};
+  for(unsigned i = 0; i < sizeof fields / sizeof fields[0]; i++) wr16ram(ram, (uint32_t)(fields[i] + car), (uint16_t)rnd());
+  wr16ram(ram, 0xFACB + (uint32_t)car, (uint16_t)((int16_t)(rnd() % 0x800) - 0x200));
+  wr16ram(ram, 0xFAE6 + (uint32_t)car, (rnd() & 1) ? 0 : (uint16_t)(rnd() % 0x400));
+  wr16ram(ram, 0xFAE8 + (uint32_t)car, (rnd() & 1) ? 0 : (uint16_t)(rnd() % 0x400));
+  uint16_t ahead = (uint16_t)(0x35 * (rnd() % 20));
+  wr16ram(ram, 0xFACD + (uint32_t)car, ahead);
+  if(rnd() & 1) wr16ram(ram, 0xFAB6 + (uint32_t)ahead, (uint16_t)rnd());
+  for(uint32_t a = 0xD1B3; a < 0xD1B3 + 0x1600; a++) ram[a] = (uint8_t)rnd();
+}
+
 // ---- take_nibble16 ($80:85CA) ----  A = the nibble (N/Z from the last ROL), C = 0.
 static void call_take_nibble16(const Regs* in, Regs* out) {
   (void)in;
@@ -3658,6 +3689,8 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_func_8ABBF4, ALL_OUTPUTS, .fuzz = fuzz_big_number},
   {.name = "func_81FBB1", .entry = 0x81FBB1, .end = 0x81FC72, .source = "src/track.c", .needM16 = true,
    .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_func_81FBB1, ALL_OUTPUTS, .fuzz = fuzz_func_81FBB1},
+  {.name = "car_road_step", .entry = 0x81F887, .end = 0x81FA8F, .source = "src/track.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_car_road_step, .fuzz = fuzz_car_road_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
@@ -3775,6 +3808,8 @@ const Routine negativeRoutines[] = {
    .fuzz = fuzz_nmi_race_full},
   {.name = "video_load_screen_wrong", .entry = 0x8081CC, .end = 0x808373, .source = "src/video_dma.c",
    .call = call_video_load_screen_wrong, ALL_OUTPUTS, .fuzz = fuzz_video_load_screen},
+  {.name = "car_road_step_wrong", .entry = 0x81F887, .end = 0x81FA8F, .source = "src/track.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_car_road_step_wrong, .fuzz = fuzz_car_road_step},
   {.name = "nmi_race_tail_wrong", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_tail_wrong, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_tail_wrong", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",

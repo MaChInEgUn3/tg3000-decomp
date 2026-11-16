@@ -119,7 +119,9 @@ typedef struct {
   struct { uint16_t reg; uint8_t val; } inputs[256];
   int nInputs;
   bool inputOverflow;
-  uint8_t dsp4State;  // where the routine is in a DSP-4 multiply (0 = idle; see dsp4Step)
+  // where the routine is in a DSP-4 command (see dsp4Step): phase 0 idle, 1 half of the
+  // command word, 2 parameters, 3 results; the command and the bytes of the phase so far
+  uint8_t dsp4Phase, dsp4Cmd, dsp4Count;
   uint32_t hwAccessAdr, leftExtentPc;
   bool foreignStack;  // a handler it recorded switched to another stack (two-task screens)
   const char* hwWhy;
@@ -575,26 +577,52 @@ static bool isMathReg(uint32_t adr, bool write) {
 
 // The DSP-4 at $30-$3F:8000 (data below $C000, status above). The C calls the chip's
 // commands as native functions (src/dsp4.c), so a routine's DSP-4 traffic is its own work
-// when it is made of whole commands the C has: so far command $0000, the multiply (the
-// word $0000, two 16-bit operands, then the 32-bit product's 4 bytes, each read or skipped
-// by a write — the chip's behaviour, checked on the real firmware). Status reads are
-// free. Anything else, or a multiply left unfinished, is a hardware access the C cannot
-// reproduce. Returns whether the access fits.
+// when it is made of whole commands the C has (the table below: the command word, its
+// parameter bytes, its result bytes; each checked on the real firmware with refbench).
+// The multiply's results may also be skipped by a write (the chip's behaviour, measured);
+// other commands' results must be read. Status reads are free. Anything else, or a command
+// left unfinished, is a hardware access the C cannot reproduce. Returns whether the access
+// fits.
+static const struct { uint8_t cmd, in, out; bool writeSkips; } dsp4Commands[] = {
+  {0x00, 4, 4, true},   // dsp4_multiply
+  {0x0A, 6, 8, false},  // dsp4_edges
+};
 static bool isDsp4(uint32_t adr) {
   uint8_t bank = (adr >> 16) & 0x7F;
   return bank >= 0x30 && bank < 0x40 && (adr & 0xFFFF) >= 0x8000;
 }
 
+static int dsp4CommandIndex(uint8_t cmd) {
+  for(int i = 0; i < (int)(sizeof dsp4Commands / sizeof dsp4Commands[0]); i++) if(dsp4Commands[i].cmd == cmd) return i;
+  return -1;
+}
+
 static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
   if((adr & 0xFFFF) >= 0xC000) return !write;          // status: reads only
-  uint8_t st = smp->dsp4State;
-  if(st >= 6) {  // the product's 4 bytes: a read takes one, a write skips one (as the chip does)
-    smp->dsp4State = st == 9 ? 0 : (uint8_t)(st + 1);
-    return true;
+  switch(smp->dsp4Phase) {
+  case 0:  // the command word's low byte
+    if(!write || dsp4CommandIndex(val) < 0) return false;
+    smp->dsp4Cmd = val;
+    smp->dsp4Phase = 1;
+    break;
+  case 1:  // its high byte: 0
+    if(!write || val != 0) return false;
+    smp->dsp4Phase = 2;
+    smp->dsp4Count = 0;
+    break;
+  case 2: {  // the parameters
+    if(!write) return false;
+    const int i = dsp4CommandIndex(smp->dsp4Cmd);
+    if(++smp->dsp4Count == dsp4Commands[i].in) { smp->dsp4Phase = 3; smp->dsp4Count = 0; }
+    break;
   }
-  if(!write) return false;                             // reading before the operands are in
-  if(st < 2 && val != 0) return false;                 // the command word must be $0000
-  smp->dsp4State = (uint8_t)(st + 1);
+  default: {  // the results: a read takes one (a write skips one, for the multiply)
+    const int i = dsp4CommandIndex(smp->dsp4Cmd);
+    if(write && !dsp4Commands[i].writeSkips) return false;
+    if(++smp->dsp4Count == dsp4Commands[i].out) { smp->dsp4Phase = 0; smp->dsp4Count = 0; }
+    break;
+  }
+  }
   return true;
 }
 
@@ -611,7 +639,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
     for(int k = accessBase; k < depth; k++) {
       Sample* smp = &samples[k];
       if(smp->hwAccess || dsp4Step(smp, adr, val, write)) continue;
-      smp->hwWhy = "DSP-4 traffic other than whole multiplies";
+      smp->hwWhy = "DSP-4 traffic other than whole commands of src/dsp4.c";
       smp->hwAccess = true;
       smp->hwAccessAdr = adr;
     }
@@ -992,10 +1020,10 @@ static void finishSample(int k, const Cpu* cpu) {
   char why[320] = "";
   bool ok;
   uint8_t flagDiff = 0;
-  if(!smp->hwAccess && smp->dsp4State != 0) {
+  if(!smp->hwAccess && smp->dsp4Phase != 0) {
     static char unfinished[96];
-    snprintf(unfinished, sizeof unfinished, "a DSP-4 multiply left unfinished (%d of 6 bytes written, %d of 4 read)",
-      smp->dsp4State < 6 ? smp->dsp4State : 6, smp->dsp4State < 6 ? 0 : smp->dsp4State - 6);
+    snprintf(unfinished, sizeof unfinished, "a DSP-4 command $%02X left unfinished (phase %d, %d bytes)", smp->dsp4Cmd,
+      smp->dsp4Phase, smp->dsp4Count);
     smp->hwAccess = true;
     smp->hwWhy = unfinished;
     smp->hwAccessAdr = 0x308000;

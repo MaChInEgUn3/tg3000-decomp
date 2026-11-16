@@ -9,7 +9,7 @@ CC ?= gcc
 CXX ?= g++
 SRC := $(ROOT)/src
 CFLAGS := -O2 -Wall -I$(LS) -I. -I$(SRC)
-CXXFLAGS := -O2 -Wall -std=c++17 -I$(LS) -I$(D4) -I.
+CXXFLAGS := -O2 -Wall -std=c++17 -I$(LS) -I$(D4) -I. -I$(SRC)
 
 LS_SRC := $(filter-out $(LS)/statehandler.c,$(wildcard $(LS)/*.c)) $(LS)/statehandler.c
 OBJ := $(patsubst $(LS)/%.c,$(OUT)/ls/%.o,$(LS_SRC)) $(OUT)/Dsp4.o $(OUT)/dsp4_bridge.o $(OUT)/bench.o $(OUT)/png.o $(OUT)/coverage.o $(OUT)/difftest.o $(OUT)/routines.o $(OUT)/platform_bench.o $(OUT)/census.o $(OUT)/hdma.o $(OUT)/apu.o $(patsubst $(SRC)/%.c,$(OUT)/src_%.o,$(wildcard $(SRC)/*.c))
@@ -26,7 +26,7 @@ $(OUT)/ls/%.o: $(LS)/%.c | $(OUT)/ls
 $(OUT)/Dsp4.o: $(D4)/dsp4/Dsp4.cpp | $(OUT)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OUT)/dsp4_bridge.o: dsp4_bridge.cpp bench_log.h | $(OUT)
+$(OUT)/dsp4_bridge.o: dsp4_bridge.cpp bench_log.h $(SRC)/dsp4.h | $(OUT)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OUT)/png.o: png.c png.h | $(OUT)

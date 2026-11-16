@@ -1496,6 +1496,49 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     in, bytes out) for the commands in `src/dsp4.c`;
   - then `$81:F887` and `$83:E8AB` can be rows.
 
+## DSP-4 commands in the harness; the road under each car (dsp4-1, 2026-11-16)
+
+- **The differential test's DSP-4 recogniser is a command table:** command word,
+  parameter bytes, result bytes, for the commands `src/dsp4.c` has:
+  - `$00` (multiply, 4 in, 4 out; a write may skip a result, measured);
+  - `$0A` (edges, 6 in, 8 out; results must be read).
+
+  Any other DSP-4 traffic, or a command left unfinished, still fails the sample.
+- **The bench's chip answers `$0A` with `dsp4_edges`:**
+  - the bench bridge (`tools/bench/dsp4_bridge.cpp`) watches the clean-room chip's busy
+    flag and command, as refbench's catalogue does (bench only, the chip's code
+    unchanged);
+  - for `$0A` it computes the edges with our C and serves those, while the chip still
+    gets every byte, so it stays in step;
+  - on the game's own runs nothing changes (the stand-in is exact on `$0A`). The fuzz
+    can now use any rows: outside the measured domain both sides are `dsp4_edges`, and
+    the rows check how the routine uses it, while refbench checks the chip;
+  - this is the first command routed as the advisor planned. Each later one proved in
+    refbench goes the same way.
+- **`car_road_step` ($81:F887)**, the road under each car, runs once per car per race
+  frame (351,807 entries on the 60k movie), from `$81:E812`'s table of jumps. Per frame:
+  - the car's 32-bit distance moves on by speed × step (`$1E9E`), and the segment table
+    moves it along (`func_81FBB1`);
+  - it moves sideways by drift × (speed × step) >> 8;
+  - it bounces off the road's edges (`$0A` between the rows at its place), turning the
+    drift back inwards;
+  - a cooldown and a boost run down;
+  - its speed eases towards the target set by the car in front, by at most a limit ×
+    step.
+
+  Two quirks of the original are kept:
+  - **The sideways sum takes in the segment step's carry.** The original has no CLC
+    there; the carry is set only when a jump wrapped the position past `$FFFF`.
+  - **The gap to the target loses its low borrow.** It is a 32-bit subtraction whose
+    high half takes its borrow from an ADD.
+
+  race1: live 3,483/3,483, fuzz 500/500, paths 201/201. The negative row (the rows' right
+  widths one step wider while the C reads them) fails on the edge it writes.
+- **Next:**
+  - `$83:E8AB`, the other `$0A` user, has five never-run stretches. It needs static code
+    with evidence and fuzz;
+  - then `$11` (`$81:E631`), measured the same way.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

@@ -23,4 +23,8 @@
 // the point reset to $7000). Returns whether it jumped.
 bool func_81FBB1(uint16_t car);
 
+// Move car `car` along the road for one frame (DSP-4 multiplies by the frame's step $1E9E,
+// and the road's edges from command $0A); nothing while $1ECE is set. ($81:F887)
+void car_road_step(uint16_t car);
+
 #endif
