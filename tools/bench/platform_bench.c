@@ -49,6 +49,28 @@ void video_set_bg_tiles(int pair, uint8_t value) { difftest_reg((uint16_t)(0x210
 void video_set_obj_select(uint8_t value) { difftest_reg(0x2101, value); }
 void video_set_display(uint8_t value) { difftest_reg(0x2100, value); }
 void video_set_vram_increment(uint8_t value) { difftest_reg(0x2115, value); }
+
+// DMA channels as slots: the registers a setup leaves, claimed byte by byte.
+static void claimSetup(int slot, uint8_t mode, uint8_t target, uint32_t adr) {
+  difftest_dma_claim(slot, 0, mode);
+  difftest_dma_claim(slot, 1, target);
+  difftest_dma_claim(slot, 2, (uint8_t)adr);
+  difftest_dma_claim(slot, 3, (uint8_t)(adr >> 8));
+  difftest_dma_claim(slot, 4, (uint8_t)(adr >> 16));
+}
+void dma_hdma_setup(int slot, uint8_t mode, uint8_t target, uint32_t table) { claimSetup(slot, mode, target, table); }
+void dma_hdma_set_indirect_bank(int slot, uint8_t bank) { difftest_dma_claim(slot, 7, bank); }
+void dma_hdma_set_table(int slot, uint16_t table) {
+  difftest_dma_claim(slot, 2, (uint8_t)table);
+  difftest_dma_claim(slot, 3, (uint8_t)(table >> 8));
+}
+void video_hdma_enable(uint8_t slots) { difftest_reg(0x420C, slots); }
+void dma_stream_setup(int slot, uint8_t mode, uint8_t target, uint32_t src) { claimSetup(slot, mode, target, src); }
+void dma_stream_size(int slot, uint32_t size) { difftest_stream_size(slot, size); }
+void dma_stream_kick(uint8_t slots) { difftest_stream_kick(slots); }
+void video_set_cgram_address(uint8_t index) { difftest_cgram_address(index); }
+void platform_set_irq_h_low(uint8_t dot) { difftest_reg(0x4207, dot); }
+void platform_set_irq_v_low(uint8_t line) { difftest_reg(0x4209, line); }
 void video_set_oam_address(uint16_t value) {
   difftest_reg(0x2102, (uint8_t)value);
   difftest_reg(0x2103, (uint8_t)(value >> 8));

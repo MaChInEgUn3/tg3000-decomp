@@ -25,5 +25,6 @@ void func_838989(void);
 void func_838989_long(void);              // $83:96D5
 void race_cycle_blocks(void);             // $85:9147
 void race_hud_draw(void);                 // $85:8814 (long)
+void irq_race_band(void);                 // $85:87BA, the race's raster IRQ
 
 #endif

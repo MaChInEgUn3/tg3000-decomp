@@ -769,6 +769,7 @@ CODE_858795:
     rep.b #$20                  ; $8587B5
 CODE_8587B7:
     jmp.w nmi_race_tail         ; $8587B7
+irq_race_band:
     rep.b #$10                  ; $8587BA
     sep.b #$20                  ; $8587BC
     phb                         ; $8587BE

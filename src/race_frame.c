@@ -197,3 +197,33 @@ void race_hud_draw(void) {
   video_upload_vram(0x7DE9, strip, 0x1A);
   video_upload_vram(0x7E09, strip + 0x1A, 0x1A);
 }
+
+// TG3000_ROUTINE($85:87BA) irq_race_band
+//
+// The race's raster IRQ, once per band of the screen: it sends the next chunk of the
+// streams the race NMI set up (slot 1: 4 colours to CGRAM $21; slot 2: the CGRAM address
+// for slot 3 from its byte; slot 3: 4 colours; slot 7: the BG mode byte), the slots named
+// by the band's mask at $0596, then moves the IRQ to the next band's line ($0486, 0 =
+// none: then line $FF, dot $78, for the next frame). The original waits (WAI) for dot $FF
+// of its line, so the colours change in that line's horizontal blank; a port applies them
+// from the next line (docs/DECISIONS.md, "Raster interrupts").
+void irq_race_band(void) {
+  uint16_t band = rd16(0x00BC);
+  platform_set_irq_h_low(0xFF);
+  dma_stream_size(2, 1);
+  dma_stream_size(7, 1);
+  dma_stream_size(1, 8);
+  dma_stream_size(3, 8);
+  video_set_cgram_address(0x21);
+  dma_stream_kick(rd8((uint32_t)(0x0596 + band)));
+  band = (uint16_t)(band + 1);
+  uint8_t line = rd8((uint32_t)(0x0486 + band));
+  if(line) {
+    platform_set_irq_v_low(line);
+    platform_set_irq_h_low(0x65);
+    wr16(0x00BC, band);
+  } else {
+    platform_set_irq_v(0x00FF);
+    platform_set_irq_h(0x0078);
+  }
+}

@@ -60,7 +60,7 @@ typedef struct {
 // Hardware effects, in canonical form: what the original did through DMA and what the C
 // asked the platform for (tools/bench/platform_bench.c) must be the same list.
 enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3, EFFECT_VRAM_FILL = 4, EFFECT_VRAM_WORD = 5, EFFECT_APU = 6,
-       EFFECT_CGRAM_WORD = 7, EFFECT_OAM = 8 };
+       EFFECT_CGRAM_WORD = 7, EFFECT_OAM = 8, EFFECT_STREAM = 9 };
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size);
 void difftest_replay_interrupt(void);
 
@@ -80,6 +80,14 @@ void difftest_ppu_field(int field, uint16_t value);
 // Registers whose state is the last byte written (layer enables, windows, colour math,
 // interrupt enable and timers): compared by which were written and their last values.
 void difftest_reg(uint16_t adr, uint8_t value);  // platform_wait_vblank() on the bench
+
+// DMA channels as slots (tools/bench/platform_bench.c): the C claims the channel registers
+// a routine leaves set up (after the channel's last kick: HDMA setups, streams), and kicks
+// streams set up before the routine (a kick that uses registers the routine did not write).
+void difftest_dma_claim(int slot, int reg, uint8_t value);  // reg 0-4 or 7 of $43x0-$43x7
+void difftest_stream_size(int slot, uint32_t size);
+void difftest_stream_kick(uint8_t mask);
+void difftest_cgram_address(uint8_t index);
 
 void difftest_init(Snes* snes, const uint8_t* rom, bool negative);
 void difftest_on_insn(Cpu* cpu);              // from the CPU trace hook

@@ -1268,6 +1268,47 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     - The comparison is at the sample's end, not at the `$420C` write as the handler
       model section said.
 
+## DMA channels as slots, streams, the race IRQ (dma-1, 2026-11-16)
+
+- **Channel registers are now tracked per sample** (`$43x0-$43x7`; writes to `$43x8-$43xF`
+  and reads of any channel register fail the sample). For each channel the harness
+  keeps what the routine wrote, and what it left set up after the channel's last kick
+  (registers 0-4 and 7).
+  - **At the sample's end** what is left set up must be claimed by the C with the same
+    values: `dma_hdma_setup(slot, mode, target, table)` (0-4),
+    `dma_hdma_set_indirect_bank` (7), `dma_hdma_set_table` (2-3), `dma_stream_setup`
+    (0-4).
+  - The sizes (5-6) are a kick's own and are not claimed. A stream kick's effect carries
+    them.
+  - This replaces "DMA set up but never started" for the channel registers (it stays for
+    the VRAM and CGRAM addresses). It also replaces "compared at the `$420C` write"
+    (hdma-2): the comparison is at the sample's end. `$420C` is a byte register
+    (`video_hdma_enable`).
+- **A kick is classified per sample:**
+  - mode, target and source all written in the sample: an upload, decoded as before;
+  - none of them written: a **stream kick**. The routine sends the next chunk of a
+    source set up earlier (the platform keeps each slot's place). Its effect is the slot
+    mask, the CGRAM address at the kick, and each slot's size (up to 255 bytes);
+  - some written: the sample fails (not modelled), and so does a kick that mixes the two
+    kinds.
+
+  On the C side: `dma_stream_size(slot, size)`, `video_set_cgram_address(index)`, and
+  `dma_stream_kick(slots)`.
+- **`irq_race_band` ($85:87BA)**, the race's raster IRQ (about 14 per race frame):
+  - it sends the next chunk of the streams the race NMI set up. Slot 1 sends 4 colours
+    to CGRAM `$21`; slot 2 sets the CGRAM address from its source byte, for slot 3's 4
+    colours; slot 7 sends the BG mode byte. The band's mask at `$0596,x` picks the slots;
+  - then it moves the IRQ to the next band's line (`$0486,x`). With none, it moves it to
+    line `$FF`, dot `$78`;
+  - it writes `$4207`/`$4209` as single bytes, hence `platform_set_irq_h_low` and
+    `platform_set_irq_v_low`;
+  - it waits (WAI) for dot `$FF` of its line, so it has no fuzz, like the other raster
+    IRQs. race1: live 4,000/4,000, paths 42/42;
+  - the negative row, the same C with CGRAM address `$22`, fails on the stream kick's
+    address.
+- All 153 earlier rows pass under the channel model: none kicks a channel it set up only
+  in part.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

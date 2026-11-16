@@ -31,6 +31,26 @@ void video_write_vram_word(uint16_t vram_word, uint16_t value);
 // this is compared as the last value written.
 void video_set_vram_increment(uint8_t value);
 
+// DMA channels, as slots 0-7 (the platform keeps each slot's setup; a later routine may
+// enable or kick what an earlier one set up). The raw mode byte ($43x0) and B-bus target
+// ($43x1, $21xx) are passed as the original writes them.
+// - HDMA: a channel reading `table` line by line into $21`target`; the bank of its
+//   indirect data when the mode is indirect; a new table address in the same bank;
+//   which slots run this frame ($420C, a mask).
+void dma_hdma_setup(int slot, uint8_t mode, uint8_t target, uint32_t table);
+void dma_hdma_set_indirect_bank(int slot, uint8_t bank);
+void dma_hdma_set_table(int slot, uint16_t table);
+void video_hdma_enable(uint8_t slots);
+// - Streams: a source read in chunks over the frame (the race sends a palette band per
+//   raster line this way). Setup; each slot's next chunk size; send the next chunk of
+//   every slot in `slots`, in slot order, from where the last send stopped. A chunk to
+//   CGRAM data lands at the CGRAM address (set by video_set_cgram_address, advanced by
+//   each colour; a slot targeting $2121 sets it from its source byte).
+void dma_stream_setup(int slot, uint8_t mode, uint8_t target, uint32_t src);
+void dma_stream_size(int slot, uint32_t size);
+void dma_stream_kick(uint8_t slots);
+void video_set_cgram_address(uint8_t index);
+
 // Copy `size` bytes (1-65536) from `src` into the palette starting at colour `index`;
 // each colour is two bytes, low byte first (BGR555).
 void video_upload_cgram(uint8_t index, uint32_t src, uint32_t size);
@@ -110,6 +130,9 @@ void platform_set_irq_v(uint16_t line);
 // The horizontal position of the line interrupt ($4207/$4208, 9 bits). A handler may
 // move the interrupt position; the next interrupt of the same frame follows the new one.
 void platform_set_irq_h(uint16_t dot);
+// The low bytes alone ($4207 / $4209: the original writes 8 bits, the high bit stays).
+void platform_set_irq_h_low(uint8_t dot);
+void platform_set_irq_v_low(uint8_t line);
 
 // Sound (docs/DECISIONS.md, "The APU ports, measured"). The game talks to its sound
 // driver through a 16-byte message per frame; a port gives it to its own driver.

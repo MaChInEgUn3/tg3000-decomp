@@ -1608,6 +1608,32 @@ static void fuzz_race_hud_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   ram[0x4E4E] = (uint8_t)rnd();
 }
 
+// ---- irq_race_band ($85:87BA) ----  saves and restores DB, A, X itself; P from the frame
+static void call_irq_race_band(const Regs* in, Regs* out) { irq_race_band(); restoreP(in, out); }
+
+// Negative test: the colours one CGRAM entry off
+static void call_irq_race_band_wrong(const Regs* in, Regs* out) {
+  uint16_t band = rd16(0x00BC);
+  platform_set_irq_h_low(0xFF);
+  dma_stream_size(2, 1);
+  dma_stream_size(7, 1);
+  dma_stream_size(1, 8);
+  dma_stream_size(3, 8);
+  video_set_cgram_address(0x22);
+  dma_stream_kick(rd8((uint32_t)(0x0596 + band)));
+  band = (uint16_t)(band + 1);
+  uint8_t line = rd8((uint32_t)(0x0486 + band));
+  if(line) {
+    platform_set_irq_v_low(line);
+    platform_set_irq_h_low(0x65);
+    wr16(0x00BC, band);
+  } else {
+    platform_set_irq_v(0x00FF);
+    platform_set_irq_h(0x0078);
+  }
+  restoreP(in, out);
+}
+
 // ---- race_cycle_blocks ($85:9147) ----  no register outputs (the race NMI's next
 // instructions overwrite A and the flags, and the tail restores X and Y)
 static void call_race_cycle_blocks(const Regs* in, Regs* out) { (void)in; (void)out; race_cycle_blocks(); }
@@ -3201,6 +3227,8 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989_long, .fuzz = fuzz_func_838989},
   {.name = "race_hud_draw", .entry = 0x858814, .end = 0x858AAE, .rtl = true, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .call = call_race_hud_draw, .fuzz = fuzz_race_hud_draw},
+  {.name = "irq_race_band", .entry = 0x8587BA, .end = 0x858812, .rti = true, .source = "src/race_frame.c",
+   .call = call_irq_race_band, ALL_OUTPUTS},  // no fuzz: it waits (WAI) for an interrupt the fuzz never raises
   {.name = "race_cycle_blocks", .entry = 0x859147, .end = 0x8593A7, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .call = call_race_cycle_blocks, .fuzz = fuzz_race_cycle_blocks},
   {.name = "sound_fade_step", .entry = 0x86DFAE, .end = 0x86DFE1, .source = "src/sound.c", .needM16 = true,
@@ -3601,6 +3629,8 @@ const Routine negativeRoutines[] = {
    .call = call_nmi_prologue_wrong, .fuzz = fuzz_nmi_prologue},
   {.name = "race_hud_draw_wrong", .entry = 0x858814, .end = 0x858AAE, .rtl = true, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .call = call_race_hud_draw_wrong, .fuzz = fuzz_race_hud_draw},
+  {.name = "irq_race_band_wrong", .entry = 0x8587BA, .end = 0x858812, .rti = true, .source = "src/race_frame.c",
+   .call = call_irq_race_band_wrong, ALL_OUTPUTS},
   {.name = "nmi_race_tail_wrong", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_tail_wrong, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_tail_wrong", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
