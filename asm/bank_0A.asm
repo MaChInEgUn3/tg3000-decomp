@@ -20,7 +20,7 @@ CODE_8A8004:
     rep.b #$20                  ; $8A801C
     ldx.w #$9307                ; $8A801E
     lda.w #$008A                ; $8A8021
-    jsl.l $8081C8               ; $8A8024
+    jsl.l video_load_screen_long; $8A8024
     lda.w #$FBD1                ; $8A8028
     sta.w $0008                 ; $8A802B
     jsl.l clear_dp_scratch      ; $8A802E
@@ -1674,7 +1674,7 @@ func_8A92CF:
     stz.w $019A                 ; $8A94DF
     ldx.w #$9D31                ; $8A94E2
     lda.w #$008A                ; $8A94E5
-    jsl.l $8081C8               ; $8A94E8
+    jsl.l video_load_screen_long; $8A94E8
     lda.w #$8934                ; $8A94EC
     sta.w $0008                 ; $8A94EF
     ldx.w #$8601                ; $8A94F2
@@ -2544,7 +2544,7 @@ CODE_8A9E96:
     stz.b $8E                   ; $8A9EA6
     ldx.w #$C4B0                ; $8A9EA8
     lda.w #$008A                ; $8A9EAB
-    jsl.l $8081C8               ; $8A9EAE
+    jsl.l video_load_screen_long; $8A9EAE
     jsr.w $A06D                 ; $8A9EB2
     jsl.l clear_vram            ; $8A9EB5
     jsr.w func_8ABA55           ; $8A9EB9
@@ -2715,7 +2715,7 @@ func_8AA050:
 CODE_8AA069:
     jsr.w func_8AA005           ; $8AA069
     rtl                         ; $8AA06C
-    jsr.w $A09F                 ; $8AA06D
+    jsr.w hdma_window_tables_init; $8AA06D
     sep.b #$10                  ; $8AA070
     ldx.b #$0F                  ; $8AA072
     stx.w $4371                 ; $8AA074
@@ -2735,6 +2735,7 @@ CODE_8AA069:
     stx.w $4314                 ; $8AA099
     rep.b #$10                  ; $8AA09C
     rts                         ; $8AA09E
+hdma_window_tables_init:
     sep.b #$20                  ; $8AA09F
     lda.b #$4C                  ; $8AA0A1
     sta.w $0D00                 ; $8AA0A3
@@ -3712,6 +3713,7 @@ CODE_8ABAEC:
     lda.w $0196                 ; $8ABAEC
     bne CODE_8ABAEC             ; $8ABAEF
     rts                         ; $8ABAF1
+fade_in_start:
     lda.w #$0F00                ; $8ABAF2
     sta.w $0198                 ; $8ABAF5
     lda.w #$0080                ; $8ABAF8
@@ -3884,7 +3886,7 @@ CODE_8ABC9B:
     stz.b $8E                   ; $8ABE45
     ldx.w #$C4B0                ; $8ABE47
     lda.w #$008A                ; $8ABE4A
-    jsl.l $8081C8               ; $8ABE4D
+    jsl.l video_load_screen_long; $8ABE4D
     jsl.l clear_vram            ; $8ABE51
     jsr.w $BAE3                 ; $8ABE55
     jsr.w $B18C                 ; $8ABE58
@@ -3900,7 +3902,7 @@ CODE_8ABC9B:
     ldy.w #$0040                ; $8ABE76
     jsl.l upload_cgram_now      ; $8ABE79
     jsr.w wipe_columns          ; $8ABE7D
-    jsr.w $BAF2                 ; $8ABE80
+    jsr.w fade_in_start         ; $8ABE80
     jsr.w wait_one_frame        ; $8ABE83
     inc.b $8E                   ; $8ABE86
     inc.w $0D7C                 ; $8ABE88
@@ -4113,7 +4115,7 @@ CODE_8AC04C:
     stz.b $8E                   ; $8AC067
     ldx.w #$C4B0                ; $8AC069
     lda.w #$008A                ; $8AC06C
-    jsl.l $8081C8               ; $8AC06F
+    jsl.l video_load_screen_long; $8AC06F
     jsl.l clear_vram            ; $8AC073
     jsr.w func_8ABA55           ; $8AC077
     ldy.w #$0800                ; $8AC07A

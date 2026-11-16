@@ -111,7 +111,7 @@ void func_8ABA55(uint16_t dp) {
 // in order, $2100 to $420D; the two-byte ones (scrolls, mode 7) take their low then high
 // byte. It first stops any DMA and HDMA ($420B, $420C = 0). It makes the image's bank its
 // data bank for the writes too, so the bank must map the I/O registers (the game's images
-// are in ROM banks $80, $81 and $84; one in WRAM bank $7E would be written over itself).
+// are in ROM banks $80-$8A; one in WRAM bank $7E would be written over itself).
 void video_load_screen(uint32_t image) {
 #define B(i) bus_rd8(image + (i))
 #define W(i) ((uint16_t)(B(i) | B((i) + 1) << 8))
@@ -163,3 +163,6 @@ void video_load_screen(uint32_t image) {
 #undef B
 #undef W
 }
+
+// TG3000_ROUTINE($80:81C8) video_load_screen_long (long)
+void video_load_screen_long(uint32_t image) { video_load_screen(image); }

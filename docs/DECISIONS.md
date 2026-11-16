@@ -1355,8 +1355,8 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 
 - **`video_load_screen` ($80:81CC)**, the top of the roots list, writes every screen
   register from a 68-byte image (bank in A, address in X), `$2100` to `$420D`, in
-  order. It turns DMA and HDMA off first. Its six callers pass images in ROM banks
-  `$80`, `$81` and `$84`.
+  order. It turns DMA and HDMA off first. Its callers (six directly, six more through
+  `video_load_screen_long`, `$80:81C8`) pass images in ROM banks `$80`-`$8A`.
   - The original makes the image's bank its data bank for the register writes too. An
     image in a WRAM bank would be written over itself, so the fuzz puts its images in
     low WRAM through banks `$00`/`$80`, which map the registers.
@@ -1378,6 +1378,18 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `video_load_screen`'s fuzz wrote a random VMAIN that the next routine's cases
   inherited (`race_hud_draw` then failed one case on "a VMAIN mode the C does not
   model"). All 156 race1 rows pass with the restore.
+
+## Small roots (roots-3, 2026-11-16)
+
+- **`video_load_screen_long` ($80:81C8):** JSR `video_load_screen`, RTL. It is the top of
+  the refreshed roots list (14 blocks behind it). 60k: live 5/5.
+- **`fade_in_start` ($8A:BAF2):** sets a fade up to full brightness (target `$0F00`, step
+  `$0080`; the NMI prologue moves `$019A`). 60k: live 1/1.
+- **`hdma_window_tables_init` ($8A:A09F):** the two window HDMA tables at `$0D00` and
+  `$0D20`: seven bands of 24 lines (the second table's words `$E0`), each ending in 0.
+  60k: live 1/1.
+- Both leaves run once on the 60k movie and take no inputs. Their fuzz only varies the
+  registers and flags around them.
 
 ## Two-task screens (task-1, 2026-11-16)
 

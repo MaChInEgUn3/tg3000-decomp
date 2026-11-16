@@ -60,5 +60,6 @@ uint16_t upload_slice(int slice);
 // the VRAM step and address, mode 7, the CGRAM address, windows, layers, colour math,
 // screen settings, interrupts and their timers, ROM speed. HDMA off. ($80:81CC)
 void video_load_screen(uint32_t image);
+void video_load_screen_long(uint32_t image);  // $80:81C8
 
 #endif

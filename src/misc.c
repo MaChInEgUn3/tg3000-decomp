@@ -1096,3 +1096,20 @@ uint16_t func_8AA050(void) {
   }
   return func_8AA005();
 }
+
+// TG3000_ROUTINE($8A:BAF2) fade_in_start
+void fade_in_start(void) {
+  wr16(0x0198, 0x0F00);
+  wr16(0x0196, 0x0080);
+}
+
+// TG3000_ROUTINE($8A:A09F) hdma_window_tables_init
+void hdma_window_tables_init(void) {
+  wr8(0x0D00, 0x4C);
+  for(uint16_t a = 0x0D03; a <= 0x0D15; a += 3) wr8(a, 0x18);
+  wr8(0x0D18, 0x00);
+  wr8(0x0D20, 0x4C);
+  for(uint16_t a = 0x0D22; a <= 0x0D2E; a += 2) wr8(a, 0x18);
+  wr8(0x0D30, 0x00);
+  for(uint16_t a = 0x0D23; a <= 0x0D2F; a += 2) wr8(a, 0xE0);
+}

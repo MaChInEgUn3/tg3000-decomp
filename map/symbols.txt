@@ -109,6 +109,7 @@ func    80837D   decompress_to_vram_long ; JSL: decompress_to_vram -> src/video_
 func    808381   decompress_to_vram  ; unpack (A=bank, X=src) to $7F:0000, DMA it to VRAM word Y -> src/video_dma.c
 func    8083AD   upload_vram_now     ; JSL: DMA ch0 A bytes from D+$14:X to VRAM word Y -> src/video_dma.c
 func    8081CC   video_load_screen   ; all screen registers from a 68-byte image (A = bank, X = address) -> src/video_dma.c
+func    8081C8   video_load_screen_long ; video_load_screen (long) -> src/video_dma.c
 func    8083CB   upload_cgram_now    ; JSL: DMA ch0 Y bytes from A.hi:X to CGRAM index A.lo -> src/video_dma.c
 func    80FA3F   star_spawn          ; random x/y, depth $7F00 at $0F00+Y -> src/stars.c
 func    8A9863   star_spawn_8a       ; copy in bank $8A -> src/stars.c
@@ -213,3 +214,5 @@ func    80F53D   upload_slice_12      ; slice 12 of the $7E:3040 picture -> VRAM
 func    80F549   upload_slice_13      ; slice 13 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
 func    80F555   upload_slice_14      ; slice 14 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
 func    80F561   upload_slice_15      ; slice 15 of the $7E:3040 picture -> VRAM, then line tables -> src/video_dma.c
+func    8ABAF2   fade_in_start       ; fade up: target $0F00, step $0080 -> src/misc.c
+func    8AA09F   hdma_window_tables_init ; the window HDMA tables at $0D00/$0D20 -> src/misc.c

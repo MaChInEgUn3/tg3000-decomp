@@ -1580,11 +1580,35 @@ static void call_race_upload_queue_drain_long(const Regs* in, Regs* out) { (void
 static void call_func_838989(const Regs* in, Regs* out) { (void)in; (void)out; func_838989(); }
 static void call_func_838989_long(const Regs* in, Regs* out) { (void)in; (void)out; func_838989_long(); }
 
+// ---- fade_in_start ($8A:BAF2) / hdma_window_tables_init ($8A:A09F) ----  A ends as the
+// last value loaded ($0080; B:$E0 in 8-bit), its flags
+static void call_fade_in_start(const Regs* in, Regs* out) {
+  (void)in;
+  fade_in_start();
+  out->a = 0x0080;
+  out->n = false;
+  out->z = false;
+}
+static void call_hdma_window_tables_init(const Regs* in, Regs* out) {
+  hdma_window_tables_init();
+  out->a = (uint16_t)((in->a & 0xFF00) | 0xE0);
+  out->n = true;
+  out->z = false;
+}
+
 // ---- video_load_screen ($80:81CC) ----  A = image bank (low byte), X = image address; A's
 // low byte ends as the image's last byte; PLB leaves N and Z from the caller's DB
 static void call_video_load_screen(const Regs* in, Regs* out) {
   uint32_t image = (uint32_t)(in->a & 0xFF) << 16 | in->x;
   video_load_screen(image);
+  out->a = (uint16_t)((in->a & 0xFF00) | bus_rd8(image + 0x43));
+  out->n = in->db & 0x80;
+  out->z = in->db == 0;
+}
+
+static void call_video_load_screen_long(const Regs* in, Regs* out) {
+  uint32_t image = (uint32_t)(in->a & 0xFF) << 16 | in->x;
+  video_load_screen_long(image);
   out->a = (uint16_t)((in->a & 0xFF00) | bus_rd8(image + 0x43));
   out->n = in->db & 0x80;
   out->z = in->db == 0;
@@ -3300,6 +3324,12 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989_long, .fuzz = fuzz_func_838989},
   {.name = "video_load_screen", .entry = 0x8081CC, .end = 0x808373, .source = "src/video_dma.c",
    .call = call_video_load_screen, ALL_OUTPUTS, .fuzz = fuzz_video_load_screen},
+  {.name = "video_load_screen_long", .entry = 0x8081C8, .end = 0x8081CC, .rtl = true, .source = "src/video_dma.c",
+   .call = call_video_load_screen_long, ALL_OUTPUTS, .fuzz = fuzz_video_load_screen},
+  {.name = "fade_in_start", .entry = 0x8ABAF2, .end = 0x8ABAFF, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .call = call_fade_in_start, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "hdma_window_tables_init", .entry = 0x8AA09F, .end = 0x8AA0F9, .source = "src/misc.c", .lowWramDb = true,
+   .call = call_hdma_window_tables_init, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "race_hud_draw", .entry = 0x858814, .end = 0x858AAE, .rtl = true, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .call = call_race_hud_draw, .fuzz = fuzz_race_hud_draw},
   {.name = "irq_race_band", .entry = 0x8587BA, .end = 0x858812, .rti = true, .source = "src/race_frame.c",

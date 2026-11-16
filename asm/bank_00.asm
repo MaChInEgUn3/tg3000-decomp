@@ -167,6 +167,7 @@ CODE_80819F:
     mvn $7E,$81                 ; $8081C3
     plb                         ; $8081C6
     rtl                         ; $8081C7
+video_load_screen_long:
     jsr.w video_load_screen     ; $8081C8
     rtl                         ; $8081CB
 video_load_screen:

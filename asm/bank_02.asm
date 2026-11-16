@@ -101,7 +101,7 @@ CODE_828422:
     rts                         ; $828427
     ldx.w #$96DD                ; $828428
     lda.w #$0083                ; $82842B
-    jsl.l $8081C8               ; $82842E
+    jsl.l video_load_screen_long; $82842E
     lda.w #$838A                ; $828432
     sta.w $0008                 ; $828435
     sep.b #$20                  ; $828438
