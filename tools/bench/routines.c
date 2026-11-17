@@ -3072,6 +3072,21 @@ static void call_shop_level_blocks(const Regs* in, Regs* out) { (void)in; (void)
 static void call_shop_gauge_lines(const Regs* in, Regs* out) { (void)in; (void)out; shop_gauge_lines(); }
 static void call_shop_gauge_line(const Regs* in, Regs* out) { (void)out; shop_gauge_line((uint8_t)in->a, in->y, in->x); }
 static void call_shop_item_dispatch_view(const Regs* in, Regs* out) { (void)in; (void)out; shop_item_dispatch_view(); }
+// the panel dispatch: X = the entry (its PLX: N, Z); C and V of the last queue ADC (one
+// upload for lists 0 and 6-8, two for the rest)
+static void call_shop_item_dispatch_panel(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t list = rd16(DP + 0x48);
+  uint16_t entry = (uint16_t)((rd16(DP + 0x4A) << 4) + rom16(0x81A892 + (uint32_t)(uint16_t)(list << 1)));
+  uint16_t i = rd16(DP + 0x8C), base = rd16(DP + 0x8A);
+  if(list >= 1 && list <= 5) i = (uint16_t)(((i + 2) & 0x3F) + base);  // the first upload's slot
+  shop_item_dispatch_panel();
+  setAdc16(out, (uint16_t)((i + 2) & 0x3F), base);
+  out->x = entry;
+  setNZ16(out, entry);
+}
+// the frame: no register outputs (every caller reloads them)
+static void call_shop_item_redraw(const Regs* in, Regs* out) { (void)in; (void)out; shop_item_redraw(); }
 // no register outputs: every caller reloads A, X and Y ($80:9E49, $80:9B99, LDA #2)
 static void call_shop_item_icon_draw(const Regs* in, Regs* out) { (void)out; shop_item_icon_draw(in->x); }
 // A = $B149 (N set, Z clear), X = D+$5E + 16, Y = 0; C and V kept
@@ -3155,15 +3170,15 @@ static void fuzz_shop_list(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 
 // no register outputs: func_809DD0 follows at every call
 static void call_shop_level_marks(const Regs* in, Regs* out) { (void)in; (void)out; shop_level_marks(); }
-// lists 0-7 (the getter table), 1-8 marks, any level, cursor and position, slots in the
+// lists 0-9 (the getter table), 1-8 marks, any level, cursor and position, slots in the
 // buffer
 static void fuzz_shop_level_marks(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
-  uint16_t list = (uint16_t)(rnd() % 8), car = (uint16_t)(rnd() & 0x1F);
+  uint16_t list = (uint16_t)(rnd() % 10), car = (uint16_t)(rnd() & 0x1F);
   wr16ram(ram, DP + 0x48, list);
   wr16ram(ram, DP + 0x94, car);
   ram[0x036E + list] = (uint8_t)(1 + rnd() % 8);
-  for(uint32_t a = 0x0392; a < 0x039A; a++) ram[a + car] = (uint8_t)rnd();
+  for(uint32_t a = 0x0392; a < 0x039E; a++) ram[a + car] = (uint8_t)rnd();
   wr16ram(ram, DP + 0x4A, (uint16_t)(rnd() % 5));
   wr16ram(ram, DP + 0xEE, (rnd() & 1) ? (uint16_t)(0x14 + (rnd() % 0x50)) : (uint16_t)rnd());
   wr16ram(ram, DP + 0xE7, (uint16_t)rnd());
@@ -3284,6 +3299,35 @@ static void fuzz_shop_item_dispatch_view(Regs* r, uint8_t* ram, uint32_t (*rnd)(
   for(uint32_t a = 0x4D0A; a < 0x4DCA; a++) ram[a] = (uint8_t)rnd();
   for(uint32_t a = 0x4E1A; a < 0x4EDA; a++) ram[a] = (uint8_t)rnd();
   for(uint32_t a = 0x4F5A; a < 0x4F62; a++) ram[a] = (uint8_t)rnd();
+}
+// the panel dispatch: any list 0-8 and row, the queue as func_80B537's fuzz
+static void fuzz_shop_item_dispatch_panel(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t list = (uint16_t)(rnd() % 9);
+  wr16ram(ram, DP + 0x48, list);
+  wr16ram(ram, DP + 0x4A, (uint16_t)(list == 0 || list >= 6 ? 0 : rnd() % 5));
+  wr16ram(ram, DP + 0x5C, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x5E, (uint16_t)rnd());
+  // the ring's base a multiple of $40 (as the game's): a second upload's slot is base + 0-$3E
+  wr16ram(ram, DP + 0x8A, (uint16_t)((rnd() % 0x14) * 0x40));
+  wr16ram(ram, DP + 0x8C, (uint16_t)(rnd() % 0x500));
+}
+static void fuzz_text_type_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+// the frame: the view dispatch's inputs, a typewriter text, the upload queue empty or not,
+// and the parts' levels within their icon tables (lists 1-5: 0-5; 6-8: 0-3), the icon's
+// group being a list walked to its end
+static void fuzz_shop_item_redraw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_shop_item_dispatch_view(r, ram, rnd);
+  fuzz_text_type_step(r, ram, rnd);
+  uint16_t car = (uint16_t)(rnd() & 0x1F);
+  wr16ram(ram, DP + 0x94, car);
+  for(uint32_t f = 0; f < 8; f++) ram[0x0393 + car + f] = (uint8_t)((rnd() % (f < 5 ? 6 : 4)) | (rnd() & 0x80));
+  uint16_t list = (uint16_t)(ram[DP + 0x48] | ram[DP + 0x49] << 8);
+  ram[0x036E + list] = (uint8_t)(1 + rnd() % 8);
+  uint16_t q = (uint16_t)((rnd() % 0x20) * 2);
+  wr16ram(ram, DP + 0x8C, q);
+  wr16ram(ram, DP + 0x8E, (rnd() & 1) ? q : (uint16_t)(q + 2));
+  wr16ram(ram, DP + 0x8A, (uint16_t)(rnd() & 0xC0));
 }
 // list 0's view: its one row
 static void fuzz_shop_item_view_g(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -4533,6 +4577,11 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_shop_ring_piece_back, ALL_OUTPUTS, .fuzz = fuzz_shop_ring},
   {.name = "shop_item_dispatch_view", .entry = 0x80A251, .end = 0x80A26E, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_item_dispatch_view, .fuzz = fuzz_shop_item_dispatch_view},
+  {.name = "shop_item_dispatch_panel", .entry = 0x809C28, .end = 0x809C47, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_item_dispatch_panel, .compareX = true,
+   .fuzz = fuzz_shop_item_dispatch_panel},
+  {.name = "shop_item_redraw", .entry = 0x809847, .end = 0x809870, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_item_redraw, .fuzz = fuzz_shop_item_redraw},
   {.name = "shop_item_view_h", .entry = 0x80AEBE, .end = 0x80AF36, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .call = call_shop_item_view_h},
   {.name = "shop_item_view_i", .entry = 0x80AE4E, .end = 0x80AEBE, .source = "src/shop.c", .needM16 = true, .needX16 = true,

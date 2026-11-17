@@ -282,3 +282,5 @@ func    80AF36   shop_level_blocks   ; a row of 2x2 blocks filling with the stag
 func    80ACB6   shop_gauge_lines    ; the gauge: four sprites and twelve lines -> src/shop.c
 func    80ADD9   shop_gauge_line     ; one gauge line, its column from the PPU product -> src/shop.c
 func    80B59D   text_type_step      ; the typewriter: letters appear in stages, control codes $80-$86 -> src/text.c
+func    809C28   shop_item_dispatch_panel ; the item's panel pictures, queued by list (table $81:A899) -> src/shop.c
+func    809847   shop_item_redraw    ; the item screen's frame: typewriter, price, view, icon, marks -> src/shop.c

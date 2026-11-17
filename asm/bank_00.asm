@@ -1750,7 +1750,7 @@ CODE_8090AF:
     adc.w #$0006                ; $8090B8
     sta.b $42                   ; $8090BB
     jsr.w $99D1                 ; $8090BD
-    jsr.w $9847                 ; $8090C0
+    jsr.w shop_item_redraw      ; $8090C0
     lda.b $42                   ; $8090C3
     cmp.w #$0078                ; $8090C5
     bne CODE_8090AF             ; $8090C8
@@ -1772,7 +1772,7 @@ CODE_8090E2:
     sbc.w #$0006                ; $8090EB
     sta.b $42                   ; $8090EE
     jsr.w $99D1                 ; $8090F0
-    jsr.w $9847                 ; $8090F3
+    jsr.w shop_item_redraw      ; $8090F3
     lda.b $42                   ; $8090F6
     bne CODE_8090E2             ; $8090F8
     jsr.w $9ABB                 ; $8090FA
@@ -1815,7 +1815,7 @@ CODE_80915C:
     adc.w #$0006                ; $809165
     sta.b $42                   ; $809168
     jsr.w $99D1                 ; $80916A
-    jsr.w $9847                 ; $80916D
+    jsr.w shop_item_redraw      ; $80916D
     lda.b $42                   ; $809170
     cmp.w #$00B4                ; $809172
     bne CODE_80915C             ; $809175
@@ -1837,7 +1837,7 @@ CODE_80918F:
     sbc.w #$0006                ; $809198
     sta.b $42                   ; $80919B
     jsr.w $99D1                 ; $80919D
-    jsr.w $9847                 ; $8091A0
+    jsr.w shop_item_redraw      ; $8091A0
     lda.b $42                   ; $8091A3
     bne CODE_80918F             ; $8091A5
     jsr.w $9ABB                 ; $8091A7
@@ -1881,7 +1881,7 @@ CODE_80920A:
     adc.w #$0006                ; $809213
     sta.b $42                   ; $809216
     jsr.w $99D1                 ; $809218
-    jsr.w $9847                 ; $80921B
+    jsr.w shop_item_redraw      ; $80921B
     lda.b $42                   ; $80921E
     cmp.w #$00B4                ; $809220
     bne CODE_80920A             ; $809223
@@ -1903,7 +1903,7 @@ CODE_80923D:
     sbc.w #$0006                ; $809246
     sta.b $42                   ; $809249
     jsr.w $99D1                 ; $80924B
-    jsr.w $9847                 ; $80924E
+    jsr.w shop_item_redraw      ; $80924E
     lda.b $42                   ; $809251
     bne CODE_80923D             ; $809253
     jsr.w $9ABB                 ; $809255
@@ -1947,7 +1947,7 @@ CODE_8092B8:
     adc.w #$0006                ; $8092C1
     sta.b $42                   ; $8092C4
     jsr.w $99D1                 ; $8092C6
-    jsr.w $9847                 ; $8092C9
+    jsr.w shop_item_redraw      ; $8092C9
     lda.b $42                   ; $8092CC
     cmp.w #$00B4                ; $8092CE
     bne CODE_8092B8             ; $8092D1
@@ -1969,7 +1969,7 @@ CODE_8092EB:
     sbc.w #$0006                ; $8092F4
     sta.b $42                   ; $8092F7
     jsr.w $99D1                 ; $8092F9
-    jsr.w $9847                 ; $8092FC
+    jsr.w shop_item_redraw      ; $8092FC
     lda.b $42                   ; $8092FF
     bne CODE_8092EB             ; $809301
     jsr.w $9ABB                 ; $809303
@@ -2037,7 +2037,7 @@ CODE_8093DD:
     sbc.w #$0006                ; $8093E6
     sta.b $42                   ; $8093E9
     jsr.w $99D1                 ; $8093EB
-    jsr.w $9847                 ; $8093EE
+    jsr.w shop_item_redraw      ; $8093EE
     lda.b $42                   ; $8093F1
     bne CODE_8093DD             ; $8093F3
     jsr.w $9ABB                 ; $8093F5
@@ -2093,7 +2093,7 @@ CODE_8094BF:
     sbc.w #$0006                ; $8094C8
     sta.b $42                   ; $8094CB
     jsr.w $99D1                 ; $8094CD
-    jsr.w $9847                 ; $8094D0
+    jsr.w shop_item_redraw      ; $8094D0
     lda.b $42                   ; $8094D3
     bne CODE_8094BF             ; $8094D5
     jsr.w $9ABB                 ; $8094D7
@@ -2149,7 +2149,7 @@ CODE_8095A1:
     sbc.w #$0006                ; $8095AA
     sta.b $42                   ; $8095AD
     jsr.w $99D1                 ; $8095AF
-    jsr.w $9847                 ; $8095B2
+    jsr.w shop_item_redraw      ; $8095B2
     lda.b $42                   ; $8095B5
     bne CODE_8095A1             ; $8095B7
     jsr.w $9ABB                 ; $8095B9
@@ -2193,7 +2193,7 @@ CODE_80961C:
     adc.w #$0006                ; $809625
     sta.b $42                   ; $809628
     jsr.w $99D1                 ; $80962A
-    jsr.w $9847                 ; $80962D
+    jsr.w shop_item_redraw      ; $80962D
     lda.b $42                   ; $809630
     cmp.w #$00B4                ; $809632
     bne CODE_80961C             ; $809635
@@ -2215,7 +2215,7 @@ CODE_80964F:
     sbc.w #$0006                ; $809658
     sta.b $42                   ; $80965B
     jsr.w $99D1                 ; $80965D
-    jsr.w $9847                 ; $809660
+    jsr.w shop_item_redraw      ; $809660
     lda.b $42                   ; $809663
     bne CODE_80964F             ; $809665
     jsr.w $9ABB                 ; $809667
@@ -2271,7 +2271,7 @@ CODE_809731:
     sbc.w #$0006                ; $80973A
     sta.b $42                   ; $80973D
     jsr.w $99D1                 ; $80973F
-    jsr.w $9847                 ; $809742
+    jsr.w shop_item_redraw      ; $809742
     lda.b $42                   ; $809745
     bne CODE_809731             ; $809747
     jsr.w $9ABB                 ; $809749
@@ -2284,10 +2284,11 @@ CODE_809731:
 CODE_809839:
     lda.w #$0001                ; $809839
     jsr.w wait_frames           ; $80983C
-    jsr.w $9847                 ; $80983F
+    jsr.w shop_item_redraw      ; $80983F
     lda.b $44                   ; $809842
     bpl CODE_809839             ; $809844
     rts                         ; $809846
+shop_item_redraw:
     lda.b $8C                   ; $809847
     cmp.b $8E                   ; $809849
     bne CODE_809853             ; $80984B
@@ -2308,7 +2309,7 @@ CODE_809853:
 CODE_809870:
     lda.w #$0001                ; $809870
     jsr.w wait_frames           ; $809873
-    jsr.w $9847                 ; $809876
+    jsr.w shop_item_redraw      ; $809876
     lda.b $44                   ; $809879
     asl a                       ; $80987B
     tax                         ; $80987C
@@ -2363,7 +2364,7 @@ CODE_8098E9:
     lda.l $7E4DFA,x             ; $8098F8
     sta.w $01C4,y               ; $8098FC
     phx                         ; $8098FF
-    jsr.w $9847                 ; $809900
+    jsr.w shop_item_redraw      ; $809900
     plx                         ; $809903
     inx                         ; $809904
     inx                         ; $809905
@@ -2596,7 +2597,7 @@ CODE_809B06:
     stz.b $42                   ; $809B14
     lda.b $4C                   ; $809B16
     sta.b $4A                   ; $809B18
-    jsr.w $9C28                 ; $809B1A
+    jsr.w shop_item_dispatch_panel; $809B1A
     jsr.w shop_item_text        ; $809B1D
     lda.w #$FFC2                ; $809B20
     sta.b $4E                   ; $809B23
@@ -2662,7 +2663,7 @@ CODE_809B9B:
     stz.b $42                   ; $809BA9
     lda.b $4C                   ; $809BAB
     sta.b $4A                   ; $809BAD
-    jsr.w $9C28                 ; $809BAF
+    jsr.w shop_item_dispatch_panel; $809BAF
     jsr.w shop_item_text        ; $809BB2
     lda.w #$FFCA                ; $809BB5
     sta.b $4E                   ; $809BB8
@@ -2729,6 +2730,7 @@ shop_item_dispatch_upload:
     rts                         ; $809C25
     plx                         ; $809C26
     rts                         ; $809C27
+shop_item_dispatch_panel:
     lda.b $48                   ; $809C28
     asl a                       ; $809C2A
     tax                         ; $809C2B

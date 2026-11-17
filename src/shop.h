@@ -188,4 +188,16 @@ void shop_gauge_line(uint8_t speed, uint16_t y, uint16_t string);
 // D+$48, row D+$4A), called with its bar entry ($81:A8A1).
 void shop_item_dispatch_view(void);
 
+// The item's panel ($80:9C28): by the table at $81:A899 (list, row), one handler per list
+// ($80:9C47 ... $80:9D9E) queues one or two uploads (func_80B537, priority $7F) of the
+// item's pictures: VRAM D+$5C + a fixed offset per handler, from D+$5E + $0900 + the
+// picture's offset, with its size; the pictures' (offset, size) pairs are at $81:A892 +
+// the item's word at $81:A89B (the first pair) and + 4 (the second).
+void shop_item_dispatch_panel(void);
+
+// The item screen's frame ($80:9847): with the upload queue empty, the next typewriter
+// step (text_type_step) and the panel's upload; then the price at (16, 24), the item's
+// view, its icon, the level marks, the labels and the sprite table's end.
+void shop_item_redraw(void);
+
 #endif

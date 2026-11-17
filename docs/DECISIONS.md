@@ -1789,6 +1789,36 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The item screen's frame and panel (shop-13, 2026-11-17)
+
+- **`shop_item_dispatch_panel` ($80:9C28):** the item's handler from the table at
+  `$81:A899` queues its panel pictures through `func_80B537` (priority `$7F`): VRAM
+  `$015C` + an offset fixed per handler, source `$015E` + `$0900` + the picture's offset,
+  and its size.
+  - The pictures' (offset, size) pairs are at `$81:A892` + the item's word at `$81:A89B`
+    (and + 4 for the second).
+  - Lists 1-5 queue two pictures; lists 0 and 6-8 one.
+  - The seven handlers differ only in those numbers, so the C is a table in a switch.
+  - Exit: `PLX` of the entry (X, N, Z); C and V of the last queue `ADC`.
+  - Live 103/103, paths 21/21.
+- **`shop_item_redraw` ($80:9847),** the item screen's frame:
+  - with the upload queue empty, a typewriter step (`text_type_step`) and the panel's
+    upload;
+  - then the price at (16, 24), the item's view, its icon, the level marks, the labels
+    (`func_809DD0`) and the sprite table's end.
+
+  Every callee was verified. Live 964/964, paths 16/16.
+- **Its fuzz found a real error in `shop_level_marks`** (verified in shop-8): list 8's level
+  getter (`$80:9F28`) reads `$039A`, while the C read `$0399` as for list 7 (the getter
+  table at `$80:9EEA` has ten entries, list 9 `$039C`). Its own fuzz drew lists 0-7 only.
+  It now draws 0-9.
+- **Two fuzz lessons:**
+  - A random queue base (`$018A`) put the panel's second picture at `$1900` + a slot past
+    WRAM (a ROM write). The game's base is a multiple of `$40`, and so is the fuzz's.
+  - Random part levels made an icon's group pointer land in data with no end, so the C
+    walked forever and the first run hit its time limit. The frame's fuzz keeps the
+    levels within their icon tables.
+
 ## The typewriter (text-1, 2026-11-17)
 
 - **`text_type_step` ($80:B59D)** prints the shop's texts.

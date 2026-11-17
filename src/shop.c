@@ -5,6 +5,7 @@
 
 #include "misc.h"
 #include "platform.h"
+#include "sprites.h"
 #include "text.h"
 #include "tg3000.h"
 
@@ -475,8 +476,8 @@ void shop_item_icon_4(bool upload) { shop_item_icon(upload, 3, 0xBCBE, 0xBCA6); 
 // TG3000_ROUTINE($80:A018) shop_item_icon_5
 void shop_item_icon_5(bool upload) { shop_item_icon(upload, 4, 0xBC9A, 0xBC82); }
 
-// The list's level getter ($80:9EEA table): lists 0-5 the part levels plus 1, 6 and 7 the
-// bytes at $0398 and $0399 as they are.
+// The list's level getter ($80:9EEA table): lists 0-5 the part levels plus 1; lists 6, 7, 8
+// the bytes at $0398, $0399, $039A as they are (9: $039C).
 static uint16_t shop_list_level(uint16_t list, uint16_t car) {
   switch(list) {
   case 0: return shop_part_level_2(car);
@@ -486,7 +487,9 @@ static uint16_t shop_list_level(uint16_t list, uint16_t car) {
   case 4: return shop_part_level_6(car);
   case 5: return shop_part_level_7(car);
   case 6: return rd16(0x0398 + (uint32_t)car);
-  default: return rd16(0x0399 + (uint32_t)car);
+  case 7: return rd16(0x0399 + (uint32_t)car);
+  case 8: return rd16(0x039A + (uint32_t)car);
+  default: return rd16(0x039C + (uint32_t)car);
   }
 }
 
@@ -857,4 +860,45 @@ void shop_item_dispatch_view(void) {
   case 0xAC37: shop_item_view_j(bars); break;
   default: break;  // the table holds no other view for lists 0-8
   }
+}
+
+// One picture's upload: VRAM D+$5C + `vram`, the pair at $81:A892 + `pictures` + `pair`.
+static void shop_panel_picture(uint16_t pictures, uint16_t pair, uint16_t vram) {
+  wr16(DP + 0x14, 0x007F);
+  const uint32_t at = 0x81A892 + (uint32_t)(uint16_t)(pictures + pair);
+  func_80B537(DP, rom16(at + 2), (uint16_t)(rom16(at) + rd16(DP + 0x5E) + 0x0900),
+              (uint16_t)(rd16(DP + 0x5C) + vram));
+}
+
+// TG3000_ROUTINE($80:9C28) shop_item_dispatch_panel
+void shop_item_dispatch_panel(void) {
+  uint16_t entry = shop_item_entry(rd16(DP + 0x4A));
+  uint16_t pictures = rom16(0x81A89B + (uint32_t)entry);
+  switch(rom16(0x81A899 + (uint32_t)entry)) {
+  // (handler: the uploads in order, as (VRAM offset, pair))
+  case 0x9C47: shop_panel_picture(pictures, 0, 0x11E0); shop_panel_picture(pictures, 4, 0x1780); break;  // list 1
+  case 0x9C85: shop_panel_picture(pictures, 4, 0x1120); shop_panel_picture(pictures, 0, 0x1260); break;  // list 2
+  case 0x9CC3: shop_panel_picture(pictures, 4, 0x1120); shop_panel_picture(pictures, 0, 0x1240); break;  // list 3
+  case 0x9D02: shop_panel_picture(pictures, 4, 0x1140); shop_panel_picture(pictures, 0, 0x1340); break;  // list 5
+  case 0x9D41: shop_panel_picture(pictures, 4, 0x1400); shop_panel_picture(pictures, 0, 0x1560); break;  // list 4
+  case 0x9D80: shop_panel_picture(pictures, 0, 0x1000); break;                                          // list 0
+  case 0x9D9E: shop_panel_picture(pictures, 0, 0x1140); break;                                          // lists 6-8
+  default: break;  // the table holds no other handler for lists 0-8
+  }
+}
+
+// TG3000_ROUTINE($80:9847) shop_item_redraw
+void shop_item_redraw(void) {
+  if(rd16(DP + 0x8C) == rd16(DP + 0x8E)) {
+    text_type_step();
+    shop_panel_upload();
+  }
+  wr16(DP + 0x14, 0x0010);
+  wr16(DP + 0x16, 0x0018);
+  shop_item_price();
+  shop_item_dispatch_view();
+  shop_item_dispatch_icon();
+  shop_level_marks();
+  func_809DD0();
+  oam_finish_near(DP);
 }
