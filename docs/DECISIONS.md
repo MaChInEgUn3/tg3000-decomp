@@ -1772,6 +1772,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - **No register outputs:** `func_809DD0` follows at every call.
 - **Results:** live 4,000/4,000, fuzz 500/500, paths 83/83.
 
+## The shop panel's map buffer (shop-9, 2026-11-17)
+
+- **`shop_panel_blank` ($80:B0C0):**
+  - with DB = `$7F`, it sets 16 rows of 8 words (stride `$20`) at `$7F:0700` +
+    `$015E` to `$FFFF`;
+  - then `$014E` = 0 and the frame hook `$01EC` = `$B149`;
+  - live 45/45, paths 32/32.
+- **`shop_panel_clear` ($80:B10C):**
+  - it re-arms the frame hook `$01EC` = `$B94F` on every pass of a busy loop until the
+    upload queue is empty (`$018C` = `$018E`; the NMI drains it);
+  - then it zeroes 9 rows of 9 words (stride `$40`) at `$7F:00C4` + `$015E`;
+  - the loop's own branch goes back to the entry, so every pass counts as an entry
+    (162,585), from 135 live samples;
+  - its C waits with `platform_wait_vblank`, and the row is `waitsForInterrupts`;
+  - the fuzz starts with the queue already empty, as it has no interrupts to replay;
+  - paths 22/22.
+
 ## Steering the explorer; two item views parked (explore-2, 2026-11-17)
 
 - **The last two item views** belong to one item each: `$80:A333` to list 1, row 4, and

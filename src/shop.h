@@ -114,4 +114,13 @@ void shop_item_icon_5(bool upload);
 // getter of $80:9EEA, low 7 bits) drawn with tile + $20; slots from D+$74.
 void shop_level_marks(void);
 
+// The shop panel's map buffer in $7F, from D+$5E:
+// - shop_panel_blank ($80:B0C0): 16 rows of 8 words (row stride $20) at $7F:0700 set to
+//   $FFFF; D+$4E = 0 and the frame hook D+$EC = $B149;
+// - shop_panel_clear ($80:B10C): with the frame hook D+$EC = $B94F, wait until the upload
+//   queue is empty (D+$8C = D+$8E), then 9 rows of 9 words (row stride $40) at $7F:00C4
+//   set to 0.
+void shop_panel_blank(void);
+void shop_panel_clear(void);
+
 #endif

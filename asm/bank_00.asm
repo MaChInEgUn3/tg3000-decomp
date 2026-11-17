@@ -1546,7 +1546,7 @@ CODE_808EFB:
     bne CODE_808EFB             ; $808EFF
     lda.w #$0001                ; $808F01
     jsr.w wait_frames           ; $808F04
-    jsr.w $B0C0                 ; $808F07
+    jsr.w shop_panel_blank      ; $808F07
     lda.b $48                   ; $808F0A
     asl a                       ; $808F0C
     tax                         ; $808F0D
@@ -1571,7 +1571,7 @@ CODE_808F32:
     bcs CODE_808F32             ; $808F34
     lda.w $0024                 ; $808F36
     sta.b $4E                   ; $808F39
-    jsr.w $B10C                 ; $808F3B
+    jsr.w shop_panel_clear      ; $808F3B
     jsr.w $9C0B                 ; $808F3E
     jsr.w $9B99                 ; $808F41
     lda.b $8C                   ; $808F44
@@ -1636,12 +1636,12 @@ CODE_808FBE:
     lda.b $44                   ; $808FBE
     ora.w #$8000                ; $808FC0
     sta.b $44                   ; $808FC3
-    jsr.w $B0C0                 ; $808FC5
+    jsr.w shop_panel_blank      ; $808FC5
     lda.w #$0004                ; $808FC8
 CODE_808FCB:
     cmp.b $4E                   ; $808FCB
     bcs CODE_808FCB             ; $808FCD
-    jsr.w $B10C                 ; $808FCF
+    jsr.w shop_panel_clear      ; $808FCF
     pla                         ; $808FD2
     rts                         ; $808FD3
     jsl.l func_80E4C5           ; $808FD4
@@ -1656,12 +1656,12 @@ CODE_808FE6:
     lda.b $44                   ; $808FE6
     ora.w #$8000                ; $808FE8
     sta.b $44                   ; $808FEB
-    jsr.w $B0C0                 ; $808FED
+    jsr.w shop_panel_blank      ; $808FED
     lda.w #$0004                ; $808FF0
 CODE_808FF3:
     cmp.b $4E                   ; $808FF3
     bcs CODE_808FF3             ; $808FF5
-    jsr.w $B10C                 ; $808FF7
+    jsr.w shop_panel_clear      ; $808FF7
     pla                         ; $808FFA
     rts                         ; $808FFB
 func_808FFC:
@@ -5250,6 +5250,7 @@ shop_item_text:
     mvn $81,$89                 ; $80B0BB
     plb                         ; $80B0BE
     rts                         ; $80B0BF
+shop_panel_blank:
     phb                         ; $80B0C0
     pea.w $7F7F                 ; $80B0C1
     plb                         ; $80B0C4
@@ -5283,12 +5284,12 @@ CODE_80B0CE:
     lda.w #$B149                ; $80B106
     sta.b $EC                   ; $80B109
     rts                         ; $80B10B
-CODE_80B10C:
+shop_panel_clear:
     lda.w #$B94F                ; $80B10C
     sta.b $EC                   ; $80B10F
     lda.b $8C                   ; $80B111
     cmp.b $8E                   ; $80B113
-    bne CODE_80B10C             ; $80B115
+    bne shop_panel_clear        ; $80B115
     ldy.w #$0009                ; $80B117
     ldx.b $5E                   ; $80B11A
     lda.w #$0000                ; $80B11C

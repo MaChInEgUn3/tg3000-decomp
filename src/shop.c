@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "misc.h"
+#include "platform.h"
 #include "text.h"
 #include "tg3000.h"
 
@@ -517,4 +518,27 @@ void shop_level_marks(void) {
     wr16(DP + 0x24, (uint16_t)(rd16(DP + 0x24) - 1));
   } while(rd16(DP + 0x24) != 0);
   wr16(DP + 0x74, slot);
+}
+
+#define SHOP_PANEL_MAP 0x10000  // $7F:0000
+
+// TG3000_ROUTINE($80:B0C0) shop_panel_blank
+void shop_panel_blank(void) {
+  const uint32_t x = rd16(DP + 0x5E);
+  for(uint32_t col = 0; col < 16; col += 2)
+    for(uint32_t row = 0; row < 16; row++) wr16(SHOP_PANEL_MAP + (uint16_t)(0x0700 + row * 0x20 + x + col), 0xFFFF);
+  wr16(DP + 0x4E, 0);
+  wr16(DP + 0xEC, 0xB149);
+}
+
+// TG3000_ROUTINE($80:B10C) shop_panel_clear
+void shop_panel_clear(void) {
+  for(;;) {
+    wr16(DP + 0xEC, 0xB94F);
+    if(rd16(DP + 0x8C) == rd16(DP + 0x8E)) break;
+    platform_wait_vblank();
+  }
+  const uint32_t x = rd16(DP + 0x5E);
+  for(uint32_t col = 0; col < 18; col += 2)
+    for(uint32_t row = 0; row < 9; row++) wr16(SHOP_PANEL_MAP + (uint16_t)(0x00C4 + row * 0x40 + x + col), 0);
 }

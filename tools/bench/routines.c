@@ -2857,6 +2857,41 @@ static void call_shop_item_view_d(const Regs* in, Regs* out) { (void)out; shop_i
 static void call_shop_item_view_e(const Regs* in, Regs* out) { (void)out; shop_item_view_e(in->y); }
 // no register outputs: every caller reloads A, X and Y ($80:9E49, $80:9B99, LDA #2)
 static void call_shop_item_icon_draw(const Regs* in, Regs* out) { (void)out; shop_item_icon_draw(in->x); }
+// A = $B149 (N set, Z clear), X = D+$5E + 16, Y = 0; C and V kept
+static void call_shop_panel_blank(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t x = rd16(DP + 0x5E);
+  shop_panel_blank();
+  out->a = 0xB149;
+  out->x = (uint16_t)(x + 16);
+  out->y = 0;
+  setNZ16(out, 0xB149);
+}
+// A = 0, X = D+$5E + 18, Y = 0 (N clear, Z set by the DEY), C set by the CMP that matched
+static void call_shop_panel_clear(const Regs* in, Regs* out) {
+  (void)in;
+  shop_panel_clear();
+  out->a = 0;
+  out->x = (uint16_t)(rd16(DP + 0x5E) + 18);
+  out->y = 0;
+  setNZ16(out, 0);
+  out->c = true;
+}
+// the map offset anywhere its rows stay in bank $7F; the queue empty or not
+static void fuzz_shop_panel(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x5E, (uint16_t)((rnd() % 0x3000) & ~1u));
+  wr16ram(ram, DP + 0x4E, (uint16_t)rnd());
+  wr16ram(ram, DP + 0xEC, (uint16_t)rnd());
+}
+// the queue already empty: the fuzz has no interrupts to replay
+static void fuzz_shop_panel_clear(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_shop_panel(r, ram, rnd);
+  uint16_t i = (uint16_t)rnd();
+  wr16ram(ram, DP + 0x8C, i);
+  wr16ram(ram, DP + 0x8E, i);
+}
+
 // no register outputs: func_809DD0 follows at every call
 static void call_shop_level_marks(const Regs* in, Regs* out) { (void)in; (void)out; shop_level_marks(); }
 // lists 0-7 (the getter table), 1-8 marks, any level, cursor and position, slots in the
@@ -4093,6 +4128,10 @@ const Routine routines[] = {
    .fixedD = true, .db = 0x81, .call = call_shop_item_icon_5, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon},
   {.name = "shop_level_marks", .entry = 0x809E49, .end = 0x809EEA, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .call = call_shop_level_marks, .fuzz = fuzz_shop_level_marks},
+  {.name = "shop_panel_blank", .entry = 0x80B0C0, .end = 0x80B10C, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .call = call_shop_panel_blank, ALL_OUTPUTS, .fuzz = fuzz_shop_panel},
+  {.name = "shop_panel_clear", .entry = 0x80B10C, .end = 0x80B149, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .waitsForInterrupts = true, .call = call_shop_panel_clear, ALL_OUTPUTS, .fuzz = fuzz_shop_panel_clear},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
