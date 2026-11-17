@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "misc.h"
+#include "text.h"
 #include "tg3000.h"
 
 // TG3000_ROUTINE($80:9F23) shop_part_level_2
@@ -222,4 +223,89 @@ void shop_bar_levels(void) {
     x = (uint16_t)(x + 4);
     wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) + 2));
   } while(rd16(DP + 0x80) != 0x0C);
+}
+
+// A part's level for the bar entry at `x` (+`part` x 4): the half stage less its start
+// (0 when below), at most its length.
+static uint16_t shop_part_level(uint16_t x, uint32_t part) {
+  uint16_t half = (uint16_t)(rd16(DP + 0x3E) >> 1), start = rom16(0x81A892 + part * 4 + (uint32_t)x);
+  uint16_t level = half < start ? 0 : (uint16_t)(half - start);
+  uint16_t length = rom16(0x81A894 + part * 4 + (uint32_t)x);
+  return level < length ? level : length;
+}
+
+// TG3000_ROUTINE($80:A91E) shop_bar_double
+void shop_bar_double(void) {
+  const uint32_t y = rd16(DP + 0x74);
+  uint16_t row = (uint16_t)((((0x6C - rd16(DP + 0x7A)) & 0xFF) << 8) + rd16(DP + 0xE7));
+  wr16(DP + 0x82, row);
+  uint16_t top = (uint16_t)(rd16(DP + 0x14) + 0x2C), bottom = (uint16_t)(rd16(DP + 0x14) + 0x34);
+  wr16(0x0B00 + y, top);
+  wr16(0x0900 + y, (uint16_t)((top & 0x00FF) | row));
+  wr16(0x0B04 + y, bottom);
+  wr16(0x0904 + y, (uint16_t)((bottom & 0x00FF) | row));
+  wr16(0x0902 + y, 0x2322);
+  wr16(0x0906 + y, 0x2322);
+  wr16(0x0B02 + y, 0);
+  wr16(0x0B06 + y, 0);
+  wr16(DP + 0x74, (uint16_t)(y + 8));
+  uint16_t x = rom16(0x81A896 + (uint32_t)rd16(DP + 0x7C));
+  wr16(DP + 0x7E, shop_part_level(x, 0));
+  wr16(DP + 0x80, 0x002C);
+  wr16(DP + 0x84, 0x231E);
+  shop_bar_column();
+  x = rom16(0x81A896 + (uint32_t)rd16(DP + 0x7C));
+  wr16(DP + 0x7E, shop_part_level(x, 1));
+  wr16(DP + 0x80, 0x0033);
+  wr16(DP + 0x84, 0x2320);
+  shop_bar_column();
+}
+
+// TG3000_ROUTINE($80:AA59) shop_gauge
+void shop_gauge(void) {
+  uint16_t stage = rd16(DP + 0x3E);
+  wr16(DP + 0x16, (uint16_t)(0x30 - rd16(DP + 0x7A) + rd16(DP + 0xE8)));
+  wr16(DP + 0x18, 0x0100);
+  sprite_group(DP, stage == 0x10 ? 0x7E33DA : 0x7E3438);
+  stage = rd16(DP + 0x3E);
+  uint16_t past = stage < 0x10 ? 0 : (uint16_t)(stage - 0x10);
+  if(past < 0x38) {
+    wr16(DP + 0x80, (uint16_t)((past & 0xFFF8) + 8));
+    wr16(DP + 0x7E, (uint16_t)(((past & 7) << 1) + 0x2524));
+    shop_bar_cap();
+    uint16_t n = (uint16_t)((uint16_t)(0x37 - past) >> 3);
+    wr16(DP + 0x82, n);
+    while(rd16(DP + 0x82)) {
+      wr16(DP + 0x7E, 0x2524);
+      wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) + 8));
+      shop_bar_cap();
+      wr16(DP + 0x82, (uint16_t)(rd16(DP + 0x82) - 1));
+    }
+  }
+  stage = rd16(DP + 0x3E);
+  uint16_t low = stage < 0x0C ? 0 : (uint16_t)(stage - 0x0C);
+  if(low < 0x3C) {
+    wr16(DP + 0x80, (uint16_t)(low & 0xFFFC));
+    wr16(DP + 0x7E, (uint16_t)(((low & 3) << 1) + 0x251C));
+    shop_bar_cap();
+  }
+}
+
+// TG3000_ROUTINE($80:A26E) shop_item_price
+uint16_t shop_item_price(void) {
+  uint16_t stage = (uint16_t)(rd16(DP + 0x3E) - 0x10);
+  if(stage & 0x8000) stage = 0;
+  if(stage < 8) {
+    const uint32_t y = rd16(DP + 0xC4);
+    wr16(0x01A2 + y, rd16(0x4DCA + (uint32_t)(stage << 1)));
+    wr16(0x01A4 + y, rd16(0x4DCA + (uint32_t)(stage & 0xFFFE)));
+  }
+  uint16_t base = rd16(DP + 0x14), x = rd16(DP + 0x16);
+  uint16_t price = rom16(0x81A89B + (uint32_t)shop_item_entry(rd16(DP + 0x4A)));
+  wr16(DP + 0x14, 0x3A00);
+  uint32_t value = (uint32_t)rom16(0x81A88E + (uint32_t)price) << 16 | rom16(0x81A890 + (uint32_t)price);
+  uint16_t shift = sprite_number_centered(value, (uint16_t)(0x5C2E + rd16(DP + 0xE7)));
+  wr16(DP + 0x16, x);
+  wr16(DP + 0x14, base);
+  return shift;
 }

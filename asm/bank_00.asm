@@ -1585,7 +1585,7 @@ CODE_808F4D:
     sta.b $14                   ; $808F50
     lda.w #$0018                ; $808F52
     sta.b $16                   ; $808F55
-    jsr.w $A26E                 ; $808F57
+    jsr.w shop_item_price       ; $808F57
     jsr.w $A251                 ; $808F5A
     lda.b $4E                   ; $808F5D
 CODE_808F5F:
@@ -2297,7 +2297,7 @@ CODE_809853:
     sta.b $14                   ; $809856
     lda.w #$0018                ; $809858
     sta.b $16                   ; $80985B
-    jsr.w $A26E                 ; $80985D
+    jsr.w shop_item_price       ; $80985D
     jsr.w $A251                 ; $809860
     jsr.w $9F40                 ; $809863
     jsr.w $9E49                 ; $809866
@@ -3510,6 +3510,7 @@ CODE_80A250:
     pha                         ; $80A26B
     rts                         ; $80A26C
     rts                         ; $80A26D
+shop_item_price:
     lda.b $3E                   ; $80A26E
     sec                         ; $80A270
     sbc.w #$0010                ; $80A271
@@ -4247,7 +4248,7 @@ shop_sprite_block:
     lda.b $16                   ; $80A831
     sta.b $7A                   ; $80A833
     sty.b $7C                   ; $80A835
-    jsr.w $A91E                 ; $80A837
+    jsr.w shop_bar_double       ; $80A837
     lda.w #$2312                ; $80A83A
     sta.b $84                   ; $80A83D
     jsr.w shop_bar_segments_long; $80A83F
@@ -4357,6 +4358,7 @@ CODE_80A8AD:
     bne CODE_80A8AD             ; $80A919
     sty.b $74                   ; $80A91B
     rts                         ; $80A91D
+shop_bar_double:
     ldy.b $74                   ; $80A91E
     lda.w #$006C                ; $80A920
     sec                         ; $80A923
@@ -4486,7 +4488,7 @@ shop_bar_column:
     sta.b $18                   ; $80AA2B
     lda.w #$007E                ; $80AA2D
     jsr.w sprite_group          ; $80AA30
-    jsr.w $AA59                 ; $80AA33
+    jsr.w shop_gauge            ; $80AA33
     ldy.b $7C                   ; $80AA36
     lda.w $A894,y               ; $80AA38
     tax                         ; $80AA3B
@@ -4505,6 +4507,7 @@ shop_bar_column:
     incbin !baserom:$2A56..$2A58
 CODE_80AA58:
     rts                         ; $80AA58
+shop_gauge:
     ldx.w #$3438                ; $80AA59
     lda.b $3E                   ; $80AA5C
     cmp.w #$0010                ; $80AA5E

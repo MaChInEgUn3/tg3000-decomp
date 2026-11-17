@@ -58,4 +58,19 @@ void shop_bar_levels(void);
 void shop_bar_segments(void);
 void shop_bar_segments_long(void);
 
+// A double bar ($80:A91E): its 2-sprite frame at the slot D+$74, then two
+// shop_bar_column bars for the bar entry's first two parts (levels capped as in
+// shop_bar_levels; tiles $231E and $2320, y offsets $2C and $33).
+void shop_bar_double(void);
+
+// The gauge ($80:AA59): the sprite group at $7E:3438 ($7E:33DA at stage $10), then caps
+// (shop_bar_cap) for the stage past $10 (one partial, then full ones to $38) and past $0C.
+void shop_gauge(void);
+
+// The current item's level marks and price ($80:A26E): for stages $10-$17, two words of
+// $7E:4DCA to $01A2/$01A4 + D+$C4; then the item's 32-bit price (BCD) as a number centred
+// at $5C2E + D+$E7 with sprite base $3A00 (D+$14 and D+$16 kept). Returns
+// sprite_number_centered's shift.
+uint16_t shop_item_price(void);
+
 #endif

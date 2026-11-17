@@ -1686,6 +1686,18 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     extent, not static code.
 - No register outputs: every caller reloads A, X and Y right after.
 
+## The shop's double bar, gauge and price (shop-4, 2026-11-17)
+
+- `shop_bar_double` ($80:A91E): a 2-sprite frame, then two `shop_bar_column` bars for
+  the bar entry's first two parts. Shop movie: live 196/196, fuzz 500/500, paths 70/70.
+- `shop_gauge` ($80:AA59): the sprite group at `$7E:3438` (`$7E:33DA` at stage `$10`),
+  then `shop_bar_cap` caps: a partial one and full ones to `$38` for the stage past
+  `$10`, and one for the stage past `$0C`. Live 433/433, paths 71/71.
+- `shop_item_price` ($80:A26E): for stages `$10-$17`, two level words of `$7E:4DCA` to
+  `$01A2/$01A4` + `$01C4`. Then the item's 32-bit BCD price as a number centred at
+  `$5C2E` + `$01E7` (`sprite_number_centered`, sprite base `$3A00`), with `$0114` and
+  `$0116` kept. Live 4,000/4,000, paths 49/49.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

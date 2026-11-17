@@ -2819,6 +2819,36 @@ static void fuzz_shop_bar(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 static void call_shop_bar_levels(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_levels(); }
 static void call_shop_bar_segments(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_segments(); }
 static void call_shop_bar_segments_long(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_segments_long(); }
+static void call_shop_bar_double(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_double(); }
+static void call_shop_gauge(const Regs* in, Regs* out) { (void)in; (void)out; shop_gauge(); }
+
+// A = the old D+$14 (N/Z of its PLA); X and Y as sprite_number_centered leaves them, with
+// C and V from its last ADC
+static void call_shop_item_price(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t base = rd16(DP + 0x14);
+  uint16_t price = rom16(0x81A89B + (uint32_t)shopEntry(rd16(DP + 0x4A)));
+  uint32_t value = (uint32_t)rom16(0x81A88E + (uint32_t)price) << 16 | rom16(0x81A890 + (uint32_t)price);
+  uint16_t shift = shop_item_price();
+  uint16_t end = rd16(DP + 0x74);
+  uint8_t post = rd8((uint16_t)(0x0900 + end - 4)), pre = (uint8_t)(post - (uint8_t)shift);
+  out->y = end;
+  out->x = value == 0 ? 0xFFFE : 0xFFFF;
+  out->a = base;
+  setNZ16(out, base);
+  out->c = true;
+  out->v = (~(pre ^ (uint8_t)shift) & (pre ^ post) & 0x80) != 0;
+}
+static void fuzz_shop_item_price(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_shop_item(r, ram, rnd);
+  wr16ram(ram, DP + 0x3E, (uint16_t)(rnd() % 0x60));
+  wr16ram(ram, DP + 0x74, (uint16_t)((rnd() % 0x40) * 4));
+  wr16ram(ram, DP + 0xE7, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x14, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x16, (uint16_t)rnd());
+  for(uint32_t a = 0x4DCA; a < 0x4DCA + 0x20; a++) ram[a] = (uint8_t)rnd();
+}
+
 // the stage 0-$5F, the bar table index (live values), the rest as fuzz_shop_bar
 static void fuzz_shop_bars(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_shop_bar(r, ram, rnd);
@@ -3936,6 +3966,12 @@ const Routine routines[] = {
   {.name = "shop_bar_segments_long", .entry = 0x80A87D, .end = 0x80A91E, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_shop_bar_segments_long, .fuzz = fuzz_shop_bars,
    .holes = {{0x80A8A8, 0x80A8AD}}},  // dead bytes after its JMP (never decoded as code)
+  {.name = "shop_bar_double", .entry = 0x80A91E, .end = 0x80A9BD, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_bar_double, .fuzz = fuzz_shop_bars},
+  {.name = "shop_gauge", .entry = 0x80AA59, .end = 0x80AAF1, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_shop_gauge, .fuzz = fuzz_shop_bars},
+  {.name = "shop_item_price", .entry = 0x80A26E, .end = 0x80A2CB, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_price, ALL_OUTPUTS, .fuzz = fuzz_shop_item_price},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
