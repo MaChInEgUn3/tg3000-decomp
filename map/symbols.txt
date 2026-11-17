@@ -287,3 +287,5 @@ func    809847   shop_item_redraw    ; the item screen's frame: typewriter, pric
 func    809AC8   shop_item_slide_row ; the item changes: old up and out, new in from the left -> src/shop.c
 func    809B5D   shop_item_slide_list ; the item changes: old out to the left, then the new one in -> src/shop.c
 func    809B99   shop_item_slide_list_in ; the new item takes over and slides down into place -> src/shop.c
+func    808FA1   shop_item_down      ; next item down (slide), or leave the list (returns from the caller) -> src/shop.c
+func    808FD4   shop_item_up        ; next item up (slide), or leave the list (returns from the caller) -> src/shop.c

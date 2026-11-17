@@ -213,4 +213,12 @@ void shop_item_slide_row(void);
 void shop_item_slide_list(void);
 void shop_item_slide_list_in(void);
 
+// The player moves down ($80:8FA1) or up ($80:8FD4) the item list: the next item slides in
+// (down: out to the left, shop_item_slide_list; up: out the top, shop_item_slide_row) with
+// sound $11 (up plays it even at the top). Past the end, the list is left: the icon stops
+// (D+$44 bit 15), the panel blanks, and once D+$4E has passed 4 (the frame hook counts it)
+// the panel clears; the routine then returns from its caller too (true).
+bool shop_item_down(void);
+bool shop_item_up(void);
+
 #endif

@@ -106,6 +106,8 @@ typedef struct {
   int idx;
   Regs entryRegs;
   uint16_t entrySp, minSp, retPc, retSp;
+  uint16_t altRetPc, altRetSp;  // mayLeaveCaller: the caller's own return
+  bool leftCaller;
   uint8_t retBank;
   uint32_t interruptsAtEntry, insns;
   bool hwAccess, mathWritten, leftExtent, setupPending, vramAdrPending, effectOverflow;
@@ -986,6 +988,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
     return false; \
   }
   CHECK(a, r->compareA) CHECK(x, r->compareX) CHECK(y, r->compareY) CHECK(d, true) CHECK(db, true)
+  CHECK(leftCaller, r->mayLeaveCaller)
 #undef CHECK
   *flagDiff = (out.n != after->n ? FN : 0) | (out.v != after->v ? FV : 0) |
               (out.z != after->z ? FZ : 0) | (out.c != after->c ? FC : 0);
@@ -1012,6 +1015,7 @@ static void finishSample(int k, const Cpu* cpu) {
     }
   }
   Regs after = readRegs(cpu);
+  after.leftCaller = smp->leftCaller;
   if(table[idx].waitsForInterrupts) {
     if(!owner || irqOverflow || irqActive) { s->abandoned++; return; }
   } else if(cpu_interruptCount != smp->interruptsAtEntry) {
@@ -1097,6 +1101,10 @@ static void startSample(int idx, const Cpu* cpu) {
     .retSp = (uint16_t)(sp + (r->rtl ? 3 : 2)),
     .interruptsAtEntry = cpu_interruptCount,
   };
+  if(r->mayLeaveCaller) {  // the caller's return address, above this routine's
+    smp->altRetPc = (uint16_t)((snes->ram[(uint16_t)(sp + 3)] | (snes->ram[(uint16_t)(sp + 4)] << 8)) + 1);
+    smp->altRetSp = (uint16_t)(sp + 4);
+  }
   if(r->rti) {  // the interrupt frame (P, PC low, PC high, PB) above what the prologue pushed
     uint16_t f = (uint16_t)(sp + r->rtiFrame);
     smp->retPc = (uint16_t)(snes->ram[(uint16_t)(f + 2)] | (snes->ram[(uint16_t)(f + 3)] << 8));
@@ -1242,7 +1250,10 @@ void difftest_on_insn(Cpu* cpu) {
   for(int k = depth - 1; k >= base; k--) {
     Sample* smp = &samples[k];
     bool ended = table[smp->idx].endAt != 0 && pc == table[smp->idx].endAt && k == depth - 1;
-    if(ended || (cpu->pc == smp->retPc && cpu->k == smp->retBank && cpu->sp == smp->retSp)) {
+    bool left = table[smp->idx].mayLeaveCaller && cpu->pc == smp->altRetPc && cpu->k == smp->retBank &&
+                cpu->sp == smp->altRetSp;
+    if(left) smp->leftCaller = true;
+    if(ended || left || (cpu->pc == smp->retPc && cpu->k == smp->retBank && cpu->sp == smp->retSp)) {
       for(int j = depth - 1; j > k; j--) stats[samples[j].idx].abandoned++;  // left without returning
       depth = k + 1;
       finishSample(k, cpu);

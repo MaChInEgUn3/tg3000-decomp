@@ -1599,12 +1599,12 @@ CODE_808F5F:
     lda.b $0C                   ; $808F70
     bit.w #$0900                ; $808F72
     beq CODE_808F7A             ; $808F75
-    jsr.w $8FA1                 ; $808F77
+    jsr.w shop_item_down        ; $808F77
 CODE_808F7A:
     lda.b $0C                   ; $808F7A
     bit.w #$0600                ; $808F7C
     beq CODE_808F84             ; $808F7F
-    jsr.w $8FD4                 ; $808F81
+    jsr.w shop_item_up          ; $808F81
 CODE_808F84:
     lda.w #$C0C0                ; $808F84
     trb.b $0E                   ; $808F87
@@ -1620,6 +1620,7 @@ CODE_808F8E:
     bra CODE_808F4A             ; $808F9D
 CODE_808F9F:
     bra CODE_808F4D             ; $808F9F
+shop_item_down:
     ldx.b $48                   ; $808FA1
     lda.w $036E,x               ; $808FA3
     and.w #$00FF                ; $808FA6
@@ -1645,6 +1646,7 @@ CODE_808FCB:
     jsr.w shop_panel_clear      ; $808FCF
     pla                         ; $808FD2
     rts                         ; $808FD3
+shop_item_up:
     jsl.l func_80E4C5           ; $808FD4
     lda.b $4A                   ; $808FD8
     beq CODE_808FE6             ; $808FDA

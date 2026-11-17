@@ -982,3 +982,34 @@ void shop_item_slide_list(void) {
   } while(rd16(DP + 0x4E) != 0xFFC2);
   shop_item_slide_list_in();
 }
+
+// leaving the list: returns true (the original drops its return address and returns from
+// its caller)
+static bool shop_item_leave(void) {
+  wr16(DP + 0x44, (uint16_t)(rd16(DP + 0x44) | 0x8000));
+  shop_panel_blank();
+  while(rd16(DP + 0x4E) <= 0x0004) platform_wait_vblank();
+  shop_panel_clear();
+  return true;
+}
+
+// TG3000_ROUTINE($80:8FA1) shop_item_down
+bool shop_item_down(void) {
+  uint16_t last = (uint16_t)((rd16(0x036E + (uint32_t)rd16(DP + 0x48)) & 0x00FF) - 1);
+  if(last == rd16(DP + 0x4A)) return shop_item_leave();
+  func_80E4C5();
+  wr16(DP + 0x4C, (uint16_t)(rd16(DP + 0x4A) + 1));
+  shop_item_picture();
+  shop_item_slide_list();
+  return false;
+}
+
+// TG3000_ROUTINE($80:8FD4) shop_item_up
+bool shop_item_up(void) {
+  func_80E4C5();
+  if(rd16(DP + 0x4A) == 0) return shop_item_leave();
+  wr16(DP + 0x4C, (uint16_t)(rd16(DP + 0x4A) - 1));
+  shop_item_picture();
+  shop_item_slide_row();
+  return false;
+}

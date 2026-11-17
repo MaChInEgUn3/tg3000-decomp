@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Leaving the item list (shop-15, 2026-11-17)
+
+- **`shop_item_down` ($80:8FA1) and `shop_item_up` ($80:8FD4):** the player moves along
+  the item list.
+  - The next item slides in: down by `shop_item_slide_list`, up by `shop_item_slide_row`.
+  - It is sound `$11`; up plays it even at the top.
+  - Past either end the list is left:
+    - the icon stops (`$0144` bit 15);
+    - the panel blanks;
+    - once `$014E` has passed 4 (the frame hook counts it) the panel clears;
+    - `PLA`, `RTS` then drop the routine's own return address and return from its caller.
+- **The difftest learns that exit:** a row with `mayLeaveCaller` also ends its sample at
+  the caller's own return (the word above its return address, SP + 4). The adapter says
+  which way the C went (`out->leftCaller`, the C's `true`), and it is compared like a
+  register. The flags then are those of the `PLA` (N, Z) and C of the panel's `CMP`.
+- **Checked against a wrong C:** an adapter that always reported `false` failed in a
+  separate worktree (it cannot be a negative row: those must fail over the 60k movie,
+  which never opens the shop).
+- **Results:** live 50/50 and 53/53, the leaving paths among them; paths 23/23 and 18/18;
+  no fuzz (waits).
+
 ## The item slides (shop-14, 2026-11-17)
 
 - **The item changes by sliding, six pixels a frame.** Each frame:

@@ -3095,6 +3095,19 @@ static void slideFlags(Regs* out) {
 static void call_shop_item_slide_row(const Regs* in, Regs* out) { (void)in; shop_item_slide_row(); slideFlags(out); }
 static void call_shop_item_slide_list(const Regs* in, Regs* out) { (void)in; shop_item_slide_list(); slideFlags(out); }
 static void call_shop_item_slide_list_in(const Regs* in, Regs* out) { (void)in; shop_item_slide_list_in(); slideFlags(out); }
+// the list moves: no register outputs. A slide's exit flags (N clear, Z and C set); leaving,
+// the PLA of the routine's own return address (N, Z), C still set by the panel's CMP
+static void shopItemMoveOut(const Regs* in, Regs* out, bool left) {
+  out->leftCaller = left;
+  if(left) {
+    setNZ16(out, rd16((uint16_t)(in->sp + 1)));
+    out->c = true;
+  } else {
+    slideFlags(out);
+  }
+}
+static void call_shop_item_down(const Regs* in, Regs* out) { shopItemMoveOut(in, out, shop_item_down()); }
+static void call_shop_item_up(const Regs* in, Regs* out) { shopItemMoveOut(in, out, shop_item_up()); }
 // the frame: no register outputs (every caller reloads them)
 static void call_shop_item_redraw(const Regs* in, Regs* out) { (void)in; (void)out; shop_item_redraw(); }
 // no register outputs: every caller reloads A, X and Y ($80:9E49, $80:9B99, LDA #2)
@@ -4600,6 +4613,12 @@ const Routine routines[] = {
    .call = call_shop_item_slide_list},
   {.name = "shop_item_slide_list_in", .entry = 0x809B99, .end = 0x809BF2, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_item_slide_list_in},
+  {.name = "shop_item_down", .entry = 0x808FA1, .end = 0x808FD4, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .mayLeaveCaller = true,
+   .call = call_shop_item_down},
+  {.name = "shop_item_up", .entry = 0x808FD4, .end = 0x808FFC, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .mayLeaveCaller = true,
+   .call = call_shop_item_up},
   {.name = "shop_item_view_h", .entry = 0x80AEBE, .end = 0x80AF36, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .call = call_shop_item_view_h},
   {.name = "shop_item_view_i", .entry = 0x80AE4E, .end = 0x80AEBE, .source = "src/shop.c", .needM16 = true, .needX16 = true,

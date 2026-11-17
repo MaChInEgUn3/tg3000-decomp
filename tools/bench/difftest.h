@@ -15,6 +15,7 @@ typedef struct {
   uint8_t db;
   bool n, v, z, c, m8, x8, e;
   uint16_t sp;  // at entry (an interrupt handler's adapter reads the pushed P through it)
+  bool leftCaller;  // returned to its caller's caller (PLA, RTS): see mayLeaveCaller
 } Regs;
 
 // A ported routine: where the original lives and how to call the C for it.
@@ -49,6 +50,10 @@ typedef struct {
   // (their WRAM changes) and replayed when the C calls platform_wait_vblank(), instead
   // of discarding the sample. Their hardware accesses belong to the handler.
   bool waitsForInterrupts;
+  // The routine may also end with PLA, RTS: dropping its own return address, it returns
+  // from its caller. That return ends the sample too; the adapter tells which one the C
+  // took through out->leftCaller, compared with the original's.
+  bool mayLeaveCaller;
   // Data inside the extent (jump tables): [start, end) ranges skipped when listing its
   // instruction starts.
   uint32_t holes[4][2];
