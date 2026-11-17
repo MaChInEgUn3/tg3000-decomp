@@ -1759,6 +1759,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `LDA #2`).
 - **Not ported:** `$80:A121` (list 6) is never run by the shop movie, as list 6's view.
 
+## The shop cursor and level marks (shop-8, 2026-11-17)
+
+- **`shop_level_marks` ($80:9E49):** it runs after the two item dispatches at every call
+  site.
+  - `$01EE` eases one pixel a frame towards the cursor row (`$014A` * 16 + `$14`).
+  - Two cursor sprites follow (tiles `$3892` and `$3890`).
+  - Then one mark per level of list `$0148`, counted by the byte at `$036E` + list.
+  - The part's current level comes from the list's getter in the table at `$80:9EEA`:
+    the verified `shop_part_level_2..7` for lists 0-5, the plain bytes `$0398`/`$0399`
+    for lists 6 and 7. Its mark takes tile + `$20`.
+- **No register outputs:** `func_809DD0` follows at every call.
+- **Results:** live 4,000/4,000, fuzz 500/500, paths 83/83.
+
 ## Steering the explorer; two item views parked (explore-2, 2026-11-17)
 
 - **The last two item views** belong to one item each: `$80:A333` to list 1, row 4, and

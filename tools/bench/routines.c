@@ -2857,6 +2857,22 @@ static void call_shop_item_view_d(const Regs* in, Regs* out) { (void)out; shop_i
 static void call_shop_item_view_e(const Regs* in, Regs* out) { (void)out; shop_item_view_e(in->y); }
 // no register outputs: every caller reloads A, X and Y ($80:9E49, $80:9B99, LDA #2)
 static void call_shop_item_icon_draw(const Regs* in, Regs* out) { (void)out; shop_item_icon_draw(in->x); }
+// no register outputs: func_809DD0 follows at every call
+static void call_shop_level_marks(const Regs* in, Regs* out) { (void)in; (void)out; shop_level_marks(); }
+// lists 0-7 (the getter table), 1-8 marks, any level, cursor and position, slots in the
+// buffer
+static void fuzz_shop_level_marks(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t list = (uint16_t)(rnd() % 8), car = (uint16_t)(rnd() & 0x1F);
+  wr16ram(ram, DP + 0x48, list);
+  wr16ram(ram, DP + 0x94, car);
+  ram[0x036E + list] = (uint8_t)(1 + rnd() % 8);
+  for(uint32_t a = 0x0392; a < 0x039A; a++) ram[a + car] = (uint8_t)rnd();
+  wr16ram(ram, DP + 0x4A, (uint16_t)(rnd() % 5));
+  wr16ram(ram, DP + 0xEE, (rnd() & 1) ? (uint16_t)(0x14 + (rnd() % 0x50)) : (uint16_t)rnd());
+  wr16ram(ram, DP + 0xE7, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x74, (uint16_t)((rnd() % 0x60) * 4));
+}
 // carry set: the queue's ADC sets V and C, the PLY of the old Y sets N and Z; carry clear:
 // V from the icon's last group item ADC #6 (as on entry if the group is empty), or from
 // BIT D+$76 at step 7
@@ -4075,6 +4091,8 @@ const Routine routines[] = {
    .fixedD = true, .db = 0x81, .call = call_shop_item_icon_4, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon},
   {.name = "shop_item_icon_5", .entry = 0x80A018, .end = 0x80A057, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .call = call_shop_item_icon_5, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon},
+  {.name = "shop_level_marks", .entry = 0x809E49, .end = 0x809EEA, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_level_marks, .fuzz = fuzz_shop_level_marks},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

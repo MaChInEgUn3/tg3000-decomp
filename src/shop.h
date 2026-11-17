@@ -108,4 +108,10 @@ void shop_item_icon_3(bool upload);
 void shop_item_icon_4(bool upload);
 void shop_item_icon_5(bool upload);
 
+// The cursor and the level marks ($80:9E49): D+$EE eases one pixel a frame towards the
+// cursor row (D+$4A * 16 + $14); two cursor sprites (tiles $3892, $3890), then one mark per
+// level of list D+$48 (the byte at $036E + list), the part's current level (the list's
+// getter of $80:9EEA, low 7 bits) drawn with tile + $20; slots from D+$74.
+void shop_level_marks(void);
+
 #endif

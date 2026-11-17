@@ -251,3 +251,4 @@ func    809F9A   shop_item_icon_2    ; list 2's icon (carry clear) or panel uplo
 func    809FD9   shop_item_icon_3    ; list 3's icon (carry clear) or panel upload (carry set) -> src/shop.c
 func    80A057   shop_item_icon_4    ; list 4's icon (carry clear) or panel upload (carry set) -> src/shop.c
 func    80A018   shop_item_icon_5    ; list 5's icon (carry clear) or panel upload (carry set) -> src/shop.c
+func    809E49   shop_level_marks    ; the shop cursor and the list's level marks -> src/shop.c

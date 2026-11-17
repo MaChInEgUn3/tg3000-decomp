@@ -466,3 +466,55 @@ void shop_item_icon_4(bool upload) { shop_item_icon(upload, 3, 0xBCBE, 0xBCA6); 
 
 // TG3000_ROUTINE($80:A018) shop_item_icon_5
 void shop_item_icon_5(bool upload) { shop_item_icon(upload, 4, 0xBC9A, 0xBC82); }
+
+// The list's level getter ($80:9EEA table): lists 0-5 the part levels plus 1, 6 and 7 the
+// bytes at $0398 and $0399 as they are.
+static uint16_t shop_list_level(uint16_t list, uint16_t car) {
+  switch(list) {
+  case 0: return shop_part_level_2(car);
+  case 1: return shop_part_level_3(car);
+  case 2: return shop_part_level_4(car);
+  case 3: return shop_part_level_5(car);
+  case 4: return shop_part_level_6(car);
+  case 5: return shop_part_level_7(car);
+  case 6: return rd16(0x0398 + (uint32_t)car);
+  default: return rd16(0x0399 + (uint32_t)car);
+  }
+}
+
+static uint16_t shop_mark(uint16_t slot, uint16_t tile, uint16_t pos) {
+  const uint32_t x = slot;
+  wr16(0x0902 + x, tile);
+  wr16(0x0900 + x, pos);
+  wr16(0x0B01 + x, 0x0100);
+  return (uint16_t)(slot + 4);
+}
+
+// TG3000_ROUTINE($80:9E49) shop_level_marks
+void shop_level_marks(void) {
+  uint16_t slot = rd16(DP + 0x74);
+  uint16_t gap = (uint16_t)((uint16_t)(rd16(DP + 0x4A) << 4) + 0x14 - rd16(DP + 0xEE));
+  if(gap) wr16(DP + 0xEE, (uint16_t)(rd16(DP + 0xEE) + ((gap & 0x8000) ? -1 : 1)));
+  slot = shop_mark(slot, 0x3892, (uint16_t)(0x085A + rd16(DP + 0xEE) + rd16(DP + 0xE7)));
+  slot = shop_mark(slot, 0x3890, (uint16_t)(0x0A5C + rd16(DP + 0xE7)));
+  wr16(DP + 0x74, slot);
+  uint16_t list = rd16(DP + 0x48);
+  wr16(DP + 0x24, (uint16_t)(rd16(0x036E + (uint32_t)list) & 0x00FF));
+  wr16(DP + 0x26, (uint16_t)(0x0A70 + rd16(DP + 0xE7)));
+  wr16(DP + 0x28, 0x3850);
+  uint16_t left = (uint16_t)(shop_list_level(list, rd16(DP + 0x94)) & 0x007F);
+  do {
+    uint16_t pos = rd16(DP + 0x26);
+    wr16(DP + 0x26, (uint16_t)(pos + 0x10));
+    uint16_t tile = rd16(DP + 0x28);
+    if(--left == 0) tile = (uint16_t)(tile + 0x20);
+    const uint32_t x = slot;
+    wr16(0x0900 + x, pos);
+    wr16(0x0902 + x, tile);
+    wr16(0x0B01 + x, 0x0100);
+    wr16(DP + 0x28, (uint16_t)(rd16(DP + 0x28) + 2));
+    slot = (uint16_t)(slot + 4);
+    wr16(DP + 0x24, (uint16_t)(rd16(DP + 0x24) - 1));
+  } while(rd16(DP + 0x24) != 0);
+  wr16(DP + 0x74, slot);
+}

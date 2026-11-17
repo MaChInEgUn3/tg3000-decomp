@@ -1592,7 +1592,7 @@ CODE_808F5F:
     cmp.w $0024                 ; $808F5F
     beq CODE_808F5F             ; $808F62
     jsr.w $9F40                 ; $808F64
-    jsr.w $9E49                 ; $808F67
+    jsr.w shop_level_marks      ; $808F67
     jsr.w func_809DD0           ; $808F6A
     jsr.w oam_finish_near       ; $808F6D
     lda.b $0C                   ; $808F70
@@ -2300,7 +2300,7 @@ CODE_809853:
     jsr.w shop_item_price       ; $80985D
     jsr.w $A251                 ; $809860
     jsr.w $9F40                 ; $809863
-    jsr.w $9E49                 ; $809866
+    jsr.w shop_level_marks      ; $809866
     jsr.w func_809DD0           ; $809869
     jsr.w oam_finish_near       ; $80986C
     rts                         ; $80986F
@@ -2578,7 +2578,7 @@ CODE_809ADF:
     sta.b $16                   ; $809AEC
     jsr.w $A251                 ; $809AEE
     jsr.w $9F40                 ; $809AF1
-    jsr.w $9E49                 ; $809AF4
+    jsr.w shop_level_marks      ; $809AF4
     jsr.w func_809DD0           ; $809AF7
     jsr.w oam_finish_near       ; $809AFA
     lda.b $4E                   ; $809AFD
@@ -2617,7 +2617,7 @@ CODE_809B37:
     sta.b $16                   ; $809B44
     jsr.w $A251                 ; $809B46
     jsr.w $9F40                 ; $809B49
-    jsr.w $9E49                 ; $809B4C
+    jsr.w shop_level_marks      ; $809B4C
     jsr.w func_809DD0           ; $809B4F
     jsr.w oam_finish_near       ; $809B52
     lda.b $4E                   ; $809B55
@@ -2644,7 +2644,7 @@ CODE_809B74:
     sta.b $16                   ; $809B81
     jsr.w $A251                 ; $809B83
     jsr.w $9F40                 ; $809B86
-    jsr.w $9E49                 ; $809B89
+    jsr.w shop_level_marks      ; $809B89
     jsr.w func_809DD0           ; $809B8C
     jsr.w oam_finish_near       ; $809B8F
     lda.b $4E                   ; $809B92
@@ -2683,7 +2683,7 @@ CODE_809BCC:
     sta.b $16                   ; $809BD9
     jsr.w $A251                 ; $809BDB
     jsr.w $9F40                 ; $809BDE
-    jsr.w $9E49                 ; $809BE1
+    jsr.w shop_level_marks      ; $809BE1
     jsr.w func_809DD0           ; $809BE4
     jsr.w oam_finish_near       ; $809BE7
     lda.b $4E                   ; $809BEA
@@ -2982,6 +2982,7 @@ CODE_809E0B:
     jsr.w sprite_number         ; $809E36
     rts                         ; $809E39
     incbin !baserom:$1E3A..$1E49
+shop_level_marks:
     ldx.b $74                   ; $809E49
     lda.b $4A                   ; $809E4B
     asl a                       ; $809E4D
@@ -5334,7 +5335,7 @@ CODE_80B183:
     cmp.b $8E                   ; $80B188
     beq CODE_80B198             ; $80B18A
     jsr.w $9F40                 ; $80B18C
-    jsr.w $9E49                 ; $80B18F
+    jsr.w shop_level_marks      ; $80B18F
     jsr.w func_809DD0           ; $80B192
     jsr.w oam_finish_near       ; $80B195
 CODE_80B198:
