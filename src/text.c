@@ -293,3 +293,144 @@ uint16_t func_809DD0(void) {
   uint32_t value = (uint32_t)rd16((uint16_t)(0x0390 + i)) << 16 | rd16((uint16_t)(0x038E + i));
   return sprite_number(value, (uint16_t)(0x5C94 + rd16(DP + 0xE7)));
 }
+
+#define TYPE_MAP 0x10000  // $7F:0000
+
+// the text's byte at [D+$CC] + `offset`: [dp],y adds across the bank
+static uint8_t type_byte(uint16_t offset) {
+  return bus_rd8((((uint32_t)rd8(DP + 0xCE) << 16 | rd16(DP + 0xCC)) + offset) & 0xFFFFFF);
+}
+
+// the text pointer moves on by `n` (its bank word counts the carry, $CF's low byte included)
+static void type_advance(uint16_t n) {
+  uint32_t sum = (uint32_t)rd16(DP + 0xCC) + n;
+  wr16(DP + 0xCC, (uint16_t)sum);
+  if(sum > 0xFFFF) wr16(DP + 0xCE, (uint16_t)(rd16(DP + 0xCE) + 1));  // never run
+}
+
+static void type_map_add(uint16_t at, uint16_t add) {
+  if(at != 0xFFFF) wr16(TYPE_MAP + at, (uint16_t)(rd16(TYPE_MAP + at) + add));
+}
+
+// the cursor's blink: 16 frames, shown at frame 8, its own tile at 0 (a new cycle)
+static void type_blink(void) {
+  uint16_t left = (uint16_t)(rd16(DP + 0xE1) - 1);
+  wr16(DP + 0xE1, left);
+  if(left == 0) {
+    wr16(DP + 0xDF, 0);
+    wr16(DP + 0xDD, (uint16_t)(rd16(DP + 0xC8) + rd16(DP + 0xCA)));
+    wr16(DP + 0xE1, 0x0010);
+    func_80B7BB();
+  } else if(left == 0x0008) {
+    wr16(DP + 0xDF, 0x284C);
+    wr16(DP + 0xDD, (uint16_t)(rd16(DP + 0xC8) + rd16(DP + 0xCA)));
+    func_80B7BB();
+  } else {
+    wr16(DP + 0xDD, 0xFFFF);
+  }
+}
+
+// one step's text: the control codes that take no time loop here; returns after a
+// letter or a code that takes the step
+static void type_text(void) {
+  for(;;) {
+    uint8_t c = type_byte(0);
+    if(c & 0x80) {
+      switch((uint8_t)(c << 1)) {
+      case 0x00:  // $80: next line
+        wr16(DP + 0xCA, (uint16_t)((rd16(DP + 0xCA) & 0xFFC0) + 0x0040));
+        wr16(DP + 0xF6, (uint16_t)(rd16(DP + 0xF6) + 1));
+        type_advance(1);
+        continue;
+      case 0x02:  // $81: column 0 (never run)
+        wr16(DP + 0xCA, 0);
+        type_advance(1);
+        continue;
+      case 0x04:  // $82: jump to the address that follows (never run)
+        wr16(DP + 0xCC, (uint16_t)(type_byte(1) | type_byte(2) << 8));
+        type_advance(0);
+        continue;
+      case 0x06:  // $83: blink until the player goes on
+        type_blink();
+        return;
+      case 0x08:  // $84: wait the count that follows, blinking
+        if(rd16(DP + 0xE3) == 0) wr16(DP + 0xE3, (uint16_t)(type_byte(1) | type_byte(2) << 8));
+        wr16(DP + 0xE3, (uint16_t)(rd16(DP + 0xE3) - 1));
+        if(rd16(DP + 0xE3) == 0) {
+          type_advance(3);
+          continue;
+        }
+        type_blink();
+        return;
+      case 0x0A: {  // $85: clear the line, then back up a line until the first
+        for(uint32_t a = 0xCF; a <= 0xDD; a += 2) wr16(DP + a, 0xFFFF);
+        uint16_t at = (uint16_t)((rd16(DP + 0xCA) & 0xFFC0) + rd16(DP + 0xC8));
+        uint16_t n = rd16(DP + 0xF9);
+        do {  // the width counts down to 0 (a width of 0 would clear 65536 words)
+          wr16(TYPE_MAP + at, 0);
+          at = (uint16_t)(at + 2);
+        } while(--n);
+        uint16_t line = (uint16_t)(rd16(DP + 0xCA) & 0xFFC0);
+        wr16(DP + 0xCA, line);
+        if(line == 0) {
+          type_advance(1);
+          continue;
+        }
+        wr16(DP + 0xCA, (uint16_t)(line - 0x0040));
+        wr16(DP + 0xF6, (uint16_t)(rd16(DP + 0xF6) - 1));
+        return;
+      }
+      case 0x0C:  // $86: flag
+        wr16(DP + 0xF8, (uint16_t)(rd16(DP + 0xF8) | 0x0001));
+        type_advance(1);
+        continue;
+      default:
+        return;  // no other code appears in the game's texts
+      }
+    }
+    uint16_t at = (uint16_t)(rd16(DP + 0xC8) + rd16(DP + 0xCA));
+    if(c == 0x20) {
+      wr16(DP + 0xDF, 0);
+      wr16(TYPE_MAP + at, 0x084C);
+    } else {
+      uint16_t tile = 0;
+      bool mark = false;
+      for(uint16_t i = 0x3F; i < 0x4C; i++)
+        if(rom8(0x80B79A + i) == c) {
+          tile = i;
+          mark = true;
+          break;
+        }
+      if(!mark) tile = c < 0x41 ? (uint8_t)(c + 5) : c < 0x61 ? (uint8_t)(c - 0x26) : (uint8_t)(c - 0x60);
+      wr16(DP + 0xDF, (uint16_t)(tile | 0x2800));
+      wr16(TYPE_MAP + at, 0x284C);
+    }
+    wr16(DP + 0xDD, at);
+    type_advance(1);
+    wr16(DP + 0xCA, (uint16_t)(rd16(DP + 0xCA) + 2));
+    func_80B7BB();
+    wr16(DP + 0xE1, 9);
+    return;
+  }
+}
+
+// TG3000_ROUTINE($80:B59D) text_type_step
+void text_type_step(void) {
+  wr16(DP + 0xC6, (uint16_t)(rd16(DP + 0xC6) + rd16(DP + 0xE5)));
+  while(rd16(DP + 0xC6) >= 0x0100) {
+    wr16(DP + 0xC6, (uint16_t)(rd16(DP + 0xC6) - 0x0100));
+    type_map_add(rd16(DP + 0xCF), 0x004C);
+    for(uint32_t a = 0xCF; a < 0xDB; a += 2) {
+      uint16_t at = rd16(DP + a + 2);
+      wr16(DP + a, at);
+      type_map_add(at, a == 0xD3 ? 0x031C : 0x004C);
+    }
+    uint16_t at = rd16(DP + 0xDD);
+    wr16(DP + 0xDB, at);
+    if(at != 0xFFFF) {
+      wr16(TYPE_MAP + at, rd16(DP + 0xDF));
+      if(rd16(DP + 0xDF) == 0) wr16(DP + 0xDB, 0xFFFF);
+    }
+    type_text();
+  }
+}

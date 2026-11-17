@@ -94,4 +94,14 @@ uint16_t func_809DD0(void);
 // sprite_group's result.
 uint32_t func_80EB66(uint16_t dp);
 
+// $80:B59D: the typewriter, one frame. Its speed D+$E5 adds to D+$C6; each whole $100
+// spent prints one more step of the text at [D+$CC] (24-bit) into the map at $7F:(D+$C8 +
+// D+$CA). A letter appears in stages: the queue D+$CF-D+$DD holds the map words of the
+// last letters, each pass adding $4C (one stage; $31C at the fourth) until the letter's
+// own tile (kept in D+$DF) lands. Letters: a space, 13 marks ($80:B7D9: & # [ . + = { } ?
+// ! - ~ ]), digits and the rest by their codes. Control codes $80-$86: next line; column
+// 0; jump; blink a cursor (D+$E1, a 16-frame cycle); wait D+$E3 frames, blinking; clear
+// the line and back up one; set bit 0 of D+$F8.
+void text_type_step(void);
+
 #endif

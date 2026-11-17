@@ -1789,6 +1789,39 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The typewriter (text-1, 2026-11-17)
+
+- **`text_type_step` ($80:B59D)** prints the shop's texts.
+  - **Pacing:** the speed `$01E5` adds to `$01C6`, and each whole `$100` spent is one
+    step of the text at the 24-bit pointer `$01CC`, into the map at `$7F:($01C8 + $01CA)`.
+  - **Letters appear in stages:** a queue of map words (`$01CF`-`$01DD`) adds `$4C` to
+    each on every step (`$31C` at the fourth) until the letter's own tile, kept in
+    `$01DF`, lands. `func_80B7BB` (verified) takes a reused word out of the queue.
+  - **Letter codes:** a space; 13 marks by the table at `$80:B7D9`; digits and other codes
+    below `$41` + 5, `$41`-`$60` - `$26`, from `$61` - `$60`.
+  - **Control codes `$80`-`$86`,** through the table at `$80:B6BC`:
+    - `$80`: next line;
+    - `$81`: column 0;
+    - `$82`: jump to the address that follows;
+    - `$83`: blink a cursor (`$01E1`, a 16-step cycle);
+    - `$84`: wait the count that follows (`$01E3`), blinking;
+    - `$85`: clear the line and back up one, until line 0;
+    - `$86`: set bit 0 of `$01F8`.
+
+    `$81` and `$82` are never run (static code); the fuzz writes texts with them.
+- **The row:**
+  - its extent skips the code table (`alsoIn` for the handlers);
+  - two `m8At` addresses (`$80:B645`, `$80:B65E`) keep the linear decode in 8-bit A
+    where the code runs so after a `REP` on another path; without them it listed 11
+    instruction starts that never run;
+  - the fuzz sometimes puts the text at the end of bank `$7E`, so the never-run bank
+    carry (`INC $CE`) runs.
+- **That fuzz found a real error:** `LDA [$CC],Y` (code `$84`'s count) adds Y to the full
+  24-bit pointer and crosses into the next bank, while the first C wrapped inside the
+  bank.
+- **Results:** live 4,000/4,000 (shop) and 1,310/1,310 (60k), fuzz 500/500, paths
+  130/130.
+
 ## The item screen's view dispatch, all ten views (shop-12, 2026-11-17)
 
 - **`shop_item_dispatch_view` ($80:A251):** the current item's view from the table at

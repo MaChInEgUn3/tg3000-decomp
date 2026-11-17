@@ -281,3 +281,4 @@ func    80AC37   shop_item_view_j    ; item view of list 8: group, frame, gauge,
 func    80AF36   shop_level_blocks   ; a row of 2x2 blocks filling with the stage -> src/shop.c
 func    80ACB6   shop_gauge_lines    ; the gauge: four sprites and twelve lines -> src/shop.c
 func    80ADD9   shop_gauge_line     ; one gauge line, its column from the PPU product -> src/shop.c
+func    80B59D   text_type_step      ; the typewriter: letters appear in stages, control codes $80-$86 -> src/text.c

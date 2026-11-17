@@ -421,6 +421,54 @@ static void fuzz_table_062a_fill(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x3E, (uint16_t)rnd());
 }
 
+// ---- text_type_step ($80:B59D) ----  no register outputs (its callers reload them)
+static void call_text_type_step(const Regs* in, Regs* out) { (void)in; (void)out; text_type_step(); }
+// a text in WRAM ($7E:1C00, 64 bytes; sometimes copied to the end of the bank, to cross into
+// $7F): letters, spaces and marks, with the codes $80, $83,
+// $84 (a count of 1-3 after it), $85, $86, and rarely $81 or a forward $82; the speed and
+// its sum, the map base and cursor, a width of 1-32, the blink and wait counts, the queue
+// (empty slots or map words)
+static void fuzz_text_type_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const uint8_t marks[] = {0x26, 0x23, 0x5B, 0x2E, 0x2B, 0x3D, 0x7B, 0x7D, 0x3F, 0x21, 0x2D, 0x7E, 0x5D};
+  static const uint8_t codes[] = {0x80, 0x83, 0x84, 0x85, 0x86};
+  for(uint32_t i = 0; i < 0x40; i++) {
+    uint32_t k = rnd() % 16;
+    uint8_t c = k < 8 ? (uint8_t)(0x30 + rnd() % 0x4B) : k < 10 ? 0x20 : k < 11 ? marks[rnd() % 13] : codes[rnd() % 5];
+    if(k >= 11 && (rnd() & 15) == 0) c = 0x81;
+    ram[0x1C00 + i] = c;
+    if(c == 0x84 && i + 2 < 0x40) {
+      ram[0x1C00 + ++i] = (uint8_t)(1 + rnd() % 3);
+      ram[0x1C00 + ++i] = 0;
+    }
+  }
+  if((rnd() & 15) == 0) {  // a jump forward
+    uint32_t i = rnd() % 0x20;
+    ram[0x1C00 + i] = 0x82;
+    wr16ram(ram, 0x1C01 + i, (uint16_t)(0x1C00 + i + 3 + rnd() % 0x10));
+  }
+  wr16ram(ram, DP + 0xCC, (uint16_t)(0x1C00 + rnd() % 0x20));
+  ram[DP + 0xCE] = 0x7E;
+  bool cross = (rnd() & 3) == 0;  // the text at the end of bank $7E, running on into $7F:0000
+  if(cross) {
+    for(uint32_t i = 0; i < 0x40; i++) ram[0xFFE0 + i] = ram[0x1C00 + i];
+    wr16ram(ram, DP + 0xCC, (uint16_t)(0xFFFC + rnd() % 4));
+  }
+  wr16ram(ram, DP + 0xE5, (uint16_t)(rnd() % 0x400));
+  wr16ram(ram, DP + 0xC6, (uint16_t)(rnd() % 0x400));
+  if(cross) wr16ram(ram, DP + 0xE5, (uint16_t)(0x0400 + rnd() % 0x400));  // several steps: the crossing happens
+  wr16ram(ram, DP + 0xC8, (uint16_t)((rnd() % 0x1000) * 2));
+  wr16ram(ram, DP + 0xCA, (uint16_t)((rnd() % 0x100) * 2));
+  wr16ram(ram, DP + 0xF9, (uint16_t)(1 + rnd() % 32));
+  wr16ram(ram, DP + 0xF6, (uint16_t)rnd());
+  wr16ram(ram, DP + 0xF8, (uint16_t)rnd());
+  wr16ram(ram, DP + 0xE1, (uint16_t)(1 + rnd() % 16));
+  wr16ram(ram, DP + 0xE3, (uint16_t)(rnd() % 4));
+  wr16ram(ram, DP + 0xDF, (uint16_t)rnd());
+  for(uint32_t a = 0xCF; a <= 0xDD; a += 2)
+    wr16ram(ram, DP + a, (rnd() & 1) ? 0xFFFF : (uint16_t)((rnd() % 0x2000) * 2));
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -4497,6 +4545,10 @@ const Routine routines[] = {
    .fixedD = true, .call = call_shop_gauge_lines},
   {.name = "shop_gauge_line", .entry = 0x80ADD9, .end = 0x80AE4E, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x7E, .call = call_shop_gauge_line},
+  // the control codes' handlers follow the code table ($80:B6BC-B6C9, data)
+  {.name = "text_type_step", .entry = 0x80B59D, .end = 0x80B6BC, .alsoIn = {{0x80B6CA, 0x80B7BB}, {0x80B7CE, 0x80B7D9}},
+   .source = "src/text.c", .needM16 = true, .needX16 = true, .fixedD = true, .call = call_text_type_step,
+   .fuzz = fuzz_text_type_step, .m8At = {0x80B645, 0x80B65E}},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

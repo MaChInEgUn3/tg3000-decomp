@@ -1487,7 +1487,7 @@ CODE_808E6C:
     lda.b $8C                   ; $808E7E
     cmp.b $8E                   ; $808E80
     bne CODE_808E87             ; $808E82
-    jsr.w $B59D                 ; $808E84
+    jsr.w text_type_step        ; $808E84
 CODE_808E87:
     lda.b $9A                   ; $808E87
     and.w #$7FFF                ; $808E89
@@ -1616,7 +1616,7 @@ CODE_808F8E:
     lda.b $8C                   ; $808F94
     cmp.b $8E                   ; $808F96
     bne CODE_808F9F             ; $808F98
-    jsr.w $B59D                 ; $808F9A
+    jsr.w text_type_step        ; $808F9A
     bra CODE_808F4A             ; $808F9D
 CODE_808F9F:
     bra CODE_808F4D             ; $808F9F
@@ -2291,7 +2291,7 @@ CODE_809839:
     lda.b $8C                   ; $809847
     cmp.b $8E                   ; $809849
     bne CODE_809853             ; $80984B
-    jsr.w $B59D                 ; $80984D
+    jsr.w text_type_step        ; $80984D
     jsr.w shop_panel_upload     ; $809850
 CODE_809853:
     lda.w #$0010                ; $809853
@@ -2567,7 +2567,7 @@ CODE_809ACD:
     lda.b $8C                   ; $809AD3
     cmp.b $8E                   ; $809AD5
     bne CODE_809ADF             ; $809AD7
-    jsr.w $B59D                 ; $809AD9
+    jsr.w text_type_step        ; $809AD9
     jsr.w shop_panel_upload     ; $809ADC
 CODE_809ADF:
     lda.w #$0010                ; $809ADF
@@ -2589,7 +2589,7 @@ CODE_809ADF:
 CODE_809B06:
     cmp.b $8E                   ; $809B06
     bne CODE_809B06             ; $809B08
-    jsr.w $B59D                 ; $809B0A
+    jsr.w text_type_step        ; $809B0A
     jsr.w shop_panel_upload     ; $809B0D
     stz.b $3E                   ; $809B10
     stz.b $40                   ; $809B12
@@ -2606,7 +2606,7 @@ CODE_809B25:
     lda.b $8C                   ; $809B2B
     cmp.b $8E                   ; $809B2D
     bne CODE_809B37             ; $809B2F
-    jsr.w $B59D                 ; $809B31
+    jsr.w text_type_step        ; $809B31
     jsr.w shop_panel_upload     ; $809B34
 CODE_809B37:
     lda.b $4E                   ; $809B37
@@ -2633,7 +2633,7 @@ CODE_809B62:
     lda.b $8C                   ; $809B68
     cmp.b $8E                   ; $809B6A
     bne CODE_809B74             ; $809B6C
-    jsr.w $B59D                 ; $809B6E
+    jsr.w text_type_step        ; $809B6E
     jsr.w shop_panel_upload     ; $809B71
 CODE_809B74:
     lda.b $4E                   ; $809B74
@@ -2655,7 +2655,7 @@ CODE_809B74:
 CODE_809B9B:
     cmp.b $8E                   ; $809B9B
     bne CODE_809B9B             ; $809B9D
-    jsr.w $B59D                 ; $809B9F
+    jsr.w text_type_step        ; $809B9F
     jsr.w shop_panel_upload     ; $809BA2
     stz.b $3E                   ; $809BA5
     stz.b $40                   ; $809BA7
@@ -2672,7 +2672,7 @@ CODE_809BBA:
     lda.b $8C                   ; $809BC0
     cmp.b $8E                   ; $809BC2
     bne CODE_809BCC             ; $809BC4
-    jsr.w $B59D                 ; $809BC6
+    jsr.w text_type_step        ; $809BC6
     jsr.w shop_panel_upload     ; $809BC9
 CODE_809BCC:
     lda.w #$0010                ; $809BCC
@@ -5371,7 +5371,7 @@ CODE_80B198:
     beq CODE_80B19F             ; $80B19C
     rts                         ; $80B19E
 CODE_80B19F:
-    jsr.w $B59D                 ; $80B19F
+    jsr.w text_type_step        ; $80B19F
     phb                         ; $80B1A2
     pea.w $7F7F                 ; $80B1A3
     plb                         ; $80B1A6
@@ -5716,6 +5716,7 @@ func_80B58D:
     lda.w #$0009                ; $80B597
     sta.b $E1                   ; $80B59A
     rts                         ; $80B59C
+text_type_step:
     lda.b $C6                   ; $80B59D
     clc                         ; $80B59F
     adc.b $E5                   ; $80B5A0
@@ -5797,7 +5798,7 @@ CODE_80B62A:
     adc.b $CC                   ; $80B63B
     sta.b $CC                   ; $80B63D
     bcc CODE_80B643             ; $80B63F
-    incbin !baserom:$3641..$3643
+    inc.b $CE                   ; $80B641 static
 CODE_80B643:
     bra CODE_80B62A             ; $80B643
 CODE_80B645:
@@ -5856,7 +5857,7 @@ CODE_80B6A1:
     adc.w #$0001                ; $80B6A4
     sta.b $CC                   ; $80B6A7
     bcc CODE_80B6AD             ; $80B6A9
-    incbin !baserom:$36AB..$36AD
+    inc.b $CE                   ; $80B6AB static
 CODE_80B6AD:
     inc.b $CA                   ; $80B6AD
     inc.b $CA                   ; $80B6AF
@@ -5873,7 +5874,14 @@ CODE_80B6AD:
     inc.b $F6                   ; $80B6D5
     lda.w #$0001                ; $80B6D7
     jmp.w $B63A                 ; $80B6DA
-    incbin !baserom:$36DD..$36F2
+    stz.b $CA                   ; $80B6DD static
+    lda.w #$0001                ; $80B6DF static
+    jmp.w $B63A                 ; $80B6E2 static
+    ldy.w #$0001                ; $80B6E5 static
+    lda.b [$CC],y               ; $80B6E8 static
+    sta.b $CC                   ; $80B6EA static
+    lda.w #$0000                ; $80B6EC static
+    jmp.w $B63A                 ; $80B6EF static
     dec.b $E1                   ; $80B6F2
     bne CODE_80B709             ; $80B6F4
     stz.b $DF                   ; $80B6F6
@@ -12108,7 +12116,7 @@ CODE_80EF94:
     lda.w #$0002                ; $80F18A
     tsb.w $0026                 ; $80F18D
 CODE_80F190:
-    jsr.w $B59D                 ; $80F190
+    jsr.w text_type_step        ; $80F190
     lda.b $F6                   ; $80F193
     sec                         ; $80F195
     sbc.w #$0003                ; $80F196

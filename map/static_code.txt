@@ -44,3 +44,6 @@
 80:ACB3 80:ACB5 m16x16 ; shop_item_view_j: the stop at $7FFF ($80:ACB1 BPL)
 80:ACD6 80:ACD9 m16x16 ; shop_gauge_lines: ORA #$FF00 for a column past 255 ($80:ACD4 BEQ)
 80:AF5E 80:AF76 m16x16 ; shop_level_blocks: all seven blocks full ($80:AF5C BNE)
+80:B641 80:B643 m16x16 ; text_type_step: INC $CE when the text pointer crosses a bank ($80:B63F BCC)
+80:B6AB 80:B6AD m16x16 ; text_type_step: the same after a letter ($80:B6A9 BCC)
+80:B6DD 80:B6F2 m16x16 ; text_type_step: codes $81 (column 0) and $82 (jump), from the table at $80:B6BC
