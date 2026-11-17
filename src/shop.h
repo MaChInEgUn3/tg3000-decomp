@@ -108,6 +108,14 @@ void shop_item_icon_3(bool upload);
 void shop_item_icon_4(bool upload);
 void shop_item_icon_5(bool upload);
 
+// The second item dispatch: the current item's handler (by the table at $81:A8A3, list
+// D+$48, row D+$4A), with the carry clear ($80:9F40: its icon) or set ($80:9C0B: queue its
+// panel upload). The handlers of lists 0 and 6-8 run only here: list 0 ($80:A096) a fixed
+// icon and no upload; lists 6-8 ($80:A121, $80:A0E0, $80:A09F) as lists 1-5 on $0398-$039A,
+// but a level-0 part queues no upload.
+void shop_item_dispatch_icon(void);
+void shop_item_dispatch_upload(void);
+
 // The cursor and the level marks ($80:9E49): D+$EE eases one pixel a frame towards the
 // cursor row (D+$4A * 16 + $14); two cursor sprites (tiles $3892, $3890), then one mark per
 // level of list D+$48 (the byte at $036E + list), the part's current level (the list's

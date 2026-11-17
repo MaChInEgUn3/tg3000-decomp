@@ -1789,6 +1789,30 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The second item dispatch itself (shop-10, 2026-11-17)
+
+- **`shop_item_dispatch_icon` ($80:9F40) and `shop_item_dispatch_upload` ($80:9C0B):**
+  the current item's handler from the table at `$81:A8A3` (list `$0148`, row `$014A`),
+  entered by an `RTS` with the carry clear or set. In C it is a switch on the table's
+  word.
+- **The shop has nine lists (0-8), not six.** The first C covered lists 1-6, and live
+  samples on lists 0, 7 and 8 failed (1,576/4,000). The table gives:
+  - list 0: `$80:A096`, a fixed icon (group `$4F6A`) and no upload;
+  - lists 6, 7, 8: `$80:A121`, `$80:A0E0`, `$80:A09F`. They work as lists 1-5 on
+    `$0398`, `$0399`, `$039A`, but a level-0 part queues no upload. Lists 7 and 8 take
+    the upload size from a table of their own (`$81:BCC8`).
+- **These four handlers have no rows of their own** (lists 0 and 6-8 have one row each
+  and run only inside the dispatches). They are checked through the dispatch rows,
+  whose fuzz draws all nine lists.
+- **The upload dispatch's exit:**
+  - `PLX` gives back the entry (X, N, Z);
+  - with no upload, C comes from the `SEC` and V from the dispatch's own index `ADC`.
+    The fuzz caught that V.
+- **Results:** icon dispatch live 4,000/4,000, paths 19/19; upload dispatch live 23/23,
+  paths 21/21; fuzz 500/500 each.
+- **This unblocks** the item dispatch `$80:A251` once its two views are in; after that
+  come the screens that call both (`$80:9847`, `$80:9B5D`, `$80:9AC8`, `$80:9B99`).
+
 ## Small leaves the movies reach (leaves-9, 2026-11-17)
 
 - **Why these:** the shop's remaining handlers wait for the parked dispatch `$80:A251`.

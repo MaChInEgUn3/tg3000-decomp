@@ -263,3 +263,5 @@ func    8A9675   fade_out_on_confirm ; A/B/X/Y on pad 1 or the first multitap pa
 func    8A8181   fade_out_on_confirm_once ; as fade_out_on_confirm while D+$8C is 0 -> src/misc.c
 func    8A99D0   func_8A99D0         ; D+$66 = $28 -> src/misc.c
 func    8A96C2   func_8A96C2         ; D+$40 + 1 -> src/misc.c
+func    809F40   shop_item_dispatch_icon ; the item's list handler, carry clear (its icon) -> src/shop.c
+func    809C0B   shop_item_dispatch_upload ; the item's list handler, carry set (its panel upload) -> src/shop.c

@@ -1572,7 +1572,7 @@ CODE_808F32:
     lda.w $0024                 ; $808F36
     sta.b $4E                   ; $808F39
     jsr.w shop_panel_clear      ; $808F3B
-    jsr.w $9C0B                 ; $808F3E
+    jsr.w shop_item_dispatch_upload; $808F3E
     jsr.w $9B99                 ; $808F41
     lda.b $8C                   ; $808F44
 CODE_808F46:
@@ -1591,7 +1591,7 @@ CODE_808F4D:
 CODE_808F5F:
     cmp.w $0024                 ; $808F5F
     beq CODE_808F5F             ; $808F62
-    jsr.w $9F40                 ; $808F64
+    jsr.w shop_item_dispatch_icon; $808F64
     jsr.w shop_level_marks      ; $808F67
     jsr.w func_809DD0           ; $808F6A
     jsr.w oam_finish_near       ; $808F6D
@@ -1759,7 +1759,7 @@ CODE_8090AF:
     ora.b #$80                  ; $8090D0
     sta.w $0393,x               ; $8090D2
     rep.b #$20                  ; $8090D5
-    jsr.w $9C0B                 ; $8090D7
+    jsr.w shop_item_dispatch_upload; $8090D7
     lda.w #$0002                ; $8090DA
     trb.b $76                   ; $8090DD
     jsr.w $9957                 ; $8090DF
@@ -1824,7 +1824,7 @@ CODE_80915C:
     ora.b #$80                  ; $80917D
     sta.w $0394,x               ; $80917F
     rep.b #$20                  ; $809182
-    jsr.w $9C0B                 ; $809184
+    jsr.w shop_item_dispatch_upload; $809184
     lda.w #$0002                ; $809187
     trb.b $76                   ; $80918A
     jsr.w $9957                 ; $80918C
@@ -1890,7 +1890,7 @@ CODE_80920A:
     ora.b #$80                  ; $80922B
     sta.w $0395,x               ; $80922D
     rep.b #$20                  ; $809230
-    jsr.w $9C0B                 ; $809232
+    jsr.w shop_item_dispatch_upload; $809232
     lda.w #$0002                ; $809235
     trb.b $76                   ; $809238
     jsr.w $9957                 ; $80923A
@@ -1956,7 +1956,7 @@ CODE_8092B8:
     ora.b #$80                  ; $8092D9
     sta.w $0396,x               ; $8092DB
     rep.b #$20                  ; $8092DE
-    jsr.w $9C0B                 ; $8092E0
+    jsr.w shop_item_dispatch_upload; $8092E0
     lda.w #$0002                ; $8092E3
     trb.b $76                   ; $8092E6
     jsr.w $9957                 ; $8092E8
@@ -2024,7 +2024,7 @@ CODE_8093AE:
     ora.b #$80                  ; $8093CB
     sta.w $039A,x               ; $8093CD
     rep.b #$20                  ; $8093D0
-    jsr.w $9C0B                 ; $8093D2
+    jsr.w shop_item_dispatch_upload; $8093D2
     lda.w #$0002                ; $8093D5
     trb.b $76                   ; $8093D8
     jsr.w $9957                 ; $8093DA
@@ -2080,7 +2080,7 @@ CODE_809490:
     ora.b #$80                  ; $8094AD
     sta.w $0399,x               ; $8094AF
     rep.b #$20                  ; $8094B2
-    jsr.w $9C0B                 ; $8094B4
+    jsr.w shop_item_dispatch_upload; $8094B4
     lda.w #$0002                ; $8094B7
     trb.b $76                   ; $8094BA
     jsr.w $9957                 ; $8094BC
@@ -2136,7 +2136,7 @@ CODE_809572:
     ora.b #$80                  ; $80958F
     sta.w $0398,x               ; $809591
     rep.b #$20                  ; $809594
-    jsr.w $9C0B                 ; $809596
+    jsr.w shop_item_dispatch_upload; $809596
     lda.w #$0002                ; $809599
     trb.b $76                   ; $80959C
     jsr.w $9957                 ; $80959E
@@ -2202,7 +2202,7 @@ CODE_80961C:
     ora.b #$80                  ; $80963D
     sta.w $0397,x               ; $80963F
     rep.b #$20                  ; $809642
-    jsr.w $9C0B                 ; $809644
+    jsr.w shop_item_dispatch_upload; $809644
     lda.w #$0002                ; $809647
     trb.b $76                   ; $80964A
     jsr.w $9957                 ; $80964C
@@ -2258,7 +2258,7 @@ CODE_809702:
     ora.b #$80                  ; $80971F
     sta.w $039C,x               ; $809721
     rep.b #$20                  ; $809724
-    jsr.w $9C0B                 ; $809726
+    jsr.w shop_item_dispatch_upload; $809726
     lda.w #$0002                ; $809729
     trb.b $76                   ; $80972C
     jsr.w $9957                 ; $80972E
@@ -2299,7 +2299,7 @@ CODE_809853:
     sta.b $16                   ; $80985B
     jsr.w shop_item_price       ; $80985D
     jsr.w $A251                 ; $809860
-    jsr.w $9F40                 ; $809863
+    jsr.w shop_item_dispatch_icon; $809863
     jsr.w shop_level_marks      ; $809866
     jsr.w func_809DD0           ; $809869
     jsr.w oam_finish_near       ; $80986C
@@ -2577,7 +2577,7 @@ CODE_809ADF:
     sta.b $4E                   ; $809AEA
     sta.b $16                   ; $809AEC
     jsr.w $A251                 ; $809AEE
-    jsr.w $9F40                 ; $809AF1
+    jsr.w shop_item_dispatch_icon; $809AF1
     jsr.w shop_level_marks      ; $809AF4
     jsr.w func_809DD0           ; $809AF7
     jsr.w oam_finish_near       ; $809AFA
@@ -2616,7 +2616,7 @@ CODE_809B37:
     lda.w #$0018                ; $809B41
     sta.b $16                   ; $809B44
     jsr.w $A251                 ; $809B46
-    jsr.w $9F40                 ; $809B49
+    jsr.w shop_item_dispatch_icon; $809B49
     jsr.w shop_level_marks      ; $809B4C
     jsr.w func_809DD0           ; $809B4F
     jsr.w oam_finish_near       ; $809B52
@@ -2643,7 +2643,7 @@ CODE_809B74:
     lda.w #$0018                ; $809B7E
     sta.b $16                   ; $809B81
     jsr.w $A251                 ; $809B83
-    jsr.w $9F40                 ; $809B86
+    jsr.w shop_item_dispatch_icon; $809B86
     jsr.w shop_level_marks      ; $809B89
     jsr.w func_809DD0           ; $809B8C
     jsr.w oam_finish_near       ; $809B8F
@@ -2682,7 +2682,7 @@ CODE_809BCC:
     sta.b $4E                   ; $809BD7
     sta.b $16                   ; $809BD9
     jsr.w $A251                 ; $809BDB
-    jsr.w $9F40                 ; $809BDE
+    jsr.w shop_item_dispatch_icon; $809BDE
     jsr.w shop_level_marks      ; $809BE1
     jsr.w func_809DD0           ; $809BE4
     jsr.w oam_finish_near       ; $809BE7
@@ -2706,6 +2706,7 @@ shop_item_picture:
     tax                         ; $809C04
     lda.w #$0081                ; $809C05
     jmp.w func_80B58D           ; $809C08
+shop_item_dispatch_upload:
     lda.b $48                   ; $809C0B
     asl a                       ; $809C0D
     tax                         ; $809C0E
@@ -3104,6 +3105,7 @@ shop_part_level_2:
     lda.w $039C,y               ; $809F34
     rts                         ; $809F37
     incbin !baserom:$1F38..$1F40
+shop_item_dispatch_icon:
     lda.b $48                   ; $809F40
     asl a                       ; $809F42
     tax                         ; $809F43
@@ -5335,7 +5337,7 @@ CODE_80B183:
     lda.b $8C                   ; $80B186
     cmp.b $8E                   ; $80B188
     beq CODE_80B198             ; $80B18A
-    jsr.w $9F40                 ; $80B18C
+    jsr.w shop_item_dispatch_icon; $80B18C
     jsr.w shop_level_marks      ; $80B18F
     jsr.w func_809DD0           ; $80B192
     jsr.w oam_finish_near       ; $80B195

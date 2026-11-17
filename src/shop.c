@@ -439,18 +439,25 @@ void shop_item_icon_draw(uint16_t group) {
   wr16(DP + 0x44, step);
 }
 
-// One list's handler: its level byte at $0393 + `field` + D+$94; the icon table at $81:`icons`,
-// the upload table (4-byte rows: VRAM offset, size) at $81:`uploads`.
-static void shop_item_icon(bool upload, uint16_t field, uint16_t icons, uint16_t uploads) {
+// One list's handler: its level byte at $0393 + `field` + D+$94; the icon table at $81:`icons`;
+// the upload's VRAM offset at $81:`offsets` and size at $81:`sizes` (4-byte rows); with
+// `skipZero`, level 0 queues nothing.
+static void shop_item_icon_from(bool upload, uint16_t field, uint16_t icons, uint16_t offsets, uint16_t sizes,
+                                bool skipZero) {
   uint16_t level = (uint16_t)(rd16(0x0393 + (uint32_t)field + rd16(DP + 0x94)) & 0x007F);
   if(!upload) {
     shop_item_icon_draw(rom16(0x810000 + (uint32_t)icons + (uint32_t)(uint16_t)(level << 1)));
     return;
   }
-  const uint32_t row = 0x810000 + (uint32_t)uploads + (uint32_t)(uint16_t)(level << 2);
+  if(skipZero && level == 0) return;
+  const uint32_t row = (uint32_t)(uint16_t)(level << 2);
   wr16(DP + 0x14, 0x007F);
-  func_80B537(DP, rom16(row + 2), (uint16_t)(rom16(row) + rd16(DP + 0x5E) + 0x0900),
+  func_80B537(DP, rom16(0x810000 + (uint32_t)sizes + row),
+              (uint16_t)(rom16(0x810000 + (uint32_t)offsets + row) + rd16(DP + 0x5E) + 0x0900),
               (uint16_t)(rd16(DP + 0x5C) + 0x1000));
+}
+static void shop_item_icon(bool upload, uint16_t field, uint16_t icons, uint16_t uploads) {
+  shop_item_icon_from(upload, field, icons, uploads, (uint16_t)(uploads + 2), false);
 }
 
 // TG3000_ROUTINE($80:9F5B) shop_item_icon_1
@@ -571,3 +578,28 @@ void shop_list_next(void) {
   wr16(DP + 0x4E, 0);
   func_80E4C5();
 }
+
+static void shop_item_dispatch(bool upload) {
+  uint16_t entry = shop_item_entry(rd16(DP + 0x4A));
+  switch(rom16(0x81A8A3 + (uint32_t)entry)) {
+  case 0x9F5B: shop_item_icon_1(upload); break;
+  case 0x9F9A: shop_item_icon_2(upload); break;
+  case 0x9FD9: shop_item_icon_3(upload); break;
+  case 0xA057: shop_item_icon_4(upload); break;
+  case 0xA018: shop_item_icon_5(upload); break;
+  // lists 6-8 ($80:A121, $80:A0E0, $80:A09F): as the others, but level 0 queues nothing
+  case 0xA121: shop_item_icon_from(upload, 5, 0xBCFA, 0xBCD6, 0xBCD8, true); break;
+  case 0xA0E0: shop_item_icon_from(upload, 6, 0xBCF6, 0xBCCE, 0xBCC8, true); break;
+  case 0xA09F: shop_item_icon_from(upload, 7, 0xBCF2, 0xBCC6, 0xBCC8, true); break;
+  case 0xA096:  // list 0 ($80:A096): a fixed icon, no upload
+    if(!upload) shop_item_icon_draw(0x4F6A);
+    break;
+  default: break;  // the table holds no other handler for lists 0-8
+  }
+}
+
+// TG3000_ROUTINE($80:9F40) shop_item_dispatch_icon
+void shop_item_dispatch_icon(void) { shop_item_dispatch(false); }
+
+// TG3000_ROUTINE($80:9C0B) shop_item_dispatch_upload
+void shop_item_dispatch_upload(void) { shop_item_dispatch(true); }
