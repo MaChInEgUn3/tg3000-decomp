@@ -289,3 +289,6 @@ func    809B5D   shop_item_slide_list ; the item changes: old out to the left, t
 func    809B99   shop_item_slide_list_in ; the new item takes over and slides down into place -> src/shop.c
 func    808FA1   shop_item_down      ; next item down (slide), or leave the list (returns from the caller) -> src/shop.c
 func    808FD4   shop_item_up        ; next item up (slide), or leave the list (returns from the caller) -> src/shop.c
+func    809832   shop_item_show_icon ; the screen runs until the icon has finished -> src/shop.c
+func    809870   shop_item_icon_settle ; the icon's colours step back down -> src/shop.c
+func    8098C4   shop_item_affordable ; money against price (BCD); short: the price flashes -> src/shop.c

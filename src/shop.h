@@ -221,4 +221,18 @@ void shop_item_slide_list_in(void);
 bool shop_item_down(void);
 bool shop_item_up(void);
 
+// $80:9832: the item screen runs (a frame each: wait, shop_item_redraw) with D+$76 bit 15
+// set and the icon's step D+$44 restarted (bit 15 clear) until the icon has finished.
+void shop_item_show_icon(void);
+
+// $80:98C4: can the player pay? The money D+$54:$52 (BCD) against the item's price
+// ($81:A88E:$81:A890 + the item's word at $81:A89B); if short, the price flashes for 16
+// frames (two colours from $7E:4DDA/$7E:4DFA to $01C2/$01C4 + D+$C4, the screen running)
+// and false.
+bool shop_item_affordable(void);
+
+// $80:9870: the icon's colours step back down (D+$44 counts down to $8007), the screen
+// running; then D+$76 bit 15 clears.
+void shop_item_icon_settle(void);
+
 #endif

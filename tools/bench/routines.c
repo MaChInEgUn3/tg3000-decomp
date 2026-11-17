@@ -3108,6 +3108,71 @@ static void shopItemMoveOut(const Regs* in, Regs* out, bool left) {
 }
 static void call_shop_item_down(const Regs* in, Regs* out) { shopItemMoveOut(in, out, shop_item_down()); }
 static void call_shop_item_up(const Regs* in, Regs* out) { shopItemMoveOut(in, out, shop_item_up()); }
+// the icon's show and settle: no register outputs; show ends on its LDA of the step (N set),
+// settle on the TRB (Z of $8000 & D+$76: clear, the bit was set)
+static void call_shop_item_show_icon(const Regs* in, Regs* out) {
+  (void)in;
+  shop_item_show_icon();
+  setNZ16(out, rd16(DP + 0x44));
+}
+static void call_shop_item_icon_settle(const Regs* in, Regs* out) {
+  (void)in;
+  bool set = (rd16(DP + 0x76) & 0x8000) != 0;
+  shop_item_icon_settle();
+  out->n = true;  // LDA #$8000 before the TRB
+  out->z = !set;
+  out->c = true;  // the CMP #$8007 that matched
+}
+// a 16-bit SBC in decimal mode, as the bench's CPU computes it (result and V)
+static uint16_t sbcDecimal16(uint16_t a, uint16_t b, bool carry, bool* v) {
+  uint16_t value = (uint16_t)(b ^ 0xFFFF);
+  int result = (a & 0xF) + (value & 0xF) + carry;
+  if(result < 0x10) result = (result - 0x6) & ((result - 0x6 < 0) ? 0xF : 0x1F);
+  result = (a & 0xF0) + (value & 0xF0) + result;
+  if(result < 0x100) result = (result - 0x60) & ((result - 0x60 < 0) ? 0xFF : 0x1FF);
+  result = (a & 0xF00) + (value & 0xF00) + result;
+  if(result < 0x1000) result = (result - 0x600) & ((result - 0x600 < 0) ? 0xFFF : 0x1FFF);
+  result = (a & 0xF000) + (value & 0xF000) + result;
+  *v = (a & 0x8000) == (value & 0x8000) && (value & 0x8000) != (result & 0x8000);
+  if(result < 0x10000) result -= 0x6000;
+  return (uint16_t)result;
+}
+// the price check: C = can pay; short, N clear and Z set by the CPX #$20 that ended the
+// flashes
+// can pay: N, V, Z of the high word's decimal SBC (its borrow from the low word's CMP)
+static void call_shop_item_affordable(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t entry = (uint16_t)((rd16(DP + 0x4A) << 4) + rom16(0x81A892 + (uint32_t)(uint16_t)(rd16(DP + 0x48) << 1)));
+  const uint32_t price = 0x81A892 + (uint32_t)rom16(0x81A89B + (uint32_t)entry);
+  bool v, low = rd16(DP + 0x52) >= rom16(price - 2);
+  uint16_t high = sbcDecimal16(rd16(DP + 0x54), rom16(price - 4), low, &v);
+  out->c = shop_item_affordable();
+  if(out->c) {
+    setNZ16(out, high);
+    out->v = v;
+  } else {
+    out->n = false;
+    out->z = true;
+  }
+}
+// the money (BCD) at or above the item's price: the fuzz has no frames to wait through
+static void fuzz_shop_item_affordable(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t list = (uint16_t)(rnd() % 9);
+  wr16ram(ram, DP + 0x48, list);
+  wr16ram(ram, DP + 0x4A, (uint16_t)(list == 0 || list >= 6 ? 0 : rnd() % 5));
+  uint16_t entry = (uint16_t)((ram[DP + 0x4A] << 4) + rom16(0x81A892 + (uint32_t)(uint16_t)(list << 1)));
+  const uint32_t price = 0x81A892 + (uint32_t)rom16(0x81A89B + (uint32_t)entry);
+  uint32_t cost = (uint32_t)rom16(price - 4) << 16 | rom16(price - 2);
+  uint32_t money;
+  do {  // a random BCD amount, kept if it pays
+    money = 0;
+    for(int d = 0; d < 8; d++) money = money << 4 | (rnd() % 10);
+    if((rnd() & 3) == 0) money = cost;
+  } while(money < cost);
+  wr16ram(ram, DP + 0x52, (uint16_t)money);
+  wr16ram(ram, DP + 0x54, (uint16_t)(money >> 16));
+}
 // the frame: no register outputs (every caller reloads them)
 static void call_shop_item_redraw(const Regs* in, Regs* out) { (void)in; (void)out; shop_item_redraw(); }
 // no register outputs: every caller reloads A, X and Y ($80:9E49, $80:9B99, LDA #2)
@@ -4619,6 +4684,16 @@ const Routine routines[] = {
   {.name = "shop_item_up", .entry = 0x808FD4, .end = 0x808FFC, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .mayLeaveCaller = true,
    .call = call_shop_item_up},
+  {.name = "shop_item_show_icon", .entry = 0x809832, .end = 0x809847, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_item_show_icon},
+  // its never-run branches ($80:9892, $80:98B5: an icon below step 8) are left out of the
+  // paths: no movie runs them and a waiting routine has no fuzz, so that C is unchecked
+  {.name = "shop_item_icon_settle", .entry = 0x809870, .end = 0x8098C4, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_item_icon_settle,
+   .holes = {{0x809892, 0x8098AE}, {0x8098B5, 0x8098B6}}},
+  {.name = "shop_item_affordable", .entry = 0x8098C4, .end = 0x80990D, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_item_affordable,
+   .fuzz = fuzz_shop_item_affordable},
   {.name = "shop_item_view_h", .entry = 0x80AEBE, .end = 0x80AF36, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .call = call_shop_item_view_h},
   {.name = "shop_item_view_i", .entry = 0x80AE4E, .end = 0x80AEBE, .source = "src/shop.c", .needM16 = true, .needX16 = true,

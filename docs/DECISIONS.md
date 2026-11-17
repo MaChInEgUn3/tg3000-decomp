@@ -1789,6 +1789,34 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Pieces of the buy flow (shop-16, 2026-11-17)
+
+- **The buy dispatch** `$80:9039` (table `$81:A89F`, a handler per list: `$80:9053`,
+  `$80:9100`, ...) waits. The shop movie arrives with 0 credits and never buys, so the
+  handlers' buying half (from `$80:909A`: `$80:99D1`, `$80:9957`, `$80:9ABB`) runs only
+  in the TAS. This unit takes the pieces the movie reaches:
+  - `shop_item_show_icon` ($80:9832): `$0176` bit 15 set, the icon restarted (`$0144`
+    bit 15 clear), and the screen runs (`wait_frames`, `shop_item_redraw`) until the
+    icon has finished. Live 25/25, paths 9/9;
+  - `shop_item_affordable` ($80:98C4): the money `$0154`:`$0152` against the item's
+    price (`$81:A88E`/`A890` + its word at `$81:A89B`);
+  - `shop_item_icon_settle` ($80:9870): the icon's colours step back down (`$0144` to
+    `$8007`), the screen running; then `$0176` bit 15 clears. Live 74/74.
+- **How `shop_item_affordable` compares:** `CMP` of the low words, then `SBC` of the
+  high words in decimal mode. For BCD amounts that carry is the 32-bit comparison.
+  - If the money is short, the price flashes for 16 frames (two colours from
+    `$7E:4DDA`/`$7E:4DFA`, the screen running).
+  - Its fuzz has no frames to replay, so it draws amounts that can pay; the live samples
+    are all short.
+  - When the money is enough, the flags N, V and Z of the decimal `SBC` are live. The
+    adapter computes them as the bench's CPU does (`sbcDecimal16`, LakeSnes's algorithm).
+  - Live 34/34, fuzz 500/500, paths 37/37.
+- **Never-run code left out of `shop_item_icon_settle`'s paths** (`holes`):
+  - two branches, `$80:9892` and `$80:98B5`, run only for an icon below step 8;
+  - no known run reaches them, the TAS included;
+  - a waiting routine has no fuzz;
+  - so that C is unchecked, and is noted in the row.
+
 ## Leaving the item list (shop-15, 2026-11-17)
 
 - **`shop_item_down` ($80:8FA1) and `shop_item_up` ($80:8FD4):** the player moves along

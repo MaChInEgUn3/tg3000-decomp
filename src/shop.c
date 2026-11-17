@@ -1013,3 +1013,56 @@ bool shop_item_up(void) {
   shop_item_slide_row();
   return false;
 }
+
+// TG3000_ROUTINE($80:9832) shop_item_show_icon
+void shop_item_show_icon(void) {
+  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) | 0x8000));
+  wr16(DP + 0x44, (uint16_t)(rd16(DP + 0x44) & ~0x8000));
+  do {
+    wait_frames(1);
+    shop_item_redraw();
+  } while(!(rd16(DP + 0x44) & 0x8000));
+}
+
+// TG3000_ROUTINE($80:98C4) shop_item_affordable
+//
+// The original subtracts in decimal mode (CMP, then SBC with D set): for BCD amounts its
+// carry is the 32-bit comparison.
+bool shop_item_affordable(void) {
+  uint16_t entry = shop_item_entry(rd16(DP + 0x4A));
+  const uint32_t price = 0x81A892 + (uint32_t)rom16(0x81A89B + (uint32_t)entry);
+  uint32_t money = (uint32_t)rd16(DP + 0x54) << 16 | rd16(DP + 0x52);
+  uint32_t cost = (uint32_t)rom16(price - 4) << 16 | rom16(price - 2);
+  if(money >= cost) return true;
+  for(uint32_t x = 0; x < 0x20; x += 2) {
+    wait_frames(1);
+    const uint32_t y = rd16(DP + 0xC4);
+    wr16(0x01C2 + y, rd16(0x4DDA + x));
+    wr16(0x01C4 + y, rd16(0x4DFA + x));
+    shop_item_redraw();
+  }
+  return false;
+}
+
+// TG3000_ROUTINE($80:9870) shop_item_icon_settle
+void shop_item_icon_settle(void) {
+  uint16_t step;
+  do {
+    wait_frames(1);
+    shop_item_redraw();
+    const uint32_t x = (uint16_t)(rd16(DP + 0x44) << 1), y = rd16(DP + 0xC4);
+    wr16(0x01EE + y, rd16(0x4EDA + x));
+    wr16(0x01F0 + y, rd16(0x4EFA + x));
+    if(x < 0x0010) {  // never run: the icon's other colours, as shop_item_icon_draw's
+      wr16(0x0182 + y, rd16(0x4F1A + x));
+      wr16(0x0186 + y, rd16(0x4F2A + x));
+      wr16(0x0188 + y, rd16(0x4F3A + x));
+      wr16(0x018E + y, rd16(0x4F4A + x));
+    }
+    step = rd16(DP + 0x44);
+    if(step == 0x8007) step++;  // never run: it holds there
+    step--;
+    wr16(DP + 0x44, step);
+  } while(step != 0x8007);
+  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) & ~0x8000));
+}
