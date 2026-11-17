@@ -69,3 +69,42 @@ uint16_t shop_sprite_block(uint16_t pos, uint16_t slot) {
   for(uint32_t i = 0; i < 16; i += 4) wr16(0x0B02 + s + i, 0);
   return (uint16_t)(slot + 0x10);
 }
+
+// TG3000_ROUTINE($80:AAF1) shop_bar_cap
+uint16_t shop_bar_cap(void) {
+  const uint32_t x = rd16(DP + 0x74);
+  uint16_t row = (uint16_t)(((0x51 - rd16(DP + 0x7A) + rd16(DP + 0xE8)) & 0xFF) << 8);
+  wr16(DP + 0x16, row);
+  uint16_t y = (uint16_t)(rd16(DP + 0x80) + rd16(DP + 0x14) - 1);
+  for(uint32_t i = 0; i < 16; i += 4) wr16(0x0B00 + x + i, y);
+  uint16_t t = (uint16_t)((y & 0x00FF) | row);
+  for(uint32_t i = 0; i < 16; i += 4) wr16(0x0900 + x + i, (uint16_t)(t + 0x0800 * (i / 4)));
+  uint16_t tile = rd16(DP + 0x7E);
+  wr16(0x0902 + x, tile);
+  wr16(0x0906 + x, tile);
+  wr16(0x090A + x, tile);
+  wr16(0x090E + x, (uint16_t)(tile + 1));
+  for(uint32_t i = 0; i < 16; i += 4) wr16(0x0B02 + x + i, 0);
+  uint16_t next = (uint16_t)(x + 0x10);
+  wr16(DP + 0x74, next);
+  return next;
+}
+
+// TG3000_ROUTINE($80:A9BD) shop_bar_column
+uint16_t shop_bar_column(void) {
+  const uint32_t y = rd16(DP + 0x74);
+  uint16_t row = (uint16_t)((((0x6C - rd16(DP + 0x7A) - rd16(DP + 0x7E)) & 0xFF) << 8) + rd16(DP + 0xE7));
+  wr16(DP + 0x82, row);
+  uint16_t at = (uint16_t)(rd16(DP + 0x14) + rd16(DP + 0x80));
+  for(uint32_t i = 0; i < 12; i += 4) wr16(0x0B00 + y + i, at);
+  uint16_t t = (uint16_t)((at & 0x00FF) | row);
+  for(uint32_t i = 0; i < 12; i += 4) wr16(0x0900 + y + i, (uint16_t)(t + 0x0800 * (i / 4)));
+  uint16_t tile = rd16(DP + 0x84);
+  wr16(0x0902 + y, tile);
+  wr16(0x0906 + y, (uint16_t)(tile + 1));
+  wr16(0x090A + y, (uint16_t)(tile + 1));
+  for(uint32_t i = 0; i < 12; i += 4) wr16(0x0B02 + y + i, 0);
+  uint16_t next = (uint16_t)(y + 0x0C);
+  wr16(DP + 0x74, next);
+  return next;
+}

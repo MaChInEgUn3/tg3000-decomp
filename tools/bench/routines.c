@@ -2285,6 +2285,22 @@ static void call_sprite_number_right(const Regs* in, Regs* out) {
   out->v = (~(pre ^ (uint8_t)shift) & (pre ^ post) & 0x80) != 0;
 }
 
+// ---- sprite_number_centered ($80:8635) ----  as sprite_number_right's adapter
+static void call_sprite_number_centered(const Regs* in, Regs* out) {
+  uint32_t value = ((uint32_t)in->x << 16) | in->a;
+  uint16_t shift = sprite_number_centered(value, in->y);
+  uint16_t end = rd16(DP + 0x74);
+  uint8_t post = rd8((uint16_t)(0x0900 + end - 4)), pre = (uint8_t)(post - (uint8_t)shift);
+  out->y = end;
+  out->x = value == 0 ? 0xFFFE : 0xFFFF;
+  out->a = (uint16_t)((shift & 0xFF00) | post);
+  out->n = false;
+  out->z = out->c = true;
+  out->v = (~(pre ^ (uint8_t)shift) & (pre ^ post) & 0x80) != 0;
+}
+
+static void fuzz_sprite_number(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+
 static void fuzz_sprite_number(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   uint32_t k = rnd();
   r->a = (uint16_t)rnd();
@@ -2773,6 +2789,30 @@ static void call_shop_item_text(const Regs* in, Regs* out) {
   out->y = (uint16_t)(dest + size);
   out->n = true;
   out->z = false;
+}
+
+// A = the new slot (flags of its ADC); X (cap) or Y (column) the old slot
+static void call_shop_bar_cap(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t slot = rd16(DP + 0x74);
+  out->a = shop_bar_cap();
+  out->x = slot;
+  setNZ16(out, out->a);
+  setAdc16(out, slot, 0x0010);
+}
+static void call_shop_bar_column(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t slot = rd16(DP + 0x74);
+  out->a = shop_bar_column();
+  out->y = slot;
+  setNZ16(out, out->a);
+  setAdc16(out, slot, 0x000C);
+}
+static void fuzz_shop_bar(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x74, (uint16_t)((rnd() % 0x70) * 4));
+  static const uint32_t fields[] = {0x7A, 0xE7, 0xE8, 0x80, 0x14, 0x7E, 0x84};
+  for(unsigned i = 0; i < sizeof fields / sizeof fields[0]; i++) wr16ram(ram, DP + fields[i], (uint16_t)rnd());
 }
 
 // A = Y = slot + $10 (flags of the ADC)
@@ -3867,6 +3907,13 @@ const Routine routines[] = {
    .fixedD = true, .db = 0x81, .call = call_shop_item_text, ALL_OUTPUTS, .fuzz = fuzz_shop_item},
   {.name = "shop_sprite_block", .entry = 0x80A7E4, .end = 0x80A831, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_shop_sprite_block, ALL_OUTPUTS, .fuzz = fuzz_shop_sprite_block},
+  {.name = "sprite_number_centered", .entry = 0x808635, .end = 0x808667, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_sprite_number_centered, ALL_OUTPUTS,
+   .fuzz = fuzz_sprite_number},
+  {.name = "shop_bar_cap", .entry = 0x80AAF1, .end = 0x80AB54, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_shop_bar_cap, ALL_OUTPUTS, .fuzz = fuzz_shop_bar},
+  {.name = "shop_bar_column", .entry = 0x80A9BD, .end = 0x80AA15, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_shop_bar_column, ALL_OUTPUTS, .fuzz = fuzz_shop_bar},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

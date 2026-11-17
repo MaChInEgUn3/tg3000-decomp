@@ -237,6 +237,18 @@ uint16_t sprite_number_right(uint32_t value, uint16_t x) {
   return shift;
 }
 
+// TG3000_ROUTINE($80:8635) sprite_number_centered
+uint16_t sprite_number_centered(uint32_t value, uint16_t x) {
+  wr16(SPRITE_TEXT_X, (uint16_t)value);
+  uint16_t first = rd16(SPRITE_TEXT_SLOT);
+  uint16_t end = sprite_number(value, x);
+  uint16_t shift = (uint16_t)((uint16_t)((x & 0xFF) - (end & 0xFF)) >> 1);
+  wr16(SPRITE_TEXT_BASE, shift);
+  for(uint16_t s = first; s != rd16(SPRITE_TEXT_SLOT); s = (uint16_t)(s + 4))
+    wr8(0x0900 + s, (uint8_t)(rd8(0x0900 + s) + shift));
+  return shift;
+}
+
 static uint16_t signed_high_byte(uint16_t v) {  // the high byte, sign-extended to 16 bits
   uint16_t h = v >> 8;
   return (h & 0x80) ? (uint16_t)(h | 0xFF00) : h;

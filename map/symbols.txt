@@ -231,3 +231,6 @@ func    809DBC   shop_panel_upload   ; queue the shop panel's VRAM upload (func_
 func    809BF2   shop_item_picture   ; current item's picture (func_80B58D) -> src/shop.c
 func    80B096   shop_item_text      ; copy the current item's text from bank $89 -> src/shop.c
 func    80A7E4   shop_sprite_block   ; four sprite entries of a 2x2 block -> src/shop.c
+func    808635   sprite_number_centered ; sprite_number, centred on x -> src/text.c
+func    80AAF1   shop_bar_cap        ; a bar's 4-sprite cap at the slot -> src/shop.c
+func    80A9BD   shop_bar_column     ; a bar's 3-sprite column at the slot -> src/shop.c

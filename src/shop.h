@@ -35,4 +35,14 @@ void shop_item_text(void);
 // bits 0. Returns slot + $10. ($80:A7E4)
 uint16_t shop_sprite_block(uint16_t pos, uint16_t slot);
 
+// A bar's cap: four sprites in a column at the slot D+$74 (y = D+$80 + D+$14 - 1, the
+// tile row ($51 - D+$7A + D+$E8) << 8 | y; tiles D+$7E x3 and D+$7E + 1), then D+$74 += $10.
+// Returns the new slot. ($80:AAF1)
+uint16_t shop_bar_cap(void);
+
+// A bar's three-sprite column at the slot D+$74 (y = D+$14 + D+$80; tile row
+// ((($6C - D+$7A - D+$7E) & $FF) << 8) + D+$E7, kept in D+$82; tiles D+$84, then
+// D+$84 + 1 twice), then D+$74 += $0C. Returns the new slot. ($80:A9BD)
+uint16_t shop_bar_column(void);
+
 #endif

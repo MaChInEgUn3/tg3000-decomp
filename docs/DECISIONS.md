@@ -1649,6 +1649,18 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     the I/O registers, and kicked random DMAs. The shop movie's verification ran for
     over an hour before it was stopped.
 
+## The shop's bars and centred numbers (shop-2, 2026-11-17)
+
+- `sprite_number_centered` ($80:8635): `sprite_number`, then its sprites shifted to
+  centre the number on x, by `((x & $FF) - (end & $FF)) >> 1`. Shop movie: live
+  4,000/4,000, paths 29/29.
+- `shop_bar_cap` ($80:AAF1): a bar's cap, four sprites in a column at the slot `$0174`.
+  Live 992/992, paths 44/44.
+- `shop_bar_column` ($80:A9BD): a bar's three-sprite column. Live 392/392, paths 40/40.
+- The other bar routines (`$80:A403`, `$80:A4B8`, `$80:A87D`) have loops and a never-run
+  stretch (`$80:A8A8`). They are next, with their callers `$80:A91E`, `$80:AA59` and
+  `$80:A251`.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

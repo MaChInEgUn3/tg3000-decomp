@@ -73,6 +73,10 @@ uint32_t sprite_group(uint16_t dp, uint32_t table);
 // shift (16 bits).
 uint16_t sprite_number_right(uint32_t value, uint16_t x);
 
+// The same, centred on `x`: the shift is ((x & $FF) - (end & $FF)) >> 1 (16-bit).
+// ($80:8635)
+uint16_t sprite_number_centered(uint32_t value, uint16_t x);
+
 // Five lines of tile text from $8A:C44F, C458, C46D, C484, C49B at (12, 6), (6, 22),
 // (5, 23), (5, 24), (6, 26), with D+$90 = 1, 0, 0, 0, 1. Returns the last
 // text_print_tiles_at's result.

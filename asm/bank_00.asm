@@ -647,6 +647,7 @@ take_nibble16:
     rol a                       ; $8085D8
     rts                         ; $8085D9
     incbin !baserom:$5DA..$635
+sprite_number_centered:
     sta.b $16                   ; $808635
     lda.b $74                   ; $808637
     pha                         ; $808639
@@ -3554,7 +3555,7 @@ CODE_80A296:
     lda.w $A890,y               ; $80A2BA
     ldx.w $A88E,y               ; $80A2BD
     ply                         ; $80A2C0
-    jsr.w $8635                 ; $80A2C1
+    jsr.w sprite_number_centered; $80A2C1
     pla                         ; $80A2C4
     sta.b $16                   ; $80A2C5
     pla                         ; $80A2C7
@@ -4405,7 +4406,7 @@ CODE_80A984:
     sta.b $80                   ; $80A989
     lda.w #$231E                ; $80A98B
     sta.b $84                   ; $80A98E
-    jsr.w $A9BD                 ; $80A990
+    jsr.w shop_bar_column       ; $80A990
     ldy.b $7C                   ; $80A993
     lda.w $A896,y               ; $80A995
     tax                         ; $80A998
@@ -4425,8 +4426,9 @@ CODE_80A9AD:
     sta.b $80                   ; $80A9B2
     lda.w #$2320                ; $80A9B4
     sta.b $84                   ; $80A9B7
-    jsr.w $A9BD                 ; $80A9B9
+    jsr.w shop_bar_column       ; $80A9B9
     rts                         ; $80A9BC
+shop_bar_column:
     ldy.b $74                   ; $80A9BD
     lda.w #$006C                ; $80A9BF
     sec                         ; $80A9C2
@@ -4536,7 +4538,7 @@ CODE_80AA87:
     clc                         ; $80AA9E
     adc.w #$2524                ; $80AA9F
     sta.b $7E                   ; $80AAA2
-    jsr.w $AAF1                 ; $80AAA4
+    jsr.w shop_bar_cap          ; $80AAA4
     pla                         ; $80AAA7
     eor.w #$FFFF                ; $80AAA8
     sec                         ; $80AAAB
@@ -4553,7 +4555,7 @@ CODE_80AAB6:
     clc                         ; $80AABD
     adc.w #$0008                ; $80AABE
     sta.b $80                   ; $80AAC1
-    jsr.w $AAF1                 ; $80AAC3
+    jsr.w shop_bar_cap          ; $80AAC3
     dec.b $82                   ; $80AAC6
     bne CODE_80AAB6             ; $80AAC8
 CODE_80AACA:
@@ -4574,9 +4576,10 @@ CODE_80AAD5:
     clc                         ; $80AAE7
     adc.w #$251C                ; $80AAE8
     sta.b $7E                   ; $80AAEB
-    jsr.w $AAF1                 ; $80AAED
+    jsr.w shop_bar_cap          ; $80AAED
 CODE_80AAF0:
     rts                         ; $80AAF0
+shop_bar_cap:
     ldx.b $74                   ; $80AAF1
     lda.w #$0051                ; $80AAF3
     sec                         ; $80AAF6
