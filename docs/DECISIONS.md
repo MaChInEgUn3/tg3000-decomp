@@ -1589,6 +1589,41 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   fails if any deliberately wrong C passes or is never reached. All 19 fail over the full
   movie.
 
+## Coverage explorer and the shop movie (explore-1, 2026-11-17)
+
+- **The gap:**
+  - 13,802 of the map's 69,676 code bytes (20%) ran only in the TAS (refbench), never
+    on the bench's 60k movie. So no routine there could be verified;
+  - most of it is bank `$80`, `$80:98xx-$80:B2xx`: the shop, money in BCD, and the
+    screens between races;
+  - the autopilot leaves every shop through EXIT ("Down x6, A").
+- **`bench --explore N`** (with `--coverage`, `--record`, optional `--explore-known
+  FILE`, `--explore-cands M`, `--explore-len L`, `--explore-seed S`):
+  - from the end of the run, segment after segment, it tries M random button
+    sequences (taps of one button with gaps) from the same saved state;
+  - it keeps the one that starts the most instructions not seen yet, nor in the
+    `--explore-known` coverage file;
+  - it rejects a candidate whose WRAM stands still over its last 120 frames (a frozen
+    game), and stops when every candidate freezes;
+  - the chosen buttons go to `--record`, so the result is an ordinary movie.
+- **Two trials:**
+  - **From the main menu:** it always finds a 4-player name screen first, with 8,739
+    code bytes the TAS never ran either, then the game freezes for good. It is probably
+    a mode that waits for a multitap, which the bench does not have. Not used.
+  - **From the shop** (`race1.txt` up to step 7,650; 40 segments of 600 steps, best of
+    6 each): it reached 4,337 of the TAS-only bytes and 523 bytes no run had executed
+    (bank `$80`, menu code).
+- **`tools/bench/movies/explore_shop.txt`** keeps that run (32,228 steps). Every routine
+  already in C passes on it.
+  - `tools/verify_all.sh` runs it in parallel with the 60k movie, and
+    `tools/merge_verified.py` joins the two results: verified if a movie verified it and
+    none failed it.
+  - Its coverage is merged into the map: **code 70,199 bytes** (+523), 80.19% of the
+    ROM classified. The listing still rebuilds the ROM byte for byte.
+- **Still TAS-only:** about 9,500 bytes (password, options, later championships). More
+  starting points for the explorer (password screen, options), or longer runs, would
+  bring them to the bench.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

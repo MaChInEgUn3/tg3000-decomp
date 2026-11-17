@@ -180,6 +180,107 @@ static void recordStep(FILE* f, int step, uint16_t* last) {
   *last = heldButtons;
 }
 
+// ---- coverage explorer (--explore): from the end of the run, segment after segment, try
+// several random button sequences from the same saved state and keep the one that starts
+// the most instructions not seen yet (nor in --explore-known, a coverage file of what other
+// movies already reach); its buttons go to --record, so the result replays as a movie ----
+
+typedef struct { int offset; uint16_t buttons; } ExploreEvent;
+static uint32_t exploreSeed = 0x2545F491u;
+static uint32_t exploreRandom(void) {
+  exploreSeed ^= exploreSeed << 13;
+  exploreSeed ^= exploreSeed >> 17;
+  exploreSeed ^= exploreSeed << 5;
+  return exploreSeed;
+}
+
+// Taps of one button (held 3 frames), with gaps: menus take a press per few frames.
+static int exploreCandidate(ExploreEvent* ev, int cap, int len) {
+  static const uint16_t pick[] = {1 << 4, 1 << 5, 1 << 6, 1 << 7, 1 << 8, 1 << 8, 1 << 0, 1 << 3, 1 << 9, 1 << 1};
+  int n = 0, t = 0;
+  while(n + 2 < cap) {
+    t += 6 + (int)(exploreRandom() % 24);
+    if(t + 3 >= len) break;
+    ev[n++] = (ExploreEvent){t, pick[exploreRandom() % (sizeof pick / sizeof pick[0])]};
+    ev[n++] = (ExploreEvent){t + 3, 0};
+    t += 3;
+  }
+  return n;
+}
+
+// Runs a candidate; returns false when the game stopped (WRAM unchanged over its last
+// 120 frames: a hang, such as a mode that waits for a multitap the bench does not have).
+static bool exploreRun(const ExploreEvent* ev, int n, int len) {
+  int k = 0;
+  setButtons(0);
+  uint64_t last = 0;
+  int still = 0;
+  for(int f = 0; f < len; f++) {
+    while(k < n && ev[k].offset == f) setButtons(ev[k++].buttons);
+    benchRunFrame();
+    uint64_t h = wramHash();
+    still = h == last ? still + 1 : 0;
+    last = h;
+  }
+  return still < 120;
+}
+
+static void explore(int segments, int cands, int len, int start, FILE* record, const uint8_t* known) {
+  int stSize = snes_saveState(snes, NULL);
+  uint8_t* state = malloc(stSize);
+  uint8_t* bestState = malloc(stSize);
+  static uint8_t base[1 << 20], bestCov[1 << 20];
+  enum { CAP = 512 };
+  static ExploreEvent ev[CAP], bestEv[CAP];
+  int total = 0;
+  for(int s = 0; s < segments; s++) {
+    snes_saveState(snes, state);
+    coverage_snapshot(base);
+    int best = -1, bestN = 0;
+    for(int c = 0; c < cands; c++) {
+      if(c > 0) {
+        snes_loadState(snes, state, stSize);
+        coverage_restore(base);
+      }
+      int n = exploreCandidate(ev, CAP, len);
+      bool alive = exploreRun(ev, n, len);
+      int score = alive ? coverage_new_starts(base, known) : -1;
+      if(score > best) {
+        best = score;
+        bestN = n;
+        memcpy(bestEv, ev, n * sizeof *ev);
+        snes_saveState(snes, bestState);
+        coverage_snapshot(bestCov);
+      }
+    }
+    if(best < 0) {  // every candidate froze the game: stop here
+      snes_loadState(snes, state, stSize);
+      coverage_restore(base);
+      fprintf(stderr, "explore: segment %d: every candidate froze the game; stopping\n", s);
+      break;
+    }
+    snes_loadState(snes, bestState, stSize);
+    coverage_restore(bestCov);
+    total += best;
+    int at = start + s * len;
+    if(record != NULL) {
+      if(s == 0) fprintf(record, "%d .\n", at);
+      for(int k = 0; k < bestN; k++) {
+        char buf[16] = ".";
+        int m = 0;
+        for(int b = 0; b < 12; b++) if(bestEv[k].buttons & (1 << b)) buf[m++] = buttonChars[b];
+        buf[m ? m : 1] = '\0';
+        fprintf(record, "%d %s\n", at + bestEv[k].offset, buf);
+      }
+      fflush(record);
+    }
+    fprintf(stderr, "explore: segment %d (frames %d-%d): %d new instruction starts (total %d)\n", s, at, at + len - 1,
+      best, total);
+  }
+  free(state);
+  free(bestState);
+}
+
 // ---- frame dumps ----
 
 static uint8_t argb[512 * 480 * 4];
@@ -215,6 +316,8 @@ int main(int argc, char** argv) {
   FILE* wramDump = NULL;
   FILE* record = NULL;
   int autopilotFrom = -1;
+  int exploreSegments = 0, exploreCands = 8, exploreLen = 600;
+  const char* exploreKnownPath = NULL;
   const char* difftestResults = NULL;
   const char* censusPath = NULL;
   const char* hdmaPath = NULL;
@@ -242,6 +345,16 @@ int main(int argc, char** argv) {
       difftestNegative = true;
     } else if(strcmp(argv[i], "--fuzz") == 0 && i + 1 < argc) {
       fuzzIterations = atoi(argv[++i]);
+    } else if(strcmp(argv[i], "--explore") == 0 && i + 1 < argc) {
+      exploreSegments = atoi(argv[++i]);
+    } else if(strcmp(argv[i], "--explore-cands") == 0 && i + 1 < argc) {
+      exploreCands = atoi(argv[++i]);
+    } else if(strcmp(argv[i], "--explore-len") == 0 && i + 1 < argc) {
+      exploreLen = atoi(argv[++i]);
+    } else if(strcmp(argv[i], "--explore-known") == 0 && i + 1 < argc) {
+      exploreKnownPath = argv[++i];
+    } else if(strcmp(argv[i], "--explore-seed") == 0 && i + 1 < argc) {
+      exploreSeed = (uint32_t)strtoul(argv[++i], NULL, 0);
     } else if(strcmp(argv[i], "--autopilot") == 0 && i + 1 < argc) {
       autopilotFrom = atoi(argv[++i]);
     } else if(strcmp(argv[i], "--record") == 0 && i + 1 < argc) {
@@ -302,6 +415,18 @@ int main(int argc, char** argv) {
     if(wramDump != NULL) fwrite(snes->ram, 1, sizeof snes->ram, wramDump);
     if(hashes != NULL) fprintf(hashes, "%d %u %016llx\n", i + 1, snes->frames, (unsigned long long)wramHash());
     if(dumpDir != NULL && (i + 1) % every == 0) dumpFrame(dumpDir);
+  }
+
+  if(exploreSegments > 0) {
+    if(!coverageOn) { fprintf(stderr, "--explore needs --coverage FILE\n"); return 2; }
+    uint8_t* known = NULL;
+    if(exploreKnownPath != NULL) {
+      int ksize = 0;
+      known = readFile(exploreKnownPath, &ksize);
+      if(known == NULL || ksize != (1 << 20)) { fprintf(stderr, "bad --explore-known %s\n", exploreKnownPath); return 2; }
+    }
+    explore(exploreSegments, exploreCands, exploreLen, frames, record, known);
+    free(known);
   }
 
   int status = 0;

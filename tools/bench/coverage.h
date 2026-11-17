@@ -23,6 +23,11 @@ void coverage_start(Cpu* cpu, const uint8_t* rom);  // rom: the 1 MB image as lo
 void coverage_on_insn(Cpu* cpu);                     // from the bench's CPU trace hook
 bool coverage_merge_save(const char* path);         // also writes <path>.ram
 void coverage_report(void);
+// For the explorer: copy the per-ROM-byte flags out / back in, and count the instruction
+// starts set now that are not set in `base` (optionally also outside `known`, a second map).
+void coverage_snapshot(uint8_t* out);
+void coverage_restore(const uint8_t* in);
+int coverage_new_starts(const uint8_t* base, const uint8_t* known);
 int coverage_insn_length(uint8_t opcode, bool m8, bool x8);
 uint8_t cart_peekRom(uint32_t offset);
 

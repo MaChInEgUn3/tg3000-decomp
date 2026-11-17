@@ -142,3 +142,12 @@ void coverage_report(void) {
     printf("first execution outside ROM: %02X:%04X, reached from %02X:%04X\n", firstRamAt >> 16, firstRamAt & 0xFFFF,
       firstRamEntryFrom >> 16, firstRamEntryFrom & 0xFFFF);
 }
+
+void coverage_snapshot(uint8_t* out) { memcpy(out, flags, ROM_SIZE); }
+void coverage_restore(const uint8_t* in) { memcpy(flags, in, ROM_SIZE); }
+int coverage_new_starts(const uint8_t* base, const uint8_t* known) {
+  int n = 0;
+  for(int i = 0; i < ROM_SIZE; i++)
+    if((flags[i] & COV_START) && !(base[i] & COV_START) && (known == NULL || !(known[i] & COV_START))) n++;
+  return n;
+}

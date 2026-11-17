@@ -1419,7 +1419,11 @@ CODE_808DD7:
     clc                         ; $808DDD
     adc.b $4A                   ; $808DDE
     bpl CODE_808DEC             ; $808DE0
-    incbin !baserom:$DE2..$DEC
+    lda.b $4A                   ; $808DE2
+    clc                         ; $808DE4
+    adc.w #$0100                ; $808DE5
+    sta.b $4A                   ; $808DE8
+    bra CODE_808DFB             ; $808DEA
 CODE_808DEC:
     cmp.w #$1800                ; $808DEC
     beq CODE_808DFB             ; $808DEF
@@ -1452,7 +1456,9 @@ CODE_808E2A:
     lda.w #$0800                ; $808E2A
     trb.b $0E                   ; $808E2D
     beq CODE_808E39             ; $808E2F
-    incbin !baserom:$E31..$E39
+    lda.w #$0018                ; $808E31
+    sta.b $EA                   ; $808E34
+    jsr.w $B333                 ; $808E36
 CODE_808E39:
     lda.w #$0400                ; $808E39
     trb.b $0E                   ; $808E3C
@@ -1640,7 +1646,11 @@ CODE_808FCB:
     jsl.l func_80E4C5           ; $808FD4
     lda.b $4A                   ; $808FD8
     beq CODE_808FE6             ; $808FDA
-    incbin !baserom:$FDC..$FE6
+    dec a                       ; $808FDC
+    sta.b $4C                   ; $808FDD
+    jsr.w $9BF2                 ; $808FDF
+    jsr.w $9AC8                 ; $808FE2
+    rts                         ; $808FE5
 CODE_808FE6:
     lda.b $44                   ; $808FE6
     ora.w #$8000                ; $808FE8
@@ -1705,7 +1715,12 @@ CODE_809004:
     and.w #$007F                ; $809058
     cmp.b $4A                   ; $80905B
     bne CODE_809072             ; $80905D
-    incbin !baserom:$105F..$1072
+    jsl.l func_80E4C5           ; $80905F
+    ldx.w #$B535                ; $809063
+    lda.w #$0080                ; $809066
+    jsr.w func_80B58D           ; $809069
+    jsr.w $9832                 ; $80906C
+    jmp.w $90FD                 ; $80906F
 CODE_809072:
     jsr.w $993E                 ; $809072
     lda.w $0393,x               ; $809075
@@ -1715,7 +1730,8 @@ CODE_809072:
 CODE_809090:
     jsr.w $98C4                 ; $809090
     bcs CODE_80909A             ; $809093
-    incbin !baserom:$1095..$109A
+    jsl.l $80E4D0               ; $809095
+    rts                         ; $809099
 CODE_80909A:
     jsl.l func_80E4DB           ; $80909A
     ldx.w #$B535                ; $80909E
@@ -1764,7 +1780,12 @@ CODE_8090E2:
     and.w #$007F                ; $809105
     cmp.b $4A                   ; $809108
     bne CODE_80911F             ; $80910A
-    incbin !baserom:$110C..$111F
+    jsl.l func_80E4C5           ; $80910C
+    ldx.w #$B535                ; $809110
+    lda.w #$0080                ; $809113
+    jsr.w func_80B58D           ; $809116
+    jsr.w $9832                 ; $809119
+    jmp.w $91AA                 ; $80911C
 CODE_80911F:
     jsr.w $993E                 ; $80911F
     lda.w $0394,x               ; $809122
@@ -1774,7 +1795,8 @@ CODE_80911F:
 CODE_80913D:
     jsr.w $98C4                 ; $80913D
     bcs CODE_809147             ; $809140
-    incbin !baserom:$1142..$1147
+    jsl.l $80E4D0               ; $809142
+    rts                         ; $809146
 CODE_809147:
     jsl.l func_80E4DB           ; $809147
     ldx.w #$B535                ; $80914B
@@ -1824,7 +1846,12 @@ CODE_80918F:
     and.w #$007F                ; $8091B3
     cmp.b $4A                   ; $8091B6
     bne CODE_8091CD             ; $8091B8
-    incbin !baserom:$11BA..$11CD
+    jsl.l func_80E4C5           ; $8091BA
+    ldx.w #$B535                ; $8091BE
+    lda.w #$0080                ; $8091C1
+    jsr.w func_80B58D           ; $8091C4
+    jsr.w $9832                 ; $8091C7
+    jmp.w $9258                 ; $8091CA
 CODE_8091CD:
     jsr.w $993E                 ; $8091CD
     lda.w $0395,x               ; $8091D0
@@ -1834,7 +1861,8 @@ CODE_8091CD:
 CODE_8091EB:
     jsr.w $98C4                 ; $8091EB
     bcs CODE_8091F5             ; $8091EE
-    incbin !baserom:$11F0..$11F5
+    jsl.l $80E4D0               ; $8091F0
+    rts                         ; $8091F4
 CODE_8091F5:
     jsl.l func_80E4DB           ; $8091F5
     ldx.w #$B535                ; $8091F9
@@ -1884,7 +1912,12 @@ CODE_80923D:
     and.w #$007F                ; $809261
     cmp.b $4A                   ; $809264
     bne CODE_80927B             ; $809266
-    incbin !baserom:$1268..$127B
+    jsl.l func_80E4C5           ; $809268
+    ldx.w #$B535                ; $80926C
+    lda.w #$0080                ; $80926F
+    jsr.w func_80B58D           ; $809272
+    jsr.w $9832                 ; $809275
+    jmp.w $9306                 ; $809278
 CODE_80927B:
     jsr.w $993E                 ; $80927B
     lda.w $0396,x               ; $80927E
@@ -1894,7 +1927,8 @@ CODE_80927B:
 CODE_809299:
     jsr.w $98C4                 ; $809299
     bcs CODE_8092A3             ; $80929C
-    incbin !baserom:$129E..$12A3
+    jsl.l $80E4D0               ; $80929E
+    rts                         ; $8092A2
 CODE_8092A3:
     jsl.l func_80E4DB           ; $8092A3
     ldx.w #$B535                ; $8092A7
@@ -1939,7 +1973,13 @@ CODE_8092EB:
     jsr.w $9ABB                 ; $809303
     jsr.w $9870                 ; $809306
     rts                         ; $809309
-    incbin !baserom:$130A..$131A
+    ldx.b $94                   ; $80930A
+    sep.b #$20                  ; $80930C
+    lda.b $4A                   ; $80930E
+    sta.w $0392,x               ; $809310
+    rep.b #$20                  ; $809313
+    jsl.l func_80E4DB           ; $809315
+    rts                         ; $809319
     ldx.b $94                   ; $80931A
     lda.w $039A,x               ; $80931C
     and.w #$007F                ; $80931F
@@ -2118,7 +2158,12 @@ CODE_8095A1:
     and.w #$007F                ; $8095C5
     cmp.b $4A                   ; $8095C8
     bne CODE_8095DF             ; $8095CA
-    incbin !baserom:$15CC..$15DF
+    jsl.l func_80E4C5           ; $8095CC
+    ldx.w #$B535                ; $8095D0
+    lda.w #$0080                ; $8095D3
+    jsr.w func_80B58D           ; $8095D6
+    jsr.w $9832                 ; $8095D9
+    jmp.w $966A                 ; $8095DC
 CODE_8095DF:
     jsr.w $993E                 ; $8095DF
     lda.w $0397,x               ; $8095E2
@@ -2128,7 +2173,8 @@ CODE_8095DF:
 CODE_8095FD:
     jsr.w $98C4                 ; $8095FD
     bcs CODE_809607             ; $809600
-    incbin !baserom:$1602..$1607
+    jsl.l $80E4D0               ; $809602
+    rts                         ; $809606
 CODE_809607:
     jsl.l func_80E4DB           ; $809607
     ldx.w #$B535                ; $80960B
@@ -2305,7 +2351,23 @@ CODE_8098B6:
     sbc.w $A88E,y               ; $8098E0
     cld                         ; $8098E3
     bcs CODE_80990C             ; $8098E4
-    incbin !baserom:$18E6..$190C
+    ldx.w #$0000                ; $8098E6
+CODE_8098E9:
+    lda.w #$0001                ; $8098E9
+    jsr.w wait_frames           ; $8098EC
+    ldy.b $C4                   ; $8098EF
+    lda.l $7E4DDA,x             ; $8098F1
+    sta.w $01C2,y               ; $8098F5
+    lda.l $7E4DFA,x             ; $8098F8
+    sta.w $01C4,y               ; $8098FC
+    phx                         ; $8098FF
+    jsr.w $9847                 ; $809900
+    plx                         ; $809903
+    inx                         ; $809904
+    inx                         ; $809905
+    cpx.w #$0020                ; $809906
+    bne CODE_8098E9             ; $809909
+    clc                         ; $80990B
 CODE_80990C:
     rts                         ; $80990C
     incbin !baserom:$190D..$193E
@@ -2494,7 +2556,72 @@ CODE_809AA6:
     lda.b $54                   ; $809AC2
     sta.w $0390,x               ; $809AC4
     rts                         ; $809AC7
-    incbin !baserom:$1AC8..$1B5D
+    lda.w #$0018                ; $809AC8
+    sta.b $4E                   ; $809ACB
+CODE_809ACD:
+    lda.w #$0001                ; $809ACD
+    jsr.w wait_frames           ; $809AD0
+    lda.b $8C                   ; $809AD3
+    cmp.b $8E                   ; $809AD5
+    bne CODE_809ADF             ; $809AD7
+    jsr.w $B59D                 ; $809AD9
+    jsr.w $9DBC                 ; $809ADC
+CODE_809ADF:
+    lda.w #$0010                ; $809ADF
+    sta.b $14                   ; $809AE2
+    lda.b $4E                   ; $809AE4
+    sec                         ; $809AE6
+    sbc.w #$0006                ; $809AE7
+    sta.b $4E                   ; $809AEA
+    sta.b $16                   ; $809AEC
+    jsr.w $A251                 ; $809AEE
+    jsr.w $9F40                 ; $809AF1
+    jsr.w $9E49                 ; $809AF4
+    jsr.w func_809DD0           ; $809AF7
+    jsr.w oam_finish_near       ; $809AFA
+    lda.b $4E                   ; $809AFD
+    cmp.w #$FFC0                ; $809AFF
+    bpl CODE_809ACD             ; $809B02
+    lda.b $8C                   ; $809B04
+CODE_809B06:
+    cmp.b $8E                   ; $809B06
+    bne CODE_809B06             ; $809B08
+    jsr.w $B59D                 ; $809B0A
+    jsr.w $9DBC                 ; $809B0D
+    stz.b $3E                   ; $809B10
+    stz.b $40                   ; $809B12
+    stz.b $42                   ; $809B14
+    lda.b $4C                   ; $809B16
+    sta.b $4A                   ; $809B18
+    jsr.w $9C28                 ; $809B1A
+    jsr.w $B096                 ; $809B1D
+    lda.w #$FFC2                ; $809B20
+    sta.b $4E                   ; $809B23
+CODE_809B25:
+    lda.w #$0001                ; $809B25
+    jsr.w wait_frames           ; $809B28
+    lda.b $8C                   ; $809B2B
+    cmp.b $8E                   ; $809B2D
+    bne CODE_809B37             ; $809B2F
+    jsr.w $B59D                 ; $809B31
+    jsr.w $9DBC                 ; $809B34
+CODE_809B37:
+    lda.b $4E                   ; $809B37
+    clc                         ; $809B39
+    adc.w #$0006                ; $809B3A
+    sta.b $4E                   ; $809B3D
+    sta.b $14                   ; $809B3F
+    lda.w #$0018                ; $809B41
+    sta.b $16                   ; $809B44
+    jsr.w $A251                 ; $809B46
+    jsr.w $9F40                 ; $809B49
+    jsr.w $9E49                 ; $809B4C
+    jsr.w func_809DD0           ; $809B4F
+    jsr.w oam_finish_near       ; $809B52
+    lda.b $4E                   ; $809B55
+    cmp.w #$0010                ; $809B57
+    bne CODE_809B25             ; $809B5A
+    rts                         ; $809B5C
     lda.w #$0010                ; $809B5D
     sta.b $4E                   ; $809B60
 CODE_809B62:
@@ -2781,7 +2908,21 @@ CODE_809BCC:
     ply                         ; $809D7B
     jsr.w func_80B537           ; $809D7C
     rts                         ; $809D7F
-    incbin !baserom:$1D80..$1D9E
+    lda.w #$007F                ; $809D80
+    sta.b $14                   ; $809D83
+    lda.b $5C                   ; $809D85
+    clc                         ; $809D87
+    adc.w #$1000                ; $809D88
+    pha                         ; $809D8B
+    lda.w $A892,y               ; $809D8C
+    clc                         ; $809D8F
+    adc.b $5E                   ; $809D90
+    clc                         ; $809D92
+    adc.w #$0900                ; $809D93
+    tax                         ; $809D96
+    lda.w $A894,y               ; $809D97
+    ply                         ; $809D9A
+    jmp.w func_80B537           ; $809D9B
     lda.w #$007F                ; $809D9E
     sta.b $14                   ; $809DA1
     lda.b $5C                   ; $809DA3
@@ -2849,7 +2990,8 @@ CODE_809E0B:
     sbc.b $EE                   ; $809E56
     beq CODE_809E62             ; $809E58
     bpl CODE_809E60             ; $809E5A
-    incbin !baserom:$1E5C..$1E60
+    dec.b $EE                   ; $809E5C
+    bra CODE_809E62             ; $809E5E
 CODE_809E60:
     inc.b $EE                   ; $809E60
 CODE_809E62:
@@ -2939,7 +3081,9 @@ CODE_809ED2:
     lda.w $0397,y               ; $809F1E
     inc a                       ; $809F21
     rts                         ; $809F22
-    incbin !baserom:$1F23..$1F28
+    lda.w $0392,y               ; $809F23
+    inc a                       ; $809F26
+    rts                         ; $809F27
     lda.w $039A,y               ; $809F28
     rts                         ; $809F2B
     lda.w $0399,y               ; $809F2C
@@ -3138,7 +3282,11 @@ CODE_80A06A:
     jsr.w func_80B537           ; $80A091
     ply                         ; $80A094
     rts                         ; $80A095
-    incbin !baserom:$2096..$209F
+    bcs CODE_80A09E             ; $80A096
+    ldx.w #$4F6A                ; $80A098
+    jmp.w $A1E4                 ; $80A09B
+CODE_80A09E:
+    rts                         ; $80A09E
     bcs CODE_80A0B2             ; $80A09F
     ldx.b $94                   ; $80A0A1
     lda.w $039A,x               ; $80A0A3
@@ -3669,7 +3817,18 @@ CODE_80A4C9:
     sta.b $80                   ; $80A4D9
     cmp.w #$001E                ; $80A4DB
     bne CODE_80A4C9             ; $80A4DE
-    incbin !baserom:$24E0..$24F8
+    lda.b $80                   ; $80A4E0
+    sec                         ; $80A4E2
+    sbc.w #$0003                ; $80A4E3
+    sta.b $80                   ; $80A4E6
+    lda.b $7E                   ; $80A4E8
+    sec                         ; $80A4EA
+    sbc.w #$0003                ; $80A4EB
+    bcc CODE_80A4F3             ; $80A4EE
+    jmp.w $A578                 ; $80A4F0
+CODE_80A4F3:
+    adc.w #$0006                ; $80A4F3
+    sta.b $7E                   ; $80A4F6
 CODE_80A4F8:
     lda.w #$005B                ; $80A4F8
     sec                         ; $80A4FB
@@ -4129,7 +4288,8 @@ CODE_80A88E:
     sta.b $80                   ; $80A89E
     cmp.w #$0024                ; $80A8A0
     bne CODE_80A88E             ; $80A8A3
-    incbin !baserom:$28A5..$28AD
+    jmp.w $A91D                 ; $80A8A5
+    incbin !baserom:$28A8..$28AD
 CODE_80A8AD:
     lda.w #$005A                ; $80A8AD
     sec                         ; $80A8B0
@@ -4522,7 +4682,38 @@ CODE_80ABC2:
     incbin !baserom:$2BF3..$2BF5
 CODE_80ABF5:
     rts                         ; $80ABF5
-    incbin !baserom:$2BF6..$2C37
+    lda.b $16                   ; $80ABF6
+    sta.b $7A                   ; $80ABF8
+    sty.b $7C                   ; $80ABFA
+    ldy.b $7C                   ; $80ABFC
+    lda.w $A892,y               ; $80ABFE
+    tax                         ; $80AC01
+    lda.b $16                   ; $80AC02
+    clc                         ; $80AC04
+    adc.b $E8                   ; $80AC05
+    sta.b $16                   ; $80AC07
+    lda.w #$0100                ; $80AC09
+    sta.b $18                   ; $80AC0C
+    lda.w #$007E                ; $80AC0E
+    jsr.w sprite_group          ; $80AC11
+    ldy.b $7C                   ; $80AC14
+    lda.w $A894,y               ; $80AC16
+    tax                         ; $80AC19
+    lda.w #$0030                ; $80AC1A
+    sec                         ; $80AC1D
+    sbc.b $7A                   ; $80AC1E
+    clc                         ; $80AC20
+    adc.b $E8                   ; $80AC21
+    sta.b $16                   ; $80AC23
+    lda.w #$0100                ; $80AC25
+    sta.b $18                   ; $80AC28
+    lda.w #$007E                ; $80AC2A
+    jsr.w sprite_group          ; $80AC2D
+    inc.b $3E                   ; $80AC30
+    bpl CODE_80AC36             ; $80AC32
+    incbin !baserom:$2C34..$2C36
+CODE_80AC36:
+    rts                         ; $80AC36
     lda.b $16                   ; $80AC37
     sta.b $7A                   ; $80AC39
     sty.b $7C                   ; $80AC3B
@@ -5285,7 +5476,15 @@ CODE_80B311:
     ldx.w #$001E                ; $80B32F
 CODE_80B332:
     rts                         ; $80B332
-    incbin !baserom:$3333..$3345
+    jsr.w $B359                 ; $80B333
+    bcs CODE_80B344             ; $80B336
+    lda.b $48                   ; $80B338
+    beq CODE_80B344             ; $80B33A
+    dec.b $48                   ; $80B33C
+    stz.b $4E                   ; $80B33E
+    jsl.l func_80E4C5           ; $80B340
+CODE_80B344:
+    rts                         ; $80B344
     jsr.w $B359                 ; $80B345
     bcs CODE_80B358             ; $80B348
     lda.b $48                   ; $80B34A
@@ -5561,7 +5760,8 @@ CODE_80B661:
     bne CODE_80B661             ; $80B66B
     cmp.b #$41                  ; $80B66D
     bcs CODE_80B676             ; $80B66F
-    incbin !baserom:$3671..$3676
+    sbc.b #$FA                  ; $80B671
+    jmp.w $B681                 ; $80B673
 CODE_80B676:
     cmp.b #$61                  ; $80B676
     bcs CODE_80B67F             ; $80B678
@@ -10423,7 +10623,13 @@ func_80E4C5:
     rep.b #$20                  ; $80E4CC
     pla                         ; $80E4CE
     rtl                         ; $80E4CF
-    incbin !baserom:$64D0..$64DB
+    pha                         ; $80E4D0
+    sep.b #$20                  ; $80E4D1
+    lda.b #$12                  ; $80E4D3
+    sta.b $FB                   ; $80E4D5
+    rep.b #$20                  ; $80E4D7
+    pla                         ; $80E4D9
+    rtl                         ; $80E4DA
 func_80E4DB:
     pha                         ; $80E4DB
     sep.b #$20                  ; $80E4DC
