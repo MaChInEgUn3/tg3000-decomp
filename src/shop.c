@@ -612,3 +612,249 @@ void shop_item_view_g(uint16_t entry) {
   shop_item_group(rd16(DP + 0x7C), 2, (uint16_t)(0x30 - rd16(DP + 0x7A)));
   shop_item_stage_step();
 }
+
+static uint16_t shop_ring_piece(uint32_t table, uint16_t angle, uint16_t slot) {
+  const uint32_t y = slot;
+  uint16_t frame = (uint16_t)((angle >> 8) & 0x000F);
+  wr16(DP + 0x16, frame);
+  const uint32_t x = (uint32_t)frame * 6;
+  wr16(0x0902 + y, rd16(table + x));
+  uint16_t row = (uint16_t)(((rd16(table + 2 + x) + rd16(DP + 0x1A)) & 0xFF) << 8);
+  wr16(DP + 0x16, row);
+  uint16_t at = (uint16_t)(rd16(DP + 0x18) + rd16(table + 4 + x));
+  wr16(0x0B00 + y, at);
+  wr16(0x0900 + y, (uint16_t)((at & 0x00FF) | row));
+  wr16(0x0B02 + y, 0);
+  return (uint16_t)(slot + 4);
+}
+
+// TG3000_ROUTINE($80:A69F) shop_ring_piece_front
+uint16_t shop_ring_piece_front(uint16_t angle, uint16_t slot) { return shop_ring_piece(0x4D0A, angle, slot); }
+
+// TG3000_ROUTINE($80:A6DB) shop_ring_piece_back
+uint16_t shop_ring_piece_back(uint16_t angle, uint16_t slot) { return shop_ring_piece(0x4D6A, angle, slot); }
+
+// TG3000_ROUTINE($80:A579) shop_ring
+void shop_ring(void) {
+  wr16(DP + 0x1A, (uint16_t)(0x5E - rd16(DP + 0x7A) + rd16(DP + 0xE8)));
+  wr16(DP + 0x18, (uint16_t)(rd16(DP + 0x14) + 0x2B));
+  uint16_t y = rd16(DP + 0x74);
+  for(int behind = 1; behind >= 0; behind--) {
+    for(uint16_t n = 0; n < 2; n++) {
+      uint16_t angle = (uint16_t)(rd16(DP + 0x40) + n * 0x0400);
+      if(((angle & 0x0800) != 0) != behind) continue;
+      y = (n & 1) ? shop_ring_piece_back(angle, y) : shop_ring_piece_front(angle, y);
+    }
+    if(behind) {  // the centre, between the two halves
+      const uint32_t s = y;
+      wr16(0x0902 + s, 0x2526);
+      wr16(0x0B02 + s, 0x0001);
+      uint16_t at = rd16(DP + 0x18);
+      wr16(0x0B00 + s, at);
+      uint16_t row = (uint16_t)((rd16(DP + 0x1A) & 0x00FF) << 8);
+      wr16(DP + 0x16, row);
+      wr16(0x0900 + s, (uint16_t)((at & 0x00FF) | row));
+      y = (uint16_t)(y + 4);
+    }
+  }
+  wr16(DP + 0x74, y);
+  wr16(DP + 0x40, (uint16_t)(rd16(DP + 0x40) + 0x0080));
+}
+
+// TG3000_ROUTINE($80:A333) shop_item_view_f
+void shop_item_view_f(uint16_t entry) {
+  wr16(DP + 0x7A, rd16(DP + 0x16));
+  wr16(DP + 0x7C, entry);
+  shop_ring();
+  shop_item_group(rd16(DP + 0x7C), 0, rd16(DP + 0x7A));
+  wr16(DP + 0x84, 0x2338);
+  shop_bar_segments();
+  shop_item_group(rd16(DP + 0x7C), 6, (uint16_t)(0x30 - rd16(DP + 0x7A)));
+  shop_item_group(rd16(DP + 0x7C), 2, (uint16_t)(0x30 - rd16(DP + 0x7A)));
+  shop_item_stage_step();
+}
+
+static uint16_t shop_view_x(uint16_t base) { return (uint16_t)(base - rd16(DP + 0x7A) + rd16(DP + 0xE8)); }
+
+static void shop_view_group(uint16_t x, uint16_t group) {
+  wr16(DP + 0x16, x);
+  wr16(DP + 0x18, 0x0100);
+  sprite_group(DP, 0x7E0000 | group);
+}
+
+// D+$40 + $40, back by `wrap` when it reaches it
+static void shop_view_spin(uint16_t wrap) {
+  uint16_t a = (uint16_t)(rd16(DP + 0x40) + 0x0040);
+  if(a >= wrap) a = (uint16_t)(a - wrap);
+  wr16(DP + 0x40, a);
+}
+
+// TG3000_ROUTINE($80:AF36) shop_level_blocks
+void shop_level_blocks(void) {
+  wr16(DP + 0x80, 0);
+  uint16_t y = rd16(DP + 0x74);
+  wr16(DP + 0x7E, 0);
+  uint16_t a = (uint16_t)(rd16(DP + 0x3E) >> 1);
+  if(a >= 0x0010) {
+    wr16(DP + 0x7E, (uint16_t)(a - 0x0010));
+    for(;;) {
+      if(rd16(DP + 0x7E) < 6) break;
+      wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x7E) - 6));
+      wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) + 6));
+      if(rd16(DP + 0x80) != 0x002A) continue;
+      // all seven full: the last is drawn half a block over ($80:AF5E, never run)
+      wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) - 3));
+      if(rd16(DP + 0x7E) >= 3) return;
+      wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x7E) + 3));
+      break;
+    }
+  }
+  uint16_t pos;
+  do {
+    wr16(DP + 0x82, (uint16_t)(((uint16_t)(0x62 - rd16(DP + 0x7A)) << 8) + rd16(DP + 0xE7)));
+    const uint32_t s = y;
+    uint16_t at = (uint16_t)(rd16(DP + 0x14) + rd16(DP + 0x80) + 0x000A);
+    wr16(0x0B00 + s, at);
+    wr16(0x0B04 + s, at);
+    uint16_t word = (uint16_t)((at & 0x00FF) | rd16(DP + 0x82));
+    wr16(0x0900 + s, word);
+    wr16(0x0904 + s, (uint16_t)(word + 0x0800));
+    uint16_t tile = (uint16_t)((rd16(DP + 0x7E) << 1) + rd16(DP + 0x84));
+    wr16(0x0902 + s, tile);
+    wr16(0x0906 + s, (uint16_t)(tile + 1));
+    wr16(0x0B02 + s, 0);
+    wr16(0x0B06 + s, 0);
+    y = (uint16_t)(y + 8);
+    wr16(DP + 0x7E, 0);
+    pos = (uint16_t)(rd16(DP + 0x80) + 6);
+    wr16(DP + 0x80, pos);
+    if(pos == 0x002A) {
+      pos = 0x0027;
+      wr16(DP + 0x80, pos);
+      wr16(DP + 0x7E, 3);
+    }
+  } while(pos != 0x002D);
+  wr16(DP + 0x74, y);
+}
+
+// TG3000_ROUTINE($80:ADD9) shop_gauge_line
+void shop_gauge_line(uint8_t speed, uint16_t y, uint16_t string) {
+  uint8_t high = (uint8_t)(rd8(DP + 0x47) & 0x7F);
+  int16_t m7a = (int16_t)((uint16_t)(high << 8) | rd8(DP + 0x46));
+  video_set_m7a(m7a);
+  video_set_m7b((int16_t)((uint16_t)(speed << 8) | high));
+  uint16_t product = (uint16_t)((int32_t)m7a * (int8_t)speed);
+  wr16(DP + 0x80, (uint16_t)((((uint16_t)(y + product) >> 5) & 0x007F) - 0x0020));
+  uint32_t at = string;
+  uint16_t slot = rd16(DP + 0x74);
+  uint16_t tile = rd16(at);
+  do {
+    const uint32_t x = slot;
+    wr16(0x0902 + x, tile);
+    uint16_t col = (uint16_t)(rd16(DP + 0x80) + rd16(DP + 0x14));
+    if(col & 0xFF00) col |= 0xFF00;
+    wr16(0x0B00 + x, col);
+    wr16(DP + 0x1A, (uint16_t)(col & 0x00FF));
+    wr16(0x0900 + x, (uint16_t)((uint16_t)((rd16(DP + 0x16) + rd16(DP + 0x7E)) << 8) | rd16(DP + 0x1A)));
+    wr16(0x0B02 + x, 0);
+    wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) + 8));
+    if(!((uint16_t)(rd16(DP + 0x80) - 0x0048) & 0x8000)) break;
+    slot = (uint16_t)(slot + 4);
+    at = (uint16_t)(at + 2);
+    tile = rd16(at);
+  } while(tile != 0);
+  wr16(DP + 0x74, slot);
+}
+
+// TG3000_ROUTINE($80:ACB6) shop_gauge_lines
+void shop_gauge_lines(void) {
+  wr16(DP + 0x16, shop_view_x(0x50));
+  uint16_t slot = rd16(DP + 0x74);
+  wr16(DP + 0x7E, 0);
+  do {
+    const uint32_t x = slot;
+    wr16(0x0902 + x, 0x032F);
+    uint16_t col = (uint16_t)(0x0040 + rd16(DP + 0x14));
+    if(col & 0xFF00) col |= 0xFF00;  // $80:ACD6, never run
+    wr16(0x0B00 + x, col);
+    wr16(DP + 0x1A, (uint16_t)(col & 0x00FF));
+    wr16(0x0900 + x, (uint16_t)((uint16_t)((rd16(DP + 0x16) + rd16(DP + 0x7E)) << 8) | rd16(DP + 0x1A)));
+    wr16(0x0B02 + x, 0);
+    slot = (uint16_t)(slot + 4);
+    wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x7E) + 8));
+  } while(rd16(DP + 0x7E) != 0x0020);
+  wr16(DP + 0x74, slot);
+  static const struct { uint16_t row, speed, string; } lines[12] = {
+    {0x00, 0x40, 0x44BA}, {0x05, 0x30, 0x44BA}, {0x10, 0x1E, 0x44C0}, {0x1C, 0x20, 0x44C4},
+    {0x0A, 0x16, 0x44CA}, {0x14, 0x4E, 0x44CE}, {0x12, 0x0E, 0x44DA}, {0x0C, 0x1B, 0x44E0},
+    {0x08, 0x14, 0x44CA}, {0x0F, 0x5F, 0x44CE}, {0x03, 0x13, 0x44DA}, {0x1D, 0x2F, 0x44E0},
+  };
+  for(int i = 0; i < 12; i++) {
+    wr16(DP + 0x7E, lines[i].row);
+    shop_gauge_line((uint8_t)lines[i].speed, 0x0020, lines[i].string);
+  }
+}
+
+// TG3000_ROUTINE($80:AC37) shop_item_view_j
+void shop_item_view_j(uint16_t entry) {
+  wr16(DP + 0x7A, rd16(DP + 0x16));
+  wr16(DP + 0x7C, entry);
+  shop_item_group(rd16(DP + 0x7C), 0, rd16(DP + 0x7A));
+  uint16_t frame = (uint16_t)((rd16(DP + 0x40) >> 8) & 0x000F);
+  shop_view_group(shop_view_x(0x50), rom16(0x81BD06 + (uint32_t)(uint16_t)(frame << 1)));
+  shop_gauge_lines();
+  const uint32_t y = (uint16_t)(rd16(DP + 0xC4) + 0x0110);
+  const uint32_t x = (uint16_t)(((rd16(DP + 0x40) >> 8) << 1) & 0x0006);
+  wr16(y + 0, rd16(0x4F5A + x));
+  wr16(y + 2, rd16(0x4F5C + x));
+  wr16(y + 4, rd16(0x4F5E + x));
+  wr16(y + 6, rd16(0x4F60 + x));
+  wr16(DP + 0x40, (uint16_t)(rd16(DP + 0x40) + 0x0040));
+  wr16(DP + 0x46, (uint16_t)(rd16(DP + 0x46) - 1));
+  shop_item_stage_step();
+}
+
+// TG3000_ROUTINE($80:AE4E) shop_item_view_i
+void shop_item_view_i(uint16_t entry) {
+  wr16(DP + 0x7A, rd16(DP + 0x16));
+  wr16(DP + 0x7C, entry);
+  shop_item_group(rd16(DP + 0x7C), 0, rd16(DP + 0x7A));
+  shop_view_group(shop_view_x(0x50), 0x4686);
+  uint16_t frame = (uint16_t)((rd16(DP + 0x40) >> 8) & 0x00FF);
+  shop_view_group(shop_view_x(0x50), rom16(0x81BD26 + (uint32_t)(uint16_t)(frame << 1)));
+  shop_view_spin(0x0F00);
+  shop_item_stage_step();
+}
+
+// TG3000_ROUTINE($80:AEBE) shop_item_view_h
+void shop_item_view_h(uint16_t entry) {
+  wr16(DP + 0x7A, rd16(DP + 0x16));
+  wr16(DP + 0x7C, entry);
+  shop_item_group(rd16(DP + 0x7C), 0, rd16(DP + 0x7A));
+  wr16(DP + 0x84, 0x257B);
+  shop_level_blocks();
+  uint16_t frame = (uint16_t)((rd16(DP + 0x40) >> 8) & 0x00FF);
+  shop_view_group(shop_view_x(0x50), rom16(0x81BD44 + (uint32_t)(uint16_t)(frame << 1)));
+  shop_view_group(shop_view_x(0x50), 0x46BA);
+  shop_view_spin(0x1E00);
+  shop_item_stage_step();
+}
+
+// TG3000_ROUTINE($80:A251) shop_item_dispatch_view
+void shop_item_dispatch_view(void) {
+  uint16_t entry = shop_item_entry(rd16(DP + 0x4A));
+  uint16_t bars = rom16(0x81A8A1 + (uint32_t)entry);
+  switch(rom16(0x81A897 + (uint32_t)entry)) {
+  case 0xA2CB: shop_item_view_a(bars); break;
+  case 0xA333: shop_item_view_f(bars); break;
+  case 0xA717: shop_item_view_d(bars); break;
+  case 0xA831: shop_item_view_b(bars); break;
+  case 0xAA15: shop_item_view_c(bars); break;
+  case 0xAB54: shop_item_view_e(bars); break;
+  case 0xABF6: shop_item_view_g(bars); break;
+  case 0xAEBE: shop_item_view_h(bars); break;
+  case 0xAE4E: shop_item_view_i(bars); break;
+  case 0xAC37: shop_item_view_j(bars); break;
+  default: break;  // the table holds no other view for lists 0-8
+  }
+}

@@ -1587,7 +1587,7 @@ CODE_808F4D:
     lda.w #$0018                ; $808F52
     sta.b $16                   ; $808F55
     jsr.w shop_item_price       ; $808F57
-    jsr.w $A251                 ; $808F5A
+    jsr.w shop_item_dispatch_view; $808F5A
     lda.b $4E                   ; $808F5D
 CODE_808F5F:
     cmp.w $0024                 ; $808F5F
@@ -2299,7 +2299,7 @@ CODE_809853:
     lda.w #$0018                ; $809858
     sta.b $16                   ; $80985B
     jsr.w shop_item_price       ; $80985D
-    jsr.w $A251                 ; $809860
+    jsr.w shop_item_dispatch_view; $809860
     jsr.w shop_item_dispatch_icon; $809863
     jsr.w shop_level_marks      ; $809866
     jsr.w func_809DD0           ; $809869
@@ -2577,7 +2577,7 @@ CODE_809ADF:
     sbc.w #$0006                ; $809AE7
     sta.b $4E                   ; $809AEA
     sta.b $16                   ; $809AEC
-    jsr.w $A251                 ; $809AEE
+    jsr.w shop_item_dispatch_view; $809AEE
     jsr.w shop_item_dispatch_icon; $809AF1
     jsr.w shop_level_marks      ; $809AF4
     jsr.w func_809DD0           ; $809AF7
@@ -2616,7 +2616,7 @@ CODE_809B37:
     sta.b $14                   ; $809B3F
     lda.w #$0018                ; $809B41
     sta.b $16                   ; $809B44
-    jsr.w $A251                 ; $809B46
+    jsr.w shop_item_dispatch_view; $809B46
     jsr.w shop_item_dispatch_icon; $809B49
     jsr.w shop_level_marks      ; $809B4C
     jsr.w func_809DD0           ; $809B4F
@@ -2643,7 +2643,7 @@ CODE_809B74:
     sta.b $14                   ; $809B7C
     lda.w #$0018                ; $809B7E
     sta.b $16                   ; $809B81
-    jsr.w $A251                 ; $809B83
+    jsr.w shop_item_dispatch_view; $809B83
     jsr.w shop_item_dispatch_icon; $809B86
     jsr.w shop_level_marks      ; $809B89
     jsr.w func_809DD0           ; $809B8C
@@ -2682,7 +2682,7 @@ CODE_809BCC:
     adc.w #$0006                ; $809BD4
     sta.b $4E                   ; $809BD7
     sta.b $16                   ; $809BD9
-    jsr.w $A251                 ; $809BDB
+    jsr.w shop_item_dispatch_view; $809BDB
     jsr.w shop_item_dispatch_icon; $809BDE
     jsr.w shop_level_marks      ; $809BE1
     jsr.w func_809DD0           ; $809BE4
@@ -3501,6 +3501,7 @@ CODE_80A24D:
     sta.b $44                   ; $80A24E
 CODE_80A250:
     rts                         ; $80A250
+shop_item_dispatch_view:
     lda.b $48                   ; $80A251
     asl a                       ; $80A253
     tax                         ; $80A254
@@ -3622,10 +3623,11 @@ shop_item_view_a:
     dec.b $3E                   ; $80A330 static
 CODE_80A332:
     rts                         ; $80A332
+shop_item_view_f:
     lda.b $16                   ; $80A333
     sta.b $7A                   ; $80A335
     sty.b $7C                   ; $80A337
-    jsr.w $A579                 ; $80A339
+    jsr.w shop_ring             ; $80A339
     ldy.b $7C                   ; $80A33C
     lda.w $A892,y               ; $80A33E
     tax                         ; $80A341
@@ -3668,7 +3670,7 @@ CODE_80A332:
     jsr.w sprite_group          ; $80A391
     inc.b $3E                   ; $80A394
     bpl CODE_80A39A             ; $80A396
-    incbin !baserom:$2398..$239A
+    dec.b $3E                   ; $80A398 static
 CODE_80A39A:
     rts                         ; $80A39A
     lda.b $16                   ; $80A39B
@@ -3914,6 +3916,7 @@ CODE_80A571:
     bne CODE_80A4F8             ; $80A574
     sty.b $74                   ; $80A576
     rts                         ; $80A578
+shop_ring:
     lda.w #$005E                ; $80A579
     sec                         ; $80A57C
     sbc.b $7A                   ; $80A57D
@@ -3928,14 +3931,14 @@ CODE_80A571:
     lda.b $40                   ; $80A58E
     bit.w #$0800                ; $80A590
     beq CODE_80A598             ; $80A593
-    jsr.w $A69F                 ; $80A595
+    jsr.w shop_ring_piece_front ; $80A595
 CODE_80A598:
     lda.b $40                   ; $80A598
     clc                         ; $80A59A
     adc.w #$0400                ; $80A59B
     bit.w #$0800                ; $80A59E
     beq CODE_80A5A6             ; $80A5A1
-    jsr.w $A6DB                 ; $80A5A3
+    jsr.w shop_ring_piece_back  ; $80A5A3
 CODE_80A5A6:
     lda.w #$2526                ; $80A5A6
     sta.w $0902,y               ; $80A5A9
@@ -3958,14 +3961,14 @@ CODE_80A5A6:
     lda.b $40                   ; $80A5CD
     bit.w #$0800                ; $80A5CF
     bne CODE_80A5D7             ; $80A5D2
-    jsr.w $A69F                 ; $80A5D4
+    jsr.w shop_ring_piece_front ; $80A5D4
 CODE_80A5D7:
     lda.b $40                   ; $80A5D7
     clc                         ; $80A5D9
     adc.w #$0400                ; $80A5DA
     bit.w #$0800                ; $80A5DD
     bne CODE_80A5E5             ; $80A5E0
-    jsr.w $A6DB                 ; $80A5E2
+    jsr.w shop_ring_piece_back  ; $80A5E2
 CODE_80A5E5:
     sty.b $74                   ; $80A5E5
     lda.b $40                   ; $80A5E7
@@ -3987,28 +3990,28 @@ CODE_80A5E5:
     lda.b $40                   ; $80A605
     bit.w #$0800                ; $80A607
     beq CODE_80A60F             ; $80A60A
-    jsr.w $A69F                 ; $80A60C
+    jsr.w shop_ring_piece_front ; $80A60C
 CODE_80A60F:
     lda.b $40                   ; $80A60F
     clc                         ; $80A611
     adc.w #$0400                ; $80A612
     bit.w #$0800                ; $80A615
     beq CODE_80A61D             ; $80A618
-    jsr.w $A6DB                 ; $80A61A
+    jsr.w shop_ring_piece_back  ; $80A61A
 CODE_80A61D:
     lda.b $40                   ; $80A61D
     clc                         ; $80A61F
     adc.w #$0800                ; $80A620
     bit.w #$0800                ; $80A623
     beq CODE_80A62B             ; $80A626
-    jsr.w $A69F                 ; $80A628
+    jsr.w shop_ring_piece_front ; $80A628
 CODE_80A62B:
     lda.b $40                   ; $80A62B
     clc                         ; $80A62D
     adc.w #$0C00                ; $80A62E
     bit.w #$0800                ; $80A631
     beq CODE_80A639             ; $80A634
-    jsr.w $A6DB                 ; $80A636
+    jsr.w shop_ring_piece_back  ; $80A636
 CODE_80A639:
     lda.w #$2526                ; $80A639
     sta.w $0902,y               ; $80A63C
@@ -4031,28 +4034,28 @@ CODE_80A639:
     lda.b $40                   ; $80A660
     bit.w #$0800                ; $80A662
     bne CODE_80A66A             ; $80A665
-    jsr.w $A69F                 ; $80A667
+    jsr.w shop_ring_piece_front ; $80A667
 CODE_80A66A:
     lda.b $40                   ; $80A66A
     clc                         ; $80A66C
     adc.w #$0400                ; $80A66D
     bit.w #$0800                ; $80A670
     bne CODE_80A678             ; $80A673
-    jsr.w $A6DB                 ; $80A675
+    jsr.w shop_ring_piece_back  ; $80A675
 CODE_80A678:
     lda.b $40                   ; $80A678
     clc                         ; $80A67A
     adc.w #$0800                ; $80A67B
     bit.w #$0800                ; $80A67E
     bne CODE_80A686             ; $80A681
-    jsr.w $A69F                 ; $80A683
+    jsr.w shop_ring_piece_front ; $80A683
 CODE_80A686:
     lda.b $40                   ; $80A686
     clc                         ; $80A688
     adc.w #$0C00                ; $80A689
     bit.w #$0800                ; $80A68C
     bne CODE_80A694             ; $80A68F
-    jsr.w $A6DB                 ; $80A691
+    jsr.w shop_ring_piece_back  ; $80A691
 CODE_80A694:
     sty.b $74                   ; $80A694
     lda.b $40                   ; $80A696
@@ -4060,6 +4063,7 @@ CODE_80A694:
     adc.w #$0040                ; $80A699
     sta.b $40                   ; $80A69C
     rts                         ; $80A69E
+shop_ring_piece_front:
     xba                         ; $80A69F
     and.w #$000F                ; $80A6A0
     sta.b $16                   ; $80A6A3
@@ -4089,6 +4093,7 @@ CODE_80A694:
     iny                         ; $80A6D8
     iny                         ; $80A6D9
     rts                         ; $80A6DA
+shop_ring_piece_back:
     xba                         ; $80A6DB
     and.w #$000F                ; $80A6DC
     sta.b $16                   ; $80A6DF
@@ -4749,6 +4754,7 @@ shop_item_view_g:
     dec.b $3E                   ; $80AC34 static
 CODE_80AC36:
     rts                         ; $80AC36
+shop_item_view_j:
     lda.b $16                   ; $80AC37
     sta.b $7A                   ; $80AC39
     sty.b $7C                   ; $80AC3B
@@ -4780,7 +4786,7 @@ CODE_80AC36:
     sta.b $18                   ; $80AC6F
     lda.w #$007E                ; $80AC71
     jsr.w sprite_group          ; $80AC74
-    jsr.w $ACB6                 ; $80AC77
+    jsr.w shop_gauge_lines      ; $80AC77
     lda.b $C4                   ; $80AC7A
     clc                         ; $80AC7C
     adc.w #$0110                ; $80AC7D
@@ -4805,9 +4811,10 @@ CODE_80AC36:
     dec.b $46                   ; $80ACAD
     inc.b $3E                   ; $80ACAF
     bpl CODE_80ACB5             ; $80ACB1
-    incbin !baserom:$2CB3..$2CB5
+    dec.b $3E                   ; $80ACB3 static
 CODE_80ACB5:
     rts                         ; $80ACB5
+shop_gauge_lines:
     lda.w #$0050                ; $80ACB6
     sec                         ; $80ACB9
     sbc.b $7A                   ; $80ACBA
@@ -4824,7 +4831,7 @@ CODE_80ACC5:
     adc.b $14                   ; $80ACCF
     bit.w #$FF00                ; $80ACD1
     beq CODE_80ACD9             ; $80ACD4
-    incbin !baserom:$2CD6..$2CD9
+    ora.w #$FF00                ; $80ACD6 static
 CODE_80ACD9:
     sta.w $0B00,x               ; $80ACD9
     and.w #$00FF                ; $80ACDC
@@ -4857,75 +4864,76 @@ CODE_80ACD9:
     lda.w #$0040                ; $80AD10
     ldy.w #$0020                ; $80AD13
     ldx.w #$44BA                ; $80AD16
-    jsr.w $ADD9                 ; $80AD19
+    jsr.w shop_gauge_line       ; $80AD19
     lda.w #$0005                ; $80AD1C
     sta.b $7E                   ; $80AD1F
     lda.w #$0030                ; $80AD21
     ldy.w #$0020                ; $80AD24
     ldx.w #$44BA                ; $80AD27
-    jsr.w $ADD9                 ; $80AD2A
+    jsr.w shop_gauge_line       ; $80AD2A
     lda.w #$0010                ; $80AD2D
     sta.b $7E                   ; $80AD30
     lda.w #$001E                ; $80AD32
     ldy.w #$0020                ; $80AD35
     ldx.w #$44C0                ; $80AD38
-    jsr.w $ADD9                 ; $80AD3B
+    jsr.w shop_gauge_line       ; $80AD3B
     lda.w #$001C                ; $80AD3E
     sta.b $7E                   ; $80AD41
     lda.w #$0020                ; $80AD43
     ldy.w #$0020                ; $80AD46
     ldx.w #$44C4                ; $80AD49
-    jsr.w $ADD9                 ; $80AD4C
+    jsr.w shop_gauge_line       ; $80AD4C
     lda.w #$000A                ; $80AD4F
     sta.b $7E                   ; $80AD52
     lda.w #$0016                ; $80AD54
     ldy.w #$0020                ; $80AD57
     ldx.w #$44CA                ; $80AD5A
-    jsr.w $ADD9                 ; $80AD5D
+    jsr.w shop_gauge_line       ; $80AD5D
     lda.w #$0014                ; $80AD60
     sta.b $7E                   ; $80AD63
     lda.w #$004E                ; $80AD65
     ldy.w #$0020                ; $80AD68
     ldx.w #$44CE                ; $80AD6B
-    jsr.w $ADD9                 ; $80AD6E
+    jsr.w shop_gauge_line       ; $80AD6E
     lda.w #$0012                ; $80AD71
     sta.b $7E                   ; $80AD74
     lda.w #$000E                ; $80AD76
     ldy.w #$0020                ; $80AD79
     ldx.w #$44DA                ; $80AD7C
-    jsr.w $ADD9                 ; $80AD7F
+    jsr.w shop_gauge_line       ; $80AD7F
     lda.w #$000C                ; $80AD82
     sta.b $7E                   ; $80AD85
     lda.w #$001B                ; $80AD87
     ldy.w #$0020                ; $80AD8A
     ldx.w #$44E0                ; $80AD8D
-    jsr.w $ADD9                 ; $80AD90
+    jsr.w shop_gauge_line       ; $80AD90
     lda.w #$0008                ; $80AD93
     sta.b $7E                   ; $80AD96
     lda.w #$0014                ; $80AD98
     ldy.w #$0020                ; $80AD9B
     ldx.w #$44CA                ; $80AD9E
-    jsr.w $ADD9                 ; $80ADA1
+    jsr.w shop_gauge_line       ; $80ADA1
     lda.w #$000F                ; $80ADA4
     sta.b $7E                   ; $80ADA7
     lda.w #$005F                ; $80ADA9
     ldy.w #$0020                ; $80ADAC
     ldx.w #$44CE                ; $80ADAF
-    jsr.w $ADD9                 ; $80ADB2
+    jsr.w shop_gauge_line       ; $80ADB2
     lda.w #$0003                ; $80ADB5
     sta.b $7E                   ; $80ADB8
     lda.w #$0013                ; $80ADBA
     ldy.w #$0020                ; $80ADBD
     ldx.w #$44DA                ; $80ADC0
-    jsr.w $ADD9                 ; $80ADC3
+    jsr.w shop_gauge_line       ; $80ADC3
     lda.w #$001D                ; $80ADC6
     sta.b $7E                   ; $80ADC9
     lda.w #$002F                ; $80ADCB
     ldy.w #$0020                ; $80ADCE
     ldx.w #$44E0                ; $80ADD1
-    jsr.w $ADD9                 ; $80ADD4
+    jsr.w shop_gauge_line       ; $80ADD4
     plb                         ; $80ADD7
     rts                         ; $80ADD8
+shop_gauge_line:
     sep.b #$20                  ; $80ADD9
     pha                         ; $80ADDB
     lda.b $46                   ; $80ADDC
@@ -4987,6 +4995,7 @@ CODE_80AE1A:
 CODE_80AE4B:
     stx.b $74                   ; $80AE4B
     rts                         ; $80AE4D
+shop_item_view_i:
     lda.b $16                   ; $80AE4E
     sta.b $7A                   ; $80AE50
     sty.b $7C                   ; $80AE52
@@ -5034,14 +5043,15 @@ CODE_80AE4B:
     adc.w #$0040                ; $80AEAA
     cmp.w #$0F00                ; $80AEAD
     bcc CODE_80AEB5             ; $80AEB0
-    incbin !baserom:$2EB2..$2EB5
+    sbc.w #$0F00                ; $80AEB2 static
 CODE_80AEB5:
     sta.b $40                   ; $80AEB5
     inc.b $3E                   ; $80AEB7
     bpl CODE_80AEBD             ; $80AEB9
-    incbin !baserom:$2EBB..$2EBD
+    dec.b $3E                   ; $80AEBB static
 CODE_80AEBD:
     rts                         ; $80AEBD
+shop_item_view_h:
     lda.b $16                   ; $80AEBE
     sta.b $7A                   ; $80AEC0
     sty.b $7C                   ; $80AEC2
@@ -5058,7 +5068,7 @@ CODE_80AEBD:
     jsr.w sprite_group          ; $80AED9
     lda.w #$257B                ; $80AEDC
     sta.b $84                   ; $80AEDF
-    jsr.w $AF36                 ; $80AEE1
+    jsr.w shop_level_blocks     ; $80AEE1
     lda.w #$0050                ; $80AEE4
     sec                         ; $80AEE7
     sbc.b $7A                   ; $80AEE8
@@ -5092,14 +5102,15 @@ CODE_80AEBD:
     adc.w #$0040                ; $80AF22
     cmp.w #$1E00                ; $80AF25
     bcc CODE_80AF2D             ; $80AF28
-    incbin !baserom:$2F2A..$2F2D
+    sbc.w #$1E00                ; $80AF2A static
 CODE_80AF2D:
     sta.b $40                   ; $80AF2D
     inc.b $3E                   ; $80AF2F
     bpl CODE_80AF35             ; $80AF31
-    incbin !baserom:$2F33..$2F35
+    dec.b $3E                   ; $80AF33 static
 CODE_80AF35:
     rts                         ; $80AF35
+shop_level_blocks:
     stz.b $80                   ; $80AF36
     ldy.b $74                   ; $80AF38
     stz.b $7E                   ; $80AF3A
@@ -5121,7 +5132,18 @@ CODE_80AF47:
     sta.b $80                   ; $80AF57
     cmp.w #$002A                ; $80AF59
     bne CODE_80AF47             ; $80AF5C
-    incbin !baserom:$2F5E..$2F76
+    lda.b $80                   ; $80AF5E static
+    sec                         ; $80AF60 static
+    sbc.w #$0003                ; $80AF61 static
+    sta.b $80                   ; $80AF64 static
+    lda.b $7E                   ; $80AF66 static
+    sec                         ; $80AF68 static
+    sbc.w #$0003                ; $80AF69 static
+    bcc CODE_80AF71             ; $80AF6C static
+    jmp.w $AFE0                 ; $80AF6E static
+CODE_80AF71:
+    adc.w #$0006                ; $80AF71 static
+    sta.b $7E                   ; $80AF74 static
 CODE_80AF76:
     lda.w #$0062                ; $80AF76
     sec                         ; $80AF79
@@ -5544,7 +5566,7 @@ shop_list_locked:
     adc.b $4A                   ; $80B360
     bpl CODE_80B366             ; $80B362
     sec                         ; $80B364 static
-    incbin !baserom:$3365..$3366
+    rts                         ; $80B365 static
 CODE_80B366:
     cmp.w #$1800                ; $80B366
     beq CODE_80B36F             ; $80B369

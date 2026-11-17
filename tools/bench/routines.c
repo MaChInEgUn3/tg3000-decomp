@@ -3015,6 +3015,15 @@ static void call_shop_item_view_c(const Regs* in, Regs* out) { (void)out; shop_i
 static void call_shop_item_view_d(const Regs* in, Regs* out) { (void)out; shop_item_view_d(in->y); }
 static void call_shop_item_view_e(const Regs* in, Regs* out) { (void)out; shop_item_view_e(in->y); }
 static void call_shop_item_view_g(const Regs* in, Regs* out) { (void)out; shop_item_view_g(in->y); }
+// lists 6-8's views and their helpers: only the view dispatch reaches them (rows for when a
+// movie does); no register outputs
+static void call_shop_item_view_h(const Regs* in, Regs* out) { (void)out; shop_item_view_h(in->y); }
+static void call_shop_item_view_i(const Regs* in, Regs* out) { (void)out; shop_item_view_i(in->y); }
+static void call_shop_item_view_j(const Regs* in, Regs* out) { (void)out; shop_item_view_j(in->y); }
+static void call_shop_level_blocks(const Regs* in, Regs* out) { (void)in; (void)out; shop_level_blocks(); }
+static void call_shop_gauge_lines(const Regs* in, Regs* out) { (void)in; (void)out; shop_gauge_lines(); }
+static void call_shop_gauge_line(const Regs* in, Regs* out) { (void)out; shop_gauge_line((uint8_t)in->a, in->y, in->x); }
+static void call_shop_item_dispatch_view(const Regs* in, Regs* out) { (void)in; (void)out; shop_item_dispatch_view(); }
 // no register outputs: every caller reloads A, X and Y ($80:9E49, $80:9B99, LDA #2)
 static void call_shop_item_icon_draw(const Regs* in, Regs* out) { (void)out; shop_item_icon_draw(in->x); }
 // A = $B149 (N set, Z clear), X = D+$5E + 16, Y = 0; C and V kept
@@ -3162,6 +3171,35 @@ static void call_shop_item_icon_2(const Regs* in, Regs* out) { shopItemIconOut(i
 static void call_shop_item_icon_3(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_3, 2, 0xBC76); }
 static void call_shop_item_icon_4(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_4, 3, 0xBCBE); }
 static void call_shop_item_icon_5(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_5, 4, 0xBC9A); }
+static void call_shop_item_view_f(const Regs* in, Regs* out) { (void)out; shop_item_view_f(in->y); }
+// the ring: no register outputs (its view reloads them); its pieces: A = 0, X = the frame
+// x 6, Y = slot + 4 (N/Z of the INY), C and V of the y position's ADC
+static void call_shop_ring(const Regs* in, Regs* out) { (void)in; (void)out; shop_ring(); }
+static void ringPieceOut(const Regs* in, Regs* out, uint32_t table, uint16_t slot) {
+  uint16_t x = (uint16_t)(((in->a >> 8) & 0x000F) * 6);
+  out->a = 0;
+  out->x = x;
+  out->y = slot;
+  setNZ16(out, slot);
+  (void)table;
+}
+static void call_shop_ring_piece_front(const Regs* in, Regs* out) {
+  uint16_t base = rd16(DP + 0x18), add = rd16(0x4D0E + (uint32_t)(((in->a >> 8) & 0x000F) * 6));
+  ringPieceOut(in, out, 0x4D0A, shop_ring_piece_front(in->a, in->y));
+  setAdc16(out, base, add);
+}
+static void call_shop_ring_piece_back(const Regs* in, Regs* out) {
+  uint16_t base = rd16(DP + 0x18), add = rd16(0x4D6E + (uint32_t)(((in->a >> 8) & 0x000F) * 6));
+  ringPieceOut(in, out, 0x4D6A, shop_ring_piece_back(in->a, in->y));
+  setAdc16(out, base, add);
+}
+static void fuzz_shop_ring(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->y = (uint16_t)((rnd() % 0x40) * 4);
+  wr16ram(ram, DP + 0x74, r->y);
+  static const uint32_t fields[] = {0x14, 0x18, 0x1A, 0x40, 0x7A, 0xE8};
+  for(unsigned i = 0; i < sizeof fields / sizeof fields[0]; i++) wr16ram(ram, DP + fields[i], (uint16_t)rnd());
+  for(uint32_t a = 0x4D0A; a < 0x4DCA; a++) ram[a] = (uint8_t)rnd();
+}
 static void fuzz_shop_bars(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 // an item whose view is this handler (its word at $81:A897 + the entry): its bar entry in Y
 // (from $81:A8A1), the stage sometimes at $7FFF (the never-run stop), the bars' inputs
@@ -3182,6 +3220,23 @@ static void fuzz_shop_item_view_a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
 static void fuzz_shop_item_view_b(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA831); }
 static void fuzz_shop_item_view_c(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xAA15); }
 static void fuzz_shop_item_view_d(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA717); }
+// the view dispatch: any list 0-8 (0 and 6-8 one row each), the bars' inputs as the views',
+// the stage sometimes at its stop, and every table a view reads: the wave ($7E:4E1A), the
+// ring ($7E:4D0A), the gauge's palette ($7E:4F5A) and counter (D+$46), the spin (D+$40)
+static void fuzz_shop_item_dispatch_view(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_shop_bars(r, ram, rnd);
+  uint16_t list = (uint16_t)(rnd() % 9);
+  wr16ram(ram, DP + 0x48, list);
+  wr16ram(ram, DP + 0x4A, (uint16_t)(list == 0 || list >= 6 ? 0 : rnd() % 5));
+  wr16ram(ram, DP + 0x16, (uint16_t)rnd());
+  wr16ram(ram, DP + 0xC4, (uint16_t)(0x0100 + (rnd() % 0x10) * 0x40));
+  if((rnd() & 7) == 0) wr16ram(ram, DP + 0x3E, 0x7FFF);
+  wr16ram(ram, DP + 0x40, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x46, (uint16_t)rnd());
+  for(uint32_t a = 0x4D0A; a < 0x4DCA; a++) ram[a] = (uint8_t)rnd();
+  for(uint32_t a = 0x4E1A; a < 0x4EDA; a++) ram[a] = (uint8_t)rnd();
+  for(uint32_t a = 0x4F5A; a < 0x4F62; a++) ram[a] = (uint8_t)rnd();
+}
 // list 0's view: its one row
 static void fuzz_shop_item_view_g(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_shop_item_view_of(r, ram, rnd, 0xA2CB);  // the bars and the rest
@@ -3224,6 +3279,11 @@ static void fuzz_shop_item_icon_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   static const uint16_t icons[] = {0xBC2E, 0xBC52, 0xBC76, 0xBCBE, 0xBC9A};
   fuzz_shop_item_icon(r, ram, rnd);
   r->x = rom16(0x810000 + (uint32_t)icons[rnd() % 5] + (uint32_t)((rnd() % 6) << 1));
+}
+static void fuzz_shop_item_view_f(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_shop_item_view_of(r, ram, rnd, 0xA333);
+  wr16ram(ram, DP + 0x40, (uint16_t)rnd());
+  for(uint32_t a = 0x4D0A; a < 0x4DCA; a++) ram[a] = (uint8_t)rnd();
 }
 static void fuzz_shop_item_view_e(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_shop_item_view_of(r, ram, rnd, 0xAB54);
@@ -4415,6 +4475,28 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_string_space_fours, ALL_OUTPUTS, .fuzz = fuzz_string_space_fours},
   {.name = "table_062a_fill", .entry = 0x8A8AE7, .end = 0x8A8B0A, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_table_062a_fill, ALL_OUTPUTS, .fuzz = fuzz_table_062a_fill},
+  {.name = "shop_item_view_f", .entry = 0x80A333, .end = 0x80A39B, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_f, .fuzz = fuzz_shop_item_view_f},
+  {.name = "shop_ring", .entry = 0x80A579, .end = 0x80A5F0, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_shop_ring, .fuzz = fuzz_shop_ring},
+  {.name = "shop_ring_piece_front", .entry = 0x80A69F, .end = 0x80A6DB, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_shop_ring_piece_front, ALL_OUTPUTS, .fuzz = fuzz_shop_ring},
+  {.name = "shop_ring_piece_back", .entry = 0x80A6DB, .end = 0x80A717, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_shop_ring_piece_back, ALL_OUTPUTS, .fuzz = fuzz_shop_ring},
+  {.name = "shop_item_dispatch_view", .entry = 0x80A251, .end = 0x80A26E, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_item_dispatch_view, .fuzz = fuzz_shop_item_dispatch_view},
+  {.name = "shop_item_view_h", .entry = 0x80AEBE, .end = 0x80AF36, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_h},
+  {.name = "shop_item_view_i", .entry = 0x80AE4E, .end = 0x80AEBE, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_i},
+  {.name = "shop_item_view_j", .entry = 0x80AC37, .end = 0x80ACB6, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_j},
+  {.name = "shop_level_blocks", .entry = 0x80AF36, .end = 0x80AFE1, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .call = call_shop_level_blocks},
+  {.name = "shop_gauge_lines", .entry = 0x80ACB6, .end = 0x80ADD9, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .call = call_shop_gauge_lines},
+  {.name = "shop_gauge_line", .entry = 0x80ADD9, .end = 0x80AE4E, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x7E, .call = call_shop_gauge_line},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -270,3 +270,14 @@ func    8080E4   interrupt_vectors_init ; JML vectors at $0000/$0004, NMI target
 func    8A9C86   hdma_table_0d00_init ; HDMA table at $0D00 -> src/misc.c
 func    8ABF2A   string_space_fours  ; copy $0D40 to $0D60 with a space every 4 bytes -> src/misc.c
 func    8A8AE7   table_062a_fill     ; 12 words at $062A/$072A from D+$3C/$3E -> src/misc.c
+func    80A333   shop_item_view_f    ; item view: the spinning ring, a group, segments, two groups -> src/shop.c
+func    80A579   shop_ring           ; the spinning ring: two pieces around a centre -> src/shop.c
+func    80A69F   shop_ring_piece_front ; a ring piece from $7E:4D0A -> src/shop.c
+func    80A6DB   shop_ring_piece_back ; a ring piece from $7E:4D6A -> src/shop.c
+func    80A251   shop_item_dispatch_view ; the item's view by list and row (table $81:A897) -> src/shop.c
+func    80AEBE   shop_item_view_h    ; item view of list 6: group, level blocks, two frames -> src/shop.c
+func    80AE4E   shop_item_view_i    ; item view of list 7: group, two frames -> src/shop.c
+func    80AC37   shop_item_view_j    ; item view of list 8: group, frame, gauge, palette -> src/shop.c
+func    80AF36   shop_level_blocks   ; a row of 2x2 blocks filling with the stage -> src/shop.c
+func    80ACB6   shop_gauge_lines    ; the gauge: four sprites and twelve lines -> src/shop.c
+func    80ADD9   shop_gauge_line     ; one gauge line, its column from the PPU product -> src/shop.c

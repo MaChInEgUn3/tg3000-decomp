@@ -140,5 +140,52 @@ bool shop_list_locked(void);
 // unless locked; a step clears D+$4E and plays sound $11 (func_80E4C5).
 void shop_list_prev(void);
 void shop_list_next(void);
+// - shop_item_view_f ($80:A333): the spinning ring (shop_ring), a group, segments
+//   (tile $2338), two groups.
+void shop_item_view_f(uint16_t entry);
+
+// One sprite of the spinning ring at slot `slot`: its frame (bits 8-11 of `angle`) picks a
+// 6-byte entry (tile, x, y) of $7E:4D0A (front) or $7E:4D6A (back), placed from D+$18 (y)
+// and D+$1A (row). Returns slot + 4. ($80:A69F, $80:A6DB)
+uint16_t shop_ring_piece_front(uint16_t angle, uint16_t slot);
+uint16_t shop_ring_piece_back(uint16_t angle, uint16_t slot);
+
+// The spinning ring ($80:A579): two pieces (front at angle D+$40, back at D+$40 + $400; the
+// four-piece ring is $80:A5F0) around a centre
+// sprite (tile $2526) at D+$14 + $2B, row $5E - D+$7A + D+$E8; the pieces with bit 11
+// set first (behind), the others after; then D+$40 += $80.
+void shop_ring(void);
+
+// The views of lists 6-8 (only the item dispatch reaches them):
+// - shop_item_view_h ($80:AEBE, list 6): a group, the level blocks (shop_level_blocks,
+//   tile $257B), the frame of $81:BD44 by D+$40's high byte, the group $7E:46BA; D+$40
+//   + $40, wrapping at $1E00;
+// - shop_item_view_i ($80:AE4E, list 7): a group, the group $7E:4686, the frame of
+//   $81:BD26; D+$40 + $40, wrapping at $0F00;
+// - shop_item_view_j ($80:AC37, list 8): a group, the frame of $81:BD06 (by bits 8-11 of
+//   D+$40), the gauge (shop_gauge_lines), four palette words of $7E:4F5A + (bits 8-9 of
+//   D+$40) * 2 to $0110 + D+$C4; D+$40 + $40, D+$46 - 1.
+// Each ends with the stage step.
+void shop_item_view_h(uint16_t entry);
+void shop_item_view_i(uint16_t entry);
+void shop_item_view_j(uint16_t entry);
+
+// $80:AF36: a row of 2x2 blocks filling with the stage: (D+$3E / 2 - $10) / 6 blocks full,
+// the next at tile D+$84 + 2 * the remainder; 7 blocks, the last half a block over.
+void shop_level_blocks(void);
+
+// $80:ACB6: the gauge: four sprites (tile $032F) at D+$14 + $40, then lines of
+// sprites from the strings at $7E:44BA-$7E:44E0 (shop_gauge_line); twelve lines in all.
+void shop_gauge_lines(void);
+
+// $80:ADD9: one line of the gauge: starting column ((y + D+$46 (15 bits) * `speed`) >> 5
+// & $7F) - $20, the tiles of the zero-ended string at $7E:`string`, eight pixels apart,
+// up to column $48; row D+$7E. The PPU multiplies: matrix A = D+$46 & $7FFF, matrix B =
+// `speed` in its high byte.
+void shop_gauge_line(uint8_t speed, uint16_t y, uint16_t string);
+
+// The item dispatch ($80:A251): the current item's view by the table at $81:A897 (list
+// D+$48, row D+$4A), called with its bar entry ($81:A8A1).
+void shop_item_dispatch_view(void);
 
 #endif

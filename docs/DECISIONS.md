@@ -1789,6 +1789,41 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The item screen's view dispatch, all ten views (shop-12, 2026-11-17)
+
+- **`shop_item_dispatch_view` ($80:A251):** the current item's view from the table at
+  `$81:A897`, called with its bar entry (`$81:A8A1`). The views return to its own `RTS`
+  at `$80:A26D`, so its extent runs to `$80:A26E`.
+- **Ten views in all:** list 0 `$80:ABF6`; list 1 `$80:A2CB` (row 4 `$80:A333`); lists 2-5
+  `$80:A717`, `$80:A831`, `$80:AB54`, `$80:AA15`; lists 6-8 `$80:AEBE`, `$80:AE4E`,
+  `$80:AC37`.
+- **The four views no movie runs**, and what they call, are new C:
+  - `shop_item_view_f` ($80:A333), `shop_ring` ($80:A579) and its pieces `$80:A69F` and
+    `$80:A6DB`;
+  - `shop_item_view_h` ($80:AEBE) with `shop_level_blocks` ($80:AF36), a row of 2x2
+    blocks that fills with the stage;
+  - `shop_item_view_i` ($80:AE4E);
+  - `shop_item_view_j` ($80:AC37) with `shop_gauge_lines` ($80:ACB6) and
+    `shop_gauge_line` ($80:ADD9). Each gauge line's starting column comes from the PPU's
+    Mode 7 product (`$0146` & `$7FFF` times a speed byte), and the C sets matrix A and B
+    as the original does.
+- **They are checked through the dispatch's fuzz,** which draws all nine lists (list 1
+  row 4 one case in about 45). Their own rows stay unreached until a movie opens those
+  items, and they count as verified only then.
+- **The fuzz caught a real error:** the ring parked earlier had been read from `$80:A5F0`
+  (a four-piece ring), while `$80:A333` calls `$80:A579`, which draws two pieces. 15 of
+  500 cases differed in the sprite slot `$0174`.
+- **Static code:** the never-run tails of these views are decoded and listed:
+  - the spins' wraps (`SBC #$1E00`, `SBC #$0F00`);
+  - the stops at `$7FFF`;
+  - the gauge's `ORA #$FF00`;
+  - `shop_level_blocks`' all-full branch (`$80:AF5E-AF75`).
+
+  `map/static_code.txt`'s end is exclusive: `shop_list_locked`'s range now takes its
+  `RTS` too (`$80:B364-B366`).
+- **Results:** live 4,000/4,000, fuzz 500/500, paths 19/19. The parked patch
+  (`docs/parked/`) is gone, its C now in `src/shop.c`.
+
 ## List 0's view and four more leaves (leaves-11, 2026-11-17)
 
 - **The item screen has a view per list, nine in all** (`$81:A897`):
@@ -1880,10 +1915,9 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     cannot reach.
 - **Parked, not committed as rows:**
   - the C written for view `$80:A333` and for the spinning ring it draws (`$80:A579`,
-    and the pieces `$80:A69F`/`$80:A6DB`) is kept as
-    `docs/parked/shop_ring_view_f.patch`, unverified;
-  - it waits for a movie that reaches a later shop (tas-2, or the explorer started from
-    a later save).
+    and the pieces `$80:A69F`/`$80:A6DB`) was kept as a patch, unverified;
+  - it went in with shop-12, checked through the view dispatch's fuzz; the ring was then
+    corrected to two pieces.
 
 ## Two-task screens (task-1, 2026-11-16)
 

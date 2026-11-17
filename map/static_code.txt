@@ -34,5 +34,13 @@
 80:AA56 80:AA58 m16x16 ; shop_item_view_c: the same stop at $7FFF ($80:AA54 BPL): same
 80:A7E1 80:A7E3 m16x16 ; shop_item_view_d: the stop at $7FFF ($80:A7DF BPL): as shop_item_view_a's
 80:ABF3 80:ABF5 m16x16 ; shop_item_view_e: the stop at $7FFF ($80:ABF1 BPL): as shop_item_view_a's
-80:B364 80:B365 m16x16 ; shop_list_locked: SEC, RTS when the key is negative ($80:B362 BPL)
+80:B364 80:B366 m16x16 ; shop_list_locked: SEC, RTS when the key is negative ($80:B362 BPL)
 80:AC34 80:AC36 m16x16 ; shop_item_view_g: the stop at $7FFF ($80:AC32 BPL): as shop_item_view_a's
+80:A398 80:A39A m16x16 ; shop_item_view_f: the stop at $7FFF ($80:A396 BPL): as shop_item_view_a's
+80:AF2A 80:AF2D m16x16 ; shop_item_view_h: SBC #$1E00, the spin's wrap ($80:AF28 BCC)
+80:AF33 80:AF35 m16x16 ; shop_item_view_h: the stop at $7FFF ($80:AF31 BPL)
+80:AEB2 80:AEB5 m16x16 ; shop_item_view_i: SBC #$0F00, the spin's wrap ($80:AEB0 BCC)
+80:AEBB 80:AEBD m16x16 ; shop_item_view_i: the stop at $7FFF ($80:AEB9 BPL)
+80:ACB3 80:ACB5 m16x16 ; shop_item_view_j: the stop at $7FFF ($80:ACB1 BPL)
+80:ACD6 80:ACD9 m16x16 ; shop_gauge_lines: ORA #$FF00 for a column past 255 ($80:ACD4 BEQ)
+80:AF5E 80:AF76 m16x16 ; shop_level_blocks: all seven blocks full ($80:AF5C BNE)
