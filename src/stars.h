@@ -23,4 +23,8 @@ uint16_t star_random_y(uint16_t slot);
 // offset ($200).
 uint16_t star_layers_init(void);
 
+// $80:DACF: every star (8-byte slots at $0F00, 64 of them) moves: position ($0F06) minus
+// speed ($0F00), wrapping by + $8800 when it passes 0.
+void star_layers_move(void);
+
 #endif

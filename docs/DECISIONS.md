@@ -1789,6 +1789,32 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Small leaves the movies reach (leaves-9, 2026-11-17)
+
+- **Why these:** the shop's remaining handlers wait for the parked dispatch `$80:A251`.
+  This unit takes routines from `tools/portable.py` that the 60k or the shop movie runs.
+- **The shop list cursor:**
+  - `shop_list_locked` ($80:B359): (`$0148` * 8) byte-swapped plus `$014A`; carry
+    set above `$1800` or when negative. The negative exit (`SEC`, `RTS` at
+    `$80:B364`) is static code;
+  - `shop_list_prev` ($80:B333) and `shop_list_next` ($80:B345) step `$0148` within 0 and
+    `$01F0` unless locked, clearing `$014E` and playing sound `$11` (`func_80E4C5`).
+  - Their N and Z are live after the return. A step's `DEC`/`INC` acts on memory, and
+    `func_80E4C5`'s `PLA` gives back the old `$0148`: the first adapter got that wrong
+    and a live sample caught it.
+- **`star_layers_move` ($80:DACF):** each of the 64 stars' position (`$0F06`) minus its
+  speed (`$0F00`), + `$8800` on a borrow.
+- **The fade to black** (target `$0198` = 0, step `$0196` = -$80, run by the NMI's
+  fade in `nmi_prologue`):
+  - `fade_out_wait` ($8A:BAE3): start it, wait until the step is back to 0. It is a
+    `waitsForInterrupts` row with no fuzz;
+  - `fade_out_on_confirm` ($8A:9675): a new A/B/X/Y press (`$C0C0`) on controller 1
+    (`$000E`) or the first multitap pad (`$0012`) is taken and starts it;
+  - `fade_out_on_confirm_once` ($8A:8181): the same while `$018C` is 0, then counts it
+    up. Its extent skips `$8A:8196-81AF` (not its code), which the first row counted as
+    paths never run, via `alsoIn`.
+- **Two one-liners:** `func_8A99D0` (`$0166` = `$28`) and `func_8A96C2` (`$0140` + 1).
+
 ## Steering the explorer; two item views parked (explore-2, 2026-11-17)
 
 - **The last two item views** belong to one item each: `$80:A333` to list 1, row 4, and

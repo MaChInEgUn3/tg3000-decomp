@@ -3,6 +3,8 @@
 
 #include "dsp4.h"
 #include "frame.h"
+#include "pads.h"
+#include "platform.h"
 #include "sprites.h"
 #include "video_dma.h"
 #include "tg3000.h"
@@ -1151,3 +1153,45 @@ uint16_t password_encode(uint16_t bits, uint16_t* x, uint16_t* y) {
   return last;
 }
 
+
+static void fade_out_start(void) {
+  wr16(0x0198, 0);
+  wr16(0x0196, 0xFF80);
+}
+
+// TG3000_ROUTINE($8A:BAE3) fade_out_wait
+void fade_out_wait(void) {
+  fade_out_start();
+  while(rd16(0x0196) != 0) platform_wait_vblank();
+}
+
+// a new A, B, X or Y press of the pad pair at `pressed`, taken
+static bool take_confirm(uint32_t pressed) {
+  uint16_t bits = rd16(pressed);
+  wr16(pressed, (uint16_t)(bits & ~0xC0C0));
+  return (bits & 0xC0C0) != 0;
+}
+
+// TG3000_ROUTINE($8A:9675) fade_out_on_confirm
+bool fade_out_on_confirm(void) {
+  if(!take_confirm(PAD_BASE + 2) && !take_confirm(PAD_BASE + 6)) return false;
+  fade_out_start();
+  return true;
+}
+
+// TG3000_ROUTINE($8A:8181) fade_out_on_confirm_once
+void fade_out_on_confirm_once(void) {
+  if(rd16(DP + 0x8C) != 0) return;
+  if(!take_confirm(PAD_BASE + 2) && !take_confirm(PAD_BASE + 6)) return;
+  fade_out_start();
+  wr16(DP + 0x8C, (uint16_t)(rd16(DP + 0x8C) + 1));
+}
+
+// TG3000_ROUTINE($8A:99D0) func_8A99D0
+void func_8A99D0(void) { wr16(DP + 0x66, 0x0028); }
+
+// TG3000_ROUTINE($8A:96C2) func_8A96C2
+uint16_t func_8A96C2(void) {
+  wr16(DP + 0x40, (uint16_t)(rd16(DP + 0x40) + 1));
+  return rd16(DP + 0x40);
+}

@@ -123,4 +123,12 @@ void shop_level_marks(void);
 void shop_panel_blank(void);
 void shop_panel_clear(void);
 
+// The list cursor's range check ($80:B359): (D+$48 * 8) in the high byte, swapped with
+// its low byte, plus D+$4A; true (carry set) above $1800 or negative.
+bool shop_list_locked(void);
+// Step the list cursor D+$48 down ($80:B333, not below 0) or up ($80:B345, not past D+$F0)
+// unless locked; a step clears D+$4E and plays sound $11 (func_80E4C5).
+void shop_list_prev(void);
+void shop_list_next(void);
+
 #endif

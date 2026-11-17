@@ -90,7 +90,7 @@ CODE_8A803B:
     sta.b $98                   ; $8A80E0
     lda.w #$0080                ; $8A80E2
     sta.b $96                   ; $8A80E5
-    jsr.w $8181                 ; $8A80E7
+    jsr.w fade_out_on_confirm_once; $8A80E7
     lda.w #$0001                ; $8A80EA
     jsl.l $8A8BB6               ; $8A80ED
     jsr.w mode7_view            ; $8A80F1
@@ -123,6 +123,7 @@ CODE_8A8179:
     lda.w #$0008                ; $8A8179
     jsl.l $8A8BB6               ; $8A817C
     rtl                         ; $8A8180
+fade_out_on_confirm_once:
     lda.b $8C                   ; $8A8181
     bne CODE_8A81B9             ; $8A8183
     lda.w #$C0C0                ; $8A8185
@@ -1800,7 +1801,7 @@ CODE_8A954E:
     lda.b #$01                  ; $8A9630
     sta.w $420B                 ; $8A9632
     rep.b #$20                  ; $8A9635
-    jsr.w $96C2                 ; $8A9637
+    jsr.w func_8A96C2           ; $8A9637
     lda.b $86                   ; $8A963A
     and.w #$FF00                ; $8A963C
     xba                         ; $8A963F
@@ -1814,7 +1815,7 @@ CODE_8A954E:
     bpl CODE_8A965E             ; $8A9653
     incbin !baserom:$51655..$5165E
 CODE_8A965E:
-    jsr.w $9675                 ; $8A965E
+    jsr.w fade_out_on_confirm   ; $8A965E
     lda.w #$0001                ; $8A9661
     trb.b $F8                   ; $8A9664
     beq CODE_8A9668             ; $8A9666
@@ -1825,6 +1826,7 @@ CODE_8A9668:
     jmp.w $9606                 ; $8A9671
 CODE_8A9674:
     rtl                         ; $8A9674
+fade_out_on_confirm:
     lda.w #$C0C0                ; $8A9675
     trb.w $000E                 ; $8A9678
     bne CODE_8A9686             ; $8A967B
@@ -1852,6 +1854,7 @@ CODE_8A9686:
     tcd                         ; $8A96A8
     jml.l $80FC18               ; $8A96A9
     incbin !baserom:$516AD..$516C2
+func_8A96C2:
     inc.b $40                   ; $8A96C2
     lda.b $40                   ; $8A96C4
     clc                         ; $8A96C6
@@ -2141,9 +2144,9 @@ CODE_8A99BD:
     lda.l $8103DC               ; $8A99BE
     and.w #$000F                ; $8A99C2
     cmp.w #$0002                ; $8A99C5
-    bne CODE_8A99D0             ; $8A99C8
+    bne func_8A99D0             ; $8A99C8
     incbin !baserom:$519CA..$519D0
-CODE_8A99D0:
+func_8A99D0:
     lda.w #$0028                ; $8A99D0
     sta.b $66                   ; $8A99D3
     rts                         ; $8A99D5
@@ -2483,7 +2486,7 @@ CODE_8A9CFE:
     dex                         ; $8A9D03
     bpl CODE_8A9CFE             ; $8A9D04
     jsr.w func_8A9BE2           ; $8A9D06
-    jsr.w $99D0                 ; $8A9D09
+    jsr.w func_8A99D0           ; $8A9D09
     ldy.w #$0000                ; $8A9D0C
 CODE_8A9D0F:
     jsr.w func_8A9BB5           ; $8A9D0F
@@ -3706,6 +3709,7 @@ CODE_8ABAD7:
     dex                         ; $8ABADF
     bpl CODE_8ABAD7             ; $8ABAE0
     rts                         ; $8ABAE2
+fade_out_wait:
     stz.w $0198                 ; $8ABAE3
     lda.w #$FF80                ; $8ABAE6
     sta.w $0196                 ; $8ABAE9
@@ -3889,7 +3893,7 @@ CODE_8ABC9B:
     lda.w #$008A                ; $8ABE4A
     jsl.l video_load_screen_long; $8ABE4D
     jsl.l clear_vram            ; $8ABE51
-    jsr.w $BAE3                 ; $8ABE55
+    jsr.w fade_out_wait         ; $8ABE55
     jsr.w $B18C                 ; $8ABE58
     jsr.w wipe_columns          ; $8ABE5B
     stz.b $8E                   ; $8ABE5E

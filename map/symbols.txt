@@ -254,3 +254,12 @@ func    80A018   shop_item_icon_5    ; list 5's icon (carry clear) or panel uplo
 func    809E49   shop_level_marks    ; the shop cursor and the list's level marks -> src/shop.c
 func    80B0C0   shop_panel_blank    ; the shop panel's map rows to $FFFF; frame hook $B149 -> src/shop.c
 func    80B10C   shop_panel_clear    ; wait for the upload queue, then the panel's map rows to 0 -> src/shop.c
+func    80B359   shop_list_locked    ; the list cursor's range check (carry) -> src/shop.c
+func    80B333   shop_list_prev      ; list cursor down, sound $11 -> src/shop.c
+func    80B345   shop_list_next      ; list cursor up to D+$F0, sound $11 -> src/shop.c
+func    80DACF   star_layers_move    ; every star's position minus its speed, wrapping -> src/stars.c
+func    8ABAE3   fade_out_wait       ; fade to black and wait for it -> src/misc.c
+func    8A9675   fade_out_on_confirm ; A/B/X/Y on pad 1 or the first multitap pad: fade to black -> src/misc.c
+func    8A8181   fade_out_on_confirm_once ; as fade_out_on_confirm while D+$8C is 0 -> src/misc.c
+func    8A99D0   func_8A99D0         ; D+$66 = $28 -> src/misc.c
+func    8A96C2   func_8A96C2         ; D+$40 + 1 -> src/misc.c

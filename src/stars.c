@@ -45,3 +45,13 @@ uint16_t star_layers_init(void) {
   }
   return slot;
 }
+
+// TG3000_ROUTINE($80:DACF) star_layers_move
+void star_layers_move(void) {
+  for(uint32_t x = 0; x < 0x0200; x += 8) {
+    uint16_t pos = rd16(0x0F06 + x), speed = rd16(0x0F00 + x);
+    uint16_t moved = (uint16_t)(pos - speed);
+    if(pos < speed) moved = (uint16_t)(moved + 0x8800);
+    wr16(0x0F06 + x, moved);
+  }
+}

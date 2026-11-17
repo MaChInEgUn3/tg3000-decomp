@@ -1459,14 +1459,14 @@ CODE_808E2A:
     beq CODE_808E39             ; $808E2F
     lda.w #$0018                ; $808E31
     sta.b $EA                   ; $808E34
-    jsr.w $B333                 ; $808E36
+    jsr.w shop_list_prev        ; $808E36
 CODE_808E39:
     lda.w #$0400                ; $808E39
     trb.b $0E                   ; $808E3C
     beq CODE_808E48             ; $808E3E
     lda.w #$0018                ; $808E40
     sta.b $EA                   ; $808E43
-    jsr.w $B345                 ; $808E45
+    jsr.w shop_list_next        ; $808E45
 CODE_808E48:
     lda.w #$0C00                ; $808E48
     bit.b $0C                   ; $808E4B
@@ -5509,7 +5509,8 @@ CODE_80B311:
     ldx.w #$001E                ; $80B32F
 CODE_80B332:
     rts                         ; $80B332
-    jsr.w $B359                 ; $80B333
+shop_list_prev:
+    jsr.w shop_list_locked      ; $80B333
     bcs CODE_80B344             ; $80B336
     lda.b $48                   ; $80B338
     beq CODE_80B344             ; $80B33A
@@ -5518,7 +5519,8 @@ CODE_80B332:
     jsl.l func_80E4C5           ; $80B340
 CODE_80B344:
     rts                         ; $80B344
-    jsr.w $B359                 ; $80B345
+shop_list_next:
+    jsr.w shop_list_locked      ; $80B345
     bcs CODE_80B358             ; $80B348
     lda.b $48                   ; $80B34A
     cmp.b $F0                   ; $80B34C
@@ -5528,6 +5530,7 @@ CODE_80B344:
     jsl.l func_80E4C5           ; $80B354
 CODE_80B358:
     rts                         ; $80B358
+shop_list_locked:
     lda.b $48                   ; $80B359
     asl a                       ; $80B35B
     asl a                       ; $80B35C
@@ -5536,7 +5539,8 @@ CODE_80B358:
     clc                         ; $80B35F
     adc.b $4A                   ; $80B360
     bpl CODE_80B366             ; $80B362
-    incbin !baserom:$3364..$3366
+    sec                         ; $80B364 static
+    incbin !baserom:$3365..$3366
 CODE_80B366:
     cmp.w #$1800                ; $80B366
     beq CODE_80B36F             ; $80B369
@@ -8853,7 +8857,7 @@ CODE_80D57D:
     clc                         ; $80D589
     adc.w #$0003                ; $80D58A
     sta.b $22                   ; $80D58D
-    jsr.w $DACF                 ; $80D58F
+    jsr.w star_layers_move      ; $80D58F
 CODE_80D592:
     ldx.w #$0000                ; $80D592
 CODE_80D595:
@@ -9462,6 +9466,7 @@ CODE_80DAA7:
 CODE_80DAAD:
     rts                         ; $80DAAD
     incbin !baserom:$5AAE..$5ACF
+star_layers_move:
     ldx.w #$0000                ; $80DACF
 CODE_80DAD2:
     lda.w $0F06,x               ; $80DAD2

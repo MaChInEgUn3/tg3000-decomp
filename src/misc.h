@@ -168,6 +168,22 @@ uint16_t func_8AA050(void);
 
 // Start a fade up to full brightness: target $0F00, step $0080 (the NMI moves $019A).
 void fade_in_start(void);
+
+// The fade to black: target $0198 = 0, step $0196 = -$80.
+// - fade_out_wait ($8A:BAE3): start it, then wait until the NMI has finished it;
+// - fade_out_on_confirm ($8A:9675): if controller 1 or the first multitap pad has a new
+//   A, B, X or Y press ($C0C0 of $000E, then of $0012: those bits are taken), start it;
+//   true if it started;
+// - fade_out_on_confirm_once ($8A:8181): as fade_out_on_confirm while D+$8C is 0, which
+//   then counts up.
+void fade_out_wait(void);
+bool fade_out_on_confirm(void);
+void fade_out_on_confirm_once(void);
+
+// $8A:99D0: D+$66 = $28.
+void func_8A99D0(void);
+// $8A:96C2: D+$40 + 1, returned.
+uint16_t func_8A96C2(void);
 // The two window HDMA tables at $0D00 and $0D20: 7 bands of 24 lines (the second with
 // $E0 words), each table ending in 0.
 void hdma_window_tables_init(void);

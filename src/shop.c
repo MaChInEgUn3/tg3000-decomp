@@ -542,3 +542,32 @@ void shop_panel_clear(void) {
   for(uint32_t col = 0; col < 18; col += 2)
     for(uint32_t row = 0; row < 9; row++) wr16(SHOP_PANEL_MAP + (uint16_t)(0x00C4 + row * 0x40 + x + col), 0);
 }
+
+static uint16_t shop_list_key(void) {
+  uint16_t a = (uint16_t)(rd16(DP + 0x48) << 3);
+  a = (uint16_t)((a << 8) | (a >> 8));  // XBA
+  return (uint16_t)(a + rd16(DP + 0x4A));
+}
+
+// TG3000_ROUTINE($80:B359) shop_list_locked
+bool shop_list_locked(void) {
+  uint16_t key = shop_list_key();
+  if(key & 0x8000) return true;
+  return !(key == 0x1800 || ((uint16_t)(key - 0x1800) & 0x8000));
+}
+
+// TG3000_ROUTINE($80:B333) shop_list_prev
+void shop_list_prev(void) {
+  if(shop_list_locked() || rd16(DP + 0x48) == 0) return;
+  wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) - 1));
+  wr16(DP + 0x4E, 0);
+  func_80E4C5();
+}
+
+// TG3000_ROUTINE($80:B345) shop_list_next
+void shop_list_next(void) {
+  if(shop_list_locked() || rd16(DP + 0x48) == rd16(DP + 0xF0)) return;
+  wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) + 1));
+  wr16(DP + 0x4E, 0);
+  func_80E4C5();
+}

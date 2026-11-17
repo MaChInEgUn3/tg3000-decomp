@@ -349,6 +349,93 @@ static void setAdc16(Regs* r, uint16_t a, uint16_t b) {  // C and V of A + b, ca
 
 static void wr16ram(uint8_t* ram, uint32_t adr, uint16_t v) { ram[adr] = (uint8_t)v; ram[adr + 1] = (uint8_t)(v >> 8); }
 
+// ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
+// last ADC #8 clears V
+static void call_star_layers_move(const Regs* in, Regs* out) {
+  (void)in;
+  star_layers_move();
+  out->a = 0x0200;
+  out->x = 0x0200;
+  out->n = false;
+  out->z = true;
+  out->c = true;
+  out->v = false;
+}
+static void fuzz_star_layers_move(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t a = 0x0F00; a < 0x1100; a++) ram[a] = (uint8_t)rnd();
+}
+
+// ---- the fade to black ($8A:BAE3, $8A:9675, $8A:8181) ----
+// waiting: A = 0 from the last LDA $0196
+static void call_fade_out_wait(const Regs* in, Regs* out) {
+  (void)in;
+  fade_out_wait();
+  out->a = 0;
+  setNZ16(out, 0);
+}
+// started: A = $FF80 (N set); not: A = $C0C0, N from its LDA, Z from the TRB that found nothing
+static void call_fade_out_on_confirm(const Regs* in, Regs* out) {
+  (void)in;
+  bool started = fade_out_on_confirm();
+  out->a = started ? 0xFF80 : 0xC0C0;
+  out->n = true;
+  out->z = !started;
+}
+// already counted: A = D+$8C (N Z of its LDA); started: A = $FF80, N Z of the INC
+static void call_fade_out_on_confirm_once(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t count = rd16(DP + 0x8C);
+  if(count) {
+    fade_out_on_confirm_once();
+    out->a = count;
+    setNZ16(out, count);
+    return;
+  }
+  fade_out_on_confirm_once();
+  if(rd16(DP + 0x8C)) {
+    out->a = 0xFF80;
+    setNZ16(out, rd16(DP + 0x8C));
+  } else {
+    out->a = 0xC0C0;
+    out->n = true;
+    out->z = true;
+  }
+}
+// a confirm press on either pad or neither (other bits random); D+$8C 0 or not
+static void fuzz_fade_out_on_confirm(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t pad = 0x000E; pad <= 0x0012; pad += 4) {
+    uint16_t bits = (uint16_t)(rnd() & ~0xC0C0);
+    if((rnd() & 3) == 0) bits = (uint16_t)(bits | (0x4000 >> (rnd() % 2 * 8)) << (rnd() & 1));
+    wr16ram(ram, pad, bits);
+  }
+  wr16ram(ram, DP + 0x8C, (rnd() & 1) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, 0x0196, (uint16_t)rnd());
+  wr16ram(ram, 0x0198, (uint16_t)rnd());
+}
+
+// ---- func_8A99D0, func_8A96C2 ----
+static void call_func_8A99D0(const Regs* in, Regs* out) {
+  (void)in;
+  func_8A99D0();
+  out->a = 0x0028;
+  setNZ16(out, 0x0028);
+}
+// A = D+$40 + 1 (N Z of its LDA), C clear
+static void call_func_8A96C2(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = func_8A96C2();
+  setNZ16(out, out->a);
+  out->c = false;
+}
+static void fuzz_dp_40_66(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x40, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x66, (uint16_t)rnd());
+}
+
+
 // ---- func_80B537 ----  A = the new index, X = old index + 2, N Z C V of the final ADC.
 static void call_func_80B537(const Regs* in, Regs* out) {
   uint16_t i = rd16((uint16_t)(in->d + 0x8C)), base = rd16((uint16_t)(in->d + 0x8A));
@@ -2892,6 +2979,50 @@ static void fuzz_shop_panel_clear(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   wr16ram(ram, DP + 0x8E, i);
 }
 
+// A = the key (V of its ADC), C = locked; N Z of the CMP #$1800 (or of the ADC when negative)
+static void shopListLockedOut(Regs* out) {
+  uint16_t a = (uint16_t)(rd16(DP + 0x48) << 3);
+  a = (uint16_t)((a << 8) | (a >> 8));
+  uint16_t key = (uint16_t)(a + rd16(DP + 0x4A));
+  out->a = key;
+  setAdc16(out, a, rd16(DP + 0x4A));
+  out->c = shop_list_locked();
+  if(key & 0x8000) setNZ16(out, key);
+  else setNZ16(out, (uint16_t)(key - 0x1800));
+}
+static void call_shop_list_locked(const Regs* in, Regs* out) { (void)in; shopListLockedOut(out); }
+// flags only (the callers reload A): locked, as shop_list_locked; V of its ADC throughout.
+// prev: N Z of the old D+$48 (its LDA; a step's DEC is in memory and the PLA restores it), C clear.
+// next: at D+$F0, N Z C of the CMP; a step, N Z of the PLA'd old D+$48, C of the CMP.
+static void call_shop_list_prev(const Regs* in, Regs* out) {
+  (void)in;
+  shopListLockedOut(out);
+  uint16_t list = rd16(DP + 0x48);
+  bool locked = out->c;
+  shop_list_prev();
+  if(locked) return;
+  setNZ16(out, list);
+}
+static void call_shop_list_next(const Regs* in, Regs* out) {
+  (void)in;
+  shopListLockedOut(out);
+  uint16_t list = rd16(DP + 0x48), limit = rd16(DP + 0xF0);
+  bool locked = out->c;
+  shop_list_next();
+  if(locked) return;
+  setNZ16(out, list == limit ? 0 : list);
+  out->c = list >= limit;
+}
+// lists 0-7 and rows 0-4 mostly, the limit D+$F0 near them
+static void fuzz_shop_list(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  bool wild = (rnd() & 7) == 0;
+  wr16ram(ram, DP + 0x48, wild ? (uint16_t)rnd() : (uint16_t)(rnd() % 8));
+  wr16ram(ram, DP + 0x4A, wild ? (uint16_t)rnd() : (uint16_t)(rnd() % 5));
+  wr16ram(ram, DP + 0xF0, (uint16_t)(rnd() % 8));
+  wr16ram(ram, DP + 0x4E, (uint16_t)rnd());
+}
+
 // no register outputs: func_809DD0 follows at every call
 static void call_shop_level_marks(const Regs* in, Regs* out) { (void)in; (void)out; shop_level_marks(); }
 // lists 0-7 (the getter table), 1-8 marks, any level, cursor and position, slots in the
@@ -4132,6 +4263,24 @@ const Routine routines[] = {
    .fixedD = true, .call = call_shop_panel_blank, ALL_OUTPUTS, .fuzz = fuzz_shop_panel},
   {.name = "shop_panel_clear", .entry = 0x80B10C, .end = 0x80B149, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .waitsForInterrupts = true, .call = call_shop_panel_clear, ALL_OUTPUTS, .fuzz = fuzz_shop_panel_clear},
+  {.name = "shop_list_locked", .entry = 0x80B359, .end = 0x80B371, .source = "src/shop.c", .needM16 = true,
+   .fixedD = true, .call = call_shop_list_locked, ALL_OUTPUTS, .fuzz = fuzz_shop_list},
+  {.name = "shop_list_prev", .entry = 0x80B333, .end = 0x80B345, .source = "src/shop.c", .needM16 = true,
+   .fixedD = true, .call = call_shop_list_prev, .fuzz = fuzz_shop_list},
+  {.name = "shop_list_next", .entry = 0x80B345, .end = 0x80B359, .source = "src/shop.c", .needM16 = true,
+   .fixedD = true, .call = call_shop_list_next, .fuzz = fuzz_shop_list},
+  {.name = "star_layers_move", .entry = 0x80DACF, .end = 0x80DAED, .source = "src/stars.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_star_layers_move, ALL_OUTPUTS, .fuzz = fuzz_star_layers_move},
+  {.name = "fade_out_wait", .entry = 0x8ABAE3, .end = 0x8ABAF2, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .waitsForInterrupts = true, .call = call_fade_out_wait, ALL_OUTPUTS},
+  {.name = "fade_out_on_confirm", .entry = 0x8A9675, .end = 0x8A968E, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_fade_out_on_confirm, ALL_OUTPUTS, .fuzz = fuzz_fade_out_on_confirm},
+  {.name = "fade_out_on_confirm_once", .entry = 0x8A8181, .end = 0x8A8196, .alsoIn = {{0x8A81B0, 0x8A81BA}}, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_fade_out_on_confirm_once, ALL_OUTPUTS, .fuzz = fuzz_fade_out_on_confirm},
+  {.name = "func_8A99D0", .entry = 0x8A99D0, .end = 0x8A99D6, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_func_8A99D0, ALL_OUTPUTS, .fuzz = fuzz_dp_40_66},
+  {.name = "func_8A96C2", .entry = 0x8A96C2, .end = 0x8A96C8, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_func_8A96C2, ALL_OUTPUTS, .fuzz = fuzz_dp_40_66},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
