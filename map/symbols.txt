@@ -243,3 +243,5 @@ func    80A26E   shop_item_price     ; level words and the item's price, centred
 func    80A2CB   shop_item_view_a    ; item view: level marks, segments, two groups; stage + 1 -> src/shop.c
 func    80A831   shop_item_view_b    ; item view: double bar, long segments, two groups; stage + 1 -> src/shop.c
 func    80AA15   shop_item_view_c    ; item view: a group, the gauge, a group; stage + 1 -> src/shop.c
+func    80A717   shop_item_view_d    ; item view: a group, a bar of 2x2 blocks, two groups; stage + 1 -> src/shop.c
+func    80AB54   shop_item_view_e    ; item view: three groups, six wave words; stage + 1 -> src/shop.c

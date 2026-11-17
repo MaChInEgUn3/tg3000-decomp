@@ -359,3 +359,59 @@ void shop_item_view_c(uint16_t entry) {
   shop_item_group(rd16(DP + 0x7C), 2, (uint16_t)(0x30 - rd16(DP + 0x7A)));
   shop_item_stage_step();
 }
+
+// TG3000_ROUTINE($80:A717) shop_item_view_d
+void shop_item_view_d(uint16_t entry) {
+  wr16(DP + 0x7A, rd16(DP + 0x16));
+  wr16(DP + 0x7C, entry);
+  shop_item_group(rd16(DP + 0x7C), 0, rd16(DP + 0x7A));
+  uint16_t y = rd16(DP + 0x74);
+  wr16(DP + 0x16, (uint16_t)(((0x30 - rd16(DP + 0x7A) + rd16(DP + 0xE8) + 0x20) & 0xFF) << 8));
+  uint16_t half = (uint16_t)(rd16(DP + 0x3E) >> 1);
+  uint16_t blocks;
+  bool draw = true;
+  if(half < 0x20) {  // not started: four full blocks
+    wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x14) + 0x14));
+    blocks = 4;
+  } else {
+    uint16_t done = (uint16_t)((half - 0x20) & 0xFFF8);
+    if(done >= 0x20) {
+      draw = false;
+      blocks = 0;
+    } else {  // the block under way, then the full ones left
+      wr16(DP + 0x7E, (uint16_t)(done + rd16(DP + 0x14) + 0x1C));
+      y = shop_sprite_block((uint16_t)((half & 7) + 0x2316), y);
+      blocks = (uint16_t)((uint16_t)(0x1F - (uint16_t)(half - 0x20)) >> 3);
+    }
+  }
+  if(draw) {
+    for(; blocks; blocks--) {
+      wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x7E) + 8));
+      y = shop_sprite_block(0x2316, y);
+    }
+    wr16(DP + 0x74, y);
+  }
+  shop_item_group(rd16(DP + 0x7C), 2, (uint16_t)(0x30 - rd16(DP + 0x7A)));
+  shop_item_group(rd16(DP + 0x7C), 4, (uint16_t)(0x30 - rd16(DP + 0x7A)));
+  shop_item_stage_step();
+}
+
+// TG3000_ROUTINE($80:AB54) shop_item_view_e
+void shop_item_view_e(uint16_t entry) {
+  wr16(DP + 0x7A, rd16(DP + 0x16));
+  wr16(DP + 0x7C, entry);
+  shop_item_group(rd16(DP + 0x7C), 0, rd16(DP + 0x16));
+  shop_item_group(rd16(DP + 0x7C), 2, (uint16_t)(0x30 - rd16(DP + 0x7A)));
+  shop_item_group(rd16(DP + 0x7C), 4, (uint16_t)(0x30 - rd16(DP + 0x7A)));
+  const uint32_t y = rd16(DP + 0xC4);
+  uint16_t wave = rd16(DP + 0x40);
+  uint32_t x = (wave & 0x0020) ? (uint32_t)(uint16_t)(0x1E - (wave & 0x001E)) : (uint32_t)(wave & 0x001E);
+  wr16(0x012E + y, rd16(0x4E1A + x));
+  wr16(0x012A + y, rd16(0x4E3A + x));
+  wr16(0x0128 + y, rd16(0x4E5A + x));
+  wr16(0x0126 + y, rd16(0x4E7A + x));
+  wr16(0x0124 + y, rd16(0x4E9A + x));
+  wr16(0x0122 + y, rd16(0x4EBA + x));
+  wr16(DP + 0x40, (uint16_t)(rd16(DP + 0x40) + 1));
+  shop_item_stage_step();
+}

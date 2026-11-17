@@ -1719,8 +1719,17 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - **The fuzz picks items of the view's own kind.** Another kind's bar entry sent `view_a`
   writing sprites over the direct page, and once (through `$01C4`) over the I/O
   registers.
-- **Left:** views `$80:A333` (calls `$80:A579`), `$80:A717`, `$80:AB54`, `$80:AEBE`
-  (calls `$80:AF36`), then the dispatch itself.
+- **Then (shop-6):**
+  - `shop_item_view_d` ($80:A717): a group, a bar of 2x2 sprite blocks (the block under
+    way at tile `$2316` + (stage / 2) & 7), and two groups. Live 1,076/1,076, paths
+    101/101;
+  - `shop_item_view_e` ($80:AB54): three groups, then six words of the wave tables at
+    `$7E:4E1A-$7E:4EBA`, back and forth over 16 words by `$0140`, to `$0122-$012E` +
+    `$01C4`; then `$0140` + 1. Live 664/664, paths 68/68.
+
+  Their stops at `$7FFF` join `static_code.txt` too.
+- **Left:** views `$80:A333` (calls `$80:A579`) and `$80:AEBE` (calls `$80:AF36`), then
+  the dispatch itself.
 
 ## Two-task screens (task-1, 2026-11-16)
 

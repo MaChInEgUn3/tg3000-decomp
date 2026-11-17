@@ -82,5 +82,12 @@ uint16_t shop_item_price(void);
 void shop_item_view_a(uint16_t entry);
 void shop_item_view_b(uint16_t entry);
 void shop_item_view_c(uint16_t entry);
+// - shop_item_view_d ($80:A717): a group, a bar of 2x2 sprite blocks (shop_sprite_block,
+//   tile $2316; the part under way $2316 + (stage / 2) & 7), two groups;
+// - shop_item_view_e ($80:AB54): three groups, then six words of the wave tables at
+//   $7E:4E1A-$7E:4EBA (by D+$40, back and forth over 16 words) to $0122-$012E + D+$C4,
+//   and D+$40 + 1.
+void shop_item_view_d(uint16_t entry);
+void shop_item_view_e(uint16_t entry);
 
 #endif

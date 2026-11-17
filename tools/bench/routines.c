@@ -2853,6 +2853,8 @@ static void fuzz_shop_item_price(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 static void call_shop_item_view_a(const Regs* in, Regs* out) { (void)out; shop_item_view_a(in->y); }
 static void call_shop_item_view_b(const Regs* in, Regs* out) { (void)out; shop_item_view_b(in->y); }
 static void call_shop_item_view_c(const Regs* in, Regs* out) { (void)out; shop_item_view_c(in->y); }
+static void call_shop_item_view_d(const Regs* in, Regs* out) { (void)out; shop_item_view_d(in->y); }
+static void call_shop_item_view_e(const Regs* in, Regs* out) { (void)out; shop_item_view_e(in->y); }
 static void fuzz_shop_bars(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 // an item whose view is this handler (its word at $81:A897 + the entry): its bar entry in Y
 // (from $81:A8A1), the stage sometimes at $7FFF (the never-run stop), the bars' inputs
@@ -2872,6 +2874,12 @@ static void fuzz_shop_item_view_of(Regs* r, uint8_t* ram, uint32_t (*rnd)(void),
 static void fuzz_shop_item_view_a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA2CB); }
 static void fuzz_shop_item_view_b(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA831); }
 static void fuzz_shop_item_view_c(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xAA15); }
+static void fuzz_shop_item_view_d(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA717); }
+static void fuzz_shop_item_view_e(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_shop_item_view_of(r, ram, rnd, 0xAB54);
+  wr16ram(ram, DP + 0x40, (uint16_t)rnd());
+  for(uint32_t a = 0x4E1A; a < 0x4EDA; a++) ram[a] = (uint8_t)rnd();
+}
 
 // the stage 0-$5F, the bar table index (live values), the rest as fuzz_shop_bar
 static void fuzz_shop_bars(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -4002,6 +4010,10 @@ const Routine routines[] = {
    .fixedD = true, .db = 0x81, .call = call_shop_item_view_b, .fuzz = fuzz_shop_item_view_b},
   {.name = "shop_item_view_c", .entry = 0x80AA15, .end = 0x80AA59, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .call = call_shop_item_view_c, .fuzz = fuzz_shop_item_view_c},
+  {.name = "shop_item_view_d", .entry = 0x80A717, .end = 0x80A7E4, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_d, .fuzz = fuzz_shop_item_view_d},
+  {.name = "shop_item_view_e", .entry = 0x80AB54, .end = 0x80ABF6, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_e, .fuzz = fuzz_shop_item_view_e},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
