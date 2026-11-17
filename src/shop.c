@@ -309,3 +309,53 @@ uint16_t shop_item_price(void) {
   wr16(DP + 0x14, base);
   return shift;
 }
+
+// One of a bar entry's sprite groups ($7E:word at $81:A892 + `entry` + `field`) at x =
+// `x` + D+$E8, the tile base $0100.
+static void shop_item_group(uint16_t entry, uint32_t field, uint16_t x) {
+  wr16(DP + 0x16, (uint16_t)(x + rd16(DP + 0xE8)));
+  wr16(DP + 0x18, 0x0100);
+  sprite_group(DP, 0x7E0000 | rom16(0x81A892 + field + (uint32_t)entry));
+}
+
+// The stage moves on, stopping at $7FFF.
+static void shop_item_stage_step(void) {
+  uint16_t stage = (uint16_t)(rd16(DP + 0x3E) + 1);
+  if(stage & 0x8000) stage = (uint16_t)(stage - 1);
+  wr16(DP + 0x3E, stage);
+}
+
+// TG3000_ROUTINE($80:A2CB) shop_item_view_a
+void shop_item_view_a(uint16_t entry) {
+  wr16(DP + 0x7A, rd16(DP + 0x16));
+  wr16(DP + 0x7C, entry);
+  shop_bar_levels();
+  shop_item_group(rd16(DP + 0x7C), 0, rd16(DP + 0x7A));
+  wr16(DP + 0x84, 0x2320);
+  shop_bar_segments();
+  shop_item_group(rd16(DP + 0x7C), 6, (uint16_t)(0x30 - rd16(DP + 0x7A)));
+  shop_item_group(rd16(DP + 0x7C), 2, (uint16_t)(0x30 - rd16(DP + 0x7A)));
+  shop_item_stage_step();
+}
+
+// TG3000_ROUTINE($80:A831) shop_item_view_b
+void shop_item_view_b(uint16_t entry) {
+  wr16(DP + 0x7A, rd16(DP + 0x16));
+  wr16(DP + 0x7C, entry);
+  shop_bar_double();
+  wr16(DP + 0x84, 0x2312);
+  shop_bar_segments_long();
+  shop_item_group(rd16(DP + 0x7C), 0, rd16(DP + 0x16));
+  shop_item_group(rd16(DP + 0x7C), 2, (uint16_t)(0x30 - rd16(DP + 0x7A)));
+  shop_item_stage_step();
+}
+
+// TG3000_ROUTINE($80:AA15) shop_item_view_c
+void shop_item_view_c(uint16_t entry) {
+  wr16(DP + 0x7A, rd16(DP + 0x16));
+  wr16(DP + 0x7C, entry);
+  shop_item_group(rd16(DP + 0x7C), 0, rd16(DP + 0x16));
+  shop_gauge();
+  shop_item_group(rd16(DP + 0x7C), 2, (uint16_t)(0x30 - rd16(DP + 0x7A)));
+  shop_item_stage_step();
+}

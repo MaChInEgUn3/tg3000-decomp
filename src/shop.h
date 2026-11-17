@@ -73,4 +73,14 @@ void shop_gauge(void);
 // sprite_number_centered's shift.
 uint16_t shop_item_price(void);
 
+// The item screens' handlers, run by the dispatch at $80:A251 (D+$16 in A, the item's bar
+// table index in Y): each draws its bars and sprite groups ($7E:xxxx groups from the
+// bar entry's words) and then advances the stage D+$3E (stopping at $7FFF):
+// - shop_item_view_a ($80:A2CB): level marks, segments, two groups;
+// - shop_item_view_b ($80:A831): a double bar, long segments, two groups;
+// - shop_item_view_c ($80:AA15): a group, the gauge, a group.
+void shop_item_view_a(uint16_t entry);
+void shop_item_view_b(uint16_t entry);
+void shop_item_view_c(uint16_t entry);
+
 #endif

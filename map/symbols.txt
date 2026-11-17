@@ -240,3 +240,6 @@ func    80A87D   shop_bar_segments_long ; the same up to $24 -> src/shop.c
 func    80A91E   shop_bar_double     ; a double bar: frame and two shop_bar_column bars -> src/shop.c
 func    80AA59   shop_gauge          ; the gauge: a sprite group and its caps -> src/shop.c
 func    80A26E   shop_item_price     ; level words and the item's price, centred -> src/shop.c
+func    80A2CB   shop_item_view_a    ; item view: level marks, segments, two groups; stage + 1 -> src/shop.c
+func    80A831   shop_item_view_b    ; item view: double bar, long segments, two groups; stage + 1 -> src/shop.c
+func    80AA15   shop_item_view_c    ; item view: a group, the gauge, a group; stage + 1 -> src/shop.c

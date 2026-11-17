@@ -2849,6 +2849,30 @@ static void fuzz_shop_item_price(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(uint32_t a = 0x4DCA; a < 0x4DCA + 0x20; a++) ram[a] = (uint8_t)rnd();
 }
 
+// the item-view handlers: no register outputs (the dispatcher's caller reloads them)
+static void call_shop_item_view_a(const Regs* in, Regs* out) { (void)out; shop_item_view_a(in->y); }
+static void call_shop_item_view_b(const Regs* in, Regs* out) { (void)out; shop_item_view_b(in->y); }
+static void call_shop_item_view_c(const Regs* in, Regs* out) { (void)out; shop_item_view_c(in->y); }
+static void fuzz_shop_bars(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+// an item whose view is this handler (its word at $81:A897 + the entry): its bar entry in Y
+// (from $81:A8A1), the stage sometimes at $7FFF (the never-run stop), the bars' inputs
+static void fuzz_shop_item_view_of(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), uint16_t view) {
+  fuzz_shop_bars(r, ram, rnd);
+  for(int tries = 0; tries < 64; tries++) {
+    fuzz_shop_item(r, ram, rnd);
+    uint16_t list = (uint16_t)(ram[DP + 0x48] | ram[DP + 0x49] << 8), row = (uint16_t)(ram[DP + 0x4A] | ram[DP + 0x4B] << 8);
+    uint16_t entry = (uint16_t)((row << 4) + rom16(0x81A892 + (uint32_t)(uint16_t)(list << 1)));
+    r->y = rom16(0x81A8A1 + (uint32_t)entry);
+    if(rom16(0x81A897 + (uint32_t)entry) == view) break;
+  }
+  wr16ram(ram, DP + 0x16, (uint16_t)rnd());
+  wr16ram(ram, DP + 0xC4, (uint16_t)(0x0100 + (rnd() % 0x10) * 0x40));  // as fuzz_shop_bars: off the direct page
+  if((rnd() & 7) == 0) wr16ram(ram, DP + 0x3E, 0x7FFF);
+}
+static void fuzz_shop_item_view_a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA2CB); }
+static void fuzz_shop_item_view_b(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA831); }
+static void fuzz_shop_item_view_c(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xAA15); }
+
 // the stage 0-$5F, the bar table index (live values), the rest as fuzz_shop_bar
 static void fuzz_shop_bars(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_shop_bar(r, ram, rnd);
@@ -3972,6 +3996,12 @@ const Routine routines[] = {
    .lowWramDb = true, .fixedD = true, .call = call_shop_gauge, .fuzz = fuzz_shop_bars},
   {.name = "shop_item_price", .entry = 0x80A26E, .end = 0x80A2CB, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .call = call_shop_item_price, ALL_OUTPUTS, .fuzz = fuzz_shop_item_price},
+  {.name = "shop_item_view_a", .entry = 0x80A2CB, .end = 0x80A333, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_a, .fuzz = fuzz_shop_item_view_a},
+  {.name = "shop_item_view_b", .entry = 0x80A831, .end = 0x80A87D, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_b, .fuzz = fuzz_shop_item_view_b},
+  {.name = "shop_item_view_c", .entry = 0x80AA15, .end = 0x80AA59, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_c, .fuzz = fuzz_shop_item_view_c},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

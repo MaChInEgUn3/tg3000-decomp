@@ -1698,6 +1698,30 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   `$5C2E` + `$01E7` (`sprite_number_centered`, sprite base `$3A00`), with `$0114` and
   `$0116` kept. Live 4,000/4,000, paths 49/49.
 
+## The item views (shop-5, 2026-11-17)
+
+- **The item screen's dispatch:** `$80:A251` reads the item's view address from
+  `$81:A897` + the entry and its bar entry from `$81:A8A1`. It pushes `$A26C` and the
+  view address minus 1, then RTS: the view runs and returns through the RTS at
+  `$80:A26D`. The 26 items use seven views.
+- **Ported, the three that call only routines already in C.** Each sets `$7A = $16` and
+  `$7C` = the bar entry, draws, and ends by moving the stage `$013E` on (stopping at
+  `$7FFF`):
+  - `shop_item_view_a` ($80:A2CB): level marks, segments, two sprite groups. Shop movie:
+    live 1,288/1,288, paths 48/48;
+  - `shop_item_view_b` ($80:A831): a double bar, long segments, two groups. Live
+    196/196, paths 35/35;
+  - `shop_item_view_c` ($80:AA15): a group, the gauge, a group. Live 433/433, paths
+    32/32.
+- **Never ran:** the stop at `$7FFF` (`DEC $3E` after a `BPL`) is the same 2-byte tail
+  in all seven views. The three ported ones join `static_code.txt`, and the fuzz sets the
+  stage to `$7FFF` to run them.
+- **The fuzz picks items of the view's own kind.** Another kind's bar entry sent `view_a`
+  writing sprites over the direct page, and once (through `$01C4`) over the I/O
+  registers.
+- **Left:** views `$80:A333` (calls `$80:A579`), `$80:A717`, `$80:AB54`, `$80:AEBE`
+  (calls `$80:AF36`), then the dispatch itself.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

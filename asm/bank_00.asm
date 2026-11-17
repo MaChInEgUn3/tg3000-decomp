@@ -3562,6 +3562,7 @@ CODE_80A296:
     pla                         ; $80A2C7
     sta.b $14                   ; $80A2C8
     rts                         ; $80A2CA
+shop_item_view_a:
     lda.b $16                   ; $80A2CB
     sta.b $7A                   ; $80A2CD
     sty.b $7C                   ; $80A2CF
@@ -3608,7 +3609,7 @@ CODE_80A296:
     jsr.w sprite_group          ; $80A329
     inc.b $3E                   ; $80A32C
     bpl CODE_80A332             ; $80A32E
-    incbin !baserom:$2330..$2332
+    dec.b $3E                   ; $80A330 static
 CODE_80A332:
     rts                         ; $80A332
     lda.b $16                   ; $80A333
@@ -4245,6 +4246,7 @@ shop_sprite_block:
     adc.w #$0010                ; $80A82C
     tay                         ; $80A82F
     rts                         ; $80A830
+shop_item_view_b:
     lda.b $16                   ; $80A831
     sta.b $7A                   ; $80A833
     sty.b $7C                   ; $80A835
@@ -4278,7 +4280,7 @@ shop_sprite_block:
     jsr.w sprite_group          ; $80A873
     inc.b $3E                   ; $80A876
     bpl CODE_80A87C             ; $80A878
-    incbin !baserom:$287A..$287C
+    dec.b $3E                   ; $80A87A static
 CODE_80A87C:
     rts                         ; $80A87C
 shop_bar_segments_long:
@@ -4474,6 +4476,7 @@ shop_bar_column:
     adc.w #$000C                ; $80AA0F
     sta.b $74                   ; $80AA12
     rts                         ; $80AA14
+shop_item_view_c:
     lda.b $16                   ; $80AA15
     sta.b $7A                   ; $80AA17
     sty.b $7C                   ; $80AA19
@@ -4504,7 +4507,7 @@ shop_bar_column:
     jsr.w sprite_group          ; $80AA4F
     inc.b $3E                   ; $80AA52
     bpl CODE_80AA58             ; $80AA54
-    incbin !baserom:$2A56..$2A58
+    dec.b $3E                   ; $80AA56 static
 CODE_80AA58:
     rts                         ; $80AA58
 shop_gauge:
