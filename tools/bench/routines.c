@@ -2855,6 +2855,29 @@ static void call_shop_item_view_b(const Regs* in, Regs* out) { (void)out; shop_i
 static void call_shop_item_view_c(const Regs* in, Regs* out) { (void)out; shop_item_view_c(in->y); }
 static void call_shop_item_view_d(const Regs* in, Regs* out) { (void)out; shop_item_view_d(in->y); }
 static void call_shop_item_view_e(const Regs* in, Regs* out) { (void)out; shop_item_view_e(in->y); }
+// no register outputs: every caller reloads A, X and Y ($80:9E49, $80:9B99, LDA #2)
+static void call_shop_item_icon_draw(const Regs* in, Regs* out) { (void)out; shop_item_icon_draw(in->x); }
+// carry set: the queue's ADC sets V and C, the PLY of the old Y sets N and Z; carry clear:
+// V from the icon's last group item ADC #6 (as on entry if the group is empty), or from
+// BIT D+$76 at step 7
+static void shopItemIconOut(const Regs* in, Regs* out, void (*fn)(bool), uint16_t field, uint16_t icons) {
+  uint16_t i = rd16(DP + 0x8C), base = rd16(DP + 0x8A), step = rd16(DP + 0x44);
+  uint16_t level = (uint16_t)(rd16(0x0393 + (uint32_t)field + rd16(DP + 0x94)) & 0x007F);
+  GroupWalk w = sprite_group_walk(0x7E0000 | rom16(0x810000 + (uint32_t)icons + (uint32_t)(uint16_t)(level << 1)));
+  fn(in->c);
+  if(in->c) {
+    setAdc16(out, (uint16_t)((i + 2) & 0x3F), base);
+    setNZ16(out, in->y);
+    return;
+  }
+  if(w.any) setAdc16(out, w.lastY, 6);
+  if(step == 0x0007) out->v = (rd16(DP + 0x76) & 0x4000) != 0;
+}
+static void call_shop_item_icon_1(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_1, 0, 0xBC2E); }
+static void call_shop_item_icon_2(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_2, 1, 0xBC52); }
+static void call_shop_item_icon_3(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_3, 2, 0xBC76); }
+static void call_shop_item_icon_4(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_4, 3, 0xBCBE); }
+static void call_shop_item_icon_5(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_5, 4, 0xBC9A); }
 static void fuzz_shop_bars(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 // an item whose view is this handler (its word at $81:A897 + the entry): its bar entry in Y
 // (from $81:A8A1), the stage sometimes at $7FFF (the never-run stop), the bars' inputs
@@ -2875,6 +2898,32 @@ static void fuzz_shop_item_view_a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
 static void fuzz_shop_item_view_b(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA831); }
 static void fuzz_shop_item_view_c(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xAA15); }
 static void fuzz_shop_item_view_d(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA717); }
+
+// the icon: its step anywhere in 0-15 or done (bit 15), the position, D+$76 and the colour
+// tables; the palette copy off the direct page as the views'; the panel queue as
+// func_80B537's fuzz; the five part levels 0-5 (the tables' rows), bit 7 either way
+static void fuzz_shop_item_icon(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->c = rnd() & 1;
+  wr16ram(ram, DP + 0x44, (rnd() & 3) == 0 ? (uint16_t)(0x8000 | (rnd() & 0x7FFF)) : (uint16_t)(rnd() % 16));
+  wr16ram(ram, DP + 0x42, (uint16_t)rnd());
+  wr16ram(ram, DP + 0xE8, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x76, (uint16_t)rnd());
+  wr16ram(ram, DP + 0xC4, (uint16_t)(0x0100 + (rnd() % 0x10) * 0x40));
+  for(uint32_t a = 0x4EDA; a < 0x4F5A; a++) ram[a] = (uint8_t)rnd();
+  wr16ram(ram, DP + 0x5C, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x5E, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x8A, (rnd() & 1) ? (uint16_t)(rnd() & 0xC0) : (uint16_t)rnd());
+  wr16ram(ram, DP + 0x8C, (uint16_t)(rnd() % 0x500));
+  uint16_t p = (uint16_t)(rnd() & 0x1F);
+  wr16ram(ram, DP + 0x94, p);
+  for(uint32_t f = 0; f < 5; f++) ram[0x0393 + p + f] = (uint8_t)((rnd() % 6) | (rnd() & 0x80));
+}
+// the icon alone: X = a list's icon for a level 0-5
+static void fuzz_shop_item_icon_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  static const uint16_t icons[] = {0xBC2E, 0xBC52, 0xBC76, 0xBCBE, 0xBC9A};
+  fuzz_shop_item_icon(r, ram, rnd);
+  r->x = rom16(0x810000 + (uint32_t)icons[rnd() % 5] + (uint32_t)((rnd() % 6) << 1));
+}
 static void fuzz_shop_item_view_e(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_shop_item_view_of(r, ram, rnd, 0xAB54);
   wr16ram(ram, DP + 0x40, (uint16_t)rnd());
@@ -4014,6 +4063,18 @@ const Routine routines[] = {
    .fixedD = true, .db = 0x81, .call = call_shop_item_view_d, .fuzz = fuzz_shop_item_view_d},
   {.name = "shop_item_view_e", .entry = 0x80AB54, .end = 0x80ABF6, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .call = call_shop_item_view_e, .fuzz = fuzz_shop_item_view_e},
+  {.name = "shop_item_icon_draw", .entry = 0x80A1E4, .end = 0x80A251, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_draw, .fuzz = fuzz_shop_item_icon_draw},
+  {.name = "shop_item_icon_1", .entry = 0x809F5B, .end = 0x809F9A, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_1, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon},
+  {.name = "shop_item_icon_2", .entry = 0x809F9A, .end = 0x809FD9, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_2, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon},
+  {.name = "shop_item_icon_3", .entry = 0x809FD9, .end = 0x80A018, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_3, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon},
+  {.name = "shop_item_icon_4", .entry = 0x80A057, .end = 0x80A096, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_4, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon},
+  {.name = "shop_item_icon_5", .entry = 0x80A018, .end = 0x80A057, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_5, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

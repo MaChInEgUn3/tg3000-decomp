@@ -3,6 +3,7 @@
 #ifndef TG3000_SHOP_H
 #define TG3000_SHOP_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // One of the car's six part levels ($0392-$0397 + the car's offset), plus 1.
@@ -89,5 +90,22 @@ void shop_item_view_c(uint16_t entry);
 //   and D+$40 + 1.
 void shop_item_view_d(uint16_t entry);
 void shop_item_view_e(uint16_t entry);
+
+// The item's icon ($80:A1E4): the sprite group `group` at (D+$42, D+$E8), palette $0E00
+// while D+$44 < 8, $2E00 after; then, while D+$44 is not negative, its colours: two words
+// of $7E:4EDA/$7E:4EFA (and below step 8 four of $7E:4F1A-$7E:4F4A) to the palette copy
+// at D+$C4; D+$44 counts on, holding at bit 15 after step 15 (or step 7 unless D+$76 is
+// negative).
+void shop_item_icon_draw(uint16_t group);
+
+// The second item dispatch's handlers, one per list (the part level byte of D+$94 + $0393
+// .. $0397). Carry clear: the icon of that level (shop_item_icon_draw); carry set: queue the
+// level's panel upload (func_80B537). ($80:9F5B list 1, $80:9F9A list 2, $80:9FD9 list 3,
+// $80:A057 list 4, $80:A018 list 5)
+void shop_item_icon_1(bool upload);
+void shop_item_icon_2(bool upload);
+void shop_item_icon_3(bool upload);
+void shop_item_icon_4(bool upload);
+void shop_item_icon_5(bool upload);
 
 #endif

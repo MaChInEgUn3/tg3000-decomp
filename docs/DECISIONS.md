@@ -1731,6 +1731,34 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - **Left:** views `$80:A333` (calls `$80:A579`) and `$80:AEBE` (calls `$80:AF36`), then
   the dispatch itself.
 
+## The shop's second item dispatch: icons and panel uploads (shop-7, 2026-11-17)
+
+- **The dispatch:** `$80:9F40` (carry clear) and `$80:9C0B` (carry set) both jump through
+  the table at `$81:A8A3`, one handler per list. Five handlers share one shape:
+  - the part level is the byte at `$0393`-`$0397` + `$0194`, masked to 7 bits;
+  - **carry clear:** the level's icon group goes to `shop_item_icon_draw` (`$80:A1E4`,
+    reached by JMP);
+  - **carry set:** the level's panel upload is queued through `func_80B537`, with Y saved
+    around it.
+- **Ported:**
+  - `shop_item_icon_draw` ($80:A1E4): the group at (`$0142`, `$01E8`), palette `$0E00`
+    below step 8, `$2E00` from it; then, while `$0144` is not negative, two words of
+    `$7E:4EDA`/`$7E:4EFA` (and four of `$7E:4F1A`-`$7E:4F4A` below step 8) to the palette
+    copy at `$01C4`. The step holds at bit 15 after 15, or after 7 unless `$0176` is
+    negative. Live 4,000/4,000, paths 44/44;
+  - `shop_item_icon_1`..`_5` ($80:9F5B list 1, $80:9F9A 2, $80:9FD9 3, $80:A057 4,
+    $80:A018 5). Each runs the difftest with `alsoIn` = the icon's body; live 1,317,
+    1,102, 200, 676 and 437 samples; paths 33/33 each.
+- **Their V flag is live after the return**, so the adapters produce it:
+  - carry set: V from `func_80B537`'s ADC;
+  - carry clear: V from the group's last item ADC #6 (as on entry if the group is
+    empty), or from `BIT $0176` at step 7.
+
+  Caught by the fuzz (twice: first only the carry-set path was modelled).
+- **No register outputs:** every caller reloads A, X and Y (`$80:9E49`, `$80:9B99`,
+  `LDA #2`).
+- **Not ported:** `$80:A121` (list 6) is never run by the shop movie, as list 6's view.
+
 ## Steering the explorer; two item views parked (explore-2, 2026-11-17)
 
 - **The last two item views** belong to one item each: `$80:A333` to list 1, row 4, and

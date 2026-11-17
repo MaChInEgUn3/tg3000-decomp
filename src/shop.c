@@ -415,3 +415,54 @@ void shop_item_view_e(uint16_t entry) {
   wr16(DP + 0x40, (uint16_t)(rd16(DP + 0x40) + 1));
   shop_item_stage_step();
 }
+
+// TG3000_ROUTINE($80:A1E4) shop_item_icon_draw
+void shop_item_icon_draw(uint16_t group) {
+  wr16(DP + 0x18, (uint16_t)(rd16(DP + 0x44) << 1) < 0x0010 ? 0x0E00 : 0x2E00);
+  wr16(DP + 0x14, rd16(DP + 0x42));
+  wr16(DP + 0x16, rd16(DP + 0xE8));
+  sprite_group(DP, 0x7E0000 | group);
+  uint16_t step = rd16(DP + 0x44);
+  if(step & 0x8000) return;
+  const uint32_t x = (uint16_t)(step << 1), y = rd16(DP + 0xC4);
+  wr16(0x01EE + y, rd16(0x4EDA + x));
+  wr16(0x01F0 + y, rd16(0x4EFA + x));
+  if(x < 0x0010) {
+    wr16(0x0182 + y, rd16(0x4F1A + x));
+    wr16(0x0186 + y, rd16(0x4F2A + x));
+    wr16(0x0188 + y, rd16(0x4F3A + x));
+    wr16(0x018E + y, rd16(0x4F4A + x));
+  }
+  if(step == 0x000F || (step == 0x0007 && !(rd16(DP + 0x76) & 0x8000))) step |= 0x8000;
+  else step = (uint16_t)(step + 1);
+  wr16(DP + 0x44, step);
+}
+
+// One list's handler: its level byte at $0393 + `field` + D+$94; the icon table at $81:`icons`,
+// the upload table (4-byte rows: VRAM offset, size) at $81:`uploads`.
+static void shop_item_icon(bool upload, uint16_t field, uint16_t icons, uint16_t uploads) {
+  uint16_t level = (uint16_t)(rd16(0x0393 + (uint32_t)field + rd16(DP + 0x94)) & 0x007F);
+  if(!upload) {
+    shop_item_icon_draw(rom16(0x810000 + (uint32_t)icons + (uint32_t)(uint16_t)(level << 1)));
+    return;
+  }
+  const uint32_t row = 0x810000 + (uint32_t)uploads + (uint32_t)(uint16_t)(level << 2);
+  wr16(DP + 0x14, 0x007F);
+  func_80B537(DP, rom16(row + 2), (uint16_t)(rom16(row) + rd16(DP + 0x5E) + 0x0900),
+              (uint16_t)(rd16(DP + 0x5C) + 0x1000));
+}
+
+// TG3000_ROUTINE($80:9F5B) shop_item_icon_1
+void shop_item_icon_1(bool upload) { shop_item_icon(upload, 0, 0xBC2E, 0xBC16); }
+
+// TG3000_ROUTINE($80:9F9A) shop_item_icon_2
+void shop_item_icon_2(bool upload) { shop_item_icon(upload, 1, 0xBC52, 0xBC3A); }
+
+// TG3000_ROUTINE($80:9FD9) shop_item_icon_3
+void shop_item_icon_3(bool upload) { shop_item_icon(upload, 2, 0xBC76, 0xBC5E); }
+
+// TG3000_ROUTINE($80:A057) shop_item_icon_4
+void shop_item_icon_4(bool upload) { shop_item_icon(upload, 3, 0xBCBE, 0xBCA6); }
+
+// TG3000_ROUTINE($80:A018) shop_item_icon_5
+void shop_item_icon_5(bool upload) { shop_item_icon(upload, 4, 0xBC9A, 0xBC82); }

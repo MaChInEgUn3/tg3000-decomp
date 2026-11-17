@@ -3122,6 +3122,7 @@ shop_part_level_2:
     clc                         ; $809F58
     rts                         ; $809F59
     rts                         ; $809F5A
+shop_item_icon_1:
     bcs CODE_809F6E             ; $809F5B
     ldx.b $94                   ; $809F5D
     lda.w $0393,x               ; $809F5F
@@ -3130,7 +3131,7 @@ shop_part_level_2:
     tax                         ; $809F66
     lda.w $BC2E,x               ; $809F67
     tax                         ; $809F6A
-    jmp.w $A1E4                 ; $809F6B
+    jmp.w shop_item_icon_draw   ; $809F6B
 CODE_809F6E:
     phy                         ; $809F6E
     ldx.b $94                   ; $809F6F
@@ -3156,6 +3157,7 @@ CODE_809F6E:
     jsr.w func_80B537           ; $809F95
     ply                         ; $809F98
     rts                         ; $809F99
+shop_item_icon_2:
     bcs CODE_809FAD             ; $809F9A
     ldx.b $94                   ; $809F9C
     lda.w $0394,x               ; $809F9E
@@ -3164,7 +3166,7 @@ CODE_809F6E:
     tax                         ; $809FA5
     lda.w $BC52,x               ; $809FA6
     tax                         ; $809FA9
-    jmp.w $A1E4                 ; $809FAA
+    jmp.w shop_item_icon_draw   ; $809FAA
 CODE_809FAD:
     phy                         ; $809FAD
     ldx.b $94                   ; $809FAE
@@ -3190,6 +3192,7 @@ CODE_809FAD:
     jsr.w func_80B537           ; $809FD4
     ply                         ; $809FD7
     rts                         ; $809FD8
+shop_item_icon_3:
     bcs CODE_809FEC             ; $809FD9
     ldx.b $94                   ; $809FDB
     lda.w $0395,x               ; $809FDD
@@ -3198,7 +3201,7 @@ CODE_809FAD:
     tax                         ; $809FE4
     lda.w $BC76,x               ; $809FE5
     tax                         ; $809FE8
-    jmp.w $A1E4                 ; $809FE9
+    jmp.w shop_item_icon_draw   ; $809FE9
 CODE_809FEC:
     phy                         ; $809FEC
     ldx.b $94                   ; $809FED
@@ -3224,6 +3227,7 @@ CODE_809FEC:
     jsr.w func_80B537           ; $80A013
     ply                         ; $80A016
     rts                         ; $80A017
+shop_item_icon_5:
     bcs CODE_80A02B             ; $80A018
     ldx.b $94                   ; $80A01A
     lda.w $0397,x               ; $80A01C
@@ -3232,7 +3236,7 @@ CODE_809FEC:
     tax                         ; $80A023
     lda.w $BC9A,x               ; $80A024
     tax                         ; $80A027
-    jmp.w $A1E4                 ; $80A028
+    jmp.w shop_item_icon_draw   ; $80A028
 CODE_80A02B:
     phy                         ; $80A02B
     ldx.b $94                   ; $80A02C
@@ -3258,6 +3262,7 @@ CODE_80A02B:
     jsr.w func_80B537           ; $80A052
     ply                         ; $80A055
     rts                         ; $80A056
+shop_item_icon_4:
     bcs CODE_80A06A             ; $80A057
     ldx.b $94                   ; $80A059
     lda.w $0396,x               ; $80A05B
@@ -3266,7 +3271,7 @@ CODE_80A02B:
     tax                         ; $80A062
     lda.w $BCBE,x               ; $80A063
     tax                         ; $80A066
-    jmp.w $A1E4                 ; $80A067
+    jmp.w shop_item_icon_draw   ; $80A067
 CODE_80A06A:
     phy                         ; $80A06A
     ldx.b $94                   ; $80A06B
@@ -3294,7 +3299,7 @@ CODE_80A06A:
     rts                         ; $80A095
     bcs CODE_80A09E             ; $80A096
     ldx.w #$4F6A                ; $80A098
-    jmp.w $A1E4                 ; $80A09B
+    jmp.w shop_item_icon_draw   ; $80A09B
 CODE_80A09E:
     rts                         ; $80A09E
     bcs CODE_80A0B2             ; $80A09F
@@ -3305,7 +3310,7 @@ CODE_80A09E:
     tax                         ; $80A0AA
     lda.w $BCF2,x               ; $80A0AB
     tax                         ; $80A0AE
-    jmp.w $A1E4                 ; $80A0AF
+    jmp.w shop_item_icon_draw   ; $80A0AF
 CODE_80A0B2:
     phy                         ; $80A0B2
     ldx.b $94                   ; $80A0B3
@@ -3341,7 +3346,7 @@ CODE_80A0DE:
     tax                         ; $80A0EB
     lda.w $BCF6,x               ; $80A0EC
     tax                         ; $80A0EF
-    jmp.w $A1E4                 ; $80A0F0
+    jmp.w shop_item_icon_draw   ; $80A0F0
 CODE_80A0F3:
     phy                         ; $80A0F3
     ldx.b $94                   ; $80A0F4
@@ -3377,7 +3382,7 @@ CODE_80A11F:
     tax                         ; $80A12C
     lda.w $BCFA,x               ; $80A12D
     tax                         ; $80A130
-    jmp.w $A1E4                 ; $80A131
+    jmp.w shop_item_icon_draw   ; $80A131
 CODE_80A134:
     phy                         ; $80A134
     ldx.b $94                   ; $80A135
@@ -3413,7 +3418,7 @@ CODE_80A160:
     tax                         ; $80A16D
     lda.w $BCFE,x               ; $80A16E
     tax                         ; $80A171
-    jmp.w $A1E4                 ; $80A172
+    jmp.w shop_item_icon_draw   ; $80A172
 CODE_80A175:
     phy                         ; $80A175
     ldx.b $94                   ; $80A176
@@ -3442,6 +3447,7 @@ CODE_80A1A1:
     ply                         ; $80A1A1
     rts                         ; $80A1A2
     incbin !baserom:$21A3..$21E4
+shop_item_icon_draw:
     ldy.w #$0E00                ; $80A1E4
     lda.b $44                   ; $80A1E7
     asl a                       ; $80A1E9
