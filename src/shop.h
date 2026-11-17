@@ -45,4 +45,17 @@ uint16_t shop_bar_cap(void);
 // D+$84 + 1 twice), then D+$74 += $0C. Returns the new slot. ($80:A9BD)
 uint16_t shop_bar_column(void);
 
+// The shop's level bars, from the stage D+$3E (in half steps) and the bar table at $81:A896
+// (D+$7C picks it; 4-byte entries: start, length):
+// - shop_bar_levels ($80:A403): six 2-sprite marks, each at its entry's level (the stage
+//   less the start, at most the length), then six words of the tile table at $81:A882
+//   (by the level, at most 7) stored at $81:A876's offsets + D+$C4;
+// - shop_bar_segments ($80:A4B8): the bar of the stage past $10, in segments of 6 drawn
+//   as 3-sprite columns (one level on the half segment at $1B); nothing when the stage
+//   fills it;
+// - shop_bar_segments_long ($80:A87D): the same up to $24, without the half segment.
+void shop_bar_levels(void);
+void shop_bar_segments(void);
+void shop_bar_segments_long(void);
+
 #endif

@@ -234,3 +234,6 @@ func    80A7E4   shop_sprite_block   ; four sprite entries of a 2x2 block -> src
 func    808635   sprite_number_centered ; sprite_number, centred on x -> src/text.c
 func    80AAF1   shop_bar_cap        ; a bar's 4-sprite cap at the slot -> src/shop.c
 func    80A9BD   shop_bar_column     ; a bar's 3-sprite column at the slot -> src/shop.c
+func    80A403   shop_bar_levels     ; six level marks and the level tiles of a shop bar -> src/shop.c
+func    80A4B8   shop_bar_segments   ; a shop bar in segments of 6 (half segment at $1B) -> src/shop.c
+func    80A87D   shop_bar_segments_long ; the same up to $24 -> src/shop.c

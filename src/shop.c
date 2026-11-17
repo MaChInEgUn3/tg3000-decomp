@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "shop.h"
 
+#include <stdbool.h>
+
 #include "misc.h"
 #include "tg3000.h"
 
@@ -107,4 +109,117 @@ uint16_t shop_bar_column(void) {
   uint16_t next = (uint16_t)(y + 0x0C);
   wr16(DP + 0x74, next);
   return next;
+}
+
+// The half stage past $10, divided by 6 into D+$80 (segments x 6, up to `full`) and D+$7E
+// (the rest). Returns false when the bar is full (the original returns at once).
+static bool shop_bar_split(uint16_t full) {
+  wr16(DP + 0x80, 0);
+  wr16(DP + 0x7E, 0);
+  uint16_t d = (uint16_t)((rd16(DP + 0x3E) >> 1) - 0x10);
+  if((rd16(DP + 0x3E) >> 1) < 0x10) return true;
+  wr16(DP + 0x7E, d);
+  for(;;) {
+    if(rd16(DP + 0x7E) < 6) return true;
+    wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x7E) - 6));
+    wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) + 6));
+    if(rd16(DP + 0x80) == full) return false;
+  }
+}
+
+// One 3-sprite column of a bar at slot `y`: row ((`top` - D+$7A) & $FF) << 8 + D+$E7 into
+// D+$82, y position D+$14 + D+$80 + `dy`, tiles from D+$7E * 2 + D+$84 (the middle one
+// flipped). Returns the next slot.
+static uint16_t shop_bar_piece(uint16_t y, uint16_t top, uint16_t dy) {
+  const uint32_t s = y;
+  uint16_t row = (uint16_t)((((top - rd16(DP + 0x7A)) & 0xFF) << 8) + rd16(DP + 0xE7));
+  wr16(DP + 0x82, row);
+  uint16_t at = (uint16_t)(rd16(DP + 0x14) + rd16(DP + 0x80) + dy);
+  for(uint32_t i = 0; i < 12; i += 4) wr16(0x0B00 + s + i, at);
+  uint16_t t = (uint16_t)((at & 0x00FF) | row);
+  for(uint32_t i = 0; i < 12; i += 4) wr16(0x0900 + s + i, (uint16_t)(t + 0x0800 * (i / 4)));
+  uint16_t tile = (uint16_t)((rd16(DP + 0x7E) << 1) + rd16(DP + 0x84));
+  wr16(0x0902 + s, tile);
+  wr16(0x0906 + s, (uint16_t)(tile | 0x8000));
+  wr16(0x090A + s, (uint16_t)(((tile | 0x8000) ^ 0x8000) + 1));
+  for(uint32_t i = 0; i < 12; i += 4) wr16(0x0B02 + s + i, 0);
+  return (uint16_t)(y + 0x0C);
+}
+
+// TG3000_ROUTINE($80:A4B8) shop_bar_segments
+void shop_bar_segments(void) {
+  uint16_t y = rd16(DP + 0x74);
+  if(!shop_bar_split(0x1E)) {  // at $1E: back to the half segment $1B, with the rest less 3
+    wr16(DP + 0x80, 0x1B);
+    uint16_t rest = rd16(DP + 0x7E);
+    if(rest >= 3) return;
+    wr16(DP + 0x7E, (uint16_t)(rest + 3));
+  }
+  for(;;) {
+    y = shop_bar_piece(y, 0x5B, 0x0005);
+    wr16(DP + 0x7E, 0);
+    uint16_t at = (uint16_t)(rd16(DP + 0x80) + 6);
+    wr16(DP + 0x80, at);
+    if(at == 0x1E) {
+      wr16(DP + 0x80, 0x1B);
+      wr16(DP + 0x7E, 3);
+      continue;
+    }
+    if(at == 0x21) break;
+  }
+  wr16(DP + 0x74, y);
+}
+
+// TG3000_ROUTINE($80:A87D) shop_bar_segments_long
+void shop_bar_segments_long(void) {
+  uint16_t y = rd16(DP + 0x74);
+  if(!shop_bar_split(0x24)) return;
+  do {
+    y = shop_bar_piece(y, 0x5A, 0x0003);
+    wr16(DP + 0x7E, 0);
+    wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) + 6));
+  } while(rd16(DP + 0x80) != 0x24);
+  wr16(DP + 0x74, y);
+}
+
+// TG3000_ROUTINE($80:A403) shop_bar_levels
+void shop_bar_levels(void) {
+  uint16_t x = rom16(0x81A896 + (uint32_t)rd16(DP + 0x7C));
+  wr16(DP + 0x80, 0);
+  do {
+    wr16(DP + 0x7E, 0);
+    uint16_t level = (uint16_t)((rd16(DP + 0x3E) >> 1) - rom16(0x81A892 + (uint32_t)x));
+    if(!(level & 0x8000)) {
+      uint16_t length = rom16(0x81A894 + (uint32_t)x);
+      wr16(DP + 0x7E, level < length ? level : length);
+    }
+    const uint32_t y = rd16(DP + 0x74);
+    uint16_t row = (uint16_t)((((0x60 - rd16(DP + 0x7A) + rd16(DP + 0x7E)) & 0xFF) << 8) + rd16(DP + 0xE7));
+    wr16(DP + 0x7E, row);
+    uint16_t at = (uint16_t)(rd16(DP + 0x14) + rd16(DP + 0x80) + 0x2B);
+    wr16(0x0B00 + y, at);
+    wr16(0x0B04 + y, at);
+    uint16_t t = (uint16_t)((at & 0x00FF) | row);
+    wr16(0x0900 + y, t);
+    wr16(0x0904 + y, (uint16_t)(t + 0x0800));
+    wr16(0x0902 + y, 0x012C);
+    wr16(0x0906 + y, 0x012C);
+    wr16(0x0B02 + y, 0);
+    wr16(0x0B06 + y, 0);
+    wr16(DP + 0x74, (uint16_t)(y + 8));
+    x = (uint16_t)(x + 4);
+    wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) + 3));
+  } while(rd16(DP + 0x80) != 0x12);
+  x = rom16(0x81A896 + (uint32_t)rd16(DP + 0x7C));
+  wr16(DP + 0x80, 0);
+  do {  // (the stage is read again each time: a tile word may land on it)
+    uint16_t level = (uint16_t)((rd16(DP + 0x3E) >> 1) - rom16(0x81A892 + (uint32_t)x));
+    if(!(level & 0x8000)) {
+      if(level >= 8) level = 7;
+      uint16_t tile = rom16(0x81A882 + (uint32_t)(level << 1));
+      wr16((uint16_t)(rom16(0x81A876 + (uint32_t)rd16(DP + 0x80)) + rd16(DP + 0xC4)), tile);
+    }
+    x = (uint16_t)(x + 4);
+    wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) + 2));
+  } while(rd16(DP + 0x80) != 0x0C);
 }

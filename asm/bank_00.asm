@@ -3564,7 +3564,7 @@ CODE_80A296:
     lda.b $16                   ; $80A2CB
     sta.b $7A                   ; $80A2CD
     sty.b $7C                   ; $80A2CF
-    jsr.w $A403                 ; $80A2D1
+    jsr.w shop_bar_levels       ; $80A2D1
     ldy.b $7C                   ; $80A2D4
     lda.w $A892,y               ; $80A2D6
     tax                         ; $80A2D9
@@ -3578,7 +3578,7 @@ CODE_80A296:
     jsr.w sprite_group          ; $80A2E9
     lda.w #$2320                ; $80A2EC
     sta.b $84                   ; $80A2EF
-    jsr.w $A4B8                 ; $80A2F1
+    jsr.w shop_bar_segments     ; $80A2F1
     ldy.b $7C                   ; $80A2F4
     lda.w $A898,y               ; $80A2F6
     tax                         ; $80A2F9
@@ -3627,7 +3627,7 @@ CODE_80A332:
     jsr.w sprite_group          ; $80A351
     lda.w #$2338                ; $80A354
     sta.b $84                   ; $80A357
-    jsr.w $A4B8                 ; $80A359
+    jsr.w shop_bar_segments     ; $80A359
     ldy.b $7C                   ; $80A35C
     lda.w $A898,y               ; $80A35E
     tax                         ; $80A361
@@ -3676,7 +3676,7 @@ CODE_80A39A:
     jsr.w sprite_group          ; $80A3B9
     lda.w #$2338                ; $80A3BC
     sta.b $84                   ; $80A3BF
-    jsr.w $A4B8                 ; $80A3C1
+    jsr.w shop_bar_segments     ; $80A3C1
     ldy.b $7C                   ; $80A3C4
     lda.w $A898,y               ; $80A3C6
     tax                         ; $80A3C9
@@ -3708,6 +3708,7 @@ CODE_80A39A:
     incbin !baserom:$2400..$2402
 CODE_80A402:
     rts                         ; $80A402
+shop_bar_levels:
     ldy.b $7C                   ; $80A403
     lda.w $A896,y               ; $80A405
     tax                         ; $80A408
@@ -3806,6 +3807,7 @@ CODE_80A4A8:
     cmp.w #$000C                ; $80A4B2
     bne CODE_80A484             ; $80A4B5
     rts                         ; $80A4B7
+shop_bar_segments:
     stz.b $80                   ; $80A4B8
     ldy.b $74                   ; $80A4BA
     stz.b $7E                   ; $80A4BC
@@ -4248,7 +4250,7 @@ shop_sprite_block:
     jsr.w $A91E                 ; $80A837
     lda.w #$2312                ; $80A83A
     sta.b $84                   ; $80A83D
-    jsr.w $A87D                 ; $80A83F
+    jsr.w shop_bar_segments_long; $80A83F
     ldy.b $7C                   ; $80A842
     lda.w $A892,y               ; $80A844
     tax                         ; $80A847
@@ -4278,6 +4280,7 @@ shop_sprite_block:
     incbin !baserom:$287A..$287C
 CODE_80A87C:
     rts                         ; $80A87C
+shop_bar_segments_long:
     stz.b $80                   ; $80A87D
     ldy.b $74                   ; $80A87F
     stz.b $7E                   ; $80A881

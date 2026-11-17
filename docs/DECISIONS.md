@@ -1661,6 +1661,31 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   stretch (`$80:A8A8`). They are next, with their callers `$80:A91E`, `$80:AA59` and
   `$80:A251`.
 
+## The shop's level bars (shop-3, 2026-11-17)
+
+- **`shop_bar_levels` ($80:A403):** six 2-sprite level marks, each at its bar entry's
+  level: the stage `$013E / 2` less the entry's start, at most its length (4-byte
+  entries at `$81:A892`, picked through `$81:A896` by `$017C`). Then six words of the
+  tile table `$81:A882`, by the level (at most 7), stored at `$81:A876`'s offsets +
+  `$01C4`. Shop movie: live 1,288/1,288, paths 92/92.
+  - It reads the stage again for each mark, as the original does, because a tile word
+    may land on it.
+  - The fuzz keeps the tiles' destination (`$012E-$013F` + `$01C4`) off the direct
+    page's own variables. With `$01C4` landing on itself, the next tiles went to the I/O
+    registers (`$81:267B`).
+- **`shop_bar_segments` ($80:A4B8):**
+  - the bar of the stage past `$10`, drawn in segments of 6 as 3-sprite columns;
+  - at `$1E` it steps back to a half segment at `$1B`, with one level;
+  - when the stage fills the bar it returns at once: its `JMP $A578` lands on the RTS.
+
+  Live 1,288/1,288, paths 90/90.
+- **`shop_bar_segments_long` ($80:A87D):** the same up to `$24`, without the half
+  segment. Live 196/196, paths 73/73.
+  - Its five bytes after the `JMP $A91D` (`$80:A8A8`: `ADC #$0006 / STA $7E`) are dead,
+    a leftover of the half-segment code. Nothing reaches them, so they are a hole in its
+    extent, not static code.
+- No register outputs: every caller reloads A, X and Y right after.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

@@ -2815,6 +2815,21 @@ static void fuzz_shop_bar(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(unsigned i = 0; i < sizeof fields / sizeof fields[0]; i++) wr16ram(ram, DP + fields[i], (uint16_t)rnd());
 }
 
+// the bar routines: no register outputs (their callers reload A, X and Y)
+static void call_shop_bar_levels(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_levels(); }
+static void call_shop_bar_segments(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_segments(); }
+static void call_shop_bar_segments_long(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_segments_long(); }
+// the stage 0-$5F, the bar table index (live values), the rest as fuzz_shop_bar
+static void fuzz_shop_bars(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_shop_bar(r, ram, rnd);
+  wr16ram(ram, DP + 0x74, (uint16_t)((rnd() % 0x40) * 4));
+  wr16ram(ram, DP + 0x3E, (uint16_t)(rnd() % 0x60));
+  wr16ram(ram, DP + 0x7C, (uint16_t)((rnd() % 6) * 2));
+  // the level tiles go to $012E-$013F + D+$C4: keep them off the direct page's own
+  // variables (a tile on $01C4 or $013E changes where the next ones go)
+  wr16ram(ram, DP + 0xC4, (uint16_t)(0x0100 + (rnd() % 0x10) * 0x40));
+}
+
 // A = Y = slot + $10 (flags of the ADC)
 static void call_shop_sprite_block(const Regs* in, Regs* out) {
   out->a = out->y = shop_sprite_block(in->a, in->y);
@@ -3914,6 +3929,13 @@ const Routine routines[] = {
    .lowWramDb = true, .fixedD = true, .call = call_shop_bar_cap, ALL_OUTPUTS, .fuzz = fuzz_shop_bar},
   {.name = "shop_bar_column", .entry = 0x80A9BD, .end = 0x80AA15, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_shop_bar_column, ALL_OUTPUTS, .fuzz = fuzz_shop_bar},
+  {.name = "shop_bar_levels", .entry = 0x80A403, .end = 0x80A4B8, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_bar_levels, .fuzz = fuzz_shop_bars},
+  {.name = "shop_bar_segments", .entry = 0x80A4B8, .end = 0x80A579, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_shop_bar_segments, .fuzz = fuzz_shop_bars},
+  {.name = "shop_bar_segments_long", .entry = 0x80A87D, .end = 0x80A91E, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_shop_bar_segments_long, .fuzz = fuzz_shop_bars,
+   .holes = {{0x80A8A8, 0x80A8AD}}},  // dead bytes after its JMP (never decoded as code)
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
