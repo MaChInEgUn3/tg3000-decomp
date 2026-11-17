@@ -3085,6 +3085,16 @@ static void call_shop_item_dispatch_panel(const Regs* in, Regs* out) {
   out->x = entry;
   setNZ16(out, entry);
 }
+// the slides: no register outputs (their callers return or reload them); the last CMP
+// matched: N clear, Z and C set
+static void slideFlags(Regs* out) {
+  out->n = false;
+  out->z = true;
+  out->c = true;
+}
+static void call_shop_item_slide_row(const Regs* in, Regs* out) { (void)in; shop_item_slide_row(); slideFlags(out); }
+static void call_shop_item_slide_list(const Regs* in, Regs* out) { (void)in; shop_item_slide_list(); slideFlags(out); }
+static void call_shop_item_slide_list_in(const Regs* in, Regs* out) { (void)in; shop_item_slide_list_in(); slideFlags(out); }
 // the frame: no register outputs (every caller reloads them)
 static void call_shop_item_redraw(const Regs* in, Regs* out) { (void)in; (void)out; shop_item_redraw(); }
 // no register outputs: every caller reloads A, X and Y ($80:9E49, $80:9B99, LDA #2)
@@ -4582,6 +4592,14 @@ const Routine routines[] = {
    .fuzz = fuzz_shop_item_dispatch_panel},
   {.name = "shop_item_redraw", .entry = 0x809847, .end = 0x809870, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_item_redraw, .fuzz = fuzz_shop_item_redraw},
+  // the slides wait for frames (no fuzz: the waits need the movie's interrupts)
+  {.name = "shop_item_slide_row", .entry = 0x809AC8, .end = 0x809B5D, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_item_slide_row},
+  {.name = "shop_item_slide_list", .entry = 0x809B5D, .end = 0x809B99, .alsoIn = {{0x809B99, 0x809BF2}},
+   .source = "src/shop.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true,
+   .call = call_shop_item_slide_list},
+  {.name = "shop_item_slide_list_in", .entry = 0x809B99, .end = 0x809BF2, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_item_slide_list_in},
   {.name = "shop_item_view_h", .entry = 0x80AEBE, .end = 0x80AF36, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .call = call_shop_item_view_h},
   {.name = "shop_item_view_i", .entry = 0x80AE4E, .end = 0x80AEBE, .source = "src/shop.c", .needM16 = true, .needX16 = true,

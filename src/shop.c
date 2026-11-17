@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
+#include "frame.h"
 #include "misc.h"
 #include "platform.h"
 #include "sprites.h"
@@ -901,4 +902,83 @@ void shop_item_redraw(void) {
   shop_level_marks();
   func_809DD0();
   oam_finish_near(DP);
+}
+
+// one frame of a slide: the frame's wait, the typewriter and panel when the queue is empty
+static void shop_slide_wait(void) {
+  wait_frames(1);
+  if(rd16(DP + 0x8C) == rd16(DP + 0x8E)) {
+    text_type_step();
+    shop_panel_upload();
+  }
+}
+
+// the item drawn at (D+$14, D+$16)
+static void shop_slide_draw(void) {
+  shop_item_dispatch_view();
+  shop_item_dispatch_icon();
+  shop_level_marks();
+  func_809DD0();
+  oam_finish_near(DP);
+}
+
+// the new item: wait for the queue to drain (to the slot it had), then its panel and text
+static void shop_slide_swap(void) {
+  uint16_t slot = rd16(DP + 0x8C);
+  while(rd16(DP + 0x8E) != slot) platform_wait_vblank();
+  text_type_step();
+  shop_panel_upload();
+  wr16(DP + 0x3E, 0);
+  wr16(DP + 0x40, 0);
+  wr16(DP + 0x42, 0);
+  wr16(DP + 0x4A, rd16(DP + 0x4C));
+  shop_item_dispatch_panel();
+  shop_item_text();
+}
+
+// TG3000_ROUTINE($80:9AC8) shop_item_slide_row
+void shop_item_slide_row(void) {
+  wr16(DP + 0x4E, 0x0018);
+  do {
+    shop_slide_wait();
+    wr16(DP + 0x14, 0x0010);
+    wr16(DP + 0x4E, (uint16_t)(rd16(DP + 0x4E) - 6));
+    wr16(DP + 0x16, rd16(DP + 0x4E));
+    shop_slide_draw();
+  } while(!((uint16_t)(rd16(DP + 0x4E) - 0xFFC0) & 0x8000));
+  shop_slide_swap();
+  wr16(DP + 0x4E, 0xFFC2);
+  do {
+    shop_slide_wait();
+    wr16(DP + 0x4E, (uint16_t)(rd16(DP + 0x4E) + 6));
+    wr16(DP + 0x14, rd16(DP + 0x4E));
+    wr16(DP + 0x16, 0x0018);
+    shop_slide_draw();
+  } while(rd16(DP + 0x4E) != 0x0010);
+}
+
+// TG3000_ROUTINE($80:9B99) shop_item_slide_list_in
+void shop_item_slide_list_in(void) {
+  shop_slide_swap();
+  wr16(DP + 0x4E, 0xFFCA);
+  do {
+    shop_slide_wait();
+    wr16(DP + 0x14, 0x0010);
+    wr16(DP + 0x4E, (uint16_t)(rd16(DP + 0x4E) + 6));
+    wr16(DP + 0x16, rd16(DP + 0x4E));
+    shop_slide_draw();
+  } while(rd16(DP + 0x4E) != 0x0018);
+}
+
+// TG3000_ROUTINE($80:9B5D) shop_item_slide_list
+void shop_item_slide_list(void) {
+  wr16(DP + 0x4E, 0x0010);
+  do {
+    shop_slide_wait();
+    wr16(DP + 0x4E, (uint16_t)(rd16(DP + 0x4E) - 6));
+    wr16(DP + 0x14, rd16(DP + 0x4E));
+    wr16(DP + 0x16, 0x0018);
+    shop_slide_draw();
+  } while(rd16(DP + 0x4E) != 0xFFC2);
+  shop_item_slide_list_in();
 }

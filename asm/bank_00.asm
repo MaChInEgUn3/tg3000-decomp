@@ -1574,7 +1574,7 @@ CODE_808F32:
     sta.b $4E                   ; $808F39
     jsr.w shop_panel_clear      ; $808F3B
     jsr.w shop_item_dispatch_upload; $808F3E
-    jsr.w $9B99                 ; $808F41
+    jsr.w shop_item_slide_list_in; $808F41
     lda.b $8C                   ; $808F44
 CODE_808F46:
     cmp.b $8E                   ; $808F46
@@ -1631,7 +1631,7 @@ CODE_808F9F:
     inc a                       ; $808FB4
     sta.b $4C                   ; $808FB5
     jsr.w shop_item_picture     ; $808FB7
-    jsr.w $9B5D                 ; $808FBA
+    jsr.w shop_item_slide_list  ; $808FBA
     rts                         ; $808FBD
 CODE_808FBE:
     lda.b $44                   ; $808FBE
@@ -1651,7 +1651,7 @@ CODE_808FCB:
     dec a                       ; $808FDC
     sta.b $4C                   ; $808FDD
     jsr.w shop_item_picture     ; $808FDF
-    jsr.w $9AC8                 ; $808FE2
+    jsr.w shop_item_slide_row   ; $808FE2
     rts                         ; $808FE5
 CODE_808FE6:
     lda.b $44                   ; $808FE6
@@ -2560,6 +2560,7 @@ CODE_809AA6:
     lda.b $54                   ; $809AC2
     sta.w $0390,x               ; $809AC4
     rts                         ; $809AC7
+shop_item_slide_row:
     lda.w #$0018                ; $809AC8
     sta.b $4E                   ; $809ACB
 CODE_809ACD:
@@ -2626,6 +2627,7 @@ CODE_809B37:
     cmp.w #$0010                ; $809B57
     bne CODE_809B25             ; $809B5A
     rts                         ; $809B5C
+shop_item_slide_list:
     lda.w #$0010                ; $809B5D
     sta.b $4E                   ; $809B60
 CODE_809B62:
@@ -2652,6 +2654,7 @@ CODE_809B74:
     lda.b $4E                   ; $809B92
     cmp.w #$FFC2                ; $809B94
     bne CODE_809B62             ; $809B97
+shop_item_slide_list_in:
     lda.b $8C                   ; $809B99
 CODE_809B9B:
     cmp.b $8E                   ; $809B9B

@@ -200,4 +200,17 @@ void shop_item_dispatch_panel(void);
 // view, its icon, the level marks, the labels and the sprite table's end.
 void shop_item_redraw(void);
 
+// The item changes, sliding six pixels a frame (each frame: wait for it, the typewriter
+// and panel when the queue is empty, then the view, icon, marks, labels and sprites at
+// (D+$14, D+$16)); between the two halves, once the upload queue has drained, the new item
+// (row D+$4C) takes over: stage, spin and timer cleared, its panel and its text.
+// - shop_item_slide_row ($80:9AC8): the old item up and out (y $18 down to -$46), the new
+//   one in from the left (x -$3E up to $10);
+// - shop_item_slide_list ($80:9B5D): the old item out to the left (x $10 down to -$3E),
+//   then shop_item_slide_list_in;
+// - shop_item_slide_list_in ($80:9B99): the new item, down from the top (y -$36 to $18).
+void shop_item_slide_row(void);
+void shop_item_slide_list(void);
+void shop_item_slide_list_in(void);
+
 #endif

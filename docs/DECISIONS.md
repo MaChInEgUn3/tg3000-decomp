@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The item slides (shop-14, 2026-11-17)
+
+- **The item changes by sliding, six pixels a frame.** Each frame:
+  - `wait_frames(1)`;
+  - with the upload queue empty, a typewriter step and the panel's upload;
+  - the item drawn at (`$0114`, `$0116`): view, icon, level marks, labels, sprite end.
+- **Between the two halves** it waits for the queue to drain, comparing against the slot
+  it read once (`LDA $8C` outside a `CMP $8E` / `BNE` loop the NMI ends). Then come a
+  typewriter step and the panel, and the new item (row `$014C`) takes over: stage,
+  spin and timer cleared, its panel pictures and its text.
+- **The routines:**
+  - `shop_item_slide_row` ($80:9AC8): up and out (y `$18` down to -`$46`), then in from
+    the left (x -`$3E` up to `$10`). Live 34/34, paths 61/61;
+  - `shop_item_slide_list` ($80:9B5D): out to the left (x `$10` down to -`$3E`), then
+    falls into `shop_item_slide_list_in` (`alsoIn`). Live 47/47, paths 24/24;
+  - `shop_item_slide_list_in` ($80:9B99): the new item, down from the top (y -`$36` to
+    `$18`). Live 57/57, paths 37/37.
+- **They wait for frames,** so their rows are `waitsForInterrupts` with no fuzz: the live
+  samples replay the movie's interrupts.
+- **Exit:** the last `CMP` matched (N clear, Z and C set), and those flags are live.
+
 ## The item screen's frame and panel (shop-13, 2026-11-17)
 
 - **`shop_item_dispatch_panel` ($80:9C28):** the item's handler from the table at
