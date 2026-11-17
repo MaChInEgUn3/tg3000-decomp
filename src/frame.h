@@ -60,6 +60,11 @@ void nmi_target_80E175(void);
 // main screen BG2, BG3 scrolled to (0, $3FF), $2130 = $02, colour 2 black); then the tail.
 void nmi_target_80D784(void);
 void nmi_prologue(void);  // $80:8807, up to its dispatch through $0008
+
+// $80:80E4: the interrupt jumps in low RAM: $0000 JML $80:8807 (the NMI), $0004 JML
+// $80:89B2 (the IRQ), the NMI's dispatch target $0008 = $8934; then $0026, $019A,
+// $002A and $0028 cleared.
+void interrupt_vectors_init(void);
 void nmi_race_prologue(void);  // $85:8377, up to its dispatch (nothing to do)
 void nmi_race_tail(void);  // $85:838A: the race NMI's tail (every race frame)
 

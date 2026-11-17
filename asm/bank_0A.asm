@@ -674,7 +674,7 @@ CODE_8A89AD:
     ldx.w #$0000                ; $8A8A43
     ldy.w #$0006                ; $8A8A46
 CODE_8A8A49:
-    jsr.w $8AE7                 ; $8A8A49
+    jsr.w table_062a_fill       ; $8A8A49
     lda.b $3E                   ; $8A8A4C
     clc                         ; $8A8A4E
     adc.w #$0010                ; $8A8A4F
@@ -738,6 +738,7 @@ CODE_8A8A77:
     sta.w $0620                 ; $8A8AE0
     sta.w $0628                 ; $8A8AE3
     rts                         ; $8A8AE6
+table_062a_fill:
     phy                         ; $8A8AE7
     lda.b $3C                   ; $8A8AE8
     pha                         ; $8A8AEA
@@ -2432,7 +2433,7 @@ CODE_8A9C61:
     bne CODE_8A9C53             ; $8A9C64
     rep.b #$20                  ; $8A9C66
     rts                         ; $8A9C68
-    jsr.w $9C86                 ; $8A9C69
+    jsr.w hdma_table_0d00_init  ; $8A9C69
     sep.b #$10                  ; $8A9C6C
     ldx.b #$32                  ; $8A9C6E
     stx.w $4321                 ; $8A9C70
@@ -2444,6 +2445,7 @@ CODE_8A9C61:
     stx.w $4324                 ; $8A9C80
     rep.b #$10                  ; $8A9C83
     rts                         ; $8A9C85
+hdma_table_0d00_init:
     sep.b #$20                  ; $8A9C86
     lda.b #$36                  ; $8A9C88
     sta.w $0D00                 ; $8A9C8A
@@ -3929,7 +3931,7 @@ CODE_8ABC9B:
     stz.b $68                   ; $8ABEB5
     lda.w #$0001                ; $8ABEB7
     sta.b $86                   ; $8ABEBA
-    jsr.w $BF2A                 ; $8ABEBC
+    jsr.w string_space_fours    ; $8ABEBC
     lda.w #$0D60                ; $8ABEBF
     jsr.w text_print_centered   ; $8ABEC2
     lda.w #$0008                ; $8ABEC5
@@ -3963,6 +3965,7 @@ CODE_8ABF03:
     sta.w $0008                 ; $8ABF09
     rts                         ; $8ABF0C
     incbin !baserom:$53F0D..$53F2A
+string_space_fours:
     sep.b #$20                  ; $8ABF2A
     ldy.w #$0000                ; $8ABF2C
     ldx.w #$0000                ; $8ABF2F

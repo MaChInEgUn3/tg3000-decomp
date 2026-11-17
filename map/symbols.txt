@@ -265,3 +265,8 @@ func    8A99D0   func_8A99D0         ; D+$66 = $28 -> src/misc.c
 func    8A96C2   func_8A96C2         ; D+$40 + 1 -> src/misc.c
 func    809F40   shop_item_dispatch_icon ; the item's list handler, carry clear (its icon) -> src/shop.c
 func    809C0B   shop_item_dispatch_upload ; the item's list handler, carry set (its panel upload) -> src/shop.c
+func    80ABF6   shop_item_view_g    ; item view of list 0: two groups -> src/shop.c
+func    8080E4   interrupt_vectors_init ; JML vectors at $0000/$0004, NMI target $0008 -> src/frame.c
+func    8A9C86   hdma_table_0d00_init ; HDMA table at $0D00 -> src/misc.c
+func    8ABF2A   string_space_fours  ; copy $0D40 to $0D60 with a space every 4 bytes -> src/misc.c
+func    8A8AE7   table_062a_fill     ; 12 words at $062A/$072A from D+$3C/$3E -> src/misc.c

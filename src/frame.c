@@ -304,3 +304,18 @@ void nmi_target_80D784(void) {
   video_set_color(2, 0x0000);
   nmi_tail();
 }
+
+// TG3000_ROUTINE($80:80E4) interrupt_vectors_init
+void interrupt_vectors_init(void) {
+  wr8(0x0000, 0x5C);  // JML
+  wr8(0x0004, 0x5C);
+  wr8(0x0003, 0x80);
+  wr8(0x0007, 0x80);
+  wr16(0x0001, 0x8807);
+  wr16(0x0005, 0x89B2);
+  wr16(0x0008, 0x8934);
+  wr16(0x0026, 0);
+  wr16(0x019A, 0);
+  wr16(0x002A, 0);
+  wr16(0x0028, 0);
+}

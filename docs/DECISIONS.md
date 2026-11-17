@@ -1789,6 +1789,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## List 0's view and four more leaves (leaves-11, 2026-11-17)
+
+- **The item screen has a view per list, nine in all** (`$81:A897`):
+  - list 0 `$80:ABF6`;
+  - lists 1-5 as before (list 1 row 4 `$80:A333`);
+  - list 6 `$80:AEBE` (+`$80:AF36`), list 7 `$80:AE4E`, list 8 `$80:AC37` (+`$80:ACB6`,
+    which draws through `$80:ADD9` in bank `$7E`).
+
+  The shop movie runs only list 0's, so the dispatch `$80:A251` waits for the others:
+  checked through its fuzz, as the second dispatch's handlers are.
+- **`shop_item_view_g` ($80:ABF6):** two groups (fields 0 and 2), then the stage step,
+  with its stop at `$7FFF` static. Live 3,103/3,103, paths 31/31.
+- **`interrupt_vectors_init` ($80:80E4):** `JML $80:8807` (the NMI) at `$0000`,
+  `JML $80:89B2` (the IRQ) at `$0004`, the NMI's dispatch target `$0008` = `$8934`;
+  then `$0026`, `$019A`, `$002A` and `$0028` are cleared.
+- **`hdma_table_0d00_init` ($8A:9C86):** at `$0D00`, `$36` lines of `$FF`, then 21
+  entries of 8 lines of `$FF`, then the end.
+- **`string_space_fours` ($8A:BF2A):** it copies the zero-ended string at `$0D40` to
+  `$0D60`, with a space after every fourth byte read (the zero included).
+- **`table_062a_fill` ($8A:8AE7):** 12 words from X: `$062A` + x = `$013C` + 16n,
+  `$072A` + x = `$013E`. Live 1,586/1,586.
+
 ## The second item dispatch itself (shop-10, 2026-11-17)
 
 - **`shop_item_dispatch_icon` ($80:9F40) and `shop_item_dispatch_upload` ($80:9C0B):**

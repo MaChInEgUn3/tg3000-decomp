@@ -35,3 +35,4 @@
 80:A7E1 80:A7E3 m16x16 ; shop_item_view_d: the stop at $7FFF ($80:A7DF BPL): as shop_item_view_a's
 80:ABF3 80:ABF5 m16x16 ; shop_item_view_e: the stop at $7FFF ($80:ABF1 BPL): as shop_item_view_a's
 80:B364 80:B365 m16x16 ; shop_list_locked: SEC, RTS when the key is negative ($80:B362 BPL)
+80:AC34 80:AC36 m16x16 ; shop_item_view_g: the stop at $7FFF ($80:AC32 BPL): as shop_item_view_a's

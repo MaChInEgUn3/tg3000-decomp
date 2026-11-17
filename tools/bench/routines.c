@@ -349,6 +349,78 @@ static void setAdc16(Regs* r, uint16_t a, uint16_t b) {  // C and V of A + b, ca
 
 static void wr16ram(uint8_t* ram, uint32_t adr, uint16_t v) { ram[adr] = (uint8_t)v; ram[adr + 1] = (uint8_t)(v >> 8); }
 
+// ---- interrupt_vectors_init ($80:80E4) ----  A = $8934 (N of its LDA)
+static void call_interrupt_vectors_init(const Regs* in, Regs* out) {
+  (void)in;
+  interrupt_vectors_init();
+  out->a = 0x8934;
+  setNZ16(out, 0x8934);
+}
+static void fuzz_interrupt_vectors_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t a = 0; a < 0x0C; a++) ram[a] = (uint8_t)rnd();
+  for(uint32_t a = 0x0026; a < 0x002C; a++) ram[a] = (uint8_t)rnd();
+  wr16ram(ram, 0x019A, (uint16_t)rnd());
+}
+
+// ---- hdma_table_0d00_init ($8A:9C86) ----  A low = $FF (B kept), X = 42, Y = 0 (its DEY)
+static void call_hdma_table_0d00_init(const Regs* in, Regs* out) {
+  hdma_table_0d00_init();
+  out->a = (uint16_t)((in->a & 0xFF00) | 0x00FF);
+  out->x = 42;
+  out->y = 0;
+  setNZ16(out, 0);
+}
+static void fuzz_hdma_table_0d00_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t a = 0x0D00; a < 0x0D40; a++) ram[a] = (uint8_t)rnd();
+}
+
+// ---- string_space_fours ($8A:BF2A) ----  A low = 0 (B kept), X = bytes read, Y = written;
+// N Z C of the CMP #0 that ended it
+static void call_string_space_fours(const Regs* in, Regs* out) {
+  uint16_t x = 0, y = 0;
+  for(;;) {
+    uint8_t c = rd8(0x0D40 + (uint32_t)x);
+    x++;
+    y++;
+    if((x & 3) == 0) y++;
+    if(c == 0) break;
+  }
+  string_space_fours();
+  out->a = (uint16_t)(in->a & 0xFF00);
+  out->x = x;
+  out->y = y;
+  out->n = false;
+  out->z = true;
+  out->c = true;
+}
+// a string of 0-30 non-zero bytes, then 0
+static void fuzz_string_space_fours(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint32_t n = rnd() % 31;
+  for(uint32_t i = 0; i < 0x20; i++) ram[0x0D40 + i] = (uint8_t)(1 + rnd() % 255);
+  ram[0x0D40 + n] = 0;
+  for(uint32_t i = 0; i < 0x30; i++) ram[0x0D60 + i] = (uint8_t)rnd();
+}
+
+// ---- table_062a_fill ($8A:8AE7) ----  A = the old D+$3C (PLA), X + 24, Y kept (PLY: N Z),
+// C V of the last ADC #$10
+static void call_table_062a_fill(const Regs* in, Regs* out) {
+  uint16_t first = rd16(DP + 0x3C);
+  table_062a_fill(in->x);
+  out->a = first;
+  out->x = (uint16_t)(in->x + 24);
+  out->y = in->y;
+  setNZ16(out, in->y);
+  setAdc16(out, (uint16_t)(first + 0xB0), 0x10);
+}
+static void fuzz_table_062a_fill(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)((rnd() % 0x68) * 2);
+  wr16ram(ram, DP + 0x3C, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x3E, (uint16_t)rnd());
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -2942,6 +3014,7 @@ static void call_shop_item_view_b(const Regs* in, Regs* out) { (void)out; shop_i
 static void call_shop_item_view_c(const Regs* in, Regs* out) { (void)out; shop_item_view_c(in->y); }
 static void call_shop_item_view_d(const Regs* in, Regs* out) { (void)out; shop_item_view_d(in->y); }
 static void call_shop_item_view_e(const Regs* in, Regs* out) { (void)out; shop_item_view_e(in->y); }
+static void call_shop_item_view_g(const Regs* in, Regs* out) { (void)out; shop_item_view_g(in->y); }
 // no register outputs: every caller reloads A, X and Y ($80:9E49, $80:9B99, LDA #2)
 static void call_shop_item_icon_draw(const Regs* in, Regs* out) { (void)out; shop_item_icon_draw(in->x); }
 // A = $B149 (N set, Z clear), X = D+$5E + 16, Y = 0; C and V kept
@@ -3109,6 +3182,13 @@ static void fuzz_shop_item_view_a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
 static void fuzz_shop_item_view_b(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA831); }
 static void fuzz_shop_item_view_c(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xAA15); }
 static void fuzz_shop_item_view_d(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA717); }
+// list 0's view: its one row
+static void fuzz_shop_item_view_g(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_shop_item_view_of(r, ram, rnd, 0xA2CB);  // the bars and the rest
+  wr16ram(ram, DP + 0x48, 0);
+  wr16ram(ram, DP + 0x4A, 0);
+  r->y = rom16(0x81A8A1 + (uint32_t)rom16(0x81A892));
+}
 
 // the icon: its step anywhere in 0-15 or done (bit 15), the position, D+$76 and the colour
 // tables; the palette copy off the direct page as the views'; the panel queue as
@@ -4325,6 +4405,16 @@ const Routine routines[] = {
    .fixedD = true, .call = call_func_8A99D0, ALL_OUTPUTS, .fuzz = fuzz_dp_40_66},
   {.name = "func_8A96C2", .entry = 0x8A96C2, .end = 0x8A96C8, .source = "src/misc.c", .needM16 = true,
    .fixedD = true, .call = call_func_8A96C2, ALL_OUTPUTS, .fuzz = fuzz_dp_40_66},
+  {.name = "shop_item_view_g", .entry = 0x80ABF6, .end = 0x80AC37, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_g, .fuzz = fuzz_shop_item_view_g},
+  {.name = "interrupt_vectors_init", .entry = 0x8080E4, .end = 0x808119, .source = "src/frame.c", .needM16 = true,
+   .lowWramDb = true, .call = call_interrupt_vectors_init, ALL_OUTPUTS, .fuzz = fuzz_interrupt_vectors_init},
+  {.name = "hdma_table_0d00_init", .entry = 0x8A9C86, .end = 0x8A9CB0, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_hdma_table_0d00_init, ALL_OUTPUTS, .fuzz = fuzz_hdma_table_0d00_init},
+  {.name = "string_space_fours", .entry = 0x8ABF2A, .end = 0x8ABF4E, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_string_space_fours, ALL_OUTPUTS, .fuzz = fuzz_string_space_fours},
+  {.name = "table_062a_fill", .entry = 0x8A8AE7, .end = 0x8A8B0A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_table_062a_fill, ALL_OUTPUTS, .fuzz = fuzz_table_062a_fill},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

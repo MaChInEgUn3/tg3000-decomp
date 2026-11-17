@@ -90,6 +90,8 @@ void shop_item_view_c(uint16_t entry);
 //   and D+$40 + 1.
 void shop_item_view_d(uint16_t entry);
 void shop_item_view_e(uint16_t entry);
+// - shop_item_view_g ($80:ABF6, list 0): two groups (fields 0 and 2).
+void shop_item_view_g(uint16_t entry);
 
 // The item's icon ($80:A1E4): the sprite group `group` at (D+$42, D+$E8), palette $0E00
 // while D+$44 < 8, $2E00 after; then, while D+$44 is not negative, its colours: two words

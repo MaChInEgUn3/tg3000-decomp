@@ -1195,3 +1195,43 @@ uint16_t func_8A96C2(void) {
   wr16(DP + 0x40, (uint16_t)(rd16(DP + 0x40) + 1));
   return rd16(DP + 0x40);
 }
+
+// TG3000_ROUTINE($8A:9C86) hdma_table_0d00_init
+void hdma_table_0d00_init(void) {
+  wr8(0x0D00, 0x36);
+  wr8(0x0D01, 0xFF);
+  uint32_t x = 0;
+  for(int n = 0; n < 0x15; n++, x += 2) {
+    wr8(0x0D02 + x, 0x08);
+    wr8(0x0D03 + x, 0xFF);
+  }
+  wr8(0x0D02 + x, 0);
+  wr8(0x0D03 + x, 0);
+}
+
+// TG3000_ROUTINE($8A:BF2A) string_space_fours
+void string_space_fours(void) {
+  uint32_t x = 0, y = 0;
+  uint8_t c;
+  do {
+    c = rd8(0x0D40 + x);
+    wr8(0x0D60 + y, c);
+    x = (uint16_t)(x + 1);
+    y = (uint16_t)(y + 1);
+    if((x & 3) == 0) {
+      wr8(0x0D60 + y, 0x20);
+      y = (uint16_t)(y + 1);
+    }
+  } while(c != 0);
+}
+
+// TG3000_ROUTINE($8A:8AE7) table_062a_fill
+void table_062a_fill(uint16_t x) {
+  uint16_t first = rd16(DP + 0x3C);
+  for(int n = 0; n < 12; n++, x = (uint16_t)(x + 2)) {
+    wr16(0x062A + (uint32_t)x, rd16(DP + 0x3C));
+    wr16(0x072A + (uint32_t)x, rd16(DP + 0x3E));
+    wr16(DP + 0x3C, (uint16_t)(rd16(DP + 0x3C) + 0x10));
+  }
+  wr16(DP + 0x3C, first);
+}

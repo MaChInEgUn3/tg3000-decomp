@@ -60,7 +60,7 @@ CODE_808058:
     lda.w #$0080                ; $808066
     jsr.w video_load_screen     ; $808069
     jsl.l $86DD85               ; $80806C
-    jsr.w $80E4                 ; $808070
+    jsr.w interrupt_vectors_init; $808070
     sep.b #$20                  ; $808073
     lda.b #$81                  ; $808075
     sta.w $4200                 ; $808077
@@ -83,6 +83,7 @@ CODE_808091:
     plb                         ; $80809A
     jsr.w $89DB                 ; $80809B
     incbin !baserom:$9E..$E4
+interrupt_vectors_init:
     sep.b #$20                  ; $8080E4
     lda.b #$5C                  ; $8080E6
     sta.w $0000                 ; $8080E8
@@ -4715,6 +4716,7 @@ CODE_80ABC2:
     dec.b $3E                   ; $80ABF3 static
 CODE_80ABF5:
     rts                         ; $80ABF5
+shop_item_view_g:
     lda.b $16                   ; $80ABF6
     sta.b $7A                   ; $80ABF8
     sty.b $7C                   ; $80ABFA
@@ -4744,7 +4746,7 @@ CODE_80ABF5:
     jsr.w sprite_group          ; $80AC2D
     inc.b $3E                   ; $80AC30
     bpl CODE_80AC36             ; $80AC32
-    incbin !baserom:$2C34..$2C36
+    dec.b $3E                   ; $80AC34 static
 CODE_80AC36:
     rts                         ; $80AC36
     lda.b $16                   ; $80AC37

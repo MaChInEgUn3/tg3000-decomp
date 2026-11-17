@@ -180,6 +180,17 @@ void fade_out_wait(void);
 bool fade_out_on_confirm(void);
 void fade_out_on_confirm_once(void);
 
+// $8A:9C86: the HDMA table at $0D00: $36 lines of $FF, then 21 entries of 8 lines of
+// $FF, then the end (0).
+void hdma_table_0d00_init(void);
+
+// $8A:BF2A: copy the zero-ended string at $0D40 to $0D60, a space after every 4 bytes
+// (counted from the start, the zero included).
+void string_space_fours(void);
+
+// $8A:8AE7: 12 words from index `x`: $062A + x = D+$3C + 16 * n, $072A + x = D+$3E.
+void table_062a_fill(uint16_t x);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.

@@ -603,3 +603,12 @@ void shop_item_dispatch_icon(void) { shop_item_dispatch(false); }
 
 // TG3000_ROUTINE($80:9C0B) shop_item_dispatch_upload
 void shop_item_dispatch_upload(void) { shop_item_dispatch(true); }
+
+// TG3000_ROUTINE($80:ABF6) shop_item_view_g
+void shop_item_view_g(uint16_t entry) {
+  wr16(DP + 0x7A, rd16(DP + 0x16));
+  wr16(DP + 0x7C, entry);
+  shop_item_group(rd16(DP + 0x7C), 0, rd16(DP + 0x7A));
+  shop_item_group(rd16(DP + 0x7C), 2, (uint16_t)(0x30 - rd16(DP + 0x7A)));
+  shop_item_stage_step();
+}
