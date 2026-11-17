@@ -28,6 +28,7 @@ void coverage_report(void);
 void coverage_snapshot(uint8_t* out);
 void coverage_restore(const uint8_t* in);
 int coverage_new_starts(const uint8_t* base, const uint8_t* known);
+uint8_t coverage_flag(uint32_t offset);  // one ROM byte's flags
 int coverage_insn_length(uint8_t opcode, bool m8, bool x8);
 uint8_t cart_peekRom(uint32_t offset);
 

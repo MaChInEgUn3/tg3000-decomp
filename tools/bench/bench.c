@@ -225,6 +225,36 @@ static bool exploreRun(const ExploreEvent* ev, int n, int len) {
   return still < 120;
 }
 
+// --explore-want: CPU addresses whose first execution is worth `EXPLORE_WANT_BONUS` starts
+// each (steers the explorer to code a movie still misses, such as one shop item's view)
+#define EXPLORE_WANT_BONUS 100000
+static uint32_t exploreWant[16];
+static int exploreWantCount;
+static int exploreWantScore(const uint8_t* base) {
+  int bonus = 0;
+  for(int i = 0; i < exploreWantCount; i++) {
+    uint32_t a = exploreWant[i];
+    uint32_t off = ((a >> 16) & 0x7F) << 15 | (a & 0x7FFF);
+    if(!(base[off] & COV_START) && coverage_flag(off) & COV_START) bonus += EXPLORE_WANT_BONUS;
+  }
+  return bonus;
+}
+
+// --explore-goal ADDR=VAL: a WRAM word that should hold VAL; each one holding it at the end
+// of a candidate is worth `EXPLORE_GOAL_BONUS` starts (partial progress towards a screen)
+#define EXPLORE_GOAL_BONUS 1000
+static uint32_t exploreGoalAdr[8];
+static uint16_t exploreGoalVal[8];
+static int exploreGoalCount;
+static int exploreGoalScore(void) {
+  int bonus = 0;
+  for(int i = 0; i < exploreGoalCount; i++) {
+    uint32_t a = exploreGoalAdr[i] & 0x1FFFF;
+    if((uint16_t)(snes->ram[a] | snes->ram[(a + 1) & 0x1FFFF] << 8) == exploreGoalVal[i]) bonus += EXPLORE_GOAL_BONUS;
+  }
+  return bonus;
+}
+
 static void explore(int segments, int cands, int len, int start, FILE* record, const uint8_t* known) {
   int stSize = snes_saveState(snes, NULL);
   uint8_t* state = malloc(stSize);
@@ -244,7 +274,7 @@ static void explore(int segments, int cands, int len, int start, FILE* record, c
       }
       int n = exploreCandidate(ev, CAP, len);
       bool alive = exploreRun(ev, n, len);
-      int score = alive ? coverage_new_starts(base, known) : -1;
+      int score = alive ? coverage_new_starts(base, known) + exploreWantScore(base) + exploreGoalScore() : -1;
       if(score > best) {
         best = score;
         bestN = n;
@@ -353,6 +383,15 @@ int main(int argc, char** argv) {
       exploreLen = atoi(argv[++i]);
     } else if(strcmp(argv[i], "--explore-known") == 0 && i + 1 < argc) {
       exploreKnownPath = argv[++i];
+    } else if(strcmp(argv[i], "--explore-want") == 0 && i + 1 < argc) {
+      if(exploreWantCount < 16) exploreWant[exploreWantCount++] = (uint32_t)strtoul(argv[++i], NULL, 16);
+      else ++i;
+    } else if(strcmp(argv[i], "--explore-goal") == 0 && i + 1 < argc) {
+      unsigned adr = 0, val = 0;
+      if(sscanf(argv[++i], "%x=%x", &adr, &val) == 2 && exploreGoalCount < 8) {
+        exploreGoalAdr[exploreGoalCount] = adr;
+        exploreGoalVal[exploreGoalCount++] = (uint16_t)val;
+      }
     } else if(strcmp(argv[i], "--explore-seed") == 0 && i + 1 < argc) {
       exploreSeed = (uint32_t)strtoul(argv[++i], NULL, 0);
     } else if(strcmp(argv[i], "--autopilot") == 0 && i + 1 < argc) {

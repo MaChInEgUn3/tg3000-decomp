@@ -151,3 +151,4 @@ int coverage_new_starts(const uint8_t* base, const uint8_t* known) {
     if((flags[i] & COV_START) && !(base[i] & COV_START) && (known == NULL || !(known[i] & COV_START))) n++;
   return n;
 }
+uint8_t coverage_flag(uint32_t offset) { return offset < ROM_SIZE ? flags[offset] : 0; }

@@ -25,7 +25,7 @@ build/bench/bench TG3000.sfc 600 --dsp4-log dsp4.log
 build/bench/bench TG3000.sfc 3600 --movie tools/bench/movies/start_taps.txt --dump /tmp/f --every 120
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --coverage traces/coverage.bin
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/race1.txt --autopilot 8000 --record new.txt   # new autopilot run
-build/bench/bench TG3000.sfc 7650 --movie tools/bench/movies/race1.txt --coverage /tmp/c.bin --explore 40 --explore-cands 6 --explore-known /tmp/known.bin --record new.txt   # coverage explorer
+build/bench/bench TG3000.sfc 7650 --movie tools/bench/movies/race1.txt --coverage /tmp/c.bin --explore 40 --explore-cands 6 --explore-known /tmp/known.bin --record new.txt   # coverage explorer (+ --explore-want ADDR, --explore-goal WRAMADR=VAL)
 python3 -I tools/map.py && python3 -I tools/progress.py   # -> map/*.txt, README numbers
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --hdma-report /tmp/hdma.txt   # HDMA setup and writers, handlers, two-task screens
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --apu-report /tmp/apu.txt     # APU port traffic

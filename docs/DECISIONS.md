@@ -1731,6 +1731,30 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - **Left:** views `$80:A333` (calls `$80:A579`) and `$80:AEBE` (calls `$80:AF36`), then
   the dispatch itself.
 
+## Steering the explorer; two item views parked (explore-2, 2026-11-17)
+
+- **The last two item views** belong to one item each: `$80:A333` to list 1, row 4, and
+  `$80:AEBE` to list 6, row 0. The shop movie never opens either, though the TAS runs
+  both.
+- **The explorer has two ways to aim:**
+  - `--explore-want ADDR`: each listed CPU address whose first execution comes in a
+    candidate is worth 100,000 new starts;
+  - `--explore-goal ADR=VAL`: each WRAM word holding VAL at a candidate's end is worth
+    1,000. That rewards partial progress towards a screen.
+- **Neither reached them.**
+  - With `--explore-want 80A333` alone, 30 segments of 8 candidates never ran it.
+  - With the goals `$0148 = 1` and `$014A = 4` as well, every segment kept one goal and
+    never the other.
+  - The frame shows a part's view with levels 1-4 and "Credits 0". Row 4 is probably a
+    level the shop offers only later in the game, which a movie from the first visit
+    cannot reach.
+- **Parked, not committed as rows:**
+  - the C written for view `$80:A333` and for the spinning ring it draws (`$80:A579`,
+    and the pieces `$80:A69F`/`$80:A6DB`) is kept as
+    `docs/parked/shop_ring_view_f.patch`, unverified;
+  - it waits for a movie that reaches a later shop (tas-2, or the explorer started from
+    a later save).
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and
