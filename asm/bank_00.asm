@@ -1519,7 +1519,7 @@ CODE_808E96:
 CODE_808EC6:
     jsl.l func_80E4C5           ; $808EC6
     stz.b $4C                   ; $808ECA
-    jsr.w $9BF2                 ; $808ECC
+    jsr.w shop_item_picture     ; $808ECC
     jsr.w func_809DD0           ; $808ECF
     jsr.w func_808FFC           ; $808ED2
     jsr.w oam_finish_near       ; $808ED5
@@ -1578,7 +1578,7 @@ CODE_808F46:
     cmp.b $8E                   ; $808F46
     bne CODE_808F46             ; $808F48
 CODE_808F4A:
-    jsr.w $9DBC                 ; $808F4A
+    jsr.w shop_panel_upload     ; $808F4A
 CODE_808F4D:
     lda.w #$0010                ; $808F4D
     sta.b $14                   ; $808F50
@@ -1628,7 +1628,7 @@ CODE_808F9F:
     lda.b $4A                   ; $808FB2
     inc a                       ; $808FB4
     sta.b $4C                   ; $808FB5
-    jsr.w $9BF2                 ; $808FB7
+    jsr.w shop_item_picture     ; $808FB7
     jsr.w $9B5D                 ; $808FBA
     rts                         ; $808FBD
 CODE_808FBE:
@@ -1648,7 +1648,7 @@ CODE_808FCB:
     beq CODE_808FE6             ; $808FDA
     dec a                       ; $808FDC
     sta.b $4C                   ; $808FDD
-    jsr.w $9BF2                 ; $808FDF
+    jsr.w shop_item_picture     ; $808FDF
     jsr.w $9AC8                 ; $808FE2
     rts                         ; $808FE5
 CODE_808FE6:
@@ -1722,7 +1722,7 @@ CODE_809004:
     jsr.w $9832                 ; $80906C
     jmp.w $90FD                 ; $80906F
 CODE_809072:
-    jsr.w $993E                 ; $809072
+    jsr.w shop_money_take       ; $809072
     lda.w $0393,x               ; $809075
     bit.w #$0080                ; $809078
     beq CODE_809090             ; $80907B
@@ -1730,7 +1730,7 @@ CODE_809072:
 CODE_809090:
     jsr.w $98C4                 ; $809090
     bcs CODE_80909A             ; $809093
-    jsl.l $80E4D0               ; $809095
+    jsl.l shop_flag_fb          ; $809095
     rts                         ; $809099
 CODE_80909A:
     jsl.l func_80E4DB           ; $80909A
@@ -1787,7 +1787,7 @@ CODE_8090E2:
     jsr.w $9832                 ; $809119
     jmp.w $91AA                 ; $80911C
 CODE_80911F:
-    jsr.w $993E                 ; $80911F
+    jsr.w shop_money_take       ; $80911F
     lda.w $0394,x               ; $809122
     bit.w #$0080                ; $809125
     beq CODE_80913D             ; $809128
@@ -1795,7 +1795,7 @@ CODE_80911F:
 CODE_80913D:
     jsr.w $98C4                 ; $80913D
     bcs CODE_809147             ; $809140
-    jsl.l $80E4D0               ; $809142
+    jsl.l shop_flag_fb          ; $809142
     rts                         ; $809146
 CODE_809147:
     jsl.l func_80E4DB           ; $809147
@@ -1853,7 +1853,7 @@ CODE_80918F:
     jsr.w $9832                 ; $8091C7
     jmp.w $9258                 ; $8091CA
 CODE_8091CD:
-    jsr.w $993E                 ; $8091CD
+    jsr.w shop_money_take       ; $8091CD
     lda.w $0395,x               ; $8091D0
     bit.w #$0080                ; $8091D3
     beq CODE_8091EB             ; $8091D6
@@ -1861,7 +1861,7 @@ CODE_8091CD:
 CODE_8091EB:
     jsr.w $98C4                 ; $8091EB
     bcs CODE_8091F5             ; $8091EE
-    jsl.l $80E4D0               ; $8091F0
+    jsl.l shop_flag_fb          ; $8091F0
     rts                         ; $8091F4
 CODE_8091F5:
     jsl.l func_80E4DB           ; $8091F5
@@ -1919,7 +1919,7 @@ CODE_80923D:
     jsr.w $9832                 ; $809275
     jmp.w $9306                 ; $809278
 CODE_80927B:
-    jsr.w $993E                 ; $80927B
+    jsr.w shop_money_take       ; $80927B
     lda.w $0396,x               ; $80927E
     bit.w #$0080                ; $809281
     beq CODE_809299             ; $809284
@@ -1927,7 +1927,7 @@ CODE_80927B:
 CODE_809299:
     jsr.w $98C4                 ; $809299
     bcs CODE_8092A3             ; $80929C
-    jsl.l $80E4D0               ; $80929E
+    jsl.l shop_flag_fb          ; $80929E
     rts                         ; $8092A2
 CODE_8092A3:
     jsl.l func_80E4DB           ; $8092A3
@@ -1993,7 +1993,7 @@ CODE_8092EB:
     jsr.w $9832                 ; $809334
     jmp.w $93F8                 ; $809337
 CODE_80933A:
-    jsr.w $993E                 ; $80933A
+    jsr.w shop_money_take       ; $80933A
     lda.w $039A,x               ; $80933D
     and.w #$00FF                ; $809340
     beq CODE_80935E             ; $809343
@@ -2049,7 +2049,7 @@ CODE_8093DD:
     bne CODE_80941C             ; $809407
     incbin !baserom:$1409..$141C
 CODE_80941C:
-    jsr.w $993E                 ; $80941C
+    jsr.w shop_money_take       ; $80941C
     lda.w $0399,x               ; $80941F
     and.w #$00FF                ; $809422
     beq CODE_809440             ; $809425
@@ -2105,7 +2105,7 @@ CODE_8094BF:
     bne CODE_8094FE             ; $8094E9
     incbin !baserom:$14EB..$14FE
 CODE_8094FE:
-    jsr.w $993E                 ; $8094FE
+    jsr.w shop_money_take       ; $8094FE
     lda.w $0398,x               ; $809501
     and.w #$00FF                ; $809504
     beq CODE_809522             ; $809507
@@ -2165,7 +2165,7 @@ CODE_8095A1:
     jsr.w $9832                 ; $8095D9
     jmp.w $966A                 ; $8095DC
 CODE_8095DF:
-    jsr.w $993E                 ; $8095DF
+    jsr.w shop_money_take       ; $8095DF
     lda.w $0397,x               ; $8095E2
     bit.w #$0080                ; $8095E5
     beq CODE_8095FD             ; $8095E8
@@ -2173,7 +2173,7 @@ CODE_8095DF:
 CODE_8095FD:
     jsr.w $98C4                 ; $8095FD
     bcs CODE_809607             ; $809600
-    jsl.l $80E4D0               ; $809602
+    jsl.l shop_flag_fb          ; $809602
     rts                         ; $809606
 CODE_809607:
     jsl.l func_80E4DB           ; $809607
@@ -2227,7 +2227,7 @@ CODE_80964F:
     bne CODE_80968E             ; $809679
     incbin !baserom:$167B..$168E
 CODE_80968E:
-    jsr.w $993E                 ; $80968E
+    jsr.w shop_money_take       ; $80968E
     lda.w $039C,x               ; $809691
     and.w #$00FF                ; $809694
     beq CODE_8096B2             ; $809697
@@ -2290,7 +2290,7 @@ CODE_809839:
     cmp.b $8E                   ; $809849
     bne CODE_809853             ; $80984B
     jsr.w $B59D                 ; $80984D
-    jsr.w $9DBC                 ; $809850
+    jsr.w shop_panel_upload     ; $809850
 CODE_809853:
     lda.w #$0010                ; $809853
     sta.b $14                   ; $809856
@@ -2371,6 +2371,7 @@ CODE_8098E9:
 CODE_80990C:
     rts                         ; $80990C
     incbin !baserom:$190D..$193E
+shop_money_take:
     ldx.b $94                   ; $80993E
     lda.w $038E,x               ; $809940
     sta.b $52                   ; $809943
@@ -2565,7 +2566,7 @@ CODE_809ACD:
     cmp.b $8E                   ; $809AD5
     bne CODE_809ADF             ; $809AD7
     jsr.w $B59D                 ; $809AD9
-    jsr.w $9DBC                 ; $809ADC
+    jsr.w shop_panel_upload     ; $809ADC
 CODE_809ADF:
     lda.w #$0010                ; $809ADF
     sta.b $14                   ; $809AE2
@@ -2587,14 +2588,14 @@ CODE_809B06:
     cmp.b $8E                   ; $809B06
     bne CODE_809B06             ; $809B08
     jsr.w $B59D                 ; $809B0A
-    jsr.w $9DBC                 ; $809B0D
+    jsr.w shop_panel_upload     ; $809B0D
     stz.b $3E                   ; $809B10
     stz.b $40                   ; $809B12
     stz.b $42                   ; $809B14
     lda.b $4C                   ; $809B16
     sta.b $4A                   ; $809B18
     jsr.w $9C28                 ; $809B1A
-    jsr.w $B096                 ; $809B1D
+    jsr.w shop_item_text        ; $809B1D
     lda.w #$FFC2                ; $809B20
     sta.b $4E                   ; $809B23
 CODE_809B25:
@@ -2604,7 +2605,7 @@ CODE_809B25:
     cmp.b $8E                   ; $809B2D
     bne CODE_809B37             ; $809B2F
     jsr.w $B59D                 ; $809B31
-    jsr.w $9DBC                 ; $809B34
+    jsr.w shop_panel_upload     ; $809B34
 CODE_809B37:
     lda.b $4E                   ; $809B37
     clc                         ; $809B39
@@ -2631,7 +2632,7 @@ CODE_809B62:
     cmp.b $8E                   ; $809B6A
     bne CODE_809B74             ; $809B6C
     jsr.w $B59D                 ; $809B6E
-    jsr.w $9DBC                 ; $809B71
+    jsr.w shop_panel_upload     ; $809B71
 CODE_809B74:
     lda.b $4E                   ; $809B74
     sec                         ; $809B76
@@ -2653,14 +2654,14 @@ CODE_809B9B:
     cmp.b $8E                   ; $809B9B
     bne CODE_809B9B             ; $809B9D
     jsr.w $B59D                 ; $809B9F
-    jsr.w $9DBC                 ; $809BA2
+    jsr.w shop_panel_upload     ; $809BA2
     stz.b $3E                   ; $809BA5
     stz.b $40                   ; $809BA7
     stz.b $42                   ; $809BA9
     lda.b $4C                   ; $809BAB
     sta.b $4A                   ; $809BAD
     jsr.w $9C28                 ; $809BAF
-    jsr.w $B096                 ; $809BB2
+    jsr.w shop_item_text        ; $809BB2
     lda.w #$FFCA                ; $809BB5
     sta.b $4E                   ; $809BB8
 CODE_809BBA:
@@ -2670,7 +2671,7 @@ CODE_809BBA:
     cmp.b $8E                   ; $809BC2
     bne CODE_809BCC             ; $809BC4
     jsr.w $B59D                 ; $809BC6
-    jsr.w $9DBC                 ; $809BC9
+    jsr.w shop_panel_upload     ; $809BC9
 CODE_809BCC:
     lda.w #$0010                ; $809BCC
     sta.b $14                   ; $809BCF
@@ -2688,6 +2689,7 @@ CODE_809BCC:
     cmp.w #$0018                ; $809BEC
     bne CODE_809BBA             ; $809BEF
     rts                         ; $809BF1
+shop_item_picture:
     lda.b $48                   ; $809BF2
     asl a                       ; $809BF4
     tax                         ; $809BF5
@@ -2938,6 +2940,7 @@ CODE_809BCC:
     lda.w $A894,y               ; $809DB5
     ply                         ; $809DB8
     jmp.w func_80B537           ; $809DB9
+shop_panel_upload:
     lda.w #$007F                ; $809DBC
     sta.b $14                   ; $809DBF
     ldx.b $5E                   ; $809DC1
@@ -3066,21 +3069,27 @@ CODE_809ED2:
     stx.b $74                   ; $809EE7
     rts                         ; $809EE9
     incbin !baserom:$1EEA..$1F0A
+shop_part_level_3:
     lda.w $0393,y               ; $809F0A
     inc a                       ; $809F0D
     rts                         ; $809F0E
+shop_part_level_4:
     lda.w $0394,y               ; $809F0F
     inc a                       ; $809F12
     rts                         ; $809F13
+shop_part_level_5:
     lda.w $0395,y               ; $809F14
     inc a                       ; $809F17
     rts                         ; $809F18
+shop_part_level_6:
     lda.w $0396,y               ; $809F19
     inc a                       ; $809F1C
     rts                         ; $809F1D
+shop_part_level_7:
     lda.w $0397,y               ; $809F1E
     inc a                       ; $809F21
     rts                         ; $809F22
+shop_part_level_2:
     lda.w $0392,y               ; $809F23
     inc a                       ; $809F26
     rts                         ; $809F27
@@ -4144,7 +4153,7 @@ CODE_80A760:
     and.w #$0007                ; $80A774
     clc                         ; $80A777
     adc.w #$2316                ; $80A778
-    jsr.w $A7E4                 ; $80A77B
+    jsr.w shop_sprite_block     ; $80A77B
     lda.b $3E                   ; $80A77E
     lsr a                       ; $80A780
     sec                         ; $80A781
@@ -4163,7 +4172,7 @@ CODE_80A792:
     adc.w #$0008                ; $80A795
     sta.b $7E                   ; $80A798
     lda.w #$2316                ; $80A79A
-    jsr.w $A7E4                 ; $80A79D
+    jsr.w shop_sprite_block     ; $80A79D
     dex                         ; $80A7A0
     bne CODE_80A792             ; $80A7A1
 CODE_80A7A3:
@@ -4200,6 +4209,7 @@ CODE_80A7A5:
     incbin !baserom:$27E1..$27E3
 CODE_80A7E3:
     rts                         ; $80A7E3
+shop_sprite_block:
     sta.w $0902,y               ; $80A7E4
     sta.w $0906,y               ; $80A7E7
     sta.w $090A,y               ; $80A7EA
@@ -5191,6 +5201,7 @@ CODE_80AFD9:
 CODE_80B047:
     rts                         ; $80B047
     incbin !baserom:$3048..$3096
+shop_item_text:
     lda.b $48                   ; $80B096
     asl a                       ; $80B098
     tax                         ; $80B099
@@ -10623,6 +10634,7 @@ func_80E4C5:
     rep.b #$20                  ; $80E4CC
     pla                         ; $80E4CE
     rtl                         ; $80E4CF
+shop_flag_fb:
     pha                         ; $80E4D0
     sep.b #$20                  ; $80E4D1
     lda.b #$12                  ; $80E4D3

@@ -1624,6 +1624,31 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   starting points for the explorer (password screen, options), or longer runs, would
   bring them to the bench.
 
+## The shop's leaves (shop-1, 2026-11-17)
+
+- **The census over `explore_shop.txt`** lists 40 routines the 60k movie never ran, all
+  without hardware access (`$80:9039`, `$80:9847`, `$80:A251`, ...). This unit ports
+  twelve of its leaves, into a new `src/shop.c`:
+  - `shop_part_level_2`..`_7` (`$80:9F23`, `$80:9F0A`-`$80:9F1E`): one of the car's six
+    part levels (`$0392-$0397` + the car's offset), plus 1;
+  - `shop_money_take` (`$80:993E`): the player's money (`$038E/$0390` + `$0194`) to
+    `$52/$54`, `$56 = $FFFF`, `$76` bit 2;
+  - `shop_flag_fb` (`$80:E4D0`, long): `$01FB = $12`;
+  - `shop_panel_upload` (`$80:9DBC`): queues the panel's VRAM upload through
+    `func_80B537` (a tail jump);
+  - `shop_item_picture` (`$80:9BF2`): the current item's picture through
+    `func_80B58D`, from the item table at `$81:A892` (list `$48`, row `$4C`);
+  - `shop_item_text` (`$80:B096`): copies the current item's text block from bank `$89`
+    to `$0100 + $01C4` (an MVN);
+  - `shop_sprite_block` (`$80:A7E4`): four sprite entries of a 2x2 block.
+- Every one passes all its live samples on the shop movie, from 34 to 3,713 each.
+- **The item fuzz keeps to the table's rows:** lists 1-5 have five rows, and list 6 has
+  only one.
+  - List 6's rows 1-4 read past the table: text blocks of `$FF29`, `$7CA2`... bytes.
+  - The first try fuzzed them. The MVN then copied up to 64 KB from `$81:0100` up, over
+    the I/O registers, and kicked random DMAs. The shop movie's verification ran for
+    over an hour before it was stopped.
+
 ## Two-task screens (task-1, 2026-11-16)
 
 - **What they are:** one screen runs the game as two tasks, each with its own stack and

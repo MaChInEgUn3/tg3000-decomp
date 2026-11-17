@@ -219,3 +219,15 @@ func    8AA09F   hdma_window_tables_init ; the window HDMA tables at $0D00/$0D20
 func    8ABC8A   password_encode     ; password text at $0D40 from the big number and $0192 -> src/misc.c
 func    81F887   car_road_step       ; a car's frame on the road: distance, segment step, sideways and edges ($0A), speed -> src/track.c
 func    83E8AB   player_road_limits  ; player car's limits across the road ($0A on two rows), its middle, off-middle flags -> src/track.c
+func    809F23   shop_part_level_2   ; part level $0392 + car, plus 1 -> src/shop.c
+func    809F0A   shop_part_level_3   ; part level $0393 + car, plus 1 -> src/shop.c
+func    809F0F   shop_part_level_4   ; part level $0394 + car, plus 1 -> src/shop.c
+func    809F14   shop_part_level_5   ; part level $0395 + car, plus 1 -> src/shop.c
+func    809F19   shop_part_level_6   ; part level $0396 + car, plus 1 -> src/shop.c
+func    809F1E   shop_part_level_7   ; part level $0397 + car, plus 1 -> src/shop.c
+func    80993E   shop_money_take     ; player's money to $52/$54, $56 = $FFFF, $76 bit 2 -> src/shop.c
+func    80E4D0   shop_flag_fb        ; $01FB = $12 (long) -> src/shop.c
+func    809DBC   shop_panel_upload   ; queue the shop panel's VRAM upload (func_80B537) -> src/shop.c
+func    809BF2   shop_item_picture   ; current item's picture (func_80B58D) -> src/shop.c
+func    80B096   shop_item_text      ; copy the current item's text from bank $89 -> src/shop.c
+func    80A7E4   shop_sprite_block   ; four sprite entries of a 2x2 block -> src/shop.c

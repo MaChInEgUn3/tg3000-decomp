@@ -19,6 +19,7 @@
 #include "frame.h"
 #include "pads.h"
 #include "race_frame.h"
+#include "shop.h"
 #include "hud.h"
 #include "misc.h"
 #include "sprites.h"
@@ -2681,6 +2682,111 @@ static void fuzz_player_road_limits(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   wr16ram(ram, 0x0216, (uint16_t)rnd());
 }
 
+// ---- the shop's leaves ($80:98xx-$80:B2xx) ----
+// part levels: Y = the car's offset; A = the level + 1 (N/Z from the INC)
+#define SHOP_LEVEL(fn) \
+  static void call_##fn(const Regs* in, Regs* out) { out->a = fn(in->y); setNZ16(out, out->a); }
+SHOP_LEVEL(shop_part_level_2)
+SHOP_LEVEL(shop_part_level_3)
+SHOP_LEVEL(shop_part_level_4)
+SHOP_LEVEL(shop_part_level_5)
+SHOP_LEVEL(shop_part_level_6)
+SHOP_LEVEL(shop_part_level_7)
+static void fuzz_shop_part_level(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->y = (uint16_t)(rnd() % 0x40);
+  for(int i = 0; i < 2; i++) wr16ram(ram, (uint32_t)(0x0392 + r->y + 2 * i), (uint16_t)rnd());
+  for(uint32_t a = 0x0392; a < 0x03E0; a++) ram[a] = (uint8_t)rnd();
+}
+
+// A = 4 (Z from the TSB: bit 2 of $76 before), X = the car
+static void call_shop_money_take(const Regs* in, Regs* out) {
+  (void)in;
+  bool was = rd16(DP + 0x76) & 0x0004;
+  shop_money_take();
+  out->a = 0x0004;
+  out->x = rd16(DP + 0x94);
+  out->n = false;
+  out->z = !was;
+}
+static void fuzz_shop_money_take(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t car = (uint16_t)(rnd() % 0x40);
+  wr16ram(ram, DP + 0x94, car);
+  for(uint32_t a = 0x038E; a < 0x03E0; a++) ram[a] = (uint8_t)rnd();
+  wr16ram(ram, DP + 0x76, (uint16_t)rnd());
+}
+
+// A kept (PLA: N/Z from it)
+static void call_shop_flag_fb(const Regs* in, Regs* out) { shop_flag_fb(); setNZ16(out, in->a); }
+
+// as func_80B537's adapter, with its inputs set here (Y ends as $5C + $0400)
+static void call_shop_panel_upload(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t i = rd16(DP + 0x8C), base = rd16(DP + 0x8A);
+  out->y = (uint16_t)(rd16(DP + 0x5C) + 0x0400);
+  out->a = shop_panel_upload();
+  out->x = (uint16_t)(i + 2);
+  setNZ16(out, out->a);
+  setAdc16(out, (uint16_t)((i + 2) & 0x3F), base);
+}
+static void fuzz_shop_panel_upload(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x5C, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x5E, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x8A, (uint16_t)(rnd() & 0x00FF));
+  wr16ram(ram, DP + 0x8C, (uint16_t)(rnd() & 0x003E));
+}
+
+// the shop's item table: list $48 (1-6), row 0-4
+static uint16_t shopEntry(uint16_t row) {
+  return (uint16_t)((row << 4) + rom16(0x81A892 + (uint32_t)(uint16_t)(rd16(DP + 0x48) << 1)));
+}
+// lists 1-5 have 5 rows; list 6 has one (its rows 1-4 read past the table: texts of up to
+// 64 KB that the MVN would copy over the I/O registers)
+static void fuzz_shop_item(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t list = (uint16_t)(1 + rnd() % 6), rows = list == 6 ? 1 : 5;
+  wr16ram(ram, DP + 0x48, list);
+  wr16ram(ram, DP + 0x4A, (uint16_t)(rnd() % rows));
+  wr16ram(ram, DP + 0x4C, (uint16_t)(rnd() % rows));
+  wr16ram(ram, DP + 0xC4, (uint16_t)(rnd() & 0x03FE));
+}
+
+// as func_80B58D's adapter: A = 9; X = the picture's table word
+static void call_shop_item_picture(const Regs* in, Regs* out) {
+  (void)in;
+  out->x = rom16(0x81A89D + (uint32_t)shopEntry(rd16(DP + 0x4C)));
+  shop_item_picture();
+  out->a = 9;
+  setNZ16(out, 9);
+}
+
+// after the MVN: A = $FFFF, X and Y past the block; PLB of $81 sets N
+static void call_shop_item_text(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t text = rom16(0x81A895 + (uint32_t)shopEntry(rd16(DP + 0x4A)));
+  uint16_t size = rom16(0x81A894 + (uint32_t)text), src = rom16(0x81A892 + (uint32_t)text);
+  uint16_t dest = (uint16_t)(rd16(DP + 0xC4) + 0x0100);
+  shop_item_text();
+  out->a = 0xFFFF;
+  out->x = (uint16_t)(src + size);
+  out->y = (uint16_t)(dest + size);
+  out->n = true;
+  out->z = false;
+}
+
+// A = Y = slot + $10 (flags of the ADC)
+static void call_shop_sprite_block(const Regs* in, Regs* out) {
+  out->a = out->y = shop_sprite_block(in->a, in->y);
+  setNZ16(out, out->a);
+  setAdc16(out, in->y, 0x0010);
+}
+static void fuzz_shop_sprite_block(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->y = (uint16_t)((rnd() % 0x20) * 0x10);
+  wr16ram(ram, DP + 0x7E, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x16, (uint16_t)rnd());
+}
+
 // ---- take_nibble16 ($80:85CA) ----  A = the nibble (N/Z from the last ROL), C = 0.
 static void call_take_nibble16(const Regs* in, Regs* out) {
   (void)in;
@@ -3735,6 +3841,32 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_car_road_step, .fuzz = fuzz_car_road_step},
   {.name = "player_road_limits", .entry = 0x83E8AB, .end = 0x83EA9B, .source = "src/track.c", .needM16 = true,
    .needX16 = true, .call = call_player_road_limits, .fuzz = fuzz_player_road_limits},
+  {.name = "shop_part_level_2", .entry = 0x809F23, .end = 0x809F28, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .call = call_shop_part_level_2, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
+  {.name = "shop_part_level_3", .entry = 0x809F0A, .end = 0x809F0F, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .call = call_shop_part_level_3, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
+  {.name = "shop_part_level_4", .entry = 0x809F0F, .end = 0x809F14, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .call = call_shop_part_level_4, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
+  {.name = "shop_part_level_5", .entry = 0x809F14, .end = 0x809F19, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .call = call_shop_part_level_5, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
+  {.name = "shop_part_level_6", .entry = 0x809F19, .end = 0x809F1E, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .call = call_shop_part_level_6, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
+  {.name = "shop_part_level_7", .entry = 0x809F1E, .end = 0x809F23, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .call = call_shop_part_level_7, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
+  {.name = "shop_money_take", .entry = 0x80993E, .end = 0x809957, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_shop_money_take, ALL_OUTPUTS, .fuzz = fuzz_shop_money_take},
+  {.name = "shop_flag_fb", .entry = 0x80E4D0, .end = 0x80E4DB, .rtl = true, .source = "src/shop.c", .needM16 = true,
+   .fixedD = true, .call = call_shop_flag_fb, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "shop_panel_upload", .entry = 0x809DBC, .end = 0x809DD0, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_shop_panel_upload, ALL_OUTPUTS, .alsoIn = {{0x80B537, 0x80B556}},
+   .fuzz = fuzz_shop_panel_upload},
+  {.name = "shop_item_picture", .entry = 0x809BF2, .end = 0x809C0B, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_picture, ALL_OUTPUTS, .alsoIn = {{0x80B58D, 0x80B59D}},
+   .fuzz = fuzz_shop_item},
+  {.name = "shop_item_text", .entry = 0x80B096, .end = 0x80B0C0, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_text, ALL_OUTPUTS, .fuzz = fuzz_shop_item},
+  {.name = "shop_sprite_block", .entry = 0x80A7E4, .end = 0x80A831, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_shop_sprite_block, ALL_OUTPUTS, .fuzz = fuzz_shop_sprite_block},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

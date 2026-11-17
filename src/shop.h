@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// The shop and the screens between races (bank $80, $80:98xx-$80:B2xx).
+#ifndef TG3000_SHOP_H
+#define TG3000_SHOP_H
+
+#include <stdint.h>
+
+// One of the car's six part levels ($0392-$0397 + the car's offset), plus 1.
+uint16_t shop_part_level_2(uint16_t car);  // $80:9F23 ($0392)
+uint16_t shop_part_level_3(uint16_t car);  // $80:9F0A ($0393)
+uint16_t shop_part_level_4(uint16_t car);  // $80:9F0F ($0394)
+uint16_t shop_part_level_5(uint16_t car);  // $80:9F14 ($0395)
+uint16_t shop_part_level_6(uint16_t car);  // $80:9F19 ($0396)
+uint16_t shop_part_level_7(uint16_t car);  // $80:9F1E ($0397)
+
+// Copy the player's money ($038E/$0390 + $0194) to $52/$54, mark $56 = $FFFF and set
+// $76 bit 2. ($80:993E)
+void shop_money_take(void);
+
+// $01FB = $12. ($80:E4D0, long)
+void shop_flag_fb(void);
+
+// Queue the shop panel's VRAM upload: $03C0 bytes from $7F:$5E to VRAM $5C + $0400.
+// Returns func_80B537's result. ($80:9DBC)
+uint16_t shop_panel_upload(void);
+
+// The current item's picture: func_80B58D with $81 and the item's table entry. ($80:9BF2)
+void shop_item_picture(void);
+
+// Copy the current item's text block (from bank $89) to $0100 + $01C4. ($80:B096)
+void shop_item_text(void);
+
+// Four sprite entries of a 2x2 block at OAM slot `slot` (byte offset): tile words from
+// $7E's low byte | $16 (+$0800, +$1000, +$1400), positions `pos`, attributes $7E, high
+// bits 0. Returns slot + $10. ($80:A7E4)
+uint16_t shop_sprite_block(uint16_t pos, uint16_t slot);
+
+#endif
