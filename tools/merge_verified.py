@@ -2,10 +2,14 @@
 """Merge the differential test's results over several movies into map/verified.txt.
 
     python3 -I tools/merge_verified.py OUT IN1 IN2 ...
+    python3 -I tools/merge_verified.py --update FILE NEW
 
 A routine is verified when some movie verified it and none failed it; failed when any
 movie failed it; unreached when no movie reached it. The first verifying row is kept (its
 live/fuzz/paths counts), with the live flags of every verifying row joined.
+
+--update (tools/verify_new.sh): NEW's rows, already merged over the movies, replace
+FILE's rows of the same entry; new entries go at the end; FILE's other rows stay.
 """
 import sys
 
@@ -25,7 +29,21 @@ def read(path):
     return header, rows, order
 
 
+def update(path, new_path):
+    header, rows, order = read(path)
+    _, new_rows, new_order = read(new_path)
+    for entry in new_order:
+        if entry not in rows:
+            order.append(entry)
+        rows[entry] = new_rows[entry]
+    with open(path, "w") as f:
+        f.write("\n".join([header.rstrip("\n")] + [" ".join(rows[e]) for e in order]) + "\n")
+
+
 def main():
+    if sys.argv[1] == "--update":
+        update(sys.argv[2], sys.argv[3])
+        return
     out, inputs = sys.argv[1], sys.argv[2:]
     tables = [read(p) for p in inputs]
     header = tables[0][0]

@@ -1789,6 +1789,48 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Incremental verification (owner, 2026-11-18)
+
+The owner approved it on 2026-11-18 ("a 1 e 3 funciona", confirmed later the same day). A
+full `verify_all.sh` re-runs every routine (about 20 minutes with the selftest), though
+most units only add routines.
+
+**The rule (`tools/progress.py`).**
+- A verified row is *current* when its hash matches the code now.
+- It is *carried* when its hash matches the code at one of the last 5 commits (counting
+  the one being made), and since then:
+  - the row's source and `tools/bench/routines.c` only gained lines (no `-` line in
+    `git diff -U0`);
+  - `difftest.c` and `platform_bench.c` did not change at all.
+- Any other row is stale, and `--check` (CI) fails.
+
+**Where the rule shows.**
+- The README counts carried rows and names the oldest run's commit.
+- CI checks out the full history (`fetch-depth: 0`).
+- CI runs `tools/test_carry.sh`. In a scratch clone, without the ROM, it checks that:
+  - additions are carried;
+  - a changed registry line is refused;
+  - an addition to `difftest.c` is refused;
+  - the sixth commit since the run is refused.
+
+**Per unit.**
+- `tools/verify_new.sh name1,...` runs the new rows over the 60k and shop movies. It then
+  merges them with `merge_verified.py --update`: same entry replaced, new ones appended.
+- Every unit still runs the selftest (every routine the short movie reaches, 193 now), the
+  byte-exact asm rebuild, the personal-data grep and CI.
+- Anything else runs `verify_all.sh`, which the rule itself forces at least every 6th
+  commit.
+
+**Known gap.**
+- A line inserted inside an existing function counts as an addition but changes
+  behaviour.
+- The selftest catches it for routines the short movie reaches; the next full run (at
+  most 5 commits on) catches the rest.
+- A unit that edits inside an existing function should run the full verification anyway.
+
+**Also:** `progress.py` now caches the hashes per source. A check took 2 minutes (the
+pure-Python hash over `routines.c`, once per row) and now takes about 1.5 seconds.
+
 ## A counted pickup, the section seeks, two row copies (roots-17, 2026-11-18)
 
 - **`track_object_count` ($83:FB15):** another track-object handler, like

@@ -8,9 +8,18 @@
 Sources (all optional until they exist): map/rom_map.txt for the code/data map and
 map/verified.txt (written by `bench --difftest`) for ported routines; --check also fails
 when a verified routine's C source changed after it was verified. The numbers are counted, never typed by hand.
+
+A verified row is current when its hash matches the code as it is now. A row from an
+earlier run is carried when its hash matches the code at a commit at most MAX_BEHIND
+commits back and the code changed only by additions since (no line of the row's source,
+the registry or the harness removed or changed; difftest.c and platform_bench.c not
+touched at all): tools/verify_new.sh verifies new rows alone, tools/verify_all.sh every
+row. Any other row is stale.
 """
+import functools
 import os
 import re
+import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -37,34 +46,116 @@ def classified_bytes():
     return code, data
 
 
-def verification_hash(source):
-    """FNV-1a 64 over the C source, the bench's registry and its harness, in that order
-    (the bench's verificationHash in tools/bench/difftest.c)."""
+HASHED = ("tools/bench/routines.c", "tools/bench/difftest.c", "tools/bench/platform_bench.c")
+FROZEN = ("tools/bench/difftest.c", "tools/bench/platform_bench.c")  # no change at all
+MAX_BEHIND = 5  # commits a carried row's run may lie back (then tools/verify_all.sh)
+
+
+def fnv(chunks):
     h = 0xcbf29ce484222325
-    for rel in (source, "tools/bench/routines.c", "tools/bench/difftest.c", "tools/bench/platform_bench.c"):
-        path = os.path.join(ROOT, rel)
-        if not os.path.exists(path):
-            return None
-        for b in open(path, "rb").read():
+    for data in chunks:
+        for b in data:
             h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
     return h
 
 
-def ported_routines():
-    """Routine entry points the bench verified (map/verified.txt, written by
-    `bench --difftest`) whose C source is unchanged since. Returns (count, stale rows)."""
+@functools.lru_cache(maxsize=None)
+def verification_hash(source):
+    """FNV-1a 64 over the C source, the bench's registry and its harness, in that order
+    (the bench's verificationHash in tools/bench/difftest.c)."""
+    chunks = []
+    for rel in (source,) + HASHED:
+        path = os.path.join(ROOT, rel)
+        if not os.path.exists(path):
+            return None
+        chunks.append(open(path, "rb").read())
+    return fnv(chunks)
+
+
+def git(*args):
+    try:
+        return subprocess.run(("git", "-C", ROOT) + args, capture_output=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+_commits = None
+
+
+def recent_commits():
+    """The commits a carried row may come from: the last MAX_BEHIND counting the one being
+    made (with uncommitted changes to src/ or tools/bench/, HEAD is one back already)."""
+    global _commits
+    if _commits is None:
+        dirty = git("status", "--porcelain", "--", "src", "tools/bench")
+        start = "HEAD" if dirty else "HEAD~1"
+        out = git("rev-list", "-n", str(MAX_BEHIND), start, "--")
+        _commits = out.decode().split() if out else []
+    return _commits
+
+
+_hash_at = {}
+
+
+def hash_at(commit, source):
+    key = (commit, source)
+    if key not in _hash_at:
+        chunks = [git("show", f"{commit}:{rel}") for rel in (source,) + HASHED]
+        _hash_at[key] = None if any(c is None for c in chunks) else fnv(chunks)
+    return _hash_at[key]
+
+
+@functools.lru_cache(maxsize=None)
+def only_additions(commit, source):
+    """True when, from `commit` to now, the source and the registry gained lines only and
+    the harness is untouched."""
+    if git("diff", "--quiet", commit, "--", *FROZEN) is None:
+        return False
+    diff = git("diff", "-U0", "--no-color", commit, "--", source, "tools/bench/routines.c")
+    if diff is None:
+        return False
+    return not any(l.startswith("-") and not l.startswith("---") for l in diff.decode().splitlines())
+
+
+def row_status(parts):
+    """("current", None), ("carried", commit) or ("stale", None) for a verified row."""
+    want = int(parts[3], 16)
+    if verification_hash(parts[2]) == want:
+        return "current", None
+    for commit in recent_commits():
+        if hash_at(commit, parts[2]) == want:
+            return ("carried", commit) if only_additions(commit, parts[2]) else ("stale", None)
+    return "stale", None
+
+
+@functools.lru_cache(maxsize=None)
+def verified_rows():
+    """map/verified.txt's verified rows with their status."""
     path = os.path.join(ROOT, "map", "verified.txt")
-    count, stale = 0, []
+    rows = []
     if os.path.exists(path):
         for line in open(path):
             parts = line.split()
             if line.startswith("#") or len(parts) < 8 or parts[7] != "verified":
                 continue
-            if verification_hash(parts[2]) == int(parts[3], 16):
-                count += 1
-            else:
-                stale.append(f"{parts[0]} {parts[1]} ({parts[2]}, the registry or the harness changed since it was verified)")
-    return count, stale
+            rows.append((tuple(parts),) + row_status(parts))
+    return tuple(rows)
+
+
+def ported_routines():
+    """Routine entry points the bench verified (map/verified.txt, written by
+    `bench --difftest`), current or carried. Returns (count, stale rows, carried counts by
+    commit)."""
+    count, stale, carried = 0, [], {}
+    for parts, status, commit in verified_rows():
+        if status == "stale":
+            stale.append(f"{parts[0]} {parts[1]} ({parts[2]}: the registry or the harness changed since it "
+                         f"was verified, by more than additions or more than {MAX_BEHIND} commits ago)")
+            continue
+        count += 1
+        if status == "carried":
+            carried[commit] = carried.get(commit, 0) + 1
+    return count, stale, carried
 
 
 def verified_code_bytes():
@@ -76,13 +167,7 @@ def verified_code_bytes():
     map_path = os.path.join(ROOT, "map", "rom_map.txt")
     if not (os.path.exists(reg_path) and os.path.exists(ver_path) and os.path.exists(map_path)):
         return 0
-    good = set()
-    for line in open(ver_path):
-        parts = line.split()
-        if line.startswith("#") or len(parts) < 8 or parts[7] != "verified":
-            continue
-        if verification_hash(parts[2]) == int(parts[3], 16):
-            good.add(int(parts[0], 16))
+    good = {int(parts[0], 16) for parts, status, _ in verified_rows() if status != "stale"}
     text = open(reg_path).read()
     text = text[text.index("const Routine routines[]"):text.index("const int routineCount")]
     covered = set()
@@ -111,14 +196,19 @@ def pct(n, d):
 def block(lang):
     code, data = classified_bytes()
     known = code + data
-    ported, _ = ported_routines()
+    ported, _, carried = ported_routines()
     in_c = verified_code_bytes()
+    n_carried = sum(carried.values())
+    oldest = max(carried, key=recent_commits().index) if carried else None  # the furthest back
+    short = oldest[:7] if oldest else ""
     rows = {
         "en": [
             ("ROM bytes classified (code + data)", f"**{known:,} / {ROM_SIZE:,} ({pct(known, ROM_SIZE)})**"),
             ("Code bytes", f"{code:,} (`0x{code:X}`)"),
             ("Data bytes", f"{data:,} (`0x{data:X}`)"),
             ("Routine entry points in C, verified by the differential test", f"**{ported:,}**"),
+            ("Of those, verified at an earlier commit, the code only added to since",
+             f"{n_carried:,} (oldest run: `{short}`)" if n_carried else "0 (all against this code)"),
             ("Code bytes inside verified C routines", f"**{in_c:,} / {code:,} ({pct(in_c, code)})**"),
         ],
         "pt": [
@@ -126,6 +216,8 @@ def block(lang):
             ("Bytes de código", f"{code:,} (`0x{code:X}`)"),
             ("Bytes de dados", f"{data:,} (`0x{data:X}`)"),
             ("Pontos de entrada de rotinas em C, aprovados no teste diferencial", f"**{ported:,}**"),
+            ("Destes, aprovados num commit anterior, com o código só acrescido desde então",
+             f"{n_carried:,} (rodada mais antiga: `{short}`)" if n_carried else "0 (todos contra este código)"),
             ("Bytes de código dentro de rotinas em C aprovadas", f"**{in_c:,} / {code:,} ({pct(in_c, code)})**"),
         ],
     }[lang]
@@ -138,11 +230,11 @@ def block(lang):
 
 def main():
     check = "--check" in sys.argv[1:]
-    _, stale_rows = ported_routines()
+    _, stale_rows, _ = ported_routines()
     if check and stale_rows:
         for r in stale_rows:
             print("stale verification: " + r, file=sys.stderr)
-        print("re-run the differential test (see CONTRIBUTING.md)", file=sys.stderr)
+        print("re-run the differential test: tools/verify_all.sh (see CONTRIBUTING.md)", file=sys.stderr)
         return 1
     stale = False
     for name, lang in (("README.md", "en"), ("README.pt-br.md", "pt")):

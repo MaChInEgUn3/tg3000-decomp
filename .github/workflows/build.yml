@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # progress.py --check reads the last commits (rows verified before additions)
 
       - name: Reject game data
         run: |
@@ -32,3 +34,6 @@ jobs:
 
       - name: Progress block is up to date
         run: python3 -I tools/progress.py --check
+
+      - name: The rule that carries verified rows across additions
+        run: tools/test_carry.sh

@@ -63,10 +63,20 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
    (and other movies until it is reached) and `python3 -I tools/progress.py`.
    To iterate on a few rows, add `--difftest-only name1,name2` (a scratch results file:
    live counts differ when another row no longer owns the interrupts).
-   Before committing, `tools/verify_all.sh` re-verifies every routine from the full
-   autopilot movie (in parallel slices: `TG3000_SHARDS`, default 5, plus two for the shop
-   movie; about 14 minutes on 8 cores) (a change to the registry or harness makes all rows stale), and
-   checks that every negative row (deliberately wrong C) fails over that movie too.
+   Before committing, verify one of two ways:
+   - `tools/verify_new.sh name1,name2` when the unit only adds lines to `src/` and
+     `tools/bench/` (new routines, rows and adapters) and does not touch `difftest.c` or
+     `platform_bench.c`. It verifies the new rows over the 60k and shop movies (about 10
+     minutes) and merges them into `map/verified.txt`; the other rows keep their last
+     result. `tools/bench/selftest.sh` still runs every routine the short movie reaches.
+   - `tools/verify_all.sh` otherwise. It re-verifies every routine from the full autopilot
+     movie (in parallel slices: `TG3000_SHARDS`, default 5, plus two for the shop movie;
+     about 14 minutes on 8 cores), and checks that every negative row (deliberately wrong
+     C) fails over that movie too.
+
+   `progress.py --check` (and CI) accepts an older row only while the code changed by
+   additions alone since its run, and only for 5 commits. After that the full run is
+   due. `tools/test_carry.sh` tests that rule without the ROM.
 
 ## Metrics
 

@@ -32,8 +32,11 @@ Read `docs/WORKFLOW.md` first and `docs/DECISIONS.md` when you need the reasonin
 4. Register it in `tools/bench/routines.c` with an adapter (registers -> arguments),
    its extent, entry contract and fuzz inputs.
 5. Run `tools/verify_all.sh` (needs your ROM): it runs the differential test for every
-   routine and rewrites `map/verified.txt` and the README numbers. Never edit
-   `map/verified.txt` by hand; CI rejects rows whose C, registry or harness changed.
+   routine and rewrites `map/verified.txt` and the README numbers. When your change only
+   adds lines (new C, new rows and adapters; `difftest.c` and `platform_bench.c`
+   untouched), `tools/verify_new.sh name1,name2` verifies just the new rows instead.
+   Never edit `map/verified.txt` by hand; CI rejects rows whose C, registry or harness
+   changed by more than additions, or whose last run is more than 5 commits back.
    Hardware rules: multiply/divide is plain C; uploads to video memory go through
    `src/platform.h` (`video_upload_vram`, `video_upload_cgram`), never register
    writes (see `docs/DECISIONS.md`).
