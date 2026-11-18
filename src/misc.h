@@ -281,6 +281,15 @@ void clc_83FA32(void);
 // $80:B94F: a lone RTS (the shop's idle frame hook).
 void empty_80B94F(void);
 
+// $8A:824B: two sprites of the title placed at D+$74/$76 less D+$4A/$4C (tiles $A4 and $A6,
+// x $404D + ..., y $53 + ..., the second $10 to the right); only while D+$62 is $FFFF
+// (else nothing, never run).
+void title_sprites_place(void);
+
+// $8A:867C: the Mode 7 rotation for the angle D+$34 (bits 4-12): D+$14 = D+$1A = cos,
+// D+$16 = sin, D+$18 = -sin, from the tables at $81:CEA9 / $81:CDA9.
+void rotation_from_angle(void);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.

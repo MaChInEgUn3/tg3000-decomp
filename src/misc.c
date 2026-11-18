@@ -1631,3 +1631,23 @@ uint16_t track_event_set(uint16_t pattern, uint16_t y) {
   wr16(0x3DAC + x, flags);
   return flags;
 }
+
+// TG3000_ROUTINE($8A:824B) title_sprites_place
+void title_sprites_place(void) {
+  if(rd16(DP + 0x62) != 0xFFFF) return;  // never run
+  wr16(0x080A, 0x00A4);
+  wr16(0x060A, (uint16_t)(0x404D - rd16(DP + 0x4A) + rd16(DP + 0x74)));
+  wr16(0x070A, (uint16_t)(0x0053 - rd16(DP + 0x4C) + rd16(DP + 0x76)));
+  wr16(0x080C, 0x00A6);
+  wr16(0x060C, (uint16_t)(rd16(0x060A) + 0x0010));
+  wr16(0x070C, rd16(0x070A));
+}
+
+// TG3000_ROUTINE($8A:867C) rotation_from_angle
+void rotation_from_angle(void) {
+  const uint32_t x = (uint16_t)((rd16(DP + 0x34) >> 3) & 0x03FE);
+  wr16(DP + 0x14, rom16(0x81CEA9 + x));
+  wr16(DP + 0x1A, rom16(0x81CEA9 + x));
+  wr16(DP + 0x16, rom16(0x81CDA9 + x));
+  wr16(DP + 0x18, (uint16_t)(0 - rom16(0x81CDA9 + x)));
+}

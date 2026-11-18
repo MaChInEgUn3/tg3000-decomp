@@ -332,3 +332,5 @@ func    82EA87   track_event_2047    ; a track event set, pattern $2047 (body $8
 func    82EA8D   track_event_2087    ; a track event set, pattern $2087 (body $82:EB1A) -> src/misc.c
 func    82EACE   track_event_2107    ; a track event set, pattern $2107 (body $82:EB1A) -> src/misc.c
 func    82EAD4   track_event_c2e7    ; a track event set, pattern $C2E7 (body $82:EB1A) -> src/misc.c
+func    8A824B   title_sprites_place ; two title sprites placed (while D+$62 is $FFFF) -> src/misc.c
+func    8A867C   rotation_from_angle ; Mode 7 rotation (cos, sin, -sin) for the angle D+$34 -> src/misc.c

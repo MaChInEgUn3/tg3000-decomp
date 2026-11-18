@@ -55,3 +55,4 @@
 8A:AE9B 8A:AEB9 m16x16 ; rng_next's third copy, called only from timer_0d7e_tick's never-run branch
 82:B1D9 82:B1E3 m16x16 ; text_centred_line: a byte with bit 7 set sets the palette ($82:B1D7 BEQ)
 82:B1FC 82:B201 m16x16 ; text_centred_line: '.' is tile $25 ($82:B1FA BNE)
+8A:8252 8A:8253 m16x16 ; title_sprites_place: RTS when D+$62 is not $FFFF ($8A:8250 BEQ)

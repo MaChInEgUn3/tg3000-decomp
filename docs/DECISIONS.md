@@ -1789,6 +1789,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Two title-screen pieces (roots-10, 2026-11-18)
+
+- **`title_sprites_place` ($8A:824B):** two sprites placed at `$0174` / `$0176` less
+  `$014A` / `$014C`:
+  - tiles `$A4` and `$A6`;
+  - x `$404D` + ..., y `$53` + ...;
+  - the second sprite `$10` to the right of the first.
+
+  Only while `$0162` is `$FFFF`; otherwise a lone `RTS` (`$8A:8252`, never run, static
+  code; the fuzz runs it). Live 263/263, fuzz 500/500, paths 31/31.
+- **`rotation_from_angle` ($8A:867C):** the Mode 7 rotation for the angle `$0134` (bits
+  4-12):
+  - `$0114` = `$011A` = cos, from `$81:CEA9`;
+  - `$0116` = sin, from `$81:CDA9`;
+  - `$0118` = -sin.
+
+  Exit C = bit 2 of the angle (the third `LSR`). Live 263/263, paths 15/15.
+
 ## Track events that set a pattern (roots-9, 2026-11-18)
 
 - **Five entries load a pattern into A and jump to a shared body at `$82:EB1A`:**

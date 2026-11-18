@@ -1068,6 +1068,45 @@ static void fuzz_track_event_set(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_track_event_clear(r, ram, rnd);
 }
 
+// ---- title_sprites_place ($8A:824B) ----  placed: A = $070A (N Z), C V of $060A + $10;
+// skipped: A = D+$62, flags of its CMP #$FFFF
+static void call_title_sprites_place(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t flag = rd16(DP + 0x62);
+  title_sprites_place();
+  if(flag != 0xFFFF) {
+    out->a = flag;
+    setNZ16(out, (uint16_t)(flag - 0xFFFF));
+    out->c = false;
+    return;
+  }
+  out->a = rd16(0x070A);
+  setNZ16(out, out->a);
+  setAdc16(out, (uint16_t)(rd16(0x060C) - 0x0010), 0x0010);
+}
+static void fuzz_title_sprites_place(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x62, (rnd() & 3) ? 0xFFFF : (uint16_t)rnd());
+  for(uint32_t a = 0x4A; a <= 0x4C; a += 2) wr16ram(ram, DP + a, (uint16_t)rnd());
+  for(uint32_t a = 0x74; a <= 0x76; a += 2) wr16ram(ram, DP + a, (uint16_t)rnd());
+}
+
+// ---- rotation_from_angle ($8A:867C) ----  A = -sin (N Z of its INC), X = the table offset,
+// C = bit 2 of the angle (the third LSR)
+static void call_rotation_from_angle(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t angle = rd16(DP + 0x34);
+  rotation_from_angle();
+  out->a = rd16(DP + 0x18);
+  out->x = (uint16_t)((angle >> 3) & 0x03FE);
+  setNZ16(out, out->a);
+  out->c = (angle >> 2) & 1;
+}
+static void fuzz_rotation_from_angle(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x34, (uint16_t)rnd());
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -5393,6 +5432,10 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_2107, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
   {.name = "track_event_c2e7", .entry = 0x82EAD4, .end = 0x82EADA, .alsoIn = {{0x82EB1A, 0x82EB45}}, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_c2e7, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
+  {.name = "title_sprites_place", .entry = 0x8A824B, .end = 0x8A8290, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_title_sprites_place, ALL_OUTPUTS, .fuzz = fuzz_title_sprites_place},
+  {.name = "rotation_from_angle", .entry = 0x8A867C, .end = 0x8A869A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_rotation_from_angle, ALL_OUTPUTS, .fuzz = fuzz_rotation_from_angle},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

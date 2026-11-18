@@ -58,8 +58,8 @@ CODE_8A803B:
     jsr.w func_8A8232           ; $8A8088
     jsr.w func_8A823D           ; $8A808B
     jsr.w func_8A8290           ; $8A808E
-    jsr.w $824B                 ; $8A8091
-    jsr.w $867C                 ; $8A8094
+    jsr.w title_sprites_place   ; $8A8091
+    jsr.w rotation_from_angle   ; $8A8094
     jsr.w func_8A869A           ; $8A8097
     jsr.w $86AB                 ; $8A809A
     jsr.w $898F                 ; $8A809D
@@ -105,8 +105,8 @@ CODE_8A8142:
     jsr.w func_8A8232           ; $8A814E
     jsr.w func_8A823D           ; $8A8151
     jsr.w func_8A8290           ; $8A8154
-    jsr.w $824B                 ; $8A8157
-    jsr.w $867C                 ; $8A815A
+    jsr.w title_sprites_place   ; $8A8157
+    jsr.w rotation_from_angle   ; $8A815A
     jsr.w $86AB                 ; $8A815D
     jsr.w $898F                 ; $8A8160
     jsr.w func_8A869A           ; $8A8163
@@ -187,10 +187,11 @@ func_8A823D:
     adc.b $64                   ; $8A8246
     sta.b $4C                   ; $8A8248
     rts                         ; $8A824A
+title_sprites_place:
     lda.b $62                   ; $8A824B
     cmp.w #$FFFF                ; $8A824D
     beq CODE_8A8253             ; $8A8250
-    incbin !baserom:$50252..$50253
+    rts                         ; $8A8252 static
 CODE_8A8253:
     lda.w #$00A4                ; $8A8253
     sta.w $080A                 ; $8A8256
@@ -316,6 +317,7 @@ func_8A8325:
 CODE_8A85CB:
     rts                         ; $8A85CB
     incbin !baserom:$505CC..$5067C
+rotation_from_angle:
     lda.b $34                   ; $8A867C
     lsr a                       ; $8A867E
     lsr a                       ; $8A867F
