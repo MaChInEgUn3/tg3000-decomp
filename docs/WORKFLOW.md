@@ -61,6 +61,8 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
    `tools/bench/routines.c`, then run
    `build/bench/bench TG3000.sfc 9450 --movie tools/bench/movies/race1.txt --difftest map/verified.txt --fuzz 500`
    (and other movies until it is reached) and `python3 -I tools/progress.py`.
+   To iterate on a few rows, add `--difftest-only name1,name2` (a scratch results file:
+   live counts differ when another row no longer owns the interrupts).
    Before committing, `tools/verify_all.sh` re-verifies every routine from the full
    autopilot movie (a change to the registry or harness makes all rows stale), and
    checks that every negative row (deliberately wrong C) fails over that movie too.

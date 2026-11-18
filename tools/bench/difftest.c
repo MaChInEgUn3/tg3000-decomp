@@ -1299,11 +1299,33 @@ void difftest_on_insn(Cpu* cpu) {
   lastOp = peekByte(((uint32_t)cpu->k << 16) | cpu->pc);
 }
 
+static const char* onlyNames;
+void difftest_only(const char* names) { onlyNames = names; }
+
+static bool named(const char* list, const char* name) {
+  size_t n = strlen(name);
+  for(const char* p = list; *p;) {
+    const char* e = strchr(p, ',');
+    size_t len = e ? (size_t)(e - p) : strlen(p);
+    if(len == n && strncmp(p, name, n) == 0) return true;
+    if(!e) break;
+    p = e + 1;
+  }
+  return false;
+}
+
 void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
   snes = s;
   g_rom = rom;
   table = negative ? negativeRoutines : routines;
   tableCount = negative ? negativeRoutineCount : routineCount;
+  if(onlyNames != NULL) {  // the named rows only
+    Routine* kept = calloc((size_t)tableCount, sizeof *kept);
+    int n = 0;
+    for(int i = 0; i < tableCount; i++) if(named(onlyNames, table[i].name)) kept[n++] = table[i];
+    table = kept;
+    tableCount = n;
+  }
   stats = calloc(tableCount, sizeof *stats);
   watches = calloc(tableCount, sizeof *watches);
   for(int i = 0; i < tableCount; i++) findStarts(&table[i], &stats[i]);

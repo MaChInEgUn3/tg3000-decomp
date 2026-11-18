@@ -1397,19 +1397,19 @@ CODE_808D6A:
 CODE_808DB1:
     lda.w #$2200                ; $808DB1
     sta.b $14                   ; $808DB4
-    jsr.w $B2F2                 ; $808DB6
+    jsr.w shop_list_label       ; $808DB6
     dec.b $20                   ; $808DB9
     bne CODE_808DB1             ; $808DBB
 CODE_808DBD:
     lda.w #$2400                ; $808DBD
     sta.b $14                   ; $808DC0
-    jsr.w $B2F2                 ; $808DC2
+    jsr.w shop_list_label       ; $808DC2
     cpx.w #$0020                ; $808DC5
     beq CODE_808DD7             ; $808DC8
 CODE_808DCA:
     lda.w #$2200                ; $808DCA
     sta.b $14                   ; $808DCD
-    jsr.w $B2F2                 ; $808DCF
+    jsr.w shop_list_label       ; $808DCF
     cpx.w #$0020                ; $808DD2
     bne CODE_808DCA             ; $808DD5
 CODE_808DD7:
@@ -5515,6 +5515,7 @@ CODE_80B241:
     inc.b $4E                   ; $80B2CF
     rts                         ; $80B2D1
     incbin !baserom:$32D2..$32F2
+shop_list_label:
     lda.b $22                   ; $80B2F2
     cmp.w #$1000                ; $80B2F4
     bmi CODE_80B311             ; $80B2F7

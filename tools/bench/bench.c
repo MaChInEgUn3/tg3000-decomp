@@ -371,6 +371,8 @@ int main(int argc, char** argv) {
       hdmaPath = argv[++i];
     } else if(strcmp(argv[i], "--apu-report") == 0 && i + 1 < argc) {
       apuPath = argv[++i];
+    } else if(strcmp(argv[i], "--difftest-only") == 0 && i + 1 < argc) {
+      difftest_only(argv[++i]);
     } else if(strcmp(argv[i], "--difftest-negative") == 0) {
       difftestNegative = true;
     } else if(strcmp(argv[i], "--fuzz") == 0 && i + 1 < argc) {

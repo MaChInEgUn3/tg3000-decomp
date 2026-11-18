@@ -1789,6 +1789,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Roots, a faster iteration, a shop list label (leaves-20, 2026-11-18)
+
+- **`tools/portable.py` understates what can be ported.** It reads the static listing.
+  `tools/roots.py` reads the measured calls (`map/census.txt`, indirect jumps included).
+  - `python3 -I tools/roots.py 1000` lists 140 roots (unported, no unported callee).
+  - 100 of them use no hardware, and 95 of those a bench movie reaches.
+  - The units now come from that list.
+- **`bench --difftest-only name1,name2`** tests only the rows named, to iterate on a few
+  (9 minutes over the 60k movie instead of about 35).
+  - Its live counts can differ: another row no longer owns the interrupts it waits
+    through.
+  - `tools/verify_all.sh` always runs every row.
+- **`shop_list_label` ($80:B2F2),** the root with the most entries (20,125):
+  - list x / 2's name (`$80:B371` + x, a string in bank `$80`) goes through
+    `sprite_text_centered` at row `$0122` (+ `$01E7`), while the row is within
+    `$1000`-`$57FF` (signed);
+  - the row moves on by `$800` and x by 2;
+  - at x = `$20` that is all; a list whose count (`$036E` + x / 2) is 0 ends its caller's
+    run: `$01F0` = x / 2, x = `$1E`;
+  - A, X, Y and the flags are outputs, by exit.
+  - Live 4,000/4,000 (shop), fuzz 500/500, paths 34/34.
+
 ## The race's centred messages (leaves-19, 2026-11-18)
 
 - **`text_centred_line` ($82:B18B, DB = `$7E`):** a centred line of 13 two-row characters

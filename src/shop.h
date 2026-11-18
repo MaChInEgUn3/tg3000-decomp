@@ -136,6 +136,12 @@ void shop_panel_clear(void);
 // The list cursor's range check ($80:B359): (D+$48 * 8) in the high byte, swapped with
 // its low byte, plus D+$4A; true (carry set) above $1800 or negative.
 bool shop_list_locked(void);
+
+// $80:B2F2: list `x` / 2's name ($80:B371 + x: a string in bank $80), centred at row D+$22
+// (+ D+$E7) while the row is within $1000-$57FF (signed); the row moves on by $800 and x by
+// 2. At x = $20 that is all; a list whose count ($036E + x / 2) is 0 ends the run there:
+// D+$F0 = x / 2 and x = $1E. Returns the new x.
+uint16_t shop_list_label(uint16_t x);
 // Step the list cursor D+$48 down ($80:B333, not below 0) or up ($80:B345, not past D+$F0)
 // unless locked; a step clears D+$4E and plays sound $11 (func_80E4C5).
 void shop_list_prev(void);

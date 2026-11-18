@@ -1066,3 +1066,16 @@ void shop_item_icon_settle(void) {
   } while(step != 0x8007);
   wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) & ~0x8000));
 }
+
+// TG3000_ROUTINE($80:B2F2) shop_list_label
+uint16_t shop_list_label(uint16_t x) {
+  int16_t row = (int16_t)rd16(DP + 0x22);
+  if((int16_t)(row - 0x1000) >= 0 && (int16_t)(row - 0x5800) < 0)
+    sprite_text_centered(0x800000 | rom16(0x80B371 + (uint32_t)x), (uint16_t)(rd16(DP + 0x22) + rd16(DP + 0xE7)));
+  wr16(DP + 0x22, (uint16_t)(rd16(DP + 0x22) + 0x0800));
+  x = (uint16_t)(x + 2);
+  if(x == 0x0020) return x;
+  if(rd8(0x036E + (uint32_t)(x >> 1)) != 0) return x;
+  wr16(DP + 0xF0, (uint16_t)(x >> 1));
+  return 0x001E;
+}

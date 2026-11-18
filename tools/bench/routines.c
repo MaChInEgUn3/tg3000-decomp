@@ -720,6 +720,45 @@ static void fuzz_text_centred_line(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
   wr16ram(ram, DP + 0x18, (uint16_t)(0x2000 + (rnd() % 0x800) * 2));
 }
 
+// ---- shop_list_label ($80:B2F2) ----  X = the new index; Y as sprite_text_centered leaves
+// it (the slot) when drawn, else kept, then x / 2 past the end check; A and flags by the exit
+static void call_shop_list_label(const Regs* in, Regs* out) {
+  int16_t row = (int16_t)rd16(DP + 0x22);
+  bool drawn = (int16_t)(row - 0x1000) >= 0 && (int16_t)(row - 0x5800) < 0;
+  uint16_t row0 = rd16(DP + 0x22);
+  out->x = shop_list_label(in->x);
+  out->y = drawn ? rd16(DP + 0x74) : in->y;
+  uint16_t moved = rd16(DP + 0x22), x2 = (uint16_t)(in->x + 2);
+  setAdc16(out, row0, 0x0800);  // V (C is replaced below)
+  if(x2 == 0x0020) {  // CPX #$20 matched
+    out->a = moved;
+    out->n = false;
+    out->z = true;
+    out->c = true;
+    return;
+  }
+  out->y = (uint16_t)(x2 >> 1);
+  out->c = false;  // the LSR of an even index
+  uint8_t count = rd8(0x036E + (uint32_t)(x2 >> 1));
+  if(count != 0) {
+    out->a = count;
+    out->n = false;
+    out->z = false;
+    return;
+  }
+  out->a = (uint16_t)(x2 >> 1);
+  out->n = false;  // LDX #$1E
+  out->z = false;
+}
+// a list 0-14 (x even), the row anywhere around the window, list counts zero or not
+static void fuzz_shop_list_label(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)((rnd() % 0x10) * 2);
+  wr16ram(ram, DP + 0x22, (uint16_t)(0x0800 * (rnd() % 14) - 0x0800 + (rnd() & 0x07FF)));
+  wr16ram(ram, DP + 0xE7, (uint16_t)rnd());
+  for(uint32_t i = 0; i < 0x10; i++) ram[0x036E + i] = (rnd() & 3) == 0 ? 0 : (uint8_t)(1 + rnd() % 5);
+  wr16ram(ram, DP + 0x74, (uint16_t)((rnd() % 0x40) * 4));
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -4988,6 +5027,8 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_text_line_put, ALL_OUTPUTS, .fuzz = fuzz_text_line_put},
   {.name = "text_centred_line", .entry = 0x82B18B, .end = 0x82B234, .source = "src/text.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_text_centred_line, .fuzz = fuzz_text_centred_line},
+  {.name = "shop_list_label", .entry = 0x80B2F2, .end = 0x80B333, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_list_label, ALL_OUTPUTS, .fuzz = fuzz_shop_list_label},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
