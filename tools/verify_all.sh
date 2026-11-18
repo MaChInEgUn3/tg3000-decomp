@@ -63,6 +63,8 @@ head -n 1 "$tmp/shop0.txt" > "$tmp/shop.txt"
 k=0
 while [ $k -lt $shopshards ]; do tail -n +2 "$tmp/shop$k.txt" >> "$tmp/shop.txt"; k=$((k + 1)); done
 python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt"
+# the mark of a full run (progress.py finds its commit with git blame)
+sed -i "1a # full run: $(date -u +%Y-%m-%dT%H:%M:%SZ) (tools/verify_all.sh)" map/verified.txt
 k=0
 while [ $k -lt "$shards" ]; do grep -A6 "^difftest" "$tmp/main$k.log" || true; k=$((k + 1)); done
 if grep -q "^difftest.*: \(PASS\|UNREACHED\)" "$tmp/neg" || ! grep -q "^difftest.*: FAIL" "$tmp/neg"; then

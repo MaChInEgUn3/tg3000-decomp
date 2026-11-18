@@ -30,14 +30,15 @@ def read(path):
 
 
 def update(path, new_path):
-    header, rows, order = read(path)
+    heads = [l.rstrip("\n") for l in open(path) if l.startswith("#")]  # the full-run mark too
+    _, rows, order = read(path)
     _, new_rows, new_order = read(new_path)
     for entry in new_order:
         if entry not in rows:
             order.append(entry)
         rows[entry] = new_rows[entry]
     with open(path, "w") as f:
-        f.write("\n".join([header.rstrip("\n")] + [" ".join(rows[e]) for e in order]) + "\n")
+        f.write("\n".join(heads + [" ".join(rows[e]) for e in order]) + "\n")
 
 
 def main():

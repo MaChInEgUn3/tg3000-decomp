@@ -11,10 +11,16 @@ when a verified routine's C source changed after it was verified. The numbers ar
 
 A verified row is current when its hash matches the code as it is now. A row from an
 earlier run is carried when its hash matches the code at a commit at most MAX_BEHIND
-commits back and the code changed only by additions since (no line of the row's source,
-the registry or the harness removed or changed; difftest.c and platform_bench.c not
-touched at all): tools/verify_new.sh verifies new rows alone, tools/verify_all.sh every
-row. Any other row is stale.
+commits back and the code changed only by additions since (no line anywhere in src/ or
+tools/bench/ removed or changed; difftest.c and platform_bench.c not touched at all):
+tools/verify_new.sh verifies new rows alone, tools/verify_all.sh every row. Any other
+row is stale.
+
+Whatever the rows, --check also fails when the last full run (the "# full run:" line
+tools/verify_all.sh writes into map/verified.txt; its commit by git blame) is more than
+MAX_BEHIND commits back, or when src/ or tools/bench/ changed since by more than
+additions: a changed line with no row of its own (a header, the bench's main) is caught
+there.
 """
 import functools
 import os
@@ -106,15 +112,62 @@ def hash_at(commit, source):
 
 
 @functools.lru_cache(maxsize=None)
-def only_additions(commit, source):
-    """True when, from `commit` to now, the source and the registry gained lines only and
-    the harness is untouched."""
+def only_additions(commit):
+    """True when, from `commit` to now, src/ and tools/bench/ gained lines only and the
+    harness is untouched."""
     if git("diff", "--quiet", commit, "--", *FROZEN) is None:
         return False
-    diff = git("diff", "-U0", "--no-color", commit, "--", source, "tools/bench/routines.c")
+    diff = git("diff", "-U0", "--no-color", commit, "--", "src", "tools/bench")
     if diff is None:
         return False
     return not any(l.startswith("-") and not l.startswith("---") for l in diff.decode().splitlines())
+
+
+FULL_RUN = "# full run:"
+
+
+def last_full_run():
+    """(line number, commit) of the full-run mark in map/verified.txt: commit None when
+    the mark is not committed yet (a full run now); (None, None) without a mark."""
+    path = os.path.join(ROOT, "map", "verified.txt")
+    if not os.path.exists(path):
+        return None, None
+    for n, line in enumerate(open(path), 1):
+        if line.startswith(FULL_RUN):
+            out = git("blame", "--porcelain", "-L", f"{n},{n}", "--", "map/verified.txt")
+            sha = out.decode().split()[0] if out else None
+            return n, (None if not sha or set(sha) == {"0"} else sha)
+    return None, None
+
+
+def full_run_when():
+    """The full-run mark's own text (its time): it does not change when committed."""
+    path = os.path.join(ROOT, "map", "verified.txt")
+    if os.path.exists(path):
+        for line in open(path):
+            if line.startswith(FULL_RUN):
+                return line[len(FULL_RUN):].split("(")[0].strip()
+    return None
+
+
+def full_run_problem():
+    """Why the last full run no longer covers the code, or None."""
+    n, commit = last_full_run()
+    if n is None:
+        return "map/verified.txt has no full-run mark: run tools/verify_all.sh"
+    if commit is None:
+        return None  # the full run is part of the commit being made
+    head = git("rev-parse", "HEAD")
+    allowed = set(recent_commits())
+    dirty = git("status", "--porcelain", "--", "src", "tools/bench")
+    if not dirty and head:
+        allowed.add(head.decode().strip())
+    if commit not in allowed:
+        return f"the last full run ({commit[:7]}) is more than {MAX_BEHIND} commits back: run tools/verify_all.sh"
+    if not only_additions(commit):
+        return (f"src/ or tools/bench/ changed by more than additions since the last full run ({commit[:7]}): "
+                "run tools/verify_all.sh")
+    return None
 
 
 def row_status(parts):
@@ -122,9 +175,10 @@ def row_status(parts):
     want = int(parts[3], 16)
     if verification_hash(parts[2]) == want:
         return "current", None
-    for commit in recent_commits():
-        if hash_at(commit, parts[2]) == want:
-            return ("carried", commit) if only_additions(commit, parts[2]) else ("stale", None)
+    # the oldest of the recent commits with that code: the run was there or before
+    matches = [c for c in recent_commits() if hash_at(c, parts[2]) == want]
+    if matches and only_additions(matches[-1]):
+        return "carried", matches[-1]
     return "stale", None
 
 
@@ -199,6 +253,7 @@ def block(lang):
     ported, _, carried = ported_routines()
     in_c = verified_code_bytes()
     n_carried = sum(carried.values())
+    full_txt = full_run_when() or "-"
     oldest = max(carried, key=recent_commits().index) if carried else None  # the furthest back
     short = oldest[:7] if oldest else ""
     rows = {
@@ -207,6 +262,7 @@ def block(lang):
             ("Code bytes", f"{code:,} (`0x{code:X}`)"),
             ("Data bytes", f"{data:,} (`0x{data:X}`)"),
             ("Routine entry points in C, verified by the differential test", f"**{ported:,}**"),
+            ("Last full re-verification of every routine", full_txt),
             ("Of those, verified at an earlier commit, the code only added to since",
              f"{n_carried:,} (oldest run: `{short}`)" if n_carried else "0 (all against this code)"),
             ("Code bytes inside verified C routines", f"**{in_c:,} / {code:,} ({pct(in_c, code)})**"),
@@ -216,6 +272,7 @@ def block(lang):
             ("Bytes de código", f"{code:,} (`0x{code:X}`)"),
             ("Bytes de dados", f"{data:,} (`0x{data:X}`)"),
             ("Pontos de entrada de rotinas em C, aprovados no teste diferencial", f"**{ported:,}**"),
+            ("Última reverificação completa de todas as rotinas", full_txt),
             ("Destes, aprovados num commit anterior, com o código só acrescido desde então",
              f"{n_carried:,} (rodada mais antiga: `{short}`)" if n_carried else "0 (todos contra este código)"),
             ("Bytes de código dentro de rotinas em C aprovadas", f"**{in_c:,} / {code:,} ({pct(in_c, code)})**"),
@@ -231,6 +288,10 @@ def block(lang):
 def main():
     check = "--check" in sys.argv[1:]
     _, stale_rows, _ = ported_routines()
+    problem = full_run_problem()
+    if check and problem:
+        print(problem, file=sys.stderr)
+        return 1
     if check and stale_rows:
         for r in stale_rows:
             print("stale verification: " + r, file=sys.stderr)

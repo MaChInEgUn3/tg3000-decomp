@@ -1789,6 +1789,35 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The full-run mark (2026-11-18)
+
+The first incremental unit's CI failed in `tools/test_carry.sh`. The rule had refused
+correctly. The test assumed every row in its clone starts current, but by then 330 rows
+were carried, and five more commits took them past the window.
+
+The advisor also pointed out a gap: a changed line in a file with no rows of its own (a
+header, `bench.c`, the Makefile) staled nothing. That was true before the incremental rule
+too, because the hash never covered those files.
+
+**The fixes.**
+- `verify_all.sh` writes `# full run: <UTC time>` as the second line of
+  `map/verified.txt`.
+- `progress.py --check` finds that line's commit with `git blame`. It refuses when that
+  commit is more than 5 commits back (counting the one being made), or when `src/` or
+  `tools/bench/` changed since by more than additions. A changed line anywhere there now
+  needs a full run.
+- The README shows the mark's time. A commit hash would only exist after the commit, so
+  the block generated before it would already be stale.
+- Carried rows take the oldest recent commit whose code their hash matches, and the
+  additions check covers all of `src/` and `tools/bench/` from there.
+- `verify_new.sh` refuses up front when `git diff HEAD` has a removed or changed line
+  there, or any change to `difftest.c` or `platform_bench.c`.
+- `merge_verified.py --update` keeps the mark.
+- `test_carry.sh`:
+  - its setup is now a full run (rows current, mark committed);
+  - it has a new case: a changed header line is refused;
+  - 10 cases pass.
+
 ## Four leaves verified incrementally (roots-18, 2026-11-18)
 
 The first unit gated by `tools/verify_new.sh`: the new rows over the 60k and shop movies,

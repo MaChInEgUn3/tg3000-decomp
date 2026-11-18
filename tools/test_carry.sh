@@ -11,10 +11,27 @@ git clone -q "$root" "$tmp/r"
 cd "$tmp/r"
 git config user.email test@example.invalid
 git config user.name test
-# the rule as it is in the working tree (it may not be committed yet)
+# the rule as it is in the working tree (it may not be committed yet), and every row as if
+# a full run had just verified this code (the clone's rows may already be carried)
 cp "$root/tools/progress.py" tools/progress.py
+python3 -I -c '
+import importlib.util
+spec = importlib.util.spec_from_file_location("progress", "tools/progress.py")
+progress = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(progress)
+out = []
+for line in open("map/verified.txt"):
+    parts = line.split()
+    if not line.startswith("#") and len(parts) >= 8 and parts[7] == "verified":
+        parts[3] = "%016x" % progress.verification_hash(parts[2])
+        line = " ".join(parts) + "\n"
+    out.append(line)
+out = [l for l in out if not l.startswith("# full run:")]
+out.insert(1, "# full run: test setup\n")
+open("map/verified.txt", "w").write("".join(out))
+'
 python3 -I tools/progress.py >/dev/null
-git commit -qam "test setup" --allow-empty
+git commit -qam "test setup: a full run here" --allow-empty
 check() {  # expect: 0 (accepted) or 1 (refused)
   s=0
   python3 -I tools/progress.py --check >/dev/null 2>&1 || s=$?
@@ -41,6 +58,12 @@ git reset -q --hard "$base"
 sed -i '0,/static/s//static /' tools/bench/routines.c
 python3 -I tools/progress.py >/dev/null || true
 check 1 "a changed line in the registry"
+
+# a changed line in a file with no rows of its own (a header): refused
+git reset -q --hard "$base"
+sed -i '0,/#include/s//#include /' src/misc.h
+python3 -I tools/progress.py >/dev/null || true
+check 1 "a changed line in a header"
 
 # a harness change, even an addition: refused
 git reset -q --hard "$base"

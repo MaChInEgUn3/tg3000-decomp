@@ -19,6 +19,12 @@ fi
 rows=$1
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
+# additions only: no line of src/ or tools/bench/ removed or changed, the harness untouched
+if ! git diff --quiet HEAD -- tools/bench/difftest.c tools/bench/platform_bench.c \
+   || git diff -U0 --no-color HEAD -- src tools/bench | grep -v '^--- ' | grep -q '^-'; then
+  echo "verify_new: src/ or tools/bench/ changed by more than additions: run tools/verify_all.sh" >&2
+  exit 7
+fi
 make -s -C tools/bench >/dev/null
 rom="${TG3000_ROM:-TG3000.sfc}"
 tmp=$(mktemp -d)

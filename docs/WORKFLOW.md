@@ -75,8 +75,11 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
      C) fails over that movie too.
 
    `progress.py --check` (and CI) accepts an older row only while the code changed by
-   additions alone since its run, and only for 5 commits. After that the full run is
-   due. `tools/test_carry.sh` tests that rule without the ROM.
+   additions alone since its run, and only for 5 commits. It also refuses when the last
+   full run (the `# full run:` line `verify_all.sh` writes into `map/verified.txt`) is
+   more than 5 commits back, or when anything in `src/` or `tools/bench/` changed since by
+   more than additions. `verify_new.sh` refuses up front in that case.
+   `tools/test_carry.sh` tests the rule without the ROM.
 
 ## Metrics
 
