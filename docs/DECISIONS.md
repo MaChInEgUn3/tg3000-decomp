@@ -1789,6 +1789,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The steering reset and the HDMA settle (leaves-15, 2026-11-18)
+
+- **`steer_state_init` ($80:D6A0):**
+  - `$0128`, `$0134`, `$0136`, `$0124`, `$011E`, `$012C`, `$0138`, `$013A` cleared;
+  - `$0130` = `$28`, `$0132` = `$4B0`, `$013C` = `$50`;
+  - `$012A` = `$012E` = `$0804`;
+  - `$0122` = `$0120` = (`$0804` - `$80`, at least 0, capped at `$100`) less its
+    remainder by 3, through the CPU divider (`$4204`/`$4206`/`$4216`), which the C
+    computes natively.
+
+  The cap (`LDA #$0100`) is never run and is static code. A shop fuzz that hardly ever
+  drew `$0804` below `$80` left the clamp's path unvisited; a third of its cases now
+  are. Live 2/2 (60k), 1/1 (shop), fuzz 500/500, paths 39/39.
+- **`hdma_table_0d00_settle` ($8A:9C48):** `hdma_table_0d00_step`, then every entry byte
+  of the `$0D01` table steps down by one unless it is `$FF` or `$E0`. Exit C is the last
+  entry's compare, which the adapter derives allowing for the step having just lowered
+  that entry. Live 208/208, paths 16/16.
+
 ## The race order (leaves-14, 2026-11-18)
 
 - **`race_order_sort` ($85:A066, long),** with DB = `$7E` from its `PEA $837E` / `PLB`:

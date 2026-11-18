@@ -203,6 +203,15 @@ void hdma_table_0d00_step(void);
 // $03D7, *x the place after the last one read, *y the places left.
 uint16_t race_order_sort(uint16_t* x, uint16_t* y);
 
+// $8A:9C48: hdma_table_0d00_step, then every entry's byte of the HDMA table at $0D01
+// (21 of them, a word apart) steps down by one unless it is $FF or $E0.
+void hdma_table_0d00_settle(void);
+
+// $80:D6A0: the steering state starts over: D+$28, $34, $36, $24, $1E, $2C, $38, $3A
+// cleared; D+$30 = $28, D+$32 = $4B0, D+$3C = $50; D+$2A = D+$2E = $0804; D+$22 = D+$20 =
+// ($0804 - $80, within 0-$100) rounded down to a multiple of 3 (the CPU divider).
+void steer_state_init(void);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.

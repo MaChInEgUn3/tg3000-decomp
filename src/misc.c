@@ -1309,3 +1309,31 @@ uint16_t race_order_sort(uint16_t* x, uint16_t* y) {
   *y = left;
   return both;
 }
+
+// TG3000_ROUTINE($8A:9C48) hdma_table_0d00_settle
+void hdma_table_0d00_settle(void) {
+  hdma_table_0d00_step();
+  for(uint32_t x = 0; x < 0x2A; x += 2) {
+    uint8_t b = rd8(0x0D01 + x);
+    if(b != 0xFF && b != 0xE0) wr8(0x0D01 + x, (uint8_t)(b - 1));
+  }
+}
+
+// TG3000_ROUTINE($80:D6A0) steer_state_init
+void steer_state_init(void) {
+  static const uint8_t cleared[] = {0x28, 0x34, 0x36, 0x24, 0x1E, 0x2C};
+  for(unsigned i = 0; i < sizeof cleared; i++) wr16(DP + cleared[i], 0);
+  wr16(DP + 0x30, 0x0028);
+  wr16(DP + 0x32, 0x04B0);
+  wr16(DP + 0x38, 0);
+  wr16(DP + 0x3A, 0);
+  wr16(DP + 0x3C, 0x0050);
+  uint16_t at = rd16(0x0804);
+  wr16(DP + 0x2A, at);
+  wr16(DP + 0x2E, at);
+  uint16_t a = at < 0x0080 ? 0 : (uint16_t)(at - 0x0080);
+  if(a >= 0x0100) a = 0x0100;  // never run
+  a = (uint16_t)(a - a % 3);   // the CPU's 16 / 8 divider's remainder
+  wr16(DP + 0x22, a);
+  wr16(DP + 0x20, a);
+}

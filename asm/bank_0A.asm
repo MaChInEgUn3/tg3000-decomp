@@ -1823,7 +1823,7 @@ CODE_8A965E:
 CODE_8A9668:
     lda.l $81019A               ; $8A9668
     beq CODE_8A9674             ; $8A966C
-    jsr.w $9C48                 ; $8A966E
+    jsr.w hdma_table_0d00_settle; $8A966E
     jmp.w $9606                 ; $8A9671
 CODE_8A9674:
     rtl                         ; $8A9674
@@ -2416,6 +2416,7 @@ CODE_8A9C43:
     stx.b $6E                   ; $8A9C45
 CODE_8A9C47:
     rts                         ; $8A9C47
+hdma_table_0d00_settle:
     jsr.w hdma_table_0d00_step  ; $8A9C48
     sep.b #$20                  ; $8A9C4B
     ldy.w #$0015                ; $8A9C4D

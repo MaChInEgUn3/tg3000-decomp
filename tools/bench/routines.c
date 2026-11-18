@@ -572,6 +572,38 @@ static void fuzz_race_order_sort(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(uint32_t a = 0x0446; a < 0x0470; a++) ram[a] = (uint8_t)(rnd() % 22);
 }
 
+// ---- hdma_table_0d00_settle ($8A:9C48) ----  no register outputs (its caller reloads them);
+// N clear and Z set by the last DEY, C of the last entry's compare ($FF: set; else >= $E0)
+static void call_hdma_table_0d00_settle(const Regs* in, Regs* out) {
+  (void)in;
+  // the step runs first: on the last entry ($6E = $28) it may lower that word by one
+  uint16_t count = (uint16_t)(rd16(DP + 0x6C) + 1), word = rd16(0x0D29);
+  uint8_t last = (uint8_t)word;
+  if(!(count & 3) && rd16(DP + 0x6E) == 0x0028 && word != 0x00E0) last = (uint8_t)(word - 1);
+  hdma_table_0d00_settle();
+  out->n = false;
+  out->z = true;
+  out->c = last == 0xFF || last >= 0xE0;
+}
+
+// ---- steer_state_init ($80:D6A0) ----  A = the rounded value; N Z of its SBC, C set and V
+// clear (the remainder is at most the value, both small)
+static void call_steer_state_init(const Regs* in, Regs* out) {
+  (void)in;
+  steer_state_init();
+  out->a = rd16(DP + 0x22);
+  setNZ16(out, out->a);
+  out->c = true;
+  out->v = false;
+}
+static void fuzz_steer_state_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  // below $80 (clamped to 0), within the range, or anywhere
+  uint32_t k = rnd() % 3;
+  wr16ram(ram, 0x0804, (uint16_t)(k == 0 ? rnd() % 0x80 : k == 1 ? 0x0080 + rnd() % 0x100 : rnd()));
+}
+static void fuzz_hdma_table_0d00_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -4823,6 +4855,11 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_race_lights_draw, .fuzz = fuzz_race_lights_draw},
   {.name = "race_order_sort", .entry = 0x85A066, .end = 0x85A118, .rtl = true, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_race_order_sort, ALL_OUTPUTS, .fuzz = fuzz_race_order_sort},
+  {.name = "hdma_table_0d00_settle", .entry = 0x8A9C48, .end = 0x8A9C69, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_hdma_table_0d00_settle,
+   .fuzz = fuzz_hdma_table_0d00_step},
+  {.name = "steer_state_init", .entry = 0x80D6A0, .end = 0x80D6F3, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_steer_state_init, .compareA = true, .fuzz = fuzz_steer_state_init},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

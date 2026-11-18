@@ -49,3 +49,4 @@
 80:B6DD 80:B6F2 m16x16 ; text_type_step: codes $81 (column 0) and $82 (jump), from the table at $80:B6BC
 80:9892 80:98AE m16x16 ; shop_item_icon_settle: the icon's other colours below step 8 ($80:9890 BCS)
 80:98B5 80:98B6 m16x16 ; shop_item_icon_settle: INC A, holding at $8007 ($80:98B3 BNE)
+80:D6D4 80:D6D7 m16x16 ; steer_state_init: LDA #$0100, the cap ($80:D6D2 BCC)

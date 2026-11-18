@@ -8736,7 +8736,7 @@ CODE_80D24B:
     jsr.w vram_queue_push       ; $80D3ED
     lda.w #$0072                ; $80D3F0
     sta.b $7A                   ; $80D3F3
-    jsr.w $D6A0                 ; $80D3F5
+    jsr.w steer_state_init      ; $80D3F5
     jsr.w draw_meter            ; $80D3F8
     jsr.w $D823                 ; $80D3FB
     jsr.w oam_finish_0b00_near  ; $80D3FE
@@ -9041,6 +9041,7 @@ CODE_80D698:
     sty.w $036B                 ; $80D69A
     rep.b #$10                  ; $80D69D
     rts                         ; $80D69F
+steer_state_init:
     stz.b $28                   ; $80D6A0
     stz.b $34                   ; $80D6A2
     stz.b $36                   ; $80D6A4
@@ -9065,7 +9066,7 @@ CODE_80D698:
 CODE_80D6CF:
     cmp.w #$0100                ; $80D6CF
     bcc CODE_80D6D7             ; $80D6D2
-    incbin !baserom:$56D4..$56D7
+    lda.w #$0100                ; $80D6D4 static
 CODE_80D6D7:
     sta.b $22                   ; $80D6D7
     sta.w $4204                 ; $80D6D9
