@@ -861,6 +861,37 @@ static void fuzz_func_82B769(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // ---- empty_80B94F: a lone RTS, nothing changes
 static void call_empty(const Regs* in, Regs* out) { (void)in; (void)out; }
 
+// ---- sprite_number_point ($80:855A) ----  A = 0 (the fifth digit read: the value is all
+// shifted out), X = 0, Y = the x after the number (N Z of that LDY), C clear (take_nibble16)
+static void call_sprite_number_point(const Regs* in, Regs* out) {
+  out->y = sprite_number_point(in->a, in->y);
+  out->a = 0;
+  out->x = 0;
+  setNZ16(out, out->y);
+  out->c = false;
+}
+static void fuzz_sprite_number_point(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (uint16_t)((rnd() & 3) == 0 ? (rnd() % 0x1000) : rnd());  // a leading zero, often
+  r->y = (uint16_t)(rnd() & 0x01FF);
+  wr16ram(ram, DP + 0x14, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x74, (uint16_t)((rnd() % 0x60) * 4));
+}
+
+// ---- sprite_bar8 ($80:C475) ----  A = X = slot + $20 (N Z C V of that ADC)
+static void call_sprite_bar8(const Regs* in, Regs* out) {
+  out->x = sprite_bar8(in->x);
+  out->a = out->x;
+  setNZ16(out, out->x);
+  setAdc16(out, in->x, 0x0020);
+}
+static void fuzz_sprite_bar8(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)((rnd() % 0x60) * 4);
+  for(uint32_t a = 0x14; a <= 0x1A; a += 2) wr16ram(ram, DP + a, (uint16_t)rnd());
+}
+
+// ---- clc_82DA46, clc_83FA32: CLC, RTS
+static void call_clc(const Regs* in, Regs* out) { (void)in; out->c = false; }
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -5144,6 +5175,13 @@ const Routine routines[] = {
   {.name = "func_82B769", .entry = 0x82B769, .end = 0x82B78D, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_func_82B769, ALL_OUTPUTS, .fuzz = fuzz_func_82B769},
   {.name = "empty_80B94F", .entry = 0x80B94F, .end = 0x80B950, .source = "src/misc.c", .call = call_empty, ALL_OUTPUTS},
+  {.name = "sprite_number_point", .entry = 0x80855A, .end = 0x8085CA, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_sprite_number_point, ALL_OUTPUTS,
+   .fuzz = fuzz_sprite_number_point},
+  {.name = "sprite_bar8", .entry = 0x80C475, .end = 0x80C4F9, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_sprite_bar8, ALL_OUTPUTS, .fuzz = fuzz_sprite_bar8},
+  {.name = "clc_82DA46", .entry = 0x82DA46, .end = 0x82DA48, .source = "src/misc.c", .call = call_clc, ALL_OUTPUTS},
+  {.name = "clc_83FA32", .entry = 0x83FA32, .end = 0x83FA34, .source = "src/misc.c", .call = call_clc, ALL_OUTPUTS},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

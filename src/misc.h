@@ -252,6 +252,10 @@ uint16_t race_scroll_commit(void);
 // otherwise dp+$33 = $1F06 - dp+$35 + 9.
 void car_lap_check(uint16_t dp);
 
+// $82:DA46 and $83:FA32: CLC, RTS (a step that always says no).
+void clc_82DA46(void);
+void clc_83FA32(void);
+
 // $80:B94F: a lone RTS (the shop's idle frame hook).
 void empty_80B94F(void);
 

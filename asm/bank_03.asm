@@ -2433,6 +2433,7 @@ CODE_83FA2B:
     sta.b $33                   ; $83FA2F
 CODE_83FA31:
     rts                         ; $83FA31
+clc_83FA32:
     clc                         ; $83FA32
     rts                         ; $83FA33
     stz.w $012A                 ; $83FA34

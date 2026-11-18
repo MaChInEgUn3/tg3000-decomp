@@ -577,6 +577,7 @@ take_nibble:
     rol.b $18                   ; $808556
     rol a                       ; $808558
     rts                         ; $808559
+sprite_number_point:
     sty.b $16                   ; $80855A
     sta.b $1A                   ; $80855C
     ldy.b $74                   ; $80855E
@@ -684,7 +685,7 @@ CODE_808653:
     pha                         ; $80866B
     phy                         ; $80866C
     lda.b $16                   ; $80866D
-    jsr.w $855A                 ; $80866F
+    jsr.w sprite_number_point   ; $80866F
     tya                         ; $808672
     and.w #$00FF                ; $808673
     sta.b $14                   ; $808676
@@ -7317,14 +7318,14 @@ CODE_80C3BA:
     adc.b $E7                   ; $80C3C3
     sta.b $18                   ; $80C3C5
     stz.b $1A                   ; $80C3C7
-    jsr.w $C475                 ; $80C3C9
+    jsr.w sprite_bar8           ; $80C3C9
     lda.b $18                   ; $80C3CC
     clc                         ; $80C3CE
     adc.w #$0600                ; $80C3CF
     sta.b $18                   ; $80C3D2
     lda.w #$8000                ; $80C3D4
     sta.b $1A                   ; $80C3D7
-    jsr.w $C475                 ; $80C3D9
+    jsr.w sprite_bar8           ; $80C3D9
     stx.b $74                   ; $80C3DC
     lda.w #$2080                ; $80C3DE
     clc                         ; $80C3E1
@@ -7400,6 +7401,7 @@ CODE_80C472:
     dec.b $4B                   ; $80C472
 CODE_80C474:
     rts                         ; $80C474
+sprite_bar8:
     lda.b $14                   ; $80C475
     lsr a                       ; $80C477
     eor.w #$FFFF                ; $80C478

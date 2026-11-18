@@ -1529,3 +1529,9 @@ void func_82B769(uint16_t a, uint16_t y) {
 
 // TG3000_ROUTINE($80:B94F) empty_80B94F
 void empty_80B94F(void) {}
+
+// TG3000_ROUTINE($82:DA46) clc_82DA46
+void clc_82DA46(void) {}
+
+// TG3000_ROUTINE($83:FA32) clc_83FA32
+void clc_83FA32(void) {}

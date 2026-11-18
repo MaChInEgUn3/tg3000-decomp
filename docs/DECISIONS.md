@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A number with a point, an 8-sprite bar, two CLCs (roots-4, 2026-11-18)
+
+- **`sprite_number_point` ($80:855A):** a 4-digit BCD value (kept in `$011A`, read a
+  digit at a time by `take_nibble16`) as sprites from slot `$0174` at x `$0116`.
+  - Tiles `$34` + digit + `$0114`, placed by their widths at `$80:85A6` + tile.
+  - One leading zero is dropped, and a point (tile `$41`) goes before the last two
+    digits.
+  - Exit: A = 0 (the fifth digit read, the value all shifted out), X = 0, Y = the x
+    after the number, C clear.
+  - Live 1,330/1,330, fuzz 500/500, paths 56/56.
+- **`sprite_bar8` ($80:C475):** a bar of 8 sprites at slot X, `$0114` wide, centred on
+  `$0118`.
+  - Four left pieces 8 apart from the left edge; four right pieces from the right edge
+    less `$20` (8, 8, 6 apart).
+  - The right edge's `ADC` takes the carry of the width's `LSR`.
+  - Tiles `$011A` + `$150`, then + `$151`, the last mirrored (`$150` | `$4000`).
+  - Returns X + `$20`. Live 2,092/2,092, paths 57/57.
+- **`clc_82DA46` and `clc_83FA32`:** CLC, RTS (6,929 and 2,669 entries).
+  - Checked on the selftest's race1 movie too, after `$82:EA80`'s lesson: there the
+    first has samples and the second is unreached, which is no failure.
+
 ## A faster verify_all (tools-1, 2026-11-18)
 
 - **The owner asked whether the 40-minute gate was too slow; it was.**

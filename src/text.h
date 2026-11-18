@@ -121,4 +121,16 @@ void text_centred_line(void);
 // out the line is blanked and D+$14 = D+$16 = 0.
 void race_message_update(void);
 
+// $80:855A: the 4-digit value `value` (BCD, kept in D+$1A and read a digit at a time by
+// take_nibble16) as sprites from slot D+$74 at x `x` (kept in D+$16), tiles $34 + digit
+// + D+$14 placed by their widths ($80:85A6 + tile); one leading zero is dropped, and a
+// point (tile $41) goes before the last two digits. Returns the x after the last one.
+uint16_t sprite_number_point(uint16_t value, uint16_t x);
+
+// $80:C475: a bar of 8 sprites at slot `slot`, D+$14 wide, centred on D+$18: four left
+// pieces (tile D+$1A + $150, then + $151) 8 apart from its left edge, four right pieces
+// ($151 ..., the last mirrored $150 | $4000) from its right edge - $20 (8, 8, 6 apart).
+// Returns slot + $20.
+uint16_t sprite_bar8(uint16_t slot);
+
 #endif

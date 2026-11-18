@@ -3285,6 +3285,7 @@ CODE_82D933:
     tax                         ; $82D9D9
     jmp.w $DDBF                 ; $82D9DA
     incbin !baserom:$159DD..$15A46
+clc_82DA46:
     clc                         ; $82DA46
     rts                         ; $82DA47
     lda.l $86AF06,x             ; $82DA48

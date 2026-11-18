@@ -505,3 +505,55 @@ void race_message_update(void) {
   wr16(DP + 0x14, 0);
   wr16(DP + 0x1A, 0);
 }
+
+// TG3000_ROUTINE($80:855A) sprite_number_point
+uint16_t sprite_number_point(uint16_t value, uint16_t x) {
+  wr16(DP + 0x16, x);
+  wr16(DP + 0x1A, value);
+  uint16_t slot = rd16(DP + 0x74), n = 4, digit;
+  for(;;) {  // one leading zero at most is dropped
+    digit = take_nibble16();
+    if(digit != 0 || n == 3) break;
+    n--;
+  }
+  do {
+    uint16_t tile = (uint16_t)(digit + 0x34);
+    const uint32_t s = slot;
+    wr16(0x0902 + s, (uint16_t)(tile + rd16(DP + 0x14)));
+    wr16(0x0B01 + s, 0);
+    wr16(0x0900 + s, (uint16_t)(rom8(0x8085A6 + tile) + rd16(DP + 0x16)));
+    wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + 8));
+    slot = (uint16_t)(slot + 4);
+    if(n == 3) {  // the point
+      const uint32_t p = slot;
+      wr16(0x0902 + p, (uint16_t)(0x0041 + rd16(DP + 0x14)));
+      wr16(0x0B01 + p, 0);
+      wr16(0x0900 + p, rd16(DP + 0x16));
+      wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + 3));
+      slot = (uint16_t)(slot + 4);
+    }
+    digit = take_nibble16();
+  } while(--n);
+  wr16(DP + 0x74, slot);
+  return rd16(DP + 0x16);
+}
+
+// TG3000_ROUTINE($80:C475) sprite_bar8
+uint16_t sprite_bar8(uint16_t slot) {
+  const uint32_t x = slot;
+  uint16_t half = (uint16_t)(rd16(DP + 0x14) >> 1), odd = (uint16_t)(rd16(DP + 0x14) & 1);
+  uint16_t at = (uint16_t)(rd16(DP + 0x18) - half);
+  for(int i = 0; i < 4; i++, at = (uint16_t)(at + 8)) wr16(0x0900 + x + 4 * (uint32_t)i, at);
+  at = (uint16_t)(half + rd16(DP + 0x18) + odd - 0x20);  // the LSR's carry goes into the ADC
+  static const uint16_t gap[4] = {0, 8, 6, 8};
+  for(int i = 0; i < 4; i++) {
+    at = (uint16_t)(at + gap[i]);
+    wr16(0x0910 + x + 4 * (uint32_t)i, at);
+  }
+  uint16_t tile = (uint16_t)(rd16(DP + 0x1A) + 0x0150);
+  wr16(0x0902 + x, tile);
+  for(int i = 1; i < 7; i++) wr16(0x0902 + x + 4 * (uint32_t)i, (uint16_t)(tile + 1));
+  wr16(0x091E + x, (uint16_t)(tile | 0x4000));
+  for(int i = 0; i < 8; i++) wr16(0x0B01 + x + 4 * (uint32_t)i, 0);
+  return (uint16_t)(slot + 0x20);
+}
