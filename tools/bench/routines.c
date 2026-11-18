@@ -781,6 +781,43 @@ static void fuzz_race_countdown(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(uint32_t a = 0x0244; a < 0x0246; a++) ram[a] = (uint8_t)rnd();
 }
 
+// ---- race_scroll_commit ($82:ECF1) ----  A = the new $1EF6; N Z C V of its ADC (with the
+// low words' carry)
+static void call_race_scroll_commit(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t lo = rd16(0x0204), hi = rd16(0x0206), tlo = rd16(0x1EF4), thi = rd16(0x1EF6);
+  bool carry = (uint32_t)lo + tlo > 0xFFFF;
+  out->a = race_scroll_commit();
+  setNZ16(out, out->a);
+  uint32_t sum = (uint32_t)hi + thi + carry;
+  out->c = sum > 0xFFFF;
+  out->v = (~(hi ^ thi) & (hi ^ sum) & 0x8000) != 0;
+}
+static void fuzz_race_scroll_commit(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t a = 0x0200; a < 0x020E; a++) ram[a] = (uint8_t)rnd();
+  for(uint32_t a = 0x1EEE; a < 0x1EF8; a++) ram[a] = (uint8_t)rnd();
+}
+
+// ---- car_lap_check ($83:F9D1) ----  no register outputs (flags by liveness)
+static void call_car_lap_check(const Regs* in, Regs* out) { (void)out; car_lap_check(in->d); }
+// the frame reached or not, the count just before 0 or the finish, the counters around
+static void fuzz_car_lap_check(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint16_t dp = r->d, frame = (uint16_t)rnd();
+  wr16ram(ram, 0x019A, frame);
+  wr16ram(ram, (uint16_t)(dp + 0x26), (rnd() & 3) ? (uint16_t)(frame + rnd() % 4) : (uint16_t)rnd());
+  uint16_t laps = (uint16_t)(1 + rnd() % 8);
+  wr16ram(ram, 0x1F06, laps);
+  uint32_t k = rnd() % 4;
+  wr16ram(ram, (uint16_t)(dp + 0x35), k == 0 ? 0xFFFF : k == 1 ? (uint16_t)(laps - 1) : (uint16_t)rnd());
+  wr16ram(ram, (uint16_t)(dp + 0x31), (rnd() & 1) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, (uint16_t)(dp + 0x7C), (uint16_t)rnd());
+  wr16ram(ram, (uint16_t)(dp + 0x44), (uint16_t)rnd());
+  wr16ram(ram, 0x1EBA, (uint16_t)((rnd() % 0x20) * 2));
+  wr16ram(ram, 0x1F08, (uint16_t)(rnd() % 0x14));
+  wr16ram(ram, 0x1ECA, (uint16_t)rnd());
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -5055,6 +5092,10 @@ const Routine routines[] = {
    .lowWramDb = true, .call = call_race_clear_0242_0208, .fuzz = fuzz_race_clear_0242_0208},
   {.name = "race_countdown", .entry = 0x82AB9D, .end = 0x82AC52, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_race_countdown, .fuzz = fuzz_race_countdown},
+  {.name = "race_scroll_commit", .entry = 0x82ECF1, .end = 0x82ED17, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .call = call_race_scroll_commit, .compareA = true, .fuzz = fuzz_race_scroll_commit},
+  {.name = "car_lap_check", .entry = 0x83F9D1, .end = 0x83FA32, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_car_lap_check, .fuzz = fuzz_car_lap_check},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

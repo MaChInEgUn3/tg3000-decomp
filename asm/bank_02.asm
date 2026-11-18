@@ -4534,6 +4534,7 @@ race_clear_0242_0208:
     stz.w $0242                 ; $82ECEA
     stz.w $0208                 ; $82ECED
     rts                         ; $82ECF0
+race_scroll_commit:
     stz.w $1EEE                 ; $82ECF1
     stz.w $1EF0                 ; $82ECF4
     lda.w $0204                 ; $82ECF7

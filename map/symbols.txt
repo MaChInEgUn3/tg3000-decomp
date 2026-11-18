@@ -307,3 +307,5 @@ func    82B18B   text_centred_line   ; a centred line of two-row characters at $
 func    80B2F2   shop_list_label     ; a list's name at its row, the next list or the end -> src/shop.c
 func    82ECEA   race_clear_0242_0208 ; $0242 and $0208 cleared -> src/misc.c
 func    82AB9D   race_countdown      ; the start countdown: lights 2-5 and their sound -> src/misc.c
+func    82ECF1   race_scroll_commit  ; $0204/$0206 to $0200/$0202, added into $1EF4/$1EF6 -> src/misc.c
+func    83F9D1   car_lap_check       ; a car's lap count and its finish -> src/misc.c

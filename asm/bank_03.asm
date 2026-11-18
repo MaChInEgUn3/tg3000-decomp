@@ -2299,7 +2299,7 @@ CODE_83F8D0:
     adc.w $8000                 ; $83F90F
     sta.b $27                   ; $83F912
 CODE_83F914:
-    jsr.w $F9D1                 ; $83F914
+    jsr.w car_lap_check         ; $83F914
     lda.b $25                   ; $83F917
     clc                         ; $83F919
     adc.w #$0100                ; $83F91A
@@ -2387,6 +2387,7 @@ CODE_83F9B3:
     sta.b $2F                   ; $83F9CD
     plb                         ; $83F9CF
     rts                         ; $83F9D0
+car_lap_check:
     lda.b $26                   ; $83F9D1
     cmp.w $019A                 ; $83F9D3
     bcc CODE_83FA31             ; $83F9D6

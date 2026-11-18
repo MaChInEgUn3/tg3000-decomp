@@ -1789,6 +1789,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The scroll commit and a car's lap (roots-2, 2026-11-18)
+
+- **`race_scroll_commit` ($82:ECF1):** `$1EEE` and `$1EF0` cleared; `$0200`/`$0202` =
+  `$0204`/`$0206`, which also add into the 32-bit `$1EF6:$1EF4` (the high word's `ADC`
+  takes the low words' carry); `$020A` and `$020C` cleared. A (the new `$1EF6`) is an
+  output. Live 4,000/4,000, paths 14/14.
+- **`car_lap_check` ($83:F9D1),** a car's lap, with its direct page as a parameter (`$0200`
+  for the player, the only D the movies show):
+  - once the frame counter `$019A` has reached dp+`$26`, the word dp+`$35` (at an odd
+    address) counts on;
+  - when it equals `$1F06` the car has finished:
+    - bit 0 of dp+`$7C` if dp+`$31` is set, and bit 2 of `$7E:FADE` + `$1EBA`;
+    - dp+`$44` bits 0 and 2 set and 3 cleared; dp+`$25` = 0, dp+`$26` = `$019A`;
+    - its place `$1ECA` written at `$0446` + `$1F08` (which counts on), and dp+`$33` =
+      `$12` + that place;
+  - otherwise dp+`$33` = `$1F06` - dp+`$35` + 9.
+  - Live 4,000/4,000, fuzz 500/500, paths 42/42.
+
 ## The start countdown (roots-1, 2026-11-18)
 
 - **`race_countdown` ($82:AB9D, DB = `$83`):** the start countdown.

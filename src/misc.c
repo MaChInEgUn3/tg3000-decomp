@@ -1482,3 +1482,40 @@ void race_countdown(void) {
   uint16_t volume = rd16(DP + 0x14);
   func_82AD12((uint16_t)(volume | 0xFF00), (uint16_t)(0x2000 | (volume >> 8)));
 }
+
+// TG3000_ROUTINE($82:ECF1) race_scroll_commit
+uint16_t race_scroll_commit(void) {
+  wr16(0x1EEE, 0);
+  wr16(0x1EF0, 0);
+  uint32_t total = ((uint32_t)rd16(0x1EF6) << 16 | rd16(0x1EF4)) + ((uint32_t)rd16(0x0206) << 16 | rd16(0x0204));
+  wr16(0x0200, rd16(0x0204));
+  wr16(0x0202, rd16(0x0206));
+  wr16(0x1EF4, (uint16_t)total);
+  wr16(0x1EF6, (uint16_t)(total >> 16));
+  wr16(0x020A, 0);
+  wr16(0x020C, 0);
+  return (uint16_t)(total >> 16);
+}
+
+// TG3000_ROUTINE($83:F9D1) car_lap_check
+void car_lap_check(uint16_t dp) {
+  if(rd16(dp + 0x26) < rd16(0x019A)) return;
+  wr16(dp + 0x35, (uint16_t)(rd16(dp + 0x35) + 1));
+  if(rd16(dp + 0x35) == 0) return;
+  uint16_t left = (uint16_t)(rd16(0x1F06) - rd16(dp + 0x35));
+  if(left != 0) {
+    wr16(dp + 0x33, (uint16_t)(left + 9));
+    return;
+  }
+  if(rd16(dp + 0x31) != 0) wr16(dp + 0x7C, (uint16_t)(rd16(dp + 0x7C) | 0x0001));
+  const uint32_t mark = 0xFADE + (uint32_t)rd16(0x1EBA);
+  wr16(mark, (uint16_t)(rd16(mark) | 0x0004));
+  wr16(dp + 0x44, (uint16_t)(rd16(dp + 0x44) | 0x0001));
+  wr16(dp + 0x25, 0);
+  wr16(dp + 0x26, rd16(0x019A));
+  uint16_t x = rd16(0x1F08);
+  wr16(0x0446 + (uint32_t)x, rd16(0x1ECA));
+  wr16(dp + 0x33, (uint16_t)(x + 0x12));
+  wr16(0x1F08, (uint16_t)(x + 1));
+  wr16(dp + 0x44, (uint16_t)((rd16(dp + 0x44) | 0x0004) & ~0x0008));
+}

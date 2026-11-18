@@ -240,6 +240,18 @@ void race_clear_0242_0208(void);
 // not 3.
 void race_countdown(void);
 
+// $82:ECF1: $1EEE and $1EF0 cleared; $0200 = $0204 and $0202 = $0206, which also add into
+// the 32-bit $1EF6:$1EF4; $020A and $020C cleared. Returns the new $1EF6.
+uint16_t race_scroll_commit(void);
+
+// $83:F9D1, a car's lap (its direct page `dp`: $0200 for the player). Once the frame
+// counter $019A has reached dp+$26: dp+$35 counts on (a word at an odd address); when it
+// equals $1F06 the car has finished: bit 0 of dp+$7C if dp+$31 is set, bit 2 of
+// $7E:FADE + $1EBA, dp+$44 bits 0 and 2 set and 3 cleared, dp+$25 = 0, dp+$26 = $019A,
+// its place $1ECA written at $0446 + $1F08 (which counts on), dp+$33 = $12 + that place;
+// otherwise dp+$33 = $1F06 - dp+$35 + 9.
+void car_lap_check(uint16_t dp);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.
