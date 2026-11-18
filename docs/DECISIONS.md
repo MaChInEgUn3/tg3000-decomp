@@ -1789,6 +1789,29 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The colour gradient (leaves-16, 2026-11-18)
+
+- **`hdma_gradient_build` ($8A:8FA4, long):** a 256-line colour table for HDMA, from the
+  colours `$0134` to `$0136` (lines 0-127) and `$0136` to `$0138` (128-255).
+  - Each channel (red, green, blue) keeps five words at `$1516` + 10 * channel: its value
+    before and now (8.8), two steps (2 * the difference of its next value, so 128 lines
+    cover it), and a dither pattern.
+  - When a step crosses a whole value, the pattern (`$013A`, then `$013C`) chooses, a
+    line at a time, the new value or the one before, and shifts.
+  - Each line writes (0, colour) at `[$0168]` + `$016C`.
+  - The 276-instruction original is three copies of one channel's code; the C is a loop
+    over the channels.
+- **Fuzz only.** The 60k movie enters it 12 times, all of them inside a routine that
+  records the interrupts it waits through (so they go unsampled) or interrupted.
+  - The fuzz draws any three colours and patterns, with the table in bank `$7F`: 500/500,
+    paths 276/276.
+  - Exit C and V are blue's last compare and `ADC`, from its final value and step.
+- **`flag_03dc_from_52` ($8A:9F64):** bit 12 of `$03DC` is set while `$0152` is not 0,
+  cleared otherwise. The setting branch is never run (static code). Live 1/1, fuzz
+  500/500, paths 8/8.
+- **`$8A:85AF` waits:** its never-run branches jump to `$8A:85CC` and `$8A:85D3`, into
+  bytes not yet mapped.
+
 ## The steering reset and the HDMA settle (leaves-15, 2026-11-18)
 
 - **`steer_state_init` ($80:D6A0):**

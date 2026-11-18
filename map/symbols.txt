@@ -298,3 +298,5 @@ func    80DAED   race_lights_draw    ; twelve lights: lit, the one under way (bl
 func    85A066   race_order_sort     ; sort the 20 cars by total, list the order, find cars 0 and 1 -> src/misc.c
 func    8A9C48   hdma_table_0d00_settle ; the HDMA step, then every $0D01 byte steps down to $E0 -> src/misc.c
 func    80D6A0   steer_state_init    ; the steering state starts over from $0804 -> src/misc.c
+func    8A8FA4   hdma_gradient_build ; 256-line colour gradient from three colours, dithered -> src/misc.c
+func    8A9F64   flag_03dc_from_52   ; $03DC bit 12 = (D+$52 != 0) -> src/misc.c

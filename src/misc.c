@@ -1337,3 +1337,70 @@ void steer_state_init(void) {
   wr16(DP + 0x22, a);
   wr16(DP + 0x20, a);
 }
+
+// A channel of the gradient (red, green, blue) keeps five words at $1516 + 10 * channel:
+// its value before and now (8.8), its first and second steps, its dither pattern.
+static uint16_t gradient_value(uint16_t colour, int channel) {
+  switch(channel) {
+  case 0: return (uint16_t)((colour & 0x001F) << 8);
+  case 1: return (uint16_t)((colour & 0x03E0) << 3);
+  default: return (uint16_t)((colour & 0x7C00) >> 2);
+  }
+}
+
+// a step: 2 * the difference of two 8.8 values whose low bytes are 0 (its high byte)
+static uint16_t gradient_step(uint16_t to, uint16_t from) {
+  uint16_t d = (uint16_t)(to - from);
+  if(d & 0x8000) d |= 0x00FF;
+  d = (uint16_t)((d << 8) | (d >> 8));  // XBA
+  return (uint16_t)(d << 1);
+}
+
+// TG3000_ROUTINE($8A:8FA4) hdma_gradient_build (long)
+void hdma_gradient_build(void) {
+  for(int c = 0; c < 3; c++) {
+    const uint32_t f = 0x1516 + 10 * (uint32_t)c;  // before, now, step 1, step 2, dither
+    uint16_t from = gradient_value(rd16(DP + 0x34), c), mid = gradient_value(rd16(DP + 0x36), c),
+             to = gradient_value(rd16(DP + 0x38), c);
+    wr16(f, from);
+    wr16(f + 2, from);
+    wr16(f + 8, 0);
+    wr16(f + 6, gradient_step(to, mid));
+    wr16(f + 4, gradient_step(mid, from));
+  }
+  for(int half = 0; half < 2; half++) {
+    uint16_t pattern = rd16(DP + (half ? 0x3C : 0x3A));
+    for(int line = 0; line < 0x80; line++) {
+      uint16_t colour = 0;
+      for(int c = 0; c < 3; c++) {
+        const uint32_t f = 0x1516 + 10 * (uint32_t)c;
+        uint16_t dither = rd16(f + 8);
+        wr16(f + 8, (uint16_t)(dither >> 1));
+        uint16_t v = (uint16_t)((dither & 1 ? rd16(f) : rd16(f + 2)) & 0x1F00);
+        colour |= c == 0 ? (uint16_t)(v >> 8) : c == 1 ? (uint16_t)(v >> 3) : (uint16_t)(v << 2);
+      }
+      wr16(DP + 0x3E, colour);
+      uint32_t table = (uint32_t)rd8(DP + 0x6A) << 16 | rd16(DP + 0x68);
+      uint16_t y = rd16(DP + 0x6C);
+      bus_wr16((table + y) & 0xFFFFFF, 0);
+      bus_wr16((table + (uint16_t)(y + 2)) & 0xFFFFFF, colour);
+      wr16(DP + 0x6C, (uint16_t)(y + 4));
+      for(int c = 0; c < 3; c++) {
+        const uint32_t f = 0x1516 + 10 * (uint32_t)c;
+        uint16_t now = rd16(f + 2), next = (uint16_t)(now + rd16(f + (half ? 6 : 4)));
+        if((now & 0xFF00) != (next & 0xFF00)) {  // a whole value crossed: dither the two
+          wr16(f + 8, pattern);
+          wr16(f, now);
+        }
+        wr16(f + 2, next);
+      }
+    }
+  }
+  wr16(DP + 0x70, 0);
+}
+
+// TG3000_ROUTINE($8A:9F64) flag_03dc_from_52
+void flag_03dc_from_52(void) {
+  if(rd16(DP + 0x52) != 0) wr16(0x03DC, (uint16_t)(rd16(0x03DC) | 0x1000));  // never run
+  else wr16(0x03DC, (uint16_t)(rd16(0x03DC) & ~0x1000));
+}

@@ -212,6 +212,17 @@ void hdma_table_0d00_settle(void);
 // ($0804 - $80, within 0-$100) rounded down to a multiple of 3 (the CPU divider).
 void steer_state_init(void);
 
+// $8A:8FA4 (long): a 256-line colour gradient for HDMA, from the colours D+$34 to D+$36
+// (lines 0-127) and D+$36 to D+$38 (lines 128-255). Each channel (red, green, blue: its
+// state at $1516, $1520, $152A) steps by 2 * (its next colour's value - its current) in
+// 1/256ths a line; when a step crosses a whole value, the line pattern D+$3A (first half)
+// or D+$3C (second) picks, a line at a time, the new value or the one before (a dither).
+// Each line writes (0, the colour) at [D+$68] + D+$6C, which moves on by 4.
+void hdma_gradient_build(void);
+
+// $8A:9F64: bit 12 of $03DC set while D+$52 is not 0, else cleared.
+void flag_03dc_from_52(void);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.

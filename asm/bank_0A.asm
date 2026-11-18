@@ -1229,7 +1229,7 @@ CODE_8A8F0D:
     sta.b $34                   ; $8A8F59
     sta.b $36                   ; $8A8F5B
     sta.b $38                   ; $8A8F5D
-    jsl.l $8A8FA4               ; $8A8F5F
+    jsl.l hdma_gradient_build   ; $8A8F5F
     lda.w $1536                 ; $8A8F63
     asl a                       ; $8A8F66
     asl a                       ; $8A8F67
@@ -1241,7 +1241,7 @@ CODE_8A8F0D:
     sta.b $36                   ; $8A8F72
     lda.l $8A934B,x             ; $8A8F74
     sta.b $38                   ; $8A8F78
-    jsl.l $8A8FA4               ; $8A8F7A
+    jsl.l hdma_gradient_build   ; $8A8F7A
     lda.w #$0001                ; $8A8F7E
     sta.b $3A                   ; $8A8F81
     lda.w #$0001                ; $8A8F83
@@ -1257,8 +1257,9 @@ CODE_8A8F0D:
     sta.b $36                   ; $8A8F99
     lda.b $72                   ; $8A8F9B
     sta.b $38                   ; $8A8F9D
-    jsl.l $8A8FA4               ; $8A8F9F
+    jsl.l hdma_gradient_build   ; $8A8F9F
     rtl                         ; $8A8FA3
+hdma_gradient_build:
     rep.b #$30                  ; $8A8FA4
     lda.b $34                   ; $8A8FA6
     and.w #$001F                ; $8A8FA8
@@ -2610,7 +2611,7 @@ CODE_8A9F3A:
     jsr.w $9F76                 ; $8A9F47
     lda.b $6C                   ; $8A9F4A
     beq CODE_8A9F3A             ; $8A9F4C
-    jsr.w $9F64                 ; $8A9F4E
+    jsr.w flag_03dc_from_52     ; $8A9F4E
     stz.w $0198                 ; $8A9F51
     lda.w #$FFC0                ; $8A9F54
     sta.w $0196                 ; $8A9F57
@@ -2620,9 +2621,12 @@ CODE_8A9F5A:
     pla                         ; $8A9F5F
     sta.w $0008                 ; $8A9F60
     rtl                         ; $8A9F63
+flag_03dc_from_52:
     lda.b $52                   ; $8A9F64
     beq CODE_8A9F6F             ; $8A9F66
-    incbin !baserom:$51F68..$51F6F
+    lda.w #$1000                ; $8A9F68 static
+    tsb.w $03DC                 ; $8A9F6B static
+    rts                         ; $8A9F6E static
 CODE_8A9F6F:
     lda.w #$1000                ; $8A9F6F
     trb.w $03DC                 ; $8A9F72

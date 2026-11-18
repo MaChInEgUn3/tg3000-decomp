@@ -50,3 +50,4 @@
 80:9892 80:98AE m16x16 ; shop_item_icon_settle: the icon's other colours below step 8 ($80:9890 BCS)
 80:98B5 80:98B6 m16x16 ; shop_item_icon_settle: INC A, holding at $8007 ($80:98B3 BNE)
 80:D6D4 80:D6D7 m16x16 ; steer_state_init: LDA #$0100, the cap ($80:D6D2 BCC)
+8A:9F68 8A:9F6F m16x16 ; flag_03dc_from_52: LDA #$1000, TSB $03DC, RTS when D+$52 is not 0 ($8A:9F66 BEQ)

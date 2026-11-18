@@ -604,6 +604,41 @@ static void fuzz_steer_state_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
 }
 static void fuzz_hdma_table_0d00_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 
+// ---- hdma_gradient_build ($8A:8FA4, long) ----  no register outputs; the last DEC $70
+// (N clear, Z set), C of the last compare and V of the last ADC (blue's last step)
+static void call_hdma_gradient_build(const Regs* in, Regs* out) {
+  (void)in;
+  hdma_gradient_build();
+  uint16_t next = rd16(0x152C), step = rd16(0x1530), now = (uint16_t)(next - step);
+  out->n = false;
+  out->z = true;
+  setAdc16(out, now, step);  // V of the ADC; C below is the CMP's
+  out->c = (now & 0xFF00) >= (next & 0xFF00);
+}
+// any three colours and patterns; the table in bank $7F
+static void fuzz_hdma_gradient_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t a = 0x34; a <= 0x3C; a += 2) wr16ram(ram, DP + a, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x68, (uint16_t)(0x4000 + (rnd() % 0x100) * 4));
+  ram[DP + 0x6A] = 0x7F;
+  wr16ram(ram, DP + 0x6C, (uint16_t)((rnd() % 0x40) * 4));
+}
+
+// ---- flag_03dc_from_52 ($8A:9F64) ----  A = $1000 (N clear), Z of the TSB/TRB's test
+static void call_flag_03dc_from_52(const Regs* in, Regs* out) {
+  (void)in;
+  bool was = (rd16(0x03DC) & 0x1000) != 0;
+  flag_03dc_from_52();
+  out->a = 0x1000;
+  out->n = false;
+  out->z = !was;
+}
+static void fuzz_flag_03dc_from_52(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x52, (rnd() & 1) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, 0x03DC, (uint16_t)rnd());
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -4860,6 +4895,10 @@ const Routine routines[] = {
    .fuzz = fuzz_hdma_table_0d00_step},
   {.name = "steer_state_init", .entry = 0x80D6A0, .end = 0x80D6F3, .source = "src/misc.c", .needM16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_steer_state_init, .compareA = true, .fuzz = fuzz_steer_state_init},
+  {.name = "hdma_gradient_build", .entry = 0x8A8FA4, .end = 0x8A9202, .rtl = true, .source = "src/misc.c",
+   .lowWramDb = true, .fixedD = true, .call = call_hdma_gradient_build, .fuzz = fuzz_hdma_gradient_build},
+  {.name = "flag_03dc_from_52", .entry = 0x8A9F64, .end = 0x8A9F76, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_flag_03dc_from_52, ALL_OUTPUTS, .fuzz = fuzz_flag_03dc_from_52},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
