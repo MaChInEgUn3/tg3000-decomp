@@ -37,7 +37,7 @@ CODE_828381:
     inx                         ; $828385
     cpx.w #$0100                ; $828386
     bne CODE_828381             ; $828389
-    jsl.l $85831C               ; $82838B
+    jsl.l track_settings_load   ; $82838B
     stz.w $0196                 ; $82838F
     stz.w $019A                 ; $828392
     lda.w #$0000                ; $828395
@@ -122,7 +122,7 @@ CODE_828422:
     lda.b #$8A                  ; $82845E
     sta.w $2132                 ; $828460
     rep.b #$20                  ; $828463
-    jsl.l $85831C               ; $828465
+    jsl.l track_settings_load   ; $828465
     lda.w $047B                 ; $828469
     jsl.l $858000               ; $82846C
     jsr.w $A28B                 ; $828470
@@ -172,7 +172,7 @@ CODE_8284D5:
     lda.l $83A484,x             ; $8284E7
     sta.l $7F0078               ; $8284EB
     lda.w #$30F4                ; $8284EF
-    jsr.w $AD99                 ; $8284F2
+    jsr.w tile_block_5x5        ; $8284F2
     lda.w #$007F                ; $8284F5
     sta.b $14                   ; $8284F8
     ldx.w #$0000                ; $8284FA
@@ -1734,6 +1734,7 @@ CODE_82AD85:
 CODE_82AD97:
     plb                         ; $82AD97
     rts                         ; $82AD98
+tile_block_5x5:
     sta.b $16                   ; $82AD99
     ldx.w #$0000                ; $82AD9B
     lda.w #$0005                ; $82AD9E

@@ -341,3 +341,7 @@
 80F549 upload_slice_13 src/video_dma.c b8f1b2f05a121d0a 1 500 20/20 verified live-flags:NVZC
 80F555 upload_slice_14 src/video_dma.c b8f1b2f05a121d0a 1 500 20/20 verified live-flags:NVZC
 80F561 upload_slice_15 src/video_dma.c b8f1b2f05a121d0a 1 500 20/20 verified live-flags:NVZC
+82AD99 tile_block_5x5 src/misc.c 0f14a91e8d8c3d26 2 500 21/21 verified live-flags:NVZC
+85831C track_settings_load src/misc.c 0f14a91e8d8c3d26 4 500 35/35 verified live-flags:NVZC
+86CE4A rows_7f_copy8 src/misc.c 0f14a91e8d8c3d26 4 500 47/47 verified live-flags:NVZC
+80C31A block_c4_build src/misc.c 0f14a91e8d8c3d26 2 500 27/27 verified live-flags:NVZC

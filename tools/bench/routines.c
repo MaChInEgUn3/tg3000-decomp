@@ -1388,6 +1388,75 @@ static void fuzz_row_copy(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->x = (uint16_t)(2 * (rnd() % 16));
 }
 
+// ---- tile_block_5x5 ($82:AD99) ----  always ends at X = A = $0A (the SBC #$13E: C set,
+// V clear), Y = 0, N clear and Z set by the last DEC
+static void call_tile_block_5x5(const Regs* in, Regs* out) {
+  tile_block_5x5(in->a);
+  out->a = out->x = 0x000A;
+  out->y = 0;
+  out->n = out->v = false;
+  out->z = out->c = true;
+}
+static void fuzz_tile_block_5x5(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->a = (uint16_t)rnd();
+}
+
+// ---- track_settings_load ($85:831C) ----  A = the $1F34 word (N Z of its LDA), X = 2 *
+// track, C = bit 15 of the track (its ASL), V as on entry
+static void call_track_settings_load(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t track = rd16(0x047B);
+  track_settings_load();
+  out->a = rd16(0x1F34);
+  out->x = (uint16_t)(track << 1);
+  setNZ16(out, out->a);
+  out->c = (track & 0x8000) != 0;
+}
+// any of the tracks (and beyond), either player's flag set
+static void fuzz_track_settings_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x047B, (uint16_t)(rnd() % 0x40));
+  ram[0x039C] = (rnd() & 1) ? (uint8_t)rnd() : 0;
+  ram[0x03CB] = (rnd() & 1) ? (uint8_t)rnd() : 0;
+}
+
+// ---- rows_7f_copy8 ($86:CE4A) ----  after the last MVN: A = $FFFF, X and Y past it; PLB
+// of the caller's bank sets N and Z; C and V of the last ADC #8
+static void call_rows_7f_copy8(const Regs* in, Regs* out) {
+  out->x = in->x;
+  out->y = in->y;
+  rows_7f_copy8(&out->x, &out->y);
+  out->a = 0xFFFF;
+  Regs t;
+  setAdc16(&t, (uint16_t)(out->y - 0x38 - 8), 0x0008);
+  out->c = t.c;
+  out->v = t.v;
+  out->n = (in->db & 0x80) != 0;
+  out->z = in->db == 0;
+}
+static void fuzz_rows_7f_copy8(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->x = (uint16_t)(rnd() % 0xF000);
+  r->y = (uint16_t)(rnd() % 0xF000);
+}
+
+// ---- block_c4_build ($80:C31A) ----  A = $40 (N Z clear), X = $B2F2 and Y = D+$C4 (the
+// second MVN's end and its LDY), C V of the ADC #$60
+static void call_block_c4_build(const Regs* in, Regs* out) {
+  uint16_t at = rd16((uint16_t)(in->d + 0xC4));
+  block_c4_build(in->d);
+  out->a = 0x0040;
+  out->x = 0xB2F2;
+  out->y = at;
+  setAdc16(out, at, 0x0060);
+  out->n = out->z = false;
+}
+// the block anywhere in low WRAM above the direct pages and below the stack
+static void fuzz_block_c4_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  wr16ram(ram, (uint16_t)(r->d + 0xC4), (uint16_t)(0x0400 + rnd() % 0x1200));  // clear of D+$C4 itself and the stack
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -5841,6 +5910,15 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x83, .call = call_row_copy_6a33, ALL_OUTPUTS, .fuzz = fuzz_row_copy},
   {.name = "row_copy_6b33", .entry = 0x8582FA, .end = 0x85831C, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x83, .call = call_row_copy_6b33, ALL_OUTPUTS, .fuzz = fuzz_row_copy},
+  {.name = "tile_block_5x5", .entry = 0x82AD99, .end = 0x82ADC2, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_tile_block_5x5, ALL_OUTPUTS, .fuzz = fuzz_tile_block_5x5},
+  {.name = "track_settings_load", .entry = 0x85831C, .end = 0x858377, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_settings_load, ALL_OUTPUTS,
+   .fuzz = fuzz_track_settings_load},
+  {.name = "rows_7f_copy8", .entry = 0x86CE4A, .end = 0x86CEA7, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .call = call_rows_7f_copy8, ALL_OUTPUTS, .fuzz = fuzz_rows_7f_copy8},
+  {.name = "block_c4_build", .entry = 0x80C31A, .end = 0x80C35E, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .call = call_block_c4_build, ALL_OUTPUTS, .fuzz = fuzz_block_c4_build},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -315,6 +315,7 @@ CODE_858309:
     plb                         ; $858319
     plx                         ; $85831A
     rts                         ; $85831B
+track_settings_load:
     lda.w $047B                 ; $85831C
     asl a                       ; $85831F
     asl a                       ; $858320
@@ -346,7 +347,8 @@ CODE_858359:
     lda.w $03CB                 ; $858360
     and.w #$00FF                ; $858363
     beq CODE_85836F             ; $858366
-    incbin !baserom:$28368..$2836F
+    lda.l $8395F1,x             ; $858368 static
+    sta.w $01E6                 ; $85836C static
 CODE_85836F:
     lda.l $83965F,x             ; $85836F
     sta.w $1F34                 ; $858373

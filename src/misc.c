@@ -1874,3 +1874,58 @@ void row_copy_6a33(uint16_t a, uint16_t x) { row_copy(a, x, 0x6A33); }
 
 // TG3000_ROUTINE($85:82FA) row_copy_6b33
 void row_copy_6b33(uint16_t a, uint16_t x) { row_copy(a, x, 0x6B33); }
+
+// TG3000_ROUTINE($82:AD99) tile_block_5x5
+void tile_block_5x5(uint16_t first) {
+  wr16(DP + 0x16, first);
+  uint16_t x = 0;
+  wr16(DP + 0x14, 0x0005);
+  do {
+    for(int row = 0; row < 5; row++) {
+      wr16(0x10130 + (uint32_t)x, rd16(DP + 0x16));
+      wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + 1));
+      x = (uint16_t)(x + 0x0040);
+    }
+    x = (uint16_t)(x - 0x013E);  // back to the top, one column on
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
+  } while(rd16(DP + 0x14) != 0);
+}
+
+// TG3000_ROUTINE($85:831C) track_settings_load
+void track_settings_load(void) {
+  const uint16_t track = rd16(0x047B);
+  const uint16_t x4 = (uint16_t)(track << 2), x2 = (uint16_t)(x4 >> 1), x = (uint16_t)(track << 1);
+  wr16(DP + 0x98, bus_rd16(0x84A590 + (uint32_t)x4));
+  wr16(DP + 0x9A, bus_rd16(0x84A592 + (uint32_t)x4));
+  wr16(DP + 0x9C, bus_rd16(0x84FF59 + (uint32_t)x2));
+  wr16(0x1F06, bus_rd16(0x839515 + (uint32_t)x));
+  wr16(0x01E4, bus_rd16((rd8(0x039C) ? 0x8395F1 : 0x839583) + (uint32_t)x));
+  wr16(0x01E6, bus_rd16((rd8(0x03CB) ? 0x8395F1 : 0x839583) + (uint32_t)x));
+  wr16(0x1F34, bus_rd16(0x83965F + (uint32_t)x));
+}
+
+// TG3000_ROUTINE($86:CE4A) rows_7f_copy8
+void rows_7f_copy8(uint16_t* x, uint16_t* y) {
+  for(int row = 0; row < 8; row++) {
+    if(row) *y = (uint16_t)(*y + 8);
+    for(int i = 0; i < 0x38; i++) {  // MVN: a byte at a time, upwards
+      wr8(0x10000 + (uint32_t)*y, rd8(0x10000 + (uint32_t)*x));
+      *x = (uint16_t)(*x + 1);
+      *y = (uint16_t)(*y + 1);
+    }
+  }
+}
+
+// TG3000_ROUTINE($80:C31A) block_c4_build
+void block_c4_build(uint16_t dp) {
+  const uint16_t at = rd16(dp + 0xC4);
+  // two MVNs into bank $81 (opcode, destination bank, source bank)
+  for(uint16_t i = 0; i < 0x60; i++) wr8((uint16_t)(at + i), rom8(0x9B8000 + i));
+  for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(at + 0x60 + i), rom8(0x80B2D2 + i));
+  wr16((uint16_t)(at + 0x0102), 0x0E03);
+  wr16((uint16_t)(at + 0x0104), 0x0040);
+  wr16((uint16_t)(at + 0x0106), 0x109F);
+  wr16((uint16_t)(at + 0x0108), 0x0000);
+  wr16((uint16_t)(at + 0x0122), 0x0E03);
+  wr16((uint16_t)(at + 0x0124), 0x0040);
+}

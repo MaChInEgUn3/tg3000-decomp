@@ -627,4 +627,21 @@ uint16_t func_82A9B7(void);
 // at most $3000 (the division on the CPU's divider). $0114 is left as scratch.
 void func_82AC52(void);
 
+// $82:AD99: a 5x5 block of tile numbers, `first` up (kept in D+$16), column by column
+// into the 32-wide map at $7F:0130 (rows $40 bytes apart).
+void tile_block_5x5(uint16_t first);
+
+// $85:831C: the track's settings by $047B: D+$98/$9A (the pair at $84:A590 + 4 * track),
+// D+$9C ($84:FF59 + 2 * track), $1F06 ($83:9515), $01E4 and $01E6 ($83:9583, or $83:95F1
+// when the byte $039C, resp. $03CB, is set; the second never runs), $1F34 ($83:965F).
+void track_settings_load(void);
+
+// $86:CE4A: eight rows of $38 bytes copied within bank $7F (MVN) from `*x` to `*y`, the
+// destination rows 8 bytes further apart ($40). Both indices move on.
+void rows_7f_copy8(uint16_t* x, uint16_t* y);
+
+// $80:C31A: the block at [D+$C4] (low WRAM): $60 bytes from $9B:8000, then $20 from
+// $80:B2D2, then the words $0E03, $40, $109F, 0 at +$102 and $0E03, $40 at +$122.
+void block_c4_build(uint16_t dp);
+
 #endif

@@ -60,3 +60,4 @@
 8A:9AC3 8A:9AC9 m16x16 ; variant_lines: D+$56 = 4 with variant 2 (never run)
 8A:98FC 8A:9902 m16x16 ; variant_5a: D+$5A = 4 with variant 2 (never run)
 8A:99CA 8A:99D0 m16x16 ; variant_66: D+$66 = 8 with variant 2 (never run)
+85:8368 85:836F m16x16 ; track_settings_load: $01E6 from $83:95F1 when $03CB is set (never run)

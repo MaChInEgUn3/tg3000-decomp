@@ -2,6 +2,7 @@
 org $868000
 
     incbin !baserom:$30000..$34E4A
+rows_7f_copy8:
     phb                         ; $86CE4A
     lda.w #$0037                ; $86CE4B
     mvn $7F,$7F                 ; $86CE4E

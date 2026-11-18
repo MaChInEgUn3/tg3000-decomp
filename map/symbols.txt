@@ -357,3 +357,7 @@ func    859D39   race_section_seek_1 ; player 1's section offset D+$A2 catches u
 func    859D5A   race_section_seek_2 ; player 2's section offset D+$A6 catches up with $02F1 -> src/misc.c
 func    8582D8   row_copy_6a33       ; 16 words from $7F to $7E:6A33 -> src/misc.c
 func    8582FA   row_copy_6b33       ; 16 words from $7F to $7E:6B33 -> src/misc.c
+func    82AD99   tile_block_5x5      ; a 5x5 block of tile numbers into the map at $7F:0130 -> src/misc.c
+func    85831C   track_settings_load ; the track's settings by $047B -> src/misc.c
+func    86CE4A   rows_7f_copy8       ; eight $38-byte rows copied within bank $7F -> src/misc.c
+func    80C31A   block_c4_build      ; the block at [D+$C4] from $81:8000/$81:B2D2 and six words -> src/misc.c

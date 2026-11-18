@@ -6858,8 +6858,8 @@ CODE_80BF7E:
     clc                         ; $80BFAB
     adc.w #$08C4                ; $80BFAC
     tay                         ; $80BFAF
-    jsl.l $86CE4A               ; $80BFB0
-    jsr.w $C31A                 ; $80BFB4
+    jsl.l rows_7f_copy8         ; $80BFB0
+    jsr.w block_c4_build        ; $80BFB4
     lda.b $5C                   ; $80BFB7
     clc                         ; $80BFB9
     adc.w #$0400                ; $80BFBA
@@ -7238,6 +7238,7 @@ CODE_80C306:
     jsr.w $C4F9                 ; $80C315
 CODE_80C318:
     bra CODE_80C2BB             ; $80C318
+block_c4_build:
     phb                         ; $80C31A
     ldx.w #$8000                ; $80C31B
     ldy.b $C4                   ; $80C31E
@@ -7491,7 +7492,7 @@ sprite_bar8:
     clc                         ; $80C530
     adc.w #$08C4                ; $80C531
     tay                         ; $80C534
-    jsl.l $86CE4A               ; $80C535
+    jsl.l rows_7f_copy8         ; $80C535
     ldy.w #$000C                ; $80C539
     ldx.b $5E                   ; $80C53C
     lda.w #$0000                ; $80C53E
@@ -7553,7 +7554,7 @@ CODE_80C566:
     sta.b $48                   ; $80C5B7
     lda.w #$0013                ; $80C5B9
     sta.b $BC                   ; $80C5BC
-    jsr.w $C31A                 ; $80C5BE
+    jsr.w block_c4_build        ; $80C5BE
     jsr.w $C35E                 ; $80C5C1
     jsr.w oam_finish_near       ; $80C5C4
     lda.b $8C                   ; $80C5C7
@@ -7698,7 +7699,7 @@ CODE_80C6B9:
     clc                         ; $80C70A
     adc.w #$08C4                ; $80C70B
     tay                         ; $80C70E
-    jsl.l $86CE4A               ; $80C70F
+    jsl.l rows_7f_copy8         ; $80C70F
 CODE_80C713:
     lda.b $4E                   ; $80C713
     bne CODE_80C713             ; $80C715
@@ -8231,7 +8232,7 @@ CODE_80CB2F:
     clc                         ; $80CF29
     adc.w #$08C4                ; $80CF2A
     tay                         ; $80CF2D
-    jsl.l $86CE4A               ; $80CF2E
+    jsl.l rows_7f_copy8         ; $80CF2E
 CODE_80CF32:
     lda.b $4E                   ; $80CF32
     bne CODE_80CF32             ; $80CF34

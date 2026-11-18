@@ -1789,6 +1789,34 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Four leaves verified incrementally (roots-18, 2026-11-18)
+
+The first unit gated by `tools/verify_new.sh`: the new rows over the 60k and shop movies,
+the selftest, and the older rows carried from the full run at `6f18db6`.
+
+- **`tile_block_5x5` ($82:AD99):** a 5x5 block of tile numbers, counting up from A (kept
+  in `$0116`), written column by column into the 32-wide map at `$7F:0130` (rows `$40`
+  bytes apart).
+  - It always ends with A = X = `$0A`, Y = 0, C set and V clear (the `SBC #$13E`), N
+    clear and Z set (the last `DEC`).
+- **`track_settings_load` ($85:831C, `JSL`):** the track's settings, by `$047B`.
+  - `$0198` and `$019A` come from `$84:A590` + 4 * track, and `$019C` from `$84:FF59`.
+  - `$1F06`, `$01E4`, `$01E6` and `$1F34` come from tables in bank `$83`.
+  - `$01E4` uses `$83:95F1` instead of `$83:9583` when the byte `$039C` is set; `$01E6`
+    does the same for `$03CB`. The `$03CB` path never runs, so its seven bytes at
+    `$85:8368` are now static code.
+- **`rows_7f_copy8` ($86:CE4A, `JSL`):** eight `MVN` copies of `$38` bytes within bank
+  `$7F`, the destination rows `$40` apart.
+  - Exit: A = `$FFFF`; N and Z from the `PLB`; C and V of the last `ADC #8`.
+- **`block_c4_build` ($80:C31A):** the block at [D+`$C4`] in low WRAM.
+  - `MVN` copies `$60` bytes from `$9B:8000` and `$20` from `$80:B2D2` into it (bank
+    `$81`), then six words are set at +`$102` and +`$122`.
+  - `MVN` is encoded `54 dd ss`, destination bank first, so the listing's `mvn $81,$9B`
+    reads destination, source. The first C read it the other way round, and the gate
+    caught it (0/2 live, 0/500 fuzz) before any commit.
+  - The original reads D+`$C4` again after the copies, so the fuzz keeps the block clear
+    of it and of the stack.
+
 ## Incremental verification (owner, 2026-11-18)
 
 The owner approved it on 2026-11-18 ("a 1 e 3 funciona", confirmed later the same day). A
