@@ -1789,6 +1789,25 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Three more title-zoom steps (roots-6, 2026-11-18)
+
+- **Three steps of the title sequence's zoom (D = `$0100`).** Each ends with
+  `inverse_scale` and `func_80F745`, whose result it returns, with C clear.
+  - **`title_zoom_pan` ($80:F2A0):**
+    - `$0130` counts up to `$0F`;
+    - once the high bytes of `$013C` and `$013A` are `$C0` and `$1C`, `$013E` counts on
+      and it returns at once (A = `$1C00`);
+    - otherwise `$013C` moves by `$0140`, which turns to -`$800` at `$F000` and to
+      `$800` below `$1000`, and `$013A` falls by `$80`.
+  - **`title_zoom_cycle` ($80:F2EE):** `$0130` counts on, from `$1F` back to `$0F`.
+  - **`title_zoom_drop` ($80:F595):**
+    - `$017E` falls by 1 to -`$48`, and there `$013E` counts on;
+    - two rows of 12 tiles at `$7F:0214` / `$7F:0254` are set to `$1001` / `$1002`.
+- **Their exit V is live,** and it is the one `func_80F745` leaves. The adapters reuse
+  `v_after_inverse_scale` and `v_after_func_80F745` (written for `func_80F3C4`), which
+  the first adapters left out.
+- **Results:** live 85/85, 55/55, 34/34; fuzz 500/500; paths 36/36, 10/10, 19/19.
+
 ## The title zoom's step and two small ones (roots-5, 2026-11-18)
 
 - **`mode7_zoom_step` ($80:F226):** a zoom step on the title screen.

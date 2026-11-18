@@ -87,3 +87,45 @@ uint16_t mode7_zoom_step(uint16_t dp) {
   inverse_scale(dp);
   return func_80F745();
 }
+
+// TG3000_ROUTINE($80:F2A0) title_zoom_pan
+uint16_t title_zoom_pan(bool* done) {
+  if(rd16(DP + 0x30) != 0x000F) wr16(DP + 0x30, (uint16_t)(rd16(DP + 0x30) + 1));
+  *done = (rd16(DP + 0x3C) & 0xFF00) == 0xC000 && (rd16(DP + 0x3A) & 0xFF00) == 0x1C00;
+  if(*done) {
+    wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
+    return 0;
+  }
+  uint16_t at = (uint16_t)(rd16(DP + 0x3C) + rd16(DP + 0x40));
+  wr16(DP + 0x3C, at);
+  if(at >= 0xF000) wr16(DP + 0x40, 0xF800);
+  else if(at < 0x1000) wr16(DP + 0x40, 0x0800);
+  wr16(DP + 0x3A, (uint16_t)(rd16(DP + 0x3A) - 0x0080));
+  inverse_scale(DP);
+  return func_80F745();
+}
+
+// TG3000_ROUTINE($80:F2EE) title_zoom_cycle
+uint16_t title_zoom_cycle(void) {
+  uint16_t n = rd16(DP + 0x30);
+  if(n == 0x001F) n = 0x000E;
+  wr16(DP + 0x30, (uint16_t)(n + 1));
+  inverse_scale(DP);
+  return func_80F745();
+}
+
+// TG3000_ROUTINE($80:F595) title_zoom_drop
+uint16_t title_zoom_drop(void) {
+  uint16_t y = (uint16_t)(rd16(DP + 0x7E) - 1);
+  if((uint16_t)(y - 0xFFB8) & 0x8000) {
+    wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
+    y = 0xFFB8;
+  }
+  wr16(DP + 0x7E, y);
+  for(uint32_t x = 0; x <= 0x16; x += 2) {
+    wr16(0x10214 + x, 0x1001);
+    wr16(0x10254 + x, 0x1002);
+  }
+  inverse_scale(DP);
+  return func_80F745();
+}

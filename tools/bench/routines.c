@@ -916,6 +916,51 @@ static void fuzz_mode7_zoom_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, (uint16_t)(r->d + 0x7C), (uint16_t)(rnd() % 0x40));
 }
 
+static bool v_after_inverse_scale(bool before);
+static bool v_after_func_80F745(bool before);
+// ---- the title zoom's steps ($80:F2A0, $80:F2EE, $80:F595) ----  as func_80F3C4: what
+// func_80F745 leaves (V by v_after_func_80F745), C clear; title_zoom_pan's early stop: A = $1C00 (its last AND/CMP),
+// X kept, N Z of the INC of D+$3E
+static void call_title_zoom_pan(const Regs* in, Regs* out) {
+  bool done;
+  uint16_t r = title_zoom_pan(&done);
+  if(done) {
+    out->a = 0x1C00;
+    setNZ16(out, rd16(DP + 0x3E));
+  } else {
+    out->a = r;
+    out->x = rd16(DP + 0x34);
+    setNZ16(out, out->x);
+    out->v = v_after_func_80F745(v_after_inverse_scale(in->v));
+  }
+  out->c = false;
+}
+static void call_title_zoom_cycle(const Regs* in, Regs* out) {
+  out->a = title_zoom_cycle();
+  out->x = rd16(DP + 0x34);
+  setNZ16(out, out->x);
+  out->v = v_after_func_80F745(v_after_inverse_scale(in->v));
+  out->c = false;
+}
+static void call_title_zoom_drop(const Regs* in, Regs* out) {
+  out->a = title_zoom_drop();
+  out->x = rd16(DP + 0x34);
+  setNZ16(out, out->x);
+  out->v = v_after_func_80F745(v_after_inverse_scale(in->v));
+  out->c = false;
+}
+// the line tables' buffers, the counters near their turns, the pan near its stop
+static void fuzz_title_zoom(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_80F745(r, ram, rnd);
+  wr16ram(ram, DP + 0x30, (uint16_t)(0x000C + rnd() % 0x18));
+  uint32_t k = rnd() % 4;
+  wr16ram(ram, DP + 0x3C, k == 0 ? (uint16_t)(0xC000 | (rnd() & 0xFF)) : (uint16_t)rnd());
+  wr16ram(ram, DP + 0x3A, k == 0 && (rnd() & 1) ? (uint16_t)(0x1C00 | (rnd() & 0xFF)) : (uint16_t)rnd());
+  wr16ram(ram, DP + 0x40, (rnd() & 1) ? 0x0800 : 0xF800);
+  wr16ram(ram, DP + 0x7E, (uint16_t)(0xFFB0 + rnd() % 0x20));
+  wr16ram(ram, DP + 0x3E, (uint16_t)rnd());
+}
+
 // ---- far_7fff_4 ($81:E7CE) ----  A = $7FFF (N Z of its LDA)
 static void call_far_7fff_4(const Regs* in, Regs* out) {
   (void)in;
@@ -5216,6 +5261,12 @@ const Routine routines[] = {
   {.name = "clc_83FA32", .entry = 0x83FA32, .end = 0x83FA34, .source = "src/misc.c", .call = call_clc, ALL_OUTPUTS},
   {.name = "mode7_zoom_step", .entry = 0x80F226, .end = 0x80F247, .source = "src/scale.c", .needM16 = true,
    .needX16 = true, .call = call_mode7_zoom_step, ALL_OUTPUTS, .fuzz = fuzz_mode7_zoom_step},
+  {.name = "title_zoom_pan", .entry = 0x80F2A0, .end = 0x80F2EE, .source = "src/scale.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_title_zoom_pan, ALL_OUTPUTS, .fuzz = fuzz_title_zoom},
+  {.name = "title_zoom_cycle", .entry = 0x80F2EE, .end = 0x80F303, .source = "src/scale.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_title_zoom_cycle, ALL_OUTPUTS, .fuzz = fuzz_title_zoom},
+  {.name = "title_zoom_drop", .entry = 0x80F595, .end = 0x80F5BF, .source = "src/scale.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_title_zoom_drop, ALL_OUTPUTS, .fuzz = fuzz_title_zoom},
   {.name = "far_7fff_4", .entry = 0x81E7CE, .end = 0x81E7DA, .source = "src/misc.c", .needM16 = true, .fixedD = true,
    .call = call_far_7fff_4, ALL_OUTPUTS},
   {.name = "empty_80F225", .entry = 0x80F225, .end = 0x80F226, .source = "src/misc.c", .call = call_empty, ALL_OUTPUTS},

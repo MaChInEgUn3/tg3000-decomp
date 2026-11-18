@@ -319,3 +319,6 @@ func    83FA32   clc_83FA32          ; CLC, RTS -> src/misc.c
 func    80F226   mode7_zoom_step     ; a zoom step: view, frame count, inverse scale, line tables -> src/scale.c
 func    81E7CE   far_7fff_4          ; D+$24/$26/$2C/$2E = $7FFF -> src/misc.c
 func    80F225   empty_80F225        ; a lone RTS -> src/misc.c
+func    80F2A0   title_zoom_pan      ; the title zoom's pan step (stops at $C0/$1C) -> src/scale.c
+func    80F2EE   title_zoom_cycle    ; the title zoom's cycling step -> src/scale.c
+func    80F595   title_zoom_drop     ; the title zoom's drop step and two tile rows -> src/scale.c

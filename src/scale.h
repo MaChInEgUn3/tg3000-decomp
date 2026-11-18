@@ -2,6 +2,7 @@
 #ifndef TG3000_SCALE_H
 #define TG3000_SCALE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // The routine works on direct-page variables; `dp` is the direct page it runs with.
@@ -27,6 +28,18 @@ uint16_t mode7_zoom_view(uint16_t dp);
 // falls by $10 a frame (to 0); then inverse_scale and func_80F745, whose result is
 // returned.
 uint16_t mode7_zoom_step(uint16_t dp);
+
+// Steps of the title sequence's zoom (D = $0100); each ends with inverse_scale and
+// func_80F745, whose result it returns (unless it stops early):
+// - title_zoom_pan ($80:F2A0): D+$30 counts up to $0F. Once the high bytes of D+$3C and
+//   D+$3A are $C0 and $1C, D+$3E counts on and that is all (*done). Otherwise D+$3C moves
+//   by D+$40, which turns to -$800 at $F000 and to $800 below $1000, and D+$3A falls $80;
+// - title_zoom_cycle ($80:F2EE): D+$30 counts on, from $1F back to $0F;
+// - title_zoom_drop ($80:F595): D+$7E falls by 1 to -$48 (there D+$3E counts on), and two
+//   rows of 12 tiles at $7F:0214/$7F:0254 are set to $1001/$1002.
+uint16_t title_zoom_pan(bool* done);
+uint16_t title_zoom_cycle(void);
+uint16_t title_zoom_drop(void);
 
 #define VIEW_MATRIX 0x14   // input: Mode 7 matrix A, B, C, D (4 words)
 #define VIEW_SCROLL 0x3A   // input (word): BG2 horizontal scroll

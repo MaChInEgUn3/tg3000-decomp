@@ -12241,6 +12241,7 @@ CODE_80F259:
     jsr.w func_80F745           ; $80F29B
     clc                         ; $80F29E
     rts                         ; $80F29F
+title_zoom_pan:
     lda.b $30                   ; $80F2A0
     cmp.w #$000F                ; $80F2A2
     beq CODE_80F2A9             ; $80F2A5
@@ -12281,6 +12282,7 @@ CODE_80F2DE:
     jsr.w func_80F745           ; $80F2E9
     clc                         ; $80F2EC
     rts                         ; $80F2ED
+title_zoom_cycle:
     lda.b $30                   ; $80F2EE
     cmp.w #$001F                ; $80F2F0
     bne CODE_80F2F8             ; $80F2F3
@@ -12575,6 +12577,7 @@ upload_slice_15:
     jsr.w func_80F745           ; $80F590
     clc                         ; $80F593
     rts                         ; $80F594
+title_zoom_drop:
     lda.b $7E                   ; $80F595
     dec a                       ; $80F597
     cmp.w #$FFB8                ; $80F598
