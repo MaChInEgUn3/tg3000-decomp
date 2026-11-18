@@ -1789,6 +1789,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A text line (leaves-18, 2026-11-18)
+
+- **`text_line_put` ($8A:9B85):**
+  - it copies the zero-ended string at Y:X (24-bit, kept in `$0162`/`$0164`), its zero
+    included, into the map at `$7F:7918` + `$0154`;
+  - then `func_8A9BAA` (verified) moves `$0154` to the next line and counts `$0156` down;
+  - the loop's 8-bit `INC $54` is undone by restoring `$0154` from the stack before the
+    next line.
+- **Exit:** A kept (its `PLA`), X = the old `$0154`, Y = the length, C and V of
+  `func_8A9BAA`'s `ADC`.
+- **Results:** live 2/2 (60k), fuzz 500/500 (strings of 0-30 bytes in WRAM), paths 20/20.
+- **Still in asm:**
+  - `$82:F2B3` (it blocks 7): it dispatches track events through the table at
+    `$82:F374`, whose handlers are not ported;
+  - `$8A:9AF1`, the caller of `text_line_put`, has a never-run 48-byte branch.
+
 ## The `$0D7E` timer and rng_next's third copy (leaves-17, 2026-11-18)
 
 - **`timer_0d7e_tick` ($8A:9F76),** parked before because its never-run branch calls

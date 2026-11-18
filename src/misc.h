@@ -417,6 +417,11 @@ void func_8A8EEF(void);
 // $0154 += $10, $0156 -= 1.
 void func_8A9BAA(void);
 
+// $8A:9B85: the zero-ended string at bank `bank` : `at` (kept in D+$62/$64) copied, its zero
+// included, into the map at $7F:7918 + D+$54; then func_8A9BAA (next line). Returns the
+// string's length.
+uint16_t text_line_put(uint16_t at, uint16_t bank);
+
 // $0168 = the largest of the 20 slot kinds at $041C (largest by the sign of the
 // difference, as the original's BMI does), starting from 0. Returns it.
 uint16_t func_8A9BE2(void);

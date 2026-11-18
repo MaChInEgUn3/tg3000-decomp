@@ -2296,9 +2296,10 @@ CODE_8A9AF0:
 CODE_8A9B2D:
     ldx.w #$037E                ; $8A9B2D
     ldy.w #$0081                ; $8A9B30
-    jsr.w $9B85                 ; $8A9B33
+    jsr.w text_line_put         ; $8A9B33
     rts                         ; $8A9B36
     incbin !baserom:$51B37..$51B85
+text_line_put:
     pha                         ; $8A9B85
     stx.b $62                   ; $8A9B86
     sty.b $64                   ; $8A9B88

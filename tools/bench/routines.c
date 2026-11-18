@@ -661,6 +661,27 @@ static void fuzz_timer_0d7e_tick(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(uint32_t a = 0x0110; a < 0x0114; a++) ram[a] = (uint8_t)rnd();
 }
 
+// ---- text_line_put ($8A:9B85) ----  A kept (N Z of its PLA), X = the line's old D+$54, Y =
+// the length; C and V of func_8A9BAA's ADC
+static void call_text_line_put(const Regs* in, Regs* out) {
+  uint16_t old = rd16(DP + 0x54);
+  out->y = text_line_put(in->x, in->y);
+  out->a = in->a;
+  out->x = old;
+  setNZ16(out, in->a);
+  setAdc16(out, old, 0x10);
+}
+// a string of 0-30 non-zero bytes in WRAM ($7E:1C00), the line anywhere in the map
+static void fuzz_text_line_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint32_t n = rnd() % 31;
+  for(uint32_t i = 0; i < n; i++) ram[0x1C00 + i] = (uint8_t)(1 + rnd() % 255);
+  ram[0x1C00 + n] = 0;
+  r->x = 0x1C00;
+  r->y = 0x007E;
+  wr16ram(ram, DP + 0x54, (uint16_t)(rnd() % 0x600));
+  wr16ram(ram, DP + 0x56, (uint16_t)rnd());
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -4925,6 +4946,8 @@ const Routine routines[] = {
   // runs both, so they are compared through this row
   {.name = "timer_0d7e_tick", .entry = 0x8A9F76, .end = 0x8A9FA1, .source = "src/misc.c", .needM16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_timer_0d7e_tick, ALL_OUTPUTS, .fuzz = fuzz_timer_0d7e_tick},
+  {.name = "text_line_put", .entry = 0x8A9B85, .end = 0x8A9BAA, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_text_line_put, ALL_OUTPUTS, .fuzz = fuzz_text_line_put},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

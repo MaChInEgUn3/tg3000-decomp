@@ -1420,3 +1420,19 @@ uint16_t timer_0d7e_tick(uint16_t a) {
   wr16(DP + 0x6C, (uint16_t)(rd16(DP + 0x6C) + 1));
   return (uint16_t)(rd16(0x03DC) & 0x0007);
 }
+
+// TG3000_ROUTINE($8A:9B85) text_line_put
+uint16_t text_line_put(uint16_t at, uint16_t bank) {
+  wr16(DP + 0x62, at);
+  wr16(DP + 0x64, bank);
+  const uint32_t src = (uint32_t)(bank & 0xFF) << 16 | at;
+  uint16_t x = rd16(DP + 0x54), n = 0;
+  for(;;) {
+    uint8_t c = bus_rd8((src + n) & 0xFFFFFF);
+    wr8((0x17918 + (uint32_t)(uint16_t)(x + n)) & 0x1FFFF, c);
+    if(c == 0) break;
+    n++;
+  }
+  func_8A9BAA();
+  return n;
+}
