@@ -371,6 +371,13 @@ int main(int argc, char** argv) {
       hdmaPath = argv[++i];
     } else if(strcmp(argv[i], "--apu-report") == 0 && i + 1 < argc) {
       apuPath = argv[++i];
+    } else if(strcmp(argv[i], "--difftest-shard") == 0 && i + 1 < argc) {
+      int k = 0, n = 0;
+      if(sscanf(argv[++i], "%d/%d", &k, &n) != 2 || n < 1 || k < 0 || k >= n) {
+        fprintf(stderr, "--difftest-shard K/N with 0 <= K < N\n");
+        return 1;
+      }
+      difftest_shard(k, n);
     } else if(strcmp(argv[i], "--difftest-only") == 0 && i + 1 < argc) {
       difftest_only(argv[++i]);
     } else if(strcmp(argv[i], "--difftest-negative") == 0) {

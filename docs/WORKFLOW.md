@@ -64,7 +64,8 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
    To iterate on a few rows, add `--difftest-only name1,name2` (a scratch results file:
    live counts differ when another row no longer owns the interrupts).
    Before committing, `tools/verify_all.sh` re-verifies every routine from the full
-   autopilot movie (a change to the registry or harness makes all rows stale), and
+   autopilot movie (in parallel slices: `TG3000_SHARDS`, default 5, plus two for the shop
+   movie; about 14 minutes on 8 cores) (a change to the registry or harness makes all rows stale), and
    checks that every negative row (deliberately wrong C) fails over that movie too.
 
 ## Metrics

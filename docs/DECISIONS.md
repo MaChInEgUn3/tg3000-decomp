@@ -1789,6 +1789,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A faster verify_all (tools-1, 2026-11-18)
+
+- **The owner asked whether the 40-minute gate was too slow; it was.**
+  - `tools/verify_all.sh` ran three processes, and the 60k movie's single run took
+    about 30 minutes alone on one of 8 cores.
+- **`bench --difftest-shard K/N`** tests slice K (from 0) of N contiguous slices of the
+  registry.
+  - `verify_all.sh` runs 5 slices of the 60k movie (`TG3000_SHARDS`), 2 of the shop
+    movie and the negative rows: 8 processes.
+  - Each slice's results are joined in order, so `map/verified.txt` keeps the registry's
+    order; `tools/merge_verified.py` joins the movies as before.
+  - A slice still runs its whole movie (about 9 minutes of it is the movie itself).
+- **Result:** 14 minutes instead of about 35. Every row's status matches the single run.
+  Some live counts rose (`8386FB` 3,858 -> 4,000, `80DA5F` 612 -> 665): a waiting row
+  nested in another one's sample is sampled when the outer row runs in another slice.
+
 ## The race's message line (roots-3, 2026-11-18)
 
 - **`race_message_update` ($82:B11F; DB = `$7E` within, `$83` after its two `PLB`s).**

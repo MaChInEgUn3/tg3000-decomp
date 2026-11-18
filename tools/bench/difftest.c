@@ -1301,6 +1301,11 @@ void difftest_on_insn(Cpu* cpu) {
 
 static const char* onlyNames;
 void difftest_only(const char* names) { onlyNames = names; }
+static int shardK, shardN;
+void difftest_shard(int k, int n) {
+  shardK = k;
+  shardN = n;
+}
 
 static bool named(const char* list, const char* name) {
   size_t n = strlen(name);
@@ -1325,6 +1330,11 @@ void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
     for(int i = 0; i < tableCount; i++) if(named(onlyNames, table[i].name)) kept[n++] = table[i];
     table = kept;
     tableCount = n;
+  }
+  if(shardN > 1) {  // rows [k * count / n, (k + 1) * count / n)
+    int from = shardK * tableCount / shardN, to = (shardK + 1) * tableCount / shardN;
+    table += from;
+    tableCount = to - from;
   }
   stats = calloc(tableCount, sizeof *stats);
   watches = calloc(tableCount, sizeof *watches);

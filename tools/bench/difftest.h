@@ -100,6 +100,10 @@ void difftest_init(Snes* snes, const uint8_t* rom, bool negative);
 // quickly. Live counts then differ (another row no longer owns the interrupts it waits
 // through); tools/verify_all.sh always runs every row.
 void difftest_only(const char* names);
+// Before difftest_init: test only slice k of n (contiguous rows, k from 0), so a movie's
+// rows can run as n processes in parallel; concatenated in k order the results keep the
+// registry's order (tools/verify_all.sh).
+void difftest_shard(int k, int n);
 void difftest_on_insn(Cpu* cpu);              // from the CPU trace hook
 void difftest_on_access(uint32_t adr, uint8_t val, bool write);  // from the CPU access hook
 void difftest_fuzz(int iterations);          // at the end of a run
