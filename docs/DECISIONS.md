@@ -1789,6 +1789,35 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Three track-object handlers (roots-14, 2026-11-18)
+
+`$83:F7F9` calls a handler per track object through its table at `$83:7FFE`. The object
+is entry `$011A` of `$7E:8CB3`, of kind `$011C`, and D = `$0200`.
+
+- **`track_object_test` ($83:FA34):** `$012A` = 0 and `$0128` = the entry's x (a signed
+  12-bit value). Then it runs the hit test `func_83FD8A` at that x, or `func_83FDCD`
+  when bits 4-5 of the byte at `$8CB5` are set (a tail at `$83:FA63`, in the row's
+  extent).
+- **`track_object_bump` ($83:FA6A):** when x - D+`$06` lies within the kind's limits
+  (judged by sign, as `func_83FC05` does) and D+`$1A` is 0, it sets D+`$7E` = 8 and
+  D+`$1A` = 6 and requests effect `$FF1D`.
+- **`track_object_money` ($83:FAD7):** on a hit (`func_83FC05`), it clears the entry,
+  adds 4000 (decimal mode, BCD) to the money of car `$1ECC` (`$038E` and `$0390`, with
+  the carry), requests effect `$FF19`, and sets D+`$4A` = `$801E` and message `$47` in
+  D+`$33`.
+  - The C adds valid BCD only; the game's money is always BCD, and so is the fuzz's.
+- **Exit flags.** The caller reloads A, X and Y and sets every flag before reading them,
+  but fewer than 100 returns are watched (81, 4 and 44), so the bench counts every flag
+  as live and the exit flags are modelled.
+  - They are mostly the last callee's. A hook, `calleeRun`, makes the adapters of
+    `func_83FE9A`, `func_83FC05`, `func_83FD8A` and `func_83FDCD` run the whole outer
+    routine in place of their own, so the verified flag model of the callee is used as
+    is.
+  - The test's adapter sets `$012A` and `$0128` for the callee adapter's read, then puts
+    them back before the C runs, so the C makes its own writes.
+  - The four callees were retested with the hook: unchanged.
+- **Results:** live 81/81, 4/4 and 44/44; fuzz 500/500 each; paths 19/19, 45/45 and 24/24.
+
 ## Three small ones (roots-13, 2026-11-18)
 
 - **`car_clear_53` ($83:FD3C):** the byte dp+`$53` = 0 (the car's direct page). Exit: A's

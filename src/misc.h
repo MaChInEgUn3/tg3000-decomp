@@ -554,6 +554,22 @@ bool func_83FD8A(uint16_t dp, uint16_t a);
 // $83:FDCD: always "no hit" (its test was disabled: a BRA skips it).
 bool func_83FDCD(void);
 
+// Three of the track objects' handlers (D = `dp`, $0200 in the game; the object is entry
+// $011A of $7E:8CB3, kind $011C). Each first sets $012A = 0 and, but the money one,
+// $0128 = the entry's x (the byte at $8CB3, the top of a signed 12-bit value).
+// $83:FA34: the hit test func_83FD8A at that x, or func_83FDCD when bits 4-5 of the byte
+// at $8CB5 are set. Returns its carry (a hit).
+bool track_object_test(uint16_t dp);
+// $83:FA6A: a side bump. When x - D+$06 lies within the kind's limits ($83:80CC below,
+// $83:80CE above, judged by sign) and D+$1A is 0: D+$7E = 8, D+$1A = 6 and effect $FF1D
+// requested for $1EBE (func_83FE9A).
+void track_object_bump(uint16_t dp);
+// $83:FAD7: money. On a hit (func_83FC05): the entry's word is cleared, 4000 (BCD) added
+// to the money of car $1ECC ($038E low four digits, $0390 high), effect $FF19 requested
+// for $1EBE, D+$4A = $801E and D+$33 = message $47. Returns the carry it leaves: false on
+// a miss, func_83FE9A's on a hit.
+bool track_object_money(uint16_t dp);
+
 // The word in bank $85 for A: row (A >> 6) & $FF times 10 (DSP-4 multiply) plus $0198 (also
 // left in $0118) picks an entry of a table at $84:0002; that entry plus (A & $3E) (and the
 // first add's carry) is the offset in bank $85.

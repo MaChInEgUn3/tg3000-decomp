@@ -1736,3 +1736,62 @@ void text_line_push(uint16_t x) {
     byte_buffer_push(c);
   }
 }
+
+// $0128 = the x of track object $011A: the byte at $7E:8CB3 + entry, the top 8 bits of a
+// signed 12-bit value; $012A = 0.
+static uint16_t track_object_x(void) {
+  wr16(0x012A, 0);
+  uint16_t v = (uint16_t)(rd8(0x8CB3 + (uint32_t)rd16(0x011A)) << 4);
+  if(v & 0x0800) v |= 0xF000;
+  wr16(0x0128, v);
+  return v;
+}
+
+// TG3000_ROUTINE($83:FA34) track_object_test
+bool track_object_test(uint16_t dp) {
+  uint16_t v = track_object_x();
+  if(rd8(0x8CB5 + (uint32_t)rd16(0x011A)) & 0x30) return func_83FDCD();
+  return func_83FD8A(dp, v);
+}
+
+// TG3000_ROUTINE($83:FA6A) track_object_bump
+void track_object_bump(uint16_t dp) {
+  uint16_t d = (uint16_t)(track_object_x() - rd16(dp + 0x06)), kind = rd16(0x011C);
+  // the original's CMP then BMI/BPL: the sign of the difference, not a signed compare
+  if(!(d & 0x8000)) {
+    if(!((uint16_t)(d - bus_rd16(0x8380CE + kind)) & 0x8000)) return;
+  } else if((uint16_t)(d - bus_rd16(0x8380CC + kind)) & 0x8000) return;
+  if(rd16(dp + 0x1A) != 0) return;
+  wr16(dp + 0x7E, 0x0008);
+  wr16(dp + 0x1A, 0x0006);
+  func_83FE9A(dp, 0xFF1D, rd16(0x1EBE), 0x0000);
+}
+
+// One BCD digit group add (the 65816's ADC in decimal mode, for valid BCD): the four
+// digits of a + b + carry, and the carry out.
+static uint16_t bcd_add4(uint16_t a, uint16_t b, bool* carry) {
+  uint16_t sum = 0;
+  unsigned c = *carry;
+  for(int shift = 0; shift < 16; shift += 4) {
+    unsigned d = ((a >> shift) & 0xF) + ((b >> shift) & 0xF) + c;
+    c = d > 9;
+    if(c) d -= 10;
+    sum |= (uint16_t)(d << shift);
+  }
+  *carry = c;
+  return sum;
+}
+
+// TG3000_ROUTINE($83:FAD7) track_object_money
+bool track_object_money(uint16_t dp) {
+  if(!func_83FC05(dp)) return false;
+  wr16(0x8CB3 + (uint32_t)rd16(0x011A), 0);
+  const uint32_t car = rd16(0x1ECC);
+  bool carry = false;
+  wr16(0x038E + car, bcd_add4(rd16(0x038E + car), 0x4000, &carry));
+  wr16(0x0390 + car, bcd_add4(rd16(0x0390 + car), 0x0000, &carry));
+  bool refused = func_83FE9A(dp, 0xFF19, rd16(0x1EBE), 0x0000);
+  wr16(dp + 0x4A, 0x801E);
+  wr16(dp + 0x33, 0x0047);
+  return refused;
+}

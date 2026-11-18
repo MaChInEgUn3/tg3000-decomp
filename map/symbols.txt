@@ -341,3 +341,6 @@ func    80EA77   spark_step          ; the sparks: each draws and fades; new one
 func    83FD3C   car_clear_53        ; a car's byte dp+$53 = 0 -> src/misc.c
 func    80E8B5   block_copy_7f2000   ; a length-prefixed block from $81:D419 to $7F:2000 -> src/misc.c
 func    8A99E2   text_line_push      ; a text map line pushed to the byte buffer -> src/misc.c
+func    83FA34   track_object_test   ; a track object's hit test at its x -> src/misc.c
+func    83FA6A   track_object_bump   ; a track object's side bump -> src/misc.c
+func    83FAD7   track_object_money  ; a money pickup: + 4000 BCD, effect, message $47 -> src/misc.c

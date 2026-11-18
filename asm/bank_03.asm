@@ -2436,6 +2436,7 @@ CODE_83FA31:
 clc_83FA32:
     clc                         ; $83FA32
     rts                         ; $83FA33
+track_object_test:
     stz.w $012A                 ; $83FA34
     ldx.w $011A                 ; $83FA37
     lda.l $7E8CB3,x             ; $83FA3A
@@ -2460,6 +2461,7 @@ CODE_83FA5C:
     lda.w $0128                 ; $83FA63
     jsr.w func_83FDCD           ; $83FA66
     rts                         ; $83FA69
+track_object_bump:
     stz.w $012A                 ; $83FA6A
     ldx.w $011A                 ; $83FA6D
     lda.l $7E8CB3,x             ; $83FA70
@@ -2508,6 +2510,7 @@ CODE_83FAB0:
 CODE_83FAD5:
     clc                         ; $83FAD5
     rts                         ; $83FAD6
+track_object_money:
     jsr.w func_83FC05           ; $83FAD7
     bcc CODE_83FB14             ; $83FADA
     ldx.w $011A                 ; $83FADC

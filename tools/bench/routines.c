@@ -1132,6 +1132,114 @@ static void fuzz_text_line_push(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x60, (uint16_t)(rnd() % 0x20));
 }
 
+// ---- track_object_test / _bump / _money ($83:FA34, $83:FA6A, $83:FAD7) ----  called
+// through $83:F7F9's handler table, whose caller reloads A, X and Y and sets every flag
+// before reading them: no register outputs. Too few returns are watched to see that, so
+// the exit flags are modelled: mostly the last callee's, through its adapter (calleeRun).
+// When set, the adapters of func_83FE9A, func_83FC05, func_83FD8A and func_83FDCD run this
+// instead of their routine: a caller's adapter whose exit flags are the callee's sets it
+// to its whole routine (which makes that call once), so the callee's flag model sees the
+// state at the call. Returns what the callee's call returns.
+static bool (*calleeRun)(uint16_t dp) = NULL;
+
+static void call_func_83FE9A(const Regs* in, Regs* out);
+static void call_func_83FC05(const Regs* in, Regs* out);
+static void call_func_83FD8A(const Regs* in, Regs* out);
+static void call_func_83FDCD(const Regs* in, Regs* out);
+static uint16_t objectX(void) {
+  uint16_t v = (uint16_t)(rd8(0x8CB3 + (uint32_t)rd16(0x011A)) << 4);
+  return (v & 0x0800) ? (uint16_t)(v | 0xF000) : v;
+}
+// the test: the callee's adapter reads $012A, which the routine clears first; it is set
+// for that read and restored before the routine runs, so the C makes its own writes
+static uint16_t heldPos, heldAt;
+static bool run_track_object_test(uint16_t dp) {
+  wr16(0x012A, heldPos);
+  wr16(0x0128, heldAt);
+  return track_object_test(dp);
+}
+static void call_track_object_test(const Regs* in, Regs* out) {
+  uint16_t v = objectX();
+  heldPos = rd16(0x012A);
+  heldAt = rd16(0x0128);
+  wr16(0x012A, 0);
+  wr16(0x0128, v);
+  Regs t = *in;
+  t.a = v;  // both calls are made with A = $0128
+  calleeRun = run_track_object_test;
+  if(rd8(0x8CB5 + (uint32_t)rd16(0x011A)) & 0x30) call_func_83FDCD(&t, out);
+  else call_func_83FD8A(&t, out);
+  calleeRun = NULL;
+}
+// the bump: C = 0 (its CLC); otherwise the flags of the compare that missed, of LDA D+$1A,
+// or of func_83FE9A; V of the SBC D+$06 unless func_83FE9A ran
+static bool run_track_object_bump(uint16_t dp) { track_object_bump(dp); return false; }
+static void call_track_object_bump(const Regs* in, Regs* out) {
+  uint16_t v = objectX(), base = rd16((uint16_t)(in->d + 0x06)), kind = rd16(0x011C);
+  uint16_t d = (uint16_t)(v - base);
+  uint16_t c = (uint16_t)(d - bus_rd16(((d & 0x8000) ? 0x8380CC : 0x8380CE) + (uint32_t)kind));
+  bool within = (d & 0x8000) ? !(c & 0x8000) : (c & 0x8000) != 0;
+  uint16_t side = rd16((uint16_t)(in->d + 0x1A));
+  Regs s;
+  setSbc16(&s, v, base);
+  if(within && side == 0) {
+    Regs t = *in;
+    t.a = 0xFF1D;
+    t.x = rd16(0x1EBE);
+    t.y = 0;
+    calleeRun = run_track_object_bump;
+    call_func_83FE9A(&t, out);
+    calleeRun = NULL;
+  } else {
+    track_object_bump(in->d);
+    setNZ16(out, within ? side : c);
+    out->v = s.v;
+  }
+  out->c = false;
+}
+// the money: a miss leaves func_83FC05's flags; a hit N and Z clear (LDA #$47), C and V of
+// func_83FE9A
+static bool run_track_object_money(uint16_t dp) { return track_object_money(dp); }
+static void call_track_object_money(const Regs* in, Regs* out) {
+  uint16_t at = rd16(0x0128);
+  bool hit = func_83FC05(in->d);  // which way it goes (it only writes $0128, put back)
+  wr16(0x0128, at);
+  calleeRun = run_track_object_money;
+  if(!hit) call_func_83FC05(in, out);
+  else {
+    Regs t = *in;
+    t.a = 0xFF19;
+    t.x = rd16(0x1EBE);
+    t.y = 0;
+    call_func_83FE9A(&t, out);
+    out->n = false;
+    out->z = false;
+  }
+  calleeRun = NULL;
+}
+static void fuzz_func_83FC05(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_func_83FD8A(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_func_83FE9A(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static uint16_t bcdRandom(uint32_t (*rnd)(void)) {
+  uint16_t v = 0;
+  for(int shift = 0; shift < 16; shift += 4) v |= (uint16_t)((rnd() % 10) << shift);
+  return v;
+}
+// the callees' inputs (the hit tests near their limits, the effect request), then the
+// object entry; $012A is 0 on the test, so $012C near 0 half the time; money in BCD,
+// near a carry into the high word half the time
+static void fuzz_track_object(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_83FD8A(r, ram, rnd);
+  fuzz_func_83FE9A(r, ram, rnd);
+  fuzz_func_83FC05(r, ram, rnd);
+  if(rnd() & 1) wr16ram(ram, 0x012C, (uint16_t)(int16_t)(rnd() % 97 - 48));
+  if(rnd() & 1) wr16ram(ram, (uint16_t)(r->d + 0x1A), 0);
+  uint16_t car = (uint16_t)(2 * (rnd() % 8));
+  wr16ram(ram, 0x1ECC, car);
+  wr16ram(ram, (uint16_t)(0x038E + car), (rnd() & 1) ? (uint16_t)((bcdRandom(rnd) & 0x0FFF) | ((6 + rnd() % 4) << 12)) : bcdRandom(rnd));
+  wr16ram(ram, (uint16_t)(0x0390 + car), bcdRandom(rnd));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -3120,7 +3228,7 @@ static void fuzz_take_nibble(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // (else BIT's V).
 static void call_func_83FE9A(const Regs* in, Regs* out) {
   uint16_t flags = rd16(0x047C), cool = rd16((uint16_t)(in->d + 0x23)), step = rd16(0x1E9E);
-  out->c = func_83FE9A(in->d, in->a, in->x, in->y);
+  out->c = calleeRun ? calleeRun(in->d) : func_83FE9A(in->d, in->a, in->x, in->y);
   out->v = (flags & 0x4000) != 0;
   if(flags & 0x8000) {
     out->n = true;
@@ -4446,7 +4554,7 @@ static void call_func_83FC05(const Regs* in, Regs* out) {
                               : !((uint16_t)(d - bus_rd16(0x8380CC + kind)) & 0x8000);
   uint16_t h = (uint16_t)(-(uint16_t)((rd8(0x8CB5 + (uint32_t)x) & 0xF0) >> 1));
   uint16_t sub = bus_rd16(0x81012C), e = (uint16_t)(h - sub);
-  bool hit = func_83FC05(in->d);
+  bool hit = calleeRun ? calleeRun(in->d) : func_83FC05(in->d);
   out->x = kind;
   if(!first) {
     out->a = d;
@@ -4488,7 +4596,7 @@ static void call_func_83FD8A(const Regs* in, Regs* out) {
   uint16_t old18 = rd16((uint16_t)(dp + 0x18)), x1EBE = rd16(0x1EBE), f1F31 = rd16(0x1F31);
   uint16_t old5A = rd16((uint16_t)(dp + 0x5A));
   uint32_t p = (uint32_t)(int32_t)(int16_t)(rd16((uint16_t)(dp + 0x0F)) >> 1) * (int32_t)(int16_t)rd16(0x1F30);
-  bool hit = func_83FD8A(dp, a);
+  bool hit = calleeRun ? calleeRun(dp) : func_83FD8A(dp, a);
   out->c = hit;
   if(f120 & 0x8000) {
     out->n = true;
@@ -4555,7 +4663,7 @@ static void fuzz_func_83FD8A(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // ---- func_83FDCD ($83:FDCD) ----  A kept, N/V/Z of BIT $0120, C = 0.
 static void call_func_83FDCD(const Regs* in, Regs* out) {
   uint16_t f = rd16(0x0120);
-  out->c = func_83FDCD();
+  out->c = calleeRun ? calleeRun(in->d) : func_83FDCD();
   out->n = (f & 0x8000) != 0;
   out->v = (f & 0x4000) != 0;
   out->z = (in->a & f) == 0;
@@ -5548,6 +5656,13 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_block_copy_7f2000, ALL_OUTPUTS, .fuzz = fuzz_block_copy_7f2000},
   {.name = "text_line_push", .entry = 0x8A99E2, .end = 0x8A99FC, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_text_line_push, .compareX = true, .fuzz = fuzz_text_line_push},
+  {.name = "track_object_test", .entry = 0x83FA34, .end = 0x83FA63, .alsoIn = {{0x83FA63, 0x83FA6A}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_track_object_test,
+   .fuzz = fuzz_track_object},
+  {.name = "track_object_bump", .entry = 0x83FA6A, .end = 0x83FAD7, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_track_object_bump, .fuzz = fuzz_track_object},
+  {.name = "track_object_money", .entry = 0x83FAD7, .end = 0x83FB15, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_track_object_money, .fuzz = fuzz_track_object},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
