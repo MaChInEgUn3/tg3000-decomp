@@ -1071,6 +1071,24 @@ static void fuzz_track_entry_bounds(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   ram[0x8CB4 + e] = (uint8_t)(rnd() % 0x40);
 }
 
+// ---- spark_step ($80:EA77) ----  no register outputs (flags by liveness)
+static void call_spark_step(const Regs* in, Regs* out) { (void)in; (void)out; spark_step(); }
+// the sparks' lives and places, either buffer, the count around the laying window
+static void fuzz_spark_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t buffer = (rnd() & 1) ? 0x8000 : 0x0000;
+  wr16ram(ram, DP + 0x5E, buffer);
+  wr16ram(ram, DP + 0x3E, (uint16_t)((rnd() % 0x20) * 4));
+  for(uint32_t i = 0; i < 0x80; i += 2) {
+    uint32_t at = 0x11000 + buffer + i;
+    ram[at] = (uint8_t)(i % 4 == 0 ? rnd() % 0x40 : rnd());
+    ram[at + 1] = (uint8_t)(i % 4 == 0 ? 0 : rnd());
+  }
+  wr16ram(ram, DP + 0x86, (uint16_t)(0x0060 + rnd() % 0x28));
+  wr16ram(ram, DP + 0xE7, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x74, (uint16_t)((rnd() % 0x40) * 4));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -5479,6 +5497,8 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_race_message_request_02e6, ALL_OUTPUTS, .fuzz = fuzz_race_message_request},
   {.name = "track_entry_bounds", .entry = 0x81E7DA, .end = 0x81E812, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_track_entry_bounds, ALL_OUTPUTS, .fuzz = fuzz_track_entry_bounds},
+  {.name = "spark_step", .entry = 0x80EA77, .end = 0x80EB66, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_spark_step, .fuzz = fuzz_spark_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -11363,7 +11363,7 @@ CODE_80EA3A:
     ldx.b $94                   ; $80EA3A
     lda.w $03A8,x               ; $80EA3C
     bne CODE_80EA44             ; $80EA3F
-    jsr.w $EA77                 ; $80EA41
+    jsr.w spark_step            ; $80EA41
 CODE_80EA44:
     jsr.w func_80EB66           ; $80EA44
     jsr.w oam_finish_near       ; $80EA47
@@ -11392,6 +11392,7 @@ CODE_80EA62:
     sta.b $46                   ; $80EA74
 CODE_80EA76:
     rts                         ; $80EA76
+spark_step:
     lda.b $3E                   ; $80EA77
     clc                         ; $80EA79
     adc.b $5E                   ; $80EA7A

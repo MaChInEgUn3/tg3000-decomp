@@ -298,6 +298,14 @@ void title_sprites_place(void);
 // D+$16 = sin, D+$18 = -sin, from the tables at $81:CEA9 / $81:CDA9.
 void rotation_from_angle(void);
 
+// $80:EA77: the sparks. 32 of them at $7F:1000 + (D+$3E + D+$5E) (4 bytes each: life,
+// position; the index wraps within $7F, the buffer bit $8000 kept): each alive one
+// (bits 1-4 of its life / 2 not 0) loses a point and draws a sprite, tile $81:D2C3 by its
+// life, at its position + D+$E7. Then, while D+$86 - $64 is below $1E, new sparks are
+// laid at D+$3E (life $1C): two (positions $81:D2E3 by that value, and $808 less), and
+// when D+$86 is a multiple of 4 two more ($81:D323 with life $1C, $81:D367 with life $3C).
+void spark_step(void);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.

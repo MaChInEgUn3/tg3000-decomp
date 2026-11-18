@@ -1789,6 +1789,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The sparks (roots-12, 2026-11-18)
+
+- **`spark_step` ($80:EA77),** a particle system. There are 32 sparks at `$7F:1000` +
+  (`$013E` + `$015E`), 4 bytes each: life, then position.
+  - The index wraps within `$7F`, and the buffer bit `$8000` of `$015E` is kept
+    (`AND #$807F`).
+  - Each alive spark (bits 1-4 of its life / 2 not 0) loses a point and draws a sprite:
+    tile `$81:D2C3` by its life, at its position + `$01E7`.
+  - Then, while `$0186` - `$64` is below `$1E`, new sparks are laid at `$013E` (life
+    `$1C`): two (positions `$81:D2E3` by that value, and `$808` less), and when `$0186`
+    is a multiple of 4 two more (`$81:D323` with life `$1C`, `$81:D367` with life
+    `$3C`).
+  - The original tests `$0186` & 3 twice in a row; the C tests it once.
+- **Results:** live 208/208, fuzz 500/500 (either buffer, the count around the window),
+  paths 107/107.
+
 ## The race's message slots and a track entry's bounds (roots-11, 2026-11-18)
 
 - **`race_message_request_0233` ($82:9BC9) and `race_message_request_02e6` ($82:9BE5):**

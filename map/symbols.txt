@@ -337,3 +337,4 @@ func    8A867C   rotation_from_angle ; Mode 7 rotation (cos, sin, -sin) for the 
 func    829BC9   race_message_request_0233 ; a race message into $0233 by priority -> src/misc.c
 func    829BE5   race_message_request_02e6 ; a race message into $02E6 by priority -> src/misc.c
 func    81E7DA   track_entry_bounds  ; a track entry's x and its bounds pair -> src/misc.c
+func    80EA77   spark_step          ; the sparks: each draws and fades; new ones laid by D+$86 -> src/misc.c

@@ -1675,3 +1675,39 @@ void track_entry_bounds(void) {
   wr16(DP + 0x26, b);
   wr16(DP + 0x2E, b);
 }
+
+#define SPARKS 0x11000  // $7F:1000
+
+static void spark_lay(uint16_t life, uint16_t at) {
+  const uint32_t x = (uint16_t)(rd16(DP + 0x3E) + rd16(DP + 0x5E));
+  wr16(SPARKS + x, life);
+  wr16(SPARKS + 2 + x, at);
+  wr16(DP + 0x3E, (uint16_t)((rd16(DP + 0x3E) + 4) & 0x007F));
+}
+
+// TG3000_ROUTINE($80:EA77) spark_step
+void spark_step(void) {
+  uint16_t x = (uint16_t)(rd16(DP + 0x3E) + rd16(DP + 0x5E));
+  wr16(DP + 0x14, 0x0020);
+  do {
+    uint16_t life = rd16(SPARKS + (uint32_t)x), y = (uint16_t)((life >> 1) & 0xFFFE);
+    if(y & 0x000F) {
+      wr16(SPARKS + (uint32_t)x, (uint16_t)(life - 1));
+      const uint32_t s = rd16(DP + 0x74);
+      wr16(0x0902 + s, rom16(0x81D2C3 + (uint32_t)y));
+      wr16(0x0900 + s, (uint16_t)(rd16(SPARKS + 2 + (uint32_t)x) + rd16(DP + 0xE7)));
+      wr16(0x0B01 + s, 0x0100);
+      wr16(DP + 0x74, (uint16_t)(s + 4));
+    }
+    x = (uint16_t)((x + 4) & 0x807F);
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
+  } while(rd16(DP + 0x14) != 0);
+  uint16_t n = rd16(DP + 0x86);
+  if(n < 0x0064 || (uint16_t)(n - 0x0064) >= 0x001E) return;
+  const uint32_t y = (uint16_t)((n - 0x0064) << 1);
+  spark_lay(0x001C, rom16(0x81D2E3 + y));
+  spark_lay(0x001C, (uint16_t)(rom16(0x81D2E3 + y) - 0x0808));
+  if(n & 0x0003) return;
+  spark_lay(0x001C, rom16(0x81D323 + y));
+  spark_lay(0x003C, rom16(0x81D367 + y));  // (the original tests D+$86 & 3 again: the same)
+}
