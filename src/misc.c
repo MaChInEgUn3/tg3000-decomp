@@ -1795,3 +1795,11 @@ bool track_object_money(uint16_t dp) {
   wr16(dp + 0x33, 0x0047);
   return refused;
 }
+
+// TG3000_ROUTINE($83:FD26) car_set_53 (value 1)
+// TG3000_ROUTINE($83:FD31) car_set_53 (value 2)
+void car_set_53(uint16_t dp, uint8_t value) {
+  wr8(dp + 0x53, value);
+  const uint32_t x = rd16(0x011A);
+  wr16(dp + 0xB1, (uint16_t)(rd8(0x8CB3 + x) | rd8(0x8CB5 + x) << 8));
+}

@@ -309,6 +309,11 @@ void spark_step(void);
 // $83:FD3C: the byte dp+$53 = 0 (a car's direct page `dp`).
 void car_clear_53(uint16_t dp);
 
+// $83:FD26 (`value` 1) and $83:FD31 (`value` 2): the byte dp+$53 = `value`, then (their
+// shared tail at $83:FD45) dp+$B1 = track object $011A's bytes at $7E:8CB3 (low) and
+// $8CB5 (high).
+void car_set_53(uint16_t dp, uint8_t value);
+
 // $80:E8B5: a block from $81:D419 + `*y` (DB = $81) copied to $7F:2000 + `*x`: its length
 // (the low byte of the word there; 0 = 256, kept in D+$14) then that many bytes. Both
 // indices move on.

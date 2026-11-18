@@ -12,6 +12,8 @@
 // TG3000_ROUTINE($80:8373) wait_frames
 // TG3000_ROUTINE($8A:BA90) wait_frames (long-call copy in bank $8A)
 // TG3000_ROUTINE($82:841E) wait_frames (copy in bank $82)
+// TG3000_ROUTINE($8A:8BB6) wait_frames (another long-call copy in bank $8A)
+// TG3000_ROUTINE($8A:9880) wait_frames (and another)
 uint16_t wait_frames(uint16_t n) {
   uint16_t target = (uint16_t)(rd16(FRAME_COUNTER) + n);
   while(rd16(FRAME_COUNTER) != target) platform_wait_vblank();

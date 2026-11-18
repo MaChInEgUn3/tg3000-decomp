@@ -1240,6 +1240,23 @@ static void fuzz_track_object(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, (uint16_t)(0x0390 + car), bcdRandom(rnd));
 }
 
+// ---- car_set_53 ($83:FD26, $83:FD31) ----  A = the new dp+$B1 (N Z of its ORA), X = $011A;
+// C and V as on entry
+static void carSet53Out(const Regs* in, Regs* out, uint8_t value) {
+  car_set_53(in->d, value);
+  out->a = rd16((uint16_t)(in->d + 0xB1));
+  out->x = rd16(0x011A);
+  setNZ16(out, out->a);
+}
+static void call_car_set_53_1(const Regs* in, Regs* out) { carSet53Out(in, out, 1); }
+static void call_car_set_53_2(const Regs* in, Regs* out) { carSet53Out(in, out, 2); }
+static void fuzz_car_set_53(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t x = (uint16_t)(rnd() % 0x200);
+  wr16ram(ram, 0x011A, x);
+  for(int i = 0; i < 3; i++) ram[0x8CB3 + x + i] = (uint8_t)rnd();
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -5663,6 +5680,16 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_track_object_bump, .fuzz = fuzz_track_object},
   {.name = "track_object_money", .entry = 0x83FAD7, .end = 0x83FB15, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_track_object_money, .fuzz = fuzz_track_object},
+  {.name = "car_set_53_1", .entry = 0x83FD26, .end = 0x83FD31, .alsoIn = {{0x83FD45, 0x83FD5D}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_car_set_53_1,
+   ALL_OUTPUTS, .fuzz = fuzz_car_set_53},
+  {.name = "car_set_53_2", .entry = 0x83FD31, .end = 0x83FD3C, .alsoIn = {{0x83FD45, 0x83FD5D}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_car_set_53_2,
+   ALL_OUTPUTS, .fuzz = fuzz_car_set_53},
+  {.name = "wait_frames_8a8bb6", .entry = 0x8A8BB6, .end = 0x8A8BC2, .rtl = true, .source = "src/frame.c",
+   .needM16 = true, .waitsForInterrupts = true, .call = call_wait_frames, ALL_OUTPUTS},
+  {.name = "wait_frames_8a9880", .entry = 0x8A9880, .end = 0x8A988C, .rtl = true, .source = "src/frame.c",
+   .needM16 = true, .waitsForInterrupts = true, .call = call_wait_frames, ALL_OUTPUTS},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

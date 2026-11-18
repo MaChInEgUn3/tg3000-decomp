@@ -33,7 +33,7 @@ CODE_8A803B:
     dex                         ; $8A803F
     bpl CODE_8A803B             ; $8A8040
     lda.w #$0001                ; $8A8042
-    jsl.l $8A8BB6               ; $8A8045
+    jsl.l wait_frames_8a8bb6    ; $8A8045
     jsr.w $8768                 ; $8A8049
     jsl.l $8A8F18               ; $8A804C
     jsl.l clear_dp_scratch      ; $8A8050
@@ -79,7 +79,7 @@ CODE_8A803B:
     rep.b #$20                  ; $8A80C3
     jsr.w $81BA                 ; $8A80C5
     lda.w #$0001                ; $8A80C8
-    jsl.l $8A8BB6               ; $8A80CB
+    jsl.l wait_frames_8a8bb6    ; $8A80CB
     sep.b #$20                  ; $8A80CF
     lda.b #$FE                  ; $8A80D1
     sta.w $420C                 ; $8A80D3
@@ -92,7 +92,7 @@ CODE_8A803B:
     sta.b $96                   ; $8A80E5
     jsr.w fade_out_on_confirm_once; $8A80E7
     lda.w #$0001                ; $8A80EA
-    jsl.l $8A8BB6               ; $8A80ED
+    jsl.l wait_frames_8a8bb6    ; $8A80ED
     jsr.w mode7_view            ; $8A80F1
     lda.b $5A                   ; $8A80F4
     beq CODE_8A8142             ; $8A80F6
@@ -121,7 +121,7 @@ CODE_8A8176:
     jmp.w $80E7                 ; $8A8176
 CODE_8A8179:
     lda.w #$0008                ; $8A8179
-    jsl.l $8A8BB6               ; $8A817C
+    jsl.l wait_frames_8a8bb6    ; $8A817C
     rtl                         ; $8A8180
 fade_out_on_confirm_once:
     lda.b $8C                   ; $8A8181
@@ -839,6 +839,7 @@ CODE_8A8B9D:
     rep.b #$20                  ; $8A8BB3 static
 CODE_8A8BB5:
     rts                         ; $8A8BB5 static
+wait_frames_8a8bb6:
     clc                         ; $8A8BB6
     adc.l $810024               ; $8A8BB7
 CODE_8A8BBB:
@@ -1778,7 +1779,7 @@ CODE_8A954E:
     jsr.w $C15D                 ; $8A95E5
     jsr.w upload_7f_to_3000     ; $8A95E8
     lda.w #$0001                ; $8A95EB
-    jsl.l $8A9880               ; $8A95EE
+    jsl.l wait_frames_8a9880    ; $8A95EE
     lda.w #$0004                ; $8A95F2
     sta.w $420C                 ; $8A95F5
     lda.w #$0F00                ; $8A95F8
@@ -1787,7 +1788,7 @@ CODE_8A954E:
     sta.w $0196                 ; $8A9601
     stz.b $6E                   ; $8A9604
     lda.w #$0001                ; $8A9606
-    jsl.l $8A9880               ; $8A9609
+    jsl.l wait_frames_8a9880    ; $8A9609
     lda.b $30                   ; $8A960D
     asl a                       ; $8A960F
     tax                         ; $8A9610
@@ -2041,6 +2042,7 @@ star_spawn_8a:
     rts                         ; $8A987E
 func_8A987F:
     rtl                         ; $8A987F
+wait_frames_8a9880:
     clc                         ; $8A9880
     adc.l $810024               ; $8A9881
 CODE_8A9885:

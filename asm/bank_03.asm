@@ -2714,11 +2714,13 @@ CODE_83FCF1:
     jsr.w func_83FDCD           ; $83FD22
 CODE_83FD25:
     rts                         ; $83FD25
+car_set_53_1:
     sep.b #$20                  ; $83FD26
     lda.b #$01                  ; $83FD28
     sta.b $53                   ; $83FD2A
     rep.b #$20                  ; $83FD2C
     jmp.w $FD45                 ; $83FD2E
+car_set_53_2:
     sep.b #$20                  ; $83FD31
     lda.b #$02                  ; $83FD33
     sta.b $53                   ; $83FD35

@@ -1789,6 +1789,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A car's byte $53 and two more frame waits (roots-15, 2026-11-18)
+
+- **`car_set_53_1` ($83:FD26) and `car_set_53_2` ($83:FD31):** the byte dp+`$53` = 1 or
+  2, then their shared tail at `$83:FD45` (in both rows' extents): dp+`$B1` = track
+  object `$011A`'s bytes at `$7E:8CB3` (low) and `$8CB5` (high).
+  - Exit: A = that word (N Z of its `ORA`), X = `$011A`, C and V as on entry.
+  - `car_clear_53` ($83:FD3C, roots-13) is the third sibling, without the tail.
+  - Live 7/7 each, fuzz 500/500, paths 5/5.
+- **`wait_frames_8a8bb6` ($8A:8BB6) and `wait_frames_8a9880` ($8A:9880):** two more
+  long-call copies of `wait_frames`, which makes five in all.
+  - They share `wait_frames`'s C and adapter.
+  - Live 266/266 and 211/211; no fuzz, because they wait for interrupts.
+
 ## Three track-object handlers (roots-14, 2026-11-18)
 
 `$83:F7F9` calls a handler per track object through its table at `$83:7FFE`. The object
