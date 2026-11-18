@@ -434,3 +434,43 @@ void text_type_step(void) {
     type_text();
   }
 }
+
+// a character code's tile index (text_centred_line)
+static uint16_t centred_tile(uint16_t c) {
+  switch(c) {
+  case 0x20: return 0x27;
+  case 0x21: return 0x24;
+  case 0x2E: return 0x25;  // never run
+  case 0x2B: return 0x26;
+  default: return c < 0x3A ? (uint16_t)(c - 0x16) : (uint16_t)(c - 0x41);
+  }
+}
+
+// TG3000_ROUTINE($82:B18B) text_centred_line
+void text_centred_line(void) {
+  uint16_t x = rd16(DP + 0x18), blank = rom16(0x83A5A4);
+  for(int i = 0; i < 13; i++, x = (uint16_t)(x + 2)) {
+    wr16(x, blank);
+    wr16((uint16_t)(x + 0x1A), blank);
+  }
+  const uint16_t start = rom16(0x83A006 + (uint32_t)rd16(DP + 0x3C));
+  uint16_t free = 13;
+  for(uint16_t s = start;; s++) {
+    uint8_t c = bus_rd8(0x830000 | s);
+    if(c == 0) break;
+    if(!(c & 0x80)) free--;
+  }
+  uint16_t y = (uint16_t)((free & 0xFFFE) + rd16(DP + 0x18));
+  for(uint16_t s = start;; s++) {
+    uint8_t c = bus_rd8(0x830000 | s);
+    if(c == 0) break;
+    if(c & 0x80) {  // never run: a palette change
+      wr16(DP + 0x3A, (uint16_t)((c & 0x07) << 10));
+      continue;
+    }
+    const uint32_t t = (uint32_t)(uint16_t)(centred_tile(c) << 1);
+    wr16(y, (uint16_t)(rom16(0x83A504 + t) | rd16(DP + 0x3A)));
+    wr16((uint16_t)(y + 0x1A), (uint16_t)(rom16(0x83A554 + t) | rd16(DP + 0x3A)));
+    y = (uint16_t)(y + 2);
+  }
+}

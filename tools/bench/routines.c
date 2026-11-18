@@ -682,6 +682,44 @@ static void fuzz_text_line_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x56, (uint16_t)rnd());
 }
 
+// ---- text_centred_line ($82:B18B) ----  no register outputs (its caller reloads them); the
+// final LDA of the zero (N clear, Z set); C clear after any character or palette byte (an
+// ASL), else of the start's ADC; V of the last SBC (a digit or letter), else of that ADC
+static void call_text_centred_line(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t start = rom16(0x83A006 + (uint32_t)rd16(DP + 0x3C));
+  uint16_t free = 13;
+  for(uint16_t s = start; bus_rd8(0x830000 | s); s++) if(!(bus_rd8(0x830000 | s) & 0x80)) free--;
+  setAdc16(out, (uint16_t)(free & 0xFFFE), rd16(DP + 0x18));
+  for(uint16_t s = start; bus_rd8(0x830000 | s); s++) {
+    uint8_t c = bus_rd8(0x830000 | s);
+    out->c = false;
+    if(!(c & 0x80) && c != 0x20 && c != 0x21 && c != 0x2E && c != 0x2B) out->v = false;  // a small SBC
+  }
+  text_centred_line();
+  out->n = false;
+  out->z = true;
+}
+// any string of the table ($83:A006, by D+$3C: its 79 entries; six of them, $7A-$84, point
+// at WRAM: there, random strings of letters, digits, marks, '.' and palette bytes), the
+// palette and the line's place in WRAM
+static void fuzz_text_centred_line(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x3C, (rnd() & 1) ? (uint16_t)(0x7A + (rnd() % 6) * 2) : (uint16_t)((rnd() % 0x4F) * 2));
+  static const uint8_t marks[] = {0x20, 0x21, 0x2E, 0x2B, 0x80, 0x83, 0x87};
+  static const uint16_t wram[] = {0x037E, 0x03AD, 0x03E4, 0x03F1, 0x03FE, 0x040B};
+  for(unsigned k = 0; k < 6; k++) {
+    uint32_t n = rnd() % 13;
+    for(uint32_t i = 0; i < n; i++) {
+      uint32_t t = rnd() % 4;
+      ram[wram[k] + i] = t == 0 ? (uint8_t)('A' + rnd() % 26) : t == 1 ? (uint8_t)('0' + rnd() % 10) : marks[rnd() % 7];
+    }
+    ram[wram[k] + n] = 0;
+  }
+  wr16ram(ram, DP + 0x3A, (uint16_t)((rnd() % 8) << 10));
+  wr16ram(ram, DP + 0x18, (uint16_t)(0x2000 + (rnd() % 0x800) * 2));
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -4948,6 +4986,8 @@ const Routine routines[] = {
    .lowWramDb = true, .fixedD = true, .call = call_timer_0d7e_tick, ALL_OUTPUTS, .fuzz = fuzz_timer_0d7e_tick},
   {.name = "text_line_put", .entry = 0x8A9B85, .end = 0x8A9BAA, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_text_line_put, ALL_OUTPUTS, .fuzz = fuzz_text_line_put},
+  {.name = "text_centred_line", .entry = 0x82B18B, .end = 0x82B234, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_text_centred_line, .fuzz = fuzz_text_centred_line},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

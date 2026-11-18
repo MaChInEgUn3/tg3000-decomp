@@ -1789,6 +1789,26 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The race's centred messages (leaves-19, 2026-11-18)
+
+- **`text_centred_line` ($82:B18B, DB = `$7E`):** a centred line of 13 two-row characters
+  at `$7E:$0118` (top row) and + `$1A` (bottom).
+  - Both rows are filled with `$83:A5A4`'s blank.
+  - The string is the zero-ended one at `$83:`(the word at `$83:A006` + `$013C`): "GO!",
+    "1ST".."20TH", "FINAL LAP", "n LAPS LEFT", "RECHARGE!", "PAUSED", "+4000 CREDITS"...
+  - Its characters are counted (bytes with bit 7 set are not), and the line starts
+    (13 - count) / 2 cells in.
+  - Each character's two tiles come from `$83:A504` / `$83:A554`, ORed with the palette
+    `$013A`; a byte with bit 7 set changes that palette (its low 3 bits << 10).
+- **The table has 79 entries,** and six of them (`$7A`-`$84`) point at `$83:037E`-`$040B`,
+  WRAM through bank `$83`'s mirror (strings the game writes, such as names).
+  - The first C read every string from ROM; a live sample on one of those entries
+    failed, so the C now reads through the bus.
+  - The fuzz draws all 79 entries, half of the time a WRAM one holding a random string
+    with letters, digits, `'.'` and palette bytes. That reaches the two never-run
+    branches (the palette byte, `'.'` as tile `$25`), which are static code.
+- **Results:** live 71/71, fuzz 500/500, paths 77/77.
+
 ## A text line (leaves-18, 2026-11-18)
 
 - **`text_line_put` ($8A:9B85):**

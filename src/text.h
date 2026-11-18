@@ -104,4 +104,14 @@ uint32_t func_80EB66(uint16_t dp);
 // the line and back up one; set bit 0 of D+$F8.
 void text_type_step(void);
 
+// $82:B18B (DB = $7E): a centred line of 13 two-row characters at $7E:D+$18 (top row) and
+// + $1A (bottom). Both rows are first filled with $83:A5A4's blank; the string is the
+// zero-ended one at $83:(the word at $83:A006 + D+$3C). Its characters are counted (bytes
+// with bit 7 set are not; the string may be in ROM or, at $83:037E-$040B, in WRAM through
+// the bank's mirror), the line starts (13 - count) / 2 cells in, and each character's
+// two tiles come from $83:A504 / $83:A554, ORed with D+$3A. A byte with bit 7 set changes
+// D+$3A to its low 3 bits << 10 (a palette). Codes: space, !, ., + as tiles $27, $24, $25,
+// $26; below ':' (digits) - $16; letters - $41.
+void text_centred_line(void);
+
 #endif

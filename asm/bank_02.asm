@@ -1977,7 +1977,7 @@ CODE_82B12C:
     bcs CODE_82B142             ; $82B13D
     jmp.w $B159                 ; $82B13F
 CODE_82B142:
-    jsr.w $B18B                 ; $82B142
+    jsr.w text_centred_line     ; $82B142
     ldx.b $3C                   ; $82B145
     lda.l $83A142,x             ; $82B147
     sta.b $1A                   ; $82B14B
@@ -2014,6 +2014,7 @@ CODE_82B187:
 CODE_82B189:
     plb                         ; $82B189
     rts                         ; $82B18A
+text_centred_line:
     ldx.b $18                   ; $82B18B
     ldy.w #$000D                ; $82B18D
     lda.l $83A5A4               ; $82B190
@@ -2054,7 +2055,12 @@ CODE_82B1CA:
     phx                         ; $82B1D3
     bit.w #$0080                ; $82B1D4
     beq CODE_82B1E3             ; $82B1D7
-    incbin !baserom:$131D9..$131E3
+    and.w #$0007                ; $82B1D9 static
+    asl a                       ; $82B1DC static
+    asl a                       ; $82B1DD static
+    xba                         ; $82B1DE static
+    sta.b $3A                   ; $82B1DF static
+    bra CODE_82B22F             ; $82B1E1 static
 CODE_82B1E3:
     cmp.w #$0020                ; $82B1E3
     bne CODE_82B1ED             ; $82B1E6
@@ -2068,7 +2074,8 @@ CODE_82B1ED:
 CODE_82B1F7:
     cmp.w #$002E                ; $82B1F7
     bne CODE_82B201             ; $82B1FA
-    incbin !baserom:$131FC..$13201
+    lda.w #$0025                ; $82B1FC static
+    bra CODE_82B219             ; $82B1FF static
 CODE_82B201:
     cmp.w #$002B                ; $82B201
     bne CODE_82B20B             ; $82B204
@@ -2093,6 +2100,7 @@ CODE_82B219:
     sta.w $001A,y               ; $82B22A
     iny                         ; $82B22D
     iny                         ; $82B22E
+CODE_82B22F:
     plx                         ; $82B22F
     inx                         ; $82B230
     bra CODE_82B1CA             ; $82B231
