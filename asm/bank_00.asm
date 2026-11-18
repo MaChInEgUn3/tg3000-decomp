@@ -9339,7 +9339,7 @@ CODE_80D85C:
     lda.w #$0086                ; $80D92B
     ldy.w #$6832                ; $80D92E
     jsr.w sprite_text_centered  ; $80D931
-    jsr.w $DAED                 ; $80D934
+    jsr.w race_lights_draw      ; $80D934
     lda.b $32                   ; $80D937
     sec                         ; $80D939
     sbc.b $28                   ; $80D93A
@@ -9533,6 +9533,7 @@ CODE_80DADE:
     cpx.w #$0200                ; $80DAE7
     bne CODE_80DAD2             ; $80DAEA
     rts                         ; $80DAEC
+race_lights_draw:
     stz.b $14                   ; $80DAED
     ldy.b $74                   ; $80DAEF
 CODE_80DAF1:

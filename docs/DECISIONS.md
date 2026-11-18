@@ -1789,6 +1789,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The lights (leaves-13, 2026-11-18)
+
+- **`race_lights_draw` ($80:DAED):** twelve lights as sprites from slot `$0174`, light n at
+  the place of `$81:CB14` + 2n (DB = `$81`: `$81:CB2C` is 0, 4, 8, ...).
+  - **Lit (below `$0368`):** their own sprite from `$81:CB44`/`$81:CB46`, high table 0
+    for the first and 1 for the rest.
+  - **Under way (`$0368`):**
+    - lit while `$013C` is 0;
+    - with `$0126` set, off (tile `$25C3`);
+    - otherwise `$013C` counts down (at 0 `func_80D6F3` steers to the light's place,
+      `$0114` kept), and the light blinks by bit 4 of the count.
+  - **The rest:** unlit (tile `$25C2`).
+- **Results:** live 612/612 (60k) and 461/461 (shop), fuzz 500/500, paths 68/68. The fuzz
+  starts from `func_80D6F3`'s own fuzz and draws the count lit, the blink count and
+  `$0126`.
+
 ## The password's bits and an HDMA step (leaves-12, 2026-11-17)
 
 - **`password_pack` ($8A:BB99)** builds the password's bits before `password_encode`:

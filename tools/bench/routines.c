@@ -506,6 +506,26 @@ static void fuzz_hdma_table_0d00_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(voi
   for(uint32_t a = 0x0D00; a < 0x0D30; a++) ram[a] = (uint8_t)((rnd() & 3) == 0 ? 0xE0 : rnd());
 }
 
+// ---- race_lights_draw ($80:DAED) ----  no register outputs (its caller reloads them); the
+// last CMP #$0C matched (N clear, Z and C set)
+static void call_race_lights_draw(const Regs* in, Regs* out) {
+  (void)in;
+  race_lights_draw();
+  out->n = false;
+  out->z = true;
+  out->c = true;
+}
+// any count lit (0-13), the blink count and D+$26 either way, func_80D6F3's state as its
+// own fuzz leaves it, slots in the buffer
+static void fuzz_func_80D6F3(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_race_lights_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_80D6F3(r, ram, rnd);
+  wr16ram(ram, 0x0368, (uint16_t)(rnd() % 14));
+  wr16ram(ram, DP + 0x3C, (rnd() & 3) == 0 ? 0 : (rnd() & 1) ? 1 : (uint16_t)(rnd() % 0x40));
+  wr16ram(ram, DP + 0x26, (rnd() & 1) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, DP + 0x74, (uint16_t)((rnd() % 0x60) * 4));
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -4753,6 +4773,8 @@ const Routine routines[] = {
   {.name = "hdma_table_0d00_step", .entry = 0x8A9C27, .end = 0x8A9C48, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_hdma_table_0d00_step,
    .fuzz = fuzz_hdma_table_0d00_step},
+  {.name = "race_lights_draw", .entry = 0x80DAED, .end = 0x80DB7D, .source = "src/hud.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_race_lights_draw, .fuzz = fuzz_race_lights_draw},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

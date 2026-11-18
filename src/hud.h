@@ -20,4 +20,12 @@
 // fill runs on until it wraps). Returns the length.
 uint16_t draw_meter(uint16_t dp);
 
+// $80:DAED: twelve lights as sprites from slot D+$74, light n at the place of $81:CB14 +
+// 2n. Those below $0368 are lit: their sprite from $81:CB44/$81:CB46 (by $81:CB2C), high
+// table $00 for the first, $01 for the rest. Light $0368 is the one under way: lit while
+// D+$3C is 0; else, while D+$26 is 0, D+$3C counts down (at 0, func_80D6F3 steers to
+// its place) and it blinks by bit 4 of the count (tile $25C3 when off); with D+$26 set
+// it is off. The rest are unlit (tile $25C2).
+void race_lights_draw(void);
+
 #endif
