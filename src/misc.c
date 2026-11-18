@@ -1609,3 +1609,25 @@ uint16_t track_event_clear(void) {
   wr16(0x3DAC + x, flags);
   return flags;
 }
+
+// TG3000_ROUTINE($82:EA81) track_event_set ($2007)
+// TG3000_ROUTINE($82:EA87) track_event_set ($2047)
+// TG3000_ROUTINE($82:EA8D) track_event_set ($2087)
+// TG3000_ROUTINE($82:EACE) track_event_set ($2107)
+// TG3000_ROUTINE($82:EAD4) track_event_set ($C2E7)
+uint16_t track_event_set(uint16_t pattern, uint16_t y) {
+  wr16(0x1F0A, pattern);
+  uint16_t at = func_82EC09(y);
+  const uint32_t x = rd16(DP + 0x1A);
+  wr16(0x1F0E, at);
+  wr16(0x3C6C + x, at);
+  wr16(0x3CAC + x, at);
+  uint16_t far = (uint16_t)(at + rd16(DP + 0x1E));
+  wr16(0x1F10, far);
+  wr16(0x3F6C + x, far);
+  wr16(0x3FAC + x, far);
+  uint16_t flags = (uint16_t)(rd16(0x3D6C + x) | 0x0001);
+  wr16(0x3D6C + x, flags);
+  wr16(0x3DAC + x, flags);
+  return flags;
+}

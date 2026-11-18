@@ -261,6 +261,13 @@ void car_message_request(uint16_t dp, uint16_t message);
 // Returns that word.
 uint16_t track_event_clear(void);
 
+// A track event set (DB = $7E): its pattern goes to $1F0A; func_82EC09 for entry `y` gives
+// a position, written to $1F0E and, at D+$1A, $7E:3C6C/$3CAC; that plus D+$1E to $1F10 and
+// $3F6C/$3FAC; bit 0 of $3D6C set, and $3DAC set to the same. Returns that word. Five
+// entries load the pattern and jump to the shared body at $82:EB1A: $82:EA81 ($2007),
+// $82:EA87 ($2047), $82:EA8D ($2087), $82:EACE ($2107), $82:EAD4 ($C2E7).
+uint16_t track_event_set(uint16_t pattern, uint16_t y);
+
 // $81:E7CE: D+$24, $26, $2C and $2E = $7FFF.
 void far_7fff_4(void);
 

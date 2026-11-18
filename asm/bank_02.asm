@@ -4355,10 +4355,13 @@ func_82EA49:
     lda.l $850000,x             ; $82EA7B
     rts                         ; $82EA7F
     rts                         ; $82EA80
+track_event_2007:
     lda.w #$2007                ; $82EA81
     jmp.w $EB1A                 ; $82EA84
+track_event_2047:
     lda.w #$2047                ; $82EA87
     jmp.w $EB1A                 ; $82EA8A
+track_event_2087:
     lda.w #$2087                ; $82EA8D
     jmp.w $EB1A                 ; $82EA90
     lda.w #$20C7                ; $82EA93
@@ -4386,8 +4389,10 @@ CODE_82EAAD:
     sta.w $3D6C,x               ; $82EAC7
     sta.w $3DAC,x               ; $82EACA
     rts                         ; $82EACD
+track_event_2107:
     lda.w #$2107                ; $82EACE
     jmp.w $EB1A                 ; $82EAD1
+track_event_c2e7:
     lda.w #$C2E7                ; $82EAD4
     jmp.w $EB1A                 ; $82EAD7
 track_event_clear:

@@ -1789,6 +1789,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Track events that set a pattern (roots-9, 2026-11-18)
+
+- **Five entries load a pattern into A and jump to a shared body at `$82:EB1A`:**
+  `$82:EA81` (`$2007`), `$82:EA87` (`$2047`), `$82:EA8D` (`$2087`), `$82:EACE`
+  (`$2107`), `$82:EAD4` (`$C2E7`). In C they are one function, `track_event_set(pattern,
+  y)`; DB = `$7E`.
+  - The pattern goes to `$1F0A`.
+  - `func_82EC09` (verified), for entry Y, gives a position, written to `$1F0E` and, at
+    `$011A`, `$7E:3C6C` / `$3CAC`.
+  - That position + `$011E` goes to `$1F10` and `$3F6C` / `$3FAC`.
+  - Bit 0 of `$3D6C` is set, and `$3DAC` is set to the same word.
+- **Each entry is a row,** `alsoIn` the body. Exit: A = the `$3D6C` word, X = `$011A`, Y
+  kept, C and V of the `ADC`.
+- **Results:**
+  - `$2007` live 7/7, `$2047` 7/7, `$C2E7` 8/8; fuzz 500/500; paths 2/2 each.
+  - `$82:EA8D` and `$82:EACE` no movie reaches: their rows stay unreached (their body is
+    the verified one).
+
 ## A right-aligned number, a car's message, a track event cleared (roots-8, 2026-11-18)
 
 - **`sprite_number_point_right` ($80:8667):** `sprite_number_point` drawn from x, then

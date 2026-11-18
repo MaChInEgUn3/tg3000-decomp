@@ -1048,6 +1048,26 @@ static void fuzz_track_event_clear(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
   wr16ram(ram, 0x3D6C + x, (uint16_t)rnd());
 }
 
+// ---- track_event_set ($82:EA81 ... $82:EAD4, body $82:EB1A) ----  A = the $3D6C word (N Z
+// of its ORA), X = D+$1A, Y kept; C and V of the position + D+$1E
+static void trackEventSetOut(const Regs* in, Regs* out, uint16_t pattern) {
+  out->a = track_event_set(pattern, in->y);
+  out->x = rd16(DP + 0x1A);
+  setAdc16(out, rd16(0x1F0E), rd16(DP + 0x1E));
+  setNZ16(out, out->a);
+}
+static void call_track_event_2007(const Regs* in, Regs* out) { trackEventSetOut(in, out, 0x2007); }
+static void call_track_event_2047(const Regs* in, Regs* out) { trackEventSetOut(in, out, 0x2047); }
+static void call_track_event_2087(const Regs* in, Regs* out) { trackEventSetOut(in, out, 0x2087); }
+static void call_track_event_2107(const Regs* in, Regs* out) { trackEventSetOut(in, out, 0x2107); }
+static void call_track_event_c2e7(const Regs* in, Regs* out) { trackEventSetOut(in, out, 0xC2E7); }
+static void fuzz_func_82EC09(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_track_event_set(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_82EC09(r, ram, rnd);
+  r->y = r->x;
+  fuzz_track_event_clear(r, ram, rnd);
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -5363,6 +5383,16 @@ const Routine routines[] = {
   {.name = "track_event_clear", .entry = 0x82EADA, .end = 0x82EAFE, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_clear, ALL_OUTPUTS,
    .fuzz = fuzz_track_event_clear},
+  {.name = "track_event_2007", .entry = 0x82EA81, .end = 0x82EA87, .alsoIn = {{0x82EB1A, 0x82EB45}}, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_2007, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
+  {.name = "track_event_2047", .entry = 0x82EA87, .end = 0x82EA8D, .alsoIn = {{0x82EB1A, 0x82EB45}}, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_2047, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
+  {.name = "track_event_2087", .entry = 0x82EA8D, .end = 0x82EA93, .alsoIn = {{0x82EB1A, 0x82EB45}}, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_2087, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
+  {.name = "track_event_2107", .entry = 0x82EACE, .end = 0x82EAD4, .alsoIn = {{0x82EB1A, 0x82EB45}}, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_2107, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
+  {.name = "track_event_c2e7", .entry = 0x82EAD4, .end = 0x82EADA, .alsoIn = {{0x82EB1A, 0x82EB45}}, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_c2e7, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
