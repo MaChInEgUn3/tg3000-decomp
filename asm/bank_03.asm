@@ -1909,7 +1909,7 @@ CODE_83F53E:
     jmp.w ($F54B,x)             ; $83F54A
     incbin !baserom:$1F54D..$1F555
     lda.w #$003A                ; $83F555
-    jsr.w $FEBD                 ; $83F558
+    jsr.w car_message_request   ; $83F558
     lda.w #$0000                ; $83F55B
     sta.l $308000               ; $83F55E
     lda.w #$2000                ; $83F562
@@ -1948,7 +1948,7 @@ CODE_83F590:
 CODE_83F5B5:
     jmp.w $F647                 ; $83F5B5
     lda.w #$003B                ; $83F5B8
-    jsr.w $FEBD                 ; $83F5BB
+    jsr.w car_message_request   ; $83F5BB
     bit.w $1F31                 ; $83F5BE
     bmi CODE_83F5EA             ; $83F5C1
     lda.w #$0000                ; $83F5C3
@@ -2869,6 +2869,7 @@ CODE_83FEB8:
     clc                         ; $83FEB8
     rts                         ; $83FEB9
     incbin !baserom:$1FEBA..$1FEBD
+car_message_request:
     pha                         ; $83FEBD
     asl a                       ; $83FEBE
     pha                         ; $83FEBF

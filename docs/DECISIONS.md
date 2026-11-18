@@ -1789,6 +1789,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A right-aligned number, a car's message, a track event cleared (roots-8, 2026-11-18)
+
+- **`sprite_number_point_right` ($80:8667):** `sprite_number_point` drawn from x, then
+  every sprite it added moves by (x - the x after it), low bytes, kept in `$0114`, so
+  the number ends at x. Exit: A = `$0114`'s high byte : the last moved x (8-bit `ADC`, V),
+  X = 0, Y = the slot after (Z and C set by the `CPY`). Live 1,330/1,330, paths 28/28.
+- **`car_message_request` ($83:FEBD),** with the car's direct page as a parameter (D =
+  `$0200`): the message in A replaces dp+`$33` when its priority (`$83:A0A4` + 2 *
+  message) is at least the current one's. Exit: A kept, X = 2 * message, C of the
+  priorities' `CMP`. Live 355/355, paths 16/16.
+- **`track_event_clear` ($82:EADA, DB = `$7E`):** a track event's state cleared:
+  - `$1F0E`, `$1F10`, and at `$011A` the words at `$7E:3C6C`, `$3CAC`, `$3F6C`, `$3FAC`;
+  - bit 0 of `$3D6C` set, and `$3DAC` set to that word.
+
+  Live 21/21, paths 13/13.
+- **Next:** the events that share `$82:EB1A` (`$82:EA81`, `$82:EA87`, `$82:EAD4`, ...),
+  each loading a pattern into A and jumping there.
+
 ## Two HDMA window shapes (roots-7, 2026-11-18)
 
 - **`window_shape_a` ($80:DB7D) and `window_shape_b` ($80:DBCB)** build a window table

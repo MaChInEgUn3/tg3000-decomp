@@ -1588,3 +1588,24 @@ void window_shape_a(uint16_t a, uint16_t x) { window_shape(a, x, 0x81C872); }
 
 // TG3000_ROUTINE($80:DBCB) window_shape_b
 void window_shape_b(uint16_t a, uint16_t x) { window_shape(a, x, 0x81C9AA); }
+
+// TG3000_ROUTINE($83:FEBD) car_message_request
+void car_message_request(uint16_t dp, uint16_t message) {
+  uint16_t current = rom16(0x83A0A4 + (uint32_t)(uint16_t)(rd16(dp + 0x33) << 1));
+  if(current <= rom16(0x83A0A4 + (uint32_t)(uint16_t)(message << 1))) wr16(dp + 0x33, message);
+}
+
+// TG3000_ROUTINE($82:EADA) track_event_clear
+uint16_t track_event_clear(void) {
+  const uint32_t x = rd16(DP + 0x1A);
+  wr16(0x1F0E, 0);
+  wr16(0x3C6C + x, 0);
+  wr16(0x3CAC + x, 0);
+  wr16(0x1F10, 0);
+  wr16(0x3F6C + x, 0);
+  wr16(0x3FAC + x, 0);
+  uint16_t flags = (uint16_t)(rd16(0x3D6C + x) | 0x0001);
+  wr16(0x3D6C + x, flags);
+  wr16(0x3DAC + x, flags);
+  return flags;
+}

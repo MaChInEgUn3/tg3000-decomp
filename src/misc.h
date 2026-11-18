@@ -252,6 +252,15 @@ uint16_t race_scroll_commit(void);
 // otherwise dp+$33 = $1F06 - dp+$35 + 9.
 void car_lap_check(uint16_t dp);
 
+// $83:FEBD: a car's message request (its direct page `dp`): `message` replaces dp+$33 when
+// its priority ($83:A0A4 + 2 * message) is at least the current one's.
+void car_message_request(uint16_t dp, uint16_t message);
+
+// $82:EADA (DB = $7E): a track event's state cleared: $1F0E, $1F10 and, at D+$1A, the
+// words at $7E:3C6C, $3CAC, $3F6C, $3FAC; bit 0 of $3D6C set, and $3DAC set to the same.
+// Returns that word.
+uint16_t track_event_clear(void);
+
 // $81:E7CE: D+$24, $26, $2C and $2E = $7FFF.
 void far_7fff_4(void);
 

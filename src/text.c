@@ -557,3 +557,17 @@ uint16_t sprite_bar8(uint16_t slot) {
   for(int i = 0; i < 8; i++) wr16(0x0B01 + x + 4 * (uint32_t)i, 0);
   return (uint16_t)(slot + 0x20);
 }
+
+// TG3000_ROUTINE($80:8667) sprite_number_point_right
+uint16_t sprite_number_point_right(uint16_t value, uint16_t x) {
+  uint16_t first = rd16(DP + 0x74);
+  uint16_t end = sprite_number_point(value, x);
+  wr16(DP + 0x14, (uint16_t)((x & 0x00FF) - (end & 0x00FF)));
+  uint16_t slot = first;
+  do {
+    const uint32_t s = slot;
+    wr8(0x0900 + s, (uint8_t)(rd8(0x0900 + s) + rd8(DP + 0x14)));
+    slot = (uint16_t)(slot + 4);
+  } while(slot != rd16(DP + 0x74));
+  return slot;
+}

@@ -4390,6 +4390,7 @@ CODE_82EAAD:
     jmp.w $EB1A                 ; $82EAD1
     lda.w #$C2E7                ; $82EAD4
     jmp.w $EB1A                 ; $82EAD7
+track_event_clear:
     ldx.b $1A                   ; $82EADA
     lda.w #$0000                ; $82EADC
     sta.w $1F0E                 ; $82EADF

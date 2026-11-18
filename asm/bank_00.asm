@@ -680,6 +680,7 @@ CODE_808653:
     bne CODE_808653             ; $808662
     rep.b #$20                  ; $808664
     rts                         ; $808666
+sprite_number_point_right:
     sta.b $16                   ; $808667
     lda.b $74                   ; $808669
     pha                         ; $80866B
@@ -9260,7 +9261,7 @@ CODE_80D85C:
     lda.b $28                   ; $80D861
     jsr.w binary_to_bcd         ; $80D863
     ldy.w #$4846                ; $80D866
-    jsr.w $8667                 ; $80D869
+    jsr.w sprite_number_point_right; $80D869
     lda.w #$2200                ; $80D86C
     sta.b $14                   ; $80D86F
     sep.b #$20                  ; $80D871
@@ -9280,7 +9281,7 @@ CODE_80D85C:
     adc.b $28                   ; $80D890
     jsr.w binary_to_bcd         ; $80D892
     ldy.w #$5046                ; $80D895
-    jsr.w $8667                 ; $80D898
+    jsr.w sprite_number_point_right; $80D898
     lda.w #$2200                ; $80D89B
     sta.b $14                   ; $80D89E
     lda.b $34                   ; $80D8A0

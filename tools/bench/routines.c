@@ -1004,6 +1004,50 @@ static void fuzz_window_shape(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x20, (uint16_t)rnd());
 }
 
+// ---- sprite_number_point_right ($80:8667) ----  A = D+$14's high byte : the last moved x
+// (8-bit ADC: V), X = 0, Y = the slot after (CPY: Z and C set, N clear)
+static void call_sprite_number_point_right(const Regs* in, Regs* out) {
+  out->y = sprite_number_point_right(in->a, in->y);
+  uint16_t shift = rd16(DP + 0x14);
+  uint8_t moved = rd8(0x0900 + (uint32_t)(uint16_t)(out->y - 4)), before = (uint8_t)(moved - (uint8_t)shift);
+  out->a = (uint16_t)((shift & 0xFF00) | moved);
+  out->x = 0;
+  out->n = false;
+  out->z = true;
+  out->c = true;
+  out->v = (~(before ^ (uint8_t)shift) & (before ^ moved) & 0x80) != 0;
+}
+
+// ---- car_message_request ($83:FEBD) ----  A kept (its PLA: N Z), X = 2 * message, C of
+// the priorities' CMP (current >= new)
+static void call_car_message_request(const Regs* in, Regs* out) {
+  uint16_t current = rom16(0x83A0A4 + (uint32_t)(uint16_t)(rd16((uint16_t)(in->d + 0x33)) << 1));
+  uint16_t wanted = rom16(0x83A0A4 + (uint32_t)(uint16_t)(in->a << 1));
+  car_message_request(in->d, in->a);
+  out->a = in->a;
+  out->x = (uint16_t)(in->a << 1);
+  setNZ16(out, in->a);
+  out->c = current >= wanted;
+}
+static void fuzz_car_message_request(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (uint16_t)(rnd() % 0x4F);
+  wr16ram(ram, (uint16_t)(r->d + 0x33), (uint16_t)(rnd() % 0x4F));
+}
+
+// ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
+static void call_track_event_clear(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = track_event_clear();
+  out->x = rd16(DP + 0x1A);
+  setNZ16(out, out->a);
+}
+static void fuzz_track_event_clear(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t x = (uint16_t)((rnd() % 0x20) * 2);
+  wr16ram(ram, DP + 0x1A, x);
+  wr16ram(ram, 0x3D6C + x, (uint16_t)rnd());
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -5311,6 +5355,14 @@ const Routine routines[] = {
   {.name = "window_shape_b", .entry = 0x80DBCB, .end = 0x80DC19, .alsoIn = {{0x80DC19, 0x80DC5A}}, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_window_shape_b, ALL_OUTPUTS,
    .fuzz = fuzz_window_shape},
+  {.name = "sprite_number_point_right", .entry = 0x808667, .end = 0x808698, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_sprite_number_point_right, ALL_OUTPUTS,
+   .fuzz = fuzz_sprite_number_point},
+  {.name = "car_message_request", .entry = 0x83FEBD, .end = 0x83FED7, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .call = call_car_message_request, ALL_OUTPUTS, .fuzz = fuzz_car_message_request},
+  {.name = "track_event_clear", .entry = 0x82EADA, .end = 0x82EAFE, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_clear, ALL_OUTPUTS,
+   .fuzz = fuzz_track_event_clear},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

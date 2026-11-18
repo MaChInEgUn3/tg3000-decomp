@@ -127,6 +127,11 @@ void race_message_update(void);
 // point (tile $41) goes before the last two digits. Returns the x after the last one.
 uint16_t sprite_number_point(uint16_t value, uint16_t x);
 
+// $80:8667: sprite_number_point right-aligned: the number is drawn from x `x`, then every
+// sprite it added moves left by its width ((x - the x after it), low bytes, in D+$14).
+// Returns the slot after it (D+$74).
+uint16_t sprite_number_point_right(uint16_t value, uint16_t x);
+
 // $80:C475: a bar of 8 sprites at slot `slot`, D+$14 wide, centred on D+$18: four left
 // pieces (tile D+$1A + $150, then + $151) 8 apart from its left edge, four right pieces
 // ($151 ..., the last mirrored $150 | $4000) from its right edge - $20 (8, 8, 6 apart).
