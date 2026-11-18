@@ -295,3 +295,4 @@ func    8098C4   shop_item_affordable ; money against price (BCD); short: the pr
 func    8ABB99   password_pack       ; the password's fields pushed into the 256-bit number -> src/misc.c
 func    8A9C27   hdma_table_0d00_step ; every 4th call, one $0D00 HDMA word steps down -> src/misc.c
 func    80DAED   race_lights_draw    ; twelve lights: lit, the one under way (blinking), unlit -> src/hud.c
+func    85A066   race_order_sort     ; sort the 20 cars by total, list the order, find cars 0 and 1 -> src/misc.c

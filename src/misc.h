@@ -195,6 +195,14 @@ void table_062a_fill(uint16_t x);
 // (D+$6E, up to $2A) steps down by one unless it is $E0.
 void hdma_table_0d00_step(void);
 
+// $85:A066 (long): the race order. The 20 cars (word indices 0-38 at $7E:4CFD) are bubble
+// sorted by their 48-bit totals ($7E:6991 low, $7E:69B9, $7E:69E1 high), highest first;
+// then each car without bit 2 of $7E:6A09 is listed, car number = index / 2, at $0446 +
+// $7E:6A31 (which counts on). $03A8 and $03D7 become the places of cars 0 and 1 in the
+// first ten of $0446 (or $FFFF). It leaves DB = $83 (its PEA $837E). Returns A = $03A8 |
+// $03D7, *x the place after the last one read, *y the places left.
+uint16_t race_order_sort(uint16_t* x, uint16_t* y);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.

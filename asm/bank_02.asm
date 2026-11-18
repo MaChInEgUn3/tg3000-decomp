@@ -404,7 +404,7 @@ CODE_828773:
 CODE_828776:
     bit.w $047C                 ; $828776
     bmi CODE_82877F             ; $828779
-    jsl.l $85A066               ; $82877B
+    jsl.l race_order_sort       ; $82877B
 CODE_82877F:
     stz.w $420B                 ; $82877F
     sei                         ; $828782

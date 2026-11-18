@@ -1266,3 +1266,46 @@ void hdma_table_0d00_step(void) {
   if(rd16(0x0D01 + (uint32_t)x) != 0x00E0) wr16(0x0D01 + (uint32_t)x, (uint16_t)(rd16(0x0D01 + (uint32_t)x) - 1));
   wr16(DP + 0x6E, (uint16_t)(x + 2));
 }
+
+#define RACE_ORDER 0x4CFD  // $7E: 20 car indices (words)
+
+static uint64_t race_total(uint16_t car) {
+  return (uint64_t)rd16(0x69E1 + (uint32_t)car) << 32 | (uint64_t)rd16(0x69B9 + (uint32_t)car) << 16 |
+         rd16(0x6991 + (uint32_t)car);
+}
+
+// TG3000_ROUTINE($85:A066) race_order_sort (long)
+uint16_t race_order_sort(uint16_t* x, uint16_t* y) {
+  for(uint32_t i = 0; i < 20; i++) wr16(RACE_ORDER + 2 * i, (uint16_t)(2 * i));
+  for(wr16(DP + 0x14, 0x0026); rd16(DP + 0x14) != 0; wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 2))) {
+    for(wr16(DP + 0x16, 0); rd16(DP + 0x16) != rd16(DP + 0x14); wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + 2))) {
+      const uint32_t at = RACE_ORDER + rd16(DP + 0x16);
+      uint16_t a = rd16(at), b = rd16(at + 2);
+      if(race_total(a) < race_total(b)) {  // the higher total first
+        wr16(at, b);
+        wr16(at + 2, a);
+      }
+    }
+  }
+  for(uint32_t i = 0; i < 20; i++) {
+    uint16_t car = rd16(RACE_ORDER + 2 * i);
+    if(rd16(0x6A09 + (uint32_t)car) & 0x0004) continue;
+    uint16_t n = rd16(0x6A31);
+    wr8(0x0446 + (uint32_t)n, (uint8_t)(car >> 1));
+    wr16(0x6A31, (uint16_t)(n + 1));
+  }
+  wr16(0x03A8, 0xFFFF);
+  wr16(0x03D7, 0xFFFF);
+  uint16_t place = 0, left = 10, both;
+  do {
+    uint8_t car = rd8(0x0446 + (uint32_t)place);
+    if(car == 0) wr16(0x03A8, place);
+    else if(car == 1) wr16(0x03D7, place);
+    place++;
+    both = (uint16_t)(rd16(0x03A8) | rd16(0x03D7));
+    if(!(both & 0x8000)) break;
+  } while(--left);
+  *x = place;
+  *y = left;
+  return both;
+}

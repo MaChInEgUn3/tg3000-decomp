@@ -1652,6 +1652,7 @@ CODE_859D9F:
 CODE_859DAC:
     rtl                         ; $859DAC
     incbin !baserom:$29DAD..$2A066
+race_order_sort:
     pea.w $837E                 ; $85A066
     plb                         ; $85A069
     ldx.w #$0000                ; $85A06A

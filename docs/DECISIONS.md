@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The race order (leaves-14, 2026-11-18)
+
+- **`race_order_sort` ($85:A066, long),** with DB = `$7E` from its `PEA $837E` / `PLB`:
+  - the 20 cars' word indices at `$7E:4CFD` are bubble sorted by their 48-bit totals
+    (`$7E:6991` low, `$7E:69B9`, `$7E:69E1` high), highest first; `CMP`/`SBC`/`SBC`
+    keep the order when the first is at least the second;
+  - each car without bit 2 of `$7E:6A09` is listed, number = index / 2, at `$0446` +
+    `$7E:6A31`, which counts on;
+  - the second `PLB` leaves DB = `$83`, not the caller's;
+  - `$03A8` and `$03D7` are set to the places of cars 0 and 1 among the first ten of
+    `$0446`, or `$FFFF`.
+- **Exit:**
+  - A = `$03A8` | `$03D7`;
+  - N and Z come from that `ORA` when both cars were found, from the `DEY` that reached
+    0 otherwise (a live sample showed it);
+  - C comes from the listing loop's `CPY`;
+  - V comes from the sort's last `SBC`. The adapter replays the sort to know its last
+    pair.
+- **Results:** live 1/1 (the 60k movie runs it four times; three were interrupted), fuzz
+  500/500 (totals equal or apart, cars out of the order), paths 84/84.
+
 ## The lights (leaves-13, 2026-11-18)
 
 - **`race_lights_draw` ($80:DAED):** twelve lights as sprites from slot `$0174`, light n at

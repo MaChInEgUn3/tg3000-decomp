@@ -526,6 +526,52 @@ static void fuzz_race_lights_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   wr16ram(ram, DP + 0x74, (uint16_t)((rnd() % 0x60) * 4));
 }
 
+// ---- race_order_sort ($85:A066, long) ----  A = $03A8 | $03D7, X and Y where the search
+// stopped (N Z of the ORA when both cars were found, else of the DEY that reached 0); DB = $83; C set by the CPY #$28 of the listing loop, V of the
+// sort's last SBC (the high words of its last pair, with the middle words' borrow)
+static void call_race_order_sort(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t order[20];
+  for(int i = 0; i < 20; i++) order[i] = (uint16_t)(2 * i);
+  uint16_t lastA = 0, lastB = 0;
+  for(int end = 19; end > 0; end--) {
+    for(int i = 0; i < end; i++) {
+      uint16_t a = order[i], b = order[i + 1];
+      lastA = a;
+      lastB = b;
+      uint64_t ta = (uint64_t)rd16(0x69E1 + (uint32_t)a) << 32 | (uint64_t)rd16(0x69B9 + (uint32_t)a) << 16 | rd16(0x6991 + (uint32_t)a);
+      uint64_t tb = (uint64_t)rd16(0x69E1 + (uint32_t)b) << 32 | (uint64_t)rd16(0x69B9 + (uint32_t)b) << 16 | rd16(0x6991 + (uint32_t)b);
+      if(ta < tb) {
+        order[i] = b;
+        order[i + 1] = a;
+      }
+    }
+  }
+  uint32_t low = (uint32_t)rd16(0x69B9 + (uint32_t)lastA) << 16 | rd16(0x6991 + (uint32_t)lastA);
+  uint32_t lowB = (uint32_t)rd16(0x69B9 + (uint32_t)lastB) << 16 | rd16(0x6991 + (uint32_t)lastB);
+  uint16_t ha = rd16(0x69E1 + (uint32_t)lastA), hb = rd16(0x69E1 + (uint32_t)lastB);
+  uint16_t borrow = low < lowB;
+  uint16_t diff = (uint16_t)(ha - hb - borrow);
+  out->a = race_order_sort(&out->x, &out->y);
+  setNZ16(out, out->y ? out->a : 0);  // both found: the ORA's flags; ten places run out: the DEY's
+  out->db = 0x83;
+  out->c = true;
+  out->v = ((ha ^ hb) & (ha ^ diff) & 0x8000) != 0;
+}
+// totals equal or apart, any car out of the order (bit 2), the list's count 0-$20
+static void fuzz_race_order_sort(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t c = 0; c < 40; c += 2) {
+    uint16_t hi = (uint16_t)((rnd() & 3) == 0 ? 0 : rnd() % 4);
+    wr16ram(ram, 0x69E1 + c, hi);
+    wr16ram(ram, 0x69B9 + c, (uint16_t)((rnd() & 1) ? rnd() % 4 : rnd()));
+    wr16ram(ram, 0x6991 + c, (uint16_t)rnd());
+    wr16ram(ram, 0x6A09 + c, (uint16_t)((rnd() & 7) == 0 ? 0x0004 : (rnd() & ~4u)));
+  }
+  wr16ram(ram, 0x6A31, (uint16_t)(rnd() % 0x20));
+  for(uint32_t a = 0x0446; a < 0x0470; a++) ram[a] = (uint8_t)(rnd() % 22);
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -4775,6 +4821,8 @@ const Routine routines[] = {
    .fuzz = fuzz_hdma_table_0d00_step},
   {.name = "race_lights_draw", .entry = 0x80DAED, .end = 0x80DB7D, .source = "src/hud.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_race_lights_draw, .fuzz = fuzz_race_lights_draw},
+  {.name = "race_order_sort", .entry = 0x85A066, .end = 0x85A118, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_race_order_sort, ALL_OUTPUTS, .fuzz = fuzz_race_order_sort},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
