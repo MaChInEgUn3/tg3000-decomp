@@ -10950,7 +10950,7 @@ CODE_80E6B1:
     tay                         ; $80E6E4
     lda.w $D3C3,y               ; $80E6E5
     tay                         ; $80E6E8
-    jsr.w $E8B5                 ; $80E6E9
+    jsr.w block_copy_7f2000     ; $80E6E9
     jsr.w $E8CE                 ; $80E6EC
     jsr.w $E8F4                 ; $80E6EF
     jsr.w $E911                 ; $80E6F2
@@ -10960,7 +10960,7 @@ CODE_80E6F7:
     db $B0,$11 ; bcs            ; $80E6FA
     jsr.w $E8CE                 ; $80E6FC
     ldy.w #$018D                ; $80E6FF
-    jsr.w $E8B5                 ; $80E702
+    jsr.w block_copy_7f2000     ; $80E702
     jsr.w $E8F4                 ; $80E705
     jsr.w $E911                 ; $80E708
     bra CODE_80E71C             ; $80E70B
@@ -11164,6 +11164,7 @@ CODE_80E877:
     stz.w $420B                 ; $80E88A
     rts                         ; $80E88D
     incbin !baserom:$688E..$68B5
+block_copy_7f2000:
     lda.w $D419,y               ; $80E8B5
     sta.b $14                   ; $80E8B8
     iny                         ; $80E8BA
@@ -11207,9 +11208,9 @@ CODE_80E901:
     tay                         ; $80E902
     lda.w $D3C9,y               ; $80E903
     tay                         ; $80E906
-    jsr.w $E8B5                 ; $80E907
+    jsr.w block_copy_7f2000     ; $80E907
     ldy.w #$00BE                ; $80E90A
-    jsr.w $E8B5                 ; $80E90D
+    jsr.w block_copy_7f2000     ; $80E90D
     rts                         ; $80E910
     ldy.b $94                   ; $80E911
     lda.w $03A8,y               ; $80E913
@@ -11220,7 +11221,7 @@ CODE_80E91B:
     tay                         ; $80E91C
     lda.w $D3F1,y               ; $80E91D
     tay                         ; $80E920
-    jsr.w $E8B5                 ; $80E921
+    jsr.w block_copy_7f2000     ; $80E921
     rts                         ; $80E924
     lda.b $82                   ; $80E925
     bpl CODE_80E936             ; $80E927

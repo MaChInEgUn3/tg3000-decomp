@@ -2721,6 +2721,7 @@ CODE_83FD25:
     sta.b $53                   ; $83FD35
     rep.b #$20                  ; $83FD37
     jmp.w $FD45                 ; $83FD39
+car_clear_53:
     sep.b #$20                  ; $83FD3C
     lda.b #$00                  ; $83FD3E
     sta.b $53                   ; $83FD40

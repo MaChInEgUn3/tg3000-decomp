@@ -2111,7 +2111,7 @@ CODE_8A9913:
     inc.b $5E                   ; $8A9918
     jsr.w byte_buffer_decimal2  ; $8A991A
     jsr.w byte_buffer_space     ; $8A991D
-    jsr.w $99E2                 ; $8A9920
+    jsr.w text_line_push        ; $8A9920
     lda.w #$0016                ; $8A9923
     jsr.w byte_buffer_pad       ; $8A9926
     jsr.w byte_buffer_space     ; $8A9929
@@ -2161,6 +2161,7 @@ byte_buffer_end:
     rep.b #$20                  ; $8A99DD
     stz.b $60                   ; $8A99DF
     rts                         ; $8A99E1
+text_line_push:
     phx                         ; $8A99E2
     txa                         ; $8A99E3
     lsr a                       ; $8A99E4

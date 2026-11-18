@@ -1089,6 +1089,49 @@ static void fuzz_spark_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x74, (uint16_t)((rnd() % 0x40) * 4));
 }
 
+// ---- car_clear_53 ($83:FD3C) ----  A's low byte = 0 (its 8-bit LDA: N clear, Z set)
+static void call_car_clear_53(const Regs* in, Regs* out) {
+  car_clear_53(in->d);
+  out->a = (uint16_t)(in->a & 0xFF00);
+  out->n = false;
+  out->z = true;
+}
+
+// ---- block_copy_7f2000 ($80:E8B5) ----  A = the length word's high byte : the last byte,
+// X and Y past the block; N clear and Z set by the last DEC
+static void call_block_copy_7f2000(const Regs* in, Regs* out) {
+  uint16_t len = bus_rd16((0x81D419 + (uint32_t)in->y) & 0xFFFFFF);
+  out->x = in->x;
+  out->y = in->y;
+  block_copy_7f2000(&out->x, &out->y);
+  out->a = (uint16_t)((len & 0xFF00) | bus_rd8((0x81D419 + (uint32_t)(uint16_t)(out->y - 1)) & 0xFFFFFF));
+  out->n = false;
+  out->z = true;
+}
+// any block of the table's live start offsets (as the movie's, X where the copy stays in $7F)
+static void fuzz_block_copy_7f2000(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->x = (uint16_t)(rnd() % 0x4000);
+  r->y = (uint16_t)(rnd() % 0x2800);  // within the ROM bank (the table and what follows)
+}
+
+// ---- text_line_push ($8A:99E2) ----  X kept (its PLX: N Z); C of the last ASL that made
+// the line's offset (bit 13 of X: byte_buffer_push leaves C alone)
+static void call_text_line_push(const Regs* in, Regs* out) {
+  text_line_push(in->x);
+  out->x = in->x;
+  setNZ16(out, in->x);
+  out->c = (in->x >> 13) & 1;
+}
+static void fuzz_text_line_push(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)((rnd() % 0x40) * 2);
+  uint32_t at = 0x17918 + (uint32_t)(uint16_t)((r->x >> 1) << 4);
+  uint32_t n = rnd() % 15;
+  for(uint32_t i = 0; i < n; i++) ram[at + i] = (uint8_t)(1 + rnd() % 255);
+  ram[at + n] = 0;
+  wr16ram(ram, DP + 0x60, (uint16_t)(rnd() % 0x20));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -5499,6 +5542,12 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_track_entry_bounds, ALL_OUTPUTS, .fuzz = fuzz_track_entry_bounds},
   {.name = "spark_step", .entry = 0x80EA77, .end = 0x80EB66, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_spark_step, .fuzz = fuzz_spark_step},
+  {.name = "car_clear_53", .entry = 0x83FD3C, .end = 0x83FD45, .source = "src/misc.c", .needM16 = true,
+   .call = call_car_clear_53, ALL_OUTPUTS},
+  {.name = "block_copy_7f2000", .entry = 0x80E8B5, .end = 0x80E8CE, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_block_copy_7f2000, ALL_OUTPUTS, .fuzz = fuzz_block_copy_7f2000},
+  {.name = "text_line_push", .entry = 0x8A99E2, .end = 0x8A99FC, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_text_line_push, .compareX = true, .fuzz = fuzz_text_line_push},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

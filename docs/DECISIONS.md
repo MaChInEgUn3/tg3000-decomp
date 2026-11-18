@@ -1789,6 +1789,25 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Three small ones (roots-13, 2026-11-18)
+
+- **`car_clear_53` ($83:FD3C):** the byte dp+`$53` = 0 (the car's direct page). Exit: A's
+  low byte 0, so N clear and Z set. Live 19/19. Its siblings `$83:FD26` and `$83:FD31` set
+  1 and 2 and jump to `$83:FD45`, not yet in C.
+- **`block_copy_7f2000` ($80:E8B5, DB = `$81`):** a block from `$81:D419` + Y copied to
+  `$7F:2000` + X.
+  - The block starts with its length; only the word's low byte counts (an 8-bit `DEC` of
+    `$0114`; 0 = 256).
+  - The fuzz's random Y carried the DB-relative reads past `$81:FFFF` into bank `$82`,
+    whose low addresses are WRAM. The C read ROM, so the C now reads through the bus,
+    and the fuzz keeps Y within the bank.
+  - Live 6/6, fuzz 500/500, paths 13/13.
+- **`text_line_push` ($8A:99E2):** line X / 2 of the text map at `$7F:7918` (16 bytes a
+  line) goes to the byte buffer (`byte_buffer_push`) up to its zero.
+  - Exit: X kept; C is the last `ASL` of the line offset (bit 13 of X), which a live
+    sample showed `byte_buffer_push` leaves alone.
+  - Live 27/27, paths 17/17.
+
 ## The sparks (roots-12, 2026-11-18)
 
 - **`spark_step` ($80:EA77),** a particle system. There are 32 sparks at `$7F:1000` +

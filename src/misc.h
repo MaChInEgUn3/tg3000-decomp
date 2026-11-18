@@ -306,6 +306,18 @@ void rotation_from_angle(void);
 // when D+$86 is a multiple of 4 two more ($81:D323 with life $1C, $81:D367 with life $3C).
 void spark_step(void);
 
+// $83:FD3C: the byte dp+$53 = 0 (a car's direct page `dp`).
+void car_clear_53(uint16_t dp);
+
+// $80:E8B5: a block from $81:D419 + `*y` (DB = $81) copied to $7F:2000 + `*x`: its length
+// (the low byte of the word there; 0 = 256, kept in D+$14) then that many bytes. Both
+// indices move on.
+void block_copy_7f2000(uint16_t* x, uint16_t* y);
+
+// $8A:99E2: line `x` / 2 (16 bytes a line) of the text map at $7F:7918 pushed to the byte
+// buffer (byte_buffer_push), up to its zero.
+void text_line_push(uint16_t x);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.

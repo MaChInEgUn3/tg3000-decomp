@@ -1711,3 +1711,28 @@ void spark_step(void) {
   spark_lay(0x001C, rom16(0x81D323 + y));
   spark_lay(0x003C, rom16(0x81D367 + y));  // (the original tests D+$86 & 3 again: the same)
 }
+
+// TG3000_ROUTINE($83:FD3C) car_clear_53
+void car_clear_53(uint16_t dp) { wr8(dp + 0x53, 0); }
+
+// TG3000_ROUTINE($80:E8B5) block_copy_7f2000
+void block_copy_7f2000(uint16_t* x, uint16_t* y) {
+  // DB-relative reads ($D419,Y with DB = $81): past $81:FFFF they reach bank $82
+  wr16(DP + 0x14, bus_rd16((0x81D419 + (uint32_t)*y) & 0xFFFFFF));
+  *y = (uint16_t)(*y + 2);
+  do {  // the count is an 8-bit DEC
+    wr8(0x12000 + (uint32_t)*x, bus_rd8((0x81D419 + (uint32_t)*y) & 0xFFFFFF));
+    *x = (uint16_t)(*x + 1);
+    *y = (uint16_t)(*y + 1);
+    wr8(DP + 0x14, (uint8_t)(rd8(DP + 0x14) - 1));
+  } while(rd8(DP + 0x14) != 0);
+}
+
+// TG3000_ROUTINE($8A:99E2) text_line_push
+void text_line_push(uint16_t x) {
+  for(uint16_t at = (uint16_t)((x >> 1) << 4);; at = (uint16_t)(at + 1)) {
+    uint8_t c = rd8(0x17918 + (uint32_t)at);
+    if(c == 0) break;
+    byte_buffer_push(c);
+  }
+}
