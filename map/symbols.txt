@@ -316,3 +316,6 @@ func    80855A   sprite_number_point ; a 4-digit value as sprites, a point befor
 func    80C475   sprite_bar8         ; a bar of 8 sprites, D+$14 wide, centred on D+$18 -> src/text.c
 func    82DA46   clc_82DA46          ; CLC, RTS -> src/misc.c
 func    83FA32   clc_83FA32          ; CLC, RTS -> src/misc.c
+func    80F226   mode7_zoom_step     ; a zoom step: view, frame count, inverse scale, line tables -> src/scale.c
+func    81E7CE   far_7fff_4          ; D+$24/$26/$2C/$2E = $7FFF -> src/misc.c
+func    80F225   empty_80F225        ; a lone RTS -> src/misc.c

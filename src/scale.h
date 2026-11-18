@@ -23,6 +23,11 @@ uint16_t inverse_scale(uint16_t dp);
 // vertical offset (the original leaves its high byte in A's low byte).
 uint16_t mode7_zoom_view(uint16_t dp);
 
+// $80:F226: a zoom step: mode7_zoom_view; dp+$40 counts frames, and from $320 on dp+$7C
+// falls by $10 a frame (to 0); then inverse_scale and func_80F745, whose result is
+// returned.
+uint16_t mode7_zoom_step(uint16_t dp);
+
 #define VIEW_MATRIX 0x14   // input: Mode 7 matrix A, B, C, D (4 words)
 #define VIEW_SCROLL 0x3A   // input (word): BG2 horizontal scroll
 #define VIEW_LINE_A 0x4A   // input (word): copied to $0D21, $0D24, $0D27

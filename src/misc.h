@@ -252,6 +252,12 @@ uint16_t race_scroll_commit(void);
 // otherwise dp+$33 = $1F06 - dp+$35 + 9.
 void car_lap_check(uint16_t dp);
 
+// $81:E7CE: D+$24, $26, $2C and $2E = $7FFF.
+void far_7fff_4(void);
+
+// $80:F225: a lone RTS (a step that does nothing).
+void empty_80F225(void);
+
 // $82:DA46 and $83:FA32: CLC, RTS (a step that always says no).
 void clc_82DA46(void);
 void clc_83FA32(void);

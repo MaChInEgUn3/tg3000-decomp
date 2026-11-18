@@ -892,6 +892,38 @@ static void fuzz_sprite_bar8(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // ---- clc_82DA46, clc_83FA32: CLC, RTS
 static void call_clc(const Regs* in, Regs* out) { (void)in; out->c = false; }
 
+// ---- mode7_zoom_step ($80:F226) ----  as func_80F745 leaves A, X and N Z; C clear (CLC)
+static void call_func_80F745(const Regs* in, Regs* out);
+static void call_mode7_zoom_step(const Regs* in, Regs* out) {
+  mode7_zoom_view(in->d);
+  wr16((uint16_t)(in->d + 0x40), (uint16_t)(rd16((uint16_t)(in->d + 0x40)) + 1));
+  if(rd16((uint16_t)(in->d + 0x40)) >= 0x0320) {
+    uint16_t v = (uint16_t)(rd16((uint16_t)(in->d + 0x7C)) - 0x0010);
+    wr16((uint16_t)(in->d + 0x7C), (v & 0x8000) ? 0 : v);
+  }
+  inverse_scale(in->d);
+  call_func_80F745(in, out);
+  out->c = false;
+}
+// the frame count just below or past $320, D+$7C near 0; the rest as the zoom's and the
+// line tables' fuzz
+static void fuzz_mode7_zoom_view(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_func_80F745(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_mode7_zoom_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_80F745(r, ram, rnd);  // the line tables' buffers, as the title screen keeps them
+  fuzz_mode7_zoom_view(r, ram, rnd);
+  wr16ram(ram, (uint16_t)(r->d + 0x40), (uint16_t)(0x0300 + rnd() % 0x40));
+  wr16ram(ram, (uint16_t)(r->d + 0x7C), (uint16_t)(rnd() % 0x40));
+}
+
+// ---- far_7fff_4 ($81:E7CE) ----  A = $7FFF (N Z of its LDA)
+static void call_far_7fff_4(const Regs* in, Regs* out) {
+  (void)in;
+  far_7fff_4();
+  out->a = 0x7FFF;
+  setNZ16(out, 0x7FFF);
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -5182,6 +5214,11 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_sprite_bar8, ALL_OUTPUTS, .fuzz = fuzz_sprite_bar8},
   {.name = "clc_82DA46", .entry = 0x82DA46, .end = 0x82DA48, .source = "src/misc.c", .call = call_clc, ALL_OUTPUTS},
   {.name = "clc_83FA32", .entry = 0x83FA32, .end = 0x83FA34, .source = "src/misc.c", .call = call_clc, ALL_OUTPUTS},
+  {.name = "mode7_zoom_step", .entry = 0x80F226, .end = 0x80F247, .source = "src/scale.c", .needM16 = true,
+   .needX16 = true, .call = call_mode7_zoom_step, ALL_OUTPUTS, .fuzz = fuzz_mode7_zoom_step},
+  {.name = "far_7fff_4", .entry = 0x81E7CE, .end = 0x81E7DA, .source = "src/misc.c", .needM16 = true, .fixedD = true,
+   .call = call_far_7fff_4, ALL_OUTPUTS},
+  {.name = "empty_80F225", .entry = 0x80F225, .end = 0x80F226, .source = "src/misc.c", .call = call_empty, ALL_OUTPUTS},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -12180,7 +12180,9 @@ CODE_80F1DC:
     trb.w $0026                 ; $80F1DF
     rts                         ; $80F1E2
     incbin !baserom:$71E3..$7225
+empty_80F225:
     rts                         ; $80F225
+mode7_zoom_step:
     jsr.w mode7_zoom_view       ; $80F226
     inc.b $40                   ; $80F229
     lda.b $40                   ; $80F22B

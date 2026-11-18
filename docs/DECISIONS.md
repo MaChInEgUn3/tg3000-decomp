@@ -1789,6 +1789,20 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The title zoom's step and two small ones (roots-5, 2026-11-18)
+
+- **`mode7_zoom_step` ($80:F226):** a zoom step on the title screen.
+  - It calls `mode7_zoom_view`.
+  - D+`$40` counts frames; from `$320` on, D+`$7C` falls by `$10` a frame, to 0.
+  - Then `inverse_scale` and `func_80F745`, whose outputs it returns (C clear).
+  - Its fuzz first wrote to `$81:4500` (ROM) on the shop movie: the fuzz starts from the
+    movie's final state, where the line tables' buffer words (`$0134`/`$0136`) are not
+    the title's. It now prepares them as `func_80F745`'s own fuzz does.
+  - Live 285/285, fuzz 500/500, paths 15/15.
+- **`far_7fff_4` ($81:E7CE):** D+`$24`, `$26`, `$2C` and `$2E` = `$7FFF`. Live 720/720.
+- **`empty_80F225`, a lone RTS:** it is called (648 entries, 216 samples on each movie,
+  the selftest's included).
+
 ## A number with a point, an 8-sprite bar, two CLCs (roots-4, 2026-11-18)
 
 - **`sprite_number_point` ($80:855A):** a 4-digit BCD value (kept in `$011A`, read a

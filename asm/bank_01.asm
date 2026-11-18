@@ -1290,6 +1290,7 @@ CODE_81E7B4:
     mvn $7E,$7E                 ; $81E7C9
     plb                         ; $81E7CC
     rtl                         ; $81E7CD
+far_7fff_4:
     lda.w #$7FFF                ; $81E7CE
     sta.b $24                   ; $81E7D1
     sta.b $26                   ; $81E7D3

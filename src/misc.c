@@ -1535,3 +1535,14 @@ void clc_82DA46(void) {}
 
 // TG3000_ROUTINE($83:FA32) clc_83FA32
 void clc_83FA32(void) {}
+
+// TG3000_ROUTINE($81:E7CE) far_7fff_4
+void far_7fff_4(void) {
+  wr16(DP + 0x24, 0x7FFF);
+  wr16(DP + 0x26, 0x7FFF);
+  wr16(DP + 0x2C, 0x7FFF);
+  wr16(DP + 0x2E, 0x7FFF);
+}
+
+// TG3000_ROUTINE($80:F225) empty_80F225
+void empty_80F225(void) {}

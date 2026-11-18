@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "scale.h"
 
+#include "line_tables.h"
 #include "platform.h"
 #include "tg3000.h"
 
@@ -73,4 +74,16 @@ uint16_t mode7_view(uint16_t dp) {
     if(follow) video_set_bg2_vofs(y);
   }
   return y;
+}
+
+// TG3000_ROUTINE($80:F226) mode7_zoom_step
+uint16_t mode7_zoom_step(uint16_t dp) {
+  mode7_zoom_view(dp);
+  wr16(dp + 0x40, (uint16_t)(rd16(dp + 0x40) + 1));
+  if(rd16(dp + 0x40) >= 0x0320) {
+    uint16_t v = (uint16_t)(rd16(dp + 0x7C) - 0x0010);
+    wr16(dp + 0x7C, (v & 0x8000) ? 0 : v);
+  }
+  inverse_scale(dp);
+  return func_80F745();
 }
