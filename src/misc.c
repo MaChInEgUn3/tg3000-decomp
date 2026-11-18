@@ -1436,3 +1436,49 @@ uint16_t text_line_put(uint16_t at, uint16_t bank) {
   func_8A9BAA();
   return n;
 }
+
+// TG3000_ROUTINE($82:ECEA) race_clear_0242_0208
+void race_clear_0242_0208(void) {
+  wr16(0x0242, 0);
+  wr16(0x0208, 0);
+}
+
+// a countdown step passed: its value had reached `mark` (signed) and now has not
+static bool countdown_passed(uint16_t before, uint16_t after, uint16_t mark) {
+  return !((uint16_t)(before - mark) & 0x8000) && ((uint16_t)(after - mark) & 0x8000);
+}
+
+// TG3000_ROUTINE($82:AB9D) race_countdown
+void race_countdown(void) {
+  uint16_t count = rd16(0x1ECE);
+  if(count & 0x8000) {
+    if(rd16(0x047C) & 0x8000) return;
+    wr16(0x0233, 0x003D);
+    wr16(0x02E6, 0x003E);
+    if((rd16(0x03DC) & 0x00F0) != 0x0030) wr16(0x02E6, 0x0045);
+    return;
+  }
+  if(count == 0) return;
+  uint16_t left = (uint16_t)(count - rd16(0x1E9E));
+  if(left & 0x8000) left = 0;
+  wr16(0x1ECE, left);
+  wr16(DP + 0x14, 0x001E);
+  uint16_t light = 0;
+  if(countdown_passed(count, left, 0x00D2)) light = 2;
+  if(countdown_passed(count, left, 0x008C)) light = 3;
+  if(countdown_passed(count, left, 0x0046)) light = 4;
+  if(countdown_passed(count, left, 0x0002)) {  // GO
+    wr16(DP + 0x14, 0x0022);
+    wr16(0x1ECE, 1);
+    static const uint16_t flags[] = {0x0244, 0x02F7, 0x02A6, 0x0359};
+    for(int i = 0; i < 4; i++) wr16(flags[i], (uint16_t)(rd16(flags[i]) | 0x0008));
+    light = 5;
+  }
+  wr16(0x0233, light);
+  wr16(0x02E6, light);
+  wr16(0x0295, light);
+  wr16(0x0348, light);
+  if(light == 0) return;
+  uint16_t volume = rd16(DP + 0x14);
+  func_82AD12((uint16_t)(volume | 0xFF00), (uint16_t)(0x2000 | (volume >> 8)));
+}

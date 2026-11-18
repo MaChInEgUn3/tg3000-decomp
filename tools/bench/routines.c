@@ -759,6 +759,28 @@ static void fuzz_shop_list_label(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x74, (uint16_t)((rnd() % 0x40) * 4));
 }
 
+// ---- race_clear_0242_0208 ($82:ECEA) ---- / race_countdown ($82:AB9D): no register outputs
+// (flags by liveness)
+static void call_race_clear_0242_0208(const Regs* in, Regs* out) { (void)in; (void)out; race_clear_0242_0208(); }
+static void call_race_countdown(const Regs* in, Regs* out) { (void)in; (void)out; race_countdown(); }
+static void fuzz_race_clear_0242_0208(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0242, (uint16_t)rnd());
+  wr16ram(ram, 0x0208, (uint16_t)rnd());
+}
+// the count around each mark, the step, negative or 0 sometimes; the flags it reads
+static void fuzz_race_countdown(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const uint16_t marks[] = {0x00D2, 0x008C, 0x0046, 0x0002};
+  uint32_t k = rnd() % 8;
+  uint16_t count = k == 0 ? (uint16_t)(0x8000 | rnd()) : k == 1 ? 0 : (uint16_t)(marks[rnd() % 4] + rnd() % 8);
+  wr16ram(ram, 0x1ECE, count);
+  wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 12));
+  wr16ram(ram, 0x047C, (uint16_t)rnd());
+  wr16ram(ram, 0x03DC, (uint16_t)rnd());
+  for(uint32_t a = 0x0244; a < 0x0246; a++) ram[a] = (uint8_t)rnd();
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -5029,6 +5051,10 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_text_centred_line, .fuzz = fuzz_text_centred_line},
   {.name = "shop_list_label", .entry = 0x80B2F2, .end = 0x80B333, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_list_label, ALL_OUTPUTS, .fuzz = fuzz_shop_list_label},
+  {.name = "race_clear_0242_0208", .entry = 0x82ECEA, .end = 0x82ECF1, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .call = call_race_clear_0242_0208, .fuzz = fuzz_race_clear_0242_0208},
+  {.name = "race_countdown", .entry = 0x82AB9D, .end = 0x82AC52, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_race_countdown, .fuzz = fuzz_race_countdown},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

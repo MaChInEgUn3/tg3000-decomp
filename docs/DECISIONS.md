@@ -1789,6 +1789,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The start countdown (roots-1, 2026-11-18)
+
+- **`race_countdown` ($82:AB9D, DB = `$83`):** the start countdown.
+  - While `$1ECE` is positive it falls by `$1E9E` (to 0 at least).
+  - As it passes `$D2`, `$8C` and `$46`, the light becomes 2, 3, 4. Past 2 it becomes 5,
+    GO: `$1ECE` = 1, bit 3 of `$0244`, `$02F7`, `$02A6` and `$0359` set, and the sound's
+    volume `$22` instead of `$1E`.
+  - The light is written to `$0233`, `$02E6`, `$0295`, `$0348`. A light that is not 0
+    is announced through `func_82AD12` (`$FF00` | volume, `$2000`).
+  - A negative `$1ECE` (unless `$047C` is negative) sets `$0233` = `$3D` and `$02E6` =
+    `$3E`, or `$45` when bits 4-7 of `$03DC` are not 3.
+  - "Passing" a mark is the original's pair of signed compares (old count at least the
+    mark, new count below it).
+  - Live 4,000/4,000, fuzz 500/500 (counts around each mark), paths 74/74.
+- **`race_clear_0242_0208` ($82:ECEA):** `$0242` and `$0208` cleared. Live 4,000/4,000.
+- **Next roots:** `$82:8F8F` (it multiplies on the DSP-4 and draws random numbers), then
+  `$83:E2D7`, `$85:B1FF`, `$83:F9D1`, ...
+
 ## Roots, a faster iteration, a shop list label (leaves-20, 2026-11-18)
 
 - **`tools/portable.py` understates what can be ported.** It reads the static listing.

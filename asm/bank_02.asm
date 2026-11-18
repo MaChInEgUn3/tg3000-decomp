@@ -294,7 +294,7 @@ CODE_82856D:
     incbin !baserom:$1063F..$10642
 CODE_828642:
     sta.w $0233                 ; $828642
-    jsr.w $AB9D                 ; $828645
+    jsr.w race_countdown        ; $828645
     jsl.l $83E241               ; $828648
     jsl.l $81E812               ; $82864C
     jsr.w func_82AC52           ; $828650
@@ -1500,6 +1500,7 @@ func_82AB3F:
     sbc.w #$000C                ; $82AB97
     sta.b $18                   ; $82AB9A
     rts                         ; $82AB9C
+race_countdown:
     lda.w $1ECE                 ; $82AB9D
     bmi CODE_82ABA5             ; $82ABA0
     bne CODE_82ABC6             ; $82ABA2
@@ -4529,6 +4530,7 @@ CODE_82ECD5:
     lda.w $8000                 ; $82ECE5
     plb                         ; $82ECE8
     rts                         ; $82ECE9
+race_clear_0242_0208:
     stz.w $0242                 ; $82ECEA
     stz.w $0208                 ; $82ECED
     rts                         ; $82ECF0

@@ -228,6 +228,18 @@ void flag_03dc_from_52(void);
 // original leaves it (the caller's A while counting).
 uint16_t timer_0d7e_tick(uint16_t a);
 
+// $82:ECEA: $0242 and $0208 cleared.
+void race_clear_0242_0208(void);
+
+// $82:AB9D: the start countdown. While $1ECE is positive it falls by $1E9E (to 0 at
+// least); as it passes $D2, $8C and $46 the light becomes 2, 3, 4 and, past 2, 5 (GO:
+// $1ECE = 1, bit 3 of $0244, $02F7, $02A6 and $0359 set, and the sound's volume $22
+// instead of $1E). The light goes to $0233, $02E6, $0295 and $0348, and a light not 0
+// is announced through func_82AD12 ($FF00 | volume, $2000). A negative $1ECE (unless
+// $047C is negative) sets $0233 = $3D and $02E6 = $3E, or $45 when $03DC's bits 4-7 are
+// not 3.
+void race_countdown(void);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.
