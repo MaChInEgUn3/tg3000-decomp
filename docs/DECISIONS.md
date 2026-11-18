@@ -735,7 +735,7 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - `func_82AD12`: `$0463/$0465/$0467` from A and X unless bit 15 of `$047C` is set (the
   same three words `func_80894E` hands its queued bytes on to). `func_8A8232`:
   `$014A = ($0136 >> 2) + $0108`. `func_82F380`: an empty routine (a lone RTS).
-- Still in asm for now: `$8A:8290`, `$8A:9F76`, `$8A:A32B`, `$8A:A381`, `$80:9DD0` (each
+- Still in asm for now: `$8A:8290`, `$8A:9F76` (since leaves-17 in C), `$8A:A32B`, `$8A:A381`, `$80:9DD0` (each
   branches into bytes no recorded run executes; they need the static-code route and an
   aimed fuzz) and `$81:8527` (DSP-4).
 
@@ -1788,6 +1788,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - its C waits with `platform_wait_vblank`, and the row is `waitsForInterrupts`;
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
+
+## The `$0D7E` timer and rng_next's third copy (leaves-17, 2026-11-18)
+
+- **`timer_0d7e_tick` ($8A:9F76),** parked before because its never-run branch calls
+  `$8A:AE9B`, itself never run. That branch and `$8A:AE9B` are now decoded and listed as
+  static code:
+  - `$0D7E` counts down;
+  - at 0: `$03DC` = `$2000` | a random 0-2 (the low two bits of a random word, 3 taken
+    as 2), and `$016C` + 1;
+  - `$8A:AE9B` is a third copy of `rng_next` (the same left-shifting LFSR on `$0110` /
+    `$0112`); the C calls `rng_next`.
+- **Its fuzz sets the count to 1 a third of the time,** so the original's never-run
+  branch, and `$8A:AE9B` with it, runs and is compared with the C (it has no row of its
+  own).
+  - Exit when counting: A kept, N and Z of the `DEC`.
+  - Exit at 0: A = `$03DC` & 7, C of its `CMP #2`, N and Z of the `INC`.
+- **Results:** live 88/88 on both movies, fuzz 500/500, paths 17/17. It was the top of
+  `tools/roots.py`, ahead of 10 routines.
 
 ## The colour gradient (leaves-16, 2026-11-18)
 

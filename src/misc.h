@@ -223,6 +223,11 @@ void hdma_gradient_build(void);
 // $8A:9F64: bit 12 of $03DC set while D+$52 is not 0, else cleared.
 void flag_03dc_from_52(void);
 
+// $8A:9F76: $0D7E counts down; at 0 (never run): $03DC = $2000 | a random 0-2 (rng_next's
+// copy at $8A:AE9B, its low two bits, 3 taken as 2) and D+$6C + 1. Returns A as the
+// original leaves it (the caller's A while counting).
+uint16_t timer_0d7e_tick(uint16_t a);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.

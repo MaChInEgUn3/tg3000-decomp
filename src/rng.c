@@ -7,6 +7,7 @@
 
 // TG3000_ROUTINE($80:87E9) rng_next
 // TG3000_ROUTINE($8A:988C) rng_next (identical copy in bank $8A)
+// ($8A:AE9B is a third copy, never run: only timer_0d7e_tick's never-run branch calls it.)
 //
 // A Galois-style LFSR, shifted left: if the top bit was clear, the shifted state is
 // XORed with $1D872B45; if it was set, the state is only shifted. (The usual form XORs

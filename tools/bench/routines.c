@@ -639,6 +639,28 @@ static void fuzz_flag_03dc_from_52(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
   wr16ram(ram, 0x03DC, (uint16_t)rnd());
 }
 
+// ---- timer_0d7e_tick ($8A:9F76) ----  counting: A kept, N Z of the DEC; at 0: A = $03DC &
+// 7, C of its CMP #2, N Z of the INC of D+$6C
+static void call_timer_0d7e_tick(const Regs* in, Regs* out) {
+  bool fires = rd16(0x0D7E) == 1;
+  out->a = timer_0d7e_tick(in->a);
+  if(!fires) {
+    setNZ16(out, rd16(0x0D7E));
+    return;
+  }
+  out->c = out->a >= 2;
+  setNZ16(out, rd16(DP + 0x6C));
+}
+// the count often at 1 (so the never-run branch and its random pick run), the flags word,
+// the random state
+static void fuzz_timer_0d7e_tick(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0D7E, (rnd() % 3) == 0 ? 1 : (uint16_t)rnd());
+  wr16ram(ram, 0x03DC, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x6C, (uint16_t)rnd());
+  for(uint32_t a = 0x0110; a < 0x0114; a++) ram[a] = (uint8_t)rnd();
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -4899,6 +4921,10 @@ const Routine routines[] = {
    .lowWramDb = true, .fixedD = true, .call = call_hdma_gradient_build, .fuzz = fuzz_hdma_gradient_build},
   {.name = "flag_03dc_from_52", .entry = 0x8A9F64, .end = 0x8A9F76, .source = "src/misc.c", .needM16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_flag_03dc_from_52, ALL_OUTPUTS, .fuzz = fuzz_flag_03dc_from_52},
+  // its never-run branch calls $8A:AE9B (rng_next's third copy, also never run): the fuzz
+  // runs both, so they are compared through this row
+  {.name = "timer_0d7e_tick", .entry = 0x8A9F76, .end = 0x8A9FA1, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_timer_0d7e_tick, ALL_OUTPUTS, .fuzz = fuzz_timer_0d7e_tick},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

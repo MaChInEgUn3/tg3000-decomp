@@ -4,6 +4,7 @@
 #include "dsp4.h"
 #include "frame.h"
 #include "pads.h"
+#include "rng.h"
 #include "platform.h"
 #include "sprites.h"
 #include "video_dma.h"
@@ -1403,4 +1404,19 @@ void hdma_gradient_build(void) {
 void flag_03dc_from_52(void) {
   if(rd16(DP + 0x52) != 0) wr16(0x03DC, (uint16_t)(rd16(0x03DC) | 0x1000));  // never run
   else wr16(0x03DC, (uint16_t)(rd16(0x03DC) & ~0x1000));
+}
+
+// TG3000_ROUTINE($8A:9F76) timer_0d7e_tick
+uint16_t timer_0d7e_tick(uint16_t a) {
+  wr16(0x0D7E, (uint16_t)(rd16(0x0D7E) - 1));
+  if(rd16(0x0D7E) != 0) return a;
+  // never run: its random pick goes through a third copy of rng_next ($8A:AE9B), also
+  // never run
+  wr16(0x03DC, 0x2000);
+  bool carry;
+  uint16_t pick = (uint16_t)(rng_next(RNG_STATE, &carry) & 0x0003);
+  if(pick == 3) pick = 2;
+  wr16(0x03DC, (uint16_t)(pick | rd16(0x03DC)));
+  wr16(DP + 0x6C, (uint16_t)(rd16(DP + 0x6C) + 1));
+  return (uint16_t)(rd16(0x03DC) & 0x0007);
 }

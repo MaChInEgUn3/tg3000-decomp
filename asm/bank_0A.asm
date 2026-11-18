@@ -2608,7 +2608,7 @@ CODE_8A9F3A:
     jsl.l wait_frames_long      ; $8A9F3D
     lda.w #$CBA7                ; $8A9F41
     jsr.w $A2AF                 ; $8A9F44
-    jsr.w $9F76                 ; $8A9F47
+    jsr.w timer_0d7e_tick       ; $8A9F47
     lda.b $6C                   ; $8A9F4A
     beq CODE_8A9F3A             ; $8A9F4C
     jsr.w flag_03dc_from_52     ; $8A9F4E
@@ -2631,9 +2631,25 @@ CODE_8A9F6F:
     lda.w #$1000                ; $8A9F6F
     trb.w $03DC                 ; $8A9F72
     rts                         ; $8A9F75
+timer_0d7e_tick:
     dec.w $0D7E                 ; $8A9F76
     bne CODE_8A9FA0             ; $8A9F79
-    incbin !baserom:$51F7B..$51FA0
+    lda.w #$2000                ; $8A9F7B static
+    sta.w $03DC                 ; $8A9F7E static
+    jsr.w rng_next_8a_2         ; $8A9F81 static
+    and.w #$0003                ; $8A9F84 static
+    cmp.w #$0003                ; $8A9F87 static
+    bne CODE_8A9F8D             ; $8A9F8A static
+    dec a                       ; $8A9F8C static
+CODE_8A9F8D:
+    ora.w $03DC                 ; $8A9F8D static
+    sta.w $03DC                 ; $8A9F90 static
+    lda.w $03DC                 ; $8A9F93 static
+    and.w #$0007                ; $8A9F96 static
+    cmp.w #$0002                ; $8A9F99 static
+    bne CODE_8A9F9E             ; $8A9F9C static
+CODE_8A9F9E:
+    inc.b $6C                   ; $8A9F9E static
 CODE_8A9FA0:
     rts                         ; $8A9FA0
 func_8A9FA1:
@@ -3265,7 +3281,26 @@ CODE_8AA4F6:
     lda.w #$CBD2                ; $8AA4FB
     jsr.w $B659                 ; $8AA4FE
     rts                         ; $8AA501
-    incbin !baserom:$52502..$5308C
+    incbin !baserom:$52502..$52E9B
+rng_next_8a_2:
+    lda.b $12                   ; $8AAE9B static
+    bmi CODE_8AAEB2             ; $8AAE9D static
+    lda.b $10                   ; $8AAE9F static
+    asl a                       ; $8AAEA1 static
+    eor.w #$2B45                ; $8AAEA2 static
+    sta.b $10                   ; $8AAEA5 static
+    lda.b $12                   ; $8AAEA7 static
+    rol a                       ; $8AAEA9 static
+    eor.w #$1D87                ; $8AAEAA static
+    sta.b $12                   ; $8AAEAD static
+    lda.b $10                   ; $8AAEAF static
+    rts                         ; $8AAEB1 static
+CODE_8AAEB2:
+    asl.b $10                   ; $8AAEB2 static
+    rol.b $12                   ; $8AAEB4 static
+    lda.b $10                   ; $8AAEB6 static
+    rts                         ; $8AAEB8 static
+    incbin !baserom:$52EB9..$5308C
     lda.w $1526                 ; $8AB08C
     lsr a                       ; $8AB08F
     lsr a                       ; $8AB090
@@ -3372,7 +3407,7 @@ wait_one_frame:
     sta.b $62                   ; $8AB659
     jsr.w wipe_columns          ; $8AB65B
 CODE_8AB65E:
-    jsr.w $9F76                 ; $8AB65E
+    jsr.w timer_0d7e_tick       ; $8AB65E
     lda.b $6C                   ; $8AB661
     bne CODE_8AB67F             ; $8AB663
     lda.w #$0001                ; $8AB665
