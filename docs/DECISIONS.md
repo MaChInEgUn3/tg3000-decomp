@@ -1789,6 +1789,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Two HDMA window shapes (roots-7, 2026-11-18)
+
+- **`window_shape_a` ($80:DB7D) and `window_shape_b` ($80:DBCB)** build a window table
+  for HDMA at `$7F:X` (DB = `$7F` within, `$81` after their last `PLB`). They differ only
+  in their widths table (`$81:C872` or `$81:C9AA`), and they share a tail, `$80:DC19`,
+  reached by `JMP` (`alsoIn`).
+  - `func_80DC5A` (verified) writes the head from A.
+  - From `$33` bytes past its end come line pairs, one per row: right edge = width / 2 +
+    `$012E` - `$0120`, left edge = right - width + 1 (bytes). The row comes from
+    `$81:C852` + (`$011E` & ~1), and there are `$011E` / 2 + `$0C` of them.
+  - The rest of `$1A` lines are empty (`$00FF`), then the end (`$00FF`, 0).
+  - The `$19` lines above the start mirror those below it, one more when `$011E` is odd.
+- **Exit:** the mirror's last copy (A = the word, X its target, Y its source); N set and
+  Z clear by the final `PLB`; C = bit 0 of `$011E` (an `LSR`); V of the last line's
+  8-bit `SBC`. To know where the lines start, the adapter runs `func_80DC5A` once more
+  before the C, which writes the same bytes again.
+- **Results:** live 665/665 (60k), 461/461 (shop, race1), fuzz 500/500, paths 40/40 each.
+
 ## Three more title-zoom steps (roots-6, 2026-11-18)
 
 - **Three steps of the title sequence's zoom (D = `$0100`).** Each ends with

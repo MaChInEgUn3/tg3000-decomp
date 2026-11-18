@@ -322,3 +322,5 @@ func    80F225   empty_80F225        ; a lone RTS -> src/misc.c
 func    80F2A0   title_zoom_pan      ; the title zoom's pan step (stops at $C0/$1C) -> src/scale.c
 func    80F2EE   title_zoom_cycle    ; the title zoom's cycling step -> src/scale.c
 func    80F595   title_zoom_drop     ; the title zoom's drop step and two tile rows -> src/scale.c
+func    80DB7D   window_shape_a      ; an HDMA window table at $7F (widths $81:C872), mirrored -> src/misc.c
+func    80DBCB   window_shape_b      ; the same with the widths at $81:C9AA -> src/misc.c

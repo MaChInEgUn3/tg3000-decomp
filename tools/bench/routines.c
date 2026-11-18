@@ -969,6 +969,41 @@ static void call_far_7fff_4(const Regs* in, Regs* out) {
   setNZ16(out, 0x7FFF);
 }
 
+// ---- window_shape_a/b ($80:DB7D, $80:DBCB) ----  the mirror's last copy: A = the word, X
+// its target, Y its source; N set and Z clear by the final PLB ($81); C = D+$1E's bit 0
+// (the LSR), V of the last line's 8-bit SBC (right - width)
+static void windowShapeOut(const Regs* in, Regs* out, uint32_t widths, void (*fn)(uint16_t, uint16_t)) {
+  // where the lines start (func_80DC5A, run once more here: the C writes the same bytes)
+  uint16_t start = (uint16_t)((uint16_t)func_80DC5A(0x7F0000 | in->x, in->a) + 0x0033);
+  uint16_t e = rd16(DP + 0x1E), row0 = rom16(0x81C852 + (uint32_t)(e & 0xFFFE)), lines = (uint16_t)((e >> 1) + 0x0C);
+  uint8_t w = rom8(widths + (uint16_t)(row0 + lines - 1));
+  uint8_t right = (uint8_t)((w >> 1) + rd8(DP + 0x2E) - rd8(DP + 0x20));
+  uint8_t d = (uint8_t)(right - w);
+  fn(in->a, in->x);
+  // $19 copies, or the odd one first and $18 more: the target ends $32 below either way
+  uint16_t to = (uint16_t)(start - 0x32), from = (e & 1) ? (uint16_t)(start + 0x30) : (uint16_t)(start + 0x32);
+  out->a = rd16(0x10000 + (uint32_t)to);
+  out->x = to;
+  out->y = from;
+  out->n = true;
+  out->z = false;
+  out->c = (e & 1) != 0;
+  out->v = ((right ^ w) & (right ^ d) & 0x80) != 0;
+  out->db = 0x81;
+}
+static void call_window_shape_a(const Regs* in, Regs* out) { windowShapeOut(in, out, 0x81C872, window_shape_a); }
+static void call_window_shape_b(const Regs* in, Regs* out) { windowShapeOut(in, out, 0x81C9AA, window_shape_b); }
+static void fuzz_func_80DC5A(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+// the head's A as func_80DC5A's fuzz draws it, the table high in bank $7F, rows 0-31, the
+// edges anywhere
+static void fuzz_window_shape(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_80DC5A(r, ram, rnd);
+  r->x = (uint16_t)(0x4000 + (rnd() % 0x2000));
+  wr16ram(ram, DP + 0x1E, (uint16_t)(rnd() % 0x20));
+  wr16ram(ram, DP + 0x2E, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x20, (uint16_t)rnd());
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -5270,6 +5305,12 @@ const Routine routines[] = {
   {.name = "far_7fff_4", .entry = 0x81E7CE, .end = 0x81E7DA, .source = "src/misc.c", .needM16 = true, .fixedD = true,
    .call = call_far_7fff_4, ALL_OUTPUTS},
   {.name = "empty_80F225", .entry = 0x80F225, .end = 0x80F226, .source = "src/misc.c", .call = call_empty, ALL_OUTPUTS},
+  {.name = "window_shape_a", .entry = 0x80DB7D, .end = 0x80DBCB, .alsoIn = {{0x80DC19, 0x80DC5A}}, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_window_shape_a, ALL_OUTPUTS,
+   .fuzz = fuzz_window_shape},
+  {.name = "window_shape_b", .entry = 0x80DBCB, .end = 0x80DC19, .alsoIn = {{0x80DC19, 0x80DC5A}}, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_window_shape_b, ALL_OUTPUTS,
+   .fuzz = fuzz_window_shape},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

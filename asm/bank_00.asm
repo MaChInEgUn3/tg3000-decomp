@@ -9236,10 +9236,10 @@ nmi_target_80D784:
     xba                         ; $80D82A
     lda.b $35                   ; $80D82B
     rep.b #$20                  ; $80D82D
-    jsr.w $DB7D                 ; $80D82F
+    jsr.w window_shape_a        ; $80D82F
     ldx.w #$0100                ; $80D832
     lda.b $24                   ; $80D835
-    jsr.w $DBCB                 ; $80D837
+    jsr.w window_shape_b        ; $80D837
     lda.w #$0000                ; $80D83A
     sec                         ; $80D83D
     sbc.b $22                   ; $80D83E
@@ -9615,6 +9615,7 @@ CODE_80DB65:
     lda.w #$0000                ; $80DB75
     sta.w $0B01,y               ; $80DB78
     bra CODE_80DB30             ; $80DB7B
+window_shape_a:
     pea.w $817F                 ; $80DB7D
     plb                         ; $80DB80
     jsr.w func_80DC5A           ; $80DB81
@@ -9656,6 +9657,7 @@ CODE_80DBA4:
     dec.b $16                   ; $80DBC4
     bne CODE_80DBA4             ; $80DBC6
     jmp.w $DC19                 ; $80DBC8
+window_shape_b:
     pea.w $817F                 ; $80DBCB
     plb                         ; $80DBCE
     jsr.w func_80DC5A           ; $80DBCF

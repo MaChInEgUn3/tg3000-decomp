@@ -445,6 +445,16 @@ uint16_t func_82B838(uint16_t at);
 // $0118. Returns the address of the final byte.
 uint32_t func_80DC5A(uint32_t table, uint16_t a);
 
+// $80:DB7D / $80:DBCB (DB = $7F within): a window table for HDMA at $7F:x. func_80DC5A
+// writes its head (from `a`); then, from $33 bytes past its end, a line pair per entry:
+// right edge = width / 2 + D+$2E - D+$20 and left edge = right - width + 1 (bytes), the
+// widths from $81:C872 (first) or $81:C9AA (second) at the row $81:C852 + (D+$1E & ~1)
+// names, for D+$1E / 2 + $0C lines; the rest of $1A lines are empty ($00FF), then the end
+// ($00FF, 0). The $19 lines above the start mirror those below it (one more when D+$1E is
+// odd). D+$14 and D+$16 count the lines.
+void window_shape_a(uint16_t a, uint16_t x);
+void window_shape_b(uint16_t a, uint16_t x);
+
 // Take a free slot (word 0 in $7F:7FBC + slot, slots 0..$0166 step 2) whose kind
 // ($041C + slot) is $0168; if there is none, lower $0168 and look again, down to kind 0.
 // The slot taken is marked $FFFF and stored in *slot. Returns false when even kind 0 has

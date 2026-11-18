@@ -1546,3 +1546,45 @@ void far_7fff_4(void) {
 
 // TG3000_ROUTINE($80:F225) empty_80F225
 void empty_80F225(void) {}
+
+#define WINDOW_BANK 0x10000  // $7F:0000
+
+static void window_shape(uint16_t a, uint16_t x, uint32_t widths) {
+  uint16_t y = (uint16_t)((uint16_t)func_80DC5A(0x7F0000 | x, a) + 0x0033);
+  const uint16_t start = y;
+  wr16(DP + 0x14, 0x001A);
+  uint16_t row = rom16(0x81C852 + (uint32_t)(rd16(DP + 0x1E) & 0xFFFE));
+  wr16(DP + 0x16, (uint16_t)((rd16(DP + 0x1E) >> 1) + 0x000C));
+  do {
+    uint8_t w = rom8(widths + row);
+    uint8_t right = (uint8_t)((w >> 1) + rd8(DP + 0x2E) - rd8(DP + 0x20));
+    wr8(WINDOW_BANK + (uint16_t)(y + 1), right);
+    wr8(WINDOW_BANK + y, (uint8_t)(right - w + 1));
+    y = (uint16_t)(y + 2);
+    row = (uint16_t)(row + 1);
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
+    wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) - 1));
+  } while(rd16(DP + 0x16) != 0);
+  for(uint16_t n = rd16(DP + 0x14); n; n--, y = (uint16_t)(y + 2)) wr16(WINDOW_BANK + y, 0x00FF);
+  wr16(WINDOW_BANK + y, 0x00FF);
+  wr16(WINDOW_BANK + (uint16_t)(y + 2), 0);
+  uint16_t to = start, from = start;  // the mirror above the start
+  wr16(DP + 0x14, 0x0019);
+  if(rd16(DP + 0x1E) & 1) {
+    to = (uint16_t)(to - 2);
+    wr16(WINDOW_BANK + to, rd16(WINDOW_BANK + from));
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
+  }
+  do {
+    to = (uint16_t)(to - 2);
+    from = (uint16_t)(from + 2);
+    wr16(WINDOW_BANK + to, rd16(WINDOW_BANK + from));
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
+  } while(rd16(DP + 0x14) != 0);
+}
+
+// TG3000_ROUTINE($80:DB7D) window_shape_a
+void window_shape_a(uint16_t a, uint16_t x) { window_shape(a, x, 0x81C872); }
+
+// TG3000_ROUTINE($80:DBCB) window_shape_b
+void window_shape_b(uint16_t a, uint16_t x) { window_shape(a, x, 0x81C9AA); }
