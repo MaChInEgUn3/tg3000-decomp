@@ -587,6 +587,22 @@ void track_object_bump(uint16_t dp);
 // for $1EBE, D+$4A = $801E and D+$33 = message $47. Returns the carry it leaves: false on
 // a miss, func_83FE9A's on a hit.
 bool track_object_money(uint16_t dp);
+// $83:FB15: a counted pickup. On a hit (func_83FC05), unless the low byte of D+$4E is
+// already 10: D+$4E counts up, the entry's word is cleared, effect $FF19 requested for
+// $1EBE, D+$4A = $801E and D+$33 = message $4C. Returns the carry it leaves: false on a
+// miss, true when the count is full, func_83FE9A's otherwise.
+bool track_object_count(uint16_t dp);
+
+// $85:9D39 (player 1: $023E, D+$A2) and $85:9D5A (player 2: $02F1, D+$A6): while the
+// position is at least $40 past the word at $84:(D+$9C + the offset), the offset moves
+// on by $14 (one entry).
+void race_section_seek_1(void);
+void race_section_seek_2(void);
+
+// $85:82D8 and $85:82FA: 16 words from $7F:(`a` + the word at $83:84B1 + `x`), one after
+// another, to $7E:6A33 ($85:82D8) or $7E:6B33 ($85:82FA).
+void row_copy_6a33(uint16_t a, uint16_t x);
+void row_copy_6b33(uint16_t a, uint16_t x);
 
 // The word in bank $85 for A: row (A >> 6) & $FF times 10 (DSP-4 multiply) plus $0198 (also
 // left in $0118) picks an entry of a table at $84:0002; that entry plus (A & $3E) (and the

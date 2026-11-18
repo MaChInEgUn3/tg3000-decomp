@@ -2536,6 +2536,7 @@ track_object_money:
     sta.b $33                   ; $83FB12
 CODE_83FB14:
     rts                         ; $83FB14
+track_object_count:
     jsr.w func_83FC05           ; $83FB15
     bcc CODE_83FB49             ; $83FB18
     ldx.w $1F2E                 ; $83FB1A

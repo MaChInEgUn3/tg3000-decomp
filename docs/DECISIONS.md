@@ -1789,6 +1789,29 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A counted pickup, the section seeks, two row copies (roots-17, 2026-11-18)
+
+- **`track_object_count` ($83:FB15):** another track-object handler, like
+  `track_object_money`. On a hit, unless the low byte of D+`$4E` is already 10, it:
+  - counts D+`$4E` up (a 16-bit `INC`) and clears the entry;
+  - requests effect `$FF19` and sets D+`$4A` = `$801E` and message `$4C`.
+
+  When the count is full it leaves `func_83FC05`'s V with N clear and Z and C set (its
+  `CMP #$0A`); the other exits go through the callee adapters (`calleeRun`).
+  Live 3/3, fuzz 500/500, paths 20/20.
+- **`race_section_seek_1` ($85:9D39) and `race_section_seek_2` ($85:9D5A):** while
+  player 1's position `$023E` (player 2's `$02F1`) is at least `$40` past the word at
+  `$84:(D+$9C + D+$A2)` (D+`$A6`), the offset moves on by `$14`, one entry.
+  - Exit: A = the last difference; X = D+`$9C` + the offset; C clear (both exits are
+    `BCC`); N and Z of the `SBC` or of the `CMP #$40`; V of the `SBC`.
+  - On race1 (the selftest) the position never lies past an entry, so the fuzz left the
+    move-on path unrun. Half the time it now puts the position just past the current
+    entry: paths 16/16 on both movies.
+- **`row_copy_6a33` ($85:82D8) and `row_copy_6b33` ($85:82FA):** 16 words from
+  `$7F:(A + the word at $83:84B1 + X)` (DB = `$83`) to `$7E:6A33` or `$7E:6B33`.
+  - Exit: X kept (N and Z of its `PLX`), Y = `$20`, C set, V of the `ADC`.
+  - Paths 20/20 each.
+
 ## Three variant settings and a text copy (roots-16, 2026-11-18)
 
 - **The variant.** The low nibble of `$03DC` holds a random 0-2, set by `$8A:9F76`.

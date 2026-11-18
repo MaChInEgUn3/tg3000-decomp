@@ -1835,3 +1835,42 @@ void text_lines_copy(void) {
     wr16(DP + 0x56, (uint16_t)(rd16(DP + 0x56) - 1));
   } while(rd16(DP + 0x56) != 0);
 }
+
+// TG3000_ROUTINE($83:FB15) track_object_count
+bool track_object_count(uint16_t dp) {
+  if(!func_83FC05(dp)) return false;
+  if(rd8(dp + 0x4E) == 0x0A) return true;
+  wr16(dp + 0x4E, (uint16_t)(rd16(dp + 0x4E) + 1));
+  wr16(0x8CB3 + (uint32_t)rd16(0x011A), 0);
+  bool refused = func_83FE9A(dp, 0xFF19, rd16(0x1EBE), 0x0000);
+  wr16(dp + 0x4A, 0x801E);
+  wr16(dp + 0x33, 0x004C);
+  return refused;
+}
+
+static void race_section_seek(uint16_t position, uint16_t offset) {
+  for(;;) {
+    uint16_t pos = rd16(position);
+    uint16_t entry = bus_rd16(0x840000 + (uint32_t)(uint16_t)(rd16(DP + 0x9C) + rd16(DP + offset)));
+    if(pos < entry || (uint16_t)(pos - entry) < 0x0040) return;
+    wr16(DP + offset, (uint16_t)(rd16(DP + offset) + 0x0014));
+  }
+}
+
+// TG3000_ROUTINE($85:9D39) race_section_seek_1
+void race_section_seek_1(void) { race_section_seek(0x023E, 0xA2); }
+
+// TG3000_ROUTINE($85:9D5A) race_section_seek_2
+void race_section_seek_2(void) { race_section_seek(0x02F1, 0xA6); }
+
+static void row_copy(uint16_t a, uint16_t x, uint32_t to) {
+  uint16_t from = (uint16_t)(a + bus_rd16(0x8384B1 + (uint32_t)x));  // DB = $83
+  for(uint16_t y = 0; y < 0x20; y = (uint16_t)(y + 2), from = (uint16_t)(from + 2))
+    wr16(to + y, bus_rd16(0x7F0000 + (uint32_t)from));
+}
+
+// TG3000_ROUTINE($85:82D8) row_copy_6a33
+void row_copy_6a33(uint16_t a, uint16_t x) { row_copy(a, x, 0x6A33); }
+
+// TG3000_ROUTINE($85:82FA) row_copy_6b33
+void row_copy_6b33(uint16_t a, uint16_t x) { row_copy(a, x, 0x6B33); }

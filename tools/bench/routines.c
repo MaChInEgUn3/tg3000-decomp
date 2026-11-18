@@ -1307,6 +1307,87 @@ static void fuzz_text_lines_copy(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x54, (uint16_t)(rnd() % 0x400));
 }
 
+// ---- track_object_count ($83:FB15) ----  as track_object_money; a full count leaves
+// func_83FC05's V with N clear, Z and C set (its CMP #$0A)
+static bool run_track_object_count(uint16_t dp) { return track_object_count(dp); }
+static void call_track_object_count(const Regs* in, Regs* out) {
+  uint16_t at = rd16(0x0128);
+  bool hit = func_83FC05(in->d);  // which way it goes (it only writes $0128, put back)
+  wr16(0x0128, at);
+  calleeRun = run_track_object_count;
+  if(!hit) call_func_83FC05(in, out);
+  else if(rd8((uint16_t)(in->d + 0x4E)) == 0x0A) {
+    call_func_83FC05(in, out);
+    out->n = false;
+    out->z = out->c = true;
+  } else {
+    Regs t = *in;
+    t.a = 0xFF19;
+    t.x = rd16(0x1EBE);
+    t.y = 0;
+    call_func_83FE9A(&t, out);
+    out->n = out->z = false;
+  }
+  calleeRun = NULL;
+}
+static void fuzz_track_object_count(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_track_object(r, ram, rnd);
+  wr16ram(ram, (uint16_t)(r->d + 0x4E), (uint16_t)((rnd() & 0xFF00) | ((rnd() & 1) ? 0x0A : rnd() % 12)));
+}
+
+// ---- race_section_seek_1 / _2 ($85:9D39, $85:9D5A) ----  A = the last difference, X =
+// D+$9C + the offset, C clear (both exits are BCC), N Z of the SBC or of the CMP #$40,
+// V of the SBC
+static void sectionSeekOut(Regs* out, uint16_t position, uint16_t offset, void (*fn)(void)) {
+  fn();
+  uint16_t x = (uint16_t)(rd16(DP + 0x9C) + rd16(DP + offset));
+  uint16_t pos = rd16(position), entry = bus_rd16(0x840000 + (uint32_t)x);
+  out->x = x;
+  setSbc16(out, pos, entry);
+  out->a = (uint16_t)(pos - entry);
+  setNZ16(out, pos < entry ? out->a : (uint16_t)(out->a - 0x0040));
+  out->c = false;
+}
+static void call_race_section_seek_1(const Regs* in, Regs* out) { (void)in; sectionSeekOut(out, 0x023E, 0xA2, race_section_seek_1); }
+static void call_race_section_seek_2(const Regs* in, Regs* out) { (void)in; sectionSeekOut(out, 0x02F1, 0xA6, race_section_seek_2); }
+// near the live state: the offsets a few entries back; the positions within $200 of
+// theirs, or (half the time, when the table is in ROM) just past the current entry, so
+// the offset moves on at least once
+static void fuzz_race_section_seek(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const uint16_t positions[2] = {0x023E, 0x02F1}, offsets[2] = {DP + 0xA2, DP + 0xA6};
+  uint16_t base = (uint16_t)(ram[DP + 0x9C] | ram[DP + 0x9D] << 8);
+  for(int k = 0; k < 2; k++) {
+    uint16_t o = (uint16_t)(ram[offsets[k]] | ram[offsets[k] + 1] << 8), back = (uint16_t)(0x14 * (rnd() % 4));
+    if(o >= back) o = (uint16_t)(o - back);
+    wr16ram(ram, offsets[k], o);
+    uint16_t x = (uint16_t)(base + o), p = (uint16_t)(ram[positions[k]] | ram[positions[k] + 1] << 8);
+    if((rnd() & 1) && x >= 0x8000 && x <= 0xFFFE) p = (uint16_t)(rom16(0x840000 + (uint32_t)x) + 0x40 + rnd() % 0x80);
+    else p = (uint16_t)(p + rnd() % 0x400 - 0x200);
+    wr16ram(ram, positions[k], p);
+  }
+}
+
+// ---- row_copy_6a33 / _6b33 ($85:82D8, $85:82FA) ----  A = the last word, X kept (N Z of
+// its PLX), Y = $20, C set (CPY), V of the ADC that found the row
+static void rowCopyOut(const Regs* in, Regs* out, void (*fn)(uint16_t, uint16_t)) {
+  uint16_t base = bus_rd16(0x8384B1 + (uint32_t)in->x), from = (uint16_t)(in->a + base);
+  fn(in->a, in->x);
+  out->a = bus_rd16(0x7F0000 + (uint32_t)(uint16_t)(from + 0x1E));
+  out->x = in->x;
+  out->y = 0x0020;
+  setAdc16(out, in->a, base);
+  setNZ16(out, in->x);
+  out->c = true;
+}
+static void call_row_copy_6a33(const Regs* in, Regs* out) { rowCopyOut(in, out, row_copy_6a33); }
+static void call_row_copy_6b33(const Regs* in, Regs* out) { rowCopyOut(in, out, row_copy_6b33); }
+static void fuzz_row_copy(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->a = (uint16_t)rnd();
+  r->x = (uint16_t)(2 * (rnd() % 16));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -5748,6 +5829,18 @@ const Routine routines[] = {
    .needM16 = true, .fixedD = true, .call = call_variant_66, ALL_OUTPUTS, .fuzz = fuzz_variant},
   {.name = "text_lines_copy", .entry = 0x8A9AC9, .end = 0x8A9AF1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_text_lines_copy, ALL_OUTPUTS, .fuzz = fuzz_text_lines_copy},
+  {.name = "track_object_count", .entry = 0x83FB15, .end = 0x83FB4A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_track_object_count, .fuzz = fuzz_track_object_count},
+  {.name = "race_section_seek_1", .entry = 0x859D39, .end = 0x859D5A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_section_seek_1, ALL_OUTPUTS,
+   .fuzz = fuzz_race_section_seek},
+  {.name = "race_section_seek_2", .entry = 0x859D5A, .end = 0x859D7B, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_section_seek_2, ALL_OUTPUTS,
+   .fuzz = fuzz_race_section_seek},
+  {.name = "row_copy_6a33", .entry = 0x8582D8, .end = 0x8582FA, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x83, .call = call_row_copy_6a33, ALL_OUTPUTS, .fuzz = fuzz_row_copy},
+  {.name = "row_copy_6b33", .entry = 0x8582FA, .end = 0x85831C, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x83, .call = call_row_copy_6b33, ALL_OUTPUTS, .fuzz = fuzz_row_copy},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

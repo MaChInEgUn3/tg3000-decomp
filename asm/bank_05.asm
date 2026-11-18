@@ -34,9 +34,9 @@ org $858000
     lda.w #$0220                ; $8580B2
     jsr.w upload_tiles_7b00     ; $8580B5
     lda.w #$0000                ; $8580B8
-    jsr.w $82D8                 ; $8580BB
+    jsr.w row_copy_6a33         ; $8580BB
     lda.w #$0000                ; $8580BE
-    jsr.w $82FA                 ; $8580C1
+    jsr.w row_copy_6b33         ; $8580C1
     rtl                         ; $8580C4
     plx                         ; $8580C5
     lda.w #$0080                ; $8580C6
@@ -52,9 +52,9 @@ org $858000
     lda.w #$0620                ; $8580E4
     jsr.w upload_tiles_7b00     ; $8580E7
     lda.w #$0000                ; $8580EA
-    jsr.w $82D8                 ; $8580ED
+    jsr.w row_copy_6a33         ; $8580ED
     lda.w #$0000                ; $8580F0
-    jsr.w $82FA                 ; $8580F3
+    jsr.w row_copy_6b33         ; $8580F3
     rtl                         ; $8580F6
     plx                         ; $8580F7
     lda.w #$0080                ; $8580F8
@@ -74,13 +74,13 @@ org $858000
     beq CODE_858127             ; $858122
     lda.w #$0020                ; $858124
 CODE_858127:
-    jsr.w $82D8                 ; $858127
+    jsr.w row_copy_6a33         ; $858127
     lda.w $03CB                 ; $85812A
     and.w #$00FF                ; $85812D
     beq CODE_858135             ; $858130
     incbin !baserom:$28132..$28135
 CODE_858135:
-    jsr.w $82FA                 ; $858135
+    jsr.w row_copy_6b33         ; $858135
     rtl                         ; $858138
     plx                         ; $858139
     lda.w #$0080                ; $85813A
@@ -100,13 +100,13 @@ CODE_858135:
     beq CODE_858169             ; $858164
     incbin !baserom:$28166..$28169
 CODE_858169:
-    jsr.w $82D8                 ; $858169
+    jsr.w row_copy_6a33         ; $858169
     lda.w $03CB                 ; $85816C
     and.w #$00FF                ; $85816F
     beq CODE_858177             ; $858172
     incbin !baserom:$28174..$28177
 CODE_858177:
-    jsr.w $82FA                 ; $858177
+    jsr.w row_copy_6b33         ; $858177
     rtl                         ; $85817A
     sta.b $38                   ; $85817B
     phx                         ; $85817D
@@ -271,6 +271,7 @@ upload_tiles_7b00:
     plx                         ; $8582AF
     rts                         ; $8582B0
     incbin !baserom:$282B1..$282D8
+row_copy_6a33:
     phx                         ; $8582D8
     clc                         ; $8582D9
     adc.w $84B1,x               ; $8582DA
@@ -292,6 +293,7 @@ CODE_8582E7:
     plb                         ; $8582F7
     plx                         ; $8582F8
     rts                         ; $8582F9
+row_copy_6b33:
     phx                         ; $8582FA
     clc                         ; $8582FB
     adc.w $84B1,x               ; $8582FC
@@ -1576,8 +1578,8 @@ CODE_859C55:
     lda.w #$FFFF                ; $859CF3
     sta.w $1EDE                 ; $859CF6
     sta.w $1EE2                 ; $859CF9
-    jsr.w $9D39                 ; $859CFC
-    jsr.w $9D5A                 ; $859CFF
+    jsr.w race_section_seek_1   ; $859CFC
+    jsr.w race_section_seek_2   ; $859CFF
     jsl.l $82A9AF               ; $859D02
     jsl.l $82A9B3               ; $859D06
     stz.w $1EE6                 ; $859D0A
@@ -1595,6 +1597,7 @@ CODE_859C55:
     lda.l $7EFABB,x             ; $859D31
     sta.w $02B9                 ; $859D35
     rtl                         ; $859D38
+race_section_seek_1:
     lda.b $9C                   ; $859D39
     clc                         ; $859D3B
     adc.b $A2                   ; $859D3C
@@ -1609,9 +1612,10 @@ CODE_859C55:
     clc                         ; $859D50
     adc.w #$0014                ; $859D51
     sta.b $A2                   ; $859D54
-    jmp.w $9D39                 ; $859D56
+    jmp.w race_section_seek_1   ; $859D56
 CODE_859D59:
     rts                         ; $859D59
+race_section_seek_2:
     lda.b $9C                   ; $859D5A
     clc                         ; $859D5C
     adc.b $A6                   ; $859D5D
@@ -1626,7 +1630,7 @@ CODE_859D59:
     clc                         ; $859D71
     adc.w #$0014                ; $859D72
     sta.b $A6                   ; $859D75
-    jmp.w $9D5A                 ; $859D77
+    jmp.w race_section_seek_2   ; $859D77
 CODE_859D7A:
     rts                         ; $859D7A
     ldx.w $047B                 ; $859D7B

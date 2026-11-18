@@ -352,3 +352,8 @@ func    8A9AB1   variant_lines       ; D+$56 = $14, or 4 with variant 2 ($03DC) 
 func    8A98F0   variant_5a          ; D+$5A = $0A, or 4 with variant 2 ($03DC) -> src/misc.c
 func    8A99BE   variant_66          ; D+$66 = $28, or 8 with variant 2 ($03DC) -> src/misc.c
 func    8A9AC9   text_lines_copy     ; D+$56 lines from $8A:9DEE into the text map -> src/misc.c
+func    83FB15   track_object_count  ; a counted pickup (D+$4E up to 10), message $4C -> src/misc.c
+func    859D39   race_section_seek_1 ; player 1's section offset D+$A2 catches up with $023E -> src/misc.c
+func    859D5A   race_section_seek_2 ; player 2's section offset D+$A6 catches up with $02F1 -> src/misc.c
+func    8582D8   row_copy_6a33       ; 16 words from $7F to $7E:6A33 -> src/misc.c
+func    8582FA   row_copy_6b33       ; 16 words from $7F to $7E:6B33 -> src/misc.c
