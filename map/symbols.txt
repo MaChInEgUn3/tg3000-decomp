@@ -348,3 +348,7 @@ func    83FD26   car_set_53_1        ; dp+$53 = 1, dp+$B1 = the track object's b
 func    83FD31   car_set_53_2        ; dp+$53 = 2, dp+$B1 = the track object's bytes -> src/misc.c
 func    8A8BB6   wait_frames_8a8bb6  ; wait A frames (a long-call copy) -> src/frame.c
 func    8A9880   wait_frames_8a9880  ; wait A frames (a long-call copy) -> src/frame.c
+func    8A9AB1   variant_lines       ; D+$56 = $14, or 4 with variant 2 ($03DC) -> src/misc.c
+func    8A98F0   variant_5a          ; D+$5A = $0A, or 4 with variant 2 ($03DC) -> src/misc.c
+func    8A99BE   variant_66          ; D+$66 = $28, or 8 with variant 2 ($03DC) -> src/misc.c
+func    8A9AC9   text_lines_copy     ; D+$56 lines from $8A:9DEE into the text map -> src/misc.c

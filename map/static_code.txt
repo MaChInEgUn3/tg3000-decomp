@@ -57,3 +57,6 @@
 82:B1FC 82:B201 m16x16 ; text_centred_line: '.' is tile $25 ($82:B1FA BNE)
 8A:8252 8A:8253 m16x16 ; title_sprites_place: RTS when D+$62 is not $FFFF ($8A:8250 BEQ)
 82:9BFF 82:9C01 m16x16 ; race_message_request_02e6: PLA, RTS when the current message wins ($82:9BF8 BCS)
+8A:9AC3 8A:9AC9 m16x16 ; variant_lines: D+$56 = 4 with variant 2 (never run)
+8A:98FC 8A:9902 m16x16 ; variant_5a: D+$5A = 4 with variant 2 (never run)
+8A:99CA 8A:99D0 m16x16 ; variant_66: D+$66 = 8 with variant 2 (never run)

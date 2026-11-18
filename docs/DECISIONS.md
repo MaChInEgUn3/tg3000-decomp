@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Three variant settings and a text copy (roots-16, 2026-11-18)
+
+- **The variant.** The low nibble of `$03DC` holds a random 0-2, set by `$8A:9F76`.
+  Three routines in bank `$8A` set a value by it, and variant 2 gives the second value:
+  - `variant_lines` ($8A:9AB1): `$0156` = `$14`, or 4;
+  - `variant_5a` ($8A:98F0): `$015A` = `$0A`, or 4;
+  - `variant_66` ($8A:99BE): `$0166` = `$28` (its tail `func_8A99D0`, in the row's
+    extent), or 8.
+- **Variant 2 never runs in the movies.** Its six-byte paths (`LDA #`, `STA`, `RTS`)
+  were data in the map. They are now static code: `8A:9AC3`, `8A:98FC` and `8A:99CA`.
+  The fuzz picks variant 2 a third of the time.
+- **Exit.** A = the value (N and Z clear), C of the `CMP #2`, V as on entry.
+- **`text_lines_copy` ($8A:9AC9):** `$0156` lines of text from `$8A:9DEE` (zero-ended
+  strings, one after another) into the text map at `$7F:7918` + `$0154`, each with its
+  zero; `$0154` moves on by 16 a line.
+  - Exit: A = the new `$0154` (C and V of its `ADC`), X = the last line's start + its
+    length, Y = past the last zero, N clear and Z set by the last `DEC`. With no lines,
+    A = 0.
+- **Results:** live 2/2 each (one screen of the 60k movie); fuzz 500/500; paths 10/10,
+  10/10, 7/7 and 20/20.
+
 ## A car's byte $53 and two more frame waits (roots-15, 2026-11-18)
 
 - **`car_set_53_1` ($83:FD26) and `car_set_53_2` ($83:FD31):** the byte dp+`$53` = 1 or

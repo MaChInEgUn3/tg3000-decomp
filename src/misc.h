@@ -223,6 +223,19 @@ void hdma_gradient_build(void);
 // $8A:9F64: bit 12 of $03DC set while D+$52 is not 0, else cleared.
 void flag_03dc_from_52(void);
 
+// Three settings by the variant in the low nibble of $03DC (a random 0-2, $8A:9F76): with
+// variant 2, the second value (never run in the movies).
+// $8A:9AB1: D+$56 = $14, or 4.
+void variant_lines(void);
+// $8A:98F0: D+$5A = $0A, or 4.
+void variant_5a(void);
+// $8A:99BE: D+$66 = $28 (func_8A99D0, its tail), or 8.
+void variant_66(void);
+
+// $8A:9AC9: D+$56 lines of text from $8A:9DEE (zero-ended strings, one after another)
+// into the text map at $7F:7918 + D+$54, each with its zero; D+$54 moves on by 16 a line.
+void text_lines_copy(void);
+
 // $8A:9F76: $0D7E counts down; at 0 (never run): $03DC = $2000 | a random 0-2 (rng_next's
 // copy at $8A:AE9B, its low two bits, 3 taken as 2) and D+$6C + 1. Returns A as the
 // original leaves it (the caller's A while counting).

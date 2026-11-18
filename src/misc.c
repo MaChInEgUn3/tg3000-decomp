@@ -1803,3 +1803,35 @@ void car_set_53(uint16_t dp, uint8_t value) {
   const uint32_t x = rd16(0x011A);
   wr16(dp + 0xB1, (uint16_t)(rd8(0x8CB3 + x) | rd8(0x8CB5 + x) << 8));
 }
+
+static bool variant_2(void) { return (rd8(0x03DC) & 0x0F) == 2; }
+
+// TG3000_ROUTINE($8A:9AB1) variant_lines
+void variant_lines(void) { wr16(DP + 0x56, variant_2() ? 0x0004 : 0x0014); }
+
+// TG3000_ROUTINE($8A:98F0) variant_5a
+void variant_5a(void) { wr16(DP + 0x5A, variant_2() ? 0x0004 : 0x000A); }
+
+// TG3000_ROUTINE($8A:99BE) variant_66
+void variant_66(void) {
+  if(variant_2()) wr16(DP + 0x66, 0x0008);
+  else func_8A99D0();
+}
+
+// TG3000_ROUTINE($8A:9AC9) text_lines_copy
+void text_lines_copy(void) {
+  if(rd16(DP + 0x56) == 0) return;
+  uint16_t y = 0;
+  do {
+    uint16_t x = rd16(DP + 0x54);
+    uint8_t c;
+    do {
+      c = rom8(0x8A9DEE + (uint32_t)y);
+      wr8(0x17918 + (uint32_t)x, c);
+      x = (uint16_t)(x + 1);
+      y = (uint16_t)(y + 1);
+    } while(c != 0);
+    wr16(DP + 0x54, (uint16_t)(rd16(DP + 0x54) + 0x0010));
+    wr16(DP + 0x56, (uint16_t)(rd16(DP + 0x56) - 1));
+  } while(rd16(DP + 0x56) != 0);
+}

@@ -2068,7 +2068,7 @@ CODE_8A98A3:
     lda.b $10                   ; $8A98A7
     rts                         ; $8A98A9
     incbin !baserom:$518AA..$518B4
-    jsr.w $98F0                 ; $8A98B4
+    jsr.w variant_5a            ; $8A98B4
     ldx.w #$0000                ; $8A98B7
 CODE_8A98BA:
     phx                         ; $8A98BA
@@ -2094,11 +2094,14 @@ CODE_8A98DF:
     dec.b $5A                   ; $8A98EB
     bne CODE_8A98BA             ; $8A98ED
     rtl                         ; $8A98EF
+variant_5a:
     lda.l $8103DC               ; $8A98F0
     and.w #$000F                ; $8A98F4
     cmp.w #$0002                ; $8A98F7
     bne CODE_8A9902             ; $8A98FA
-    incbin !baserom:$518FC..$51902
+    lda.w #$0004                ; $8A98FC static
+    sta.b $5A                   ; $8A98FF static
+    rts                         ; $8A9901 static
 CODE_8A9902:
     lda.w #$000A                ; $8A9902
     sta.b $5A                   ; $8A9905
@@ -2106,7 +2109,7 @@ CODE_8A9902:
     jsr.w $9AA5                 ; $8A9908
     jsr.w func_8A9BE2           ; $8A990B
     stz.b $5E                   ; $8A990E
-    jsr.w $99BE                 ; $8A9910
+    jsr.w variant_66            ; $8A9910
 CODE_8A9913:
     jsr.w func_8A9BB5           ; $8A9913
     bcs CODE_8A993E             ; $8A9916
@@ -2147,11 +2150,14 @@ byte_buffer_pad:
     bra byte_buffer_pad         ; $8A99BB
 CODE_8A99BD:
     rts                         ; $8A99BD
+variant_66:
     lda.l $8103DC               ; $8A99BE
     and.w #$000F                ; $8A99C2
     cmp.w #$0002                ; $8A99C5
     bne func_8A99D0             ; $8A99C8
-    incbin !baserom:$519CA..$519D0
+    lda.w #$0008                ; $8A99CA static
+    sta.b $66                   ; $8A99CD static
+    rts                         ; $8A99CF static
 func_8A99D0:
     lda.w #$0028                ; $8A99D0
     sta.b $66                   ; $8A99D3
@@ -2257,18 +2263,23 @@ byte_buffer_space:
     pla                         ; $8A9AA3
     rts                         ; $8A9AA4
     stz.b $54                   ; $8A9AA5
-    jsr.w $9AB1                 ; $8A9AA7
+    jsr.w variant_lines         ; $8A9AA7
     jsr.w $9AF1                 ; $8A9AAA
-    jsr.w $9AC9                 ; $8A9AAD
+    jsr.w text_lines_copy       ; $8A9AAD
     rts                         ; $8A9AB0
+variant_lines:
     lda.l $8103DC               ; $8A9AB1
     and.w #$000F                ; $8A9AB5
     cmp.w #$0002                ; $8A9AB8
-    db $F0,$06 ; beq            ; $8A9ABB
+    beq CODE_8A9AC3             ; $8A9ABB
     lda.w #$0014                ; $8A9ABD
     sta.b $56                   ; $8A9AC0
     rts                         ; $8A9AC2
-    incbin !baserom:$51AC3..$51AC9
+CODE_8A9AC3:
+    lda.w #$0004                ; $8A9AC3 static
+    sta.b $56                   ; $8A9AC6 static
+    rts                         ; $8A9AC8 static
+text_lines_copy:
     lda.b $56                   ; $8A9AC9
     beq CODE_8A9AF0             ; $8A9ACB
     ldy.w #$0000                ; $8A9ACD

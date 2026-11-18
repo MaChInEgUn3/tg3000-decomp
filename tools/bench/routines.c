@@ -1257,6 +1257,56 @@ static void fuzz_car_set_53(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(int i = 0; i < 3; i++) ram[0x8CB3 + x + i] = (uint8_t)rnd();
 }
 
+// ---- variant_lines / _5a / _66 ($8A:9AB1, $8A:98F0, $8A:99BE) ----  A = the value stored
+// (N and Z clear, from its LDA #), C of the CMP #2 of the variant, V as on entry
+static void variantOut(const Regs* in, Regs* out, void (*fn)(void), uint16_t at) {
+  (void)in;
+  bool c = (rd8(0x03DC) & 0x0F) >= 2;
+  fn();
+  out->a = rd16(DP + at);
+  out->n = out->z = false;
+  out->c = c;
+}
+static void call_variant_lines(const Regs* in, Regs* out) { variantOut(in, out, variant_lines, 0x56); }
+static void call_variant_5a(const Regs* in, Regs* out) { variantOut(in, out, variant_5a, 0x5A); }
+static void call_variant_66(const Regs* in, Regs* out) { variantOut(in, out, variant_66, 0x66); }
+// the variant, 2 a third of the time, other high bits random
+static void fuzz_variant(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  ram[0x03DC] = (uint8_t)((rnd() & 0xF0) | ((rnd() % 3 == 0) ? 2 : rnd() % 16));
+}
+
+// ---- text_lines_copy ($8A:9AC9) ----  with lines: A = the new D+$54 (C V of its ADC),
+// X = the last line's start + its length, Y = past the last zero, N clear and Z set by
+// the last DEC; none: A = 0 (N clear, Z set by LDA), X Y C V as on entry
+static void call_text_lines_copy(const Regs* in, Regs* out) {
+  uint16_t n = rd16(DP + 0x56), y = 0, x = 0, last = 0;
+  for(uint16_t k = 0, p = rd16(DP + 0x54); k < n; k++, p = (uint16_t)(p + 0x10)) {
+    x = p;
+    while(rom8(0x8A9DEE + (uint32_t)y) != 0) { x++; y++; }
+    y++;
+    last = p;
+  }
+  text_lines_copy();
+  if(n == 0) {
+    out->a = 0;
+    out->n = false;
+    out->z = true;
+    return;
+  }
+  out->a = rd16(DP + 0x54);
+  out->x = x;
+  out->y = y;
+  setAdc16(out, last, 0x0010);
+  out->n = false;
+  out->z = true;
+}
+static void fuzz_text_lines_copy(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x56, (uint16_t)(rnd() % 0x18));
+  wr16ram(ram, DP + 0x54, (uint16_t)(rnd() % 0x400));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -5690,6 +5740,14 @@ const Routine routines[] = {
    .needM16 = true, .waitsForInterrupts = true, .call = call_wait_frames, ALL_OUTPUTS},
   {.name = "wait_frames_8a9880", .entry = 0x8A9880, .end = 0x8A988C, .rtl = true, .source = "src/frame.c",
    .needM16 = true, .waitsForInterrupts = true, .call = call_wait_frames, ALL_OUTPUTS},
+  {.name = "variant_lines", .entry = 0x8A9AB1, .end = 0x8A9AC9, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_variant_lines, ALL_OUTPUTS, .fuzz = fuzz_variant},
+  {.name = "variant_5a", .entry = 0x8A98F0, .end = 0x8A9908, .source = "src/misc.c", .needM16 = true,
+   .fixedD = true, .call = call_variant_5a, ALL_OUTPUTS, .fuzz = fuzz_variant},
+  {.name = "variant_66", .entry = 0x8A99BE, .end = 0x8A99D0, .alsoIn = {{0x8A99D0, 0x8A99D6}}, .source = "src/misc.c",
+   .needM16 = true, .fixedD = true, .call = call_variant_66, ALL_OUTPUTS, .fuzz = fuzz_variant},
+  {.name = "text_lines_copy", .entry = 0x8A9AC9, .end = 0x8A9AF1, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_text_lines_copy, ALL_OUTPUTS, .fuzz = fuzz_text_lines_copy},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
