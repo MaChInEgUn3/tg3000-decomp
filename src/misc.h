@@ -191,6 +191,10 @@ void string_space_fours(void);
 // $8A:8AE7: 12 words from index `x`: $062A + x = D+$3C + 16 * n, $072A + x = D+$3E.
 void table_062a_fill(uint16_t x);
 
+// $8A:9C27: every fourth call (D+$6C counts), the next word of the HDMA table at $0D01
+// (D+$6E, up to $2A) steps down by one unless it is $E0.
+void hdma_table_0d00_step(void);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.
@@ -334,6 +338,13 @@ uint16_t func_8ABB5C(uint16_t count, bool* carry);
 // then a 0 word; characters from the 32-entry table at $8A:BC5F. Returns the last
 // character word; *x the offset of the terminating word, *y the last table index.
 uint16_t password_encode(uint16_t bits, uint16_t* x, uint16_t* y);
+
+// $8A:BB99: the password's bits. The 256-bit number is cleared (func_8ABC7F), then each
+// field of the table at $8A:CF61 (6 bytes: a 24-bit address, a shift, a width; a zero
+// word ends it) goes in: the word at the address shifted right, XOR the width's mask
+// ($8A:BC3D), pushed in with func_8ABBF4. D+$48, D+$92 and the bit count D+$84 start at 0;
+// returns the bit count.
+uint16_t password_pack(void);
 
 // Shift the 256-bit number left `count` times (0 means 65536), feeding in the bits of
 // `bits` from bit 0 up; after each shift $0184 += 1 and func_8ABC32 ($0192 += $0DCA).

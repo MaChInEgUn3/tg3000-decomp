@@ -2396,6 +2396,7 @@ byte_buffer_push:
     plx                         ; $8A9C23
     inc.b $60                   ; $8A9C24
     rts                         ; $8A9C26
+hdma_table_0d00_step:
     inc.b $6C                   ; $8A9C27
     lda.b $6C                   ; $8A9C29
     and.w #$0003                ; $8A9C2B
@@ -2415,7 +2416,7 @@ CODE_8A9C43:
     stx.b $6E                   ; $8A9C45
 CODE_8A9C47:
     rts                         ; $8A9C47
-    jsr.w $9C27                 ; $8A9C48
+    jsr.w hdma_table_0d00_step  ; $8A9C48
     sep.b #$20                  ; $8A9C4B
     ldy.w #$0015                ; $8A9C4D
     ldx.w #$0000                ; $8A9C50
@@ -3753,6 +3754,7 @@ CODE_8ABB60:
     bne CODE_8ABB60             ; $8ABB95
     ply                         ; $8ABB97
     rts                         ; $8ABB98
+password_pack:
     jsr.w func_8ABC7F           ; $8ABB99
     stz.b $48                   ; $8ABB9C
     stz.b $92                   ; $8ABB9E
@@ -3919,7 +3921,7 @@ CODE_8ABC9B:
     lda.w #$FC5F                ; $8ABE95
     sta.w $0008                 ; $8ABE98
     inc.b $8E                   ; $8ABE9B
-    jsr.w $BB99                 ; $8ABE9D
+    jsr.w password_pack         ; $8ABE9D
     jsr.w password_encode       ; $8ABEA0
     jsr.w func_8ABF76           ; $8ABEA3
     ldx.w #$0000                ; $8ABEA6

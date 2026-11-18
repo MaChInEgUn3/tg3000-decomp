@@ -292,3 +292,5 @@ func    808FD4   shop_item_up        ; next item up (slide), or leave the list (
 func    809832   shop_item_show_icon ; the screen runs until the icon has finished -> src/shop.c
 func    809870   shop_item_icon_settle ; the icon's colours step back down -> src/shop.c
 func    8098C4   shop_item_affordable ; money against price (BCD); short: the price flashes -> src/shop.c
+func    8ABB99   password_pack       ; the password's fields pushed into the 256-bit number -> src/misc.c
+func    8A9C27   hdma_table_0d00_step ; every 4th call, one $0D00 HDMA word steps down -> src/misc.c

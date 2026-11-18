@@ -469,6 +469,43 @@ static void fuzz_text_type_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
     wr16ram(ram, DP + a, (rnd() & 1) ? 0xFFFF : (uint16_t)((rnd() % 0x2000) * 2));
 }
 
+// ---- password_pack ($8A:BB99) ----  A = the bit count (N Z of its LDA), X = the table's
+// end offset, Y = the last field's width (restored by func_8ABBF4); C and V of the last
+// $0192 += $0DCA (func_8ABC32)
+static void call_password_pack(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t x = 0, y = in->y;
+  for(; rom16(0x8ACF61 + (uint32_t)x); x = (uint16_t)(x + 6)) y = (uint16_t)(rom16(0x8ACF65 + (uint32_t)x) >> 8);
+  out->a = password_pack();
+  out->x = x;
+  out->y = y;
+  setNZ16(out, out->a);
+  uint16_t last = rd16(0x0DCA);
+  setAdc16(out, (uint16_t)(rd16(DP + 0x92) - last), last);
+}
+// every field the table names, where it is in WRAM, randomised
+static void fuzz_password_pack(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t x = 0; rom16(0x8ACF61 + x); x += 6) {
+    uint32_t at = (uint32_t)rom16(0x8ACF63 + x) << 16 | rom16(0x8ACF61 + x);
+    uint8_t bank = (uint8_t)(at >> 16);
+    uint32_t w = bank == 0x7E || bank == 0x7F ? (at & 0x1FFFF) : ((bank & 0x7F) < 0x40 && (at & 0xFFFF) < 0x2000) ? (at & 0x1FFF) : 0xFFFFFFFF;
+    if(w != 0xFFFFFFFF && w + 1 < TG3000_WRAM_SIZE) {
+      ram[w] = (uint8_t)rnd();
+      ram[w + 1] = (uint8_t)rnd();
+    }
+  }
+}
+
+// ---- hdma_table_0d00_step ($8A:9C27) ----  no register outputs (its caller reloads them)
+static void call_hdma_table_0d00_step(const Regs* in, Regs* out) { (void)in; (void)out; hdma_table_0d00_step(); }
+static void fuzz_hdma_table_0d00_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x6C, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x6E, (uint16_t)((rnd() % 0x16) * 2));
+  for(uint32_t a = 0x0D00; a < 0x0D30; a++) ram[a] = (uint8_t)((rnd() & 3) == 0 ? 0xE0 : rnd());
+}
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -4710,6 +4747,12 @@ const Routine routines[] = {
   {.name = "text_type_step", .entry = 0x80B59D, .end = 0x80B6BC, .alsoIn = {{0x80B6CA, 0x80B7BB}, {0x80B7CE, 0x80B7D9}},
    .source = "src/text.c", .needM16 = true, .needX16 = true, .fixedD = true, .call = call_text_type_step,
    .fuzz = fuzz_text_type_step, .m8At = {0x80B645, 0x80B65E}},
+  {.name = "password_pack", .entry = 0x8ABB99, .end = 0x8ABBD7, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .db = 0x8A, .call = call_password_pack, ALL_OUTPUTS,
+   .fuzz = fuzz_password_pack},
+  {.name = "hdma_table_0d00_step", .entry = 0x8A9C27, .end = 0x8A9C48, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_hdma_table_0d00_step,
+   .fuzz = fuzz_hdma_table_0d00_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -1789,6 +1789,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The password's bits and an HDMA step (leaves-12, 2026-11-17)
+
+- **`password_pack` ($8A:BB99)** builds the password's bits before `password_encode`:
+  - it clears the 256-bit number (`func_8ABC7F`) and zeroes `$0148`, `$0192` and `$0184`;
+  - for each field of the table at `$8A:CF61` (6 bytes: a 24-bit address, a shift, a
+    width; a zero word ends it), it reads the word there, shifts it right (`lsr_n`),
+    XORs the width's mask (`$8A:BC3D`) and pushes it in with `func_8ABBF4`;
+  - it returns the bit count;
+  - its exit C and V are those of the last `$0192 += $0DCA` (`func_8ABC32`).
+- **That row is checked by fuzz only.** The 60k movie runs it once, and an NMI lands
+  inside, so no live sample is compared. The fuzz randomises every field the table names
+  that lies in WRAM: 500/500, paths 31/31.
+- **`hdma_table_0d00_step` ($8A:9C27):** every fourth call (`$016C` counts), the next word
+  of the HDMA table at `$0D01` (`$016E`, up to `$2A`) steps down by one unless it is `$E0`.
+  Live 208/208, paths 16/16.
+
 ## Pieces of the buy flow (shop-16, 2026-11-17)
 
 - **The buy dispatch** `$80:9039` (table `$81:A89F`, a handler per list: `$80:9053`,

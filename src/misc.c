@@ -1235,3 +1235,34 @@ void table_062a_fill(uint16_t x) {
   }
   wr16(DP + 0x3C, first);
 }
+
+// TG3000_ROUTINE($8A:BB99) password_pack
+uint16_t password_pack(void) {
+  func_8ABC7F();
+  wr16(DP + 0x48, 0);
+  wr16(DP + 0x92, 0);
+  wr16(DP + 0x84, 0);
+  for(uint32_t x = 0;; x += 6) {
+    uint16_t at = rom16(0x8ACF61 + x);
+    if(at == 0) break;
+    wr16(DP + 0x42, at);
+    wr16(DP + 0x44, rom16(0x8ACF63 + x));
+    uint16_t shape = rom16(0x8ACF65 + x), width = (uint16_t)(shape >> 8);
+    uint32_t field = ((uint32_t)rd8(DP + 0x44) << 16 | rd16(DP + 0x42));
+    uint16_t value = bus_rd16(field);
+    bool carry;
+    value = lsr_n(value, (uint16_t)(shape & 0x00FF), &carry);
+    func_8ABBF4((uint16_t)(value ^ rom16(0x8ABC3D + (uint32_t)width)), width);
+  }
+  return rd16(DP + 0x84);
+}
+
+// TG3000_ROUTINE($8A:9C27) hdma_table_0d00_step
+void hdma_table_0d00_step(void) {
+  wr16(DP + 0x6C, (uint16_t)(rd16(DP + 0x6C) + 1));
+  if(rd16(DP + 0x6C) & 0x0003) return;
+  uint16_t x = rd16(DP + 0x6E);
+  if(x == 0x002A) return;
+  if(rd16(0x0D01 + (uint32_t)x) != 0x00E0) wr16(0x0D01 + (uint32_t)x, (uint16_t)(rd16(0x0D01 + (uint32_t)x) - 1));
+  wr16(DP + 0x6E, (uint16_t)(x + 2));
+}
