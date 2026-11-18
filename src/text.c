@@ -474,3 +474,34 @@ void text_centred_line(void) {
     y = (uint16_t)(y + 2);
   }
 }
+
+// TG3000_ROUTINE($82:B11F) race_message_update
+void race_message_update(void) {
+  if(rd16(DP + 0x14) != rd16(DP + 0x16)) {
+    uint16_t shown = (uint16_t)(rd16(DP + 0x14) << 1), next = (uint16_t)(rd16(DP + 0x16) << 1);
+    wr16(DP + 0x3C, next);
+    if(rom16(0x83A0A4 + (uint32_t)next) >= rom16(0x83A0A4 + (uint32_t)shown)) {
+      text_centred_line();
+      wr16(DP + 0x1A, rom16(0x83A142 + (uint32_t)rd16(DP + 0x3C)));
+      wr16(DP + 0x1C, rom16(0x83A1E0 + (uint32_t)rd16(DP + 0x3C)));
+      wr16(DP + 0x14, rd16(DP + 0x16));
+      return;
+    }
+    wr16(DP + 0x16, rd16(DP + 0x14));
+  }
+  uint16_t time = rd16(DP + 0x1A);
+  if(time == 0) return;
+  uint16_t step = rd16(0x1E9E);
+  if(time > step) {
+    wr16(DP + 0x1A, (uint16_t)(time - step));
+    return;
+  }
+  uint16_t x = rd16(DP + 0x18), blank = rom16(0x83A5A4);  // its time is up: blank the line
+  for(int i = 0; i < 13; i++, x = (uint16_t)(x + 2)) {
+    wr16(x, blank);
+    wr16((uint16_t)(x + 0x1A), blank);
+  }
+  wr16(DP + 0x16, 0);
+  wr16(DP + 0x14, 0);
+  wr16(DP + 0x1A, 0);
+}

@@ -6150,6 +6150,7 @@ CODE_80B8CF:
     sta.w $0005                 ; $80B94A
     cli                         ; $80B94D
     rts                         ; $80B94E
+empty_80B94F:
     rts                         ; $80B94F
 wait_flag_76:
     lda.w #$0010                ; $80B950

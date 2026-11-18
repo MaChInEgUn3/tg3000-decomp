@@ -818,6 +818,49 @@ static void fuzz_car_lap_check(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x1ECA, (uint16_t)rnd());
 }
 
+// ---- race_message_update ($82:B11F) ----  no register outputs; its final PLB of $83 sets
+// N and clears Z; DB = $83
+static void call_race_message_update(const Regs* in, Regs* out) {
+  (void)in;
+  race_message_update();
+  out->db = 0x83;
+  out->n = true;
+  out->z = false;
+}
+// the shown and new messages (the race's: 0-$4E, by D+$3C's table), their times, the step
+static void fuzz_race_message_update(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t shown = (uint16_t)(rnd() % 0x4F), next = (rnd() & 1) ? shown : (uint16_t)(rnd() % 0x4F);
+  wr16ram(ram, DP + 0x14, shown);
+  wr16ram(ram, DP + 0x16, next);
+  wr16ram(ram, DP + 0x1A, (rnd() & 3) == 0 ? 0 : (uint16_t)(rnd() % 0x40));
+  wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 8));
+  wr16ram(ram, DP + 0x18, (uint16_t)(0x2000 + (rnd() % 0x800) * 2));
+  wr16ram(ram, DP + 0x3A, (uint16_t)((rnd() % 8) << 10));
+}
+
+// ---- func_82B769 ($82:B769) ----  as func_82B7B0 leaves the registers
+static void call_func_82B7B0(const Regs* in, Regs* out);
+static void call_func_82B769(const Regs* in, Regs* out) {
+  uint16_t a = in->a;
+  if((rom16(0x82DC68 + (uint32_t)rd16(0x047B)) & 0x8000) && in->y != 0) a = (in->y & 0x8000) ? 0 : (uint16_t)(rd16(0x019A) - 1);
+  func_82B78D(a);
+  call_func_82B7B0(in, out);  // the last call's outputs are the routine's
+}
+static void fuzz_func_82B7B0(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_func_82B769(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_82B7B0(r, ram, rnd);
+  r->a = (uint16_t)((rnd() % 0x40) << 4);
+  r->y = (rnd() & 1) ? 0 : (uint16_t)rnd();
+  wr16ram(ram, 0x019A, (uint16_t)rnd());
+  // $047B (a word index into $82:DC68): half the time an entry whose word is negative
+  static const uint16_t negative[] = {17, 27, 47};
+  wr16ram(ram, 0x047B, (rnd() & 1) ? negative[rnd() % 3] : (uint16_t)(rnd() % 48));
+}
+
+// ---- empty_80B94F: a lone RTS, nothing changes
+static void call_empty(const Regs* in, Regs* out) { (void)in; (void)out; }
+
 // ---- star_layers_move ($80:DACF) ----  A = X = $200; the last CPX sets Z and C, the
 // last ADC #8 clears V
 static void call_star_layers_move(const Regs* in, Regs* out) {
@@ -5096,6 +5139,11 @@ const Routine routines[] = {
    .lowWramDb = true, .call = call_race_scroll_commit, .compareA = true, .fuzz = fuzz_race_scroll_commit},
   {.name = "car_lap_check", .entry = 0x83F9D1, .end = 0x83FA32, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_car_lap_check, .fuzz = fuzz_car_lap_check},
+  {.name = "race_message_update", .entry = 0x82B11F, .end = 0x82B18B, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_race_message_update, .fuzz = fuzz_race_message_update},
+  {.name = "func_82B769", .entry = 0x82B769, .end = 0x82B78D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_func_82B769, ALL_OUTPUTS, .fuzz = fuzz_func_82B769},
+  {.name = "empty_80B94F", .entry = 0x80B94F, .end = 0x80B950, .source = "src/misc.c", .call = call_empty, ALL_OUTPUTS},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

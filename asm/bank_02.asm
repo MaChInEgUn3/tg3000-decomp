@@ -1959,6 +1959,7 @@ CODE_82B012:
 CODE_82B025:
     rts                         ; $82B025
     incbin !baserom:$13026..$1311F
+race_message_update:
     pea.w $837E                 ; $82B11F
     plb                         ; $82B122
     lda.b $14                   ; $82B123
@@ -2347,7 +2348,7 @@ CODE_82B71D:
     jsr.w func_82B838           ; $82B71F
     lda.w $0226                 ; $82B722
     ldy.w $0235                 ; $82B725
-    jsr.w $B769                 ; $82B728
+    jsr.w func_82B769           ; $82B728
     stx.b $50                   ; $82B72B
     lda.l $7E4E3D               ; $82B72D
     sta.b $14                   ; $82B731
@@ -2361,7 +2362,7 @@ CODE_82B71D:
     sta.b $1C                   ; $82B747
     lda.w #$0C00                ; $82B749
     sta.b $3A                   ; $82B74C
-    jsr.w $B11F                 ; $82B74E
+    jsr.w race_message_update   ; $82B74E
     lda.b $14                   ; $82B751
     sta.l $7E4E3D               ; $82B753
     lda.b $16                   ; $82B757
@@ -2371,6 +2372,7 @@ CODE_82B71D:
     lda.b $1C                   ; $82B762
     sta.l $7E4E4D               ; $82B764
     rts                         ; $82B768
+func_82B769:
     pha                         ; $82B769
     ldx.w $047B                 ; $82B76A
     lda.l $82DC68,x             ; $82B76D

@@ -252,6 +252,9 @@ uint16_t race_scroll_commit(void);
 // otherwise dp+$33 = $1F06 - dp+$35 + 9.
 void car_lap_check(uint16_t dp);
 
+// $80:B94F: a lone RTS (the shop's idle frame hook).
+void empty_80B94F(void);
+
 // $8A:99D0: D+$66 = $28.
 void func_8A99D0(void);
 // $8A:96C2: D+$40 + 1, returned.
@@ -414,6 +417,9 @@ uint16_t take_nibble16(void);
 // func_82B78D: from the entry at $7E:4F31 + ((A >> 2) & ~3) (two bytes), $0156 = byte 0
 // - 2 and $0158 = byte 1 - 2 (both 8-bit). Returns $0158.
 uint16_t func_82B78D(uint16_t a);
+// $82:B769: A as given, or (when the $82:DC68 entry for $047B is negative and Y is not 0)
+// $019A - 1 for a positive Y, 0 for a negative one; then func_82B78D and func_82B7B0.
+void func_82B769(uint16_t a, uint16_t y);
 // func_82B7B0: AND the block at row $0158, column $0156 (offset 2 * $0158 + the word at
 // $83:8C65 + ($0156 & ~1)) with one of 8 ten-word masks in bank $83 (pointer table at
 // $83:8C55, chosen by $0156 & 7).

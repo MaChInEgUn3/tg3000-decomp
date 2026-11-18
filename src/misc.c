@@ -1519,3 +1519,13 @@ void car_lap_check(uint16_t dp) {
   wr16(0x1F08, (uint16_t)(x + 1));
   wr16(dp + 0x44, (uint16_t)((rd16(dp + 0x44) | 0x0004) & ~0x0008));
 }
+
+// TG3000_ROUTINE($82:B769) func_82B769
+void func_82B769(uint16_t a, uint16_t y) {
+  if((rom16(0x82DC68 + (uint32_t)rd16(0x047B)) & 0x8000) && y != 0) a = (y & 0x8000) ? 0 : (uint16_t)(rd16(0x019A) - 1);
+  func_82B78D(a);
+  func_82B7B0();
+}
+
+// TG3000_ROUTINE($80:B94F) empty_80B94F
+void empty_80B94F(void) {}

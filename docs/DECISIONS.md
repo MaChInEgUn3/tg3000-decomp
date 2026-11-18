@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The race's message line (roots-3, 2026-11-18)
+
+- **`race_message_update` ($82:B11F; DB = `$7E` within, `$83` after its two `PLB`s).**
+  - A new message `$0116` replaces the shown one `$0114` if its priority (`$83:A0A4` +
+    2 * message) is at least the shown one's. It is drawn with `text_centred_line`, and
+    its time `$011A` (`$83:A142`) and `$011C` (`$83:A1E0`) are set.
+  - Otherwise the shown message's time counts down by `$1E9E`; when it runs out the
+    line is blanked and `$0114` = `$0116` = 0.
+  - Exit: N set and Z clear (the `PLB` of `$83`).
+  - Live 4,000/4,000, fuzz 500/500, paths 50/50.
+- **`func_82B769` ($82:B769):** A as given, or, when the `$82:DC68` entry for `$047B` is
+  negative and Y is not 0, `$019A` - 1 for a positive Y and 0 for a negative one; then
+  `func_82B78D` and `func_82B7B0` (whose outputs it returns).
+  - Its fuzz first left 10 paths unvisited: it never drew one of the table's negative
+    entries (17, 27, 47). It now does half the time.
+  - Live 4,000/4,000, paths 18/18.
+- **`empty_80B94F`,** a lone RTS: the shop's idle frame hook (12,243 entries).
+- **`$82:EA80`, another lone RTS, has no row.** The race1 movie of the selftest reaches it
+  38 times, but by a jump or a branch (a shared tail), never by a call. That gave
+  entries and no samples, and the selftest failed. It needs no C of its own.
+
 ## The scroll commit and a car's lap (roots-2, 2026-11-18)
 
 - **`race_scroll_commit` ($82:ECF1):** `$1EEE` and `$1EF0` cleared; `$0200`/`$0202` =

@@ -114,4 +114,11 @@ void text_type_step(void);
 // $26; below ':' (digits) - $16; letters - $41.
 void text_centred_line(void);
 
+// $82:B11F (DB = $7E within, $83 after): the race's message line. A new message D+$16
+// replaces the shown one D+$14 if its priority ($83:A0A4 + 2 * message) is at least the
+// shown one's: it is drawn (text_centred_line) and its time D+$1A ($83:A142) and D+$1C
+// ($83:A1E0) set. Otherwise the shown message's time counts down by $1E9E; when it runs
+// out the line is blanked and D+$14 = D+$16 = 0.
+void race_message_update(void);
+
 #endif
