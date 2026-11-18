@@ -56,3 +56,4 @@
 82:B1D9 82:B1E3 m16x16 ; text_centred_line: a byte with bit 7 set sets the palette ($82:B1D7 BEQ)
 82:B1FC 82:B201 m16x16 ; text_centred_line: '.' is tile $25 ($82:B1FA BNE)
 8A:8252 8A:8253 m16x16 ; title_sprites_place: RTS when D+$62 is not $FFFF ($8A:8250 BEQ)
+82:9BFF 82:9C01 m16x16 ; race_message_request_02e6: PLA, RTS when the current message wins ($82:9BF8 BCS)

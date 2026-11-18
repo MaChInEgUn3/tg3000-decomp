@@ -334,3 +334,6 @@ func    82EACE   track_event_2107    ; a track event set, pattern $2107 (body $8
 func    82EAD4   track_event_c2e7    ; a track event set, pattern $C2E7 (body $82:EB1A) -> src/misc.c
 func    8A824B   title_sprites_place ; two title sprites placed (while D+$62 is $FFFF) -> src/misc.c
 func    8A867C   rotation_from_angle ; Mode 7 rotation (cos, sin, -sin) for the angle D+$34 -> src/misc.c
+func    829BC9   race_message_request_0233 ; a race message into $0233 by priority -> src/misc.c
+func    829BE5   race_message_request_02e6 ; a race message into $02E6 by priority -> src/misc.c
+func    81E7DA   track_entry_bounds  ; a track entry's x and its bounds pair -> src/misc.c

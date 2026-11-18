@@ -1789,6 +1789,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The race's message slots and a track entry's bounds (roots-11, 2026-11-18)
+
+- **`race_message_request_0233` ($82:9BC9) and `race_message_request_02e6` ($82:9BE5):**
+  the priority request of `car_message_request` for the race's two message slots,
+  `$0233` and `$02E6`.
+  - The three now share one C helper, `message_request(slot, message)`;
+    `car_message_request` was retested with it (355/355).
+  - `$82:9BE5`'s keep-the-current exit (`PLA`, `RTS` at `$82:9BFF`) is never run; it is
+    static code, and the fuzz runs it.
+  - Live 30/30 and 29/29, fuzz 500/500, paths 16/16 each.
+- **`track_entry_bounds` ($81:E7DA):** the bounds of track entry `$0114`.
+  - Its x (the byte at `$7E:8CB3` + entry, the top 8 bits of a signed 12-bit value) is
+    kept in `$0128`.
+  - `$0124` = `$012C` and `$0126` = `$012E` = x plus the pair at `$83:80D0` + 4 * (the
+    byte at `$7E:8CB4` + entry).
+  - Live 19/19, paths 27/27.
+
 ## Two title-screen pieces (roots-10, 2026-11-18)
 
 - **`title_sprites_place` ($8A:824B):** two sprites placed at `$0174` / `$0176` less

@@ -1034,6 +1034,43 @@ static void fuzz_car_message_request(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   wr16ram(ram, (uint16_t)(r->d + 0x33), (uint16_t)(rnd() % 0x4F));
 }
 
+// ---- race_message_request_0233 / _02e6 ($82:9BC9, $82:9BE5) ----  as car_message_request
+static void raceMessageOut(const Regs* in, Regs* out, uint32_t slot, void (*fn)(uint16_t)) {
+  uint16_t current = rom16(0x83A0A4 + (uint32_t)(uint16_t)(rd16(slot) << 1));
+  uint16_t wanted = rom16(0x83A0A4 + (uint32_t)(uint16_t)(in->a << 1));
+  fn(in->a);
+  out->a = in->a;
+  out->x = (uint16_t)(in->a << 1);
+  setNZ16(out, in->a);
+  out->c = current >= wanted;
+}
+static void call_race_message_request_0233(const Regs* in, Regs* out) { raceMessageOut(in, out, 0x0233, race_message_request_0233); }
+static void call_race_message_request_02e6(const Regs* in, Regs* out) { raceMessageOut(in, out, 0x02E6, race_message_request_02e6); }
+static void fuzz_race_message_request(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (uint16_t)(rnd() % 0x4F);
+  wr16ram(ram, 0x0233, (uint16_t)(rnd() % 0x4F));
+  wr16ram(ram, 0x02E6, (uint16_t)(rnd() % 0x4F));
+}
+
+// ---- track_entry_bounds ($81:E7DA) ----  A = D+$26 (N Z C V of its ADC), X = 4 * the pair
+static void call_track_entry_bounds(const Regs* in, Regs* out) {
+  (void)in;
+  const uint32_t e = rd16(DP + 0x14);
+  uint16_t idx = (uint16_t)(rd8(0x8CB4 + e) << 2);
+  track_entry_bounds();
+  out->a = rd16(DP + 0x26);
+  out->x = idx;
+  setNZ16(out, out->a);
+  setAdc16(out, rom16(0x8380D2 + (uint32_t)idx), rd16(DP + 0x28));
+}
+static void fuzz_track_entry_bounds(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t e = (uint16_t)(rnd() % 0x200);
+  wr16ram(ram, DP + 0x14, e);
+  ram[0x8CB3 + e] = (uint8_t)rnd();
+  ram[0x8CB4 + e] = (uint8_t)(rnd() % 0x40);
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -5436,6 +5473,12 @@ const Routine routines[] = {
    .lowWramDb = true, .fixedD = true, .call = call_title_sprites_place, ALL_OUTPUTS, .fuzz = fuzz_title_sprites_place},
   {.name = "rotation_from_angle", .entry = 0x8A867C, .end = 0x8A869A, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_rotation_from_angle, ALL_OUTPUTS, .fuzz = fuzz_rotation_from_angle},
+  {.name = "race_message_request_0233", .entry = 0x829BC9, .end = 0x829BE5, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_race_message_request_0233, ALL_OUTPUTS, .fuzz = fuzz_race_message_request},
+  {.name = "race_message_request_02e6", .entry = 0x829BE5, .end = 0x829C01, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_race_message_request_02e6, ALL_OUTPUTS, .fuzz = fuzz_race_message_request},
+  {.name = "track_entry_bounds", .entry = 0x81E7DA, .end = 0x81E812, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_track_entry_bounds, ALL_OUTPUTS, .fuzz = fuzz_track_entry_bounds},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

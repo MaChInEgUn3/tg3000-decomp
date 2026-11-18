@@ -1297,6 +1297,7 @@ far_7fff_4:
     sta.b $2C                   ; $81E7D5
     sta.b $2E                   ; $81E7D7
     rts                         ; $81E7D9
+track_entry_bounds:
     ldx.b $14                   ; $81E7DA
     lda.l $7E8CB3,x             ; $81E7DC
     and.w #$00FF                ; $81E7E0

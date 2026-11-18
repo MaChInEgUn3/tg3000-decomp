@@ -255,6 +255,14 @@ void car_lap_check(uint16_t dp);
 // $83:FEBD: a car's message request (its direct page `dp`): `message` replaces dp+$33 when
 // its priority ($83:A0A4 + 2 * message) is at least the current one's.
 void car_message_request(uint16_t dp, uint16_t message);
+// The same request for the race's two message slots: $82:9BC9 for $0233, $82:9BE5 for $02E6.
+void race_message_request_0233(uint16_t message);
+void race_message_request_02e6(uint16_t message);
+
+// $81:E7DA: the bounds of track entry D+$14: its x (the byte at $7E:8CB3 + entry, the top
+// of a signed 12-bit value) in D+$28; D+$24 = D+$2C and D+$26 = D+$2E = that plus the pair
+// at $83:80D0 + 4 * (the byte at $7E:8CB4 + entry).
+void track_entry_bounds(void);
 
 // $82:EADA (DB = $7E): a track event's state cleared: $1F0E, $1F10 and, at D+$1A, the
 // words at $7E:3C6C, $3CAC, $3F6C, $3FAC; bit 0 of $3D6C set, and $3DAC set to the same.

@@ -547,6 +547,7 @@ CODE_82905C:
     sta.w $1F18                 ; $829060
     rts                         ; $829063
     incbin !baserom:$11064..$11BC9
+race_message_request_0233:
     pha                         ; $829BC9
     asl a                       ; $829BCA
     pha                         ; $829BCB
@@ -565,6 +566,7 @@ CODE_829BDE:
 CODE_829BE3:
     pla                         ; $829BE3
     rts                         ; $829BE4
+race_message_request_02e6:
     pha                         ; $829BE5
     asl a                       ; $829BE6
     pha                         ; $829BE7
@@ -575,12 +577,15 @@ CODE_829BE3:
     plx                         ; $829BF1
     cmp.l $83A0A4,x             ; $829BF2
     beq CODE_829BFA             ; $829BF6
-    db $B0,$05 ; bcs            ; $829BF8
+    bcs CODE_829BFF             ; $829BF8
 CODE_829BFA:
     pla                         ; $829BFA
     sta.w $02E6                 ; $829BFB
     rts                         ; $829BFE
-    incbin !baserom:$11BFF..$121D3
+CODE_829BFF:
+    pla                         ; $829BFF static
+    rts                         ; $829C00 static
+    incbin !baserom:$11C01..$121D3
     ldx.w #$9FEB                ; $82A1D3
     ldy.w #$0000                ; $82A1D6
     lda.w #$7F98                ; $82A1D9
@@ -1717,7 +1722,7 @@ CODE_82AD6A:
     sta.w $1ED2                 ; $82AD7B
     clc                         ; $82AD7E
     adc.w #$0025                ; $82AD7F
-    jsr.w $9BC9                 ; $82AD82
+    jsr.w race_message_request_0233; $82AD82
 CODE_82AD85:
     lda.w $0144                 ; $82AD85
     cmp.w $1ED4                 ; $82AD88
@@ -1725,7 +1730,7 @@ CODE_82AD85:
     sta.w $1ED4                 ; $82AD8D
     clc                         ; $82AD90
     adc.w #$0025                ; $82AD91
-    jsr.w $9BE5                 ; $82AD94
+    jsr.w race_message_request_02e6; $82AD94
 CODE_82AD97:
     plb                         ; $82AD97
     rts                         ; $82AD98

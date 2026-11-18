@@ -1589,11 +1589,21 @@ void window_shape_a(uint16_t a, uint16_t x) { window_shape(a, x, 0x81C872); }
 // TG3000_ROUTINE($80:DBCB) window_shape_b
 void window_shape_b(uint16_t a, uint16_t x) { window_shape(a, x, 0x81C9AA); }
 
-// TG3000_ROUTINE($83:FEBD) car_message_request
-void car_message_request(uint16_t dp, uint16_t message) {
-  uint16_t current = rom16(0x83A0A4 + (uint32_t)(uint16_t)(rd16(dp + 0x33) << 1));
-  if(current <= rom16(0x83A0A4 + (uint32_t)(uint16_t)(message << 1))) wr16(dp + 0x33, message);
+// A message `message` replaces the one at `slot` when its priority ($83:A0A4 + 2 * message)
+// is at least the current one's.
+static void message_request(uint32_t slot, uint16_t message) {
+  uint16_t current = rom16(0x83A0A4 + (uint32_t)(uint16_t)(rd16(slot) << 1));
+  if(current <= rom16(0x83A0A4 + (uint32_t)(uint16_t)(message << 1))) wr16(slot, message);
 }
+
+// TG3000_ROUTINE($83:FEBD) car_message_request
+void car_message_request(uint16_t dp, uint16_t message) { message_request((uint16_t)(dp + 0x33), message); }
+
+// TG3000_ROUTINE($82:9BC9) race_message_request_0233
+void race_message_request_0233(uint16_t message) { message_request(0x0233, message); }
+
+// TG3000_ROUTINE($82:9BE5) race_message_request_02e6
+void race_message_request_02e6(uint16_t message) { message_request(0x02E6, message); }
 
 // TG3000_ROUTINE($82:EADA) track_event_clear
 uint16_t track_event_clear(void) {
@@ -1650,4 +1660,18 @@ void rotation_from_angle(void) {
   wr16(DP + 0x1A, rom16(0x81CEA9 + x));
   wr16(DP + 0x16, rom16(0x81CDA9 + x));
   wr16(DP + 0x18, (uint16_t)(0 - rom16(0x81CDA9 + x)));
+}
+
+// TG3000_ROUTINE($81:E7DA) track_entry_bounds
+void track_entry_bounds(void) {
+  const uint32_t x = rd16(DP + 0x14);
+  uint16_t at = (uint16_t)(rd8(0x8CB3 + x) << 4);
+  if(at & 0x0800) at |= 0xF000;
+  wr16(DP + 0x28, at);
+  const uint32_t pair = 0x8380D0 + (uint32_t)(uint16_t)(rd8(0x8CB4 + x) << 2);
+  uint16_t a = (uint16_t)(rom16(pair) + at), b = (uint16_t)(rom16(pair + 2) + at);
+  wr16(DP + 0x24, a);
+  wr16(DP + 0x2C, a);
+  wr16(DP + 0x26, b);
+  wr16(DP + 0x2E, b);
 }
