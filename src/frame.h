@@ -68,4 +68,7 @@ void interrupt_vectors_init(void);
 void nmi_race_prologue(void);  // $85:8377, up to its dispatch (nothing to do)
 void nmi_race_tail(void);  // $85:838A: the race NMI's tail (every race frame)
 
+// $84:A4CD: wait until the word $03E0 is 0 (the interrupts count it down). Returns 0.
+uint16_t wait_03e0(void);
+
 #endif

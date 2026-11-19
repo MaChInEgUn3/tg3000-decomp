@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A wait, the variant flags, six sprite slots (roots-21, 2026-11-19)
+
+- **`wait_03e0` ($84:A4CD, `JSL`):** waits until the word `$03E0` is 0 (the interrupts
+  count it down). A row that waits for interrupts: no fuzz.
+- **`variant_flags_apply` ($8A:B0E1):** bits 2-5 of `$1528` become bit 10 of `$03DC`,
+  moved to bit 2; bits 2-5 of `$1526` become bits 8-9 of `$03DC`, moved to bits 2-3
+  (`lsr_n`).
+  - Exit: A = the new `$1526`, Y = 0, C of `lsr_n`'s last shift.
+- **`sprite_slots_six` ($8A:C19C):** six sprite slots. `$0800` = the word at `$8A:C443`
+  | `$2000`, `$0600` = `$0142` (which moves on by `$10`), `$0700` = `$0144`, and `$0500`
+  = 1.
+- **A note on roots-20:** `track_map_load` and `track_segments_load` passed with **no
+  live sample** (live 0/0).
+  - The bench samples one entry in three (`SAMPLE_STRIDE`), and both sampled entries were
+    interrupted inside the long `decompress`, so they were dropped.
+  - Their verification rests on the 500 fuzz cases (from the live entry states) and full
+    path coverage. That meets the bench's rule; 6 earlier rows are in the same state
+    (`clear_vram`, `password_pack`, ...).
+  - Sampling every entry of rarely-entered routines needs a harness change, which comes
+    with the next full run.
+
 ## The track's map and segments (roots-20, 2026-11-19)
 
 - **`track_map_load` ($85:9D7B, `JSL`):** the map at `$7E:6C33`.

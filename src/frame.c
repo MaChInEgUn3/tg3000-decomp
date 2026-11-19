@@ -321,3 +321,9 @@ void interrupt_vectors_init(void) {
   wr16(0x002A, 0);
   wr16(0x0028, 0);
 }
+
+// TG3000_ROUTINE($84:A4CD) wait_03e0
+uint16_t wait_03e0(void) {
+  while(rd16(0x03E0) != 0) platform_wait_vblank();
+  return 0;
+}

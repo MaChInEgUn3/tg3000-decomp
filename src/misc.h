@@ -673,4 +673,12 @@ uint16_t track_map_load(uint16_t dp, uint16_t* end);
 // then turns both words of each 4-byte entry into running sums.
 void track_segments_load(uint16_t dp);
 
+// $8A:B0E1: bits 2-5 of $1528 = bit 10 of $03DC moved to bit 2; bits 2-5 of $1526 =
+// bits 8-9 of $03DC moved to bits 2-3 (lsr_n). Returns the carry of the last shift.
+bool variant_flags_apply(void);
+
+// $8A:C19C: six sprite slots (X = 0, 2, ... $0A): $0800 = the word at $8A:C443 | $2000,
+// $0600 = D+$42 (which moves on by $10), $0700 = D+$44, $0500 = 1.
+void sprite_slots_six(void);
+
 #endif

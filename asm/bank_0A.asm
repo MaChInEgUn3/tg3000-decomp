@@ -2625,7 +2625,7 @@ CODE_8A9E96:
     lda.w #$CAB0                ; $8A9F29
     jsr.w func_8AA4BE           ; $8A9F2C
     stz.b $6C                   ; $8A9F2F
-    jsr.w $B0E1                 ; $8A9F31
+    jsr.w variant_flags_apply   ; $8A9F31
     lda.w #$0A8C                ; $8A9F34
     sta.w $0D7E                 ; $8A9F37
 CODE_8A9F3A:
@@ -3351,6 +3351,7 @@ CODE_8AB09C:
     jsr.w $B11A                 ; $8AB0D9
     jsl.l $808199               ; $8AB0DC
     rts                         ; $8AB0E0
+variant_flags_apply:
     lda.w $1528                 ; $8AB0E1
     and.w #$FFC3                ; $8AB0E4
     sta.w $1528                 ; $8AB0E7
@@ -4217,7 +4218,7 @@ CODE_8AC04C:
     sta.b $42                   ; $8AC0B7
     lda.w #$0014                ; $8AC0B9
     sta.b $44                   ; $8AC0BC
-    jsr.w $C19C                 ; $8AC0BE
+    jsr.w sprite_slots_six      ; $8AC0BE
     jsr.w func_8AC0F2           ; $8AC0C1
     lda.w #$0F00                ; $8AC0C4
     sta.w $0198                 ; $8AC0C7
@@ -4318,6 +4319,7 @@ CODE_8AC183:
     inc.b $3C                   ; $8AC198
 CODE_8AC19A:
     bra CODE_8AC171             ; $8AC19A
+sprite_slots_six:
     ldx.w #$0000                ; $8AC19C
 CODE_8AC19F:
     lda.w $C443,x               ; $8AC19F

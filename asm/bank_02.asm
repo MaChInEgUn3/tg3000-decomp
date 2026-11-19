@@ -203,7 +203,7 @@ CODE_8284D5:
     jsl.l decompress_to_vram_long; $828547
     lda.w $047C                 ; $82854B
     bmi CODE_82856D             ; $82854E
-    jsl.l $84A4CD               ; $828550
+    jsl.l wait_03e0             ; $828550
     jsl.l $84A487               ; $828554
     sep.b #$20                  ; $828558
     lda.b #$7F                  ; $82855A

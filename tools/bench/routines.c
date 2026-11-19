@@ -1575,6 +1575,50 @@ static void fuzz_track_segments_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   wr16ram(ram, 0x047B, (uint16_t)(rnd() % 47));
 }
 
+// ---- wait_03e0 ($84:A4CD) ----  A = 0 (N clear, Z set by its LDA)
+static void call_wait_03e0(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = wait_03e0();
+  out->n = false;
+  out->z = true;
+}
+
+// ---- variant_flags_apply ($8A:B0E1) ----  A = the new $1526 (N Z of its ORA), Y = 0,
+// C of lsr_n's last shift, V as on entry
+static void call_variant_flags_apply(const Regs* in, Regs* out) {
+  (void)in;
+  out->c = variant_flags_apply();
+  out->a = rd16(0x1526);
+  out->y = 0;
+  setNZ16(out, out->a);
+}
+static void fuzz_variant_flags_apply(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x03DC, (uint16_t)rnd());
+  wr16ram(ram, 0x1526, (uint16_t)rnd());
+  wr16ram(ram, 0x1528, (uint16_t)rnd());
+}
+
+// ---- sprite_slots_six ($8A:C19C) ----  A = 1, X = $0C (C Z set by the CPX, N clear),
+// V of the last ADC #$10
+static void call_sprite_slots_six(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t first = rd16(DP + 0x42);
+  sprite_slots_six();
+  out->a = 0x0001;
+  out->x = 0x000C;
+  Regs t;
+  setAdc16(&t, (uint16_t)(first + 0x50), 0x0010);
+  out->v = t.v;
+  out->n = false;
+  out->z = out->c = true;
+}
+static void fuzz_sprite_slots_six(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x42, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x44, (uint16_t)rnd());
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6050,6 +6094,14 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .db = 0x83, .call = call_track_map_load, ALL_OUTPUTS, .fuzz = fuzz_track_map_load},
   {.name = "track_segments_load", .entry = 0x82A954, .end = 0x82A9AF, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x83, .call = call_track_segments_load, ALL_OUTPUTS, .fuzz = fuzz_track_segments_load},
+  {.name = "wait_03e0", .entry = 0x84A4CD, .end = 0x84A4D4, .rtl = true, .source = "src/frame.c", .needM16 = true,
+   .lowWramDb = true, .waitsForInterrupts = true, .call = call_wait_03e0, ALL_OUTPUTS},
+  {.name = "variant_flags_apply", .entry = 0x8AB0E1, .end = 0x8AB11A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_variant_flags_apply, ALL_OUTPUTS,
+   .fuzz = fuzz_variant_flags_apply},
+  {.name = "sprite_slots_six", .entry = 0x8AC19C, .end = 0x8AC1C6, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_sprite_slots_six, ALL_OUTPUTS,
+   .fuzz = fuzz_sprite_slots_six},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

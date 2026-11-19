@@ -352,3 +352,6 @@
 8A81BA palettes_load_8a src/misc.c 9bcda9a88053d2ea 2 500 27/27 verified live-flags:NVZC
 859D7B track_map_load src/misc.c 4a20ce1d05cce37e 0 500 19/19 verified live-flags:NVZC
 82A954 track_segments_load src/misc.c 4a20ce1d05cce37e 0 500 48/48 verified live-flags:NVZC
+84A4CD wait_03e0 src/frame.c 32ec2fc001ab09bb 7 0 3/3 verified live-flags:NVZC
+8AB0E1 variant_flags_apply src/misc.c 7fe26719f03a021b 1 500 19/19 verified live-flags:NVZC
+8AC19C sprite_slots_six src/misc.c 7fe26719f03a021b 1 500 18/18 verified live-flags:NVZC

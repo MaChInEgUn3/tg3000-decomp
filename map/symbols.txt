@@ -367,3 +367,6 @@ func    8A98B4   variant_offsets_add ; per entry, a $041C word gains $8A:9D8D's 
 func    8A81BA   palettes_load_8a    ; five palettes into CGRAM from bank $7E -> src/misc.c
 func    859D7B   track_map_load      ; the map at $7E:6C33: $3FFF, or unpacked from $8C:95E3 -> src/misc.c
 func    82A954   track_segments_load ; the track's segments to $7E:4F31, as running sums -> src/misc.c
+func    84A4CD   wait_03e0           ; wait until $03E0 is 0 (JSL) -> src/frame.c
+func    8AB0E1   variant_flags_apply ; $1526/$1528 bits 2-5 from $03DC bits 8-10 -> src/misc.c
+func    8AC19C   sprite_slots_six    ; six sprite slots from $8A:C443 and D+$42/$44 -> src/misc.c

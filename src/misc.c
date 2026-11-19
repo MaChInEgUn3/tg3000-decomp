@@ -2005,3 +2005,22 @@ void track_segments_load(uint16_t dp) {
     }
   }
 }
+
+// TG3000_ROUTINE($8A:B0E1) variant_flags_apply
+bool variant_flags_apply(void) {
+  bool carry;
+  wr16(0x1528, (uint16_t)((rd16(0x1528) & 0xFFC3) | lsr_n((uint16_t)(rd16(0x03DC) & 0x0400), 8, &carry)));
+  wr16(0x1526, (uint16_t)((rd16(0x1526) & 0xFFC3) | lsr_n((uint16_t)(rd16(0x03DC) & 0x0300), 6, &carry)));
+  return carry;
+}
+
+// TG3000_ROUTINE($8A:C19C) sprite_slots_six
+void sprite_slots_six(void) {
+  for(uint32_t x = 0; x < 0x0C; x += 2) {
+    wr16(0x0800 + x, (uint16_t)(rom16(0x8AC443 + x) | 0x2000));
+    wr16(0x0600 + x, rd16(DP + 0x42));
+    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 0x0010));
+    wr16(0x0700 + x, rd16(DP + 0x44));
+    wr16(0x0500 + x, 0x0001);
+  }
+}

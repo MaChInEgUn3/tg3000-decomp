@@ -177,9 +177,9 @@ CODE_84A47B:
     sta.w $045E                 ; $84A4C7
     rep.b #$20                  ; $84A4CA
     rtl                         ; $84A4CC
-CODE_84A4CD:
+wait_03e0:
     lda.l $8103E0               ; $84A4CD
-    bne CODE_84A4CD             ; $84A4D1
+    bne wait_03e0               ; $84A4D1
     rtl                         ; $84A4D3
     incbin !baserom:$224D4..$224ED
     stz.w $0444                 ; $84A4ED
