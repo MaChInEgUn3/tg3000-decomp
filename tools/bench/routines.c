@@ -2053,6 +2053,59 @@ static void fuzz_slot_order_fill(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(uint16_t i = 0; i < 20; i++) wr16ram(ram, (uint16_t)(0x041C + 2 * i), (uint16_t)(rnd() % 8));
 }
 
+// ---- player_names_put ($8A:9AF1) ----  the exit of the last text_line_put (A kept, X = the
+// D+$54 before it, Y = the string's length, N Z of A, C V of D+$54 + $10), followed through
+// the calls; without any: the CMP #2's flags (variants 3-15), or the last LSR's (variant 1)
+static void namePutModel(Regs* out, uint32_t at, uint16_t a, uint16_t* line) {
+  uint16_t n = 0;
+  while(bus_rd8((at + n) & 0xFFFFFF)) n++;
+  out->a = a;
+  out->x = *line;
+  out->y = n;
+  setNZ16(out, a);
+  setAdc16(out, *line, 0x0010);
+  *line = (uint16_t)(*line + 0x10);
+}
+static void call_player_names_put(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t dc = rd16(0x03DC), v = (uint16_t)(dc & 0x000F), line = rd16(DP + 0x54);
+  if(v == 0) namePutModel(out, 0x81037E, 0, &line);
+  else if(v == 2) {
+    static const uint16_t at[4] = {0x03E4, 0x03F1, 0x03FE, 0x040B};
+    for(int k = 0; k < 4; k++) namePutModel(out, 0x810000 + at[k], 2, &line);
+  } else if(v != 1) {
+    out->a = v;
+    out->n = false;
+    out->z = false;
+    out->c = true;  // CMP #2 of 3-15
+  } else if((dc & 0x0030) == 0x0010) {
+    namePutModel(out, 0x81037E, 0x0010, &line);
+    namePutModel(out, 0x8A9B7D, 0x0010, &line);
+  } else {
+    if(dc & 0x0010) namePutModel(out, 0x81037E, (uint16_t)(dc >> 5), &line);
+    if(dc & 0x0020) namePutModel(out, 0x8103AD, (uint16_t)(dc >> 6), &line);
+    else {  // the second LSR found bit 5 clear
+      out->a = (uint16_t)(dc >> 6);
+      out->n = false;
+      out->z = out->a == 0;
+      out->c = false;
+    }
+  }
+  player_names_put();
+}
+// the variants 0-3 (bits 4-5 any), short names in every slot, the line anywhere in the map
+static void fuzz_player_names_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x03DC, (uint16_t)((rnd() & 0xFFC0) | (rnd() & 0x30) | (rnd() % 4)));
+  static const uint16_t at[6] = {0x037E, 0x03AD, 0x03E4, 0x03F1, 0x03FE, 0x040B};
+  for(int k = 0; k < 6; k++) {
+    int n = (int)(rnd() % 12);
+    for(int i = 0; i < n; i++) ram[at[k] + i] = (uint8_t)(0x20 + rnd() % 0x5F);
+    ram[at[k] + n] = 0;
+  }
+  wr16ram(ram, DP + 0x54, (uint16_t)(rnd() % 0x400));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6581,6 +6634,9 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_title_zoom_count, ALL_OUTPUTS, .fuzz = fuzz_title_zoom_count},
   {.name = "slot_order_fill", .entry = 0x8A9CF8, .end = 0x8A9D1E, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_slot_order_fill, ALL_OUTPUTS, .fuzz = fuzz_slot_order_fill},
+  {.name = "player_names_put", .entry = 0x8A9AF1, .end = 0x8A9B7D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_player_names_put, ALL_OUTPUTS,
+   .fuzz = fuzz_player_names_put},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

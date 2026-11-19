@@ -1789,6 +1789,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The players' names as text lines (roots-34, 2026-11-19)
+
+- **`player_names_put` ($8A:9AF1):** the players' names as text lines (`text_line_put`,
+  bank `$81`), by the variant in the low nibble of `$03DC`:
+  - 0: player 1's (`$037E`);
+  - 2: four names (`$03E4`, `$03F1`, `$03FE`, `$040B`);
+  - 1, by bits 4-5: `$10` alone gives player 1's and the string `PLAYER2` (`$8A:9B7D`);
+    otherwise player 1's when bit 4 is set and player 2's (`$03AD`) when bit 5 is;
+  - 3-15: nothing.
+- **Never-run code found.** Only variant 0 runs in the movies. Variants 1 and 2 are 126
+  bytes of code (`$8A:9AFD`, `$8A:9B37`) that the map counted as data. They are now static
+  code, ported, and run by the fuzz. The 8 bytes after them (`$8A:9B7D`) stay data: the
+  string `PLAYER2`.
+- **Exit.** The last `text_line_put`'s, followed call by call (A kept, X = the `$0154`
+  before it, Y = the string's length, C and V of `$0154` + `$10`). Without a call: the
+  `CMP #2`'s flags (variants 3-15) or the last `LSR`'s (variant 1).
+
 ## A title zoom step and the slots' order (roots-33, 2026-11-19)
 
 - **`title_zoom_count` ($80:F5BF):** a title zoom step. D+`$30` counts down (and at 0 D+`$3E`

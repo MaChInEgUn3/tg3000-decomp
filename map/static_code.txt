@@ -70,3 +70,5 @@
 80:E918 80:E91B m16x16 ; car_block_7f2000: no car: entry $13 (never run)
 84:A42D 84:A44B m16x16 ; track_next: variants 0 and $300, table $8A:CAC4 (never run)
 84:A534 84:A552 m16x16 ; results_init: $03E2 bit 1, eight item bytes = 1 (never run)
+8A:9AFD 8A:9B2D m16x16 ; player_names_put: variants 1 and 2, four names (never run)
+8A:9B37 8A:9B7D m16x16 ; player_names_put: variant 1's two names or "PLAYER2" (never run; the string follows)

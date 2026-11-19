@@ -389,3 +389,4 @@ func    84A4ED   results_init        ; the results reset: tables from bank $83, 
 func    84A388   prize_money_award   ; the prize money (BCD) by place and bonus bits, both players -> src/misc.c
 func    80F5BF   title_zoom_count    ; a title zoom step: D+$30 down (D+$3E up at 0), scale, line tables -> src/scale.c
 func    8A9CF8   slot_order_fill     ; the slots' order at $0D00, largest kind first -> src/misc.c
+func    8A9AF1   player_names_put    ; the players' names as text lines, by variant -> src/misc.c

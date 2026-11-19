@@ -2274,7 +2274,7 @@ byte_buffer_space:
     rts                         ; $8A9AA4
     stz.b $54                   ; $8A9AA5
     jsr.w variant_lines         ; $8A9AA7
-    jsr.w $9AF1                 ; $8A9AAA
+    jsr.w player_names_put      ; $8A9AAA
     jsr.w text_lines_copy       ; $8A9AAD
     rts                         ; $8A9AB0
 variant_lines:
@@ -2314,17 +2314,73 @@ CODE_8A9AE1:
     bne CODE_8A9AD0             ; $8A9AEE
 CODE_8A9AF0:
     rts                         ; $8A9AF0
+player_names_put:
     lda.l $8103DC               ; $8A9AF1
     and.w #$000F                ; $8A9AF5
     cmp.w #$0000                ; $8A9AF8
     beq CODE_8A9B2D             ; $8A9AFB
-    incbin !baserom:$51AFD..$51B2D
+    cmp.w #$0001                ; $8A9AFD static
+    beq CODE_8A9B4A             ; $8A9B00 static
+    cmp.w #$0002                ; $8A9B02 static
+    beq CODE_8A9B08             ; $8A9B05 static
+    rts                         ; $8A9B07 static
+CODE_8A9B08:
+    ldx.w #$03E4                ; $8A9B08 static
+    ldy.w #$0081                ; $8A9B0B static
+    jsr.w text_line_put         ; $8A9B0E static
+    ldx.w #$03F1                ; $8A9B11 static
+    ldy.w #$0081                ; $8A9B14 static
+    jsr.w text_line_put         ; $8A9B17 static
+    ldx.w #$03FE                ; $8A9B1A static
+    ldy.w #$0081                ; $8A9B1D static
+    jsr.w text_line_put         ; $8A9B20 static
+    ldx.w #$040B                ; $8A9B23 static
+    ldy.w #$0081                ; $8A9B26 static
+    jsr.w text_line_put         ; $8A9B29 static
+    rts                         ; $8A9B2C static
 CODE_8A9B2D:
     ldx.w #$037E                ; $8A9B2D
     ldy.w #$0081                ; $8A9B30
     jsr.w text_line_put         ; $8A9B33
     rts                         ; $8A9B36
-    incbin !baserom:$51B37..$51B85
+CODE_8A9B37:
+    ldx.w #$037E                ; $8A9B37 static
+    ldy.w #$0081                ; $8A9B3A static
+    jsr.w text_line_put         ; $8A9B3D static
+    ldx.w #$9B7D                ; $8A9B40 static
+    ldy.w #$008A                ; $8A9B43 static
+    jsr.w text_line_put         ; $8A9B46 static
+    rts                         ; $8A9B49 static
+CODE_8A9B4A:
+    lda.l $8103DC               ; $8A9B4A static
+    and.w #$0030                ; $8A9B4E static
+    cmp.w #$0010                ; $8A9B51 static
+    bne CODE_8A9B58             ; $8A9B54 static
+    bra CODE_8A9B37             ; $8A9B56 static
+CODE_8A9B58:
+    lda.l $8103DC               ; $8A9B58 static
+    lsr a                       ; $8A9B5C static
+    lsr a                       ; $8A9B5D static
+    lsr a                       ; $8A9B5E static
+    lsr a                       ; $8A9B5F static
+    lsr a                       ; $8A9B60 static
+    bcs CODE_8A9B67             ; $8A9B61 static
+CODE_8A9B63:
+    lsr a                       ; $8A9B63 static
+    bcs CODE_8A9B72             ; $8A9B64 static
+CODE_8A9B66:
+    rts                         ; $8A9B66 static
+CODE_8A9B67:
+    ldx.w #$037E                ; $8A9B67 static
+    ldy.w #$0081                ; $8A9B6A static
+    jsr.w text_line_put         ; $8A9B6D static
+    bra CODE_8A9B63             ; $8A9B70 static
+CODE_8A9B72:
+    ldx.w #$03AD                ; $8A9B72 static
+    ldy.w #$0081                ; $8A9B75 static
+    jsr.w text_line_put         ; $8A9B78 static
+    bra CODE_8A9B66             ; $8A9B7B static
+    incbin !baserom:$51B7D..$51B85
 text_line_put:
     pha                         ; $8A9B85
     stx.b $62                   ; $8A9B86

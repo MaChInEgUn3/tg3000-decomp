@@ -2459,3 +2459,28 @@ uint16_t slot_order_fill(void) {
   }
   return y;
 }
+
+// TG3000_ROUTINE($8A:9AF1) player_names_put
+void player_names_put(void) {
+  const uint16_t v = (uint16_t)(rd16(0x03DC) & 0x000F);
+  if(v == 0) {
+    text_line_put(0x037E, 0x81);
+    return;
+  }
+  if(v == 2) {
+    text_line_put(0x03E4, 0x81);
+    text_line_put(0x03F1, 0x81);
+    text_line_put(0x03FE, 0x81);
+    text_line_put(0x040B, 0x81);
+    return;
+  }
+  if(v != 1) return;
+  const uint16_t who = rd16(0x03DC);
+  if((who & 0x0030) == 0x0010) {
+    text_line_put(0x037E, 0x81);
+    text_line_put(0x9B7D, 0x8A);  // "PLAYER2"
+    return;
+  }
+  if(who & 0x0010) text_line_put(0x037E, 0x81);
+  if(who & 0x0020) text_line_put(0x03AD, 0x81);
+}

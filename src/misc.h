@@ -792,4 +792,11 @@ bool prize_money_award(bool carry, bool* overflow);
 // Returns the final Y.
 uint16_t slot_order_fill(void);
 
+// $8A:9AF1: the players' names as text lines (text_line_put, bank $81), by the variant (the
+// low nibble of $03DC): 0, player 1's ($037E); 2, four names ($03E4, $03F1, $03FE, $040B);
+// 1, by bits 4-5: $10 alone, player 1's and the string "PLAYER2" ($8A:9B7D), else player
+// 1's when bit 4 is set and player 2's ($03AD) when bit 5 is. Only variant 0 runs in the
+// movies.
+void player_names_put(void);
+
 #endif
