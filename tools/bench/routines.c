@@ -2892,6 +2892,64 @@ static void fuzz_car_pair_contact(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   wr16ram(ram, 0x0223, (rnd() & 1) ? 0 : (uint16_t)rnd());
 }
 
+// ---- track_object_test_sides ($83:FC65) ----  as track_object_test: no register outputs,
+// the exit flags those of the last test made (the first hit, or the fourth). A miss writes
+// nothing, so the adapter finds that test from func_83FD8A's conditions and hands its
+// adapter the state at that call (A = $0128, X = the jump index, Y = $011A).
+static bool fd8aHits(uint16_t dp, uint16_t a) {
+  if(rd16(0x0120) & 0x8000) return false;
+  const uint16_t kind = rd16(0x011C), d = (uint16_t)(a - rd16((uint16_t)(dp + 0x06)));
+  if(!(d & 0x8000) ? !((uint16_t)(d - bus_rd16(0x8380CE + kind)) & 0x8000)
+                   : ((uint16_t)(d - bus_rd16(0x8380CC + kind)) & 0x8000) != 0)
+    return false;
+  const uint16_t e = (uint16_t)(rd16(0x012A) - bus_rd16(0x81012C));
+  return !(e & 0x8000) ? ((uint16_t)(e - bus_rd16(0x83826E + kind)) & 0x8000) != 0
+                       : !((uint16_t)(e - bus_rd16(0x83826C + kind)) & 0x8000);
+}
+static bool run_track_object_test_sides(uint16_t dp) {
+  wr16(0x012A, heldPos);
+  wr16(0x0128, heldAt);
+  return track_object_test_sides(dp);
+}
+static void call_track_object_test_sides(const Regs* in, Regs* out) {
+  const uint16_t x = objectX(), obj = rd16(0x011A);
+  const uint16_t sel = (uint16_t)((rd8(0x8CB5 + (uint32_t)obj) & 0x30) >> 4);
+  heldPos = rd16(0x012A);
+  heldAt = rd16(0x0128);
+  wr16(0x012A, 0);
+  const uint16_t nx = (uint16_t)-x;
+  uint16_t at[4] = {x, nx, (uint16_t)(nx - 0x80), (uint16_t)(x + 0x80)};
+  bool fd[4] = {true, true, true, true};
+  if(sel == 1) {
+    at[1] = x;
+    at[2] = at[3] = nx;
+    fd[1] = fd[3] = false;
+  } else if(sel == 2) {
+    fd[0] = fd[1] = fd[2] = fd[3] = false;
+  }
+  int last = 3;
+  for(int i = 0; i < 4; i++)
+    if(fd[i] && fd8aHits(in->d, at[i])) {
+      last = i;
+      break;
+    }
+  wr16(0x0128, at[last]);
+  Regs t = *in;
+  t.a = at[last];
+  t.x = (uint16_t)(sel << 1);
+  t.y = obj;
+  calleeRun = run_track_object_test_sides;
+  if(fd[last]) call_func_83FD8A(&t, out);
+  else call_func_83FDCD(&t, out);
+  calleeRun = NULL;
+}
+// track_object_test's state, with any jump index; x near the limits on either side
+static void fuzz_track_object_test_sides(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_track_object(r, ram, rnd);
+  const uint32_t obj = (uint32_t)(ram[0x011A] | ram[0x011B] << 8);
+  ram[0x8CB5 + obj] = (uint8_t)((ram[0x8CB5 + obj] & 0xCF) | (rnd() & 0x30));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7491,6 +7549,9 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_text_palettes_load, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "car_pair_contact", .entry = 0x81F252, .end = 0x81F48B, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_car_pair_contact, ALL_OUTPUTS, .fuzz = fuzz_car_pair_contact},
+  {.name = "track_object_test_sides", .entry = 0x83FC65, .end = 0x83FD26, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_track_object_test_sides, .fuzz = fuzz_track_object_test_sides,
+   .holes = {{0x83FC90, 0x83FC98}}},  // the jump table
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

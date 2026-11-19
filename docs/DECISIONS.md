@@ -1789,6 +1789,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A track object tested on both sides (roots-54, 2026-11-19)
+
+**`track_object_test_sides` ($83:FC65):** a handler in `$83:F7F9`'s table, like
+`track_object_test`.
+- Bits 4-5 of the object's byte at `$8CB5` pick a branch through a jump table at
+  `$83:FC90`, which the row declares as a hole. The branch runs up to four hit tests at
+  `$0128` = x, -x, -x - `$80` and x + `$80`, stopping at the first hit.
+  - Indexes 0 and 3: `func_83FD8A` at each position.
+  - Index 1: `func_83FD8A`, then `func_83FDCD`, at x and again at -x.
+  - Index 2: `func_83FDCD` at each position. It never hits.
+- **Flags.** It has no register outputs, as its siblings don't. The exit flags are the last
+  test's, and that test's adapter reuses the verified model (`calleeRun`).
+  - A miss writes nothing, so the adapter finds the last test from `func_83FD8A`'s
+    conditions alone.
+  - It hands that adapter the state at the call: A = `$0128`, X = the jump index,
+    Y = `$011A`.
+- Live 1,628/1,628, fuzz 500/500, paths 77/77, first try.
+
 ## Two cars in contact (roots-53, 2026-11-19)
 
 **`car_pair_contact` ($81:F252):** contact between two race objects (offsets into the

@@ -940,4 +940,14 @@ void text_palettes_load(void);
 //   (32 bits) by the drop. When neither car is flagged 4, effect_request_p1($FF24, $8000).
 bool car_pair_contact(uint16_t x, uint16_t y);
 
+// $83:FC65: a track object tested on both sides (D = `dp`; a handler of $83:F7F9's table,
+// like track_object_test). $012A = 0 and $0128 = the entry's x; then, by bits 4-5 of the
+// byte at $8CB5 (a jump table at $83:FC90), up to four tests at $0128 = x, -x, -x - $80
+// and x + $80, stopping at the first hit:
+// - 0 and 3: func_83FD8A at each;
+// - 1: func_83FD8A then func_83FDCD at x, the same at -x;
+// - 2: func_83FDCD at each (never a hit).
+// Returns whether one hit.
+bool track_object_test_sides(uint16_t dp);
+
 #endif

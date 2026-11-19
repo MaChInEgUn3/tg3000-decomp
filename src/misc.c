@@ -2945,3 +2945,22 @@ bool car_pair_contact(uint16_t x, uint16_t y) {
   if(!(m & 0x0004)) effect_request_p1(0xFF24, 0x8000, y);
   return true;
 }
+
+// TG3000_ROUTINE($83:FC65) track_object_test_sides
+bool track_object_test_sides(uint16_t dp) {
+  const uint16_t x = track_object_x();
+  const uint16_t sel = (uint16_t)((rd8(0x8CB5 + (uint32_t)rd16(0x011A)) & 0x30) >> 4);
+  if(sel == 1) {
+    if(func_83FD8A(dp, x) || func_83FDCD()) return true;
+    wr16(0x0128, (uint16_t)-x);
+    return func_83FD8A(dp, (uint16_t)-x) || func_83FDCD();
+  }
+  // x, -x, -x - $80, x + $80: each step works on $0128
+  for(int step = 0; step < 4; step++) {
+    if(step == 1 || step == 3) wr16(0x0128, (uint16_t)-rd16(0x0128));
+    if(step == 2) wr16(0x0128, (uint16_t)(rd16(0x0128) - 0x0080));
+    const bool hit = sel == 2 ? func_83FDCD() : func_83FD8A(dp, rd16(0x0128));
+    if(hit) return true;
+  }
+  return false;
+}

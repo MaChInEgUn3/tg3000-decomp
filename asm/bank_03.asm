@@ -2634,6 +2634,7 @@ CODE_83FC5A:
     bpl CODE_83FC37             ; $83FC61
     sec                         ; $83FC63
     rts                         ; $83FC64
+track_object_test_sides:
     stz.w $012A                 ; $83FC65
     ldx.w $011A                 ; $83FC68
     lda.l $7E8CB3,x             ; $83FC6B
