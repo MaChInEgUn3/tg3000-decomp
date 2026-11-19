@@ -2859,3 +2859,89 @@ void text_palettes_load(void) {
   upload_cgram_now(0x80, 0x8A, 0xC964, 0x0020);
   upload_cgram_now(0x60, 0x8A, 0xC984, 0x0040);
 }
+
+// A 32-bit word at `at` (low word first).
+static uint32_t rd32w(uint32_t at) { return rd16(at) | (uint32_t)rd16(at + 2) << 16; }
+
+// An object's car slot: by the $81:FE16 table in modes where $03DC & 3 is set (never run),
+// else slot 0 for object 0 and none ($FFFF) for the others.
+static uint16_t contact_slot(uint16_t obj) {
+  if(rd16(0x03DC) & 0x0003) return bus_rd16(0x81FE16 + (uint32_t)(uint16_t)((obj / 0x35) << 1));
+  return obj ? 0xFFFF : 0x0000;
+}
+
+// The original's division: the speed at `from` (+$14, 32 bits) times 2 over the slot's
+// $022B, 40 shift-and-subtract steps through D+$20/$22 and A; the result goes to the
+// slot's $0216/$0218.
+static void contact_speed(uint16_t from, uint16_t slot) {
+  wr16(DP + 0x24, rd16(0x022B + (uint32_t)slot));
+  const uint16_t lo = rd16(0xFAC9 + (uint32_t)from), hi = rd16(0xFACB + (uint32_t)from);
+  uint16_t q0 = (uint16_t)(lo << 1), q1 = (uint16_t)(hi << 1 | lo >> 15), a = (uint16_t)(hi >> 15);
+  const uint16_t d = rd16(DP + 0x24);
+  for(int i = 0; i < 0x28; i++) {
+    bool c = a >= d;
+    if(c) a = (uint16_t)(a - d);
+    const bool c0 = (q0 & 0x8000) != 0;
+    q0 = (uint16_t)(q0 << 1 | c);
+    const bool c1 = (q1 & 0x8000) != 0;
+    q1 = (uint16_t)(q1 << 1 | c0);
+    a = (uint16_t)(a << 1 | c1);
+  }
+  wr16(DP + 0x20, q0);
+  wr16(DP + 0x22, q1);
+  wr16(0x0216 + (uint32_t)slot, q0);
+  wr16(0x0218 + (uint32_t)slot, q1);
+}
+
+// TG3000_ROUTINE($81:F252) car_pair_contact
+bool car_pair_contact(uint16_t x, uint16_t y) {
+  if((rd16(0xFADE + (uint32_t)y) | rd16(0xFADE + (uint32_t)x)) & 0x0088) return false;
+  const uint16_t d = (uint16_t)(rd16(0xFABF + (uint32_t)y) - rd16(0xFABF + (uint32_t)x));
+  if(!(d & 0x8000) ? !((uint16_t)(d - 0x0018) & 0x8000) : ((uint16_t)(d - 0xFFE8) & 0x8000)) return false;
+  const uint16_t e = (uint16_t)(rd16(0xFABB + (uint32_t)y) - rd16(0xFABB + (uint32_t)x));
+  if(!(e & 0x8000) ? !((uint16_t)(e - 0x0040) & 0x8000) : ((uint16_t)(e - 0xFFC0) & 0x8000)) return false;
+  wr16(DP + 0x14, x);
+  wr16(DP + 0x16, y);
+  wr16(DP + 0x18, contact_slot(x));
+  wr16(DP + 0x1A, contact_slot(y));
+  const uint32_t gap = rd32w(0xFAC1 + (uint32_t)y) - rd32w(0xFAC1 + (uint32_t)x);
+  wr16(DP + 0x1C, (uint16_t)gap);
+  wr16(DP + 0x1E, (uint16_t)(gap >> 16));
+  const uint16_t sx = rd16(DP + 0x18), sy = rd16(DP + 0x1A);
+  if((gap - 0x60) & 0x80000000u) {  // y less than $60 ahead: x pushed beside it
+    const bool below = ((uint16_t)(rd16(0xFAD5 + (uint32_t)y) - rd16(0xFAD5 + (uint32_t)x)) & 0x8000) != 0;
+    const uint16_t side = (uint16_t)(rd16(0xFABB + (uint32_t)y) + (below ? 0x0040 : (uint16_t)-0x0040));
+    wr16(0xFABB + (uint32_t)x, side);
+    if(!(sx & 0x8000) && !(rd16(0x0244 + (uint32_t)sx) & 0x0004))
+      wr16(0x0206 + (uint32_t)sx, (uint16_t)(side + rd16(0x029C + (uint32_t)sx)));
+    return true;
+  }
+  if(!(sy & 0x8000)) contact_speed(x, sy);
+  if(!(sx & 0x8000)) {
+    if(!(rd16(0x0244 + (uint32_t)sx) & 0x0004)) wr16(0x027C + (uint32_t)sx, (uint16_t)(rd16(0x027C + (uint32_t)sx) & 0xFFFB));
+    contact_speed(y, sx);
+  }
+  const uint16_t vx_lo = rd16(0xFAC9 + (uint32_t)x), vx_hi = rd16(0xFACB + (uint32_t)x);
+  wr16(0xFAC9 + (uint32_t)x, rd16(0xFAC9 + (uint32_t)y));
+  wr16(0xFAC9 + (uint32_t)y, vx_lo);
+  wr16(0xFACB + (uint32_t)x, rd16(0xFACB + (uint32_t)y));
+  wr16(0xFACB + (uint32_t)y, vx_hi);
+  const uint32_t was = rd32w(0xFAB5 + (uint32_t)x);
+  uint32_t now = rd32w(0xFAB5 + (uint32_t)y) - 0x60;
+  if((now - rd32w(0xFAC1 + (uint32_t)x)) & 0x80000000u) now = rd32w(0xFAC1 + (uint32_t)x);  // never run
+  wr16(0xFAB5 + (uint32_t)x, (uint16_t)now);
+  wr16(0xFAB7 + (uint32_t)x, (uint16_t)(now >> 16));
+  const uint32_t drop = was - now;
+  wr16(DP + 0x1C, (uint16_t)drop);
+  wr16(DP + 0x1E, (uint16_t)(drop >> 16));
+  if(!(sx & 0x8000) && !(rd16(0x0244 + (uint32_t)sx) & 0x0001)) {
+    const uint32_t v = rd32w(0x0225 + (uint32_t)sx) - drop;
+    wr16(0x0225 + (uint32_t)sx, (uint16_t)v);
+    wr16(0x0227 + (uint32_t)sx, (uint16_t)(v >> 16));
+  }
+  uint16_t m = 0x0004;
+  if(!(sx & 0x8000)) m &= rd16(0x0244 + (uint32_t)sx);
+  if(!(sy & 0x8000)) m &= rd16(0x0244 + (uint32_t)sy);
+  if(!(m & 0x0004)) effect_request_p1(0xFF24, 0x8000, y);
+  return true;
+}

@@ -2095,7 +2095,7 @@ CODE_81F204:
     lda.b $3C                   ; $81F22E
     pha                         ; $81F230
 CODE_81F231:
-    jsr.w $F252                 ; $81F231
+    jsr.w car_pair_contact      ; $81F231
     bcs CODE_81F24B             ; $81F234
     lda.w $FACD,y               ; $81F236
     tay                         ; $81F239
@@ -2117,6 +2117,7 @@ CODE_81F250:
     rts                         ; $81F250
 func_81F251:
     rts                         ; $81F251
+car_pair_contact:
     lda.w $FADE,y               ; $81F252
     ora.w $FADE,x               ; $81F255
     bit.w #$0088                ; $81F258
@@ -2156,7 +2157,7 @@ CODE_81F28B:
     sty.b $16                   ; $81F28F
     lda.w $03DC                 ; $81F291
     and.w #$0003                ; $81F294
-    db $D0,$1C ; bne            ; $81F297
+    bne CODE_81F2B5             ; $81F297
     lda.w #$FFFF                ; $81F299
     sta.b $18                   ; $81F29C
     txa                         ; $81F29E
@@ -2172,7 +2173,39 @@ CODE_81F2A6:
     sta.b $1A                   ; $81F2B1
 CODE_81F2B3:
     bra CODE_81F2F5             ; $81F2B3
-    incbin !baserom:$F2B5..$F2F5
+CODE_81F2B5:
+    txa                         ; $81F2B5 static
+    sta.l $004204               ; $81F2B6 static
+    sep.b #$20                  ; $81F2BA static
+    lda.b #$35                  ; $81F2BC static
+    sta.l $004206               ; $81F2BE static
+    rep.b #$20                  ; $81F2C2 static
+    xba                         ; $81F2C4 static
+    xba                         ; $81F2C5 static
+    xba                         ; $81F2C6 static
+    nop                         ; $81F2C7 static
+    nop                         ; $81F2C8 static
+    lda.l $004214               ; $81F2C9 static
+    asl a                       ; $81F2CD static
+    tax                         ; $81F2CE static
+    lda.l $81FE16,x             ; $81F2CF static
+    sta.b $18                   ; $81F2D3 static
+    tya                         ; $81F2D5 static
+    sta.l $004204               ; $81F2D6 static
+    sep.b #$20                  ; $81F2DA static
+    lda.b #$35                  ; $81F2DC static
+    sta.l $004206               ; $81F2DE static
+    rep.b #$20                  ; $81F2E2 static
+    xba                         ; $81F2E4 static
+    xba                         ; $81F2E5 static
+    xba                         ; $81F2E6 static
+    nop                         ; $81F2E7 static
+    nop                         ; $81F2E8 static
+    lda.l $004214               ; $81F2E9 static
+    asl a                       ; $81F2ED static
+    tax                         ; $81F2EE static
+    lda.l $81FE16,x             ; $81F2EF static
+    sta.b $1A                   ; $81F2F3 static
 CODE_81F2F5:
     ldx.b $14                   ; $81F2F5
     ldy.b $16                   ; $81F2F7
@@ -2330,7 +2363,10 @@ CODE_81F3E5:
     lda.w $FAB7,x               ; $81F428
     sbc.w $FAC3,x               ; $81F42B
     bpl CODE_81F43C             ; $81F42E
-    incbin !baserom:$F430..$F43C
+    lda.w $FAC1,x               ; $81F430 static
+    sta.w $FAB5,x               ; $81F433 static
+    lda.w $FAC3,x               ; $81F436 static
+    sta.w $FAB7,x               ; $81F439 static
 CODE_81F43C:
     lda.b $1C                   ; $81F43C
     sec                         ; $81F43E

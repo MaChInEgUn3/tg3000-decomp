@@ -2775,6 +2775,123 @@ static void call_text_palettes_load(const Regs* in, Regs* out) {
   out->v = in->v;
 }
 
+// ---- car_pair_contact ($81:F252) ----  No contact: A = the value tested, X Y kept, C clear;
+// N Z of the BIT's ORA (Z clear) or of the CMP that ended it, V kept or of that word's SBC.
+// Contact: X Y kept (PLY/PLX: N Z of X). Pushed beside: A = x's new +$06, C clear, V of
+// its ADC/SBC #$40 or of the $029C add. Swapped: C set, A = $FF24 when effect_request_p1
+// ran (V of its BIT or of its cooldown SBC) or 4; else V of the last 32-bit SBC (the
+// drop from $0225, or the drop itself).
+static bool sbcV(uint16_t a, uint16_t b, bool c) {
+  const uint16_t d = (uint16_t)(a - b - (c ? 0 : 1));
+  return ((a ^ b) & (a ^ d) & 0x8000) != 0;
+}
+static bool adcV(uint16_t a, uint16_t b) {
+  const uint16_t s = (uint16_t)(a + b);
+  return (~(a ^ b) & (a ^ s) & 0x8000) != 0;
+}
+static void call_car_pair_contact(const Regs* in, Regs* out) {
+  const uint16_t x = in->x, y = in->y;
+  out->x = x;
+  out->y = y;
+  out->c = false;
+  const uint16_t o = (uint16_t)(rd16(0xFADE + (uint32_t)y) | rd16(0xFADE + (uint32_t)x));
+  if(o & 0x0088) {
+    car_pair_contact(x, y);
+    out->a = o;
+    out->n = (o & 0x8000) != 0;
+    out->z = false;
+    out->v = in->v;
+    return;
+  }
+  static const uint16_t gate[2][2] = {{0xFABF, 0x0018}, {0xFABB, 0x0040}};
+  for(int k = 0; k < 2; k++) {
+    const uint16_t at = gate[k][0], lim = gate[k][1];
+    const uint16_t a = rd16(at + (uint32_t)y), b = rd16(at + (uint32_t)x), d = (uint16_t)(a - b);
+    const uint16_t t = (d & 0x8000) ? (uint16_t)(d - (uint16_t)-lim) : (uint16_t)(d - lim);
+    if((d & 0x8000) ? (t & 0x8000) != 0 : !(t & 0x8000)) {
+      car_pair_contact(x, y);
+      out->a = d;
+      out->n = (t & 0x8000) != 0;
+      out->z = t == 0;
+      out->v = sbcV(a, b, true);
+      return;
+    }
+  }
+  // contact: what the flags need, before the C changes it
+  const uint16_t mode = rd16(0x03DC) & 0x0003;
+  const uint16_t sx = mode ? bus_rd16(0x81FE16 + (uint32_t)(uint16_t)((x / 0x35) << 1)) : (x ? 0xFFFF : 0);
+  const uint32_t gap = (rd16(0xFAC1 + (uint32_t)y) | (uint32_t)rd16(0xFAC3 + (uint32_t)y) << 16) -
+                       (rd16(0xFAC1 + (uint32_t)x) | (uint32_t)rd16(0xFAC3 + (uint32_t)x) << 16);
+  const uint16_t fy = rd16(0xFABB + (uint32_t)y);
+  const bool below = ((uint16_t)(rd16(0xFAD5 + (uint32_t)y) - rd16(0xFAD5 + (uint32_t)x)) & 0x8000) != 0;
+  const uint16_t was5 = rd16(0xFAB5 + (uint32_t)x), was7 = rd16(0xFAB7 + (uint32_t)x);
+  const uint16_t flags = rd16(0x047C), cool = rd16(0x0223), step = rd16(0x1E9E);
+  uint16_t old225 = 0, old227 = 0;
+  if(!(sx & 0x8000)) {
+    old225 = rd16(0x0225 + (uint32_t)sx);
+    old227 = rd16(0x0227 + (uint32_t)sx);
+  }
+  car_pair_contact(x, y);
+  setNZ16(out, x);
+  if((gap - 0x60) & 0x80000000u) {
+    const uint16_t side = (uint16_t)(fy + (below ? 0x0040 : (uint16_t)-0x0040));
+    out->a = side;
+    out->v = below ? adcV(fy, 0x0040) : sbcV(fy, 0x0040, true);
+    if(!(sx & 0x8000) && !(rd16(0x0244 + (uint32_t)sx) & 0x0004)) out->v = adcV(side, rd16(0x029C + (uint32_t)sx));
+    return;
+  }
+  out->c = true;
+  const uint16_t now5 = rd16(0xFAB5 + (uint32_t)x), now7 = rd16(0xFAB7 + (uint32_t)x);
+  out->v = sbcV(was7, now7, was5 >= now5);
+  const uint16_t d1c = rd16(DP + 0x1C), d1e = rd16(DP + 0x1E);
+  if(!(sx & 0x8000) && !(rd16(0x0244 + (uint32_t)sx) & 0x0001)) out->v = sbcV(old227, d1e, old225 >= d1c);
+  const uint16_t sy = rd16(DP + 0x1A);
+  uint16_t m = 0x0004;
+  if(!(sx & 0x8000)) m &= rd16(0x0244 + (uint32_t)sx);
+  if(!(sy & 0x8000)) m &= rd16(0x0244 + (uint32_t)sy);
+  if(m & 0x0004) {
+    out->a = 0x0004;
+    return;
+  }
+  out->a = 0xFF24;
+  if(!(flags & 0x8000) && cool != 0) out->v = sbcV(cool, step, true);
+  else out->v = (flags & 0x4000) != 0;
+}
+// two distinct objects (stride $35) close enough to reach every exit: flags, the +$0A and
+// +$06 gates, the $60 gap; the two-player mode's slot table now and then; the cars' slots
+// and their flags, divisors, the effect's flags and cooldown
+static void fuzz_car_pair_contact(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  const uint16_t x = (uint16_t)(0x35 * (rnd() % 4 == 0 ? 0 : rnd() % 20));
+  uint16_t y;
+  do y = (uint16_t)(0x35 * (rnd() % 20)); while(y == x);
+  r->x = x;
+  r->y = y;
+  for(uint32_t i = 0; i < 0x35; i++) {
+    ram[0xFAB5 + x + i] = (uint8_t)rnd();
+    ram[0xFAB5 + y + i] = (uint8_t)rnd();
+  }
+  wr16ram(ram, 0xFADE + x, (uint16_t)(rnd() % 8 == 0 ? rnd() : rnd() & 0xFF77));
+  wr16ram(ram, 0xFADE + y, (uint16_t)(rnd() % 8 == 0 ? rnd() : rnd() & 0xFF77));
+  const uint16_t bx = (uint16_t)rnd(), cx = (uint16_t)rnd();
+  wr16ram(ram, 0xFABF + x, bx);
+  wr16ram(ram, 0xFABF + y, (uint16_t)(bx + (rnd() % 0x40) - 0x20));
+  wr16ram(ram, 0xFABB + x, cx);
+  wr16ram(ram, 0xFABB + y, (uint16_t)(cx + (rnd() % 0x90) - 0x48));
+  const uint32_t px = rnd();
+  const uint32_t py = px + (uint32_t)(rnd() % 0x100) - 0x40;
+  wr16ram(ram, 0xFAC1 + x, (uint16_t)px);
+  wr16ram(ram, 0xFAC3 + x, (uint16_t)(px >> 16));
+  wr16ram(ram, 0xFAC1 + y, (uint16_t)py);
+  wr16ram(ram, 0xFAC3 + y, (uint16_t)(py >> 16));
+  // y's +$00 near x's +$0C, so the drop sometimes reaches below x's floor
+  const uint32_t ay = px + (uint32_t)(rnd() % 0x100);
+  wr16ram(ram, 0xFAB5 + y, (uint16_t)ay);
+  wr16ram(ram, 0xFAB7 + y, (uint16_t)(ay >> 16));
+  wr16ram(ram, 0x03DC, (uint16_t)(rnd() % 4 == 0 ? 1 + rnd() % 3 : 0));
+  for(uint32_t i = 0x0200; i < 0x0300; i++) ram[i] = (uint8_t)rnd();
+  wr16ram(ram, 0x0223, (rnd() & 1) ? 0 : (uint16_t)rnd());
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7372,6 +7489,8 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x8A, .call = call_text_tiles_put_0, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "text_palettes_load", .entry = 0x8AC24B, .end = 0x8AC278, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_text_palettes_load, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "car_pair_contact", .entry = 0x81F252, .end = 0x81F48B, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_car_pair_contact, ALL_OUTPUTS, .fuzz = fuzz_car_pair_contact},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

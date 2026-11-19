@@ -85,3 +85,5 @@
 8A:85CC 8A:867C m16x16 ; tile_anim_step's frames and anim_tiles_put, 5x3 VRAM words (never run)
 81:E797 81:E7A7 m16x16 ; track_rows_build: a negative low nibble moved up (never run)
 82:A6DF 82:A6EC m16x16 ; track_palettes_load: player 2's flag $03CB moves its rows on (never run)
+81:F2B5 81:F2F5 m16x16 ; car_pair_contact: object -> car slot through $81:FE16 (two-player modes, never run)
+81:F430 81:F43C m16x16 ; car_pair_contact: the pushed car kept at its own floor (never run)

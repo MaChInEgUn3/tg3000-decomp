@@ -1789,6 +1789,25 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Two cars in contact (roots-53, 2026-11-19)
+
+**`car_pair_contact` ($81:F252):** contact between two race objects (offsets into the
+tables at `$7E:FAB5`, stride `$35`). It runs about 25,000 times in the 60k movie.
+- **No contact** when either object is flagged (bits 3 and 7 of +`$29`), or their +`$0A`
+  or +`$06` words are too far apart. The gates test the sign of the difference, not a true
+  signed compare, and the C keeps that.
+- **Pushed aside:** when y is less than `$60` ahead, x goes `$40` beside y and its car's
+  `$0206` follows.
+- **Swap and drop:** otherwise the two swap speeds and x drops to `$60` behind y. Each car
+  slot recomputes `$0216` with a 40-step shift-and-subtract division, ported step by step.
+  x's car loses the drop from `$0225`, and `effect_request_p1($FF24)` fires unless a car
+  is flagged 4.
+- **Two never-run blocks**, decoded as static code. One is the object-to-slot table
+  `$81:FE16` through the CPU divider (x / `$35`), used when `$03DC & 3` is set: objects 0
+  and 20 to slot 0, object 1 to `$B3`. The other is the drop held at the object's own
+  floor. Only the fuzz reaches them.
+- Live 4,000/4,000 (60k) and 133/133 (race1), fuzz 500/500, paths 262/262, first try.
+
 ## Window HDMA, text tiles and palettes (roots-52, 2026-11-19)
 
 **`hdma_window_setup` ($8A:A06D):** `hdma_window_tables_init`, then HDMA channels 7 (BG2's

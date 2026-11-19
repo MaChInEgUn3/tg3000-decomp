@@ -922,4 +922,22 @@ void text_tiles_put_0(void);
 // to CGRAM $80 and 32 from $8A:C984 to $60 (upload_cgram_now).
 void text_palettes_load(void);
 
+// $81:F252: contact between two race objects `x` and `y` (offsets into the object tables
+// at $7E:FAB5 on; D = $0100). No contact (returns false) when either has bit 3 or 7 of its
+// +$29 flags set, their +$0A words are $18 or more apart, or their +$06 words $40 or more
+// apart (each as the sign of the difference, not a true signed compare). Else (returns
+// true, after the original's PHX/PHY):
+// - each object's car slot (D+$18 for x, D+$1A for y): object 0 is slot 0, any other none
+//   ($FFFF); in modes where $03DC & 3 is set, the table at $81:FE16 by object number (x /
+//   $35, the CPU divider; never run);
+// - when y's position (+$0C, 32 bits) is less than $60 ahead of x's, x is pushed beside
+//   y: x's +$06 = y's +$06 plus $40 (y's +$20 below x's) or minus $40, and x's car (if
+//   any, not flagged 4 at $0244) gets that plus $029C in $0206;
+// - else the two swap speeds (+$14, 32 bits) and x drops to $60 behind y (+$00, 32 bits;
+//   not below its own +$0C: never run). Each car slot recomputes its $0216 (32 bits) as
+//   the other's speed * 2 over its own $022B (a 40-step shift-and-subtract division, as
+//   written); x's car loses bit 2 of $027C (not flagged 4) and, not flagged 1, its $0225
+//   (32 bits) by the drop. When neither car is flagged 4, effect_request_p1($FF24, $8000).
+bool car_pair_contact(uint16_t x, uint16_t y);
+
 #endif
