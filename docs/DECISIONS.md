@@ -1789,6 +1789,18 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The text buffer screen (roots-58, 2026-11-19)
+
+**`text_buffer_screen` ($8A:C15D):** the text buffer at `$7F:7D00` printed as tiles, up to
+its 0 byte.
+- A `$80` byte starts a new row from column 2. From row `$0C` on, `D+$90` = 0, and row
+  `$0C` itself is skipped. Every other byte goes to `text_put_tile_char`.
+- Then `text_screen_init` (roots-50) with the string `$8A:C224`, or `$C238` when `$1B37`
+  bit 15 is set. That `LDX` never runs and is decoded as static code.
+- Its exit is `text_screen_init`'s, modelled from the state after it, as that adapter does.
+- All 4 live entries were interrupted; 2 were replayed from their entry state (2/2), with
+  fuzz 500/500 and paths 26/26.
+
 ## The race HUD sprites (roots-57, 2026-11-19)
 
 **`race_hud_sprites` ($80:D823):** the sprite side of the race HUD, once a frame. The

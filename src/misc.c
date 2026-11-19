@@ -3124,3 +3124,22 @@ void ticker_draw(uint8_t bank, uint16_t x, uint16_t text) {
   }
   ticker_end();
 }
+
+// TG3000_ROUTINE($8A:C15D) text_buffer_screen
+void text_buffer_screen(void) {
+  for(uint16_t x = 0;; x++) {
+    const uint8_t c = rd8(0x17D00 + (uint32_t)x);
+    if(c == 0) break;
+    if(c != 0x80) {
+      text_put_tile_char(c);
+      continue;
+    }
+    wr16(DP + 0x3C, (uint16_t)(rd16(DP + 0x3C) + 1));
+    wr16(DP + 0x3A, 0x0002);
+    if(!((uint16_t)(rd16(DP + 0x3C) - 0x000C) & 0x8000)) {
+      wr16(DP + 0x90, 0);
+      if(rd16(DP + 0x3C) == 0x000C) wr16(DP + 0x3C, 0x000D);
+    }
+  }
+  text_screen_init((rd16(0x1B37) & 0x8000) ? 0xC238 : 0xC224);  // the first: never run
+}

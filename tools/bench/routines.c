@@ -3034,6 +3034,41 @@ static void fuzz_race_hud_sprites(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   for(uint32_t i = 0; i < 0x200; i++) ram[0x0F00 + i] = (uint8_t)rnd();
 }
 
+// ---- text_buffer_screen ($8A:C15D) ----  it ends in text_screen_init: its exit registers and
+// flags, which that adapter reads from the state after it (the same here)
+static void call_text_buffer_screen(const Regs* in, Regs* out) {
+  (void)in;
+  text_buffer_screen();
+  out->a = rd16(0x1017E);
+  out->x = 0x0180;
+  out->y = 0;
+  out->n = false;
+  out->z = true;
+  const uint16_t half = (uint16_t)((rd16(DP + 0x40) - rd16(DP + 0x3E)) >> 1);
+  Regs t;
+  if(rd16(DP + 0x86)) setAdc16(&t, (uint16_t)(half - rd16(DP + 0x46)), rd16(DP + 0x3E));
+  else setSbc16(&t, rd16(DP + 0x3C), 10);
+  out->c = t.c;
+  out->v = t.v;
+}
+// text_print_centered's state; a buffer of a few rows of printable bytes, $80 between rows
+// and an end; the cursor; $1B37's bit 15 now and then
+static void fuzz_text_buffer_screen(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_text_print_centered(r, ram, rnd);
+  uint32_t at = 0x17D00;
+  const uint32_t rows = rnd() % 8;
+  for(uint32_t i = 0; i < rows; i++) {
+    const uint32_t n = rnd() % 16;
+    for(uint32_t k = 0; k < n; k++) ram[at++] = (uint8_t)(0x20 + rnd() % 0x3B);
+    ram[at++] = 0x80;
+  }
+  ram[at] = 0;
+  wr16ram(ram, DP + 0x3A, (uint16_t)(rnd() % 16));
+  wr16ram(ram, DP + 0x3C, (uint16_t)(rnd() % 12));
+  wr16ram(ram, DP + 0x90, (uint16_t)(rnd() & 1));
+  wr16ram(ram, 0x1B37, (rnd() % 4 == 0) ? (uint16_t)(0x8000 | rnd()) : (uint16_t)(rnd() & 0x7FFF));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7641,6 +7676,8 @@ const Routine routines[] = {
    .holes = {{0x80EDDB, 0x80EDF6}}},  // the control-code table and the marks
   {.name = "race_hud_sprites", .entry = 0x80D823, .end = 0x80DA5F, .source = "src/hud.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_race_hud_sprites, .fuzz = fuzz_race_hud_sprites},
+  {.name = "text_buffer_screen", .entry = 0x8AC15D, .end = 0x8AC19C, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_text_buffer_screen, ALL_OUTPUTS, .fuzz = fuzz_text_buffer_screen},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

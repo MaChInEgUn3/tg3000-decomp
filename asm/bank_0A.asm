@@ -1857,7 +1857,7 @@ CODE_8A954E:
     sta.b $3A                   ; $8A95DE
     lda.w #$0007                ; $8A95E0
     sta.b $3C                   ; $8A95E3
-    jsr.w $C15D                 ; $8A95E5
+    jsr.w text_buffer_screen    ; $8A95E5
     jsr.w upload_7f_to_3000     ; $8A95E8
     lda.w #$0001                ; $8A95EB
     jsl.l wait_frames_8a9880    ; $8A95EE
@@ -4456,6 +4456,7 @@ CODE_8AC144:
 CODE_8AC156:
     rts                         ; $8AC156
     incbin !baserom:$54157..$5415D
+text_buffer_screen:
     ldx.w #$0000                ; $8AC15D
 CODE_8AC160:
     lda.l $7F7D00,x             ; $8AC160
@@ -4471,7 +4472,7 @@ CODE_8AC174:
     ldx.w #$C224                ; $8AC174
     bit.w $1B37                 ; $8AC177
     bpl CODE_8AC17F             ; $8AC17A
-    incbin !baserom:$5417C..$5417F
+    ldx.w #$C238                ; $8AC17C static
 CODE_8AC17F:
     jsr.w text_screen_init      ; $8AC17F
     rts                         ; $8AC182

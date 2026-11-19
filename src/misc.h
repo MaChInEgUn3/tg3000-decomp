@@ -969,4 +969,10 @@ bool track_object_test_sides(uint16_t dp);
 //   after 0.
 void ticker_draw(uint8_t bank, uint16_t x, uint16_t text);
 
+// $8A:C15D: the text buffer at $7F:7D00 printed as tiles (D = $0100), up to its 0 byte:
+// $80 starts a new row (D+$3C, from column 2 in D+$3A; from row $0C on, D+$90 = 0, and
+// row $0C itself is skipped), any other byte is text_put_tile_char's. Then
+// text_screen_init with the string $8A:C224 ($C238 when $1B37 bit 15 is set: never run).
+void text_buffer_screen(void);
+
 #endif
