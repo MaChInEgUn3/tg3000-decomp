@@ -358,3 +358,4 @@
 8A8CB7 tiles_planar_upload src/misc.c e9defceffa138920 0 500 103/103 verified live-flags:NVZC replayed:2
 82A1D3 track_backdrop_load src/misc.c e4d8a53b8c24ac2e 0 500 76/76 verified live-flags:NVZC replayed:2
 82AD2C race_positions_update src/misc.c 5059bed26230338b 4000 500 44/44 verified live-flags:- replayed:0
+85B1FF race_bands_merge src/misc.c b37d68f7a951ffcd 4000 500 79/79 verified live-flags:- replayed:0

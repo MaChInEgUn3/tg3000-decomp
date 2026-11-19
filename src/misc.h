@@ -706,4 +706,13 @@ void track_backdrop_load(uint16_t dp);
 // ($1ED2, $1ED4) is kept there and its message ($25 + position) requested.
 void race_positions_update(void);
 
+// $85:B1FF: the race's band table from the two players' line lists (zero-ended, ascending;
+// player 1's at $7E:4CFE + $0164, player 2's at $7E:4D4A + $0168, the indices kept in D+$14
+// and D+$16 and moved on by an 8-bit INC). Merged into $0486 + Y (Y from 2, or $34 when
+// $00B4 is 0; kept in $00C0), each line's flags in $0596 + Y: $02 player 1's, $0C player
+// 2's, $0E both, | $80 on each list's first (D+$18, D+$19). The first marks go to $047E +
+// X (X = 2, or 0): $39 when the lists start on the same line, else $19 or $29 then $39.
+// Ends at the zero both lists end with (stored). Returns the final Y.
+uint16_t race_bands_merge(void);
+
 #endif

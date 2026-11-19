@@ -1789,6 +1789,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The race's band table (roots-25, 2026-11-19)
+
+- **`race_bands_merge` ($85:B1FF):** merges the two players' line lists into one band
+  table. The lists are zero-ended and ascending: player 1's at `$7E:4CFE` + `$0164`,
+  player 2's at `$7E:4D4A` + `$0168`.
+  - Each line goes to `$0486` + Y (Y from 2, or `$34` when `$00B4` is 0), with its flags
+    in `$0596` + Y: `$02` player 1's, `$0C` player 2's, `$0E` both, plus `$80` on each
+    list's first.
+  - The first marks go to `$047E` + X: `$39` when the lists start on the same line,
+    otherwise `$19` or `$29`, then `$39`.
+  - The list indices (`$0114`, `$0116`) move on by an 8-bit `INC`, so only their low byte
+    wraps.
+  - The movies only have lists that match line for line, so the code for "a line in one
+    list only" and "the lists start apart" never runs. Its 82 bytes (`$85:B232`,
+    `$85:B265`) were data in the map; they were decoded as static code and ported, and
+    the fuzz's lists, which often differ, run them.
+
 ## The race positions (roots-24, 2026-11-19)
 
 - **`race_positions_update` ($82:AD2C):** the two players' race positions, every frame of

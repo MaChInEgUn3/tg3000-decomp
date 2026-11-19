@@ -1755,6 +1755,7 @@ CODE_85A10B:
 CODE_85A117:
     rtl                         ; $85A117
     incbin !baserom:$2A118..$2B1FF
+race_bands_merge:
     lda.w $0164                 ; $85B1FF
     sta.b $14                   ; $85B202
     lda.w $0168                 ; $85B204
@@ -1776,7 +1777,20 @@ CODE_85B21D:
     ldx.b $16                   ; $85B22A
     cmp.l $7E4D4A,x             ; $85B22C
     beq CODE_85B250             ; $85B230
-    incbin !baserom:$2B232..$2B250
+    bcc CODE_85B242             ; $85B232 static
+    ldx.b $1A                   ; $85B234 static
+    lda.b #$29                  ; $85B236 static
+    sta.w $047E,x               ; $85B238 static
+    lda.b #$39                  ; $85B23B static
+    sta.w $047F,x               ; $85B23D static
+    bra CODE_85B257             ; $85B240 static
+CODE_85B242:
+    ldx.b $1A                   ; $85B242 static
+    lda.b #$19                  ; $85B244 static
+    sta.w $047E,x               ; $85B246 static
+    lda.b #$39                  ; $85B249 static
+    sta.w $047F,x               ; $85B24B static
+    bra CODE_85B257             ; $85B24E static
 CODE_85B250:
     ldx.b $1A                   ; $85B250
     lda.b #$39                  ; $85B252
@@ -1787,7 +1801,31 @@ CODE_85B257:
     ldx.b $16                   ; $85B25D
     cmp.l $7E4D4A,x             ; $85B25F
     beq CODE_85B299             ; $85B263
-    incbin !baserom:$2B265..$2B299
+    bcc CODE_85B280             ; $85B265 static
+CODE_85B267:
+    ldx.b $16                   ; $85B267 static
+    lda.l $7E4D4A,x             ; $85B269 static
+    beq CODE_85B280             ; $85B26D static
+    sta.w $0486,y               ; $85B26F static
+    lda.b #$0C                  ; $85B272 static
+    ora.b $18                   ; $85B274 static
+    sta.w $0596,y               ; $85B276 static
+    stz.b $18                   ; $85B279 static
+    iny                         ; $85B27B static
+    inc.b $16                   ; $85B27C static
+    bra CODE_85B257             ; $85B27E static
+CODE_85B280:
+    ldx.b $14                   ; $85B280 static
+    lda.l $7E4CFE,x             ; $85B282 static
+    beq CODE_85B267             ; $85B286 static
+    sta.w $0486,y               ; $85B288 static
+    lda.b #$02                  ; $85B28B static
+    ora.b $19                   ; $85B28D static
+    sta.w $0596,y               ; $85B28F static
+    stz.b $19                   ; $85B292 static
+    iny                         ; $85B294 static
+    inc.b $14                   ; $85B295 static
+    bra CODE_85B257             ; $85B297 static
 CODE_85B299:
     cmp.b #$00                  ; $85B299
     sta.w $0486,y               ; $85B29B
@@ -1823,7 +1861,7 @@ CODE_85B2B4:
     lda.w $00E0                 ; $85B39C
     sta.w $01DC                 ; $85B39F
     sta.w $01DE                 ; $85B3A2
-    jsr.w $B1FF                 ; $85B3A5
+    jsr.w race_bands_merge      ; $85B3A5
     rtl                         ; $85B3A8
     jsl.l $85B3D7               ; $85B3A9
     jsl.l $85B828               ; $85B3AD
@@ -1838,7 +1876,7 @@ CODE_85B2B4:
     sta.w $0170                 ; $85B3CA
     lda.w $00E0                 ; $85B3CD
     sta.w $01DC                 ; $85B3D0
-    jsr.w $B1FF                 ; $85B3D3
+    jsr.w race_bands_merge      ; $85B3D3
     rtl                         ; $85B3D6
     pea.w $8330                 ; $85B3D7
     plb                         ; $85B3DA

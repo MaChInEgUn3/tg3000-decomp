@@ -2105,3 +2105,61 @@ void race_positions_update(void) {
     race_message_request_02e6((uint16_t)(rd16(0x0144) + 0x25));
   }
 }
+
+static uint8_t band_a(void) { return rd8(0x4CFE + (uint32_t)rd16(DP + 0x14)); }
+static uint8_t band_b(void) { return rd8(0x4D4A + (uint32_t)rd16(DP + 0x16)); }
+
+// TG3000_ROUTINE($85:B1FF) race_bands_merge
+uint16_t race_bands_merge(void) {
+  wr16(DP + 0x14, rd16(0x0164));
+  wr16(DP + 0x16, rd16(0x0168));
+  wr16(DP + 0x18, 0x8080);
+  uint16_t y = 0x0002, x = 0x0002;
+  if(rd16(0x00B4) == 0) {
+    y = 0x0034;
+    x = 0x0000;
+  }
+  wr16(0x00C0, y);
+  wr16(DP + 0x1A, x);
+  uint8_t a = band_a(), b = band_b();
+  if(a == b) {
+    wr8(0x047E + (uint32_t)x, 0x39);
+  } else {
+    wr8(0x047E + (uint32_t)x, a < b ? 0x19 : 0x29);
+    wr8(0x047F + (uint32_t)x, 0x39);
+  }
+  for(;;) {
+    a = band_a();
+    b = band_b();
+    if(a == b) {
+      wr8(0x0486 + (uint32_t)y, a);
+      if(a == 0) return y;
+      wr8(0x0596 + (uint32_t)y, (uint8_t)(0x0E | rd8(DP + 0x18) | rd8(DP + 0x19)));
+      wr8(DP + 0x18, 0);
+      wr8(DP + 0x19, 0);
+      y = (uint16_t)(y + 1);
+      wr8(DP + 0x14, (uint8_t)(rd8(DP + 0x14) + 1));
+      wr8(DP + 0x16, (uint8_t)(rd8(DP + 0x16) + 1));
+      continue;
+    }
+    // the lower line goes first; a list already at its zero gives way to the other
+    bool first = a < b;
+    for(;;) {
+      if(first) {
+        if((a = band_a()) == 0) { first = false; continue; }
+        wr8(0x0486 + (uint32_t)y, a);
+        wr8(0x0596 + (uint32_t)y, (uint8_t)(0x02 | rd8(DP + 0x19)));
+        wr8(DP + 0x19, 0);
+        wr8(DP + 0x14, (uint8_t)(rd8(DP + 0x14) + 1));
+      } else {
+        if((b = band_b()) == 0) { first = true; continue; }
+        wr8(0x0486 + (uint32_t)y, b);
+        wr8(0x0596 + (uint32_t)y, (uint8_t)(0x0C | rd8(DP + 0x18)));
+        wr8(DP + 0x18, 0);
+        wr8(DP + 0x16, (uint8_t)(rd8(DP + 0x16) + 1));
+      }
+      y = (uint16_t)(y + 1);
+      break;
+    }
+  }
+}

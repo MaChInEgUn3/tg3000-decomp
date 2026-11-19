@@ -1697,6 +1697,37 @@ static void fuzz_race_positions_update(Regs* r, uint8_t* ram, uint32_t (*rnd)(vo
   wr16ram(ram, 0x02E6, (uint16_t)(rnd() % 0x4F));
 }
 
+// ---- race_bands_merge ($85:B1FF) ----  A = $00B4's high byte : 0 (the 8-bit loads keep B),
+// X = D+$16 (its last LDX), Y = the final Y; N clear, Z and C set (CMP #0 of the end);
+// V as on entry
+static void call_race_bands_merge(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t hi = (uint16_t)(rd16(0x00B4) & 0xFF00);
+  out->y = race_bands_merge();
+  out->a = hi;
+  out->x = rd16(DP + 0x16);
+  out->n = false;
+  out->z = out->c = true;
+}
+// two zero-ended ascending lists, often sharing lines, sometimes one empty; either start
+static void fuzz_race_bands_merge(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(int list = 0; list < 2; list++) {
+    uint16_t at = (uint16_t)(rnd() % 0x40), base = list ? 0x4D4A : 0x4CFE;
+    wr16ram(ram, list ? 0x0168 : 0x0164, at);
+    int n = (int)(rnd() % 10);
+    uint8_t line = 0;
+    for(int i = 0; i < n; i++) {
+      line = (uint8_t)(line + 1 + rnd() % ((rnd() & 1) ? 4 : 24));  // close lines meet often
+      if(line == 0) break;
+      ram[base + at + i] = line;
+      if(i == n - 1 || line > 0xE0) { n = i + 1; break; }
+    }
+    ram[base + at + n] = 0;
+  }
+  wr16ram(ram, 0x00B4, (rnd() & 1) ? 0 : (uint16_t)rnd());
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6187,6 +6218,9 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x83, .call = call_track_backdrop_load, ALL_OUTPUTS, .fuzz = fuzz_track_backdrop_load},
   {.name = "race_positions_update", .entry = 0x82AD2C, .end = 0x82AD99, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x83, .call = call_race_positions_update, ALL_OUTPUTS, .fuzz = fuzz_race_positions_update},
+  {.name = "race_bands_merge", .entry = 0x85B1FF, .end = 0x85B2B7, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_bands_merge, ALL_OUTPUTS,
+   .fuzz = fuzz_race_bands_merge},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
