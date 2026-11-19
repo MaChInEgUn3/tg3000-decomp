@@ -381,3 +381,6 @@ func    8A86AB   scene_objects_place ; eight scene objects placed from D+$3C/$62
 func    84A31B   result_slot_step    ; $036C += 4 when the variant's results byte for $0444 is set -> src/misc.c
 func    84A34B   result_tally        ; a results counter at $036E counts up (by variant) -> src/misc.c
 func    8A9D1E   clear_041c          ; the 20 words at $041C = 0 -> src/misc.c
+func    80E8CE   name_copy_7f2000    ; the player's name to $7F:2000, then $0100, $1400 -> src/misc.c
+func    80E8F4   car_blocks_7f2000   ; the player's car's blocks (and block $BE) to $7F:2000 -> src/misc.c
+func    80E911   car_block_7f2000    ; the player's car's block from $81:D3F1 to $7F:2000 -> src/misc.c

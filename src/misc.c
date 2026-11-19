@@ -2339,3 +2339,37 @@ void result_tally(void) {
 void clear_041c(void) {
   for(uint32_t x = 0; x < 0x28; x += 2) wr16(0x041C + x, 0);
 }
+
+// TG3000_ROUTINE($80:E8CE) name_copy_7f2000
+void name_copy_7f2000(uint16_t* x, uint16_t* y) {
+  *y = rd16(DP + 0x94);
+  for(uint8_t c; (c = rd8(0x037E + (uint32_t)*y)) != 0; *x = (uint16_t)(*x + 1), *y = (uint16_t)(*y + 1))
+    wr8(0x12000 + (uint32_t)*x, c);
+  wr16(0x12000 + (uint32_t)*x, 0x0100);
+  wr16(0x12002 + (uint32_t)*x, 0x1400);
+  *x = (uint16_t)(*x + 4);
+}
+
+static uint16_t player_car(void) { return rd16(0x03A8 + (uint32_t)rd16(DP + 0x94)); }
+
+// TG3000_ROUTINE($80:E8F4) car_blocks_7f2000
+void car_blocks_7f2000(uint16_t* x, uint16_t* y) {
+  const uint16_t car = player_car();
+  if(car & 0x8000) {
+    *y = 0x00A8;
+    block_copy_7f2000(x, y);
+    return;
+  }
+  *y = rom16(0x81D3C9 + (uint32_t)(uint16_t)(car << 1));
+  block_copy_7f2000(x, y);
+  *y = 0x00BE;
+  block_copy_7f2000(x, y);
+}
+
+// TG3000_ROUTINE($80:E911) car_block_7f2000
+void car_block_7f2000(uint16_t* x, uint16_t* y) {
+  uint16_t car = player_car();
+  if(car & 0x8000) car = 0x0013;
+  *y = rom16(0x81D3F1 + (uint32_t)(uint16_t)(car << 1));
+  block_copy_7f2000(x, y);
+}

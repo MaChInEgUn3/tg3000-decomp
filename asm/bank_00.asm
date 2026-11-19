@@ -10952,18 +10952,18 @@ CODE_80E6B1:
     lda.w $D3C3,y               ; $80E6E5
     tay                         ; $80E6E8
     jsr.w block_copy_7f2000     ; $80E6E9
-    jsr.w $E8CE                 ; $80E6EC
-    jsr.w $E8F4                 ; $80E6EF
-    jsr.w $E911                 ; $80E6F2
+    jsr.w name_copy_7f2000      ; $80E6EC
+    jsr.w car_blocks_7f2000     ; $80E6EF
+    jsr.w car_block_7f2000      ; $80E6F2
     bra CODE_80E71C             ; $80E6F5
 CODE_80E6F7:
     cmp.w #$000A                ; $80E6F7
     db $B0,$11 ; bcs            ; $80E6FA
-    jsr.w $E8CE                 ; $80E6FC
+    jsr.w name_copy_7f2000      ; $80E6FC
     ldy.w #$018D                ; $80E6FF
     jsr.w block_copy_7f2000     ; $80E702
-    jsr.w $E8F4                 ; $80E705
-    jsr.w $E911                 ; $80E708
+    jsr.w car_blocks_7f2000     ; $80E705
+    jsr.w car_block_7f2000      ; $80E708
     bra CODE_80E71C             ; $80E70B
     incbin !baserom:$670D..$671C
 CODE_80E71C:
@@ -11180,6 +11180,7 @@ CODE_80E8BE:
     bne CODE_80E8BE             ; $80E8C9
     rep.b #$20                  ; $80E8CB
     rts                         ; $80E8CD
+name_copy_7f2000:
     ldy.b $94                   ; $80E8CE
     sep.b #$20                  ; $80E8D0
 CODE_80E8D2:
@@ -11200,10 +11201,12 @@ CODE_80E8DF:
     inx                         ; $80E8F1
     inx                         ; $80E8F2
     rts                         ; $80E8F3
+car_blocks_7f2000:
     ldy.b $94                   ; $80E8F4
     lda.w $03A8,y               ; $80E8F6
     bpl CODE_80E901             ; $80E8F9
-    incbin !baserom:$68FB..$6901
+    ldy.w #$00A8                ; $80E8FB static
+    jmp.w block_copy_7f2000     ; $80E8FE static
 CODE_80E901:
     asl a                       ; $80E901
     tay                         ; $80E902
@@ -11213,10 +11216,11 @@ CODE_80E901:
     ldy.w #$00BE                ; $80E90A
     jsr.w block_copy_7f2000     ; $80E90D
     rts                         ; $80E910
+car_block_7f2000:
     ldy.b $94                   ; $80E911
     lda.w $03A8,y               ; $80E913
     bpl CODE_80E91B             ; $80E916
-    incbin !baserom:$6918..$691B
+    lda.w #$0013                ; $80E918 static
 CODE_80E91B:
     asl a                       ; $80E91B
     tay                         ; $80E91C

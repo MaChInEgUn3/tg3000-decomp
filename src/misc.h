@@ -754,4 +754,16 @@ void result_tally(void);
 // $8A:9D1E: the 20 words at $041C = 0.
 void clear_041c(void);
 
+// $80:E8CE: the player's name (bytes at $037E + D+$94, up to its zero) to $7F:2000 + `*x`,
+// then the words $0100 and $1400. `*x` moves past them, `*y` ends at the zero.
+void name_copy_7f2000(uint16_t* x, uint16_t* y);
+
+// $80:E8F4: the player's car's blocks (the car is the word $03A8 + D+$94) to $7F:2000 +
+// `*x` (block_copy_7f2000): the one $81:D3C9 + 2 * car points at, then block $BE; with no
+// car (negative), block $A8 alone (never run).
+void car_blocks_7f2000(uint16_t* x, uint16_t* y);
+
+// $80:E911: the one block $81:D3F1 + 2 * car points at (car $13 when negative, never run).
+void car_block_7f2000(uint16_t* x, uint16_t* y);
+
 #endif

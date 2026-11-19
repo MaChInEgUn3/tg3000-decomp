@@ -1890,6 +1890,52 @@ static void call_clear_041c(const Regs* in, Regs* out) {
   out->z = false;
 }
 
+// ---- name_copy_7f2000 ($80:E8CE) ----  A = $1400 (N Z clear), X past the words, Y at the
+// zero; C V as on entry
+static void call_name_copy_7f2000(const Regs* in, Regs* out) {
+  out->x = in->x;
+  name_copy_7f2000(&out->x, &out->y);
+  out->a = 0x1400;
+  out->n = out->z = false;
+}
+// a name of up to 12 bytes for either player
+static void fuzz_name_copy_7f2000(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint16_t p = (rnd() & 1) ? 0x002F : 0x0000;
+  wr16ram(ram, DP + 0x94, p);
+  int n = (int)(rnd() % 12);
+  for(int i = 0; i < n; i++) ram[0x037E + p + i] = (uint8_t)(1 + rnd() % 255);
+  ram[0x037E + p + n] = 0;
+  r->x = (uint16_t)(rnd() % 0x4000);
+}
+
+// ---- car_blocks_7f2000 / car_block_7f2000 ($80:E8F4, $80:E911) ----  the last
+// block_copy_7f2000's exit: A = its length word's high byte : its last byte, N clear, Z set;
+// C clear (the ASL of the car, which block_copy_7f2000 leaves alone), except with no car in
+// $80:E8F4 (its tail jump: C as on entry); V as on entry
+static void carBlocksOut(const Regs* in, Regs* out, void (*fn)(uint16_t*, uint16_t*)) {
+  out->x = in->x;
+  out->y = in->y;
+  fn(&out->x, &out->y);
+  // the last block's start, from the car
+  uint16_t car = rd16(0x03A8 + (uint32_t)rd16(DP + 0x94)), start;
+  if(fn == car_blocks_7f2000) start = (car & 0x8000) ? 0x00A8 : 0x00BE;
+  else start = rom16(0x81D3F1 + (uint32_t)(uint16_t)(((car & 0x8000) ? 0x0013 : car) << 1));
+  uint16_t len = bus_rd16((0x81D419 + (uint32_t)start) & 0xFFFFFF);
+  out->a = (uint16_t)((len & 0xFF00) | bus_rd8((0x81D419 + (uint32_t)(uint16_t)(out->y - 1)) & 0xFFFFFF));
+  out->n = false;
+  out->z = true;
+  if(!(fn == car_blocks_7f2000 && (car & 0x8000))) out->c = false;
+}
+static void call_car_blocks_7f2000(const Regs* in, Regs* out) { carBlocksOut(in, out, car_blocks_7f2000); }
+static void call_car_block_7f2000(const Regs* in, Regs* out) { carBlocksOut(in, out, car_block_7f2000); }
+// either player, a car of the tables or none, the copy within bank $7F
+static void fuzz_car_blocks(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint16_t p = (rnd() & 1) ? 0x002F : 0x0000;
+  wr16ram(ram, DP + 0x94, p);
+  wr16ram(ram, (uint16_t)(0x03A8 + p), (rnd() % 4 == 0) ? (uint16_t)(0x8000 | rnd()) : (uint16_t)(rnd() % 0x14));
+  r->x = (uint16_t)(rnd() % 0x4000);
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6400,6 +6446,13 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_result_tally, ALL_OUTPUTS, .fuzz = fuzz_result},
   {.name = "clear_041c", .entry = 0x8A9D1E, .end = 0x8A9D2D, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .call = call_clear_041c, ALL_OUTPUTS},
+  {.name = "name_copy_7f2000", .entry = 0x80E8CE, .end = 0x80E8F4, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_name_copy_7f2000, ALL_OUTPUTS, .fuzz = fuzz_name_copy_7f2000},
+  {.name = "car_blocks_7f2000", .entry = 0x80E8F4, .end = 0x80E911, .alsoIn = {{0x80E8B5, 0x80E8CE}},
+   .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_car_blocks_7f2000, ALL_OUTPUTS, .fuzz = fuzz_car_blocks},
+  {.name = "car_block_7f2000", .entry = 0x80E911, .end = 0x80E925, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_car_block_7f2000, ALL_OUTPUTS, .fuzz = fuzz_car_blocks},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

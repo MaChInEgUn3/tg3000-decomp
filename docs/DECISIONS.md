@@ -1789,6 +1789,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The player's name and car blocks to $7F:2000 (roots-30, 2026-11-19)
+
+- **`name_copy_7f2000` ($80:E8CE):** the player's name (bytes at `$037E` + D+`$94`, up to
+  its zero) to `$7F:2000` + X, then the words `$0100` and `$1400`.
+- **`car_blocks_7f2000` ($80:E8F4):** the player's car (the word `$03A8` + D+`$94`) picks a
+  block from `$81:D3C9`, then block `$BE` follows (`block_copy_7f2000`, roots-13). With no
+  car (negative) it copies block `$A8` alone: a tail jump that never runs.
+- **`car_block_7f2000` ($80:E911):** one block from `$81:D3F1` by car; with no car it uses
+  car `$13`, which never runs either.
+- The never-run paths (9 bytes, `$80:E8FB`, `$80:E918`) are now static code; the fuzz picks
+  no car a quarter of the time.
+- The first gate failed in the fuzz, for two reasons:
+  - the tail jump into `block_copy_7f2000` left the declared extent, so the row now lists
+    `$80:E8B5`-`$80:E8CE` as a range it continues into;
+  - the adapters kept C as on entry. C is in fact clear after the car's `ASL`, which
+    `block_copy_7f2000` leaves alone, except on the no-car tail jump.
+
 ## Two results counters and a clear (roots-29, 2026-11-19)
 
 - **The results tables, by variant.** Bits 8-9 of `$03DC` select one: 0 uses `$85:D501`,

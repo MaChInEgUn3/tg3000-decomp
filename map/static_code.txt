@@ -66,3 +66,5 @@
 85:B265 85:B299 m8x16 ; race_bands_merge: a line in one list only (never run: the lists match in the movies)
 84:A331 84:A337 m16x16 ; result_slot_step: variant 0's table $85:D501 (never run)
 84:A364 84:A36D m16x16 ; result_tally: variant 0's table $85:D501, Y = 0 (never run)
+80:E8FB 80:E901 m16x16 ; car_blocks_7f2000: no car ($03A8 negative): block $A8 (never run)
+80:E918 80:E91B m16x16 ; car_block_7f2000: no car: entry $13 (never run)
