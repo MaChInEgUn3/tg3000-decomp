@@ -2484,3 +2484,35 @@ void player_names_put(void) {
   if(who & 0x0010) text_line_put(0x037E, 0x81);
   if(who & 0x0020) text_line_put(0x03AD, 0x81);
 }
+
+// TG3000_ROUTINE($82:8F8F) shake_step
+void shake_step(void) {
+  if(rd16(0x0231) == 0) {
+    wr16(0x1F18, 0x8000);
+    return;
+  }
+  const uint16_t s = rd16(0x1F18);
+  if(s & 0x8000) {
+    wr16(0x1F18, rd8(0x0397) >= 4 ? 0x0030 : 0x0000);
+    return;
+  }
+  if(s < 0x0098) {
+    wr16(0x1F1C, 0xFFFD);
+    wr16(0x1F20, 0x0002);
+    const uint16_t before = (uint16_t)(s & 0xFFF8);
+    const uint16_t now = (uint16_t)((rd16(0x1E9E) << 1) + s);
+    wr16(0x1F18, now);
+    const uint16_t step = (uint16_t)(now & 0xFFF8);
+    if(step >= 0x0098) wr16(0x1F18, 0x00B0);
+    else if(step >= 0x0030 && before < 0x0030) wr16(0x1F18, 0x0098);
+    return;
+  }
+  bool c;
+  uint16_t k;
+  do {
+    wr16(0x1F1C, (uint16_t)((uint32_t)dsp4_multiply((int16_t)(rng_next_long(&c) >> 1), -10) >> 16));
+    wr16(0x1F20, (uint16_t)((uint32_t)dsp4_multiply((int16_t)(rng_next_long(&c) >> 1), 10) >> 16));
+    k = (uint16_t)(rng_next_long(&c) & 0x0006);
+  } while(k == 0x0006);
+  wr16(0x1F18, rom16((rd16(0x1F18) >= 0x00B0 ? 0x82913F : 0x829139) + k));
+}

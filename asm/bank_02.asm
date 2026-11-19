@@ -422,7 +422,7 @@ CODE_82877F:
 CODE_828933:
     jsl.l $85B3A9               ; $828933
     jsl.l $818564               ; $828937
-    jsr.w $8F8F                 ; $82893B
+    jsr.w shake_step            ; $82893B
     jsr.w $CBD4                 ; $82893E
     jsr.w func_82A9B7           ; $828941
     jmp.w $AE15                 ; $828944
@@ -459,6 +459,7 @@ CODE_82897E:
 CODE_8289B2:
     jmp.w $B4ED                 ; $8289B2
     incbin !baserom:$109B5..$10F8F
+shake_step:
     lda.w $0231                 ; $828F8F
     beq CODE_828FAE             ; $828F92
     lda.w $1F18                 ; $828F94

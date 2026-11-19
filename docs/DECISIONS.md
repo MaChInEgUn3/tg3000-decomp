@@ -1789,6 +1789,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The shake (roots-35, 2026-11-19)
+
+- **`shake_step` ($82:8F8F):** a shake counter (`$1F18`, offsets `$1F1C`/`$1F20`), each
+  race frame, about 18,500 entries.
+  - With `$0231` clear it is off (`$8000`).
+  - A negative value starts it: 0, or `$30` when the byte `$0397` is at least 4.
+  - Below `$98` it runs: offsets -3 and 2, and it moves on by 2 * `$1E9E`. At `$98` and
+    up (by its multiple of 8) it becomes `$B0`; crossing `$30` from below makes it jump to
+    `$98`.
+- **The ending never runs in the movies.** At `$98` and up, both offsets come from DSP-4
+  multiplies: (rng / 2) * -10 and (rng / 2) * 10, keeping the products' high words
+  (`dsp4_multiply`). The new value is a random pick (0, 2 or 4) of a 3-word table:
+  `$82:9139` below `$B0`, else `$82:913F`.
+  - The census marked the routine as not touching hardware because this path never ran.
+  - The fuzz reaches it, with the bench's DSP-4 answering the original.
+- **Exit:** modelled per path. The ending's X (the pick) is recovered from the stored
+  word, since the two tables hold no repeats.
+
 ## The players' names as text lines (roots-34, 2026-11-19)
 
 - **`player_names_put` ($8A:9AF1):** the players' names as text lines (`text_line_put`,

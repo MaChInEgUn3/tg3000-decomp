@@ -375,3 +375,4 @@
 80F5BF title_zoom_count src/scale.c 5b4d73fcb9299664 15 500 7/7 verified live-flags:NVZC replayed:0
 8A9CF8 slot_order_fill src/misc.c ba37ea4c8a2699dc 2 500 18/18 verified live-flags:NVZC replayed:0
 8A9AF1 player_names_put src/misc.c 98cd155d8ee98fc6 4 500 56/56 verified live-flags:NVZC replayed:0
+828F8F shake_step src/misc.c 52a499691ed951e5 4000 500 79/79 verified live-flags:- replayed:0

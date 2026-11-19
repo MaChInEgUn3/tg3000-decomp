@@ -799,4 +799,12 @@ uint16_t slot_order_fill(void);
 // movies.
 void player_names_put(void);
 
+// $82:8F8F: the shake ($1F18, with its offsets $1F1C/$1F20), each race frame. With $0231
+// clear: $1F18 = $8000. A negative $1F18 starts it: 0, or $30 when the byte $0397 is at
+// least 4. Below $98 it runs: offsets -3, 2; $1F18 += 2 * $1E9E; at $98 and up (by its
+// multiple of 8) it becomes $B0, and from below $30 to $30 and up it jumps to $98. At $98
+// and up it ends (never run in the movies): offsets (rng / 2) * -10 and * 10 (the DSP-4's
+// high words), then $1F18 from $82:9139 (below $B0) or $82:913F by a random 0, 2 or 4.
+void shake_step(void);
+
 #endif

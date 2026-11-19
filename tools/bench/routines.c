@@ -2106,6 +2106,71 @@ static void fuzz_player_names_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   wr16ram(ram, DP + 0x54, (uint16_t)(rnd() % 0x400));
 }
 
+// ---- shake_step ($82:8F8F) ----  by path: off, A = $8000; start, the CMP #4 of the byte
+// $0397 with X = the new $1F18; running, the last compare (A = $B0 or $98 when stored, X =
+// the old $1F18 & $FFF8, V of the ADC); ending, A = the table word, X = the pick, C of the
+// CMP #$B0
+static void call_shake_step(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t on = rd16(0x0231), s = rd16(0x1F18), b = rd8(0x0397), step2 = (uint16_t)(rd16(0x1E9E) << 1);
+  shake_step();
+  if(on == 0) {
+    out->a = 0x8000;
+    out->n = true;
+    out->z = false;
+    return;
+  }
+  if(s & 0x8000) {
+    out->a = b;
+    out->x = rd16(0x1F18);
+    out->c = b >= 4;
+    setNZ16(out, (uint16_t)(b - 4));
+    return;
+  }
+  if(s < 0x0098) {
+    uint16_t before = (uint16_t)(s & 0xFFF8), step = (uint16_t)((uint16_t)(step2 + s) & 0xFFF8);
+    out->x = before;
+    setAdc16(out, step2, s);
+    if(step >= 0x0098) {
+      out->a = 0x00B0;
+      out->n = out->z = false;
+      out->c = true;
+    } else if(step < 0x0030) {
+      out->a = step;
+      out->c = false;
+      setNZ16(out, (uint16_t)(step - 0x0030));
+    } else if(before >= 0x0030) {
+      out->a = step;
+      out->c = true;
+      setNZ16(out, (uint16_t)(before - 0x0030));
+    } else {
+      out->a = 0x0098;
+      out->n = out->z = false;
+      out->c = false;
+    }
+    return;
+  }
+  out->a = rd16(0x1F18);
+  setNZ16(out, out->a);
+  out->c = s >= 0x00B0;
+  // X = the pick: the table word's offset (both tables are 3 words; find it)
+  uint32_t t = s >= 0x00B0 ? 0x82913F : 0x829139;
+  for(uint16_t k = 0; k < 6; k += 2) if(rom16(t + k) == out->a) { out->x = k; break; }
+}
+// every path: off, start (either side of 4), running near $30 and $98, ending
+static void fuzz_shake_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0231, (rnd() % 6 == 0) ? 0 : (uint16_t)(1 + rnd() % 100));
+  static const uint16_t starts[8] = {0x8000, 0xFFFF, 0x0000, 0x0028, 0x002E, 0x0090, 0x0098, 0x00B0};
+  uint16_t s = starts[rnd() % 8];
+  if(s < 0x0098) s = (uint16_t)(s + rnd() % 8);
+  else if(!(s & 0x8000)) s = (uint16_t)(s + rnd() % 0x20);
+  wr16ram(ram, 0x1F18, s);
+  ram[0x0397] = (uint8_t)(rnd() % 8);
+  wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 8));
+  fuzz_rng_state(ram, rnd);
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6637,6 +6702,8 @@ const Routine routines[] = {
   {.name = "player_names_put", .entry = 0x8A9AF1, .end = 0x8A9B7D, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_player_names_put, ALL_OUTPUTS,
    .fuzz = fuzz_player_names_put},
+  {.name = "shake_step", .entry = 0x828F8F, .end = 0x829064, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_shake_step, ALL_OUTPUTS, .fuzz = fuzz_shake_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
