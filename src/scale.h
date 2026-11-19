@@ -60,4 +60,20 @@ uint16_t mode7_view(uint16_t dp);
 // and func_80F745, whose result it returns.
 uint16_t title_zoom_count(void);
 
+// $80:F303: a title zoom step that settles (D = $0100): mode7_zoom_view; D+$7C = (D+$7A -
+// $E2) / 2 (signed), at most $200 (unsigned); D+$7A loses a quarter of that, not below
+// $100 (then D+$7C = 0); D+$86 loses an eighth (at most $D0) and one, not below 0; with p
+// = $80 * D+$87 (the CPU multiplier), D+$3C = 2 * ($4000 + p) and D+$3A = 2 * ($2E00 - p);
+// D+$30 counts on ($1F wraps to $0F, $0F stays); then inverse_scale and func_80F745,
+// whose result it returns.
+uint16_t title_zoom_settle(void);
+
+// $80:F247: the title's 128 stars spread: each one's (6 bytes from $0F00) speed byte (+5)
+// times $40 (the CPU multiplier, kept in D+$19) is added to its +2 word and taken from its
+// +0 word. The first add takes `carry` (no CLC; later ones the clear carry of the step).
+// Then D+$7C = 0, D+$86 = $4000, D+$18 = $40 (its low byte the multiplier), D+$3E counts
+// up, D+$3A = $9B00, D+$3C = $1000, D+$40 = $800; inverse_scale and func_80F745, whose
+// result it returns.
+uint16_t title_stars_spread(bool carry);
+
 #endif

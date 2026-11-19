@@ -2523,6 +2523,48 @@ static void fuzz_track_palettes_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   ram[0x03CB] = (rnd() & 1) ? (uint8_t)(1 + rnd() % 255) : 0;
 }
 
+// ---- title_zoom_settle / title_stars_spread ($80:F303, $80:F247) ----  as title_zoom_cycle:
+// A = func_80F745's result, X = D+$34 (N Z of it), C clear; V through inverse_scale and
+// func_80F745 from the V before them (the settle's SBC of the product; the stars' last ADC
+// #6, clear)
+static void call_title_zoom_settle(const Regs* in, Regs* out) {
+  (void)in;
+  // the V before inverse_scale: the SBC of 2E00 - p, p from D+$86 after the step
+  uint16_t s = (uint16_t)(rd16(DP + 0x86) >> 3);
+  if(s >= 0x00D0) s = 0x00D0;
+  uint16_t w = (uint16_t)(rd16(DP + 0x86) - (uint16_t)(s + 1));
+  if(w & 0x8000) w = 0;
+  Regs t;
+  setSbc16(&t, 0x2E00, (uint16_t)(0x80 * (uint8_t)(w >> 8)));
+  out->a = title_zoom_settle();
+  out->x = rd16(DP + 0x34);
+  setNZ16(out, out->x);
+  out->v = v_after_func_80F745(v_after_inverse_scale(t.v));
+  out->c = false;
+}
+static void call_title_stars_spread(const Regs* in, Regs* out) {
+  out->a = title_stars_spread(in->c);
+  out->y = 0x0300;  // past the 128 stars, 6 bytes each
+  out->x = rd16(DP + 0x34);
+  setNZ16(out, out->x);
+  out->v = v_after_func_80F745(v_after_inverse_scale(false));
+  out->c = false;
+}
+// title_zoom's state, the scale around $E2 and $100, D+$86 around its floor, the counter
+// at its turns
+static void fuzz_title_zoom_settle(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_title_zoom(r, ram, rnd);
+  wr16ram(ram, DP + 0x7A, (uint16_t)((rnd() & 1) ? 0x00E0 + rnd() % 0x500 : rnd()));
+  wr16ram(ram, DP + 0x86, (uint16_t)((rnd() & 1) ? rnd() % 0x200 : rnd()));
+  static const uint16_t counts[4] = {0x000F, 0x001F, 0x000E, 0x0003};
+  wr16ram(ram, DP + 0x30, counts[rnd() % 4]);
+}
+// the stars' table (speeds and positions)
+static void fuzz_title_stars_spread(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_title_zoom(r, ram, rnd);
+  for(int i = 0; i < 0x300; i++) ram[0x0F00 + i] = (uint8_t)rnd();
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7085,6 +7127,10 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x83, .call = call_track_block_triple, ALL_OUTPUTS, .fuzz = fuzz_track_block_triple},
   {.name = "track_palettes_load", .entry = 0x82A672, .end = 0x82A7F9, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x83, .call = call_track_palettes_load, ALL_OUTPUTS, .fuzz = fuzz_track_palettes_load},
+  {.name = "title_zoom_settle", .entry = 0x80F303, .end = 0x80F38D, .source = "src/scale.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_title_zoom_settle, ALL_OUTPUTS, .fuzz = fuzz_title_zoom_settle},
+  {.name = "title_stars_spread", .entry = 0x80F247, .end = 0x80F2A0, .source = "src/scale.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_title_stars_spread, ALL_OUTPUTS, .fuzz = fuzz_title_stars_spread},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

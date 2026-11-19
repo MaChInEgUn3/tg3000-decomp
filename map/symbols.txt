@@ -404,3 +404,5 @@ func    8A8600   anim_tiles_put      ; a 5x3 block of tiles straight to VRAM $04
 func    81E631   track_rows_build    ; the track's row words at $7E:D1B1 (DSP-4 $00, $11) -> src/misc.c
 func    82ADC2   track_block_triple  ; the track's $190-byte block from $7F, copied three times into $7E -> src/misc.c
 func    82A672   track_palettes_load ; both players' palette rows at $7E:6A55/$6B55 (DSP-4 $00) -> src/misc.c
+func    80F303   title_zoom_settle   ; a title zoom step that settles the scale and the pan -> src/scale.c
+func    80F247   title_stars_spread  ; the title's 128 stars spread by their speeds -> src/scale.c

@@ -1789,6 +1789,38 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Two title steps with the CPU multiplier (roots-44, 2026-11-19)
+
+**The frontier, after the advisor (2026-11-19).**
+- The 14 open-command DSP-4 roots stream commands `src/dsp4.c` does not have yet: the
+  sprite commands `$03`, `$0B`, `$06`, `$09` and the road commands `$01`, `$07`, `$08`.
+- Before any chip-state design:
+  1. Port the roots tagged `math`, `ppu`, `dma` or `hdma`, which the harness already
+     covers (about 20; `apu` needs its support checked first).
+  2. Measure which command each DSP-4 root uses (also `sta.w $8000` under DB = `$30`),
+     its real sizes (the catalogue's counts are one byte short for `$0A` and `$11`), and
+     its order of reads and writes.
+  3. Then a replay tape of the original's chip traffic per sample, instead of a
+     snapshot.
+  4. The commands themselves come as separate units checked on the firmware with
+     refbench, `$0B` and `$03` first.
+
+**`title_zoom_settle` ($80:F303):** a title zoom step after `mode7_zoom_view`.
+- `$017C` = (`$017A` - `$E2`) / 2 (signed), at most `$200`; `$017A` loses a quarter of
+  that, not below `$100`; `$0186` loses an eighth (at most `$D0`) and one, not below 0.
+- `$013C` and `$013A` come from `$80` * `$0187` on the CPU multiplier, computed in C.
+- The counter `$0130` moves on, then `inverse_scale` and `func_80F745`.
+- Live 87/87, fuzz 500/500, paths 65/65.
+
+**`title_stars_spread` ($80:F247):** the title's 128 stars (6 bytes each from `$0F00`).
+- Each star's speed byte times `$40` (CPU multiplier) is added to its +2 word and taken
+  from its +0 word.
+- The first add has no `CLC`: it takes the entry carry, a parameter of the C. Later adds
+  take the clear carry of the index step.
+- Then the zoom starts: `inverse_scale` and `func_80F745`. Y ends at `$300`, which the
+  first adapter missed.
+- Live 1/1, fuzz 500/500, paths 40/40.
+
 ## Both players' palette rows (roots-43, 2026-11-19)
 
 - **`track_palettes_load` ($82:A672):** the third and last whole-command DSP-4 root.

@@ -12212,6 +12212,7 @@ CODE_80F23F:
     jsr.w func_80F745           ; $80F242
     clc                         ; $80F245
     rts                         ; $80F246
+title_stars_spread:
     stz.b $7C                   ; $80F247
     lda.w #$4000                ; $80F249
     sta.b $86                   ; $80F24C
@@ -12306,6 +12307,7 @@ CODE_80F2F8:
     jsr.w func_80F745           ; $80F2FE
     clc                         ; $80F301
     rts                         ; $80F302
+title_zoom_settle:
     jsr.w mode7_zoom_view       ; $80F303
     lda.b $7A                   ; $80F306
     sec                         ; $80F308

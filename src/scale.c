@@ -138,3 +138,56 @@ uint16_t title_zoom_count(void) {
   inverse_scale(DP);
   return func_80F745();
 }
+
+// An arithmetic shift right (the original's CMP #$8000, ROR).
+static uint16_t asr16(uint16_t v) { return (uint16_t)((v >> 1) | (v & 0x8000)); }
+
+// TG3000_ROUTINE($80:F303) title_zoom_settle
+uint16_t title_zoom_settle(void) {
+  mode7_zoom_view(DP);
+  uint16_t t = asr16((uint16_t)(rd16(DP + 0x7A) - 0x00E2));
+  if(t >= 0x0200) t = 0x0200;
+  wr16(DP + 0x7C, t);
+  uint16_t v = (uint16_t)(rd16(DP + 0x7A) - asr16(asr16(t)));
+  if((uint16_t)(v - 0x0100) & 0x8000) {
+    wr16(DP + 0x7C, 0);
+    v = 0x0100;
+  }
+  wr16(DP + 0x7A, v);
+  uint16_t s = (uint16_t)(rd16(DP + 0x86) >> 3);
+  if(s >= 0x00D0) s = 0x00D0;
+  uint16_t w = (uint16_t)(rd16(DP + 0x86) - (uint16_t)(s + 1));
+  if(w & 0x8000) w = 0;
+  wr16(DP + 0x86, w);
+  const uint16_t p = (uint16_t)(0x80 * (uint8_t)(w >> 8));  // the CPU multiplier
+  wr16(DP + 0x3C, (uint16_t)((0x4000 + p) << 1));
+  wr16(DP + 0x3A, (uint16_t)((0x2E00 - p) << 1));
+  uint16_t n = rd16(DP + 0x30);
+  if(n != 0x000F) {
+    if(n == 0x001F) n = 0x000E;
+    wr16(DP + 0x30, (uint16_t)(n + 1));
+  }
+  inverse_scale(DP);
+  return func_80F745();
+}
+
+// TG3000_ROUTINE($80:F247) title_stars_spread
+uint16_t title_stars_spread(bool carry) {
+  wr16(DP + 0x7C, 0);
+  wr16(DP + 0x86, 0x4000);
+  wr16(DP + 0x18, 0x0040);
+  for(uint32_t y = 0; y < 0x80 * 6; y += 6) {
+    const uint16_t p = (uint16_t)(rd8(0x0F05 + y) * rd8(DP + 0x18));  // the CPU multiplier
+    wr16(DP + 0x19, p);
+    const uint32_t sum = (uint32_t)p + rd16(0x0F02 + y) + (carry ? 1u : 0u);
+    wr16(0x0F02 + y, (uint16_t)sum);
+    wr16(0x0F00 + y, (uint16_t)(rd16(0x0F00 + y) - rd16(DP + 0x19)));
+    carry = false;  // the ADC #6 of the next index never carries
+  }
+  wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
+  wr16(DP + 0x3A, 0x9B00);
+  wr16(DP + 0x3C, 0x1000);
+  wr16(DP + 0x40, 0x0800);
+  inverse_scale(DP);
+  return func_80F745();
+}
