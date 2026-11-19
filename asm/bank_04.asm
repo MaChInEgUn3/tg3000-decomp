@@ -2,15 +2,18 @@
 org $848000
 
     incbin !baserom:$20000..$2231B
+result_slot_step:
     ldx.w $0444                 ; $84A31B
     lda.w $03DC                 ; $84A31E
     and.w #$0300                ; $84A321
-    db $F0,$0B ; beq            ; $84A324
+    beq CODE_84A331             ; $84A324
     cmp.w #$0100                ; $84A326
     beq CODE_84A337             ; $84A329
     lda.l $85D55F,x             ; $84A32B
     bra CODE_84A33B             ; $84A32F
-    incbin !baserom:$22331..$22337
+CODE_84A331:
+    lda.l $85D501,x             ; $84A331 static
+    bra CODE_84A33B             ; $84A335 static
 CODE_84A337:
     lda.l $85D530,x             ; $84A337
 CODE_84A33B:
@@ -22,16 +25,20 @@ CODE_84A33B:
     sta.w $036C                 ; $84A347
 CODE_84A34A:
     rtl                         ; $84A34A
+result_tally:
     ldx.w $0444                 ; $84A34B
     lda.w $03DC                 ; $84A34E
     and.w #$0300                ; $84A351
-    db $F0,$0E ; beq            ; $84A354
+    beq CODE_84A364             ; $84A354
     cmp.w #$0100                ; $84A356
     beq CODE_84A36D             ; $84A359
     lda.l $85D55F,x             ; $84A35B
     ldy.w #$0044                ; $84A35F
     bra CODE_84A374             ; $84A362
-    incbin !baserom:$22364..$2236D
+CODE_84A364:
+    lda.l $85D501,x             ; $84A364 static
+    ldy.w #$0000                ; $84A368 static
+    bra CODE_84A374             ; $84A36B static
 CODE_84A36D:
     lda.l $85D530,x             ; $84A36D
     ldy.w #$001C                ; $84A371

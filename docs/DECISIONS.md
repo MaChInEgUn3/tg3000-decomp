@@ -1789,6 +1789,18 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Two results counters and a clear (roots-29, 2026-11-19)
+
+- **The results tables, by variant.** Bits 8-9 of `$03DC` select one: 0 uses `$85:D501`,
+  `$100` uses `$85:D530`, anything else `$85:D55F`, each indexed by `$0444`.
+  - Variant 0 never runs in the movies. Its paths (`$84:A331`, `$84:A364`, 15 bytes) were
+    data in the map; now they are static code, and the fuzz picks every variant.
+- **`result_slot_step` ($84:A31B, `JSL`):** when the variant's byte is set, `$036C` moves
+  on by 4.
+- **`result_tally` ($84:A34B, `JSL`):** when the byte is set, the word `$036E` + (the word
+  at `$85:D590` + (0, `$1C` or `$44` by variant) + `$036C`) counts up.
+- **`clear_041c` ($8A:9D1E):** the 20 words at `$041C` = 0.
+
 ## The scene's objects (roots-28, 2026-11-19)
 
 - **`scene_objects_place` ($8A:86AB):** when bit 0 of the word at `$8A:9351` + 8 *

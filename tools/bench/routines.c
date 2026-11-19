@@ -1840,6 +1840,56 @@ static void fuzz_scene_objects_place(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   wr16ram(ram, DP + 0x62, (uint16_t)((rnd() & 1) ? rnd() % 0x20 : rnd()));
 }
 
+// ---- result_slot_step / result_tally ($84:A31B, $84:A34B) ----  X = $0444 first. The byte
+// clear: A = 0 (Z set, N clear); C of the CMP #$100 unless variant 0 (then as on entry). Set:
+// the step leaves A = $036C (N Z, C V of its ADC #4); the tally A = X = the table word at
+// $85:D590 + offset + $036C (C V of that ADC), N Z of the INC. Y = the tally's offset.
+static void resultOut(const Regs* in, Regs* out, bool tally) {
+  uint16_t v = (uint16_t)(rd16(0x03DC) & 0x0300), x0 = rd16(0x0444);
+  uint16_t off = v == 0 ? 0 : v == 0x0100 ? 0x001C : 0x0044;
+  uint32_t t = v == 0 ? 0x85D501 : v == 0x0100 ? 0x85D530 : 0x85D55F;
+  bool set = bus_rd8(t + (uint32_t)x0) != 0;
+  uint16_t base = rd16(0x036C);
+  if(tally) result_tally(); else result_slot_step();
+  out->x = x0;
+  if(tally) out->y = off;
+  if(v != 0) out->c = true;  // CMP #$100 of $100, $200 or $300
+  if(!set) {
+    out->a = 0;
+    out->n = false;
+    out->z = true;
+    return;
+  }
+  if(!tally) {
+    out->a = rd16(0x036C);
+    setNZ16(out, out->a);
+    setAdc16(out, base, 0x0004);
+    return;
+  }
+  setAdc16(out, off, base);
+  out->a = out->x = bus_rd16(0x85D590 + (uint32_t)(uint16_t)(off + base));  // its LDA, then TAX
+  setNZ16(out, rd16(0x036E + (uint32_t)out->x));
+}
+static void call_result_slot_step(const Regs* in, Regs* out) { resultOut(in, out, false); }
+static void call_result_tally(const Regs* in, Regs* out) { resultOut(in, out, true); }
+// every variant, the entry and the slot within the tables
+static void fuzz_result(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x03DC, (uint16_t)rnd());
+  wr16ram(ram, 0x0444, (uint16_t)(rnd() % 0x2F));
+  wr16ram(ram, 0x036C, (uint16_t)(4 * (rnd() % 7)));
+}
+
+// ---- clear_041c ($8A:9D1E) ----  A = 0, X = $FFFE (N set, Z clear by the last DEX)
+static void call_clear_041c(const Regs* in, Regs* out) {
+  (void)in;
+  clear_041c();
+  out->a = 0;
+  out->x = 0xFFFE;
+  out->n = true;
+  out->z = false;
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6344,6 +6394,12 @@ const Routine routines[] = {
   {.name = "scene_objects_place", .entry = 0x8A86AB, .end = 0x8A8768, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_scene_objects_place, ALL_OUTPUTS,
    .fuzz = fuzz_scene_objects_place},
+  {.name = "result_slot_step", .entry = 0x84A31B, .end = 0x84A34B, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_result_slot_step, ALL_OUTPUTS, .fuzz = fuzz_result},
+  {.name = "result_tally", .entry = 0x84A34B, .end = 0x84A388, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_result_tally, ALL_OUTPUTS, .fuzz = fuzz_result},
+  {.name = "clear_041c", .entry = 0x8A9D1E, .end = 0x8A9D2D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .call = call_clear_041c, ALL_OUTPUTS},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -1139,9 +1139,9 @@ CODE_808A71:
     beq CODE_808AB8             ; $808A9E
     incbin !baserom:$AA0..$AB8
 CODE_808AB8:
-    jsl.l $84A34B               ; $808AB8
+    jsl.l result_tally          ; $808AB8
     jsr.w $8BC5                 ; $808ABC
-    jsl.l $84A31B               ; $808ABF
+    jsl.l result_slot_step      ; $808ABF
     lda.w #$FFFF                ; $808AC3
     sta.l $8103E0               ; $808AC6
     lda.w $0444                 ; $808ACA

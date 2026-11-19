@@ -2309,3 +2309,33 @@ uint16_t scene_objects_place(void) {
   wr16(DP + 0x7A, (uint16_t)(rd16(DP + 0x80) + 0x0140 + (y >= 0x000B)));
   return func_8A92CF(x);
 }
+
+// The results table by variant (bits 8-9 of $03DC), and the offset result_tally adds.
+static uint32_t result_table(uint16_t* offset) {
+  switch(rd16(0x03DC) & 0x0300) {
+    case 0x0000: *offset = 0x0000; return 0x85D501;
+    case 0x0100: *offset = 0x001C; return 0x85D530;
+    default:     *offset = 0x0044; return 0x85D55F;
+  }
+}
+
+// TG3000_ROUTINE($84:A31B) result_slot_step
+void result_slot_step(void) {
+  uint16_t off;
+  const uint32_t t = result_table(&off);
+  if(bus_rd8(t + (uint32_t)rd16(0x0444))) wr16(0x036C, (uint16_t)(rd16(0x036C) + 4));
+}
+
+// TG3000_ROUTINE($84:A34B) result_tally
+void result_tally(void) {
+  uint16_t off;
+  const uint32_t t = result_table(&off);
+  if(!bus_rd8(t + (uint32_t)rd16(0x0444))) return;
+  const uint16_t x = bus_rd16(0x85D590 + (uint32_t)(uint16_t)(off + rd16(0x036C)));
+  wr16(0x036E + (uint32_t)x, (uint16_t)(rd16(0x036E + (uint32_t)x) + 1));
+}
+
+// TG3000_ROUTINE($8A:9D1E) clear_041c
+void clear_041c(void) {
+  for(uint32_t x = 0; x < 0x28; x += 2) wr16(0x041C + x, 0);
+}

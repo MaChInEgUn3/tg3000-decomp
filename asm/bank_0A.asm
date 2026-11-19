@@ -2508,7 +2508,7 @@ CODE_8A9CC6:
     beq CODE_8A9CF3             ; $8A9CCC
     incbin !baserom:$51CCE..$51CF3
 CODE_8A9CF3:
-    jsr.w $9D1E                 ; $8A9CF3
+    jsr.w clear_041c            ; $8A9CF3
     clc                         ; $8A9CF6
     rtl                         ; $8A9CF7
     ldx.w #$0026                ; $8A9CF8
@@ -2532,6 +2532,7 @@ CODE_8A9D0F:
     bra CODE_8A9D0F             ; $8A9D1B
 CODE_8A9D1D:
     rts                         ; $8A9D1D
+clear_041c:
     ldx.w #$0026                ; $8A9D1E
     lda.w #$0000                ; $8A9D21
 CODE_8A9D24:

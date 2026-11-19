@@ -64,3 +64,5 @@
 8A:98D3 8A:98DF m16x16 ; variant_offsets_add: the $8A:9DB5 table with variant 2 (never run)
 85:B232 85:B250 m8x16 ; race_bands_merge: the first marks when the two lists start apart (never run)
 85:B265 85:B299 m8x16 ; race_bands_merge: a line in one list only (never run: the lists match in the movies)
+84:A331 84:A337 m16x16 ; result_slot_step: variant 0's table $85:D501 (never run)
+84:A364 84:A36D m16x16 ; result_tally: variant 0's table $85:D501, Y = 0 (never run)

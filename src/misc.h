@@ -743,4 +743,15 @@ void player_frame_setup(void);
 // SBC #$0A). Returns the final X.
 uint16_t scene_objects_place(void);
 
+// The results by variant (bits 8-9 of $03DC: 0, $100, else): the byte at $85:D501,
+// $85:D530 or $85:D55F + $0444 (variant 0 never runs in the movies).
+// $84:A31B: when that byte is set, $036C moves on by 4.
+void result_slot_step(void);
+// $84:A34B: when it is set, the word $036E + (the word at $85:D590 + (0, $1C or $44 by
+// variant) + $036C) counts up.
+void result_tally(void);
+
+// $8A:9D1E: the 20 words at $041C = 0.
+void clear_041c(void);
+
 #endif

@@ -378,3 +378,6 @@ func    85817B   tiles_planar_upload_5fe0 ; tiles_planar_upload's copy in bank $
 func    8A8F18   hdma_gradients_init ; the HDMA gradient tables: headers, three gradient builds -> src/misc.c
 func    83E2D7   player_frame_setup  ; player 1's car each frame: settings, controls, item -> src/misc.c
 func    8A86AB   scene_objects_place ; eight scene objects placed from D+$3C/$62 (bit 0 of $8A:9351 + 8 * $1536) -> src/misc.c
+func    84A31B   result_slot_step    ; $036C += 4 when the variant's results byte for $0444 is set -> src/misc.c
+func    84A34B   result_tally        ; a results counter at $036E counts up (by variant) -> src/misc.c
+func    8A9D1E   clear_041c          ; the 20 words at $041C = 0 -> src/misc.c
