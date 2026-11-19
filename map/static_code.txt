@@ -79,3 +79,5 @@
 8A:C320 8A:C328 m16x16 ; track_snap: variant $100, a track skipped (never run)
 8A:C342 8A:C34A m16x16 ; track_snap: variant $200, a track skipped (never run)
 8A:C355 8A:C379 m16x16 ; money_skip_bonus: + 75,000 to both players' money with $03DC bit 12 (never run)
+81:F496 81:F4A2 m16x16 ; effect_request_p1: the cooldown (never run)
+81:F4AD 81:F4AF m16x16 ; effect_request_p1: PLA, RTS when the cooldown keeps the request (never run)

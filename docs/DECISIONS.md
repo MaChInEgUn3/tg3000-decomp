@@ -1789,6 +1789,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Player 1's effect request (roots-39, 2026-11-19)
+
+- **`effect_request_p1` ($81:F48B):** `func_83FE9A` for player 1's car, its cooldown at
+  `$0223` (D = `$0200`); its C calls that function. 136 entries in the 60k movie.
+  - The cooldown never runs in the movies. Its 12 bytes and the `PLA`, `RTS` it branches
+    to past the routine's end (`$81:F4AD`, in the unknown region after it) are now
+    static code; the row lists that pair as a range it continues into.
+  - This was parked as a branch that leaves the routine; the roots-30 recipe (static
+    code plus an `alsoIn` range) settles it.
+- **Its flags differ from `func_83FE9A`'s on the cooldown path.** The keep exit here is
+  `PLA`, `RTS` with no `SEC`, so C and V are the `SBC`'s. The adapter models them from the
+  state before.
+
 ## The track snap and a money bonus (roots-38, 2026-11-19)
 
 - **`track_snap` ($8A:C2DD, `JSL`):** `$0444` is moved to the first track of the

@@ -398,3 +398,4 @@ func    80F6FD   title_scroll_start  ; $0198 = 0, $0196 = $FF80, D+$3E + 1 -> sr
 func    808199   save_data_seal      ; the saved data's checksum at $0366, copied to $7E:FA3B -> src/misc.c
 func    8AC2DD   track_snap          ; $0444 to the first track of the variant's list at or above it -> src/misc.c
 func    8AC355   money_skip_bonus    ; + 75,000 to both players' money with $03DC bit 12 (never run) -> src/misc.c
+func    81F48B   effect_request_p1   ; func_83FE9A for player 1's car (cooldown $0223) -> src/misc.c

@@ -846,4 +846,8 @@ void money_skip_bonus(bool* overflow);
 // money_skip_bonus (never run in the movies). Returns the index of that track.
 uint16_t track_snap(bool* overflow);
 
+// $81:F48B: func_83FE9A for player 1's car (its cooldown at $0223: D = $0200), with A, X, Y
+// as given. The cooldown path never runs in the movies.
+bool effect_request_p1(uint16_t a, uint16_t x, uint16_t y);
+
 #endif

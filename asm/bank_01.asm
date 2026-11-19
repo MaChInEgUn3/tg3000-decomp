@@ -2358,18 +2358,23 @@ CODE_81F479:
     bne CODE_81F487             ; $81F47C
     ldx.w #$8000                ; $81F47E
     lda.w #$FF24                ; $81F481
-    jsr.w $F48B                 ; $81F484
+    jsr.w effect_request_p1     ; $81F484
 CODE_81F487:
     sec                         ; $81F487
     ply                         ; $81F488
     plx                         ; $81F489
     rts                         ; $81F48A
+effect_request_p1:
     bit.w $047C                 ; $81F48B
     bmi CODE_81F4AC             ; $81F48E
     pha                         ; $81F490
     lda.w $0223                 ; $81F491
     beq CODE_81F4A2             ; $81F494
-    incbin !baserom:$F496..$F4A2
+    sec                         ; $81F496 static
+    sbc.w $1E9E                 ; $81F497 static
+    sta.w $0223                 ; $81F49A static
+    bpl CODE_81F4AD             ; $81F49D static
+    sty.w $0223                 ; $81F49F static
 CODE_81F4A2:
     pla                         ; $81F4A2
     stz.w $0466                 ; $81F4A3
@@ -2377,7 +2382,10 @@ CODE_81F4A2:
     sta.w $0463                 ; $81F4A9
 CODE_81F4AC:
     rts                         ; $81F4AC
-    incbin !baserom:$F4AD..$F887
+CODE_81F4AD:
+    pla                         ; $81F4AD static
+    rts                         ; $81F4AE static
+    incbin !baserom:$F4AF..$F887
 car_road_step:
     lda.w #$FFFF                ; $81F887
     sta.w $FAC7,y               ; $81F88A

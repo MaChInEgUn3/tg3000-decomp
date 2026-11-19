@@ -2619,3 +2619,6 @@ uint16_t track_snap(bool* overflow) {
   wr16(0x0444, bus_rd8(list + x));
   return x;
 }
+
+// TG3000_ROUTINE($81:F48B) effect_request_p1
+bool effect_request_p1(uint16_t a, uint16_t x, uint16_t y) { return func_83FE9A(0x0200, a, x, y); }

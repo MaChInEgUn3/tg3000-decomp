@@ -2380,6 +2380,35 @@ static void fuzz_track_snap(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x0390, bcd4(rnd));
 }
 
+// ---- effect_request_p1 ($81:F48B) ----  $047C bit 15: the BIT's flags (N set, V = bit 14,
+// Z of A & $047C), C as on entry. Else N Z of the PLA'd A, and with no cooldown V of the
+// BIT, C as on entry; with one, C and V of its SBC (the keep exit is PLA, RTS: no SEC)
+static void call_effect_request_p1(const Regs* in, Regs* out) {
+  uint16_t flags = rd16(0x047C), cool = rd16(0x0223), step = rd16(0x1E9E);
+  effect_request_p1(in->a, in->x, in->y);
+  out->v = (flags & 0x4000) != 0;
+  if(flags & 0x8000) {
+    out->n = true;
+    out->z = (in->a & flags) == 0;
+    return;
+  }
+  setNZ16(out, in->a);
+  if(cool != 0) {
+    Regs t;
+    setSbc16(&t, cool, step);
+    out->v = t.v;
+    out->c = cool >= step;
+  }
+}
+// the request blocked or not, a cooldown running out or not (it never runs in the movies)
+static void fuzz_effect_request_p1(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint32_t k = rnd();
+  wr16ram(ram, 0x047C, (uint16_t)((k & 3) == 0 ? (rnd() | 0x8000) : (rnd() & 0x7FFF)));
+  wr16ram(ram, 0x0223, (k & 4) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, 0x1E9E, (uint16_t)rnd());
+  r->a = (uint16_t)rnd();
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6930,6 +6959,9 @@ const Routine routines[] = {
    .fuzz = fuzz_save_data_seal},
   {.name = "track_snap", .entry = 0x8AC2DD, .end = 0x8AC355, .rtl = true, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_track_snap, ALL_OUTPUTS, .fuzz = fuzz_track_snap},
+  {.name = "effect_request_p1", .entry = 0x81F48B, .end = 0x81F4AD, .alsoIn = {{0x81F4AD, 0x81F4AF}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_effect_request_p1,
+   ALL_OUTPUTS, .fuzz = fuzz_effect_request_p1},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

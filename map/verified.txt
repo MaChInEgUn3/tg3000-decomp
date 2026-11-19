@@ -382,3 +382,4 @@
 80F6FD title_scroll_start src/misc.c 02c3670bc0089f52 1 500 5/5 verified live-flags:NVZC replayed:0
 808199 save_data_seal src/misc.c 02c3670bc0089f52 3 500 19/19 verified live-flags:NVZC replayed:0
 8AC2DD track_snap src/misc.c fcb281b3b729a1d8 1 500 46/46 verified live-flags:NVZC replayed:0
+81F48B effect_request_p1 src/misc.c 93805485b63807d2 65 500 15/15 verified live-flags:NVZC replayed:0
