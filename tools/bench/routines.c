@@ -2678,6 +2678,53 @@ static void fuzz_hdma_title_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   for(uint32_t a = 0x0D00; a < 0x0D30; a++) ram[a] = (uint8_t)rnd();
 }
 
+// ---- palette_load_70 ($8A:8DBF) ----  as upload_cgram_now (A = $7001), X kept (PHX/PLX:
+// N Z of it), Y = $20; C V kept
+static void call_palette_load_70(const Regs* in, Regs* out) {
+  palette_load_70(in->x);
+  out->a = 0x7001;
+  out->x = in->x;
+  out->y = 0x0020;
+  setNZ16(out, in->x);
+  out->c = in->c;
+  out->v = in->v;
+}
+// any of the table's first 32 picks
+static void fuzz_palette_load_70(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->x = (uint16_t)(2 * (rnd() % 32));
+}
+
+// ---- text_screen_init ($8A:C1C6) ----  A = the last tile masked, X = $180, Y = 0 (the
+// DEY that ended the mask: Z set, N clear); C V from text_print_centered (D+$86 = 1: the
+// ADC of its left edge)
+static void call_text_screen_init(const Regs* in, Regs* out) {
+  text_screen_init(in->x);
+  out->a = rd16(0x1017E);
+  out->x = 0x0180;
+  out->y = 0;
+  out->n = false;
+  out->z = true;
+  const uint16_t half = (uint16_t)((rd16(DP + 0x40) - rd16(DP + 0x3E)) >> 1);
+  if(rd16(DP + 0x86)) {
+    Regs t;
+    setAdc16(&t, (uint16_t)(half - rd16(DP + 0x46)), rd16(DP + 0x3E));
+    out->c = t.c;
+    out->v = t.v;
+  } else {
+    Regs t;
+    setSbc16(&t, rd16(DP + 0x3C), 10);
+    out->c = t.c;
+    out->v = t.v;
+  }
+}
+// text_print_centered's string (its address in X)
+static void fuzz_text_print_centered(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_text_screen_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_text_print_centered(r, ram, rnd);
+  r->x = r->a;
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7260,6 +7307,10 @@ const Routine routines[] = {
    .fuzz = fuzz_hdma_table_0d00_init},
   {.name = "hdma_title_setup", .entry = 0x8A8787, .end = 0x8A8828, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_hdma_title_setup, ALL_OUTPUTS, .fuzz = fuzz_hdma_title_setup},
+  {.name = "palette_load_70", .entry = 0x8A8DBF, .end = 0x8A8DEC, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_palette_load_70, ALL_OUTPUTS, .fuzz = fuzz_palette_load_70},
+  {.name = "text_screen_init", .entry = 0x8AC1C6, .end = 0x8AC224, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_text_screen_init, ALL_OUTPUTS, .fuzz = fuzz_text_screen_init},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

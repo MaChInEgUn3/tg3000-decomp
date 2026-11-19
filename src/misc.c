@@ -8,6 +8,7 @@
 #include "rng.h"
 #include "platform.h"
 #include "sprites.h"
+#include "text.h"
 #include "video_dma.h"
 #include "tg3000.h"
 #include "track.h"
@@ -2816,4 +2817,26 @@ void hdma_title_setup(void) {
   for(uint32_t i = 0; i < 13; i++) wr8(0x0D20 + i, bus_rd8(0x8A890F + i));  // MVN
   dma_hdma_setup(7, 0x02, 0x0D, 0xA10D20);
   dma_hdma_set_indirect_bank(7, 0xA1);
+}
+
+// TG3000_ROUTINE($8A:8DBF) palette_load_70
+void palette_load_70(uint16_t pick) {
+  const uint16_t p = bus_rd16(0x8384B1 + (uint32_t)pick);
+  video_set_color(0, (uint16_t)(bus_rd8(0x7F0000 + (uint32_t)p) | bus_rd8(0x7F0001 + (uint32_t)p) << 8));
+  wr16(DP + 0x72, bus_rd16(0x7F0000 + (uint32_t)p));
+  upload_cgram_now(0x70, 0x7F, p, 0x0020);
+}
+
+// TG3000_ROUTINE($8A:C1C6) text_screen_init
+void text_screen_init(uint16_t str) {
+  wr16(0x0D7C, (uint16_t)(rd16(0x0D7C) + 1));
+  wr16(DP + 0x3E, 0x0000);
+  wr16(DP + 0x40, 0x001F);
+  wr16(DP + 0x68, 0);
+  wr16(DP + 0x86, 0x0001);
+  wr16(DP + 0x3C, 0x0003);
+  for(uint16_t i = 0; i <= 0x60; i++) video_write_vram_word((uint16_t)(0x1000 + i), bus_rd16(0x8AC8E4 + 2u * i));
+  for(uint32_t i = 0; i < 0x1C; i++) wr16(0x10184 + 2 * i, 0x0502);
+  text_print_centered(0x8A0000 | str);
+  for(uint32_t i = 0; i < 0x80; i++) wr16(0x10080 + 2 * i, (uint16_t)(rd16(0x10080 + 2 * i) & 0xE3FF));
 }

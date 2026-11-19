@@ -900,4 +900,14 @@ void hdma_coldata_setup(void);
 // from $8A:8902 and $890F (MVN). Channels 5 and 7 also get an indirect bank ($81, $A1).
 void hdma_title_setup(void);
 
+// $8A:8DBF: palette `pick` (D = $0100): p = the word at $83:84B1 + pick; colour 0 and D+$72
+// take the word at $7F:p, and 16 colours from $7F:p go to CGRAM $70 (upload_cgram_now).
+void palette_load_70(uint16_t pick);
+
+// $8A:C1C6: a text screen (D = $0100). $0D7C counts up; the text box is columns 0-$1F
+// (D+$3E, D+$40), D+$68 = 0, D+$86 = 1, D+$3C = 3; 97 words from $8A:C8E4 go to VRAM $1000
+// on; 28 tiles $0502 to $7F:0184 on; the string at $8A:`str` is printed centred
+// (text_print_centered); then the 128 tiles at $7F:0080 lose bits 10-12 (their palette).
+void text_screen_init(uint16_t str);
+
 #endif

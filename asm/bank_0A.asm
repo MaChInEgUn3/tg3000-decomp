@@ -953,7 +953,7 @@ CODE_8A8BBB:
     jsr.w upload_tiles_c280     ; $8A8C65
     lda.w #$0200                ; $8A8C68
     jsr.w upload_tiles_c680     ; $8A8C6B
-    jsr.w $8DBF                 ; $8A8C6E
+    jsr.w palette_load_70       ; $8A8C6E
     rts                         ; $8A8C71
     plx                         ; $8A8C72
     lda.w #$0820                ; $8A8C73
@@ -962,7 +962,7 @@ CODE_8A8BBB:
     jsr.w upload_tiles_c280     ; $8A8C7C
     lda.w #$0200                ; $8A8C7F
     jsr.w upload_tiles_c680     ; $8A8C82
-    jsr.w $8DBF                 ; $8A8C85
+    jsr.w palette_load_70       ; $8A8C85
     rts                         ; $8A8C88
     plx                         ; $8A8C89
     lda.w #$0440                ; $8A8C8A
@@ -971,7 +971,7 @@ CODE_8A8BBB:
     jsr.w upload_tiles_c280     ; $8A8C93
     lda.w #$0220                ; $8A8C96
     jsr.w upload_tiles_c680     ; $8A8C99
-    jsr.w $8DBF                 ; $8A8C9C
+    jsr.w palette_load_70       ; $8A8C9C
     rts                         ; $8A8C9F
     plx                         ; $8A8CA0
     lda.w #$0840                ; $8A8CA1
@@ -980,7 +980,7 @@ CODE_8A8BBB:
     jsr.w upload_tiles_c280     ; $8A8CAA
     lda.w #$0220                ; $8A8CAD
     jsr.w upload_tiles_c680     ; $8A8CB0
-    jsr.w $8DBF                 ; $8A8CB3
+    jsr.w palette_load_70       ; $8A8CB3
     rts                         ; $8A8CB6
 tiles_planar_upload:
     sta.b $38                   ; $8A8CB7
@@ -1121,6 +1121,7 @@ upload_tiles_c680:
     jsl.l upload_vram_now       ; $8A8DB9
     plx                         ; $8A8DBD
     rts                         ; $8A8DBE
+palette_load_70:
     phx                         ; $8A8DBF
     lda.l $8384B1,x             ; $8A8DC0
     tax                         ; $8A8DC4
@@ -4470,7 +4471,7 @@ CODE_8AC174:
     bpl CODE_8AC17F             ; $8AC17A
     incbin !baserom:$5417C..$5417F
 CODE_8AC17F:
-    jsr.w $C1C6                 ; $8AC17F
+    jsr.w text_screen_init      ; $8AC17F
     rts                         ; $8AC182
 CODE_8AC183:
     inc.b $3C                   ; $8AC183
@@ -4505,6 +4506,7 @@ CODE_8AC19F:
     cpx.w #$000C                ; $8AC1C0
     bne CODE_8AC19F             ; $8AC1C3
     rts                         ; $8AC1C5
+text_screen_init:
     phx                         ; $8AC1C6
     inc.w $0D7C                 ; $8AC1C7
     ldx.w #$0000                ; $8AC1CA

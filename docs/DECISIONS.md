@@ -1789,6 +1789,29 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A palette and a text screen (roots-50, 2026-11-19)
+
+**`palette_load_70` ($8A:8DBF):** a palette chosen through `$83:84B1`.
+- Colour 0 is written directly (`$2121`/`$2122`, `video_set_color`).
+- 16 colours from `$7F` go to CGRAM `$70` by `upload_cgram_now`.
+- The closing `PLX` sets N and Z from X. The first adapter missed it, and the fuzz caught it
+  with X = 0.
+- Live 4/4, fuzz 500/500.
+
+**`text_screen_init` ($8A:C1C6):** a text box of columns 0-`$1F`.
+- 97 words from `$8A:C8E4` go to VRAM `$1000` as word writes, a row of `$0502` tiles to
+  `$7F:0184`, and the string at `$8A:X` is centred.
+- The 128 tiles at `$7F:0080` then lose their palette bits (10-12).
+- C and V come from `text_print_centered`'s exit, as its own adapter models them.
+- Live 4/4, fuzz 500/500.
+
+**A gap found, not closed (owner's call).** A DMA the harness records raw (not a plain
+`$2118` word upload, a fill or CGRAM) keeps its target, mode, source and size, but not
+the VRAM address or `VMAIN`. The original's kick to `$2118`/`$2119` consumes the address
+it set, so a C that never sets the address would pass. `$8A:8828` (high-byte and
+low-byte uploads) needs this, so it waits until the effect carries the VRAM address and
+`VMAIN` for those targets. That change to the comparison is a verification-rule change.
+
 ## The title HDMA channels (roots-49, 2026-11-19)
 
 **`hdma_title_setup` ($8A:8787):** six HDMA channels set up, but not enabled:
