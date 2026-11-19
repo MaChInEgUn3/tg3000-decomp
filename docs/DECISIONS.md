@@ -1789,6 +1789,21 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The race positions (roots-24, 2026-11-19)
+
+- **`race_positions_update` ($82:AD2C):** the two players' race positions, every frame of
+  a race.
+  - Each of the 20 cars (`$35` bytes apart from `$7E:FAB5`; player 1 is car 0, player 2
+    car 1) has a 48-bit progress: the words at +0, +2 and +`$1E`, low to high.
+  - `$0142` (player 1) and `$0144` (player 2) count the cars whose progress is at least
+    the player's, the player included. The original's `CMP`, `SBC`, `SBC` and `BMI` decide
+    by the sign of the 48-bit difference.
+  - A position that differs from the last one shown (`$1ED2`, `$1ED4`) is stored there,
+    and its message `$25` + position is requested (`race_message_request_0233` and
+    `_02e6`, roots-11).
+  - Exit: the final `PLB` pulls the `$83` its own `PEA $837E` pushed, so DB = `$83`, N is
+    set and Z clear whatever the caller's bank.
+
 ## The track's backdrop (roots-23, 2026-11-19)
 
 - **`track_backdrop_load` ($82:A1D3):** unpacks `$98:9FEB` to `$7F:0000`.

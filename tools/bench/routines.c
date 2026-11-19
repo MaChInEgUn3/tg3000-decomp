@@ -1655,6 +1655,48 @@ static void fuzz_track_backdrop_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   wr16ram(ram, 0x047B, (uint16_t)(rnd() % 47));
 }
 
+// ---- race_positions_update ($82:AD2C) ----  ends with PLB of the $83 its PEA $837E pushed
+// (DB = $83, N set, Z clear) and Y = 0; V clear (the ADCs only add small numbers). Player 2's position unchanged: A =
+// it, C set (its CMP was equal); changed: A = its message, C = race_message_request_02e6's.
+// X = the last message requested << 1, else $35 * 20.
+static void call_race_positions_update(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t old1 = rd16(0x1ED2), old2 = rd16(0x1ED4), slot2 = rd16(0x02E6);
+  race_positions_update();
+  uint16_t p1 = rd16(0x0142), p2 = rd16(0x0144);
+  out->x = 0x0424;
+  if(p1 != old1) out->x = (uint16_t)((p1 + 0x25) << 1);
+  if(p2 != old2) {
+    out->a = (uint16_t)(p2 + 0x25);
+    out->x = (uint16_t)(out->a << 1);
+    out->c = rom16(0x83A0A4 + (uint32_t)(uint16_t)(slot2 << 1)) >= rom16(0x83A0A4 + (uint32_t)out->x);
+  } else {
+    out->a = p2;
+    out->c = true;
+  }
+  out->y = 0;
+  out->v = false;
+  out->db = 0x83;
+  out->n = true;
+  out->z = false;
+}
+// random progress for the 20 cars (often close to a player's), the last positions shown
+// right or wrong, the message slots
+static void fuzz_race_positions_update(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint16_t x = 0; x < 0x35 * 20; x = (uint16_t)(x + 0x35)) {
+    bool near = rnd() % 3 != 0;
+    uint16_t lo = (uint16_t)rnd(), mid = near ? (uint16_t)(rnd() % 4) : (uint16_t)rnd(), hi = near ? 0 : (uint16_t)rnd();
+    wr16ram(ram, (uint16_t)(0xFAB5 + x), lo);
+    wr16ram(ram, (uint16_t)(0xFAB7 + x), mid);
+    wr16ram(ram, (uint16_t)(0xFAD3 + x), hi);
+  }
+  wr16ram(ram, 0x1ED2, (uint16_t)(rnd() % 22));
+  wr16ram(ram, 0x1ED4, (uint16_t)(rnd() % 22));
+  wr16ram(ram, 0x0233, (uint16_t)(rnd() % 0x4F));
+  wr16ram(ram, 0x02E6, (uint16_t)(rnd() % 0x4F));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6143,6 +6185,8 @@ const Routine routines[] = {
    .fuzz = fuzz_tiles_planar_upload},
   {.name = "track_backdrop_load", .entry = 0x82A1D3, .end = 0x82A28B, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x83, .call = call_track_backdrop_load, ALL_OUTPUTS, .fuzz = fuzz_track_backdrop_load},
+  {.name = "race_positions_update", .entry = 0x82AD2C, .end = 0x82AD99, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x83, .call = call_race_positions_update, ALL_OUTPUTS, .fuzz = fuzz_race_positions_update},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

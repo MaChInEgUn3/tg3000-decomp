@@ -305,7 +305,7 @@ CODE_828656:
     jsr.w $F2B3                 ; $82865B
     jsr.w $DFA9                 ; $82865E
     jsr.w $EC32                 ; $828661
-    jsr.w $AD2C                 ; $828664
+    jsr.w race_positions_update ; $828664
     lda.w $00B8                 ; $828667
     bit.w #$0004                ; $82866A
     bne CODE_828678             ; $82866D
@@ -1687,6 +1687,7 @@ func_82AD12:
 CODE_82AD20:
     rts                         ; $82AD20
     incbin !baserom:$12D21..$12D2C
+race_positions_update:
     pea.w $837E                 ; $82AD2C
     plb                         ; $82AD2F
     ldy.w #$0014                ; $82AD30

@@ -2079,3 +2079,29 @@ void track_backdrop_load(uint16_t dp) {
   wr16(dp + 0x14, 0x007F);
   upload_vram_now(0x7800, 0x7F, map2, 0x0600);
 }
+
+// A car's progress: the words at $7E:FAB5, $FAB7 and $FAD3 + `x`, low to high.
+static uint64_t car_progress(uint16_t x) {
+  return (uint64_t)rd16(0xFAB5 + (uint32_t)x) | (uint64_t)rd16(0xFAB7 + (uint32_t)x) << 16 |
+         (uint64_t)rd16(0xFAD3 + (uint32_t)x) << 32;
+}
+
+// TG3000_ROUTINE($82:AD2C) race_positions_update
+void race_positions_update(void) {
+  wr16(0x0142, 0);
+  wr16(0x0144, 0);
+  const uint64_t p1 = car_progress(0x0000), p2 = car_progress(0x0035);
+  for(uint16_t car = 0, x = 0; car < 20; car++, x = (uint16_t)(x + 0x35)) {
+    const uint64_t v = car_progress(x);
+    if(!(((v - p1) >> 47) & 1)) wr16(0x0142, (uint16_t)(rd16(0x0142) + 1));
+    if(!(((v - p2) >> 47) & 1)) wr16(0x0144, (uint16_t)(rd16(0x0144) + 1));
+  }
+  if(rd16(0x0142) != rd16(0x1ED2)) {
+    wr16(0x1ED2, rd16(0x0142));
+    race_message_request_0233((uint16_t)(rd16(0x0142) + 0x25));
+  }
+  if(rd16(0x0144) != rd16(0x1ED4)) {
+    wr16(0x1ED4, rd16(0x0144));
+    race_message_request_02e6((uint16_t)(rd16(0x0144) + 0x25));
+  }
+}

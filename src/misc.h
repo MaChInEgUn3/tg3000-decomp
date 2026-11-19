@@ -698,4 +698,12 @@ void tiles_planar_upload(uint16_t offset, uint16_t x);
 // $7400 and $7800.
 void track_backdrop_load(uint16_t dp);
 
+// $82:AD2C: the two players' race positions. Each of the 20 cars ($35 bytes apart from
+// $7E:FAB5; player 1 is car 0, player 2 car 1) has a 48-bit progress (words at +0, +2,
+// +$1E, low to high). $0142 (player 1) and $0144 (player 2) count the cars whose progress
+// is at least the player's (a subtraction whose sign decides, as the original's CMP, SBC,
+// SBC and BMI), the player included. A position that differs from the last one shown
+// ($1ED2, $1ED4) is kept there and its message ($25 + position) requested.
+void race_positions_update(void);
+
 #endif
