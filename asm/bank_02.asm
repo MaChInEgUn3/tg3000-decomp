@@ -252,7 +252,7 @@ CODE_82856D:
     jsl.l track_map_load        ; $8285C5
     jsr.w $A7F9                 ; $8285C9
     jsl.l $81E631               ; $8285CC
-    jsr.w $AF33                 ; $8285D0
+    jsr.w track_objects_stream  ; $8285D0
     jsr.w $8961                 ; $8285D3
     lda.w #$0001                ; $8285D6
     jsr.w wait_frames_82        ; $8285D9
@@ -1853,13 +1853,14 @@ CODE_82AE99:
 CODE_82AEA3:
     rts                         ; $82AEA3
     incbin !baserom:$12EA4..$12F33
+track_objects_stream:
     lda.w #$0140                ; $82AF33
     sta.l $7E45EC               ; $82AF36
     ldx.b $A0                   ; $82AF3A
     lda.w $0226                 ; $82AF3C
     cmp.l $7E5B91,x             ; $82AF3F
     bcs CODE_82AF48             ; $82AF43
-    incbin !baserom:$12F45..$12F48
+    jmp.w $B025                 ; $82AF45 static
 CODE_82AF48:
     lda.l $7E5B94,x             ; $82AF48
     beq CODE_82AFA3             ; $82AF4C

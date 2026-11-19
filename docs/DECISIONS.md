@@ -1789,6 +1789,47 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The track objects' graphics stream; a full run (roots-36, 2026-11-19)
+
+- **`track_objects_stream` ($82:AF33):** the track objects' graphics, sent as the car
+  (`$0226`) passes their entries.
+  - The entries are 5-byte records at `$7E:5B91` + `$01A0`: where it starts (a word), its
+    tile slot (a byte), and the object kind (a word).
+  - For each record reached, kind 0 sets `$7E:45EC` = 2 * slot. Any other kind picks an
+    entry: `$86:AE36` + 2 * kind, or `$86:AC36` when the kind's high byte is set.
+  - That entry gives the source (an offset plus the word at `$7E:6591` + its base) and
+    the size. The VRAM word is slot * 32, and `$7E:45EC` + 2 * (kind's low byte) is set to
+    2 * slot (`$7E:495C` for the kinds with a high byte). Then `upload_vram_now` sends
+    the graphics from bank `$7F`, and `$01A0` moves on by 5.
+  - The first C wrote the high kinds' slots into `$45EC` too. The replays caught it at
+    `$7E:4970` (0/2) before any commit.
+  - The fuzz then drew kinds whose entry points below `$8000` in bank `$86` (I/O space,
+    which the bench refuses). It now draws only kinds whose entry is empty or in ROM.
+  - Its random `$7E:6591` words also made sources that ran past `$7F:FFFF`. The DMA wraps
+    within the bank, which the bench counts as two effects, against one from the C. The
+    game's data never does that, so the fuzz keeps each source inside the bank. Whether
+    the platform layer should wrap like the hardware is a question for the port.
+  - A high kind of `$29` or more makes the index run past bank `$86` (into `$87:6C36`).
+    The fuzz keeps high kinds below `$29`.
+  - **A quirk the fuzz found.** When a kind's entry is 0, the original goes on to the next
+    record with X still holding 2 * kind, not the record's index, so `$01A0` becomes
+    2 * kind + 5. The game's kinds all have entries, so it never shows in play. The C
+    and the adapter do the same.
+  - The fuzz tests the quirk with low kinds only (a high kind's 2 * kind is far off).
+    Then the quirk record is the last one, with a record at 2 * kind + 5 that ends it,
+    so the routine never reads past bank `$86` on garbage. Checked on all three movies
+    before the full gate.
+  - When the first record is not reached yet, a `JMP` to the `RTS` ends it. Those 3 bytes
+    never ran and are now static code.
+- **Exit.** The choices read only state the routine does not change, so the adapter
+  follows them: Y = the last upload's VRAM word, V = its `ADC`'s, and A, C, N, Z from
+  the comparison that ended it.
+  - Its live entries are interrupted (long VRAM uploads), so replays and fuzz carry it.
+- The note on roots-35: `shake_step` passed with 4 Z mismatches in the fuzz, which do not
+  count because no flag of it is read (4,000 returns watched); the Z model there is not
+  exact.
+- **Full gate.** Four incremental commits had passed since the last full run.
+
 ## The shake (roots-35, 2026-11-19)
 
 - **`shake_step` ($82:8F8F):** a shake counter (`$1F18`, offsets `$1F1C`/`$1F20`), each

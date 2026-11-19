@@ -807,4 +807,17 @@ void player_names_put(void);
 // high words), then $1F18 from $82:9139 (below $B0) or $82:913F by a random 0, 2 or 4.
 void shake_step(void);
 
+// $82:AF33: the track objects' graphics, streamed as the car ($0226) passes their entries:
+// 5-byte records at $7E:5B91 + D+$A0 (a word, where it starts; a byte, its tile slot; a
+// word, the object kind). $7E:45EC = $140; then for each record reached (its word at most
+// $0226; the first one not reached ends it, a JMP to the RTS that never runs for the
+// first): kind 0 sets $7E:45EC = 2 * slot; else the kind's entry ($86:AE36 + 2 * kind, or
+// $86:AC36 when its high byte is set) gives the source (its offset at $86:001E/$86:0022 +
+// the word at $7E:6591 + its first word's) and size ($86:0020/$86:0024), the VRAM word
+// (slot * 32) and $7E:45EC (high kinds: $7E:495C) + 2 * (the kind's low byte) = 2 * slot,
+// and the graphics go up. An empty entry leaves X = 2 * kind, from which the next record
+// is counted (the original's quirk; the game's kinds have entries)
+// (upload_vram_now from bank $7F). D+$A0 moves on by 5 a record.
+void track_objects_stream(void);
+
 #endif
