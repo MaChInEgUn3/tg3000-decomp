@@ -90,10 +90,11 @@ _commits = None
 
 def recent_commits():
     """The commits a carried row may come from: the last MAX_BEHIND counting the one being
-    made (with uncommitted changes to src/ or tools/bench/, HEAD is one back already)."""
+    made (with any uncommitted change to a tracked file, HEAD is one back already: the
+    check runs before that commit)."""
     global _commits
     if _commits is None:
-        dirty = git("status", "--porcelain", "--", "src", "tools/bench")
+        dirty = git("status", "--porcelain", "--untracked-files=no")
         start = "HEAD" if dirty else "HEAD~1"
         out = git("rev-list", "-n", str(MAX_BEHIND), start, "--")
         _commits = out.decode().split() if out else []
@@ -159,7 +160,7 @@ def full_run_problem():
         return None  # the full run is part of the commit being made
     head = git("rev-parse", "HEAD")
     allowed = set(recent_commits())
-    dirty = git("status", "--porcelain", "--", "src", "tools/bench")
+    dirty = git("status", "--porcelain", "--untracked-files=no")
     if not dirty and head:
         allowed.add(head.decode().strip())
     if commit not in allowed:

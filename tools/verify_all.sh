@@ -63,8 +63,6 @@ head -n 1 "$tmp/shop0.txt" > "$tmp/shop.txt"
 k=0
 while [ $k -lt $shopshards ]; do tail -n +2 "$tmp/shop$k.txt" >> "$tmp/shop.txt"; k=$((k + 1)); done
 python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt"
-# the mark of a full run (progress.py finds its commit with git blame)
-sed -i "1a # full run: $(date -u +%Y-%m-%dT%H:%M:%SZ) (tools/verify_all.sh)" map/verified.txt
 k=0
 while [ $k -lt "$shards" ]; do grep -A6 "^difftest" "$tmp/main$k.log" || true; k=$((k + 1)); done
 if grep -q "^difftest.*: \(PASS\|UNREACHED\)" "$tmp/neg" || ! grep -q "^difftest.*: FAIL" "$tmp/neg"; then
@@ -73,6 +71,10 @@ if grep -q "^difftest.*: \(PASS\|UNREACHED\)" "$tmp/neg" || ! grep -q "^difftest
   status=5
 else
   echo "negative rows: every deliberately wrong C fails over the full movie ($(grep -c ': FAIL' "$tmp/neg"))"
+fi
+# the mark of a full run (progress.py finds its commit with git blame), only when it passed
+if [ $status -eq 0 ]; then
+  sed -i "1a # full run: $(date -u +%Y-%m-%dT%H:%M:%SZ) (tools/verify_all.sh)" map/verified.txt
 fi
 python3 -I tools/progress.py
 if [ $status -ne 0 ]; then echo "verify_all: FAILED (bench status $status)" >&2; fi

@@ -1799,9 +1799,29 @@ entries were interrupted. Eight verified rows stood at live 0 that way (roots-21
 are now all sampled, and one in three after that. Rare routines get every entry compared;
 frequent ones get at most 32 more samples.
 
-**This needs a full run.** It is a harness change, so `verify_all.sh` re-runs every row
-and writes a new full-run mark. Three incremental commits had passed since the last
-mark. The live-0 rows after it are listed below.
+**This needs a full run.** It is a harness change, so `verify_all.sh` re-ran every row
+and wrote a new full-run mark. Three incremental commits had passed since the last mark.
+
+**Measured result.**
+- Live samples went from 318,655 to 319,770; 225 rows gained.
+- It did not fix the live-0 rows: still 8 (`func_8ABA55`, `func_8AB994`,
+  `star_layers_init`, `password_pack`, `hdma_gradient_build`, `track_map_load`,
+  `track_segments_load`, `clear_vram`). Their counters show every entry was interrupted
+  (11 of 11 for `clear_vram`, 12 of 12 for `hdma_gradient_build`). The cause is the
+  interrupt, not the sampling.
+- 19 rows lost some samples, mostly leaves called inside other samples (`wait_frames`
+  3,337 to 2,629, `binary_to_bcd` 2,448 to 1,863). The likely cause is the nesting cap
+  `MAX_DEPTH` (4): more outer samples now hold the slots.
+
+**Next (with the next full run).** Raise the nesting cap. Compare one case per captured
+entry state with the fuzz function skipped, so the original runs from the real entry
+state without an interrupt; report those as "replayed", not live.
+
+**Two tool fixes, committed after it.**
+- `verify_all.sh` stamps the full-run mark only when the run passed.
+- `progress.py` counts any uncommitted tracked change as "a commit is being made" (it
+  looked only at `src/` and `tools/bench/`). A docs-only commit that is the sixth after
+  the full run could otherwise pass locally and fail in CI.
 
 ## A wait, the variant flags, six sprite slots (roots-21, 2026-11-19)
 
