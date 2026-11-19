@@ -1789,6 +1789,17 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A 16-colour fade (roots-47, 2026-11-19)
+
+**`palette_fade_60` ($80:FAEE):** 16 colours faded by a step and sent to CGRAM `$60`-`$6F`
+by DMA.
+- The fade amount is the low 5 bits of `$81:D9AC` + 2 * step.
+- Each colour's red, green and blue words (`$81:DB4C`, `$DB6C`, `$DB8C`) lose it, clamped
+  at 0. They are packed into BGR555 at `$0500` by the original's byte swaps and shifts,
+  modelled as written.
+- The exit carry is the bit the last blue's second `ASL` shifted out.
+- Live 58/58, fuzz 500/500, paths 53/53, first try.
+
 ## A curved line table (roots-46, 2026-11-19)
 
 **`window_curve_build` ($80:FA5B):** a two-edge line table at `$1500`, likely a window

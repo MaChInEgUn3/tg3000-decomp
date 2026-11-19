@@ -12745,7 +12745,7 @@ CODE_80F6CE:
     lda.w #$003F                ; $80F6D8
 CODE_80F6DB:
     sta.b $30                   ; $80F6DB
-    jsr.w $FAEE                 ; $80F6DD
+    jsr.w palette_fade_60       ; $80F6DD
     lda.w #$0800                ; $80F6E0
     sta.b $36                   ; $80F6E3
     jsr.w window_curve_build    ; $80F6E5
@@ -13256,6 +13256,7 @@ CODE_80FAD2:
     stz.w $1674                 ; $80FAE8
     rep.b #$20                  ; $80FAEB
     rts                         ; $80FAED
+palette_fade_60:
     asl a                       ; $80FAEE
     tax                         ; $80FAEF
     lda.w $D9AC,x               ; $80FAF0

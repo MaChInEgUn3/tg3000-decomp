@@ -2612,6 +2612,27 @@ static void fuzz_window_curve_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   ram[DP + 0x42] = (uint8_t)((rnd() & 1) ? rnd() % 0x10 : rnd());
 }
 
+// ---- palette_fade_60 ($80:FAEE) ----  A = $0001 (LDA #$01 under the size's 0: N Z clear),
+// X = $20, Y = 0; C V of the last blue: V of its SBC, C the bit its second ASL shifted out
+static void call_palette_fade_60(const Regs* in, Regs* out) {
+  palette_fade_60(in->a);
+  const uint16_t s = rd16(DP + 0x14), b = bus_rd16(0x81DB8C + 0x1E);
+  Regs t;
+  setSbc16(&t, b, s);
+  const uint16_t v = b >= s ? (uint16_t)(b - s) : 0;
+  out->a = 0x0001;
+  out->x = 0x0020;
+  out->y = 0;
+  out->n = out->z = false;
+  out->v = t.v;
+  out->c = ((uint16_t)(v << 8 | v >> 8) & 0x4000) != 0;
+}
+// any of the table's 80 steps
+static void fuzz_palette_fade_60(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->a = (uint16_t)(rnd() % 0x50);
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7184,6 +7205,8 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_stars_draw_8a, ALL_OUTPUTS, .fuzz = fuzz_stars_draw},
   {.name = "window_curve_build", .entry = 0x80FA5B, .end = 0x80FAEE, .source = "src/line_tables.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_window_curve_build, ALL_OUTPUTS, .fuzz = fuzz_window_curve_build},
+  {.name = "palette_fade_60", .entry = 0x80FAEE, .end = 0x80FB5C, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_palette_fade_60, ALL_OUTPUTS, .fuzz = fuzz_palette_fade_60},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -883,4 +883,10 @@ void track_block_triple(uint16_t dp);
 // $7F to $7E:6A59 / $6B59, and 7 from bank $85 to $6A55, $6A57, $6A69-$6A71 / $6B55... .
 void track_palettes_load(uint16_t dp);
 
+// $80:FAEE: 16 colours faded by step `level`: s = the low 5 bits of $81:D9AC + 2 * level.
+// Each colour's red, green and blue words ($81:DB4C, $DB6C, $DB8C) less s (0 below)
+// make the BGR555 word at $0500 + 2 * i (green and blue placed by byte swaps and shifts),
+// sent to CGRAM colours $60-$6F by DMA.
+void palette_fade_60(uint16_t level);
+
 #endif

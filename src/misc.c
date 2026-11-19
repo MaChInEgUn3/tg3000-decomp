@@ -2777,3 +2777,23 @@ void track_palettes_load(uint16_t dp) {
   wr16(dp + 0x1C, pick2);
   wr16(dp + 0x14, 0);
 }
+
+// A component less the fade, 0 if it would go below.
+static uint16_t fade_part(uint32_t at, uint16_t s) {
+  const uint16_t v = bus_rd16(at);
+  return v >= s ? (uint16_t)(v - s) : 0;
+}
+
+static uint16_t swap_bytes(uint16_t v) { return (uint16_t)(v << 8 | v >> 8); }
+
+// TG3000_ROUTINE($80:FAEE) palette_fade_60
+void palette_fade_60(uint16_t level) {
+  const uint16_t s = (uint16_t)(bus_rd16(0x81D9AC + (uint16_t)(level << 1)) & 0x001F);
+  wr16(DP + 0x14, s);
+  for(uint32_t x = 0; x < 0x20; x += 2) {
+    wr16(DP + 0x16, fade_part(0x81DB4C + x, s));
+    wr16(DP + 0x16, (uint16_t)((swap_bytes(fade_part(0x81DB6C + x, s)) >> 3) | rd16(DP + 0x16)));
+    wr16(0x0500 + x, (uint16_t)((uint16_t)(swap_bytes(fade_part(0x81DB8C + x, s)) << 2) | rd16(DP + 0x16)));
+  }
+  video_upload_cgram(0x60, 0x810500, 0x0020);
+}
