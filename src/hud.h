@@ -28,4 +28,19 @@ uint16_t draw_meter(uint16_t dp);
 // it is off. The rest are unlit (tile $25C2).
 void race_lights_draw(void);
 
+// $80:D823: the race HUD, one frame (D = $0100):
+// - the two window shapes (window_shape_a with D+$37:D+$35's bytes, window_shape_b with
+//   D+$24) and, when 0 - D+$22 is on screen, the sprite group $81:C272;
+// - the readouts, in attribute $2200: the shown speed D+$28 (with a point), the same times
+//   $4D * 2 / 256 (the other unit, rounded by the product's bit 6; the PPU multiplier),
+//   D+$35 * $63 / 256 and D+$37 * $41 / 128 (the PPU multiplier), and three names from the
+//   tables at $86:CEA7 (by $0368), $86:CEBF and $86:D0A7 (by $0444), centred;
+// - race_lights_draw; the shown speed moves toward D+$32 by $10 at most (down: never run);
+// - the sprite groups of the list at $0700 (10-byte entries; the second is drawn twice, as
+//   the original's loop does) that are on screen, and of the first entry (never run);
+// - the OAM from the slot $0174 on: two 2-tile sprites, then one-tile ones, from the
+//   8-byte entries at $0F00 (x byte at +$06 rounded to a signed column less 8), until the
+//   table or the OAM ends; $0174 = the slot after.
+void race_hud_sprites(void);
+
 #endif

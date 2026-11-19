@@ -3002,6 +3002,38 @@ static void fuzz_ticker_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0xE1, e == 0 ? (uint16_t)(0x8000 | rnd()) : (uint16_t)(rnd() % 0x3C));
 }
 
+// ---- race_hud_sprites ($80:D823) ----  both callers go on to oam_finish_0b00_near, which sets
+// A and X before reading them and never reads Y: no register outputs (the flags judged by
+// the bench from the watched returns)
+static void call_race_hud_sprites(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  race_hud_sprites();
+}
+// the window shapes' and the lights' state; the speeds, readouts and the camera around the
+// screen; names in range; the $0700 list (a few entries, then 0) and the $0F00 table
+static void fuzz_race_hud_sprites(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_window_shape(r, ram, rnd);
+  fuzz_race_lights_draw(r, ram, rnd);
+  // the slot ($0174 is D+$74): small, or near the end so the OAM loops stop early
+  wr16ram(ram, DP + 0x74, (uint16_t)(4 * ((rnd() & 1) ? rnd() % 0x10 : rnd() % 0x84)));
+  wr16ram(ram, DP + 0x22, (uint16_t)((rnd() % 0x140) - 0x20));
+  wr16ram(ram, DP + 0x28, (uint16_t)(rnd() % 0x400));
+  wr16ram(ram, DP + 0x32, (uint16_t)(rnd() % 0x400));
+  wr16ram(ram, 0x0444, (uint16_t)(rnd() % 8));
+  const uint32_t n = 1 + rnd() % 4;
+  for(uint32_t i = 0; i < 10 * (n + 1); i += 2) ram[0x0700 + i] = ram[0x0701 + i] = 0;
+  for(uint32_t i = 0; i < n; i++) {
+    const uint32_t e = 0x0700 + 10 * i;
+    wr16ram(ram, e, (uint16_t)(1 + rnd() % 0x100));
+    wr16ram(ram, e + 4, (rnd() & 1) ? 0xC272 : 0xC2F2);
+    wr16ram(ram, e + 6, (uint16_t)(rnd() % 0x180));
+    wr16ram(ram, e + 8, (uint16_t)(rnd() % 0x1000));
+  }
+  if(rnd() & 1) wr16ram(ram, 0x0700, 0);
+  for(uint32_t i = 0; i < 0x200; i++) ram[0x0F00 + i] = (uint8_t)rnd();
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7607,6 +7639,8 @@ const Routine routines[] = {
   {.name = "ticker_draw", .entry = 0x80EBF7, .end = 0x80EE56, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_ticker_draw, .fuzz = fuzz_ticker_draw,
    .holes = {{0x80EDDB, 0x80EDF6}}},  // the control-code table and the marks
+  {.name = "race_hud_sprites", .entry = 0x80D823, .end = 0x80DA5F, .source = "src/hud.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_race_hud_sprites, .fuzz = fuzz_race_hud_sprites},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

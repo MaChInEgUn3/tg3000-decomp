@@ -89,3 +89,5 @@
 81:F430 81:F43C m16x16 ; car_pair_contact: the pushed car kept at its own floor (never run)
 80:ED04 80:ED18 m16x16 ; ticker_draw: a punctuation mark looked up in $80:EDE7 (never run)
 80:EE0D 80:EE45 m16x16 ; ticker_draw: control codes 2 (a counted repeat) and 3 (stop flag) (never run)
+80:D946 80:D94B m16x16 ; race_hud_draw: the shown speed falls by $10 at most (never run)
+80:D9A3 80:D9BC m16x16 ; race_hud_draw: the first $0700 entry's sprites when it is on screen (never run)

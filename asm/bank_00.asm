@@ -8745,7 +8745,7 @@ CODE_80D24B:
     sta.b $7A                   ; $80D3F3
     jsr.w steer_state_init      ; $80D3F5
     jsr.w draw_meter            ; $80D3F8
-    jsr.w $D823                 ; $80D3FB
+    jsr.w race_hud_sprites      ; $80D3FB
     jsr.w oam_finish_0b00_near  ; $80D3FE
     lda.w #$0002                ; $80D401
     tsb.w $0026                 ; $80D404
@@ -8994,7 +8994,7 @@ CODE_80D611:
     sta.b $36                   ; $80D628
     dec.b $26                   ; $80D62A
 CODE_80D62C:
-    jsr.w $D823                 ; $80D62C
+    jsr.w race_hud_sprites      ; $80D62C
     jsr.w oam_finish_0b00_near  ; $80D62F
     lda.w #$0002                ; $80D632
     tsb.w $0026                 ; $80D635
@@ -9233,6 +9233,7 @@ nmi_target_80D784:
     stz.w $2122                 ; $80D81B
     rep.b #$20                  ; $80D81E
     jmp.w nmi_tail              ; $80D820
+race_hud_sprites:
     ldx.w #$0000                ; $80D823
     sep.b #$20                  ; $80D826
     lda.b $37                   ; $80D828
@@ -9355,7 +9356,8 @@ CODE_80D85C:
     bpl CODE_80D94B             ; $80D93F
     cmp.w #$FFF0                ; $80D941
     bpl CODE_80D94E             ; $80D944
-    incbin !baserom:$5946..$594B
+    lda.w #$FFF0                ; $80D946 static
+    bra CODE_80D94E             ; $80D949 static
 CODE_80D94B:
     lda.w #$0010                ; $80D94B
 CODE_80D94E:
@@ -9400,7 +9402,16 @@ CODE_80D991:
     sta.b $14                   ; $80D99C
     cmp.w #$0100                ; $80D99E
     bpl CODE_80D9BC             ; $80D9A1
-    incbin !baserom:$59A3..$59BC
+    cmp.w #$FFD0                ; $80D9A3 static
+    bmi CODE_80D9BC             ; $80D9A6 static
+    lda.w #$0098                ; $80D9A8 static
+    sta.b $16                   ; $80D9AB static
+    lda.w #$0800                ; $80D9AD static
+    sta.b $18                   ; $80D9B0 static
+    lda.w #$C2F2                ; $80D9B2 static
+    tax                         ; $80D9B5 static
+    lda.w #$0081                ; $80D9B6 static
+    jsr.w sprite_group          ; $80D9B9 static
 CODE_80D9BC:
     ldy.w $0174                 ; $80D9BC
     ldx.w #$0000                ; $80D9BF

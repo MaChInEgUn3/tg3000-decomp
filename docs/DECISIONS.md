@@ -1789,6 +1789,36 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The race HUD sprites (roots-57, 2026-11-19)
+
+**`race_hud_sprites` ($80:D823):** the sprite side of the race HUD, once a frame. The
+tilemap side is `race_hud_draw` (`$85:8814`); the first name tried here clashed with it.
+- **Windows:** the two window shapes.
+- **Readouts** in attribute `$2200`:
+  - the shown speed, with a point;
+  - the same speed times `$4D` * 2 / 256 in the other unit, rounded by the product's bit
+    6 through an `ASL` of `D+$16`;
+  - `D+$35` * `$63` / 256 and `D+$37` * `$41` / 128.
+  - Each product comes from the PPU multiplier, and the C sets matrix A and B as the
+    original leaves them.
+- **Names:** three names centred from the tables at `$86:CEA7`, `$CEBF` and `$D0A7`.
+- **Lights and speed:** `race_lights_draw`, then the shown speed moves toward `D+$32` by
+  `$10` at most.
+- **Object list** at `$0700`: the sprite groups that are on screen. The original's loop
+  passes over the second entry twice (its index starts at `$0A`, and so does the counter
+  after the first pass), and the C does the same.
+- **OAM tail:** filled from the `$0F00` table: two 2-tile sprites, then 1-tile ones.
+- **Never run**, decoded as static code: the speed falling by `$10`, and the first `$0700`
+  entry on screen.
+- **No outputs.** Both callers go on to `oam_finish_0b00_near`, which sets A and X first
+  and never reads Y. The bench saw no live flag in 648 watched returns.
+- Live 648/648 (60k) and 482/482 (race1), fuzz 500/500, paths 243/243, first try.
+
+**Parked this session:** `$8A:82C0` (a state in the 627 unknown bytes, like `$8A:898F`) and
+`$8A:C056`. The C of `$8A:C056` was written, then reverted: its one live sample waits about
+200 frames and is abandoned at `MAX_INSNS` (4M). It needs a per-row instruction cap in
+`difftest.c`.
+
 ## The scrolling text line (roots-55, 2026-11-19)
 
 **`ticker_draw` ($80:EBF7):** a line of scrolling text drawn as 2-tile sprites, about 600

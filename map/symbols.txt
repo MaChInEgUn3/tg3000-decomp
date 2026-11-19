@@ -423,3 +423,4 @@ func    8AC24B   text_palettes_load  ; CGRAM $20-$4F cleared, two palettes from 
 func    81F252   car_pair_contact    ; contact between two race objects: push aside, or swap speeds and drop behind -> src/misc.c
 func    83FC65   track_object_test_sides ; a track object's hit test at x, -x, -x-$80, x+$80 (jump table) -> src/misc.c
 func    80EBF7   ticker_draw         ; a line of scrolling text as sprites, with control codes -> src/misc.c
+func    80D823   race_hud_sprites    ; the race HUD: windows, readouts (PPU multiplier), names, lights, OAM -> src/hud.c
