@@ -1789,6 +1789,17 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A track block in three copies (roots-42, 2026-11-19)
+
+- **`track_block_triple` ($82:ADC2):** the second whole-command DSP-4 root.
+  - It unpacks `$99:97E4` to `$7F:0000`.
+  - The DSP-4 multiplies `$047B` * `$190`. Only the product's low word is used: the
+    original writes the chip instead of reading the high word, as `func_82EA49` does.
+  - It copies the `$190` bytes at `$7F` + that product to `$7E:217C`, then those to
+    `$7E:230C` and `$7E:249C` (`MVN`).
+- **Results:** its 5 live entries are interrupted; replays 2/2, fuzz 500/500, paths 29/29
+  (and 29/29 on race1).
+
 ## The track row words; the DSP-4 roots classified (roots-41, 2026-11-19)
 
 **The DSP-4 roots, classified.** 17 roots touch the chip.

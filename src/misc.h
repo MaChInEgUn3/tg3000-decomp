@@ -869,4 +869,10 @@ void tile_anim_step(void);
 // first 16 bytes are copied past the last row (MVN).
 void track_rows_build(void);
 
+// $82:ADC2: the track's $190-byte block (D = `dp` for decompress). Unpacks $99:97E4 to
+// $7F:0000, then copies the block at $7F:($047B * $190, the DSP-4 product's low word; the
+// original writes the chip instead of reading the high word) to $7E:217C, and that to
+// $7E:230C and $7E:249C (MVN).
+void track_block_triple(uint16_t dp);
+
 #endif

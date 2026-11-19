@@ -180,7 +180,7 @@ CODE_8284D5:
     lda.w #$0700                ; $828500
     jsl.l upload_vram_now       ; $828503
     jsr.w track_backdrop_load   ; $828507
-    jsr.w $ADC2                 ; $82850A
+    jsr.w track_block_triple    ; $82850A
     lda.w #$007E                ; $82850D
     sta.b $14                   ; $828510
     ldx.w #$217C                ; $828512
@@ -1762,6 +1762,7 @@ CODE_82ADA6:
     dec.b $14                   ; $82ADBD
     bne CODE_82ADA3             ; $82ADBF
     rts                         ; $82ADC1
+track_block_triple:
     ldx.w #$97E4                ; $82ADC2
     ldy.w #$0000                ; $82ADC5
     lda.w #$7F99                ; $82ADC8

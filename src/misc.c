@@ -2727,3 +2727,13 @@ void track_rows_build(void) {
   const uint16_t to = (uint16_t)((n << 1) + 0xD1B3);
   for(uint16_t i = 0; i < 0x10; i++) wr8((uint16_t)(to + i), rd8((uint16_t)(0xD1B3 + i)));  // MVN, upwards
 }
+
+// TG3000_ROUTINE($82:ADC2) track_block_triple
+void track_block_triple(uint16_t dp) {
+  uint16_t end;
+  decompress(dp, 0x99, 0x97E4, 0x7F, 0x0000, &end);
+  const uint16_t from = (uint16_t)dsp4_multiply((int16_t)rd16(0x047B), 0x0190);
+  for(uint16_t i = 0; i < 0x0190; i++) wr8(0x217C + (uint32_t)i, rd8(0x10000 + (uint32_t)(uint16_t)(from + i)));
+  for(uint16_t i = 0; i < 0x0190; i++) wr8(0x230C + (uint32_t)i, rd8(0x217C + (uint32_t)i));
+  for(uint16_t i = 0; i < 0x0190; i++) wr8(0x249C + (uint32_t)i, rd8(0x217C + (uint32_t)i));
+}

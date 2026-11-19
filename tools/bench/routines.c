@@ -2485,6 +2485,23 @@ static void fuzz_track_rows_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   }
 }
 
+// ---- track_block_triple ($82:ADC2) ----  after the last MVN: A = $FFFF, X = $230C, Y =
+// $262C; the PLB of the caller's bank sets N Z; C V clear (the ADC of the product to 0)
+static void call_track_block_triple(const Regs* in, Regs* out) {
+  track_block_triple(in->d);
+  out->a = 0xFFFF;
+  out->x = 0x230C;
+  out->y = 0x262C;
+  out->c = out->v = false;
+  out->n = (in->db & 0x80) != 0;
+  out->z = in->db == 0;
+}
+// any of the tracks (the product reaches into the unpacked data)
+static void fuzz_track_block_triple(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x047B, (uint16_t)(rnd() % 0x40));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7043,6 +7060,8 @@ const Routine routines[] = {
   {.name = "track_rows_build", .entry = 0x81E631, .end = 0x81E7CE, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_rows_build, ALL_OUTPUTS,
    .fuzz = fuzz_track_rows_build},
+  {.name = "track_block_triple", .entry = 0x82ADC2, .end = 0x82AE15, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x83, .call = call_track_block_triple, ALL_OUTPUTS, .fuzz = fuzz_track_block_triple},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
