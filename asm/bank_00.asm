@@ -10859,7 +10859,7 @@ CODE_80E577:
     lda.b #$07                  ; $80E61F
     sta.b $A8                   ; $80E621
     rep.b #$20                  ; $80E623
-    jsr.w $EBCE                 ; $80E625
+    jsr.w queue_7f_init         ; $80E625
     stz.b $7A                   ; $80E628
     stz.b $7C                   ; $80E62A
     lda.w #$0000                ; $80E62C
@@ -11334,7 +11334,7 @@ CODE_80E9F3:
     bra CODE_80E9F3             ; $80E9FD
 CODE_80E9FF:
     inc.b $46                   ; $80E9FF
-    jsr.w $EBCE                 ; $80EA01
+    jsr.w queue_7f_init         ; $80EA01
     lda.w #$00A0                ; $80EA04
     sta.b $4C                   ; $80EA07
 CODE_80EA09:
@@ -11550,6 +11550,7 @@ CODE_80EBA4:
     jsr.w sprite_group          ; $80EBB7
     rts                         ; $80EBBA
     incbin !baserom:$6BBB..$6BCE
+queue_7f_init:
     stz.b $CC                   ; $80EBCE
     stz.b $C6                   ; $80EBD0
     lda.w #$0080                ; $80EBD2

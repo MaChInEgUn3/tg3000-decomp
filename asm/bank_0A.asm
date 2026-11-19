@@ -77,7 +77,7 @@ CODE_8A803B:
     sta.w $4364                 ; $8A80BD
     sta.w $4367                 ; $8A80C0
     rep.b #$20                  ; $8A80C3
-    jsr.w $81BA                 ; $8A80C5
+    jsr.w palettes_load_8a      ; $8A80C5
     lda.w #$0001                ; $8A80C8
     jsl.l wait_frames_8a8bb6    ; $8A80CB
     sep.b #$20                  ; $8A80CF
@@ -141,6 +141,7 @@ CODE_8A81B0:
     inc.b $8C                   ; $8A81B7
 CODE_8A81B9:
     rts                         ; $8A81B9
+palettes_load_8a:
     lda.w #$7E80                ; $8A81BA
     ldx.w #$81E2                ; $8A81BD
     ldy.w #$0020                ; $8A81C0
@@ -1671,8 +1672,8 @@ func_8A92CF:
     incbin !baserom:$51307..$514C3
     lda.w #$00FF                ; $8A94C3
     trb.w $1B38                 ; $8A94C6
-    jsl.l $8A9BF6               ; $8A94C9
-    jsl.l $8A98B4               ; $8A94CD
+    jsl.l text_map_clear        ; $8A94C9
+    jsl.l variant_offsets_add   ; $8A94CD
     jsl.l $8A9908               ; $8A94D1
     jsl.l clear_vram            ; $8A94D5
     stz.w $0196                 ; $8A94D9
@@ -2068,6 +2069,7 @@ CODE_8A98A3:
     lda.b $10                   ; $8A98A7
     rts                         ; $8A98A9
     incbin !baserom:$518AA..$518B4
+variant_offsets_add:
     jsr.w variant_5a            ; $8A98B4
     ldx.w #$0000                ; $8A98B7
 CODE_8A98BA:
@@ -2083,12 +2085,17 @@ CODE_8A98BA:
     and.w #$000F                ; $8A98CB
     cmp.w #$0002                ; $8A98CE
     bne CODE_8A98DF             ; $8A98D1
-    incbin !baserom:$518D3..$518DF
+    clc                         ; $8A98D3 static
+    lda.w $041C,y               ; $8A98D4 static
+    adc.w $9DB5,x               ; $8A98D7 static
+    sta.w $041C,y               ; $8A98DA static
+    bra CODE_8A98E9             ; $8A98DD static
 CODE_8A98DF:
     clc                         ; $8A98DF
     lda.w $041C,y               ; $8A98E0
     adc.w $9D8D,x               ; $8A98E3
     sta.w $041C,y               ; $8A98E6
+CODE_8A98E9:
     plx                         ; $8A98E9
     inx                         ; $8A98EA
     dec.b $5A                   ; $8A98EB
@@ -2387,6 +2394,7 @@ CODE_8A9BF1:
     dex                         ; $8A9BF2
     bpl CODE_8A9BE7             ; $8A9BF3
     rts                         ; $8A9BF5
+text_map_clear:
     stz.b $60                   ; $8A9BF6
     stz.b $14                   ; $8A9BF8
     stz.b $58                   ; $8A9BFA

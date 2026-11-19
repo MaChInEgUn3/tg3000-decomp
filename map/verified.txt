@@ -346,3 +346,7 @@
 80F549 upload_slice_13 src/video_dma.c 6acab74039daf792 1 500 20/20 verified live-flags:NVZC
 80F555 upload_slice_14 src/video_dma.c 6acab74039daf792 1 500 20/20 verified live-flags:NVZC
 80F561 upload_slice_15 src/video_dma.c 6acab74039daf792 1 500 20/20 verified live-flags:NVZC
+80EBCE queue_7f_init src/misc.c 9bcda9a88053d2ea 6 500 18/18 verified live-flags:NVZC
+8A9BF6 text_map_clear src/misc.c 9bcda9a88053d2ea 2 0 16/16 verified live-flags:NVZC
+8A98B4 variant_offsets_add src/misc.c 9bcda9a88053d2ea 2 500 28/28 verified live-flags:NVZC
+8A81BA palettes_load_8a src/misc.c 9bcda9a88053d2ea 2 500 27/27 verified live-flags:NVZC

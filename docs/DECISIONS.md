@@ -1789,6 +1789,29 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Four more leaves, with the selftest in parallel (roots-19, 2026-11-19)
+
+The gate now runs `verify_new.sh` and the selftest at the same time. Both must pass,
+each checked by its own `wait`.
+
+- **`queue_7f_init` ($80:EBCE):** a queue reset (D = `$0100` or `$0200`).
+  - D+`$CC`, D+`$C6` and D+`$D1` = 0; D+`$E5` = `$80`; D+`$E1` = `$40`.
+  - Its list at `$7F:(D+$5E)` becomes 28 words `$FFFF`, then `$FFFE`.
+- **`text_map_clear` ($8A:9BF6, `JSL`):** `$0160`, `$0114` and `$0158` = 0, and the text
+  map words `$7F:7918`-`$7A59` and `$7F:7FBC`-`$7FE3` = 0.
+- **`variant_offsets_add` ($8A:98B4, `JSL`):** after `variant_5a`, for `$015A` entries
+  (`$0A`, or 4 with variant 2):
+  - the word at `$041C` + 2 * (the byte at `$0446` + entry) gains the entry's word of
+    `$8A:9D8D`;
+  - variant 2 uses `$8A:9DB5` instead. That path never runs, so its 12 bytes at
+    `$8A:98D3` are now static code.
+- **`palettes_load_8a` ($8A:81BA):** five palettes into CGRAM through `upload_cgram_now`,
+  from bank `$7E`: `$81E2`, `$8202`, `$8222`, `$8114` (`$1E` bytes), and the one the
+  table at `$8A:934F` + 8 * `$1536` points at.
+  - Its first gate failed in the fuzz: a random `$1536` sent the table read past bank
+    `$8A` into the DMA registers, which the bench refuses. The fuzz keeps the table's 16
+    entries; live 2/2.
+
 ## The full-run mark (2026-11-18)
 
 The first incremental unit's CI failed in `tools/test_carry.sh`. The rule had refused

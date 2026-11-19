@@ -1929,3 +1929,47 @@ void block_c4_build(uint16_t dp) {
   wr16((uint16_t)(at + 0x0122), 0x0E03);
   wr16((uint16_t)(at + 0x0124), 0x0040);
 }
+
+// TG3000_ROUTINE($80:EBCE) queue_7f_init
+void queue_7f_init(uint16_t dp) {
+  wr16(dp + 0xCC, 0);
+  wr16(dp + 0xC6, 0);
+  wr16(dp + 0xE5, 0x0080);
+  wr16(dp + 0xE1, 0x0040);
+  wr16(dp + 0xD1, 0);
+  uint16_t x = rd16(dp + 0x5E);
+  for(int i = 0; i < 0x1C; i++, x = (uint16_t)(x + 2)) wr16(0x10000 + (uint32_t)x, 0xFFFF);
+  wr16(0x10000 + (uint32_t)x, 0xFFFE);
+}
+
+// TG3000_ROUTINE($8A:9BF6) text_map_clear
+void text_map_clear(void) {
+  wr16(DP + 0x60, 0);
+  wr16(DP + 0x14, 0);
+  wr16(DP + 0x58, 0);
+  for(uint32_t x = 0; x <= 0x140; x += 2) wr16(0x17918 + x, 0);
+  for(uint32_t x = 0; x <= 0x26; x += 2) wr16(0x17FBC + x, 0);
+}
+
+// TG3000_ROUTINE($8A:98B4) variant_offsets_add
+void variant_offsets_add(void) {
+  variant_5a();
+  const uint32_t table = variant_2() ? 0x8A9DB5 : 0x8A9D8D;
+  uint16_t x = 0;
+  do {
+    const uint16_t y = (uint16_t)(rd8(0x0446 + (uint32_t)x) << 1);
+    wr16(0x041C + (uint32_t)y, (uint16_t)(rd16(0x041C + (uint32_t)y) + rom16(table + (uint32_t)(uint16_t)(x << 1))));
+    x = (uint16_t)(x + 1);
+    wr16(DP + 0x5A, (uint16_t)(rd16(DP + 0x5A) - 1));
+  } while(rd16(DP + 0x5A) != 0);
+}
+
+// TG3000_ROUTINE($8A:81BA) palettes_load_8a
+void palettes_load_8a(void) {
+  upload_cgram_now(0x80, 0x7E, 0x81E2, 0x0020);
+  upload_cgram_now(0x90, 0x7E, 0x8202, 0x0020);
+  upload_cgram_now(0xA0, 0x7E, 0x8222, 0x0020);
+  upload_cgram_now(0x01, 0x7E, 0x8114, 0x001E);
+  const uint16_t at = bus_rd16(0x8A934F + (uint32_t)(uint16_t)(rd16(0x1536) << 3));
+  upload_cgram_now(0xA0, 0x7E, at, 0x0020);
+}

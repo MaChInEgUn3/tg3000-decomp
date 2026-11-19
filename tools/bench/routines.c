@@ -1457,6 +1457,74 @@ static void fuzz_block_c4_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, (uint16_t)(r->d + 0xC4), (uint16_t)(0x0400 + rnd() % 0x1200));  // clear of D+$C4 itself and the stack
 }
 
+// ---- queue_7f_init ($80:EBCE) ----  A = $FFFE (N set, Z clear), X at the $FFFE word,
+// Y = 0; C V as on entry
+static void call_queue_7f_init(const Regs* in, Regs* out) {
+  uint16_t x = rd16((uint16_t)(in->d + 0x5E));
+  queue_7f_init(in->d);
+  out->a = 0xFFFE;
+  out->x = (uint16_t)(x + 0x38);
+  out->y = 0;
+  out->n = true;
+  out->z = false;
+}
+static void fuzz_queue_7f_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  wr16ram(ram, (uint16_t)(r->d + 0x5E), (uint16_t)(2 * (rnd() % 0x7F00)));
+}
+
+// ---- text_map_clear ($8A:9BF6) ----  A = 0, X = $FFFE (N set, Z clear by the last DEX)
+static void call_text_map_clear(const Regs* in, Regs* out) {
+  (void)in;
+  text_map_clear();
+  out->a = 0;
+  out->x = 0xFFFE;
+  out->n = true;
+  out->z = false;
+}
+
+// ---- variant_offsets_add ($8A:98B4) ----  A = the last sum (C V of its ADC), X = the
+// count, Y = 2 * the last entry's byte; N clear and Z set by the last DEC
+static void call_variant_offsets_add(const Regs* in, Regs* out) {
+  (void)in;
+  bool v2 = (rd8(0x03DC) & 0x0F) == 2;
+  uint16_t count = v2 ? 4 : 0x0A;
+  uint32_t table = v2 ? 0x8A9DB5 : 0x8A9D8D;
+  variant_offsets_add();
+  uint16_t last = (uint16_t)(count - 1), y = (uint16_t)(rd8(0x0446 + (uint32_t)last) << 1);
+  uint16_t add = rom16(table + (uint32_t)(uint16_t)(last << 1)), sum = rd16(0x041C + (uint32_t)y);
+  out->a = sum;
+  out->x = count;
+  out->y = y;
+  setAdc16(out, (uint16_t)(sum - add), add);
+  out->n = false;
+  out->z = true;
+}
+// the variant (2 a third of the time), entry bytes that keep the sums clear of $0446
+static void fuzz_variant_offsets_add(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  ram[0x03DC] = (uint8_t)((rnd() & 0xF0) | ((rnd() % 3 == 0) ? 2 : rnd() % 16));
+  for(int i = 0; i < 0x0A; i++) ram[0x0446 + i] = (uint8_t)(rnd() % 0x14);
+  for(int i = 0; i < 0x28; i += 2) wr16ram(ram, (uint16_t)(0x041C + i), (uint16_t)rnd());
+}
+
+// ---- palettes_load_8a ($8A:81BA) ----  the last upload_cgram_now's exit: X = $2202, A =
+// $A001 (N Z clear), Y = $20; C of the last ASL of $1536 (bit 13), V as on entry
+static void call_palettes_load_8a(const Regs* in, Regs* out) {
+  (void)in;
+  bool c = (rd16(0x1536) & 0x2000) != 0;
+  palettes_load_8a();
+  out->x = 0x2202;
+  out->a = 0xA001;
+  out->y = 0x0020;
+  out->n = out->z = false;
+  out->c = c;
+}
+// the table's 16 entries (a larger $1536 reads past bank $8A into the I/O registers)
+static void fuzz_palettes_load_8a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x1536, (uint16_t)(rnd() % 16));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -5919,6 +5987,15 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .call = call_rows_7f_copy8, ALL_OUTPUTS, .fuzz = fuzz_rows_7f_copy8},
   {.name = "block_c4_build", .entry = 0x80C31A, .end = 0x80C35E, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .call = call_block_c4_build, ALL_OUTPUTS, .fuzz = fuzz_block_c4_build},
+  {.name = "queue_7f_init", .entry = 0x80EBCE, .end = 0x80EBF7, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .call = call_queue_7f_init, ALL_OUTPUTS, .fuzz = fuzz_queue_7f_init},
+  {.name = "text_map_clear", .entry = 0x8A9BF6, .end = 0x8A9C19, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .call = call_text_map_clear, ALL_OUTPUTS},
+  {.name = "variant_offsets_add", .entry = 0x8A98B4, .end = 0x8A98F0, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_variant_offsets_add, ALL_OUTPUTS,
+   .fuzz = fuzz_variant_offsets_add},
+  {.name = "palettes_load_8a", .entry = 0x8A81BA, .end = 0x8A8205, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x8A, .call = call_palettes_load_8a, ALL_OUTPUTS, .fuzz = fuzz_palettes_load_8a},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

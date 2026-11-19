@@ -644,4 +644,22 @@ void rows_7f_copy8(uint16_t* x, uint16_t* y);
 // $80:B2D2, then the words $0E03, $40, $109F, 0 at +$102 and $0E03, $40 at +$122.
 void block_c4_build(uint16_t dp);
 
+// $80:EBCE: a queue reset (D = `dp`): D+$CC, D+$C6, D+$D1 = 0, D+$E5 = $80, D+$E1 = $40, and
+// the list at $7F:(D+$5E) = 28 words $FFFF then $FFFE.
+void queue_7f_init(uint16_t dp);
+
+// $8A:9BF6: the text map cleared: D+$60, D+$14, D+$58 = 0, the words $7F:7918-$7A59 and
+// $7F:7FBC-$7FE3 = 0.
+void text_map_clear(void);
+
+// $8A:98B4: D+$5A (variant_5a: $0A, or 4 with variant 2) entries: the word at $041C +
+// 2 * (the byte at $0446 + entry) gains the entry's word of $8A:9D8D (variant 2:
+// $8A:9DB5, never run).
+void variant_offsets_add(void);
+
+// $8A:81BA: five palettes into CGRAM (upload_cgram_now) from bank $7E: $81E2 to $80,
+// $8202 to $90, $8222 to $A0, $8114 ($1E bytes) to $01, and the one $8A:934F + 8 * $1536
+// points at to $A0.
+void palettes_load_8a(void);
+
 #endif

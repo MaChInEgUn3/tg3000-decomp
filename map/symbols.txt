@@ -361,3 +361,7 @@ func    82AD99   tile_block_5x5      ; a 5x5 block of tile numbers into the map 
 func    85831C   track_settings_load ; the track's settings by $047B -> src/misc.c
 func    86CE4A   rows_7f_copy8       ; eight $38-byte rows copied within bank $7F -> src/misc.c
 func    80C31A   block_c4_build      ; the block at [D+$C4] from $81:8000/$81:B2D2 and six words -> src/misc.c
+func    80EBCE   queue_7f_init       ; a queue reset: its list at $7F:(D+$5E) to $FFFF...$FFFE -> src/misc.c
+func    8A9BF6   text_map_clear      ; the text map ($7F:7918, $7F:7FBC) cleared -> src/misc.c
+func    8A98B4   variant_offsets_add ; per entry, a $041C word gains $8A:9D8D's (variant 2: $9DB5) -> src/misc.c
+func    8A81BA   palettes_load_8a    ; five palettes into CGRAM from bank $7E -> src/misc.c
