@@ -2803,3 +2803,17 @@ void hdma_coldata_setup(void) {
   hdma_table_0d00_init();
   dma_hdma_setup(2, 0x00, 0x32, 0x810D00);
 }
+
+// TG3000_ROUTINE($8A:8787) hdma_title_setup
+void hdma_title_setup(void) {
+  dma_hdma_setup(1, 0x00, 0x05, 0x8A88DE);
+  dma_hdma_setup(2, 0x00, 0x2C, 0x8A88E7);
+  dma_hdma_setup(4, 0x00, 0x0B, 0x8A88F0);
+  dma_hdma_setup(3, 0x00, 0x07, 0x8A88F9);
+  for(uint32_t i = 0; i < 13; i++) wr8(0x0D00 + i, bus_rd8(0x8A8902 + i));  // MVN
+  dma_hdma_setup(5, 0x02, 0x0E, 0x810D00);
+  dma_hdma_set_indirect_bank(5, 0x81);
+  for(uint32_t i = 0; i < 13; i++) wr8(0x0D20 + i, bus_rd8(0x8A890F + i));  // MVN
+  dma_hdma_setup(7, 0x02, 0x0D, 0xA10D20);
+  dma_hdma_set_indirect_bank(7, 0xA1);
+}

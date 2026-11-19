@@ -1789,6 +1789,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The title HDMA channels (roots-49, 2026-11-19)
+
+**`hdma_title_setup` ($8A:8787):** six HDMA channels set up, but not enabled:
+- the BG mode, the main screen, the BG1/BG2 tile addresses and BG1's tilemap, from ROM
+  tables;
+- BG1's two scrolls, from `$0D00` and `$0D20`. Their 13 bytes each are copied from
+  `$8A:8902`/`$890F` by MVN.
+- Channels 5 and 7 also get an indirect bank, unused in their mode, which the harness
+  compares as written.
+- Live 4/4, fuzz 500/500, paths 63/63, first try.
+
+**Left: `$8A:8828`.** It sends to the high byte of VRAM words alone (DMA mode 0 to
+`$2119`), and later with `VMAIN` = 0 to the low byte. `src/platform.h` has no call for a
+one-register VRAM upload. Adding one changes `platform_bench.c` (a full gate), so it waits
+for a unit of its own.
+
 ## Stars scattered and a colour HDMA (roots-48, 2026-11-19)
 
 **`stars_scatter_8a` ($8A:971B):** the 128 stars placed.

@@ -2660,6 +2660,24 @@ static void call_hdma_coldata_setup(const Regs* in, Regs* out) {
   out->v = in->v;
 }
 
+// ---- hdma_title_setup ($8A:8787) ----  A = $0DA1 (LDA #$A1 under the table's $0D: N set Z
+// clear), X Y past the second MVN ($891C, $0D2D); C V kept; DB restored by its PLB
+static void call_hdma_title_setup(const Regs* in, Regs* out) {
+  hdma_title_setup();
+  out->a = 0x0DA1;
+  out->x = 0x891C;
+  out->y = 0x0D2D;
+  out->n = true;
+  out->z = false;
+  out->c = in->c;
+  out->v = in->v;
+}
+// the two tables' old bytes
+static void fuzz_hdma_title_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t a = 0x0D00; a < 0x0D30; a++) ram[a] = (uint8_t)rnd();
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7240,6 +7258,8 @@ const Routine routines[] = {
   {.name = "hdma_coldata_setup", .entry = 0x8A9C69, .end = 0x8A9C86, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_hdma_coldata_setup, ALL_OUTPUTS,
    .fuzz = fuzz_hdma_table_0d00_init},
+  {.name = "hdma_title_setup", .entry = 0x8A8787, .end = 0x8A8828, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_hdma_title_setup, ALL_OUTPUTS, .fuzz = fuzz_hdma_title_setup},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

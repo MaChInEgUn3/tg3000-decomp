@@ -42,7 +42,7 @@ CODE_8A803B:
     jsr.w $891C                 ; $8A805B
     jsr.w mode7_view            ; $8A805E
     jsl.l oam_from_objects      ; $8A8061
-    jsr.w $8787                 ; $8A8065
+    jsr.w hdma_title_setup      ; $8A8065
     lda.w #$0087                ; $8A8068
     sta.b $46                   ; $8A806B
     lda.w #$82CA                ; $8A806D
@@ -532,6 +532,7 @@ CODE_8A8779:
     jsr.w $8BC2                 ; $8A8782
     plb                         ; $8A8785
     rts                         ; $8A8786
+hdma_title_setup:
     lda.w #$0500                ; $8A8787
     sta.w $4310                 ; $8A878A
     lda.w #$88DE                ; $8A878D

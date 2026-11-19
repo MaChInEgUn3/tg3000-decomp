@@ -395,3 +395,4 @@
 80FAEE palette_fade_60 src/misc.c 5d8030ee5105fbca 58 500 53/53 verified live-flags:NVZC replayed:0
 8A971B stars_scatter_8a src/stars.c 467a07ac275fca71 4 500 40/40 verified live-flags:NVZC replayed:0
 8A9C69 hdma_coldata_setup src/misc.c 464bf03bab4337ea 4 500 12/12 verified live-flags:NVZC replayed:0
+8A8787 hdma_title_setup src/misc.c 34d1da115510460d 4 500 63/63 verified live-flags:NVZC replayed:0

@@ -893,4 +893,11 @@ void palette_fade_60(uint16_t level);
 // one byte a line) from the table at $81:0D00 (not enabled here).
 void hdma_coldata_setup(void);
 
+// $8A:8787: six HDMA channels set up (not enabled): 1 on the BG mode ($2105), 2 on the main
+// screen ($212C), 4 on the BG1/BG2 tile addresses ($210B), 3 on BG1's tilemap ($2107), from
+// tables at $8A:88DE, $88E7, $88F0, $88F9 (one byte a line); 5 and 7 on BG1's vertical
+// and horizontal scroll (two bytes a line) from $0D00 and $0D20, whose 13 bytes are copied
+// from $8A:8902 and $890F (MVN). Channels 5 and 7 also get an indirect bank ($81, $A1).
+void hdma_title_setup(void);
+
 #endif
