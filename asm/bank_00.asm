@@ -143,11 +143,12 @@ CODE_80817F:
     phb                         ; $808188
     mvn $81,$83                 ; $808189
     plb                         ; $80818C
-    jsl.l $808199               ; $80818D
+    jsl.l save_data_seal        ; $80818D
     lda.w #$00FF                ; $808191
     tsb.w $045A                 ; $808194
     sec                         ; $808197
     rts                         ; $808198
+save_data_seal:
     ldx.w #$0078                ; $808199
     stz.w $0114                 ; $80819C
 CODE_80819F:
@@ -1105,7 +1106,7 @@ oam_finish_near:
 CODE_808A1F:
     jsl.l results_init          ; $808A1F
     jsl.l $80FC2A               ; $808A23
-    jsl.l $808199               ; $808A27
+    jsl.l save_data_seal        ; $808A27
     lda.w $03DC                 ; $808A2B
     bit.w #$5000                ; $808A2E
     bne CODE_808A37             ; $808A31
@@ -1132,8 +1133,8 @@ CODE_808A71:
     jsr.w $8A8C                 ; $808A82
     incbin !baserom:$A85..$A8C
     jsr.w $BEC6                 ; $808A8C
-    jsl.l $808199               ; $808A8F
-    jsl.l $8A9CB0               ; $808A93
+    jsl.l save_data_seal        ; $808A8F
+    jsl.l player_in_top5        ; $808A93
     jsl.l $8AC2DD               ; $808A97
     lda.w $0444                 ; $808A9B
     beq CODE_808AB8             ; $808A9E
@@ -1188,7 +1189,7 @@ CODE_808B12:
     lda.w $03E2                 ; $808B42
     bit.w #$0001                ; $808B45
     bne CODE_808B55             ; $808B48
-    jsl.l $8A9CB0               ; $808B4A
+    jsl.l player_in_top5        ; $808B4A
     bcc CODE_808B55             ; $808B4E
     incbin !baserom:$B50..$B55
 CODE_808B55:
@@ -12756,6 +12757,7 @@ CODE_80F6DB:
 CODE_80F6FB:
     sec                         ; $80F6FB
     rts                         ; $80F6FC
+title_scroll_start:
     stz.w $0198                 ; $80F6FD
     lda.w #$FF80                ; $80F700
     sta.w $0196                 ; $80F703

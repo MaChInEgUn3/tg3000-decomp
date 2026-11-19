@@ -2255,6 +2255,100 @@ static void fuzz_track_objects_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(voi
   wr16ram(ram, 0x0226, (uint16_t)(rnd() % (uint32_t)(at + 1)));
 }
 
+// ---- results_text_build ($8A:9AA5) ----  text_lines_copy's exit, from the state after: A =
+// D+$54 (C V of the last line's ADC #$10), N clear, Z set; X = the last line's start + its
+// length, Y = past its zero (the lines from $8A:9DEE). Their count is variant_lines' less
+// one per name player_names_put wrote (each counts D+$56 down). None left (variant 2: four
+// lines, four names): A = 0, N clear, Z set, the rest as the last name's text_line_put left
+static void call_results_text_build(const Regs* in, Regs* out) {
+  uint16_t dc = rd16(0x03DC), v = (uint16_t)(dc & 0x000F), names = 0;
+  if(v == 0) names = 1;
+  else if(v == 2) names = 4;
+  else if(v == 1) names = (dc & 0x0030) == 0x0010 ? 2 : (uint16_t)(((dc >> 4) & 1) + ((dc >> 5) & 1));
+  uint16_t lines = (uint16_t)((v == 2 ? 4 : 0x14) - names);
+  results_text_build();
+  if(lines == 0) {  // after the four names (D+$54 from 0): the last put's exit
+    out->x = 0x0030;
+    uint16_t n = 0;
+    while(rd8(0x040B + (uint32_t)n)) n++;
+    out->y = n;
+    setAdc16(out, 0x0030, 0x0010);
+    out->a = 0;
+    out->n = false;
+    out->z = true;
+    return;
+  }
+  (void)in;
+  uint16_t y = 0, len = 0;
+  for(uint16_t k = 0; k < lines; k++) {
+    len = 0;
+    while(rom8(0x8A9DEE + (uint32_t)(uint16_t)(y + len))) len++;
+    y = (uint16_t)(y + len + 1);
+  }
+  out->a = rd16(DP + 0x54);
+  out->x = (uint16_t)(out->a - 0x10 + len);
+  out->y = y;
+  setAdc16(out, (uint16_t)(out->a - 0x10), 0x0010);
+  out->n = false;
+  out->z = true;
+}
+static void fuzz_results_text_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_player_names_put(r, ram, rnd);
+  wr16ram(ram, DP + 0x56, (uint16_t)rnd());
+}
+
+// ---- player_in_top5 ($8A:9CB0) ----  clear_041c's exit (A = 0, X = $FFFE, N set, Z clear),
+// C = not found; V as on entry; Y (slot_order_fill's count) not compared
+static void call_player_in_top5(const Regs* in, Regs* out) {
+  (void)in;
+  out->c = player_in_top5();
+  out->a = 0;
+  out->x = 0xFFFE;
+  out->n = true;
+  out->z = false;
+}
+// every variant (both two-player kinds), the slots' kinds
+static void fuzz_player_in_top5(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x03DC, (uint16_t)((rnd() & 0xFFC0) | (rnd() & 0x30) | (rnd() % 4)));
+  for(uint16_t i = 0; i < 20; i++) wr16ram(ram, (uint16_t)(0x041C + 2 * i), (uint16_t)(rnd() % 8));
+}
+
+// ---- title_scroll_start ($80:F6FD) ----  A = $FF80 (its LDA #), N Z of the INC of D+$3E;
+// C V as on entry
+static void call_title_scroll_start(const Regs* in, Regs* out) {
+  (void)in;
+  title_scroll_start();
+  out->a = 0xFF80;
+  setNZ16(out, rd16(DP + 0x3E));
+}
+static void fuzz_title_scroll_start(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x3E, (uint16_t)((rnd() & 1) ? 0xFFFF : rnd()));
+}
+
+// ---- save_data_seal ($80:8199) ----  after the MVN: A = $FFFF, X = $03E0, Y = $FAB5; the
+// PLB of the caller's bank sets N Z; C V of the last ADC of the sum
+static void call_save_data_seal(const Regs* in, Regs* out) {
+  uint16_t sum = 0, last = 0;
+  for(uint32_t x = 0x78; x != 0; x--) {
+    last = sum;
+    sum = (uint16_t)(sum + rd8(0x0367 + x));
+  }
+  uint16_t lastByte = rd8(0x0368);
+  save_data_seal();
+  out->a = 0xFFFF;
+  out->x = 0x03E0;
+  out->y = 0xFAB5;
+  setAdc16(out, last, lastByte);
+  out->n = (in->db & 0x80) != 0;
+  out->z = in->db == 0;
+}
+static void fuzz_save_data_seal(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(int i = 0; i < 0x78; i++) ram[0x0368 + i] = (uint8_t)rnd();
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6791,6 +6885,18 @@ const Routine routines[] = {
   {.name = "track_objects_stream", .entry = 0x82AF33, .end = 0x82B026, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_objects_stream, ALL_OUTPUTS,
    .fuzz = fuzz_track_objects_stream},
+  {.name = "results_text_build", .entry = 0x8A9AA5, .end = 0x8A9AB1, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_results_text_build, ALL_OUTPUTS,
+   .fuzz = fuzz_results_text_build},
+  {.name = "player_in_top5", .entry = 0x8A9CB0, .end = 0x8A9CF8, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .call = call_player_in_top5,
+   .compareA = true, .compareX = true, .fuzz = fuzz_player_in_top5},
+  {.name = "title_scroll_start", .entry = 0x80F6FD, .end = 0x80F709, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_title_scroll_start, ALL_OUTPUTS,
+   .fuzz = fuzz_title_scroll_start},
+  {.name = "save_data_seal", .entry = 0x808199, .end = 0x8081C8, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_save_data_seal, ALL_OUTPUTS,
+   .fuzz = fuzz_save_data_seal},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

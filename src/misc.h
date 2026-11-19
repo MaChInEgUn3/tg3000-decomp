@@ -820,4 +820,20 @@ void shake_step(void);
 // (upload_vram_now from bank $7F). D+$A0 moves on by 5 a record.
 void track_objects_stream(void);
 
+// $8A:9AA5: the results text: D+$54 = 0, then variant_lines, player_names_put and
+// text_lines_copy.
+void results_text_build(void);
+
+// $8A:9CB0: slot_order_fill, then whether the player's slot (0; with two players shown,
+// 0 or 1: a variant other than 0 whose bits 4-5 are not $10) is among the first five of
+// $0D00; clear_041c. Returns the carry it leaves: set when it is not (never run).
+bool player_in_top5(void);
+
+// $80:F6FD: $0198 = 0, $0196 = $FF80, D+$3E counts up.
+void title_scroll_start(void);
+
+// $80:8199: the saved data sealed: $0366 = the sum of the $78 bytes at $0368 ^ $7645,
+// then the $7A bytes from $0366 copied to $7E:FA3B (MVN).
+void save_data_seal(void);
+
 #endif

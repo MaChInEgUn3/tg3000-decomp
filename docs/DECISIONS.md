@@ -1789,6 +1789,31 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Four from the fresh roots list (roots-37, 2026-11-19)
+
+- **`results_text_build` ($8A:9AA5):** `$0154` = 0, then `variant_lines`,
+  `player_names_put` and `text_lines_copy`. Its exit is `text_lines_copy`'s, derived from
+  the state after: the line count is the variant's, and the lines are read from
+  `$8A:9DEE`.
+- **`player_in_top5` ($8A:9CB0, `JSL`):** `slot_order_fill`, then whether the player's
+  slot is among the first five of `$0D00`, then `clear_041c`.
+  - The player's slot is 0; with two players shown it is 0 or 1. Two players means a
+    variant other than 0 whose bits 4-5 are not `$10`.
+  - It returns the carry: set when the slot is not there.
+  - Only the found-first case runs in the movies. The rest (47 bytes at `$8A:9CBC` and
+    `$8A:9CCE`) was unknown and is now static code.
+  - Y is not compared: it is the count `slot_order_fill` leaves.
+- **`title_scroll_start` ($80:F6FD):** `$0198` = 0, `$0196` = `$FF80`, and `$013E` counts up.
+- **`save_data_seal` ($80:8199, `JSL`):** `$0366` = (the sum of the `$78` bytes at `$0368`)
+  ^ `$7645`. Then `MVN` copies the `$7A` bytes from `$0366` to `$7E:FA3B`. It looks like the
+  saved data's checksum.
+- **The first gate failed on two adapters of mine.**
+  - `title_scroll_start` leaves A = `$FF80` (its `LDA #`).
+  - In `results_text_build`, each name `player_names_put` writes counts `$0156` down
+    (`func_8A9BAA`), so the text lines left are the variant's count less the names. With
+    variant 2 (four lines, four names) none are left, and the exit is the last name's
+    `text_line_put`.
+
 ## Where to go next (2026-11-19, with the advisor)
 
 The owner is away and reads decisions here.

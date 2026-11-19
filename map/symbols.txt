@@ -392,3 +392,7 @@ func    8A9CF8   slot_order_fill     ; the slots' order at $0D00, largest kind f
 func    8A9AF1   player_names_put    ; the players' names as text lines, by variant -> src/misc.c
 func    828F8F   shake_step          ; the shake $1F18: off, start, run, random end (DSP-4 multiply) -> src/misc.c
 func    82AF33   track_objects_stream ; the track objects' graphics, streamed to VRAM as the car passes their entries -> src/misc.c
+func    8A9AA5   results_text_build  ; the results text: variant lines, names, text lines -> src/misc.c
+func    8A9CB0   player_in_top5      ; the slots' order, then is the player in the first five -> src/misc.c
+func    80F6FD   title_scroll_start  ; $0198 = 0, $0196 = $FF80, D+$3E + 1 -> src/misc.c
+func    808199   save_data_seal      ; the saved data's checksum at $0366, copied to $7E:FA3B -> src/misc.c

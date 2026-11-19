@@ -2550,3 +2550,41 @@ void track_objects_stream(void) {
     if(rd16(0x0226) < rd16(0x5B91 + (uint32_t)x)) return;
   }
 }
+
+// TG3000_ROUTINE($8A:9AA5) results_text_build
+void results_text_build(void) {
+  wr16(DP + 0x54, 0);
+  variant_lines();
+  player_names_put();
+  text_lines_copy();
+}
+
+// TG3000_ROUTINE($8A:9CB0) player_in_top5
+bool player_in_top5(void) {
+  slot_order_fill();
+  const uint16_t dc = rd16(0x03DC);
+  const bool two = (dc & 0x000F) && (dc & 0x0030) != 0x0010;
+  bool found = false;
+  for(uint32_t x = 0; x < 0x0A && !found; x += 2) {
+    const uint16_t slot = rd16(0x0D00 + x);
+    found = slot == 0 || (two && slot == 1);
+  }
+  clear_041c();
+  return !found;
+}
+
+// TG3000_ROUTINE($80:F6FD) title_scroll_start
+void title_scroll_start(void) {
+  wr16(0x0198, 0);
+  wr16(0x0196, 0xFF80);
+  wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
+}
+
+// TG3000_ROUTINE($80:8199) save_data_seal
+void save_data_seal(void) {
+  uint16_t sum = 0;
+  for(uint32_t x = 0x78; x != 0; x--) sum = (uint16_t)(sum + rd8(0x0367 + x));
+  wr16(0x0114, sum);
+  wr16(0x0366, (uint16_t)(sum ^ 0x7645));
+  for(uint32_t i = 0; i < 0x7A; i++) wr8(0xFA3B + i, rd8(0x0366 + i));
+}

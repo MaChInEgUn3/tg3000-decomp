@@ -73,3 +73,5 @@
 84:A534 84:A552 m16x16 ; results_init: $03E2 bit 1, eight item bytes = 1 (never run)
 8A:9AFD 8A:9B2D m16x16 ; player_names_put: variants 1 and 2, four names (never run)
 8A:9B37 8A:9B7D m16x16 ; player_names_put: variant 1's two names or "PLAYER2" (never run; the string follows)
+8A:9CBC 8A:9CC6 m16x16 ; player_in_top5: two players (variants with both shown) (never run)
+8A:9CCE 8A:9CF3 m16x16 ; player_in_top5: the player not first, its search and the "not found" ends (never run)

@@ -2116,7 +2116,7 @@ CODE_8A9902:
     lda.w #$000A                ; $8A9902
     sta.b $5A                   ; $8A9905
     rts                         ; $8A9907
-    jsr.w $9AA5                 ; $8A9908
+    jsr.w results_text_build    ; $8A9908
     jsr.w func_8A9BE2           ; $8A990B
     stz.b $5E                   ; $8A990E
     jsr.w variant_66            ; $8A9910
@@ -2272,6 +2272,7 @@ byte_buffer_space:
     rep.b #$20                  ; $8A9AA1
     pla                         ; $8A9AA3
     rts                         ; $8A9AA4
+results_text_build:
     stz.b $54                   ; $8A9AA5
     jsr.w variant_lines         ; $8A9AA7
     jsr.w player_names_put      ; $8A9AAA
@@ -2553,16 +2554,41 @@ CODE_8A9C98:
     stz.w $0D03,x               ; $8A9CAA
     rep.b #$20                  ; $8A9CAD
     rts                         ; $8A9CAF
+player_in_top5:
     jsr.w slot_order_fill       ; $8A9CB0
     lda.l $8103DC               ; $8A9CB3
     bit.w #$000F                ; $8A9CB7
     beq CODE_8A9CC6             ; $8A9CBA
-    incbin !baserom:$51CBC..$51CC6
+    and.w #$0030                ; $8A9CBC static
+    cmp.w #$0010                ; $8A9CBF static
+    beq CODE_8A9CC6             ; $8A9CC2 static
+    bra CODE_8A9CDA             ; $8A9CC4 static
 CODE_8A9CC6:
     ldx.w #$0000                ; $8A9CC6
+CODE_8A9CC9:
     lda.w $0D00,x               ; $8A9CC9
     beq CODE_8A9CF3             ; $8A9CCC
-    incbin !baserom:$51CCE..$51CF3
+    inx                         ; $8A9CCE static
+    inx                         ; $8A9CCF static
+    cpx.w #$000A                ; $8A9CD0 static
+    bne CODE_8A9CC9             ; $8A9CD3 static
+    jsr.w clear_041c            ; $8A9CD5 static
+    sec                         ; $8A9CD8 static
+    rtl                         ; $8A9CD9 static
+CODE_8A9CDA:
+    ldx.w #$0000                ; $8A9CDA static
+CODE_8A9CDD:
+    lda.w $0D00,x               ; $8A9CDD static
+    beq CODE_8A9CF3             ; $8A9CE0 static
+    cmp.w #$0001                ; $8A9CE2 static
+    beq CODE_8A9CF3             ; $8A9CE5 static
+    inx                         ; $8A9CE7 static
+    inx                         ; $8A9CE8 static
+    cpx.w #$000A                ; $8A9CE9 static
+    bne CODE_8A9CDD             ; $8A9CEC static
+    jsr.w clear_041c            ; $8A9CEE static
+    sec                         ; $8A9CF1 static
+    rtl                         ; $8A9CF2 static
 CODE_8A9CF3:
     jsr.w clear_041c            ; $8A9CF3
     clc                         ; $8A9CF6
@@ -3410,7 +3436,7 @@ CODE_8AB09C:
     lda.w #$CC83                ; $8AB0D3
     jsr.w $B659                 ; $8AB0D6
     jsr.w $B11A                 ; $8AB0D9
-    jsl.l $808199               ; $8AB0DC
+    jsl.l save_data_seal        ; $8AB0DC
     rts                         ; $8AB0E0
 variant_flags_apply:
     lda.w $1528                 ; $8AB0E1
