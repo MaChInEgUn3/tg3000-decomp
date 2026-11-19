@@ -1789,6 +1789,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A car's contacts down the chain (roots-60, 2026-11-19)
+
+**`car_contacts_chain` ($81:F21E):** about 357,000 entries in the 60k movie.
+- Unless object y is `$60` or more ahead of x, `D+$3C` counts up. Then
+  `car_pair_contact(x, y)` runs along the chain of links at +`$18` (`$7E:FACD`), for each
+  object less than `$60` ahead.
+- It stops at the first swap, when the chain leaves that range, or when `D+$3C` (counting
+  down) reaches 0. `D+$3C` is put back to its counted-up value.
+- **A correction to roots-53.** `car_pair_contact`'s push-aside exit ends with `CLC`, as a
+  miss; only the swap sets the carry. The C returned true for both. The row passed
+  regardless, because its adapter models the carry itself and no C read the return value
+  until this caller, whose fuzz found it (39/500). The C now returns the original's carry.
+- **Flags.** On a swap they are `car_pair_contact`'s at that call. Its adapter gained a hook
+  (`carContactRun`) that runs this routine's C at the contact call, as `calleeRun` does for
+  the track-object handlers. This edits a line of a verified adapter, so the unit takes the
+  full gate.
+  - The walk finds that call from the gates. A miss writes nothing, and a push aside writes
+    only x's +`$06`, which the walk keeps and hands to that call (held, then put back
+    before the C runs).
+- Live 4,000/4,000 and 3,707/3,707, fuzz 500/500 and 200/200, paths 27/27. `car_pair_contact`
+  passes again unchanged (4,000/4,000, 262/262).
+
 ## The track scenery (roots-59, 2026-11-19)
 
 **`scenery_build` ($80:DCBB):** about 1 KB that builds a track's scenery from its list of

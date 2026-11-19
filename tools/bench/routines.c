@@ -2789,6 +2789,9 @@ static bool adcV(uint16_t a, uint16_t b) {
   const uint16_t s = (uint16_t)(a + b);
   return (~(a ^ b) & (a ^ s) & 0x8000) != 0;
 }
+// When set, car_pair_contact's adapter runs this at its contact call instead of the routine
+// (a caller whose exit flags are that call's: see car_contacts_chain).
+static void (*carContactRun)(void) = NULL;
 static void call_car_pair_contact(const Regs* in, Regs* out) {
   const uint16_t x = in->x, y = in->y;
   out->x = x;
@@ -2831,7 +2834,8 @@ static void call_car_pair_contact(const Regs* in, Regs* out) {
     old225 = rd16(0x0225 + (uint32_t)sx);
     old227 = rd16(0x0227 + (uint32_t)sx);
   }
-  car_pair_contact(x, y);
+  if(carContactRun) carContactRun();
+  else car_pair_contact(x, y);
   setNZ16(out, x);
   if((gap - 0x60) & 0x80000000u) {
     const uint16_t side = (uint16_t)(fy + (below ? 0x0040 : (uint16_t)-0x0040));
@@ -3111,6 +3115,108 @@ static void fuzz_scenery_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x0444, (uint16_t)(rnd() % 8 == 0 ? 225 : rnd() % 8));
   wr16ram(ram, 0x036A, (uint16_t)rnd());
   for(uint32_t i = 0x1BC50; i < 0x1BD10; i++) ram[i] = (uint8_t)rnd();
+}
+
+// ---- car_contacts_chain ($81:F21E) ----  y $60 or more ahead: A = the difference, C set,
+// N Z of the CMP #$60, V of its SBC, X Y kept. Else D+$3C's counted-up value in A (PLA), X
+// Y kept (PLY/PLX: N Z of X); on a swap C set and V of car_pair_contact (its adapter, at
+// that call, through carContactRun; the walk finds that call from its gates, a miss writing
+// nothing and a push aside only x's +$06); else C clear and V of the last chain step's SBC.
+static bool chainGatesPass(uint16_t x, uint16_t y) {
+  if((rd16(0xFADE + (uint32_t)y) | rd16(0xFADE + (uint32_t)x)) & 0x0088) return false;
+  static const uint16_t gate[2][2] = {{0xFABF, 0x0018}, {0xFABB, 0x0040}};
+  for(int k = 0; k < 2; k++) {
+    const uint16_t d = (uint16_t)(rd16(gate[k][0] + (uint32_t)y) - rd16(gate[k][0] + (uint32_t)x));
+    const uint16_t t = (d & 0x8000) ? (uint16_t)(d - (uint16_t)-gate[k][1]) : (uint16_t)(d - gate[k][1]);
+    if((d & 0x8000) ? (t & 0x8000) != 0 : !(t & 0x8000)) return false;
+  }
+  return true;
+}
+static uint16_t chainX, chainY, chainBB;
+static void run_car_contacts_chain(void) {
+  wr16(0xFABB + (uint32_t)chainX, chainBB);
+  car_contacts_chain(chainX, chainY);
+}
+static void call_car_contacts_chain(const Regs* in, Regs* out) {
+  const uint16_t x = in->x, y = in->y;
+  out->x = x;
+  out->y = y;
+  const uint16_t a0 = rd16(0xFAB5 + (uint32_t)y), b0 = rd16(0xFAB5 + (uint32_t)x), d0 = (uint16_t)(a0 - b0);
+  if(d0 >= 0x0060) {
+    car_contacts_chain(x, y);
+    out->a = d0;
+    setNZ16(out, (uint16_t)(d0 - 0x0060));
+    out->c = true;
+    out->v = sbcV(a0, b0, true);
+    return;
+  }
+  // walk the chain as the routine will, to find the call that swaps (a push aside writes
+  // x's +$06, kept here, and goes on with the carry clear)
+  uint16_t n = (uint16_t)(rd16(DP + 0x3C) + 1), at = y, hitAt = 0, xbb = rd16(0xFABB + (uint32_t)x);
+  const uint16_t realBB = xbb;
+  bool hit = false, v = false;
+  for(;;) {
+    wr16(0xFABB + (uint32_t)x, xbb);
+    const bool pass = chainGatesPass(x, at);
+    wr16(0xFABB + (uint32_t)x, realBB);
+    if(pass) {
+      const uint32_t gap = (rd16(0xFAC1 + (uint32_t)at) | (uint32_t)rd16(0xFAC3 + (uint32_t)at) << 16) -
+                           (rd16(0xFAC1 + (uint32_t)x) | (uint32_t)rd16(0xFAC3 + (uint32_t)x) << 16);
+      if(!((gap - 0x60) & 0x80000000u)) {
+        hit = true;
+        hitAt = at;
+        break;
+      }
+      const bool below = ((uint16_t)(rd16(0xFAD5 + (uint32_t)at) - rd16(0xFAD5 + (uint32_t)x)) & 0x8000) != 0;
+      xbb = (uint16_t)(rd16(0xFABB + (uint32_t)at) + (below ? 0x0040 : (uint16_t)-0x0040));
+    }
+    at = rd16(0xFACD + (uint32_t)at);
+    const uint16_t a = rd16(0xFAB5 + (uint32_t)at);
+    v = sbcV(a, b0, true);
+    if((uint16_t)(a - b0) >= 0x0060) break;
+    n = (uint16_t)(n - 1);
+    if(n == 0) break;
+  }
+  const uint16_t count = (uint16_t)(rd16(DP + 0x3C) + 1);
+  if(hit) {
+    Regs t = *in;
+    t.y = hitAt;
+    chainX = x;
+    chainY = y;
+    chainBB = realBB;
+    wr16(0xFABB + (uint32_t)x, xbb);  // x's +$06 as that call sees it; put back before the C
+    carContactRun = run_car_contacts_chain;
+    Regs o = *in;
+    call_car_pair_contact(&t, &o);
+    carContactRun = NULL;
+    out->v = o.v;
+    out->c = true;
+  } else {
+    car_contacts_chain(x, y);
+    out->v = v;
+    out->c = false;
+  }
+  out->a = count;
+  setNZ16(out, x);
+}
+// car_pair_contact's state for x and a first y, a chain of links among objects close
+// behind and ahead, the count
+static void fuzz_car_contacts_chain(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_car_pair_contact(r, ram, rnd);
+  const uint16_t x = r->x;
+  const uint16_t base = (uint16_t)(ram[0xFAB5 + x] | ram[0xFAB6 + x] << 8);
+  for(uint32_t i = 0; i < 20; i++) {
+    const uint32_t o = 0x35 * i;
+    if(o == x || o == r->y) continue;
+    for(uint32_t k = 0; k < 0x35; k++) ram[0xFAB5 + o + k] = (uint8_t)rnd();
+    wr16ram(ram, 0xFAB5 + o, (uint16_t)(base + rnd() % 0x80));
+    wr16ram(ram, 0xFABF + o, (uint16_t)(ram[0xFABF + x] | ram[0xFAC0 + x] << 8) + (uint16_t)(rnd() % 0x40) - 0x20);
+    wr16ram(ram, 0xFABB + o, (uint16_t)(ram[0xFABB + x] | ram[0xFABC + x] << 8) + (uint16_t)(rnd() % 0x90) - 0x48);
+    wr16ram(ram, 0xFADE + o, (uint16_t)(rnd() % 4 == 0 ? 0x0088 : rnd() & 0xFF77));
+  }
+  for(uint32_t i = 0; i < 20; i++) wr16ram(ram, 0xFACD + 0x35 * i, (uint16_t)(0x35 * (rnd() % 20)));
+  wr16ram(ram, 0xFAB5 + r->y, (uint16_t)(base + rnd() % 0x70));
+  wr16ram(ram, DP + 0x3C, (uint16_t)(rnd() % 5));
 }
 
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
@@ -7725,6 +7831,8 @@ const Routine routines[] = {
   {.name = "scenery_build", .entry = 0x80DCBB, .end = 0x80E0C8, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_scenery_build, .fuzz = fuzz_scenery_build,
    .holes = {{0x80DD65, 0x80DD71}}},  // the kinds' handler table
+  {.name = "car_contacts_chain", .entry = 0x81F21E, .end = 0x81F251, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_car_contacts_chain, ALL_OUTPUTS, .fuzz = fuzz_car_contacts_chain},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -925,8 +925,8 @@ void text_palettes_load(void);
 // $81:F252: contact between two race objects `x` and `y` (offsets into the object tables
 // at $7E:FAB5 on; D = $0100). No contact (returns false) when either has bit 3 or 7 of its
 // +$29 flags set, their +$0A words are $18 or more apart, or their +$06 words $40 or more
-// apart (each as the sign of the difference, not a true signed compare). Else (returns
-// true, after the original's PHX/PHY):
+// apart (each as the sign of the difference, not a true signed compare). Else (after the
+// original's PHX/PHY; returns true, the original's carry, only for the swap below):
 // - each object's car slot (D+$18 for x, D+$1A for y): object 0 is slot 0, any other none
 //   ($FFFF); in modes where $03DC & 3 is set, the table at $81:FE16 by object number (x /
 //   $35, the CPU divider; never run);
@@ -991,5 +991,12 @@ void text_buffer_screen(void);
 //   $0700 + D+$80 (10 bytes); D+$7A counts down.
 // At the end $0800 = D+$82 and $0880 = D+$86.
 void scenery_build(void);
+
+// $81:F21E: object `x`'s contacts down a chain (D = $0100). Unless object `y` is $60 or
+// more ahead of x (+$00, unsigned), D+$3C counts up and, from y along the links at +$18
+// ($7E:FACD), car_pair_contact(x, y) runs for each object less than $60 ahead, until one
+// hits, the chain leaves that range, or D+$3C (counting down) reaches 0. D+$3C is put back
+// to its counted-up value. Returns whether one hit.
+bool car_contacts_chain(uint16_t x, uint16_t y);
 
 #endif

@@ -2914,7 +2914,7 @@ bool car_pair_contact(uint16_t x, uint16_t y) {
     wr16(0xFABB + (uint32_t)x, side);
     if(!(sx & 0x8000) && !(rd16(0x0244 + (uint32_t)sx) & 0x0004))
       wr16(0x0206 + (uint32_t)sx, (uint16_t)(side + rd16(0x029C + (uint32_t)sx)));
-    return true;
+    return false;  // the original leaves this way with the carry clear, as a miss
   }
   if(!(sy & 0x8000)) contact_speed(x, sy);
   if(!(sx & 0x8000)) {
@@ -3241,4 +3241,24 @@ void scenery_build(void) {
   }
   wr16(0x0800, rd16(DP + 0x82));
   wr16(0x0880, rd16(DP + 0x86));
+}
+
+// TG3000_ROUTINE($81:F21E) car_contacts_chain
+bool car_contacts_chain(uint16_t x, uint16_t y) {
+  if((uint16_t)(rd16(0xFAB5 + (uint32_t)y) - rd16(0xFAB5 + (uint32_t)x)) >= 0x0060) return false;
+  wr16(DP + 0x3C, (uint16_t)(rd16(DP + 0x3C) + 1));
+  const uint16_t count = rd16(DP + 0x3C);
+  bool hit = false;
+  for(;;) {
+    if(car_pair_contact(x, y)) {
+      hit = true;
+      break;
+    }
+    y = rd16(0xFACD + (uint32_t)y);
+    if((uint16_t)(rd16(0xFAB5 + (uint32_t)y) - rd16(0xFAB5 + (uint32_t)x)) >= 0x0060) break;
+    wr16(DP + 0x3C, (uint16_t)(rd16(DP + 0x3C) - 1));
+    if(rd16(DP + 0x3C) == 0) break;
+  }
+  wr16(DP + 0x3C, count);
+  return hit;
 }

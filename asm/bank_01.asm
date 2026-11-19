@@ -1573,7 +1573,7 @@ CODE_81EAA7:
     jsr.w func_81F1FC           ; $81EAC7
     bra CODE_81EACF             ; $81EACA
 CODE_81EACC:
-    jsr.w $F21E                 ; $81EACC
+    jsr.w car_contacts_chain    ; $81EACC
 CODE_81EACF:
     ldx.w $1E8C                 ; $81EACF
 CODE_81EAD2:
@@ -1592,7 +1592,7 @@ CODE_81EAD2:
     jsr.w func_81F1FC           ; $81EAF2
     bra CODE_81EAA7             ; $81EAF5
 CODE_81EAF7:
-    jsr.w $F21E                 ; $81EAF7
+    jsr.w car_contacts_chain    ; $81EAF7
 CODE_81EAFA:
     ldx.w $1E8A                 ; $81EAFA
 CODE_81EAFD:
@@ -1611,7 +1611,7 @@ CODE_81EAFD:
     jsr.w func_81F1FC           ; $81EB1D
     bra CODE_81EAD2             ; $81EB20
 CODE_81EB22:
-    jsr.w $F21E                 ; $81EB22
+    jsr.w car_contacts_chain    ; $81EB22
 CODE_81EB25:
     ldx.w $1E88                 ; $81EB25
 CODE_81EB28:
@@ -1630,7 +1630,7 @@ CODE_81EB28:
     jsr.w func_81F1FC           ; $81EB48
     bra CODE_81EAFD             ; $81EB4B
 CODE_81EB4D:
-    jsr.w $F21E                 ; $81EB4D
+    jsr.w car_contacts_chain    ; $81EB4D
 CODE_81EB50:
     ldx.w $1E86                 ; $81EB50
 CODE_81EB53:
@@ -1649,7 +1649,7 @@ CODE_81EB53:
     jsr.w func_81F1FC           ; $81EB73
     bra CODE_81EB28             ; $81EB76
 CODE_81EB78:
-    jsr.w $F21E                 ; $81EB78
+    jsr.w car_contacts_chain    ; $81EB78
 CODE_81EB7B:
     ldx.w $1E84                 ; $81EB7B
 CODE_81EB7E:
@@ -1668,7 +1668,7 @@ CODE_81EB7E:
     jsr.w func_81F1FC           ; $81EB9E
     bra CODE_81EB53             ; $81EBA1
 CODE_81EBA3:
-    jsr.w $F21E                 ; $81EBA3
+    jsr.w car_contacts_chain    ; $81EBA3
 CODE_81EBA6:
     ldx.w $1E82                 ; $81EBA6
 CODE_81EBA9:
@@ -1687,7 +1687,7 @@ CODE_81EBA9:
     jsr.w func_81F1FC           ; $81EBC9
     bra CODE_81EB7E             ; $81EBCC
 CODE_81EBCE:
-    jsr.w $F21E                 ; $81EBCE
+    jsr.w car_contacts_chain    ; $81EBCE
 CODE_81EBD1:
     ldx.w $1E80                 ; $81EBD1
 CODE_81EBD4:
@@ -1706,7 +1706,7 @@ CODE_81EBD4:
     jsr.w func_81F1FC           ; $81EBF4
     bra CODE_81EBA9             ; $81EBF7
 CODE_81EBF9:
-    jsr.w $F21E                 ; $81EBF9
+    jsr.w car_contacts_chain    ; $81EBF9
 CODE_81EBFC:
     ldx.w $1E7E                 ; $81EBFC
 CODE_81EBFF:
@@ -1725,7 +1725,7 @@ CODE_81EBFF:
     jsr.w func_81F1FC           ; $81EC1F
     bra CODE_81EBD4             ; $81EC22
 CODE_81EC24:
-    jsr.w $F21E                 ; $81EC24
+    jsr.w car_contacts_chain    ; $81EC24
 CODE_81EC27:
     ldx.w $1E7C                 ; $81EC27
 CODE_81EC2A:
@@ -1744,7 +1744,7 @@ CODE_81EC2A:
     jsr.w func_81F1FC           ; $81EC4A
     bra CODE_81EBFF             ; $81EC4D
 CODE_81EC4F:
-    jsr.w $F21E                 ; $81EC4F
+    jsr.w car_contacts_chain    ; $81EC4F
 CODE_81EC52:
     ldx.w $1E7A                 ; $81EC52
 CODE_81EC55:
@@ -1763,7 +1763,7 @@ CODE_81EC55:
     jsr.w func_81F1FC           ; $81EC75
     bra CODE_81EC2A             ; $81EC78
 CODE_81EC7A:
-    jsr.w $F21E                 ; $81EC7A
+    jsr.w car_contacts_chain    ; $81EC7A
 CODE_81EC7D:
     ldx.w $1E78                 ; $81EC7D
 CODE_81EC80:
@@ -1782,7 +1782,7 @@ CODE_81EC80:
     jsr.w func_81F1FC           ; $81ECA0
     bra CODE_81EC55             ; $81ECA3
 CODE_81ECA5:
-    jsr.w $F21E                 ; $81ECA5
+    jsr.w car_contacts_chain    ; $81ECA5
 CODE_81ECA8:
     ldx.w $1E76                 ; $81ECA8
 CODE_81ECAB:
@@ -1801,7 +1801,7 @@ CODE_81ECAB:
     jsr.w func_81F1FC           ; $81ECCB
     bra CODE_81EC80             ; $81ECCE
 CODE_81ECD0:
-    jsr.w $F21E                 ; $81ECD0
+    jsr.w car_contacts_chain    ; $81ECD0
 CODE_81ECD3:
     ldx.w $1E74                 ; $81ECD3
 CODE_81ECD6:
@@ -1820,7 +1820,7 @@ CODE_81ECD6:
     jsr.w func_81F1FC           ; $81ECF6
     bra CODE_81ECAB             ; $81ECF9
 CODE_81ECFB:
-    jsr.w $F21E                 ; $81ECFB
+    jsr.w car_contacts_chain    ; $81ECFB
 CODE_81ECFE:
     ldx.w $1E72                 ; $81ECFE
 CODE_81ED01:
@@ -1839,7 +1839,7 @@ CODE_81ED01:
     jsr.w func_81F1FC           ; $81ED21
     bra CODE_81ECD6             ; $81ED24
 CODE_81ED26:
-    jsr.w $F21E                 ; $81ED26
+    jsr.w car_contacts_chain    ; $81ED26
 CODE_81ED29:
     ldx.w $1E70                 ; $81ED29
 CODE_81ED2C:
@@ -1858,7 +1858,7 @@ CODE_81ED2C:
     jsr.w func_81F1FC           ; $81ED4C
     bra CODE_81ED01             ; $81ED4F
 CODE_81ED51:
-    jsr.w $F21E                 ; $81ED51
+    jsr.w car_contacts_chain    ; $81ED51
 CODE_81ED54:
     ldx.w $1E6E                 ; $81ED54
 CODE_81ED57:
@@ -1877,7 +1877,7 @@ CODE_81ED57:
     jsr.w func_81F1FC           ; $81ED77
     bra CODE_81ED2C             ; $81ED7A
 CODE_81ED7C:
-    jsr.w $F21E                 ; $81ED7C
+    jsr.w car_contacts_chain    ; $81ED7C
 CODE_81ED7F:
     ldx.w $1E6C                 ; $81ED7F
 CODE_81ED82:
@@ -1896,7 +1896,7 @@ CODE_81ED82:
     jsr.w func_81F1FC           ; $81EDA2
     bra CODE_81ED57             ; $81EDA5
 CODE_81EDA7:
-    jsr.w $F21E                 ; $81EDA7
+    jsr.w car_contacts_chain    ; $81EDA7
 CODE_81EDAA:
     ldx.w $1E6A                 ; $81EDAA
     ldy.w $1E6C                 ; $81EDAD
@@ -1914,7 +1914,7 @@ CODE_81EDAA:
     jsr.w func_81F1FC           ; $81EDCD
     bra CODE_81ED82             ; $81EDD0
 CODE_81EDD2:
-    jsr.w $F21E                 ; $81EDD2
+    jsr.w car_contacts_chain    ; $81EDD2
     bra CODE_81EDDD             ; $81EDD5
 CODE_81EDD7:
     jmp.w $EFA9                 ; $81EDD7
@@ -2084,6 +2084,7 @@ CODE_81F204:
     ply                         ; $81F21B
     plx                         ; $81F21C
     rts                         ; $81F21D
+car_contacts_chain:
     lda.w $FAB5,y               ; $81F21E
     sec                         ; $81F221
     sbc.w $FAB5,x               ; $81F222
