@@ -1789,6 +1789,21 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Window HDMA, text tiles and palettes (roots-52, 2026-11-19)
+
+**`hdma_window_setup` ($8A:A06D):** `hdma_window_tables_init`, then HDMA channels 7 (BG2's
+horizontal scroll) and 1 (the fixed colour) from `$81:0D00` and `$0D20`.
+- Its `SEP #$10` clears X's and Y's high bytes. The first adapter kept Y whole, and the
+  fuzz caught it.
+
+**`text_tiles_put_0` ($8A:BACB):** 97 words from `$8A:C8E4` to VRAM 0 (word writes). It is
+the same data `text_screen_init` puts at `$1000`.
+
+**`text_palettes_load` ($8A:C24B):** CGRAM `$20`-`$4F` cleared by direct writes, then two
+palettes from bank `$8A` by `upload_cgram_now`.
+
+All three: live 1/1, fuzz 500/500.
+
 ## The title Mode 7 setup and the stars twin (roots-51, 2026-11-19)
 
 **`stars_scatter` ($80:F8F8):** the bank-`$80` copy of `stars_scatter_8a`, calling

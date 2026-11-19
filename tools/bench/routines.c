@@ -2737,6 +2737,44 @@ static void call_title_mode7_setup(const Regs* in, Regs* out) {
   out->c = false;
 }
 
+// ---- hdma_window_setup ($8A:A06D) ----  A = $0D20, X = $81 (LDX #$81 with X 8-bit: N set,
+// Z clear), Y's low byte (SEP #$10 clears the high bytes); C V kept
+static void call_hdma_window_setup(const Regs* in, Regs* out) {
+  hdma_window_setup();
+  out->a = 0x0D20;
+  out->x = 0x0081;
+  out->y = in->y & 0x00FF;
+  out->n = true;
+  out->z = false;
+  out->c = in->c;
+  out->v = in->v;
+}
+
+// ---- text_tiles_put_0 ($8A:BACB) ----  A = the last word, X = $FFFF and Y = $C2 (the DEX
+// that ended it: N set, Z clear), C V kept
+static void call_text_tiles_put_0(const Regs* in, Regs* out) {
+  text_tiles_put_0();
+  out->a = bus_rd16(0x8AC8E4 + 0xC0);
+  out->x = 0xFFFF;
+  out->y = 0x00C2;
+  out->n = true;
+  out->z = false;
+  out->c = in->c;
+  out->v = in->v;
+}
+
+// ---- text_palettes_load ($8A:C24B) ----  as upload_cgram_now: A = $6001, X = $2202, Y =
+// $40, N Z clear; C V kept
+static void call_text_palettes_load(const Regs* in, Regs* out) {
+  text_palettes_load();
+  out->a = 0x6001;
+  out->x = 0x2202;
+  out->y = 0x0040;
+  out->n = out->z = false;
+  out->c = in->c;
+  out->v = in->v;
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7328,6 +7366,12 @@ const Routine routines[] = {
    .fuzz = fuzz_stars_scatter_8a},
   {.name = "title_mode7_setup", .entry = 0x80F424, .end = 0x80F4AD, .source = "src/scale.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_title_mode7_setup, ALL_OUTPUTS, .fuzz = fuzz_title_zoom},
+  {.name = "hdma_window_setup", .entry = 0x8AA06D, .end = 0x8AA09F, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_hdma_window_setup, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "text_tiles_put_0", .entry = 0x8ABACB, .end = 0x8ABAE3, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x8A, .call = call_text_tiles_put_0, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "text_palettes_load", .entry = 0x8AC24B, .end = 0x8AC278, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_text_palettes_load, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

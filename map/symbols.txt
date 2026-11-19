@@ -417,3 +417,6 @@ func    8A8DBF   palette_load_70     ; colour 0 and 16 colours at CGRAM $70 from
 func    8AC1C6   text_screen_init    ; a text screen: VRAM words, a centred string, tile palettes cleared -> src/misc.c
 func    80F8F8   stars_scatter       ; the 128 stars scattered by depth (bank $80 copy of stars_scatter_8a) -> src/stars.c
 func    80F424   title_mode7_setup   ; the title's Mode 7 screen: VRAM, BG1 map and scroll, HDMA tables -> src/scale.c
+func    8AA06D   hdma_window_setup   ; window tables, HDMA channels 7 (BG2 scroll) and 1 (fixed colour) -> src/misc.c
+func    8ABACB   text_tiles_put_0    ; 97 words from $8A:C8E4 to VRAM 0 -> src/misc.c
+func    8AC24B   text_palettes_load  ; CGRAM $20-$4F cleared, two palettes from bank $8A -> src/misc.c

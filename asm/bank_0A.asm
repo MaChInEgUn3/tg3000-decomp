@@ -2745,11 +2745,11 @@ CODE_8A9E96:
     ldx.w #$C4B0                ; $8A9EA8
     lda.w #$008A                ; $8A9EAB
     jsl.l video_load_screen_long; $8A9EAE
-    jsr.w $A06D                 ; $8A9EB2
+    jsr.w hdma_window_setup     ; $8A9EB2
     jsl.l clear_vram            ; $8A9EB5
     jsr.w func_8ABA55           ; $8A9EB9
     jsr.w func_8AB994           ; $8A9EBC
-    jsr.w $BACB                 ; $8A9EBF
+    jsr.w text_tiles_put_0      ; $8A9EBF
     jsr.w wipe_columns          ; $8A9EC2
     jsl.l func_8A8EEF           ; $8A9EC5
     lda.w #$FC5F                ; $8A9EC9
@@ -2934,6 +2934,7 @@ func_8AA050:
 CODE_8AA069:
     jsr.w func_8AA005           ; $8AA069
     rtl                         ; $8AA06C
+hdma_window_setup:
     jsr.w hdma_window_tables_init; $8AA06D
     sep.b #$10                  ; $8AA070
     ldx.b #$0F                  ; $8AA072
@@ -3933,6 +3934,7 @@ CODE_8ABA95:
     bne CODE_8ABA95             ; $8ABA99
     rtl                         ; $8ABA9B
     incbin !baserom:$53A9C..$53ACB
+text_tiles_put_0:
     lda.w #$0000                ; $8ABACB
     sta.w $2116                 ; $8ABACE
     ldx.w #$0060                ; $8ABAD1
@@ -4365,7 +4367,7 @@ CODE_8AC04C:
     ldx.w #$F861                ; $8AC07D
     lda.w #$0087                ; $8AC080
     jsl.l decompress_to_vram_long; $8AC083
-    jsr.w $C24B                 ; $8AC087
+    jsr.w text_palettes_load    ; $8AC087
     ldy.w #$0000                ; $8AC08A
     ldx.w #$F5BC                ; $8AC08D
     lda.w #$0087                ; $8AC090
@@ -4552,6 +4554,7 @@ CODE_8AC213:
     bne CODE_8AC213             ; $8AC221
     rts                         ; $8AC223
     incbin !baserom:$54224..$5424B
+text_palettes_load:
     sep.b #$20                  ; $8AC24B
     lda.b #$20                  ; $8AC24D
     sta.w $2121                 ; $8AC24F

@@ -910,4 +910,16 @@ void palette_load_70(uint16_t pick);
 // (text_print_centered); then the 128 tiles at $7F:0080 lose bits 10-12 (their palette).
 void text_screen_init(uint16_t str);
 
+// $8A:A06D: hdma_window_tables_init, then HDMA channel 7 on BG2's horizontal scroll ($210F,
+// two bytes a line) from $81:0D00 and channel 1 on the fixed colour ($2132) from $81:0D20
+// (not enabled here).
+void hdma_window_setup(void);
+
+// $8A:BACB: 97 words from $8A:C8E4 to VRAM 0 on (word writes).
+void text_tiles_put_0(void);
+
+// $8A:C24B: CGRAM colours $20-$4F cleared (direct writes), then 16 colours from $8A:C964
+// to CGRAM $80 and 32 from $8A:C984 to $60 (upload_cgram_now).
+void text_palettes_load(void);
+
 #endif

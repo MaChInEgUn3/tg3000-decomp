@@ -400,3 +400,6 @@
 80F561 upload_slice_15 src/video_dma.c a71d763ad1364fdd 1 500 20/20 verified live-flags:NVZC replayed:0
 80F8F8 stars_scatter src/stars.c 4cd8d04a35d06b7b 1 500 40/40 verified live-flags:NVZC replayed:0
 80F424 title_mode7_setup src/scale.c 7b34093df1176472 1 500 50/50 verified live-flags:NVZC replayed:0
+8AA06D hdma_window_setup src/misc.c b4d19b7bacb78c0d 1 500 20/20 verified live-flags:NVZC replayed:0
+8ABACB text_tiles_put_0 src/misc.c b4d19b7bacb78c0d 1 500 11/11 verified live-flags:NVZC replayed:0
+8AC24B text_palettes_load src/misc.c b4d19b7bacb78c0d 1 500 17/17 verified live-flags:NVZC replayed:0

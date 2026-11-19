@@ -2840,3 +2840,22 @@ void text_screen_init(uint16_t str) {
   text_print_centered(0x8A0000 | str);
   for(uint32_t i = 0; i < 0x80; i++) wr16(0x10080 + 2 * i, (uint16_t)(rd16(0x10080 + 2 * i) & 0xE3FF));
 }
+
+// TG3000_ROUTINE($8A:A06D) hdma_window_setup
+void hdma_window_setup(void) {
+  hdma_window_tables_init();
+  dma_hdma_setup(7, 0x02, 0x0F, 0x810D00);
+  dma_hdma_setup(1, 0x00, 0x32, 0x810D20);
+}
+
+// TG3000_ROUTINE($8A:BACB) text_tiles_put_0
+void text_tiles_put_0(void) {
+  for(uint16_t i = 0; i <= 0x60; i++) video_write_vram_word(i, bus_rd16(0x8AC8E4 + 2u * i));
+}
+
+// TG3000_ROUTINE($8A:C24B) text_palettes_load
+void text_palettes_load(void) {
+  for(uint8_t i = 0; i < 0x30; i++) video_set_color((uint8_t)(0x20 + i), 0);
+  upload_cgram_now(0x80, 0x8A, 0xC964, 0x0020);
+  upload_cgram_now(0x60, 0x8A, 0xC984, 0x0040);
+}
