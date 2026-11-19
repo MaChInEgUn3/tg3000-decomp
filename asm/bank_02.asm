@@ -998,7 +998,7 @@ CODE_82A58D:
     lda.w #$001D                ; $82A628
     mvn $7E,$85                 ; $82A62B
     plb                         ; $82A62E
-    jsr.w $A672                 ; $82A62F
+    jsr.w track_palettes_load   ; $82A62F
     stz.w $1E66                 ; $82A632
     stz.w $1E68                 ; $82A635
     ldx.w #$0000                ; $82A638
@@ -1030,6 +1030,7 @@ CODE_82A66A:
     dex                         ; $82A66E
     bne CODE_82A66A             ; $82A66F
     rts                         ; $82A671
+track_palettes_load:
     ldx.w #$929A                ; $82A672
     ldy.w #$0000                ; $82A675
     lda.w #$7F88                ; $82A678
@@ -1074,7 +1075,12 @@ CODE_82A6D7:
     lda.w $03CB                 ; $82A6D7
     and.w #$00FF                ; $82A6DA
     beq CODE_82A6EC             ; $82A6DD
-    incbin !baserom:$126DF..$126EC
+    lda.b $1A                   ; $82A6DF static
+    clc                         ; $82A6E1 static
+    adc.w #$0070                ; $82A6E2 static
+    sta.b $1A                   ; $82A6E5 static
+    lda.w #$00E0                ; $82A6E7 static
+    sta.b $1C                   ; $82A6EA static
 CODE_82A6EC:
     ldy.w #$0000                ; $82A6EC
     lda.w #$0007                ; $82A6EF

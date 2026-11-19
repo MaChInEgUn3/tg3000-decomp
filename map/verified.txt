@@ -386,3 +386,4 @@
 80F561 upload_slice_15 src/video_dma.c 0257985781bee8b0 1 500 20/20 verified live-flags:NVZC replayed:0
 81E631 track_rows_build src/misc.c fc15956f5365afb5 0 500 189/189 verified live-flags:NVZC replayed:2
 82ADC2 track_block_triple src/misc.c 4adb73cc9d255505 0 500 29/29 verified live-flags:NVZC replayed:2
+82A672 track_palettes_load src/misc.c fa0c8825de003be4 0 500 140/140 verified live-flags:NVZC replayed:2

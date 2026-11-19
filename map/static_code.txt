@@ -84,3 +84,4 @@
 8A:85B3 8A:85CB m16x16 ; tile_anim_step: the animation (D+$42 set; never run)
 8A:85CC 8A:867C m16x16 ; tile_anim_step's frames and anim_tiles_put, 5x3 VRAM words (never run)
 81:E797 81:E7A7 m16x16 ; track_rows_build: a negative low nibble moved up (never run)
+82:A6DF 82:A6EC m16x16 ; track_palettes_load: player 2's flag $03CB moves its rows on (never run)

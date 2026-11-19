@@ -1789,6 +1789,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Both players' palette rows (roots-43, 2026-11-19)
+
+- **`track_palettes_load` ($82:A672):** the third and last whole-command DSP-4 root.
+  - It unpacks `$88:929A` to `$7F:0000`.
+  - The rows start at `$7F` + (`$047B` * `$E0`, the DSP-4 product's low word; the high
+    word is read and dropped) for both players, and at `$85:A1EC` + (0, or `$70` when
+    `$01E4` is above 0).
+  - On a track whose word at `$83:9583` is 0, a player whose flag byte (`$039C`, `$03CB`)
+    is set takes the next rows (`$70` on, and `$E0`). Player 2's flag never runs: its 13
+    bytes at `$82:A6DF` are now static code.
+  - Then 7 rows, `$20` apart: 8 words from `$7F` to `$7E:6A59`/`$6B59`, and 7 words from
+    bank `$85` around them (`$6A55`, `$6A57`, `$6A69`-`$6A71`, the same for `$6B..`).
+- **Results:** 5 interrupted live entries; replays 2/2, fuzz 500/500, paths 140/140 (and
+  on race1).
+- **What is left with the DSP-4.** The 14 remaining DSP-4 roots keep a command open
+  across calls. They wait for a chip-state design, to be weighed with the advisor before
+  any code.
+
 ## A track block in three copies (roots-42, 2026-11-19)
 
 - **`track_block_triple` ($82:ADC2):** the second whole-command DSP-4 root.

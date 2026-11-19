@@ -2737,3 +2737,43 @@ void track_block_triple(uint16_t dp) {
   for(uint16_t i = 0; i < 0x0190; i++) wr8(0x230C + (uint32_t)i, rd8(0x217C + (uint32_t)i));
   for(uint16_t i = 0; i < 0x0190; i++) wr8(0x249C + (uint32_t)i, rd8(0x217C + (uint32_t)i));
 }
+
+// One player's palette row: 8 words from $7F:(*from) at `to` + 4, and 7 from $85:A1EC +
+// *pick at `to`, `to` + 2 and `to` + $14-$1C; both sources move on by $10.
+static void palette_row(uint16_t* from, uint16_t* pick, uint32_t to) {
+  for(uint32_t k = 0; k < 16; k += 2) wr16(to + 4 + k, rd16(0x10000 + (uint32_t)(uint16_t)(*from + k)));
+  *from = (uint16_t)(*from + 0x10);
+  static const uint8_t at[7] = {0x00, 0x02, 0x14, 0x16, 0x18, 0x1A, 0x1C};
+  for(uint32_t k = 0; k < 7; k++) wr16(to + at[k], bus_rd16(0x85A1EC + (uint32_t)(uint16_t)(*pick + 2 * k)));
+  *pick = (uint16_t)(*pick + 0x10);
+}
+
+// TG3000_ROUTINE($82:A672) track_palettes_load
+void track_palettes_load(uint16_t dp) {
+  uint16_t end;
+  decompress(dp, 0x88, 0x929A, 0x7F, 0x0000, &end);
+  const uint16_t first = (uint16_t)dsp4_multiply((int16_t)rd16(0x047B), 0x00E0);
+  uint16_t from1 = first, from2 = first, pick1 = 0, pick2 = 0;
+  const uint16_t e4 = rd16(0x01E4);
+  if(!(e4 & 0x8000) && e4 != 0) pick1 = pick2 = 0x0070;
+  if(bus_rd16(0x839583 + (uint32_t)(uint16_t)(rd16(0x047B) << 1)) == 0) {
+    if(rd8(0x039C)) {
+      from1 = (uint16_t)(from1 + 0x70);
+      pick1 = 0x00E0;
+    }
+    if(rd8(0x03CB)) {  // never run
+      from2 = (uint16_t)(from2 + 0x70);
+      pick2 = 0x00E0;
+    }
+  }
+  for(uint32_t row = 0, y = 0; row < 7; row++, y += 0x20) {
+    // the original keeps each source in D+$16/$1A/$18/$1C, written back after its row
+    palette_row(&from1, &pick1, 0x6A55 + y);
+    palette_row(&from2, &pick2, 0x6B55 + y);
+  }
+  wr16(dp + 0x16, from1);
+  wr16(dp + 0x1A, from2);
+  wr16(dp + 0x18, pick1);
+  wr16(dp + 0x1C, pick2);
+  wr16(dp + 0x14, 0);
+}

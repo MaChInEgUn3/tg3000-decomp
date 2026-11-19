@@ -875,4 +875,12 @@ void track_rows_build(void);
 // $7E:230C and $7E:249C (MVN).
 void track_block_triple(uint16_t dp);
 
+// $82:A672: both players' palette rows (D = `dp` for decompress). Unpacks $88:929A to
+// $7F:0000. The rows start at $7F:($047B * $E0, the DSP-4 product's low word) for both
+// players (D+$16, D+$1A) and at $85:A1EC + (0, or $70 when $01E4 is above 0) (D+$18,
+// D+$1C). On a track whose word at $83:9583 is 0, a player whose byte ($039C, $03CB: never
+// run) is set takes the next rows ($70 on, and $E0). Then 7 rows ($20 apart): 8 words from
+// $7F to $7E:6A59 / $6B59, and 7 from bank $85 to $6A55, $6A57, $6A69-$6A71 / $6B55... .
+void track_palettes_load(uint16_t dp);
+
 #endif

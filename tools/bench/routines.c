@@ -2502,6 +2502,27 @@ static void fuzz_track_block_triple(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   wr16ram(ram, 0x047B, (uint16_t)(rnd() % 0x40));
 }
 
+// ---- track_palettes_load ($82:A672) ----  A = Y = $E0 (the last row step: C V clear),
+// X = player 2's last palette pick; the PLB of the $83 its PEA pushed (DB $83, N set, Z
+// clear)
+static void call_track_palettes_load(const Regs* in, Regs* out) {
+  track_palettes_load(in->d);
+  out->a = out->y = 0x00E0;
+  out->x = (uint16_t)(rd16((uint16_t)(in->d + 0x1C)) - 0x10);
+  out->c = out->v = false;
+  out->db = 0x83;
+  out->n = true;
+  out->z = false;
+}
+// any track; $01E4 negative, 0 or above; either player's flag
+static void fuzz_track_palettes_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x047B, (uint16_t)(rnd() % 0x40));
+  wr16ram(ram, 0x01E4, (rnd() % 3 == 0) ? 0 : (rnd() & 1) ? (uint16_t)(0x8000 | rnd()) : (uint16_t)(1 + rnd() % 8));
+  ram[0x039C] = (rnd() & 1) ? (uint8_t)(1 + rnd() % 255) : 0;
+  ram[0x03CB] = (rnd() & 1) ? (uint8_t)(1 + rnd() % 255) : 0;
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7062,6 +7083,8 @@ const Routine routines[] = {
    .fuzz = fuzz_track_rows_build},
   {.name = "track_block_triple", .entry = 0x82ADC2, .end = 0x82AE15, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x83, .call = call_track_block_triple, ALL_OUTPUTS, .fuzz = fuzz_track_block_triple},
+  {.name = "track_palettes_load", .entry = 0x82A672, .end = 0x82A7F9, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x83, .call = call_track_palettes_load, ALL_OUTPUTS, .fuzz = fuzz_track_palettes_load},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
