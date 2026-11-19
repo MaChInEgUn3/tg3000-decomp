@@ -1789,6 +1789,33 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Where to go next (2026-11-19, with the advisor)
+
+The owner is away and reads decisions here.
+
+- **Corrections.** The never-run paths decoded since roots-16 were unknown in the map,
+  not data: data stayed at 770,615 bytes all along while unknown fell. roots-34's count
+  is 118 bytes, not 126.
+- **The order from here:**
+  1. Leftover plain roots, from a fresh `roots.py` (14 routines landed since the last
+     run, so callers may have become roots): `$8A:C2DD`, `$80:F6FD`, `$80:8199`,
+     `$8A:898F`, `$82:F2B3` (an indirect table: a variant switch whose targets get
+     decoded), and `$81:F48B` and `$8A:85AF` (their never-run branches leave the routine,
+     solved since roots-30 by static code plus an `alsoIn` range).
+  2. DSP-4 roots, classified first by the command words they write to `$30:8000`. Port
+     the ones that use only commands `src/dsp4.c` has and finish every command before
+     returning, as `shake_step`, `func_82EA49` and `track.c` do. The ones that leave a
+     command open wait for the chip-state design.
+     - The bench's DSP-4 answers the original during a difftest, so a pass shows the C
+       matches the bench's chip, not the real one. Each command used needs the refbench
+       firmware check (`--dsp4-cmdlog`).
+  3. `$82:A7F9` (track load). Its registers may not be compared (check the call site);
+     its N and Z come from the final `PLB`; its C and V follow the records, and the last
+     decompress length is the final D+`$14` minus the word stored at `$7E:6591,y` before
+     it.
+  4. Hardware setup (`$80:B7E7`, `$80:D168`): 1-14 entries each, I/O writes and a
+     second stack. Last.
+
 ## The track objects' graphics stream; a full run (roots-36, 2026-11-19)
 
 - **`track_objects_stream` ($82:AF33):** the track objects' graphics, sent as the car
@@ -1857,9 +1884,9 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - 1, by bits 4-5: `$10` alone gives player 1's and the string `PLAYER2` (`$8A:9B7D`);
     otherwise player 1's when bit 4 is set and player 2's (`$03AD`) when bit 5 is;
   - 3-15: nothing.
-- **Never-run code found.** Only variant 0 runs in the movies. Variants 1 and 2 are 126
-  bytes of code (`$8A:9AFD`, `$8A:9B37`) that the map counted as data. They are now static
-  code, ported, and run by the fuzz. The 8 bytes after them (`$8A:9B7D`) stay data: the
+- **Never-run code found.** Only variant 0 runs in the movies. Variants 1 and 2 are 118
+  bytes of code (`$8A:9AFD`, 48, and `$8A:9B37`, 70) that the map had as unknown. They are
+  now static code, ported, and run by the fuzz. The 8 bytes after them (`$8A:9B7D`) stay data: the
   string `PLAYER2`.
 - **Exit.** The last `text_line_put`'s, followed call by call (A kept, X = the `$0154`
   before it, Y = the string's length, C and V of `$0154` + `$10`). Without a call: the
@@ -1939,7 +1966,7 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - **The results tables, by variant.** Bits 8-9 of `$03DC` select one: 0 uses `$85:D501`,
   `$100` uses `$85:D530`, anything else `$85:D55F`, each indexed by `$0444`.
   - Variant 0 never runs in the movies. Its paths (`$84:A331`, `$84:A364`, 15 bytes) were
-    data in the map; now they are static code, and the fuzz picks every variant.
+    unknown in the map; now they are static code, and the fuzz picks every variant.
 - **`result_slot_step` ($84:A31B, `JSL`):** when the variant's byte is set, `$036C` moves
   on by 4.
 - **`result_tally` ($84:A34B, `JSL`):** when the byte is set, the word `$036E` + (the word
@@ -2009,7 +2036,7 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
     wraps.
   - The movies only have lists that match line for line, so the code for "a line in one
     list only" and "the lists start apart" never runs. Its 82 bytes (`$85:B232`,
-    `$85:B265`) were data in the map; they were decoded as static code and ported, and
+    `$85:B265`) were unknown in the map; they were decoded as static code and ported, and
     the fuzz's lists, which often differ, run them.
 
 ## The race positions (roots-24, 2026-11-19)
@@ -2309,7 +2336,7 @@ pure-Python hash over `routines.c`, once per row) and now takes about 1.5 second
   - `variant_66` ($8A:99BE): `$0166` = `$28` (its tail `func_8A99D0`, in the row's
     extent), or 8.
 - **Variant 2 never runs in the movies.** Its six-byte paths (`LDA #`, `STA`, `RTS`)
-  were data in the map. They are now static code: `8A:9AC3`, `8A:98FC` and `8A:99CA`.
+  were unknown in the map. They are now static code: `8A:9AC3`, `8A:98FC` and `8A:99CA`.
   The fuzz picks variant 2 a third of the time.
 - **Exit.** A = the value (N and Z clear), C of the `CMP #2`, V as on entry.
 - **`text_lines_copy` ($8A:9AC9):** `$0156` lines of text from `$8A:9DEE` (zero-ended
