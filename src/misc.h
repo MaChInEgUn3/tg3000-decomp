@@ -950,4 +950,23 @@ bool car_pair_contact(uint16_t x, uint16_t y);
 // Returns whether one hit.
 bool track_object_test_sides(uint16_t dp);
 
+// $80:EBF7: a line of scrolling text drawn as sprites (D = $0100), from `text` in `bank`
+// (its DB), starting at screen x `x` (D+$C8, D+$CA).
+// - D+$C6 gains D+$E5; the 28-word queue at $7F:D+$5E moves up a word and its new last
+//   word is $FFFF, or D+$CC (counting up) for each $100 D+$C6 loses. D+$CF = the first
+//   queued word not $FFFF (0 if none).
+// - Then, until D+$DF (from 0) reaches D+$CC, it reads the text: a character draws a
+//   2-tile sprite at D+$CA (OAM at $0900 + D+$74; digits and capitals from the tile pairs
+//   at $81:CCD9, a few marks from the table at $80:EDE7 (never run), a space draws
+//   nothing), in palette D+$16 ($3200, or a band once D+$DF reaches the queued word);
+//   D+$CA moves on by 8. While D+$D3 is set and D+$DF + 1 is below the queued word, the
+//   text's next two bytes are replaced by a 1-tile sprite from $81:D2E3 + D+$D3.
+// - A 0 byte starts a control code: 0 ends the text (D+$C6 = 0; the rest is padding), 1
+//   sets the x (D+$C8 + a word), 2 repeats (a count in D+$D1; never run), 3 sets bit 15
+//   of D+$E1 (never run), 4 sets D+$D3, 5 clears it.
+// - Last, unless D+$E1 is negative: D+$E1 = $3B while the queue's 14th word is set; from
+//   $1E on it draws an end marker ($81:CDA1) in a fading palette; it counts down, $3B
+//   after 0.
+void ticker_draw(uint8_t bank, uint16_t x, uint16_t text);
+
 #endif

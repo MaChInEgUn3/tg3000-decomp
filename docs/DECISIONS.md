@@ -1789,6 +1789,26 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The scrolling text line (roots-55, 2026-11-19)
+
+**`ticker_draw` ($80:EBF7):** a line of scrolling text drawn as 2-tile sprites, about 600
+bytes with a control-code table.
+- **Characters:** digits and capitals come from `$81:CCD9`, a space advances 8 pixels, and
+  marks are looked up in `$80:EDE7`.
+- **Control codes** (a 0 byte, then the code): 0 is the end, and the pointer stays on it
+  as padding. 1 sets x. 2 is a counted repeat. 3 sets the stop bit of `$E1`. 4/5 turn on
+  and off a 1-tile sprite stream from `$81:D2E3`.
+- **A queue** of 28 words at `$7F:D+$5E` decides how far the line is revealed and its
+  palette bands. An end marker fades through `$E1`.
+- **Never run, decoded as static code:** the mark lookup (`$80:ED04`) and codes 2 and 3
+  (`$80:EE0D`-`$EE45`). The row declares the table and the marks as a hole.
+- **No outputs.** Both callers reload every register and set every flag before reading.
+- **A quirk in the original.** The `$C6` step loop reloads A with `D+$CC` after its first
+  step and loops back to the subtract. It takes one `$100` step per call, or more only
+  while the counter is `$100` or more. The fuzz found it: 280/500 failed with the obvious
+  loop. The C keeps the quirk; the fuzz's counter stays below `$100`.
+- Live 852/852, fuzz 500/500, paths 269/269.
+
 ## A track object tested on both sides (roots-54, 2026-11-19)
 
 **`track_object_test_sides` ($83:FC65):** a handler in `$83:F7F9`'s table, like

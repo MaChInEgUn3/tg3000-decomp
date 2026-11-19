@@ -87,3 +87,5 @@
 82:A6DF 82:A6EC m16x16 ; track_palettes_load: player 2's flag $03CB moves its rows on (never run)
 81:F2B5 81:F2F5 m16x16 ; car_pair_contact: object -> car slot through $81:FE16 (two-player modes, never run)
 81:F430 81:F43C m16x16 ; car_pair_contact: the pushed car kept at its own floor (never run)
+80:ED04 80:ED18 m16x16 ; ticker_draw: a punctuation mark looked up in $80:EDE7 (never run)
+80:EE0D 80:EE45 m16x16 ; ticker_draw: control codes 2 (a counted repeat) and 3 (stop flag) (never run)

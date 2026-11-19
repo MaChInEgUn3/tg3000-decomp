@@ -2964,3 +2964,163 @@ bool track_object_test_sides(uint16_t dp) {
   }
   return false;
 }
+
+// A queue word at $7F:`at`.
+static uint16_t q7f(uint16_t at) { return rd16(0x10000 + (uint32_t)at); }
+
+// One 2-tile sprite (16 pixels tall) at D+$CA: tiles `top` and `bottom`, both | D+$16.
+static void ticker_sprite(uint16_t top, uint16_t bottom) {
+  const uint32_t o = rd16(DP + 0x74);
+  wr16(0x0902 + o, (uint16_t)(top | rd16(DP + 0x16)));
+  wr16(0x0906 + o, (uint16_t)(bottom | rd16(DP + 0x16)));
+  wr16(0x0900 + o, rd16(DP + 0xCA));
+  wr16(0x0904 + o, (uint16_t)(rd16(DP + 0xCA) + 0x0800));
+  wr16(0x0B01 + o, 0);
+  wr16(0x0B05 + o, 0);
+  wr16(DP + 0x74, (uint16_t)(o + 8));
+}
+
+// The end: the marker while D+$E1 is $1E or more, and its countdown.
+static void ticker_end(void) {
+  if(rd16(DP + 0xE1) & 0x8000) return;
+  if(q7f((uint16_t)(rd16(DP + 0x5E) + 0x1A)) != 0xFFFF) wr16(DP + 0xE1, 0x003B);
+  uint16_t e = rd16(DP + 0xE1);
+  if(e >= 0x001E) {
+    uint16_t a = (uint16_t)(e - 0x0020);
+    if(a & 0x8000) a = 0;
+    wr16(DP + 0x16, (uint16_t)((((a >> 1) & 0x000E) << 8) + 0x3200));
+    const uint32_t o = rd16(DP + 0x74);
+    wr16(0x0902 + o, (uint16_t)(rd16(DP + 0x16) + bus_rd16(0x81CDA1)));
+    wr16(0x0906 + o, (uint16_t)(bus_rd16(0x81CDA3) + rd16(DP + 0x16)));
+    wr16(0x0900 + o, rd16(DP + 0xCA));
+    wr16(0x0904 + o, (uint16_t)(rd16(DP + 0xCA) + 0x0800));
+    wr16(0x0B01 + o, 0);
+    wr16(0x0B05 + o, 0);
+    wr16(DP + 0x74, (uint16_t)(o + 8));
+  }
+  e = (uint16_t)(rd16(DP + 0xE1) - 1);
+  wr16(DP + 0xE1, (e & 0x8000) ? 0x003B : e);
+}
+
+// TG3000_ROUTINE($80:EBF7) ticker_draw
+void ticker_draw(uint8_t bank, uint16_t x, uint16_t text) {
+  const uint32_t b = (uint32_t)bank << 16;
+  wr16(DP + 0xC8, x);
+  wr16(DP + 0xCA, x);
+  wr16(DP + 0xC6, (uint16_t)(rd16(DP + 0xC6) + rd16(DP + 0xE5)));
+  wr16(DP + 0xD3, 0);
+  uint16_t q = rd16(DP + 0x5E);
+  for(int i = 0; i < 0x1B; i++, q = (uint16_t)(q + 2)) wr16(0x10000 + (uint32_t)q, q7f((uint16_t)(q + 2)));
+  wr16(0x10000 + (uint32_t)q, 0xFFFF);
+  // A quirk: after a step the loop goes on with A = the old D+$CC, not D+$C6, so it takes
+  // one $100 step (more only while the counter is $100 or more)
+  for(uint16_t a = rd16(DP + 0xC6); a >= 0x0100;) {
+    wr16(DP + 0xC6, (uint16_t)(a - 0x0100));
+    a = rd16(DP + 0xCC);
+    wr16(0x10000 + (uint32_t)q, a);
+    wr16(DP + 0xCC, (uint16_t)(a + 1));
+  }
+  wr16(DP + 0xDF, 0);
+  uint16_t first = 0;
+  for(uint16_t at = rd16(DP + 0x5E), n = 0x1C; n != 0; n--, at = (uint16_t)(at + 2))
+    if(q7f(at) != 0xFFFF) {
+      first = at;
+      break;
+    }
+  wr16(DP + 0xCF, first);
+  uint16_t y = text;
+  if(rd16(DP + 0xDF) == rd16(DP + 0xCC)) {
+    ticker_end();
+    return;
+  }
+  for(;;) {
+    const uint16_t w = bus_rd16(b + y);
+    if(!(w & 0x00FF)) {  // a control code
+      y = (uint16_t)(y + 1);
+      switch(w >> 8) {
+        case 0:  // the end: the pointer stays on it
+          y = (uint16_t)(y - 2);
+          wr16(DP + 0xC6, 0);
+          goto next;
+        case 1: {
+          const uint16_t nx = (uint16_t)(bus_rd16(b + (uint32_t)(uint16_t)(y + 1)) + rd16(DP + 0xC8));
+          wr16(DP + 0xCA, nx);
+          wr16(DP + 0xC8, nx);
+          y = (uint16_t)(y + 3);
+          continue;
+        }
+        case 2: {  // never run
+          const uint16_t df1 = (uint16_t)(rd16(DP + 0xDF) + 1);
+          if(df1 != rd16(DP + 0xCC)) {
+            if((uint16_t)(df1 + 1) != rd16(DP + 0xCC)) {
+              y = (uint16_t)(y + 3);
+              continue;
+            }
+            wr16(DP + 0xCC, (uint16_t)(rd16(DP + 0xCC) - 1));
+          }
+          if(rd16(DP + 0xD1) == 0) wr16(DP + 0xD1, bus_rd16(b + (uint32_t)(uint16_t)(y + 1)));
+          wr16(DP + 0xD1, (uint16_t)(rd16(DP + 0xD1) - 1));
+          if(rd16(DP + 0xD1) != 0) {
+            wr16(0x10000 + (uint32_t)(uint16_t)(rd16(DP + 0x5E) + 0x36), 0xFFFF);
+            ticker_end();
+            return;
+          }
+          wr16(DP + 0xCC, (uint16_t)(rd16(DP + 0xCC) + 1));
+          y = (uint16_t)(y + 3);
+          continue;
+        }
+        case 3:  // never run
+          wr16(DP + 0xE1, (uint16_t)(rd16(DP + 0xE1) | 0x8000));
+          y = (uint16_t)(y + 1);
+          continue;
+        case 4:
+          wr16(DP + 0xD3, bus_rd16(b + (uint32_t)(uint16_t)(y + 1)));
+          y = (uint16_t)(y + 3);
+          continue;
+        default:  // 5
+          wr16(DP + 0xD3, 0);
+          y = (uint16_t)(y + 1);
+          continue;
+      }
+    }
+    if(rd16(DP + 0xD3) != 0 && (uint16_t)(rd16(DP + 0xDF) + 1) < q7f(rd16(DP + 0xCF))) {
+      const uint16_t d3 = rd16(DP + 0xD3);
+      const uint16_t tile = bus_rd16(0x81D2E3 + (uint32_t)d3);
+      wr16(DP + 0xD3, (uint16_t)(d3 + 2));
+      const uint32_t o = rd16(DP + 0x74);
+      wr16(0x0902 + o, tile);
+      wr16(0x0900 + o, rd16(DP + 0xCA));
+      wr16(DP + 0xCA, (uint16_t)(rd16(DP + 0xCA) + 0x0010));
+      wr16(0x0B01 + o, 0x0100);
+      wr16(DP + 0x74, (uint16_t)(o + 4));
+      wr16(DP + 0xDF, (uint16_t)(rd16(DP + 0xDF) + 2));
+      y = (uint16_t)(y + 2);
+      continue;
+    }
+    wr16(DP + 0x16, 0x3200);
+    uint16_t at = rd16(DP + 0xCF);
+    if(rd16(DP + 0xDF) == q7f(at)) {
+      wr16(DP + 0x16, (uint16_t)(((((uint16_t)(at - rd16(DP + 0x5E)) >> 2) & 0x000E) << 8) + 0x3200));
+      do at = (uint16_t)(at + 2); while(q7f(at) == 0xFFFF);
+      wr16(DP + 0xCF, at);
+    }
+    const uint16_t c = w & 0x00FF;
+    uint16_t t;
+    if(c >= 0x30 && c < 0x3A) t = (uint16_t)(c - 0x16);
+    else if(c >= 0x41 && c < 0x5B) t = (uint16_t)(c - 0x41);
+    else if(c == 0x20) goto space;
+    else {  // never run: a mark from the table at $80:EDE7 ($24-$32), or $33
+      t = 0x24;
+      while(t != 0x33 && bus_rd8(0x80EDC3 + (uint32_t)t) != c) t++;
+    }
+    wr16(DP + 0x14, (uint16_t)(t << 2));
+    ticker_sprite(bus_rd16(0x81CCD9 + (uint32_t)(uint16_t)(t << 2)), bus_rd16(0x81CCDB + (uint32_t)(uint16_t)(t << 2)));
+  space:
+    wr16(DP + 0xCA, (uint16_t)(rd16(DP + 0xCA) + 8));
+  next:
+    y = (uint16_t)(y + 1);
+    wr16(DP + 0xDF, (uint16_t)(rd16(DP + 0xDF) + 1));
+    if(rd16(DP + 0xDF) == rd16(DP + 0xCC)) break;
+  }
+  ticker_end();
+}

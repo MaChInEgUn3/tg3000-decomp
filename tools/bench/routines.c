@@ -2950,6 +2950,58 @@ static void fuzz_track_object_test_sides(Regs* r, uint8_t* ram, uint32_t (*rnd)(
   ram[0x8CB5 + obj] = (uint8_t)((ram[0x8CB5 + obj] & 0xCF) | (rnd() & 0x30));
 }
 
+// ---- ticker_draw ($80:EBF7) ----  A = the text's bank (its DB, put back by PLB), X = the
+// x, Y = the text. Both callers reload every register and set every flag they read after
+// it: no outputs (the bench judges the flags from the watched returns).
+static void call_ticker_draw(const Regs* in, Regs* out) {
+  (void)out;
+  ticker_draw((uint8_t)in->a, in->x, in->y);
+}
+// a text in low WRAM (bank $7F's mirror is not used: bank $81's is): capitals, digits,
+// spaces, a few marks, codes 1, 2 (with a count), 3 and 5, ending in code 0; the queue,
+// its counters and the end marker's countdown
+static void fuzz_ticker_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = 0x0081;
+  r->x = (uint16_t)(rnd() % 0x100);
+  r->y = 0x1C00;
+  uint32_t at = 0x1C00;
+  const int n = (int)(rnd() % 24);
+  for(int i = 0; i < n; i++) {
+    const uint32_t k = rnd() % 16;
+    if(k < 6) ram[at++] = (uint8_t)(0x41 + rnd() % 26);
+    else if(k < 9) ram[at++] = (uint8_t)(0x30 + rnd() % 10);
+    else if(k < 11) ram[at++] = 0x20;
+    else if(k == 11) ram[at++] = (uint8_t)"!?.,-'"[rnd() % 6];
+    else if(k == 12) {
+      ram[at++] = 0;
+      ram[at++] = 1;
+      ram[at++] = (uint8_t)rnd();
+      ram[at++] = 0;
+    } else if(k == 13) {
+      ram[at++] = 0;
+      ram[at++] = 2;
+      ram[at++] = (uint8_t)(1 + rnd() % 3);
+      ram[at++] = 0;
+    } else if(k == 14) {
+      ram[at++] = 0;
+      ram[at++] = (rnd() & 1) ? 3 : 5;
+    } else ram[at++] = (uint8_t)(0x41 + rnd() % 26);
+  }
+  ram[at++] = 0;
+  ram[at++] = 0;
+  const uint16_t q = (uint16_t)(2 * (rnd() % 0x40));
+  wr16ram(ram, DP + 0x5E, q);
+  for(uint32_t i = 0; i < 0x40; i += 2)
+    wr16ram(ram, 0x10000 + q + i, (rnd() % 3 == 0) ? 0xFFFF : (uint16_t)(rnd() % 0x20));
+  wr16ram(ram, DP + 0xC6, (uint16_t)(rnd() % 0x300));
+  wr16ram(ram, DP + 0xE5, (uint16_t)(rnd() % 0x180));
+  wr16ram(ram, DP + 0xCC, (uint16_t)(rnd() % 0x14));
+  wr16ram(ram, DP + 0xD1, (uint16_t)(rnd() % 3));
+  wr16ram(ram, DP + 0x74, (uint16_t)(4 * (rnd() % 16)));
+  const uint32_t e = rnd() % 4;
+  wr16ram(ram, DP + 0xE1, e == 0 ? (uint16_t)(0x8000 | rnd()) : (uint16_t)(rnd() % 0x3C));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7552,6 +7604,9 @@ const Routine routines[] = {
   {.name = "track_object_test_sides", .entry = 0x83FC65, .end = 0x83FD26, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_track_object_test_sides, .fuzz = fuzz_track_object_test_sides,
    .holes = {{0x83FC90, 0x83FC98}}},  // the jump table
+  {.name = "ticker_draw", .entry = 0x80EBF7, .end = 0x80EE56, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_ticker_draw, .fuzz = fuzz_ticker_draw,
+   .holes = {{0x80EDDB, 0x80EDF6}}},  // the control-code table and the marks
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

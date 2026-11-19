@@ -11351,7 +11351,7 @@ CODE_80EA09:
     adc.b $E7                   ; $80EA14
     tax                         ; $80EA16
     lda.w #$0081                ; $80EA17
-    jsr.w $EBF7                 ; $80EA1A
+    jsr.w ticker_draw           ; $80EA1A
     dec.b $4C                   ; $80EA1D
     bne CODE_80EA3A             ; $80EA1F
     inc.b $46                   ; $80EA21
@@ -11365,7 +11365,7 @@ CODE_80EA09:
     adc.b $5E                   ; $80EA31
     tay                         ; $80EA33
     lda.w #$007F                ; $80EA34
-    jsr.w $EBF7                 ; $80EA37
+    jsr.w ticker_draw           ; $80EA37
 CODE_80EA3A:
     ldx.b $94                   ; $80EA3A
     lda.w $03A8,x               ; $80EA3C
@@ -11575,6 +11575,7 @@ CODE_80EBE6:
     lda.w #$FFFE                ; $80EBEF
     sta.l $7F0000,x             ; $80EBF2
     rts                         ; $80EBF6
+ticker_draw:
     phb                         ; $80EBF7
     sep.b #$20                  ; $80EBF8
     pha                         ; $80EBFA
@@ -11714,9 +11715,20 @@ CODE_80ECED:
     bra CODE_80ED18             ; $80ECFA
 CODE_80ECFC:
     cmp.w #$0020                ; $80ECFC
-    db $D0,$03 ; bne            ; $80ECFF
+    bne CODE_80ED04             ; $80ECFF
     jmp.w $ED57                 ; $80ED01
-    incbin !baserom:$6D04..$6D18
+CODE_80ED04:
+    ldx.w #$0024                ; $80ED04 static
+    sep.b #$20                  ; $80ED07 static
+CODE_80ED09:
+    cmp.l $80EDC3,x             ; $80ED09 static
+    beq CODE_80ED15             ; $80ED0D static
+    inx                         ; $80ED0F static
+    cpx.w #$0033                ; $80ED10 static
+    bne CODE_80ED09             ; $80ED13 static
+CODE_80ED15:
+    rep.b #$20                  ; $80ED15 static
+    txa                         ; $80ED17 static
 CODE_80ED18:
     asl a                       ; $80ED18
     asl a                       ; $80ED19
@@ -11820,7 +11832,37 @@ CODE_80EDD9:
     iny                         ; $80EE08
     iny                         ; $80EE09
     jmp.w $EC5D                 ; $80EE0A
-    incbin !baserom:$6E0D..$6E45
+    lda.b $DF                   ; $80EE0D static
+    inc a                       ; $80EE0F static
+    cmp.b $CC                   ; $80EE10 static
+    beq CODE_80EE1B             ; $80EE12 static
+    inc a                       ; $80EE14 static
+    cmp.b $CC                   ; $80EE15 static
+    bne CODE_80EE36             ; $80EE17 static
+    dec.b $CC                   ; $80EE19 static
+CODE_80EE1B:
+    lda.b $D1                   ; $80EE1B static
+    bne CODE_80EE24             ; $80EE1D static
+    lda.w $0001,y               ; $80EE1F static
+    sta.b $D1                   ; $80EE22 static
+CODE_80EE24:
+    dec.b $D1                   ; $80EE24 static
+    beq CODE_80EE34             ; $80EE26 static
+    ldx.b $5E                   ; $80EE28 static
+    lda.w #$FFFF                ; $80EE2A static
+    sta.l $7F0036,x             ; $80EE2D static
+    jmp.w $ED6B                 ; $80EE31 static
+CODE_80EE34:
+    inc.b $CC                   ; $80EE34 static
+CODE_80EE36:
+    iny                         ; $80EE36 static
+    iny                         ; $80EE37 static
+    iny                         ; $80EE38 static
+    jmp.w $EC5D                 ; $80EE39 static
+    lda.w #$8000                ; $80EE3C static
+    tsb.b $E1                   ; $80EE3F static
+    iny                         ; $80EE41 static
+    jmp.w $EC5D                 ; $80EE42 static
     lda.w $0001,y               ; $80EE45
     sta.b $D3                   ; $80EE48
     iny                         ; $80EE4A
