@@ -2565,6 +2565,32 @@ static void fuzz_title_stars_spread(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   for(int i = 0; i < 0x300; i++) ram[0x0F00 + i] = (uint8_t)rnd();
 }
 
+// ---- stars_draw / stars_draw_8a ($80:F950, $8A:9773) ----  A = Y = $300, X = the next OAM
+// slot (C Z set by the CPY #$300, N clear, V of its ADC #6: clear)
+static void starsDrawOut(const Regs* in, Regs* out, void (*fn)(uint16_t, uint16_t)) {
+  fn(in->a, in->x);
+  out->a = out->y = 0x0300;
+  out->x = rd16(DP + 0x74);
+  out->n = out->v = false;
+  out->z = out->c = true;
+}
+static void call_stars_draw(const Regs* in, Regs* out) { starsDrawOut(in, out, stars_draw); }
+static void call_stars_draw_8a(const Regs* in, Regs* out) { starsDrawOut(in, out, stars_draw_8a); }
+// the stars (speeds from $40, some 0: the divider's $FFFF), a step that cannot make a
+// spawned star too near forever, a small multiplier (a slow star under a large one is
+// spawned again dozens of times, past the bench's instruction limit), the OAM slot
+static void fuzz_stars_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_rng_state(ram, rnd);
+  for(uint32_t y = 0; y < 0x300; y += 6) {
+    for(int k = 0; k < 5; k++) ram[0x0F00 + y + (uint32_t)k] = (uint8_t)rnd();
+    ram[0x0F05 + y] = (uint8_t)(rnd() % 16 == 0 ? 0 : 0x40 + rnd() % 0xC0);
+  }
+  r->a = (uint16_t)(rnd() % 0x1000);
+  r->x = (uint16_t)((rnd() & 0xFF00) | (rnd() % 0x40));
+  wr16ram(ram, DP + 0x74, (uint16_t)(4 * (rnd() % 16)));
+  wr16ram(ram, DP + 0x80, (uint16_t)rnd());
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7131,6 +7157,10 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_title_zoom_settle, ALL_OUTPUTS, .fuzz = fuzz_title_zoom_settle},
   {.name = "title_stars_spread", .entry = 0x80F247, .end = 0x80F2A0, .source = "src/scale.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_title_stars_spread, ALL_OUTPUTS, .fuzz = fuzz_title_stars_spread},
+  {.name = "stars_draw", .entry = 0x80F950, .end = 0x80FA3F, .source = "src/stars.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_stars_draw, ALL_OUTPUTS, .fuzz = fuzz_stars_draw},
+  {.name = "stars_draw_8a", .entry = 0x8A9773, .end = 0x8A9863, .source = "src/stars.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_stars_draw_8a, ALL_OUTPUTS, .fuzz = fuzz_stars_draw},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

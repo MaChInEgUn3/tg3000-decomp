@@ -1820,7 +1820,7 @@ CODE_8A954E:
     jsr.w $971B                 ; $8A9586
     lda.w #$0000                ; $8A9589
     ldx.w #$0040                ; $8A958C
-    jsr.w $9773                 ; $8A958F
+    jsr.w stars_draw_8a         ; $8A958F
     jsl.l oam_finish_0b00       ; $8A9592
     sep.b #$20                  ; $8A9596
     lda.b #$08                  ; $8A9598
@@ -1891,7 +1891,7 @@ CODE_8A954E:
     xba                         ; $8A963F
     tax                         ; $8A9640
     lda.b $7C                   ; $8A9641
-    jsr.w $9773                 ; $8A9643
+    jsr.w stars_draw_8a         ; $8A9643
     jsl.l oam_finish_0b00       ; $8A9646
     lda.w #$0002                ; $8A964A
     tsb.w $0026                 ; $8A964D
@@ -1985,6 +1985,7 @@ CODE_8A9723:
     cpx.w #$0300                ; $8A976D
     bne CODE_8A9723             ; $8A9770
     rts                         ; $8A9772
+stars_draw_8a:
     stx.b $18                   ; $8A9773
     sta.b $16                   ; $8A9775
     ldy.w #$0000                ; $8A9777

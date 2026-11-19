@@ -1789,6 +1789,26 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The title stars drawn (roots-45, 2026-11-19)
+
+**`stars_draw` ($80:F950) and `stars_draw_8a` ($8A:9773):** the title's 128 stars drawn
+as sprites, once per frame.
+- Each star (6 bytes from `$0F00`) is projected with the CPU's multiplier and divider:
+  screen x = `$80` + (x + speed * m) / speed, y = `$5C` + (y - speed * m) / speed. The
+  quotient is taken from the magnitude, then added or subtracted.
+- The C models the divider's `$FFFF` for a divisor of 0 (the fuzz keeps speed-0 stars).
+- A star off screen, or whose depth less the step falls below `$100`, is spawned again
+  (`star_spawn`) and redone.
+- The bank-`$8A` copy differs only in its tile table (`$86:F46B`) and its own
+  `star_spawn` copy, already verified as the same C (`star_spawn_8a`). Both rows share
+  one C body.
+- The fuzz keeps speeds from `$40` and a small multiplier. A slow star under a large one is
+  spawned dozens of times, past the bench's instruction limit (15-20% of samples were
+  abandoned at first).
+- Live 772/772 (`$80:F950`) and 229/229 (`$8A:9773`, reached only on the 60k movie), fuzz
+  500/500, paths 113/113.
+- This unit runs the full gate: the full-run mark was 4 commits back.
+
 ## Two title steps with the CPU multiplier (roots-44, 2026-11-19)
 
 **The frontier, after the advisor (2026-11-19).**

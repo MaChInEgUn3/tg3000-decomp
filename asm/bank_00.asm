@@ -12019,7 +12019,7 @@ CODE_80EF94:
     rep.b #$20                  ; $80F038
     lda.w #$0000                ; $80F03A
     ldx.w #$0040                ; $80F03D
-    jsr.w $F950                 ; $80F040
+    jsr.w stars_draw            ; $80F040
     jsr.w oam_finish_0b00_near  ; $80F043
     lda.w #$0003                ; $80F046
     tsb.w $0026                 ; $80F049
@@ -12145,7 +12145,7 @@ CODE_80EF94:
     xba                         ; $80F180
     tax                         ; $80F181
     lda.b $7C                   ; $80F182
-    jsr.w $F950                 ; $80F184
+    jsr.w stars_draw            ; $80F184
     jsr.w oam_finish_0b00_near  ; $80F187
     lda.w #$0002                ; $80F18A
     tsb.w $0026                 ; $80F18D
@@ -13042,6 +13042,7 @@ CODE_80F900:
     cpx.w #$0300                ; $80F94A
     bne CODE_80F900             ; $80F94D
     rts                         ; $80F94F
+stars_draw:
     stx.b $18                   ; $80F950
     sta.b $16                   ; $80F952
     ldy.w #$0000                ; $80F954

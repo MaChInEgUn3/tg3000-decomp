@@ -27,4 +27,17 @@ uint16_t star_layers_init(void);
 // speed ($0F00), wrapping by + $8800 when it passes 0.
 void star_layers_move(void);
 
+// $80:F950: the title's 128 stars drawn as sprites (D = $0100; A = the step toward the
+// viewer, kept in D+$16; X's low byte the multiplier, kept in D+$18). Each star (6 bytes
+// from $0F00: x, y, depth, speed byte at +5) is projected with the CPU's divider: screen x
+// = $80 + (x + speed * multiplier) / speed, y = $5C + (y - speed * multiplier) / speed
+// (a quotient taken from the magnitude, then added or subtracted; the divider gives $FFFF
+// for 0). Off screen (x past a byte, y $E0 or more), or once the depth less the step falls
+// below $100, the star is spawned again (star_spawn) and redone; else its OAM entry at
+// $0900 + D+$74 (x, y; tile $81:D692 + (speed & $7C) | D+$80; $0B01 cleared) and its new
+// depth are written. D+$74 moves on by 4 a star.
+void stars_draw(uint16_t step, uint16_t multiplier);
+// $8A:9773: the same in bank $8A (tiles from $86:F46B; its star_spawn copy).
+void stars_draw_8a(uint16_t step, uint16_t multiplier);
+
 #endif
