@@ -4550,21 +4550,41 @@ tilemap_offset_c2cc:
     tax                         ; $8AC2DA
     pla                         ; $8AC2DB
     rts                         ; $8AC2DC
+track_snap:
     lda.w $03DC                 ; $8AC2DD
     and.w #$0300                ; $8AC2E0
-    db $F0,$0A ; beq            ; $8AC2E3
+    beq CODE_8AC2EF             ; $8AC2E3
     cmp.w #$0100                ; $8AC2E5
     beq CODE_8AC311             ; $8AC2E8
     cmp.w #$0200                ; $8AC2EA
     beq CODE_8AC333             ; $8AC2ED
-    incbin !baserom:$542EF..$54311
+CODE_8AC2EF:
+    ldx.w #$0000                ; $8AC2EF static
+CODE_8AC2F2:
+    lda.l $8ACAC4,x             ; $8AC2F2 static
+    and.w #$00FF                ; $8AC2F6 static
+    cmp.w $0444                 ; $8AC2F9 static
+    beq CODE_8AC306             ; $8AC2FC static
+    bpl CODE_8AC306             ; $8AC2FE static
+    inx                         ; $8AC300 static
+    jsr.w money_skip_bonus      ; $8AC301 static
+    bra CODE_8AC2F2             ; $8AC304 static
+CODE_8AC306:
+    lda.l $8ACAC4,x             ; $8AC306 static
+    and.w #$00FF                ; $8AC30A static
+    sta.w $0444                 ; $8AC30D static
+    rtl                         ; $8AC310 static
 CODE_8AC311:
     ldx.w #$0000                ; $8AC311
+CODE_8AC314:
     lda.l $8ACADE,x             ; $8AC314
     and.w #$00FF                ; $8AC318
     cmp.w $0444                 ; $8AC31B
     beq CODE_8AC328             ; $8AC31E
-    incbin !baserom:$54320..$54328
+    bpl CODE_8AC328             ; $8AC320 static
+    inx                         ; $8AC322 static
+    jsr.w money_skip_bonus      ; $8AC323 static
+    bra CODE_8AC314             ; $8AC326 static
 CODE_8AC328:
     lda.l $8ACADE,x             ; $8AC328
     and.w #$00FF                ; $8AC32C
@@ -4572,14 +4592,35 @@ CODE_8AC328:
     rtl                         ; $8AC332
 CODE_8AC333:
     ldx.w #$0000                ; $8AC333
+CODE_8AC336:
     lda.l $8ACB01,x             ; $8AC336
     and.w #$00FF                ; $8AC33A
     cmp.w $0444                 ; $8AC33D
     beq CODE_8AC34A             ; $8AC340
-    incbin !baserom:$54342..$5434A
+    bpl CODE_8AC34A             ; $8AC342 static
+    inx                         ; $8AC344 static
+    jsr.w money_skip_bonus      ; $8AC345 static
+    bra CODE_8AC336             ; $8AC348 static
 CODE_8AC34A:
     lda.l $8ACB01,x             ; $8AC34A
     and.w #$00FF                ; $8AC34E
     sta.w $0444                 ; $8AC351
     rtl                         ; $8AC354
-    incbin !baserom:$54355..$58000
+money_skip_bonus:
+    lda.w $03DC                 ; $8AC355 static
+    bit.w #$1000                ; $8AC358 static
+    beq CODE_8AC378             ; $8AC35B static
+    sed                         ; $8AC35D static
+    lda.w $038E                 ; $8AC35E static
+    clc                         ; $8AC361 static
+    adc.w #$5000                ; $8AC362 static
+    sta.w $038E                 ; $8AC365 static
+    sta.w $03BD                 ; $8AC368 static
+    lda.w $0390                 ; $8AC36B static
+    adc.w #$0007                ; $8AC36E static
+    sta.w $0390                 ; $8AC371 static
+    sta.w $03BF                 ; $8AC374 static
+    cld                         ; $8AC377 static
+CODE_8AC378:
+    rts                         ; $8AC378 static
+    incbin !baserom:$54379..$58000

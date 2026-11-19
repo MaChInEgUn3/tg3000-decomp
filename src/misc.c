@@ -2588,3 +2588,34 @@ void save_data_seal(void) {
   wr16(0x0366, (uint16_t)(sum ^ 0x7645));
   for(uint32_t i = 0; i < 0x7A; i++) wr8(0xFA3B + i, rd8(0x0366 + i));
 }
+
+// TG3000_ROUTINE($8A:C355) money_skip_bonus
+void money_skip_bonus(bool* overflow) {
+  if(!(rd16(0x03DC) & 0x1000)) return;
+  bool c = false;
+  const uint16_t lo = adc_decimal16(rd16(0x038E), 0x5000, &c, overflow);
+  wr16(0x038E, lo);
+  wr16(0x03BD, lo);
+  const uint16_t hi = adc_decimal16(rd16(0x0390), 0x0007, &c, overflow);
+  wr16(0x0390, hi);
+  wr16(0x03BF, hi);
+}
+
+// TG3000_ROUTINE($8A:C2DD) track_snap
+uint16_t track_snap(bool* overflow) {
+  uint32_t list;
+  switch(rd16(0x03DC) & 0x0300) {
+    case 0x0100: list = 0x8ACADE; break;
+    case 0x0200: list = 0x8ACB01; break;
+    default:     list = 0x8ACAC4; break;
+  }
+  uint16_t x = 0;
+  for(;;) {
+    const uint16_t d = (uint16_t)(bus_rd8(list + x) - rd16(0x0444));
+    if(d == 0 || !(d & 0x8000)) break;
+    x = (uint16_t)(x + 1);
+    money_skip_bonus(overflow);
+  }
+  wr16(0x0444, bus_rd8(list + x));
+  return x;
+}

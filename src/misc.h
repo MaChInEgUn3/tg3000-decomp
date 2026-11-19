@@ -836,4 +836,14 @@ void title_scroll_start(void);
 // then the $7A bytes from $0366 copied to $7E:FA3B (MVN).
 void save_data_seal(void);
 
+// $8A:C355: with bit 12 of $03DC, both players' money = player 1's + 75,000 (decimal: the
+// low word + $5000, the high word + 7 and the carry). Never run in the movies. *overflow
+// becomes the V of its last decimal add (kept without bit 12).
+void money_skip_bonus(bool* overflow);
+
+// $8A:C2DD: $0444 moved to the first track of the variant's list (as track_next's) at
+// or above it (by the sign of the difference, BEQ/BPL); each track skipped calls
+// money_skip_bonus (never run in the movies). Returns the index of that track.
+uint16_t track_snap(bool* overflow);
+
 #endif

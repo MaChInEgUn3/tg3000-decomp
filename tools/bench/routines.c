@@ -2349,6 +2349,37 @@ static void fuzz_save_data_seal(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(int i = 0; i < 0x78; i++) ram[0x0368 + i] = (uint8_t)rnd();
 }
 
+// ---- track_snap ($8A:C2DD) ----  A = the new $0444 (N clear, Z of it: its AND #$FF), X =
+// its index, C of the CMP that stopped (the track at or above the old $0444); V of the last
+// money_skip_bonus add, else as on entry
+static void call_track_snap(const Regs* in, Regs* out) {
+  uint16_t old = rd16(0x0444);
+  bool v = in->v;
+  out->x = track_snap(&v);
+  out->v = v;
+  out->a = rd16(0x0444);
+  out->n = false;
+  out->z = out->a == 0;
+  out->c = out->a >= old;
+}
+static uint16_t bcd4(uint32_t (*rnd)(void)) {
+  uint16_t v = 0;
+  for(int shift = 0; shift < 16; shift += 4) v |= (uint16_t)((rnd() % 10) << shift);
+  return v;
+}
+// every variant; $0444 at or between the list's tracks (so it is passed, the search ends
+// in the list); the bonus bit; BCD money near a carry
+static void fuzz_track_snap(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t dc = (uint16_t)rnd();
+  wr16ram(ram, 0x03DC, dc);
+  uint32_t list = (dc & 0x0300) == 0x0100 ? 0x8ACADE : (dc & 0x0300) == 0x0200 ? 0x8ACB01 : 0x8ACAC4;
+  uint16_t pick = rom8(list + rnd() % 20);
+  wr16ram(ram, 0x0444, (uint16_t)(pick - ((rnd() & 1) ? rnd() % 3 : 0)));
+  wr16ram(ram, 0x038E, (rnd() & 1) ? (uint16_t)(0x5000 | (bcd4(rnd) & 0x0FFF)) : bcd4(rnd));
+  wr16ram(ram, 0x0390, bcd4(rnd));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6897,6 +6928,8 @@ const Routine routines[] = {
   {.name = "save_data_seal", .entry = 0x808199, .end = 0x8081C8, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_save_data_seal, ALL_OUTPUTS,
    .fuzz = fuzz_save_data_seal},
+  {.name = "track_snap", .entry = 0x8AC2DD, .end = 0x8AC355, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_track_snap, ALL_OUTPUTS, .fuzz = fuzz_track_snap},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

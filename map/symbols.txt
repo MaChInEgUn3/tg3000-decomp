@@ -396,3 +396,5 @@ func    8A9AA5   results_text_build  ; the results text: variant lines, names, t
 func    8A9CB0   player_in_top5      ; the slots' order, then is the player in the first five -> src/misc.c
 func    80F6FD   title_scroll_start  ; $0198 = 0, $0196 = $FF80, D+$3E + 1 -> src/misc.c
 func    808199   save_data_seal      ; the saved data's checksum at $0366, copied to $7E:FA3B -> src/misc.c
+func    8AC2DD   track_snap          ; $0444 to the first track of the variant's list at or above it -> src/misc.c
+func    8AC355   money_skip_bonus    ; + 75,000 to both players' money with $03DC bit 12 (never run) -> src/misc.c

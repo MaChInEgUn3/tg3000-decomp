@@ -1789,6 +1789,21 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The track snap and a money bonus (roots-38, 2026-11-19)
+
+- **`track_snap` ($8A:C2DD, `JSL`):** `$0444` is moved to the first track of the
+  variant's list (the lists `track_next` uses) at or above it, judged by the sign of the
+  difference (`BEQ`/`BPL`).
+  - Each track skipped calls `money_skip_bonus`.
+  - In the movies the track is always already in the list, so skipping never runs, and
+    neither does the variant-0/`$300` path. 50 bytes (`$8A:C2EF`, `$8A:C320`, `$8A:C342`)
+    were unknown and are now static code.
+- **`money_skip_bonus` ($8A:C355):** with bit 12 of `$03DC`, both players' money becomes
+  player 1's + 75,000, in decimal (low word + `$5000`, high word + 7 and the carry).
+  - It looks like a bonus for each race skipped.
+  - It never runs, so it has no row of its own: its 36 bytes are static code, and
+    `track_snap`'s fuzz runs it, with V modelled as in `prize_money_award` (roots-32).
+
 ## Four from the fresh roots list (roots-37, 2026-11-19)
 
 - **`results_text_build` ($8A:9AA5):** `$0154` = 0, then `variant_lines`,

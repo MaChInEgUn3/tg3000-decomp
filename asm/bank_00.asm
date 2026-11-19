@@ -1135,7 +1135,7 @@ CODE_808A71:
     jsr.w $BEC6                 ; $808A8C
     jsl.l save_data_seal        ; $808A8F
     jsl.l player_in_top5        ; $808A93
-    jsl.l $8AC2DD               ; $808A97
+    jsl.l track_snap            ; $808A97
     lda.w $0444                 ; $808A9B
     beq CODE_808AB8             ; $808A9E
     incbin !baserom:$AA0..$AB8

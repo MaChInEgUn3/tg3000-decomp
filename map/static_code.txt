@@ -75,3 +75,7 @@
 8A:9B37 8A:9B7D m16x16 ; player_names_put: variant 1's two names or "PLAYER2" (never run; the string follows)
 8A:9CBC 8A:9CC6 m16x16 ; player_in_top5: two players (variants with both shown) (never run)
 8A:9CCE 8A:9CF3 m16x16 ; player_in_top5: the player not first, its search and the "not found" ends (never run)
+8A:C2EF 8A:C311 m16x16 ; track_snap: variants 0 and $300, list $8A:CAC4 (never run)
+8A:C320 8A:C328 m16x16 ; track_snap: variant $100, a track skipped (never run)
+8A:C342 8A:C34A m16x16 ; track_snap: variant $200, a track skipped (never run)
+8A:C355 8A:C379 m16x16 ; money_skip_bonus: + 75,000 to both players' money with $03DC bit 12 (never run)
