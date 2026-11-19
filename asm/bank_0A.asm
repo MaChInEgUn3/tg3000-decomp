@@ -2497,7 +2497,7 @@ CODE_8A9C98:
     stz.w $0D03,x               ; $8A9CAA
     rep.b #$20                  ; $8A9CAD
     rts                         ; $8A9CAF
-    jsr.w $9CF8                 ; $8A9CB0
+    jsr.w slot_order_fill       ; $8A9CB0
     lda.l $8103DC               ; $8A9CB3
     bit.w #$000F                ; $8A9CB7
     beq CODE_8A9CC6             ; $8A9CBA
@@ -2511,6 +2511,7 @@ CODE_8A9CF3:
     jsr.w clear_041c            ; $8A9CF3
     clc                         ; $8A9CF6
     rtl                         ; $8A9CF7
+slot_order_fill:
     ldx.w #$0026                ; $8A9CF8
     lda.w #$0000                ; $8A9CFB
 CODE_8A9CFE:

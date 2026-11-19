@@ -1789,6 +1789,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A title zoom step and the slots' order (roots-33, 2026-11-19)
+
+- **`title_zoom_count` ($80:F5BF):** a title zoom step. D+`$30` counts down (and at 0 D+`$3E`
+  counts up), then `inverse_scale` and `func_80F745`. Its exit is modelled as
+  `title_zoom_cycle`'s (roots-6).
+- **`slot_order_fill` ($8A:9CF8):** the slots' order.
+  - The 20 slot words at `$7F:7FBC` are cleared, then `func_8A9BE2` (the largest kind)
+    and `func_8A99D0` (20 slots) run.
+  - Each slot `func_8A9BB5` takes, largest kind first, goes to `$0D00` + Y as its index,
+    until none is left.
+  - Exit: the last `func_8A9BB5`'s (A = 0, X = D+`$66`, C set), with N and Z of the final
+    Y.
+
 ## The prize money (roots-32, 2026-11-19)
 
 - **`prize_money_award` ($84:A388, `JSL`):** both players' prize money, in decimal mode

@@ -2446,3 +2446,16 @@ bool prize_money_award(bool carry, bool* overflow) {
   carry = prize_one(0x03A8, 0x038E, 0x03AB, carry, overflow);
   return prize_one(0x03D7, 0x03BD, 0x03DA, carry, overflow);
 }
+
+// TG3000_ROUTINE($8A:9CF8) slot_order_fill
+uint16_t slot_order_fill(void) {
+  for(uint32_t x = 0; x <= 0x26; x += 2) wr16(0x17FBC + x, 0);
+  func_8A9BE2();
+  func_8A99D0();
+  uint16_t y = 0, slot;
+  while(func_8A9BB5(&slot)) {
+    wr16(0x0D00 + (uint32_t)y, (uint16_t)(slot >> 1));
+    y = (uint16_t)(y + 2);
+  }
+  return y;
+}

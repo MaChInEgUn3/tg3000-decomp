@@ -12610,6 +12610,7 @@ CODE_80F5A7:
     jsr.w func_80F745           ; $80F5BA
     clc                         ; $80F5BD
     rts                         ; $80F5BE
+title_zoom_count:
     dec.b $30                   ; $80F5BF
     bne CODE_80F5C5             ; $80F5C1
     inc.b $3E                   ; $80F5C3

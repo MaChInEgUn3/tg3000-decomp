@@ -129,3 +129,12 @@ uint16_t title_zoom_drop(void) {
   inverse_scale(DP);
   return func_80F745();
 }
+
+// TG3000_ROUTINE($80:F5BF) title_zoom_count
+uint16_t title_zoom_count(void) {
+  const uint16_t n = (uint16_t)(rd16(DP + 0x30) - 1);
+  wr16(DP + 0x30, n);
+  if(n == 0) wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
+  inverse_scale(DP);
+  return func_80F745();
+}

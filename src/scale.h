@@ -56,4 +56,8 @@ uint16_t title_zoom_drop(void);
 // the vertical scroll alone. Returns D+$62.
 uint16_t mode7_view(uint16_t dp);
 
+// $80:F5BF: a title zoom step: D+$30 counts down (at 0, D+$3E counts up), then inverse_scale
+// and func_80F745, whose result it returns.
+uint16_t title_zoom_count(void);
+
 #endif

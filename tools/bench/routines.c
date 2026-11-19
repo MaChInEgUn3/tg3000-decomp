@@ -2023,6 +2023,36 @@ static void fuzz_prize_money_award(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
   }
 }
 
+// ---- title_zoom_count ($80:F5BF) ----  as title_zoom_cycle: A = func_80F745's result, X =
+// D+$34 (N Z of it), V by v_after_func_80F745, C clear (its CLC)
+static void call_title_zoom_count(const Regs* in, Regs* out) {
+  out->a = title_zoom_count();
+  out->x = rd16(DP + 0x34);
+  setNZ16(out, out->x);
+  out->v = v_after_func_80F745(v_after_inverse_scale(in->v));
+  out->c = false;
+}
+// title_zoom's state, the counter often about to reach 0
+static void fuzz_title_zoom_count(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_title_zoom(r, ram, rnd);
+  wr16ram(ram, DP + 0x30, (uint16_t)((rnd() & 1) ? 1 : rnd() % 0x40));
+}
+
+// ---- slot_order_fill ($8A:9CF8) ----  the last func_8A9BB5 found none: A = 0, X = D+$66
+// (the slots' end), C set; N Z of the final Y; V as on entry
+static void call_slot_order_fill(const Regs* in, Regs* out) {
+  (void)in;
+  out->y = slot_order_fill();
+  out->a = 0;
+  out->x = rd16(DP + 0x66);
+  out->c = true;
+  setNZ16(out, out->y);
+}
+static void fuzz_slot_order_fill(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint16_t i = 0; i < 20; i++) wr16ram(ram, (uint16_t)(0x041C + 2 * i), (uint16_t)(rnd() % 8));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6547,6 +6577,10 @@ const Routine routines[] = {
   {.name = "prize_money_award", .entry = 0x84A388, .end = 0x84A41B, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_prize_money_award, ALL_OUTPUTS,
    .fuzz = fuzz_prize_money_award},
+  {.name = "title_zoom_count", .entry = 0x80F5BF, .end = 0x80F5CD, .source = "src/scale.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_title_zoom_count, ALL_OUTPUTS, .fuzz = fuzz_title_zoom_count},
+  {.name = "slot_order_fill", .entry = 0x8A9CF8, .end = 0x8A9D1E, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_slot_order_fill, ALL_OUTPUTS, .fuzz = fuzz_slot_order_fill},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

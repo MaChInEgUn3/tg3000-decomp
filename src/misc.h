@@ -786,4 +786,10 @@ void results_init(void);
 // *overflow likewise becomes the V of the last decimal add (kept when there is none).
 bool prize_money_award(bool carry, bool* overflow);
 
+// $8A:9CF8: the slots' order. The 20 slot words at $7F:7FBC = 0; func_8A9BE2 (the largest
+// kind) and func_8A99D0 (20 slots); then each slot func_8A9BB5 takes (largest kind first)
+// goes to $0D00 + Y as its index (slot / 2), Y moving on by 2, until none is left.
+// Returns the final Y.
+uint16_t slot_order_fill(void);
+
 #endif
