@@ -179,7 +179,7 @@ CODE_8284D5:
     ldy.w #$7C00                ; $8284FD
     lda.w #$0700                ; $828500
     jsl.l upload_vram_now       ; $828503
-    jsr.w $A1D3                 ; $828507
+    jsr.w track_backdrop_load   ; $828507
     jsr.w $ADC2                 ; $82850A
     lda.w #$007E                ; $82850D
     sta.b $14                   ; $828510
@@ -586,6 +586,7 @@ CODE_829BFF:
     pla                         ; $829BFF static
     rts                         ; $829C00 static
     incbin !baserom:$11C01..$121D3
+track_backdrop_load:
     ldx.w #$9FEB                ; $82A1D3
     ldy.w #$0000                ; $82A1D6
     lda.w #$7F98                ; $82A1D9

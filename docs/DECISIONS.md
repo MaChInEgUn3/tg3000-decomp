@@ -1789,6 +1789,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The track's backdrop (roots-23, 2026-11-19)
+
+- **`track_backdrop_load` ($82:A1D3):** unpacks `$98:9FEB` to `$7F:0000`.
+  - With k = 4 * (the byte at `$84:A66C` + `$047B`): `$1F28` and `$1F2A` = the pair at
+    `$85:A33A` + k.
+  - With x = 2k, it uploads from bank `$7F`: the graphics (`$85:A346` + x, size
+    `$85:A348` + x) to VRAM `$3800`, and the two maps (`$85:A34A` + x and `$85:A34C` + x,
+    `$600` bytes each) to `$3000` and `$3400`.
+  - Then the first map's `$600` words get bit 13 cleared and `$400` added (another
+    palette and tile base), and both maps go again to `$7400` and `$7800`.
+  - Its live entries are all interrupted; it rests on replays, fuzz over the tracks, and
+    paths.
+
 ## Packed pixels to planar tiles (roots-22, 2026-11-19)
 
 - **`tiles_planar_upload` ($8A:8CB7):** graphic X (even) at `$7F:(word $83:84B1 + X + A)`,

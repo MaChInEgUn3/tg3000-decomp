@@ -689,4 +689,13 @@ void sprite_slots_six(void);
 // being built. Then the whole graphic goes to VRAM word $6FE0 (upload_vram_now).
 void tiles_planar_upload(uint16_t offset, uint16_t x);
 
+// $82:A1D3: the track's backdrop (D = `dp`). Unpacks $98:9FEB to $7F:0000 (decompress);
+// with k = 4 * (the byte at $84:A66C + $047B): $1F28/$1F2A = the pair at $85:A33A + k;
+// with x = 2 * k, uploads from bank $7F (upload_vram_now, D+$14 = $7F each time): the
+// graphics ($85:A346 + x, size $85:A348 + x) to VRAM $3800, the maps ($85:A34A + x and
+// $85:A34C + x, $600 bytes each) to $3000 and $3400; then the first map's $600 words
+// get bit 13 cleared and $400 added (palette and tile base), and both maps go to
+// $7400 and $7800.
+void track_backdrop_load(uint16_t dp);
+
 #endif

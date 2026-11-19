@@ -1637,6 +1637,24 @@ static void fuzz_tiles_planar_upload(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   r->a = (uint16_t)(rnd() % 0x6000);
 }
 
+// ---- track_backdrop_load ($82:A1D3) ----  the last upload_vram_now's exit: A = $1801 (N Z
+// clear), X = the second map, Y = $7800; C V of the last ADC #$400 of the map words
+static void call_track_backdrop_load(const Regs* in, Regs* out) {
+  track_backdrop_load(in->d);
+  const uint32_t x = (uint16_t)((bus_rd8(0x84A66C + (uint32_t)rd16(0x047B)) << 2) << 1);
+  const uint16_t map1 = bus_rd16(0x85A34A + x), map2 = bus_rd16(0x85A34C + x);
+  const uint16_t last = rd16(0x10000 + (uint32_t)(uint16_t)(map1 + 2 * 0x5FF));
+  out->a = 0x1801;
+  out->x = map2;
+  out->y = 0x7800;
+  setAdc16(out, (uint16_t)(last - 0x0400), 0x0400);
+  out->n = out->z = false;
+}
+static void fuzz_track_backdrop_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x047B, (uint16_t)(rnd() % 47));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6123,6 +6141,8 @@ const Routine routines[] = {
   {.name = "tiles_planar_upload", .entry = 0x8A8CB7, .end = 0x8A8D81, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_tiles_planar_upload, ALL_OUTPUTS,
    .fuzz = fuzz_tiles_planar_upload},
+  {.name = "track_backdrop_load", .entry = 0x82A1D3, .end = 0x82A28B, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x83, .call = call_track_backdrop_load, ALL_OUTPUTS, .fuzz = fuzz_track_backdrop_load},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

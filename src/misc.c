@@ -2055,3 +2055,27 @@ void tiles_planar_upload(uint16_t offset, uint16_t x) {
   wr16(DP + 0x14, 0x007F);
   upload_vram_now(0x6FE0, 0x7F, (uint16_t)(bus_rd16(0x8384B1 + (uint32_t)x) + rd16(DP + 0x38)), size);
 }
+
+// TG3000_ROUTINE($82:A1D3) track_backdrop_load
+void track_backdrop_load(uint16_t dp) {
+  uint16_t end;
+  decompress(dp, 0x98, 0x9FEB, 0x7F, 0x0000, &end);
+  const uint16_t k = (uint16_t)(bus_rd8(0x84A66C + (uint32_t)rd16(0x047B)) << 2);
+  wr16(0x1F28, bus_rd16(0x85A33A + (uint32_t)k));
+  wr16(0x1F2A, bus_rd16(0x85A33C + (uint32_t)k));
+  const uint32_t x = (uint16_t)(k << 1);
+  const uint16_t map1 = bus_rd16(0x85A34A + x), map2 = bus_rd16(0x85A34C + x);
+  wr16(dp + 0x14, 0x007F);
+  upload_vram_now(0x3800, 0x7F, bus_rd16(0x85A346 + x), bus_rd16(0x85A348 + x));
+  wr16(dp + 0x14, 0x007F);
+  upload_vram_now(0x3000, 0x7F, map1, 0x0600);
+  wr16(dp + 0x14, 0x007F);
+  upload_vram_now(0x3400, 0x7F, map2, 0x0600);
+  uint16_t at = map1;
+  for(int i = 0; i < 0x600; i++, at = (uint16_t)(at + 2))
+    wr16(0x10000 + (uint32_t)at, (uint16_t)((rd16(0x10000 + (uint32_t)at) & 0xDFFF) + 0x0400));
+  wr16(dp + 0x14, 0x007F);
+  upload_vram_now(0x7400, 0x7F, map1, 0x0600);
+  wr16(dp + 0x14, 0x007F);
+  upload_vram_now(0x7800, 0x7F, map2, 0x0600);
+}
