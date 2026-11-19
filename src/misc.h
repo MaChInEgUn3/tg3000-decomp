@@ -735,4 +735,12 @@ uint16_t race_bands_merge(void);
 // $1F2E = the item.
 void player_frame_setup(void);
 
+// $8A:86AB: the scene's objects, when bit 0 of the word at $8A:9351 + 8 * $1536 is set
+// (else it returns X = 8 * $1536). D+$7E = D+$3C >> 6, D+$80 = D+$82 = D+$7E >> 1,
+// D+$84/$86/$88 = -D+$62; then eight objects, each at (D+$7A, D+$7C), through
+// func_8A9202 (two) and func_8A92CF (six), X their running slot from 0. Each D+$7A takes
+// the carry of its D+$7C sum (no CLC between); the last D+$7C is D+$84 - $0B (a CLC then
+// SBC #$0A). Returns the final X.
+uint16_t scene_objects_place(void);
+
 #endif

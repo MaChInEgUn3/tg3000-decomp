@@ -61,7 +61,7 @@ CODE_8A803B:
     jsr.w title_sprites_place   ; $8A8091
     jsr.w rotation_from_angle   ; $8A8094
     jsr.w func_8A869A           ; $8A8097
-    jsr.w $86AB                 ; $8A809A
+    jsr.w scene_objects_place   ; $8A809A
     jsr.w $898F                 ; $8A809D
     jsl.l oam_from_objects      ; $8A80A0
     lda.w #$0004                ; $8A80A4
@@ -107,7 +107,7 @@ CODE_8A8142:
     jsr.w func_8A8290           ; $8A8154
     jsr.w title_sprites_place   ; $8A8157
     jsr.w rotation_from_angle   ; $8A815A
-    jsr.w $86AB                 ; $8A815D
+    jsr.w scene_objects_place   ; $8A815D
     jsr.w $898F                 ; $8A8160
     jsr.w func_8A869A           ; $8A8163
     jsl.l oam_from_objects      ; $8A8166
@@ -346,6 +346,7 @@ func_8A869A:
     adc.w #$002A                ; $8A86A5
     sta.b $3A                   ; $8A86A8
     rts                         ; $8A86AA
+scene_objects_place:
     lda.w $1536                 ; $8A86AB
     asl a                       ; $8A86AE
     asl a                       ; $8A86AF

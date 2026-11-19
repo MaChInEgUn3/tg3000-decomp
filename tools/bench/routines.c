@@ -1811,6 +1811,35 @@ static void fuzz_player_frame_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   ram[0x0396] = (uint8_t)(rnd() % 6);
 }
 
+// ---- scene_objects_place ($8A:86AB) ----  not placing: A = 0 (Z set, N clear), X = 8 *
+// $1536, C = bit 13 of $1536 (the last ASL). Placing: func_8A92CF's exit for the last
+// object (A = D+$7C, N Z of it, C V of D+$7A + $10, X its slot)
+static void call_scene_objects_place(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t sel = rd16(0x1536), x8 = (uint16_t)(sel << 3);
+  bool placing = (bus_rd16(0x8A9351 + (uint32_t)x8) & 0x0001) != 0;
+  // the last object's D+$7A, from the state before (the callees may move D+$7A on)
+  uint16_t y84 = (uint16_t)-rd16(DP + 0x62);
+  uint16_t last7a = (uint16_t)(((rd16(DP + 0x3C) >> 6) >> 1) + 0x0140 + (y84 >= 0x000B));
+  out->x = scene_objects_place();
+  if(!placing) {
+    out->a = 0;
+    out->n = false;
+    out->z = true;
+    out->c = (sel & 0x2000) != 0;
+    return;
+  }
+  out->a = rd16(DP + 0x7C);
+  setNZ16(out, out->a);
+  setAdc16(out, last7a, 0x0010);
+}
+static void fuzz_scene_objects_place(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x1536, (uint16_t)(rnd() % 16));
+  wr16ram(ram, DP + 0x3C, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x62, (uint16_t)((rnd() & 1) ? rnd() % 0x20 : rnd()));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6312,6 +6341,9 @@ const Routine routines[] = {
    .fuzz = fuzz_hdma_gradients_init},
   {.name = "player_frame_setup", .entry = 0x83E2D7, .end = 0x83E431, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player_frame_setup, .fuzz = fuzz_player_frame_setup},
+  {.name = "scene_objects_place", .entry = 0x8A86AB, .end = 0x8A8768, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_scene_objects_place, ALL_OUTPUTS,
+   .fuzz = fuzz_scene_objects_place},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -1789,6 +1789,20 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The scene's objects (roots-28, 2026-11-19)
+
+- **`scene_objects_place` ($8A:86AB):** when bit 0 of the word at `$8A:9351` + 8 *
+  `$1536` is set, it places eight objects of the scene (otherwise it returns at once,
+  with X = 8 * `$1536`).
+  - From `$013C` and `$0162` it derives D+`$7E`, `$80`, `$82` (scaled down) and D+`$84`,
+    `$86`, `$88` (negated), then calls `func_8A9202` twice and `func_8A92CF` six times
+    with D+`$7A` and D+`$7C` set, X their running slot.
+  - The original adds D+`$7C` and then D+`$7A` with no `CLC` between, so each D+`$7A`
+    takes the carry of its D+`$7C` sum.
+  - The last D+`$7C` is a `CLC` then `SBC #$0A`, which subtracts `$0B`; its carry (no
+    borrow) goes into the next `ADC`. The C spells both out.
+- **Exit:** `func_8A92CF`'s for the last object.
+
 ## Player 1's car each frame (roots-27, 2026-11-19)
 
 - **`player_frame_setup` ($83:E2D7):** about 18,500 entries in the 60k movie.

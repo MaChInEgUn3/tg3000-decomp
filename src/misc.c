@@ -2267,3 +2267,45 @@ void player_frame_setup(void) {
   wr16(0x025C, rd8(0x024E + (uint32_t)item));
   wr16(0x1F2E, item);
 }
+
+// One object: D+$7C = D+$84 + `dy`, D+$7A = the word at D+`base` + `dx` + that sum's carry.
+static void scene_object_at(uint16_t dy, uint16_t base, uint16_t dx) {
+  const uint32_t sum = (uint32_t)rd16(DP + 0x84) + dy;
+  wr16(DP + 0x7C, (uint16_t)sum);
+  wr16(DP + 0x7A, (uint16_t)(rd16(DP + base) + dx + (sum >> 16)));
+}
+
+// TG3000_ROUTINE($8A:86AB) scene_objects_place
+uint16_t scene_objects_place(void) {
+  const uint16_t x8 = (uint16_t)(rd16(0x1536) << 3);
+  if(!(bus_rd16(0x8A9351 + (uint32_t)x8) & 0x0001)) return x8;
+  const uint16_t v = (uint16_t)(rd16(DP + 0x3C) >> 6);
+  wr16(DP + 0x7E, v);
+  wr16(DP + 0x80, (uint16_t)(v >> 1));
+  wr16(DP + 0x82, (uint16_t)(v >> 1));
+  const uint16_t neg = (uint16_t)-rd16(DP + 0x62);
+  wr16(DP + 0x84, neg);
+  wr16(DP + 0x86, neg);
+  wr16(DP + 0x88, neg);
+  uint16_t x = 0;
+  scene_object_at(0x0010, 0x7E, 0x0014);
+  x = func_8A9202(x);
+  scene_object_at(0x0020, 0x7E, 0x00C8);
+  x = func_8A9202(x);
+  wr16(DP + 0x7C, rd16(DP + 0x84));  // no add: the carry stays clear
+  wr16(DP + 0x7A, (uint16_t)(rd16(DP + 0x80) + 0x000A));
+  x = func_8A92CF(x);
+  scene_object_at(0x0032, 0x82, 0x0012);
+  x = func_8A92CF(x);
+  scene_object_at(0x0028, 0x80, 0x00F0);
+  x = func_8A92CF(x);
+  scene_object_at(0x0032, 0x82, 0x00C8);
+  x = func_8A92CF(x);
+  scene_object_at(0x0019, 0x82, 0x0080);
+  x = func_8A92CF(x);
+  // CLC then SBC #$0A: $0B less; its carry (no borrow) goes into the ADC
+  const uint16_t y = rd16(DP + 0x84);
+  wr16(DP + 0x7C, (uint16_t)(y - 0x000B));
+  wr16(DP + 0x7A, (uint16_t)(rd16(DP + 0x80) + 0x0140 + (y >= 0x000B)));
+  return func_8A92CF(x);
+}
