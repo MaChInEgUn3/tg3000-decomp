@@ -3143,3 +3143,102 @@ void text_buffer_screen(void) {
   }
   text_screen_init((rd16(0x1B37) & 0x8000) ? 0xC238 : 0xC224);  // the first: never run
 }
+
+// A palette row: 16 bytes from $86:`from` to `to` (MVN).
+static void scenery_row(uint16_t from, uint16_t to) {
+  for(uint16_t i = 0; i < 0x10; i++) wr8((uint16_t)(to + i), bus_rd8(0x860000 + (uint32_t)(uint16_t)(from + i)));
+}
+
+// A block of `rows` x `cols` words copied from $7F:`from` to the map at $7F:`at` (rows $40
+// bytes apart), each plus D+$84 with the carry of the add before (one CLC first).
+static void scenery_block(uint16_t from, uint16_t at, int rows, int cols) {
+  uint32_t carry = 0;
+  for(int r = 0; r < rows; r++)
+    for(int c = 0; c < cols; c++) {
+      const uint32_t sum = (uint32_t)rd16(0x10000 + (uint32_t)from) + rd16(DP + 0x84) + carry;
+      carry = sum >> 16;
+      wr16(0x10000 + (uint32_t)(uint16_t)(at + r * 0x40 + c * 2), (uint16_t)sum);
+      from = (uint16_t)(from + 2);
+    }
+}
+
+// TG3000_ROUTINE($80:DCBB) scenery_build
+void scenery_build(void) {
+  uint16_t y = bus_rd16(0x81C3D0 + (uint32_t)(uint16_t)(bus_rd8(0x84A240 + (uint32_t)rd16(0x0444)) << 1));
+  wr16(DP + 0x7C, 0x8000);
+  wr16(DP + 0x7E, 0x2002);
+  wr16(DP + 0x7A, 0x000F);
+  wr16(DP + 0x80, 0x000A);
+  wr16(DP + 0x82, 0);
+  wr16(DP + 0x86, 0);
+  wr16(DP + 0x88, 0x0001);
+  for(;; y = (uint16_t)(y + 0x0E)) {
+    const uint32_t rec = 0x810000 | y;
+    const uint16_t kind = bus_rd16(rec + 0xC3E8);
+    if(kind == 0) break;
+    const uint16_t column = bus_rd16(rec + 0xC3EA);
+    uint16_t x = rd16(DP + 0x86);
+    wr16(0x0882 + (uint32_t)x, (uint16_t)(kind & 0x7FFF));
+    wr16(0x0884 + (uint32_t)x, (uint16_t)((uint16_t)(column << 3) + bus_rd16(0x81CAE2 + (uint32_t)(kind & 0x7FFF))));
+    wr16(DP + 0x86, (uint16_t)(x + 4));
+    if(kind & 0x8000) {
+      if(!(rd16(DP + 0x88) & rd16(0x036A))) {
+        x = rd16(DP + 0x82);
+        wr16(0x0802 + (uint32_t)x, (uint16_t)(kind & 0x7FFF));
+        wr16(0x0804 + (uint32_t)x, (uint16_t)((uint16_t)(column << 3) + bus_rd16(0x81CAE2 + (uint32_t)(kind & 0x7FFF))));
+        wr16(0x0806 + (uint32_t)x, bus_rd16(rec + 0xC3F4));
+        wr16(0x0808 + (uint32_t)x, rd16(DP + 0x88));
+        wr16(DP + 0x82, (uint16_t)(x + 8));
+      }
+      wr16(DP + 0x88, (uint16_t)(rd16(DP + 0x88) << 1));
+    }
+    const uint16_t k = (uint16_t)(kind & 0x7FFF);
+    if(k == 0) break;  // the table's first handler is the end
+    if(k == 2) {
+      const uint16_t v = (uint16_t)(column << 1);
+      uint16_t at = (uint16_t)(v + (v < 0x40 ? 0xB250 : 0xCED0));  // the first: never run
+      uint16_t w = 0x11DC;
+      for(int r = 0; r < 6; r++)
+        for(int c = 0; c < 6; c++) wr16(0x10000 + (uint32_t)(uint16_t)(at + r * 0x40 + c * 2), w++);
+      wr16(0x0706, (uint16_t)(column << 3));
+      wr16(0x0700, bus_rd16(rec + 0xC3F0));
+      wr16(0x0702, 0);
+      const uint16_t pal = bus_rd16(rec + 0xC3EC);
+      for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(0x0580 + i), bus_rd8(0x860000 + (uint32_t)(uint16_t)(pal + i)));
+      for(uint16_t i = 0; i < 0x10; i++) wr8((uint16_t)(0x0680 + i), bus_rd8(0x86DAC9 + i));
+      continue;
+    }
+    static const uint16_t from[4][2] = {{0xBC50, 0xBC70}, {0xBC90, 0xBCB0}, {0xBCD0, 0xBCE8}, {0xBD00, 0xBD08}};
+    const uint16_t a7a = rd16(DP + 0x7A);
+    wr16(DP + 0x84, (uint16_t)(((a7a << 1) & 0x001C) << 8));
+    const uint16_t src = from[k / 2 - 2][a7a & 1];
+    const uint16_t at = func_80E0C8(column);
+    if(k == 4 || k == 6) scenery_block(src, at, 4, 4);
+    else if(k == 8) scenery_block(src, at, 4, 3);
+    else scenery_block(src, (uint16_t)(at + 0x40), 2, 2);
+    const uint16_t row = (uint16_t)((uint16_t)(rd16(DP + 0x7A) << 4) + 0x0500);
+    wr16(DP + 0x84, row);
+    scenery_row(bus_rd16(rec + 0xC3EC), row);
+    scenery_row(bus_rd16(rec + 0xC3F2), (uint16_t)(row + 0x0100));
+    uint16_t end;
+    const uint16_t len = decompress_near(DP, 0x91, bus_rd16(rec + 0xC3EE), 0x7E, rd16(DP + 0x7C), &end);
+    wr16(DP + 0x7C, (uint16_t)(len + rd16(DP + 0x7C)));
+    const uint16_t v = (uint16_t)(column << 1);
+    const uint16_t mx = (uint16_t)(v + (v < 0x40 ? 0x1310 : 0x19D0));
+    uint16_t w = rd16(DP + 0x7E);
+    for(int r = 0; r < 4; r++)
+      for(int c = 0; c < 4; c++) wr16(0x1AE40 + (uint32_t)(uint16_t)(mx + r * 0x40 + c * 2), w++);
+    wr16(DP + 0x7E, w);
+    x = rd16(DP + 0x80);
+    wr16(0x0700 + (uint32_t)x, bus_rd16(rec + 0xC3F0));
+    wr16(0x0702 + (uint32_t)x, 0);
+    wr16(0x0704 + (uint32_t)x, bus_rd16(0x81C2DA + (uint32_t)(uint16_t)(((rd16(DP + 0x7A) & 1) | kind) << 1)));
+    wr16(0x0706 + (uint32_t)x, (uint16_t)(column << 3));
+    wr16(0x0708 + (uint32_t)x, (uint16_t)((rd16(DP + 0x7A) << 8) & 0xFE00));
+    wr16(0x070A + (uint32_t)x, 0);
+    wr16(DP + 0x80, (uint16_t)(x + 0x0A));
+    wr16(DP + 0x7A, (uint16_t)(rd16(DP + 0x7A) - 1));
+  }
+  wr16(0x0800, rd16(DP + 0x82));
+  wr16(0x0880, rd16(DP + 0x86));
+}

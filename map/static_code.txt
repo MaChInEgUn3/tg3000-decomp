@@ -92,3 +92,4 @@
 80:D946 80:D94B m16x16 ; race_hud_draw: the shown speed falls by $10 at most (never run)
 80:D9A3 80:D9BC m16x16 ; race_hud_draw: the first $0700 entry's sprites when it is on screen (never run)
 8A:C17C 8A:C17F m16x16 ; text_buffer_screen: the other title string when $1B37 bit 15 is set (never run)
+80:DD7A 80:DD7F m16x16 ; scenery_build: a 6x6 block's map row for a column below $20 (never run)

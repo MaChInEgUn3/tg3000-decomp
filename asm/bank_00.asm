@@ -8580,7 +8580,7 @@ CODE_80D214:
     dex                         ; $80D234
     dex                         ; $80D235
     bne CODE_80D214             ; $80D236
-    jsr.w $DCBB                 ; $80D238
+    jsr.w scenery_build         ; $80D238
     jsr.w star_layers_init      ; $80D23B
     jsr.w oam_clear             ; $80D23E
 CODE_80D241:
@@ -9799,6 +9799,7 @@ CODE_80DC90:
     lda.w #$00B4                ; $80DCB4
     sta.w $0000,x               ; $80DCB7
     rts                         ; $80DCBA
+scenery_build:
     ldx.w $0444                 ; $80DCBB
     lda.l $84A240,x             ; $80DCBE
     and.w #$00FF                ; $80DCC2
@@ -9889,9 +9890,11 @@ CODE_80DD59:
     asl a                       ; $80DD74
     cmp.w #$0040                ; $80DD75
     bcs CODE_80DD7F             ; $80DD78
-    incbin !baserom:$5D7A..$5D7F
+    adc.w #$B250                ; $80DD7A static
+    bra CODE_80DD82             ; $80DD7D static
 CODE_80DD7F:
     adc.w #$CECF                ; $80DD7F
+CODE_80DD82:
     tay                         ; $80DD82
     pea.w $817F                 ; $80DD83
     plb                         ; $80DD86

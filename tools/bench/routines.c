@@ -3069,6 +3069,50 @@ static void fuzz_text_buffer_screen(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   wr16ram(ram, 0x1B37, (rnd() % 4 == 0) ? (uint16_t)(0x8000 | rnd()) : (uint16_t)(rnd() & 0x7FFF));
 }
 
+// ---- scenery_build ($80:DCBB) ----  its caller goes on to star_layers_init, which sets
+// every register: no register outputs. Five entries, so every flag is modelled: N Z of the
+// PLY of the record that ended it; at a 0 kind C clear and V of the ADC #$0E that reached
+// it (or as on entry for the first record); at an $8000 kind C = the bit ASL D+$88 shifted
+// out and V of the last kind-x add. The adapter walks the records from the ROM.
+static bool sceneryAdcV(uint16_t a, uint16_t b) {
+  const uint16_t s = (uint16_t)(a + b);
+  return (~(a ^ b) & (a ^ s) & 0x8000) != 0;
+}
+static void call_scenery_build(const Regs* in, Regs* out) {
+  uint16_t y = bus_rd16(0x81C3D0 + (uint32_t)(uint16_t)(bus_rd8(0x84A240 + (uint32_t)rd16(0x0444)) << 1));
+  const uint16_t mask = rd16(0x036A);
+  uint16_t bit = 1;
+  bool c = false, v = in->v;
+  for(;;) {
+    const uint16_t kind = bus_rd16(0x81C3E8 + (uint32_t)y);
+    if(kind == 0) break;
+    if(kind & 0x8000) {
+      const uint16_t col8 = (uint16_t)(bus_rd16(0x81C3EA + (uint32_t)y) << 3);
+      v = sceneryAdcV(col8, bus_rd16(0x81CAE2 + (uint32_t)(kind & 0x7FFF)));
+      c = (bit & 0x8000) != 0;
+      bit = (uint16_t)(bit << 1);
+      (void)mask;
+      if(!(kind & 0x7FFF)) break;
+    }
+    c = false;
+    v = sceneryAdcV(y, 0x000E);
+    y = (uint16_t)(y + 0x0E);
+  }
+  scenery_build();
+  out->c = c;
+  out->v = v;
+  setNZ16(out, y);
+}
+// any of the first tracks, or now and then $0444 = 225: its byte at $84:A240 is 41, whose
+// list is one kind-2 record at column 6 (the never-run map row below $20); which scenery
+// bits are hidden; the source tiles in $7F
+static void fuzz_scenery_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0444, (uint16_t)(rnd() % 8 == 0 ? 225 : rnd() % 8));
+  wr16ram(ram, 0x036A, (uint16_t)rnd());
+  for(uint32_t i = 0x1BC50; i < 0x1BD10; i++) ram[i] = (uint8_t)rnd();
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7678,6 +7722,9 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_race_hud_sprites, .fuzz = fuzz_race_hud_sprites},
   {.name = "text_buffer_screen", .entry = 0x8AC15D, .end = 0x8AC19C, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_text_buffer_screen, ALL_OUTPUTS, .fuzz = fuzz_text_buffer_screen},
+  {.name = "scenery_build", .entry = 0x80DCBB, .end = 0x80E0C8, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_scenery_build, .fuzz = fuzz_scenery_build,
+   .holes = {{0x80DD65, 0x80DD71}}},  // the kinds' handler table
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

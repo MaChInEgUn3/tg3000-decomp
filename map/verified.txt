@@ -408,3 +408,4 @@
 80F561 upload_slice_15 src/video_dma.c c99351fa71bb6869 1 500 20/20 verified live-flags:NVZC replayed:0
 80D823 race_hud_sprites src/hud.c a2232a66514f6c37 648 500 243/243 verified live-flags:- replayed:0
 8AC15D text_buffer_screen src/misc.c 8955be45f6200ffe 0 500 26/26 verified live-flags:NVZC replayed:2
+80DCBB scenery_build src/misc.c ab3ef0cbe61a352a 0 500 458/458 verified live-flags:NVZC replayed:2

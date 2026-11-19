@@ -1789,6 +1789,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The track scenery (roots-59, 2026-11-19)
+
+**`scenery_build` ($80:DCBB):** about 1 KB that builds a track's scenery from its list of
+14-byte records (`$81:C3E8`; the list chosen through `$84:A240` by `$0444`).
+- **Each record** appends to the lists at `$0882` and, for negative kinds unless masked
+  by `$036A`, to `$0802`. It then dispatches on its kind through a table at `$80:DD65`,
+  which the row declares as a hole.
+- **Kind 2:** a 6×6 block of map words, the record's sprite and two palettes.
+- **Kinds 4-10:** a 4×4, 4×3 or 2×2 block copied from `$7F` into the map. Each word adds
+  `D+$84` with the carry of the add before: one `CLC`, then a chain, which the C carries
+  along. Then two palette rows, an unpack from bank `$91` to `$7E:D+$7C`, a 4×4 block of
+  map words and a 10-byte sprite entry.
+- **The end:** kind 0, or `$8000`, whose handler is the table's first entry.
+- **Flags.** No register outputs (its caller goes on to `star_layers_init`). Five entries,
+  so every flag is modelled. The adapter walks the records from the ROM to find which end
+  was reached.
+- **Never run:** the 6×6 block's map row for a column below `$20`. No real track has such
+  a record. The ROM's only one is list 41, reached with `$0444` = 225, which the fuzz uses
+  now and then.
+- All live entries were interrupted, and the replays passed (2/2 and 1/1). Fuzz 500/500
+  and 200/200, paths 458/458.
+
 ## The text buffer screen (roots-58, 2026-11-19)
 
 **`text_buffer_screen` ($8A:C15D):** the text buffer at `$7F:7D00` printed as tiles, up to

@@ -975,4 +975,21 @@ void ticker_draw(uint8_t bank, uint16_t x, uint16_t text);
 // text_screen_init with the string $8A:C224 ($C238 when $1B37 bit 15 is set: never run).
 void text_buffer_screen(void);
 
+// $80:DCBB: the track's scenery built (D = $0100), from its list of 14-byte records at
+// $81:C3E8 (start: the word at $81:C3D0 by the byte at $84:A240 + $0444). Per record (+0
+// its kind word, +2 its column; 0 ends the list): an entry (+0 & $7FFF, +2 * 8 plus the
+// kind's x at $81:CAE2) appended to the list at $0882 (D+$86); a negative kind also
+// appends one to $0802 (D+$82: with +$0C and the bit D+$88) unless that bit is set in
+// $036A, and D+$88 moves to the next bit. Then by the kind ($8000 also ends the list):
+// - 2: a 6x6 block of map words $11DC on at $7F:CED0 + 2 * column (never run: $B250 +),
+//   the record's +8 at $0700, 32 + 16 bytes of palette from bank $86 to $0580/$0680;
+// - 4, 6, 8, 10: a 4x4, 4x4, 4x3 or 2x2 block copied from $7F (by the kind and the parity
+//   of D+$7A) to the map at func_80E0C8(column), each word plus D+$84 (the band of D+$7A)
+//   with the carry of the add before; two 16-byte palette rows from bank $86 to $0500 +
+//   D+$7A * 16 and $100 on; tiles unpacked from $91:(+6) to $7E:D+$7C (moving on); a 4x4
+//   block of map words D+$7E on at $7F:AE40 + $1310 / $19D0 + 2 * column; an entry at
+//   $0700 + D+$80 (10 bytes); D+$7A counts down.
+// At the end $0800 = D+$82 and $0880 = D+$86.
+void scenery_build(void);
+
 #endif
