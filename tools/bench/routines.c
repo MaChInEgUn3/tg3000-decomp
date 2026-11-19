@@ -2449,6 +2449,42 @@ static void fuzz_tile_anim_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(int i = 0; i < 0xA0; i++) ram[0x8000 + i] = (uint8_t)rnd();
 }
 
+// ---- track_rows_build ($81:E631) ----  after the MVN: A = $FFFF, X = $D1C3, Y = its end;
+// the PLB of the caller's bank sets N Z; C V of the ADC #$D1B3 that found the destination
+static void call_track_rows_build(const Regs* in, Regs* out) {
+  uint16_t n2 = (uint16_t)(rd16(0x019A) << 1);
+  track_rows_build();
+  out->a = 0xFFFF;
+  out->x = 0xD1C3;
+  out->y = (uint16_t)(n2 + 0xD1B3 + 0x10);
+  setAdc16(out, n2, 0xD1B3);
+  out->n = (in->db & 0x80) != 0;
+  out->z = in->db == 0;
+}
+// rows $10-$3F, the track table in ROM, the limits, edges' objects of the valid kinds (all
+// but 9, whose handler is $81:0000), some rows ending on the $F8F3 marker
+static void fuzz_track_rows_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t n = (uint16_t)(0x10 + rnd() % 0x30);
+  wr16ram(ram, 0x019A, n);
+  // half the time the first row lands on a $F8F3 marker of the track table (its other
+  // limits, $1F2A); the start index is D+$98 - 10 (the first row's multiply by 10 of -1)
+  static uint16_t marker = 0;
+  if(!marker)
+    for(uint32_t a = 0x848000; a < 0x84FFF0 && !marker; a++)
+      if(rom16(a + 4) == 0xF8F3) marker = (uint16_t)a;
+  wr16ram(ram, DP + 0x98, (rnd() & 1) && marker ? (uint16_t)(marker + 10) : (uint16_t)(0x9000 + (rnd() % 0x400) * 10));
+  wr16ram(ram, 0x1F28, (uint16_t)(rnd() % 0x200));
+  wr16ram(ram, 0x1F2A, (uint16_t)(rnd() % 0x200));
+  // the entries, 4 bytes apart from $7E:8CB3 (x, kind, ...); every kind a valid one
+  for(uint32_t i = 0; i < 4u * n + 8; i++) ram[0x8CB3 + i] = (uint8_t)rnd();
+  for(uint32_t e = 0; e < 4u * n + 4; e += 4) {
+    uint32_t k = rnd() % 4 == 0 ? 1 + rnd() % 63 : 0;
+    if(k == 9) k = 10;
+    ram[0x8CB4 + e] = (uint8_t)k;
+  }
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7004,6 +7040,9 @@ const Routine routines[] = {
    ALL_OUTPUTS, .fuzz = fuzz_effect_request_p1},
   {.name = "tile_anim_step", .entry = 0x8A85AF, .end = 0x8A867C, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_tile_anim_step, ALL_OUTPUTS, .fuzz = fuzz_tile_anim_step},
+  {.name = "track_rows_build", .entry = 0x81E631, .end = 0x81E7CE, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_rows_build, ALL_OUTPUTS,
+   .fuzz = fuzz_track_rows_build},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

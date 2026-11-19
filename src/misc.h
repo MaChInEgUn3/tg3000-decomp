@@ -859,4 +859,14 @@ void anim_tiles_put(uint16_t x);
 // or $1E by its bit 1 (anim_tiles_put).
 void tile_anim_step(void);
 
+// $81:E631: the track's row words at $7E:D1B1 + 2 * row, rows $019A down to 1. The track
+// table index starts at D+$98 + (high byte of 4 * $019A, less 1) * 10 (a DSP-4 multiply)
+// and steps back 10 every $40 rows. Per row: the limits D+$20/$22 ($1F28, or $1F2A where the
+// table's word at +4 is $F8F3), the four edges D+$16, $18, $1A, $1C moved toward them,
+// clipped by the row's track object (its kind, the byte at $7E:8CB4 + D+$14, picks
+// far_7fff_4 or track_entry_bounds), then the DSP-4's command $11 makes the row word, each
+// negative nibble moved up by one (a negative word first gains $1000). At the end the
+// first 16 bytes are copied past the last row (MVN).
+void track_rows_build(void);
+
 #endif

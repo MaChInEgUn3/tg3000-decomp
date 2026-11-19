@@ -1789,6 +1789,45 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The track row words; the DSP-4 roots classified (roots-41, 2026-11-19)
+
+**The DSP-4 roots, classified.** 17 roots touch the chip.
+- 14 only write parameters to `$30:8000` (DB = `$30`) with no command word: a command
+  opened elsewhere stays open across calls (`$82:D934`, 514,743 entries, is one). They wait
+  for the chip-state design.
+- 3 send whole commands: `$81:E631` (commands `$00` and `$11`), `$82:A672` and `$82:ADC2`.
+
+**Two more roots stay parked.**
+- `$8A:898F`: a never-run path calls `$8A:84B9`, inside 627 unknown bytes of another
+  screen's code.
+- `$82:F2B3`: its handler table has four never-run targets, one entering another routine
+  mid-way (`$82:2C60`).
+
+**`track_rows_build` ($81:E631, `JSL`):** the track's row words at `$7E:D1B1`, rows
+`$019A` down to 1, at race start.
+- The track table index starts at `$0198` + (the high byte of 4 * rows, less 1) * 10, a
+  DSP-4 multiply; it steps back 10 every `$40` rows.
+- Per row:
+  - the limits are `$1F28`, or `$1F2A` where the table's word at +4 is `$F8F3`;
+  - the four edges move toward them;
+  - the row's track object clips them, its kind picking `far_7fff_4` or
+    `track_entry_bounds` from the table at `$81:7FFE` (every entry but kind 9's, which
+    is `$81:0000`);
+  - command `$11` (`dsp4_row`, checked against the firmware in dsp4-11) makes the row
+    word, and each negative nibble moves up by one. The low nibble's case never runs:
+    its 16 bytes at `$81:E797` are now static code.
+- At the end, `MVN` copies the first 16 bytes past the last row.
+
+**Verification.**
+- Its 5 live entries are interrupted; replays 2/2, fuzz 500/500, paths 189/189 on the 60k
+  movie (and 189/189 on race1).
+- The first fuzz overwrote each entry's kind byte while filling the entries, so the
+  original jumped through garbage handlers and never returned (500 abandoned). The DSP-4
+  log showed it: 89 rows where at most 63 can run. The fuzz now fills the entries
+  first, then writes valid kinds at their 4-byte stride.
+- The fuzz also aims half its runs at a real `$F8F3` marker, the one path random tables
+  missed.
+
 ## A tile animation that never runs (roots-40, 2026-11-19)
 
 - **`tile_anim_step` ($8A:85AF):** 785 entries in the 60k movie, all with D+`$42` = 0, where

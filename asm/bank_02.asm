@@ -251,7 +251,7 @@ CODE_82856D:
     stz.b $58                   ; $8285C3
     jsl.l track_map_load        ; $8285C5
     jsr.w $A7F9                 ; $8285C9
-    jsl.l $81E631               ; $8285CC
+    jsl.l track_rows_build      ; $8285CC
     jsr.w track_objects_stream  ; $8285D0
     jsr.w $8961                 ; $8285D3
     lda.w #$0001                ; $8285D6

@@ -2647,3 +2647,83 @@ void tile_anim_step(void) {
   wr16(DP + 0x40, f);
   anim_tiles_put((f & 0x0002) ? 0x0000 : 0x001E);
 }
+
+// The row's track object, by its kind (the handler table at $81:7FFE + 2 * kind).
+static void track_row_object(uint16_t kind) {
+  if(bus_rd16(0x817FFE + (uint32_t)(uint16_t)(kind << 1)) == 0xE7DA) track_entry_bounds();
+  else far_7fff_4();
+}
+
+// `v` moved toward the limit: kept while v - limit is negative, else the limit.
+static uint16_t row_clip(uint16_t v, uint16_t limit) { return ((uint16_t)(v - limit) & 0x8000) ? v : limit; }
+
+// TG3000_ROUTINE($81:E631) track_rows_build
+void track_rows_build(void) {
+  const uint16_t n = rd16(0x019A);
+  wr16(DP + 0x1E, (uint16_t)(n << 1));
+  // ASL, ASL, SBC #3: the carry of the second shift (bit 14 of n) is the SBC's
+  wr16(DP + 0x14, (uint16_t)((n << 2) - 3 - ((n & 0x4000) ? 0 : 1)));
+  wr16(DP + 0x16, 0xC001);
+  wr16(DP + 0x1A, 0xC001);
+  wr16(DP + 0x18, 0x3FFF);
+  wr16(DP + 0x1C, 0x3FFF);
+  const int16_t first = (int16_t)((((uint16_t)(n << 2) >> 8) & 0x00FF) - 1);
+  wr16(DP + 0x2A, (uint16_t)((uint16_t)dsp4_multiply(first, 10) + rd16(DP + 0x98)));
+  wr16(DP + 0x30, 0x0040);
+  wr16(DP + 0x20, 0x00DB);
+  wr16(DP + 0x22, 0x00DB);
+  uint16_t x;
+  do {
+    const uint16_t y = bus_rd16(0x840004 + (uint32_t)rd16(DP + 0x2A)) == 0xF8F3 ? 2 : 0;
+    wr16(DP + 0x20, rd16(0x1F28 + (uint32_t)y));
+    wr16(DP + 0x22, rd16(0x1F28 + (uint32_t)y));
+    wr16(DP + 0x30, (uint16_t)(rd16(DP + 0x30) - 1));
+    if(rd16(DP + 0x30) == 0) {
+      wr16(DP + 0x2A, (uint16_t)(rd16(DP + 0x2A) - 0x000A));
+      wr16(DP + 0x30, 0x0040);
+    }
+    wr16(DP + 0x16, (uint16_t)-row_clip((uint16_t)(0x0020 - rd16(DP + 0x16)), rd16(DP + 0x20)));
+    wr16(DP + 0x18, row_clip((uint16_t)(rd16(DP + 0x18) + 0x0008), rd16(DP + 0x20)));
+    wr16(DP + 0x1A, (uint16_t)-row_clip((uint16_t)(0x0008 - rd16(DP + 0x1A)), rd16(DP + 0x22)));
+    wr16(DP + 0x1C, row_clip((uint16_t)(rd16(DP + 0x1C) + 0x0020), rd16(DP + 0x22)));
+    const uint16_t kind = rd8(0x8CB4 + (uint32_t)rd16(DP + 0x14));
+    if(kind) {
+      track_row_object(kind);
+      wr16(DP + 0x28, (uint16_t)(rd16(DP + 0x18) - rd16(DP + 0x26)));
+      if((uint16_t)((uint16_t)(rd16(DP + 0x24) - rd16(DP + 0x16)) - rd16(DP + 0x28)) & 0x8000) {
+        if((uint16_t)(rd16(DP + 0x16) - rd16(DP + 0x26)) & 0x8000) wr16(DP + 0x16, rd16(DP + 0x26));
+      } else if((uint16_t)(rd16(DP + 0x24) - rd16(DP + 0x18)) & 0x8000) {
+        wr16(DP + 0x18, rd16(DP + 0x24));
+      }
+    }
+    const int16_t edge[4] = {(int16_t)rd16(DP + 0x16), (int16_t)rd16(DP + 0x18), (int16_t)rd16(DP + 0x1A),
+                             (int16_t)rd16(DP + 0x1C)};
+    uint16_t a = dsp4_row(edge);
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 4));
+    x = rd16(DP + 0x1E);
+    wr16(DP + 0x28, a);
+    if(a & 0x8000) {
+      a = (uint16_t)(a + 0x1000);
+      wr16(DP + 0x28, a);
+    }
+    if(a & 0x0800) {
+      wr16(DP + 0x24, (uint16_t)(a & 0xF0FF));
+      a = (uint16_t)(((rd16(DP + 0x28) + 0x0100) & 0x0F00) | rd16(DP + 0x24));
+      wr16(DP + 0x28, a);
+    }
+    if(a & 0x0080) {
+      wr16(DP + 0x24, (uint16_t)(a & 0xFF0F));
+      a = (uint16_t)(((rd16(DP + 0x28) + 0x0010) & 0x00F0) | rd16(DP + 0x24));
+      wr16(DP + 0x28, a);
+    }
+    if(a & 0x0008) {  // never run; it leaves D+$28 as it was
+      wr16(DP + 0x24, (uint16_t)(a & 0xFFF0));
+      a = (uint16_t)(((rd16(DP + 0x28) + 0x0001) & 0x000F) | rd16(DP + 0x24));
+    }
+    wr16(0xD1B1 + (uint32_t)x, a);
+    x = (uint16_t)(x - 2);
+    wr16(DP + 0x1E, x);
+  } while(x != 0);
+  const uint16_t to = (uint16_t)((n << 1) + 0xD1B3);
+  for(uint16_t i = 0; i < 0x10; i++) wr8((uint16_t)(to + i), rd8((uint16_t)(0xD1B3 + i)));  // MVN, upwards
+}

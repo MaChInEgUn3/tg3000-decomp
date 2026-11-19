@@ -1094,6 +1094,7 @@ CODE_818A3D:
 CODE_818A49:
     rts                         ; $818A49
     incbin !baserom:$8A4A..$E631
+track_rows_build:
     lda.w $019A                 ; $81E631
     asl a                       ; $81E634
     sta.b $1E                   ; $81E635
@@ -1267,7 +1268,13 @@ CODE_81E77B:
 CODE_81E792:
     bit.w #$0008                ; $81E792
     beq CODE_81E7A7             ; $81E795
-    incbin !baserom:$E797..$E7A7
+    and.w #$FFF0                ; $81E797 static
+    sta.b $24                   ; $81E79A static
+    lda.b $28                   ; $81E79C static
+    clc                         ; $81E79E static
+    adc.w #$0001                ; $81E79F static
+    and.w #$000F                ; $81E7A2 static
+    ora.b $24                   ; $81E7A5 static
 CODE_81E7A7:
     sta.l $7ED1B1,x             ; $81E7A7
     dex                         ; $81E7AB
