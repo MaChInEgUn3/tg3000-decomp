@@ -76,4 +76,10 @@ uint16_t title_zoom_settle(void);
 // result it returns.
 uint16_t title_stars_spread(bool carry);
 
+// $80:F424: the title's Mode 7 screen set up (D = $0100): VRAM words 0-15 cleared, $800
+// bytes from $7E:2940 uploaded to VRAM $3C00 (BG1's tilemap, $2107 = $3C), BG1 scroll 0
+// and 3; HDMA channels 1 and 3 get new tables ($D719, $D727); D+$80 = $2000, D+$3E counts
+// up; then inverse_scale and func_80F745, whose result it returns.
+uint16_t title_mode7_setup(void);
+
 #endif

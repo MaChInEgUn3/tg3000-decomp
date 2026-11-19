@@ -191,3 +191,18 @@ uint16_t title_stars_spread(bool carry) {
   inverse_scale(DP);
   return func_80F745();
 }
+
+// TG3000_ROUTINE($80:F424) title_mode7_setup
+uint16_t title_mode7_setup(void) {
+  for(uint16_t w = 0; w < 16; w++) video_write_vram_word(w, 0);
+  video_upload_vram(0x3C00, 0x7E2940, 0x0800);
+  video_set_bg_map(1, 0x3C);
+  video_set_bg1_hofs(0);
+  video_set_bg1_vofs(0x0003);
+  dma_hdma_set_table(1, 0xD719);
+  dma_hdma_set_table(3, 0xD727);
+  wr16(DP + 0x80, 0x2000);
+  wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
+  inverse_scale(DP);
+  return func_80F745();
+}

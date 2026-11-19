@@ -116,6 +116,7 @@ static uint16_t star_scale(uint16_t d, uint8_t r) {
   return (uint16_t)((uint32_t)((int32_t)(int16_t)d * (int8_t)r) >> 8);
 }
 
+// TG3000_ROUTINE($80:F8F8) stars_scatter (the same in bank $80, calling rng_next)
 // TG3000_ROUTINE($8A:971B) stars_scatter_8a
 void stars_scatter_8a(void) {
   wr16(DP + 0x14, 0x2000);

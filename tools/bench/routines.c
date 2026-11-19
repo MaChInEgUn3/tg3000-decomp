@@ -2725,6 +2725,18 @@ static void fuzz_text_screen_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   r->x = r->a;
 }
 
+// ---- title_mode7_setup ($80:F424) ----  as title_zoom_cycle: A = func_80F745's result,
+// X = D+$34 (N Z of it), Y kept, C clear; V through inverse_scale and func_80F745 from the
+// entry's (nothing before them sets it)
+static void call_title_mode7_setup(const Regs* in, Regs* out) {
+  out->a = title_mode7_setup();
+  out->x = rd16(DP + 0x34);
+  out->y = in->y;
+  setNZ16(out, out->x);
+  out->v = v_after_func_80F745(v_after_inverse_scale(in->v));
+  out->c = false;
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7311,6 +7323,11 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_palette_load_70, ALL_OUTPUTS, .fuzz = fuzz_palette_load_70},
   {.name = "text_screen_init", .entry = 0x8AC1C6, .end = 0x8AC224, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_text_screen_init, ALL_OUTPUTS, .fuzz = fuzz_text_screen_init},
+  {.name = "stars_scatter", .entry = 0x80F8F8, .end = 0x80F950, .source = "src/stars.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_stars_scatter_8a, ALL_OUTPUTS,
+   .fuzz = fuzz_stars_scatter_8a},
+  {.name = "title_mode7_setup", .entry = 0x80F424, .end = 0x80F4AD, .source = "src/scale.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_title_mode7_setup, ALL_OUTPUTS, .fuzz = fuzz_title_zoom},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

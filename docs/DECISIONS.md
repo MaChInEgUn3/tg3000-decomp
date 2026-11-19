@@ -1789,6 +1789,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The title Mode 7 setup and the stars twin (roots-51, 2026-11-19)
+
+**`stars_scatter` ($80:F8F8):** the bank-`$80` copy of `stars_scatter_8a`, calling
+`rng_next` instead of its bank-`$8A` copy. It shares the same C and adapter.
+
+**`title_mode7_setup` ($80:F424):** sets up the title's Mode 7 screen.
+- VRAM words 0-15 are cleared by direct word writes.
+- `$7E:2940` is uploaded to VRAM `$3C00`, which becomes BG1's tilemap (`$2107` = `$3C`).
+- BG1 scroll is 0/3, and HDMA channels 1 and 3 get new tables in their bank.
+- Then the zoom pair (`inverse_scale`, `func_80F745`), with V carried in from the entry.
+
+Both: live 1/1, fuzz 500/500, first try.
+
 ## A palette and a text screen (roots-50, 2026-11-19)
 
 **`palette_load_70` ($8A:8DBF):** a palette chosen through `$83:84B1`.
@@ -1834,7 +1847,8 @@ for a unit of its own.
 - The depth starts at `$2000` and grows by `$BE` a star.
 - x and y are bits 8-23 of the depth times a signed random byte, on the PPU multiplier.
   The bytes are the low byte of one `rng_next`, then the high byte of the next.
-- It has no bank-`$80` twin in the ROM.
+- Its bank-`$80` twin is `$80:F8F8` (roots-51). A byte search missed it because the
+  `rng_next` call targets differ.
 
 **`hdma_coldata_setup` ($8A:9C69):** `hdma_table_0d00_init`, then HDMA channel 2 on the
 fixed colour (`$2132`, one byte a line) from `$81:0D00`. It does not enable the channel.

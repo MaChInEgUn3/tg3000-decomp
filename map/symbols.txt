@@ -415,3 +415,5 @@ func    8A9C69   hdma_coldata_setup  ; HDMA channel 2 on the fixed colour from $
 func    8A8787   hdma_title_setup    ; six HDMA channels set up, two scroll tables copied to $0D00/$0D20 -> src/misc.c
 func    8A8DBF   palette_load_70     ; colour 0 and 16 colours at CGRAM $70 from a $7F palette -> src/misc.c
 func    8AC1C6   text_screen_init    ; a text screen: VRAM words, a centred string, tile palettes cleared -> src/misc.c
+func    80F8F8   stars_scatter       ; the 128 stars scattered by depth (bank $80 copy of stars_scatter_8a) -> src/stars.c
+func    80F424   title_mode7_setup   ; the title's Mode 7 screen: VRAM, BG1 map and scroll, HDMA tables -> src/scale.c

@@ -11993,7 +11993,7 @@ CODE_80EF94:
     plb                         ; $80EFF2
     lda.w #$17E5                ; $80EFF3
     sta.w $0500                 ; $80EFF6
-    jsr.w $F8F8                 ; $80EFF9
+    jsr.w stars_scatter         ; $80EFF9
     ldx.w #$D750                ; $80EFFC
     lda.w #$0081                ; $80EFFF
     ldy.w #$05C4                ; $80F002
@@ -12445,6 +12445,7 @@ func_80F3F4:
     jsr.w func_80F745           ; $80F41F
     clc                         ; $80F422
     rts                         ; $80F423
+title_mode7_setup:
     stz.w $2116                 ; $80F424
     stz.w $2118                 ; $80F427
     stz.w $2118                 ; $80F42A
@@ -13001,6 +13002,7 @@ CODE_80F8EC:
     stx.b $34                   ; $80F8F3
     sta.b $36                   ; $80F8F5
     rts                         ; $80F8F7
+stars_scatter:
     ldx.w #$0000                ; $80F8F8
     lda.w #$2000                ; $80F8FB
     sta.b $14                   ; $80F8FE
