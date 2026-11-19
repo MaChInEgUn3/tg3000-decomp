@@ -1789,6 +1789,26 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Player 1's car each frame (roots-27, 2026-11-19)
+
+- **`player_frame_setup` ($83:E2D7):** about 18,500 entries in the 60k movie.
+  - It sets the car's settings from bank-`$86` tables, indexed by the bytes `$0393`-`$0397`,
+    and `$022B` through `func_83EA9B`. It clears `$1ECA`, `$1EBA`, `$1ECC` and `$1E9C`,
+    and copies `$1E66` to `$1F2C`.
+  - Then, unless the controls are read (`$0244` bit 2 clear and `$03DC` bit 4 set), it
+    runs `player_road_limits` with D = `$0200`.
+  - With the controls (`$000C` held, `$000E` pressed, button masks at `$039D`-`$03A5`), it
+    sets flag bits in `$1E9C` and `$7E:2142` = `$58` or `$109F`. It steps the item in
+    `$014C` down or up to the next one carried (bytes `$0397` + item, up to 4), and sets
+    `$025C` = the byte at `$024E` + item and `$1F2E` = the item. The C's `pressed_take`
+    is the original's `TRB` from `$000E`.
+- **Exit.** Registers are not compared, as for `player_road_limits`' row. The flags are
+  modelled:
+  - without the controls, N and Z are clear (the `PLD` of `$0100`);
+  - with them, V = bit 14 of `$000C` (the last `BIT` of a memory word), C comes from the
+    last `CPX #5` or the item's `ASL` (else clear, from the `ADC #0`), and Z from the
+    item's byte.
+
 ## A second planar copy, the HDMA gradients; a full run (roots-26, 2026-11-19)
 
 - **`tiles_planar_upload_5fe0` ($85:817B):** byte for byte `tiles_planar_upload`

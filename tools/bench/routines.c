@@ -1749,6 +1749,68 @@ static void fuzz_hdma_gradients_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   wr16ram(ram, DP + 0x72, (uint16_t)rnd());
 }
 
+// ---- player_frame_setup ($83:E2D7) ----  registers not compared (as player_road_limits'
+// row). Without the controls: N Z clear (the PLD of $0100), C V as player_road_limits
+// leaves them. With them: N clear, Z of the item's byte (its AND #$FF), V = bit 14 of $000C
+// (the last BIT of a memory word), C of the last CPX #5 when $03A3 was pressed, else of the
+// ASL of the item when $03A1 was pressed or held, else clear (the ADC #0).
+static void call_player_frame_setup(const Regs* in, Regs* out) {
+  (void)in;
+  bool controls = !(rd16(0x0244) & 0x0004) && (rd16(0x03DC) & 0x0010);
+  uint16_t pad = rd16(0x000C), m = rd16(0x000E), item = rd16(0x014C);
+  uint16_t a1 = rd16(0x03A1), a5 = rd16(0x03A5), a3 = rd16(0x03A3);
+  bool c = false;
+  if((a1 & m) || (a1 & pad)) c = (item & 0x8000) != 0;
+  m = (uint16_t)(m & ~a1);
+  if(a5 & m) {
+    for(uint16_t i = item;;) {
+      i = (uint16_t)(i - 1);
+      if(i == 0) { item = i; break; }
+      if(i & 0x8000) break;
+      if(rd8(0x0397 + (uint32_t)i)) { item = i; break; }
+    }
+  }
+  m = (uint16_t)(m & ~a5);
+  if(a3 & m) {
+    uint16_t i = item;
+    for(;;) {
+      i = (uint16_t)(i + 1);
+      if(i == 5) break;
+      if(rd8(0x0397 + (uint32_t)i)) break;
+    }
+    c = i >= 5;
+  }
+  player_frame_setup();
+  if(!controls) {
+    out->n = out->z = false;
+    return;
+  }
+  out->n = false;
+  out->z = rd16(0x025C) == 0;
+  out->v = (pad & 0x4000) != 0;
+  out->c = c;
+}
+// the controls read half the time (else player_road_limits): buttons held and pressed, the masks (one button each,
+// sometimes the same), the item and the items carried
+static void fuzz_player_frame_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  if(rnd() & 1) {
+    wr16ram(ram, 0x0244, (uint16_t)(rnd() & ~0x0004));
+    wr16ram(ram, 0x03DC, (uint16_t)(rnd() | 0x0010));
+  } else {  // the other path, player_road_limits (the short race only reads the controls)
+    wr16ram(ram, 0x0244, (uint16_t)(rnd() | 0x0004));
+  }
+  wr16ram(ram, 0x000C, (uint16_t)rnd());
+  wr16ram(ram, 0x000E, (uint16_t)rnd());
+  static const uint16_t masks[5] = {0x039D, 0x039F, 0x03A1, 0x03A3, 0x03A5};
+  for(int k = 0; k < 5; k++) wr16ram(ram, masks[k], (uint16_t)(1u << (rnd() % 16)));
+  wr16ram(ram, 0x014C, (uint16_t)(rnd() % 5));
+  for(int i = 0; i < 6; i++) ram[0x0397 + i] = (rnd() & 1) ? (uint8_t)rnd() : 0;
+  ram[0x0393] = (uint8_t)(rnd() % 6);
+  ram[0x0394] = (uint8_t)(rnd() % 6);
+  ram[0x0396] = (uint8_t)(rnd() % 6);
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6248,6 +6310,8 @@ const Routine routines[] = {
   {.name = "hdma_gradients_init", .entry = 0x8A8F18, .end = 0x8A8FA4, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .lowWramDb = true, .fixedD = true, .call = call_hdma_gradients_init,
    .fuzz = fuzz_hdma_gradients_init},
+  {.name = "player_frame_setup", .entry = 0x83E2D7, .end = 0x83E431, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player_frame_setup, .fuzz = fuzz_player_frame_setup},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

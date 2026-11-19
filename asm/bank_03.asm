@@ -333,7 +333,7 @@ func_838989_long:
     lda.l $7E4CDD,x             ; $83E246
     inc a                       ; $83E24A
     sta.l $7E4CDD,x             ; $83E24B
-    jsr.w $E2D7                 ; $83E24F
+    jsr.w player_frame_setup    ; $83E24F
     phd                         ; $83E252
     lda.w #$0200                ; $83E253
     tcd                         ; $83E256
@@ -342,6 +342,7 @@ func_838989_long:
     pld                         ; $83E25D
     rtl                         ; $83E25E
     incbin !baserom:$1E25F..$1E2D7
+player_frame_setup:
     lda.w #$8000                ; $83E2D7
     sta.w $1EBE                 ; $83E2DA
     lda.w $0395                 ; $83E2DD

@@ -10,6 +10,7 @@
 #include "sprites.h"
 #include "video_dma.h"
 #include "tg3000.h"
+#include "track.h"
 #include "util.h"
 
 // TG3000_ROUTINE($81:F251) func_81F251
@@ -2199,4 +2200,70 @@ void hdma_gradients_init(void) {
   wr16(DP + 0x36, bus_rd16(0x8A934D + x));
   wr16(DP + 0x38, rd16(DP + 0x72));
   hdma_gradient_build();
+}
+
+static void flags_1e9c(uint16_t bits) { wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | bits)); }
+
+// The original's TRB of `mask` from $000E: true when any of its bits were set.
+static bool pressed_take(uint16_t mask) {
+  uint16_t m = rd16(0x000E);
+  wr16(0x000E, (uint16_t)(m & ~mask));
+  return (m & mask) != 0;
+}
+
+// TG3000_ROUTINE($83:E2D7) player_frame_setup
+void player_frame_setup(void) {
+  wr16(0x1EBE, 0x8000);
+  const uint16_t t = rd8(0x0395);
+  wr16(0x1EB2, t);
+  wr16(0x022B, func_83EA9B((uint16_t)((rd16(0x021F) << 1) + bus_rd16(0x86DAD9 + (uint32_t)((t & 0x7F) << 1)))));
+  uint32_t x = (uint32_t)rd8(0x0393) << 1;
+  wr16(0x1EA8, bus_rd16(0x86DCE1 + x));
+  wr16(0x1EC0, bus_rd16(0x86DCED + x));
+  x = (uint32_t)rd8(0x0397) << 1;
+  wr16(0x1EB4, bus_rd16(0x86DD29 + x));
+  wr16(0x1EB6, bus_rd16(0x86DD35 + x));
+  wr16(0x1EB8, bus_rd16(0x86DD41 + ((uint32_t)rd8(0x0394) << 1)));
+  wr16(0x1F30, bus_rd16(0x86DD4D + ((uint32_t)rd8(0x0396) << 1)));
+  wr16(0x1ECA, 0);
+  wr16(0x1EBA, 0);
+  wr16(0x1ECC, 0);
+  wr16(0x1F2C, rd16(0x1E66));
+  wr16(0x1EBC, (uint16_t)((rd16(0x0226) << 1) & 0x003E));
+  wr16(0x1E9C, 0);
+  if((rd16(0x0244) & 0x0004) || !(rd16(0x03DC) & 0x0010)) {
+    player_road_limits();
+    return;
+  }
+  const uint16_t pad = rd16(0x000C);
+  if(pad & rd16(0x039D)) flags_1e9c(0x0001);
+  uint16_t view = 0x0058;
+  if(pad & rd16(0x039F)) {
+    flags_1e9c(0x0002);
+    view = 0x109F;
+  }
+  wr16(0x2142, view);
+  if(pad & 0x0200) flags_1e9c(0x0004);
+  if(pad & 0x0100) flags_1e9c(0x0008);
+  const uint32_t item2 = (uint16_t)(rd16(0x014C) << 1);
+  if(pressed_take(rd16(0x03A1))) flags_1e9c(bus_rd16(0x86DD59 + item2));
+  if(rd16(0x03A1) & rd16(0x000C)) flags_1e9c(bus_rd16(0x86DD63 + item2));
+  if(pressed_take(rd16(0x03A5))) {  // the previous item carried, or item 0
+    for(uint16_t i = rd16(0x014C);;) {
+      i = (uint16_t)(i - 1);
+      if(i == 0) { wr16(0x014C, i); break; }
+      if(i & 0x8000) break;
+      if(rd8(0x0397 + (uint32_t)i)) { wr16(0x014C, i); break; }
+    }
+  }
+  if(pressed_take(rd16(0x03A3))) {  // the next item carried, below 5
+    for(uint16_t i = rd16(0x014C);;) {
+      i = (uint16_t)(i + 1);
+      if(i == 5) break;
+      if(rd8(0x0397 + (uint32_t)i)) { wr16(0x014C, i); break; }
+    }
+  }
+  const uint16_t item = rd16(0x014C);
+  wr16(0x025C, rd8(0x024E + (uint32_t)item));
+  wr16(0x1F2E, item);
 }

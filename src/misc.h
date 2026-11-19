@@ -723,4 +723,16 @@ void race_positions_update(void);
 // Ends at the zero both lists end with (stored). Returns the final Y.
 uint16_t race_bands_merge(void);
 
+// $83:E2D7: player 1's car, each frame. $1EBE = $8000; $1EB2 = the byte $0395; $022B =
+// func_83EA9B(2 * $021F + the word at $86:DAD9 + 2 * ($0395 & $7F)); the car's settings
+// from bank $86 by the bytes $0393 ($1EA8, $1EC0), $0397 ($1EB4, $1EB6), $0394 ($1EB8),
+// $0396 ($1F30); $1ECA, $1EBA, $1ECC, $1E9C = 0, $1F2C = $1E66, $1EBC = 2 * $0226 & $3E.
+// Then, unless the controls are read ($0244 bit 2 clear and $03DC bit 4 set),
+// player_road_limits (D = $0200). With the controls ($000C held, $000E pressed, the
+// masks at $039D-$03A5): flags in $1E9C (1, 2, 4, 8 and the item's two table bits),
+// $7E:2142 = $58 or $109F, and the item in $014C stepped down ($03A5) or up ($03A3) to
+// the next one carried (bytes $0397 + item, up to 4); $025C = the byte at $024E + item,
+// $1F2E = the item.
+void player_frame_setup(void);
+
 #endif
