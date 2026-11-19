@@ -1789,6 +1789,20 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Every early entry sampled; a full run (2026-11-19)
+
+**Why.** The bench compared one entry in three (`SAMPLE_STRIDE`). A routine the movies
+enter only a few times could end up with no compared live sample, when the sampled
+entries were interrupted. Eight verified rows stood at live 0 that way (roots-21 note).
+
+**The change (`difftest.c`).** The first `SAMPLE_ALL_FIRST` (32) entries of every routine
+are now all sampled, and one in three after that. Rare routines get every entry compared;
+frequent ones get at most 32 more samples.
+
+**This needs a full run.** It is a harness change, so `verify_all.sh` re-runs every row
+and writes a new full-run mark. Three incremental commits had passed since the last
+mark. The live-0 rows after it are listed below.
+
 ## A wait, the variant flags, six sprite slots (roots-21, 2026-11-19)
 
 - **`wait_03e0` ($84:A4CD, `JSL`):** waits until the word `$03E0` is 0 (the interrupts

@@ -28,7 +28,9 @@ uint8_t g_ram[TG3000_WRAM_SIZE];
 const uint8_t* g_rom;
 
 #define MAX_SAMPLES 4000     // compared live samples per routine
-#define SAMPLE_STRIDE 3      // take one entry in N
+#define SAMPLE_STRIDE 3      // take one entry in N...
+#define SAMPLE_ALL_FIRST 32  // ...after the first entries, which are all taken: a routine the
+                             // movies enter only a few times gets every entry compared
 #define MAX_EXTENT 0x600
 #define MAX_CONTRACTS 8
 #define MAX_INSNS 4000000    // a sample that runs longer is abandoned
@@ -1187,8 +1189,9 @@ static void watchAll(const Cpu* cpu, bool inHandler) {
   }
 }
 
-// Every entry of a registered routine counts and is checked against its contract; one in
-// SAMPLE_STRIDE becomes a compared sample, nested inside other samples if need be.
+// Every entry of a registered routine counts and is checked against its contract; the first
+// SAMPLE_ALL_FIRST and then one in SAMPLE_STRIDE become compared samples, nested inside
+// other samples if need be.
 static void checkEntries(Cpu* cpu, uint32_t pc, bool inHandler) {
   for(int i = 0; i < tableCount; i++) {
     if(table[i].entry != pc) continue;
@@ -1196,7 +1199,8 @@ static void checkEntries(Cpu* cpu, uint32_t pc, bool inHandler) {
     Stats* s = &stats[i];
     Regs in = readRegs(cpu);
     noteContract(s, &table[i], &in);
-    if(s->entries++ % SAMPLE_STRIDE != 0 || s->samples >= MAX_SAMPLES || depth >= MAX_DEPTH) return;
+    unsigned long e = s->entries++;
+    if((e >= SAMPLE_ALL_FIRST && e % SAMPLE_STRIDE != 0) || s->samples >= MAX_SAMPLES || depth >= MAX_DEPTH) return;
     if(table[i].waitsForInterrupts && irqOwner >= 0) return;  // one interrupt recorder at a time
     // an entry reached in a stack frame that is already being sampled is a branch back to
     // the entry (a loop) or a tail jump, not a call: it would steal the real sample's return
