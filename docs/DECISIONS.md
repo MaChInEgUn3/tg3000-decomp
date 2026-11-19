@@ -1789,6 +1789,21 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A second planar copy, the HDMA gradients; a full run (roots-26, 2026-11-19)
+
+- **`tiles_planar_upload_5fe0` ($85:817B):** byte for byte `tiles_planar_upload`
+  (`$8A:8CB7`), except its own loop's jump address and the VRAM word, `$5FE0`.
+  - The C became one helper with the VRAM word as a parameter, so this unit changes
+    existing lines and goes through `verify_all.sh`. The full run was due anyway: four
+    incremental commits since the last mark.
+- **`hdma_gradients_init` ($8A:8F18, `JSL`):** the HDMA gradient tables.
+  - Their headers at `$7E:2C00`: `$FF` and `$7E:2800`, `$FF` and `$7E:2A00`, then 0.
+  - Then three `hdma_gradient_build` runs into `$7E:2000` + D+`$6C`: all colours zero
+    with patterns 0; colours 0, 0 and the word at `$8A:934B` + 8 * `$1536`; and, with
+    patterns 1, the words at `$8A:934B` and `$8A:934D` + 8 * `$1536` and `$0172`.
+  - Its exit flags are the last build's, modelled from the state afterwards exactly as
+    that row's adapter does; registers are not compared, as for that row.
+
 ## The race's band table (roots-25, 2026-11-19)
 
 - **`race_bands_merge` ($85:B1FF):** merges the two players' line lists into one band

@@ -24,7 +24,7 @@ org $858000
     lda.w #$0080                ; $858094
     trb.w $1F33                 ; $858097
     lda.w #$0420                ; $85809A
-    jsr.w $817B                 ; $85809D
+    jsr.w tiles_planar_upload_5fe0; $85809D
     lda.w #$0020                ; $8580A0
     jsr.w upload_tiles_3300     ; $8580A3
     lda.w #$0220                ; $8580A6
@@ -42,7 +42,7 @@ org $858000
     lda.w #$0080                ; $8580C6
     tsb.w $1F33                 ; $8580C9
     lda.w #$0820                ; $8580CC
-    jsr.w $817B                 ; $8580CF
+    jsr.w tiles_planar_upload_5fe0; $8580CF
     lda.w #$0020                ; $8580D2
     jsr.w upload_tiles_3300     ; $8580D5
     lda.w #$0220                ; $8580D8
@@ -60,7 +60,7 @@ org $858000
     lda.w #$0080                ; $8580F8
     trb.w $1F33                 ; $8580FB
     lda.w #$0440                ; $8580FE
-    jsr.w $817B                 ; $858101
+    jsr.w tiles_planar_upload_5fe0; $858101
     lda.w #$0040                ; $858104
     jsr.w upload_tiles_3300     ; $858107
     lda.w #$0240                ; $85810A
@@ -86,7 +86,7 @@ CODE_858135:
     lda.w #$0080                ; $85813A
     tsb.w $1F33                 ; $85813D
     lda.w #$0840                ; $858140
-    jsr.w $817B                 ; $858143
+    jsr.w tiles_planar_upload_5fe0; $858143
     lda.w #$0040                ; $858146
     jsr.w upload_tiles_3300     ; $858149
     lda.w #$0240                ; $85814C
@@ -108,6 +108,7 @@ CODE_858169:
 CODE_858177:
     jsr.w row_copy_6b33         ; $858177
     rtl                         ; $85817A
+tiles_planar_upload_5fe0:
     sta.b $38                   ; $85817B
     phx                         ; $85817D
     lda.w $851B,x               ; $85817E

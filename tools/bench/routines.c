@@ -1621,14 +1621,18 @@ static void fuzz_sprite_slots_six(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
 
 // ---- tiles_planar_upload ($8A:8CB7) ----  upload_vram_now's exit (A = $1801), then X =
 // the entry X (N Z of its PLX), Y = $6FE0; C V of the ADC that found the graphic
-static void call_tiles_planar_upload(const Regs* in, Regs* out) {
+static void tilesPlanarOut(const Regs* in, Regs* out, void (*fn)(uint16_t, uint16_t), uint16_t vram) {
   uint16_t base = bus_rd16(0x8384B1 + (uint32_t)in->x);
-  tiles_planar_upload(in->a, in->x);
+  fn(in->a, in->x);
   out->a = 0x1801;
   out->x = in->x;
-  out->y = 0x6FE0;
+  out->y = vram;
   setAdc16(out, base, in->a);
   setNZ16(out, in->x);
+}
+static void call_tiles_planar_upload(const Regs* in, Regs* out) { tilesPlanarOut(in, out, tiles_planar_upload, 0x6FE0); }
+static void call_tiles_planar_upload_5fe0(const Regs* in, Regs* out) {
+  tilesPlanarOut(in, out, tiles_planar_upload_5fe0, 0x5FE0);
 }
 // one of the first 20 graphics (all at least one tile), anywhere low in bank $7F
 static void fuzz_tiles_planar_upload(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -1726,6 +1730,23 @@ static void fuzz_race_bands_merge(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
     ram[base + at + n] = 0;
   }
   wr16ram(ram, 0x00B4, (rnd() & 1) ? 0 : (uint16_t)rnd());
+}
+
+// ---- hdma_gradients_init ($8A:8F18) ----  the last hdma_gradient_build's exit flags (as its
+// adapter: from $152C and $1530 afterwards); registers not compared, as for that row
+static void call_hdma_gradients_init(const Regs* in, Regs* out) {
+  (void)in;
+  hdma_gradients_init();
+  uint16_t next = rd16(0x152C), step = rd16(0x1530), now = (uint16_t)(next - step);
+  out->n = false;
+  out->z = true;
+  setAdc16(out, now, step);
+  out->c = (now & 0xFF00) >= (next & 0xFF00);
+}
+static void fuzz_hdma_gradients_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x1536, (uint16_t)(rnd() % 16));
+  wr16ram(ram, DP + 0x72, (uint16_t)rnd());
 }
 
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
@@ -6221,6 +6242,12 @@ const Routine routines[] = {
   {.name = "race_bands_merge", .entry = 0x85B1FF, .end = 0x85B2B7, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_bands_merge, ALL_OUTPUTS,
    .fuzz = fuzz_race_bands_merge},
+  {.name = "tiles_planar_upload_5fe0", .entry = 0x85817B, .end = 0x858245, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_tiles_planar_upload_5fe0, ALL_OUTPUTS,
+   .fuzz = fuzz_tiles_planar_upload},
+  {.name = "hdma_gradients_init", .entry = 0x8A8F18, .end = 0x8A8FA4, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .lowWramDb = true, .fixedD = true, .call = call_hdma_gradients_init,
+   .fuzz = fuzz_hdma_gradients_init},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

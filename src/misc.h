@@ -688,6 +688,14 @@ void sprite_slots_six(void);
 // together), bits 2 and 3 to planes 2 and 3 (bytes 16-31). D+$14..$33 hold the tile
 // being built. Then the whole graphic goes to VRAM word $6FE0 (upload_vram_now).
 void tiles_planar_upload(uint16_t offset, uint16_t x);
+// $85:817B: the same, byte for byte but its own loop's address, to VRAM word $5FE0.
+void tiles_planar_upload_5fe0(uint16_t offset, uint16_t x);
+
+// $8A:8F18: the HDMA gradient tables. Their headers at $7E:2C00 ($FF and $7E:2800, $FF and
+// $7E:2A00, then 0); then three hdma_gradient_build runs into $7E:2000 + D+$6C (from 0):
+// all zero colours with patterns 0; colours 0, 0 and the word at $8A:934B + 8 * $1536; and
+// with patterns 1, the words at $8A:934B and $8A:934D + 8 * $1536 and D+$72.
+void hdma_gradients_init(void);
 
 // $82:A1D3: the track's backdrop (D = `dp`). Unpacks $98:9FEB to $7F:0000 (decompress);
 // with k = 4 * (the byte at $84:A66C + $047B): $1F28/$1F2A = the pair at $85:A33A + k;

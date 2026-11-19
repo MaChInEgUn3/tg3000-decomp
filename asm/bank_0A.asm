@@ -35,7 +35,7 @@ CODE_8A803B:
     lda.w #$0001                ; $8A8042
     jsl.l wait_frames_8a8bb6    ; $8A8045
     jsr.w $8768                 ; $8A8049
-    jsl.l $8A8F18               ; $8A804C
+    jsl.l hdma_gradients_init   ; $8A804C
     jsl.l clear_dp_scratch      ; $8A8050
     jsl.l func_8A8EEF           ; $8A8054
     jsr.w $8828                 ; $8A8058
@@ -1207,6 +1207,7 @@ CODE_8A8F0D:
     dex                         ; $8A8F14
     bne CODE_8A8F0D             ; $8A8F15
     rtl                         ; $8A8F17
+hdma_gradients_init:
     sep.b #$20                  ; $8A8F18
     rep.b #$10                  ; $8A8F1A
     lda.b #$FF                  ; $8A8F1C

@@ -2025,8 +2025,15 @@ void sprite_slots_six(void) {
   }
 }
 
+static void tiles_planar_to(uint16_t offset, uint16_t x, uint16_t vram);
+
 // TG3000_ROUTINE($8A:8CB7) tiles_planar_upload
-void tiles_planar_upload(uint16_t offset, uint16_t x) {
+void tiles_planar_upload(uint16_t offset, uint16_t x) { tiles_planar_to(offset, x, 0x6FE0); }
+
+// TG3000_ROUTINE($85:817B) tiles_planar_upload_5fe0
+void tiles_planar_upload_5fe0(uint16_t offset, uint16_t x) { tiles_planar_to(offset, x, 0x5FE0); }
+
+static void tiles_planar_to(uint16_t offset, uint16_t x, uint16_t vram) {
   wr16(DP + 0x38, offset);
   const uint16_t size = bus_rd16(0x83851B + (uint32_t)x);  // DB = $83 at entry
   wr16(DP + 0x3C, (uint16_t)(size >> 5));  // tiles
@@ -2053,7 +2060,7 @@ void tiles_planar_upload(uint16_t offset, uint16_t x) {
     wr16(DP + 0x3C, (uint16_t)(rd16(DP + 0x3C) - 1));
   } while(rd16(DP + 0x3C) != 0);
   wr16(DP + 0x14, 0x007F);
-  upload_vram_now(0x6FE0, 0x7F, (uint16_t)(bus_rd16(0x8384B1 + (uint32_t)x) + rd16(DP + 0x38)), size);
+  upload_vram_now(vram, 0x7F, (uint16_t)(bus_rd16(0x8384B1 + (uint32_t)x) + rd16(DP + 0x38)), size);
 }
 
 // TG3000_ROUTINE($82:A1D3) track_backdrop_load
@@ -2162,4 +2169,34 @@ uint16_t race_bands_merge(void) {
       break;
     }
   }
+}
+
+// TG3000_ROUTINE($8A:8F18) hdma_gradients_init
+void hdma_gradients_init(void) {
+  wr8(0x2C00, 0xFF);
+  wr8(0x2C03, 0xFF);
+  wr8(0x2C06, 0x00);
+  wr16(0x2C01, 0x2800);
+  wr16(0x2C04, 0x2A00);
+  wr16(DP + 0x68, 0x2000);
+  wr16(DP + 0x6A, 0x007E);
+  wr16(DP + 0x6C, 0x0000);
+  wr16(DP + 0x3A, 0);
+  wr16(DP + 0x3C, 0);
+  wr16(DP + 0x34, 0);
+  wr16(DP + 0x36, 0);
+  wr16(DP + 0x38, 0);
+  hdma_gradient_build();
+  uint32_t x = (uint16_t)(rd16(0x1536) << 3);
+  wr16(DP + 0x34, 0);
+  wr16(DP + 0x36, 0);
+  wr16(DP + 0x38, bus_rd16(0x8A934B + x));
+  hdma_gradient_build();
+  wr16(DP + 0x3A, 1);
+  wr16(DP + 0x3C, 1);
+  x = (uint16_t)(rd16(0x1536) << 3);
+  wr16(DP + 0x34, bus_rd16(0x8A934B + x));
+  wr16(DP + 0x36, bus_rd16(0x8A934D + x));
+  wr16(DP + 0x38, rd16(DP + 0x72));
+  hdma_gradient_build();
 }
