@@ -391,3 +391,4 @@
 80F549 upload_slice_13 src/video_dma.c a814991acbfc41bc 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c a814991acbfc41bc 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c a814991acbfc41bc 1 500 20/20 verified live-flags:NVZC replayed:0
+80FA5B window_curve_build src/line_tables.c 1ba52cbfbf2972e6 63 500 71/71 verified live-flags:NVZC replayed:0

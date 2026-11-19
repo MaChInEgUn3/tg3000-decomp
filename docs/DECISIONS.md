@@ -1789,6 +1789,21 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A curved line table (roots-46, 2026-11-19)
+
+**`window_curve_build` ($80:FA5B):** a two-edge line table at `$1500`, likely a window
+for HDMA (to be confirmed when the HDMA side is ported).
+- Called from `$80:F687` and `$80:F6E5`.
+- The step `$A000 / r` (r = `$0142`) comes from the CPU divider. The C models its `$FFFF`
+  for a divisor of 0.
+- Each line's edges are `$7F - t` and `$7E + t`, clamped. t comes from the PPU multiplier:
+  bits 8-15 of the word at `$81:DA4C`/`$DACC` times the signed r.
+- The C sets matrix A and B as the original leaves them. B takes r over the latch, which
+  holds the high byte just written, as in `draw_meter`.
+- Once the position passes `$8000`, the rest of the lines are `$FF`, `$00`. The table is
+  mirrored below, with `$DD` line counts and a 0 end.
+- Live 63/63, fuzz 500/500, paths 71/71, first try.
+
 ## The title stars drawn (roots-45, 2026-11-19)
 
 **`stars_draw` ($80:F950) and `stars_draw_8a` ($8A:9773):** the title's 128 stars drawn

@@ -12699,7 +12699,7 @@ CODE_80F644:
     sta.b $30                   ; $80F680
     lda.w #$0800                ; $80F682
     sta.b $36                   ; $80F685
-    jsr.w $FA5B                 ; $80F687
+    jsr.w window_curve_build    ; $80F687
 CODE_80F68A:
     lda.b $40                   ; $80F68A
     and.w #$FFFE                ; $80F68C
@@ -12748,7 +12748,7 @@ CODE_80F6DB:
     jsr.w $FAEE                 ; $80F6DD
     lda.w #$0800                ; $80F6E0
     sta.b $36                   ; $80F6E3
-    jsr.w $FA5B                 ; $80F6E5
+    jsr.w window_curve_build    ; $80F6E5
     lda.b $42                   ; $80F6E8
     cmp.w #$003F                ; $80F6EA
     bne CODE_80F6FB             ; $80F6ED
@@ -13177,6 +13177,7 @@ star_spawn:
     lda.w #$7F00                ; $80FA54
     sta.w $0F04,y               ; $80FA57
     rts                         ; $80FA5A
+window_curve_build:
     stz.b $14                   ; $80FA5B
     stz.b $16                   ; $80FA5D
     lda.w #$A000                ; $80FA5F

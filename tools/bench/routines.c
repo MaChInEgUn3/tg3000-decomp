@@ -2591,6 +2591,27 @@ static void fuzz_stars_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x80, (uint16_t)rnd());
 }
 
+// ---- window_curve_build ($80:FA5B) ----  A = $DD under the high byte of the last word
+// copied ($1503), X = 0, Y = $170, N set Z clear (LDA #$DD); C = the position past $8000
+// (the CMP that ended the lines, or clear when they ran out first); V of the last add
+static void call_window_curve_build(const Regs* in, Regs* out) {
+  (void)in;
+  window_curve_build();
+  const uint16_t p = rd16(DP + 0x14), q = rd16(DP + 0x17), prev = (uint16_t)(p - q);
+  out->a = (uint16_t)(rd8(0x1504) << 8 | 0xDD);
+  out->x = 0;
+  out->y = 0x0170;
+  out->n = true;
+  out->z = false;
+  out->c = p >= 0x8000;
+  out->v = ((prev ^ p) & (q ^ p) & 0x8000) != 0;
+}
+// any r (0: the divider's $FFFF; negative: a signed product), small ones often
+static void fuzz_window_curve_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  ram[DP + 0x42] = (uint8_t)((rnd() & 1) ? rnd() % 0x10 : rnd());
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7161,6 +7182,8 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_stars_draw, ALL_OUTPUTS, .fuzz = fuzz_stars_draw},
   {.name = "stars_draw_8a", .entry = 0x8A9773, .end = 0x8A9863, .source = "src/stars.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_stars_draw_8a, ALL_OUTPUTS, .fuzz = fuzz_stars_draw},
+  {.name = "window_curve_build", .entry = 0x80FA5B, .end = 0x80FAEE, .source = "src/line_tables.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_window_curve_build, ALL_OUTPUTS, .fuzz = fuzz_window_curve_build},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
