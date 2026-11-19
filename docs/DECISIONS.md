@@ -1789,6 +1789,26 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The next track and the results reset; a full run (roots-31, 2026-11-19)
+
+- **`track_next` ($84:A41B, `JSL`):** the next track in the variant's order.
+  - The orders: variant `$100` uses the list at `$8A:CADE`, `$200` the one at `$8A:CB01`,
+    and the rest (0 and `$300`) the one at `$8A:CAC4`. That last path never ran (30 bytes
+    at `$84:A42D`, now static code).
+  - It finds the first byte equal to `$0444` (a 16-bit compare of the byte) and takes the
+    one after it.
+  - The search has no bound, so the fuzz draws `$0444` from the list itself.
+- **`results_init` ($84:A4ED, `JSL`):** the results reset.
+  - `$0444` = 0. Three `MVN`s (destination bank `$81`, source `$83`, the order `54 dd ss`
+    noted in roots-18) copy `$83:85AB` to `$0368`, `$83:85D1` to `$038E` and `$83:8600` to
+    `$03BD`.
+  - The ten words at `$0446` become `$0100`, `$0302`, and so on, and `$036C` = 0.
+  - With bit 1 of `$03E2` it also sets eight item bytes of both players to 1 (`$0398`-`$039C`,
+    `$03C7`-`$03CB`). That never runs in the movies (30 bytes at `$84:A534`, now static
+    code).
+- **Full gate.** Four incremental commits had passed since the last full run, so this unit
+  goes through `verify_all.sh`.
+
 ## The player's name and car blocks to $7F:2000 (roots-30, 2026-11-19)
 
 - **`name_copy_7f2000` ($80:E8CE):** the player's name (bytes at `$037E` + D+`$94`, up to

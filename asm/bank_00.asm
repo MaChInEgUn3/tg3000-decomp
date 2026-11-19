@@ -1103,13 +1103,13 @@ oam_finish_near:
     bra CODE_808A1F             ; $808A02
     incbin !baserom:$A04..$A1F
 CODE_808A1F:
-    jsl.l $84A4ED               ; $808A1F
+    jsl.l results_init          ; $808A1F
     jsl.l $80FC2A               ; $808A23
     jsl.l $808199               ; $808A27
     lda.w $03DC                 ; $808A2B
     bit.w #$5000                ; $808A2E
     bne CODE_808A37             ; $808A31
-    jsl.l $84A4ED               ; $808A33
+    jsl.l results_init          ; $808A33
 CODE_808A37:
     lda.w #$8000                ; $808A37
     trb.w $03DC                 ; $808A3A
@@ -1174,7 +1174,7 @@ CODE_808B12:
     jsl.l $80FBDC               ; $808B16
     lda.w $047B                 ; $808B1A
     jsl.l $80FBA5               ; $808B1D
-    jsl.l $84A41B               ; $808B21
+    jsl.l track_next            ; $808B21
     lda.w $0444                 ; $808B25
     cmp.w #$00FF                ; $808B28
     db $F0,$32 ; beq            ; $808B2B

@@ -766,4 +766,15 @@ void car_blocks_7f2000(uint16_t* x, uint16_t* y);
 // $80:E911: the one block $81:D3F1 + 2 * car points at (car $13 when negative, never run).
 void car_block_7f2000(uint16_t* x, uint16_t* y);
 
+// $84:A41B: the next track ($0444) in the variant's order (bits 8-9 of $03DC: $100 the
+// list at $8A:CADE, $200 at $8A:CB01, else at $8A:CAC4, never run): the byte after the
+// first one equal to $0444. Returns the index of that byte.
+uint16_t track_next(void);
+
+// $84:A4ED: the results reset. $0444 = 0; $16 bytes from $83:85AB to $0368, $0F from
+// $83:85D1 to $038E and from $83:8600 to $03BD (MVN); the ten words at $0446 = $0100,
+// $0302, ... (+$202 each); $036C = 0. With bit 1 of $03E2 (never run): the bytes $0398,
+// $0399, $039A, $039C, $03C7, $03C8, $03C9, $03CB = 1.
+void results_init(void);
+
 #endif

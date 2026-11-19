@@ -1936,6 +1936,49 @@ static void fuzz_car_blocks(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->x = (uint16_t)(rnd() % 0x4000);
 }
 
+// ---- track_next ($84:A41B) ----  A = the new $0444 (N Z of its AND), X = its index, C
+// set (the CMP that matched), V as on entry
+static void call_track_next(const Regs* in, Regs* out) {
+  (void)in;
+  out->x = track_next();
+  out->a = rd16(0x0444);
+  setNZ16(out, out->a);
+  out->c = true;
+}
+// every variant, $0444 one of the first 20 tracks of its list
+static void fuzz_track_next(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t v = (uint16_t)rnd();
+  wr16ram(ram, 0x03DC, v);
+  uint32_t list = (v & 0x0300) == 0x0100 ? 0x8ACADE : (v & 0x0300) == 0x0200 ? 0x8ACB01 : 0x8ACAC4;
+  wr16ram(ram, 0x0444, rom8(list + rnd() % 20));
+}
+
+// ---- results_init ($84:A4ED) ----  X = $14, Y = 0, DB = $81 (the MVNs'); A = $03E2 (N of
+// its LDA, Z of the BIT #2), C V clear (the last ADC #$202); with bit 1, A's low byte = 1
+// (N Z clear)
+static void call_results_init(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t f = rd16(0x03E2);
+  results_init();
+  out->x = 0x0014;
+  out->y = 0;
+  out->db = 0x81;
+  out->c = out->v = false;
+  if(f & 0x0002) {
+    out->a = (uint16_t)((f & 0xFF00) | 0x01);
+    out->n = out->z = false;
+  } else {
+    out->a = f;
+    out->n = (f & 0x8000) != 0;
+    out->z = true;
+  }
+}
+static void fuzz_results_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x03E2, (uint16_t)rnd());
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6453,6 +6496,10 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_car_blocks_7f2000, ALL_OUTPUTS, .fuzz = fuzz_car_blocks},
   {.name = "car_block_7f2000", .entry = 0x80E911, .end = 0x80E925, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_car_block_7f2000, ALL_OUTPUTS, .fuzz = fuzz_car_blocks},
+  {.name = "track_next", .entry = 0x84A41B, .end = 0x84A487, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_track_next, ALL_OUTPUTS, .fuzz = fuzz_track_next},
+  {.name = "results_init", .entry = 0x84A4ED, .end = 0x84A553, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_results_init, ALL_OUTPUTS, .fuzz = fuzz_results_init},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

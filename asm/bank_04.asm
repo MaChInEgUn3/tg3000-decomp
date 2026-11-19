@@ -125,14 +125,29 @@ CODE_84A410:
 CODE_84A419:
     cld                         ; $84A419
     rtl                         ; $84A41A
+track_next:
     lda.w $03DC                 ; $84A41B
     and.w #$0300                ; $84A41E
-    db $F0,$0A ; beq            ; $84A421
+    beq CODE_84A42D             ; $84A421
     cmp.w #$0100                ; $84A423
     beq CODE_84A44B             ; $84A426
     cmp.w #$0200                ; $84A428
     beq CODE_84A469             ; $84A42B
-    incbin !baserom:$2242D..$2244B
+CODE_84A42D:
+    ldx.w #$0000                ; $84A42D static
+CODE_84A430:
+    lda.l $8ACAC4,x             ; $84A430 static
+    and.w #$00FF                ; $84A434 static
+    cmp.w $0444                 ; $84A437 static
+    beq CODE_84A43F             ; $84A43A static
+    inx                         ; $84A43C static
+    bra CODE_84A430             ; $84A43D static
+CODE_84A43F:
+    inx                         ; $84A43F static
+    lda.l $8ACAC4,x             ; $84A440 static
+    and.w #$00FF                ; $84A444 static
+    sta.w $0444                 ; $84A447 static
+    rtl                         ; $84A44A static
 CODE_84A44B:
     ldx.w #$0000                ; $84A44B
 CODE_84A44E:
@@ -189,6 +204,7 @@ wait_03e0:
     bne wait_03e0               ; $84A4D1
     rtl                         ; $84A4D3
     incbin !baserom:$224D4..$224ED
+results_init:
     stz.w $0444                 ; $84A4ED
     ldx.w #$85AB                ; $84A4F0
     ldy.w #$0368                ; $84A4F3
@@ -217,7 +233,17 @@ CODE_84A51D:
     lda.w $03E2                 ; $84A52C
     bit.w #$0002                ; $84A52F
     beq CODE_84A552             ; $84A532
-    incbin !baserom:$22534..$22552
+    sep.b #$20                  ; $84A534 static
+    lda.b #$01                  ; $84A536 static
+    sta.w $0398                 ; $84A538 static
+    sta.w $0399                 ; $84A53B static
+    sta.w $039A                 ; $84A53E static
+    sta.w $039C                 ; $84A541 static
+    sta.w $03C7                 ; $84A544 static
+    sta.w $03C8                 ; $84A547 static
+    sta.w $03C9                 ; $84A54A static
+    sta.w $03CB                 ; $84A54D static
+    rep.b #$20                  ; $84A550 static
 CODE_84A552:
     rtl                         ; $84A552
     incbin !baserom:$22553..$28000

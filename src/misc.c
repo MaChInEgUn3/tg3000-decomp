@@ -2373,3 +2373,32 @@ void car_block_7f2000(uint16_t* x, uint16_t* y) {
   *y = rom16(0x81D3F1 + (uint32_t)(uint16_t)(car << 1));
   block_copy_7f2000(x, y);
 }
+
+// TG3000_ROUTINE($84:A41B) track_next
+uint16_t track_next(void) {
+  uint32_t list;
+  switch(rd16(0x03DC) & 0x0300) {
+    case 0x0100: list = 0x8ACADE; break;
+    case 0x0200: list = 0x8ACB01; break;
+    default:     list = 0x8ACAC4; break;
+  }
+  uint16_t x = 0;
+  while(bus_rd8(list + x) != rd16(0x0444)) x = (uint16_t)(x + 1);  // a 16-bit compare
+  x = (uint16_t)(x + 1);
+  wr16(0x0444, bus_rd8(list + x));
+  return x;
+}
+
+// TG3000_ROUTINE($84:A4ED) results_init
+void results_init(void) {
+  wr16(0x0444, 0);
+  for(uint16_t i = 0; i < 0x16; i++) wr8(0x0368 + i, rom8(0x8385AB + i));
+  for(uint16_t i = 0; i < 0x0F; i++) wr8(0x038E + i, rom8(0x8385D1 + i));
+  for(uint16_t i = 0; i < 0x0F; i++) wr8(0x03BD + i, rom8(0x838600 + i));
+  for(uint16_t i = 0, v = 0x0100; i < 10; i++, v = (uint16_t)(v + 0x0202)) wr16(0x0446 + 2u * i, v);
+  wr16(0x036C, 0);
+  if(rd16(0x03E2) & 0x0002) {
+    static const uint16_t items[8] = {0x0398, 0x0399, 0x039A, 0x039C, 0x03C7, 0x03C8, 0x03C9, 0x03CB};
+    for(int i = 0; i < 8; i++) wr8(items[i], 0x01);
+  }
+}
