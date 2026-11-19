@@ -850,4 +850,13 @@ uint16_t track_snap(bool* overflow);
 // as given. The cooldown path never runs in the movies.
 bool effect_request_p1(uint16_t a, uint16_t x, uint16_t y);
 
+// $8A:8600: a 5x3 block of tiles from $7E:8000 + `x` (words, row by row) written straight
+// to VRAM at $0496, $0516 and $0596 (video_write_vram_word). Never run in the movies.
+void anim_tiles_put(uint16_t x);
+
+// $8A:85AF: a tile animation by D+$42 (0, the movies' only case: nothing). 1: D+$40 counts
+// 0-7 and frames $5A, $78, $3C show at 1, 3, 5; else: D+$40 counts 0-15 and the frame is 0
+// or $1E by its bit 1 (anim_tiles_put).
+void tile_anim_step(void);
+
 #endif

@@ -2409,6 +2409,46 @@ static void fuzz_effect_request_p1(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
   r->a = (uint16_t)rnd();
 }
 
+// ---- tile_anim_step ($8A:85AF) ----  D+$42 = 0: A = 0 (Z set, N clear). A frame shown: A =
+// its last word (N Z of the LDA), X = the frame, C set (the CMP that chose it, or mode > 1).
+// Mode 1 without a frame: A = the count, flags of its CMP #5. V as on entry
+static void call_tile_anim_step(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t mode = rd16(DP + 0x42), f = rd16(DP + 0x40);
+  tile_anim_step();
+  if(mode == 0) {
+    out->a = 0;
+    out->n = false;
+    out->z = true;
+    return;
+  }
+  uint16_t frame = 0xFFFF;
+  if(mode == 1) {
+    f = (uint16_t)((f + 1) & 7);
+    frame = f == 1 ? 0x005A : f == 3 ? 0x0078 : f == 5 ? 0x003C : 0xFFFF;
+    if(frame == 0xFFFF) {
+      out->a = f;
+      out->c = f >= 5;
+      setNZ16(out, (uint16_t)(f - 5));
+      return;
+    }
+  } else {
+    f = (uint16_t)((f + 1) & 0x0F);
+    frame = (f & 2) ? 0x0000 : 0x001E;
+  }
+  out->x = frame;
+  out->a = rd16(0x8000 + (uint32_t)(uint16_t)(frame + 0x1C));
+  setNZ16(out, out->a);
+  out->c = true;
+}
+// every mode and count; the frames' words
+static void fuzz_tile_anim_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x42, (uint16_t)(rnd() % 4 == 0 ? 0 : rnd() % 4 == 0 ? 1 : 1 + rnd() % 5));
+  wr16ram(ram, DP + 0x40, (uint16_t)rnd());
+  for(int i = 0; i < 0xA0; i++) ram[0x8000 + i] = (uint8_t)rnd();
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6962,6 +7002,8 @@ const Routine routines[] = {
   {.name = "effect_request_p1", .entry = 0x81F48B, .end = 0x81F4AD, .alsoIn = {{0x81F4AD, 0x81F4AF}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_effect_request_p1,
    ALL_OUTPUTS, .fuzz = fuzz_effect_request_p1},
+  {.name = "tile_anim_step", .entry = 0x8A85AF, .end = 0x8A867C, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_tile_anim_step, ALL_OUTPUTS, .fuzz = fuzz_tile_anim_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -98,7 +98,7 @@ CODE_8A803B:
     beq CODE_8A8142             ; $8A80F6
     incbin !baserom:$500F8..$50142
 CODE_8A8142:
-    jsr.w $85AF                 ; $8A8142
+    jsr.w tile_anim_step        ; $8A8142
     lda.w #$0002                ; $8A8145
     tsb.w $0026                 ; $8A8148
     jsr.w $82C0                 ; $8A814B
@@ -312,12 +312,87 @@ func_8A8325:
     sta.w $0700                 ; $8A8338
     rts                         ; $8A833B
     incbin !baserom:$5033C..$505AF
+tile_anim_step:
     lda.b $42                   ; $8A85AF
     beq CODE_8A85CB             ; $8A85B1
-    incbin !baserom:$505B3..$505CB
+    cmp.w #$0001                ; $8A85B3 static
+    beq CODE_8A85D3             ; $8A85B6 static
+    lda.b $40                   ; $8A85B8 static
+    inc a                       ; $8A85BA static
+    and.w #$000F                ; $8A85BB static
+    sta.b $40                   ; $8A85BE static
+    and.w #$0002                ; $8A85C0 static
+    beq CODE_8A85CC             ; $8A85C3 static
+    ldx.w #$0000                ; $8A85C5 static
+    jsr.w anim_tiles_put        ; $8A85C8 static
 CODE_8A85CB:
     rts                         ; $8A85CB
-    incbin !baserom:$505CC..$5067C
+CODE_8A85CC:
+    ldx.w #$001E                ; $8A85CC static
+    jsr.w anim_tiles_put        ; $8A85CF static
+    rts                         ; $8A85D2 static
+CODE_8A85D3:
+    lda.b $40                   ; $8A85D3 static
+    inc a                       ; $8A85D5 static
+    and.w #$0007                ; $8A85D6 static
+    sta.b $40                   ; $8A85D9 static
+    cmp.w #$0001                ; $8A85DB static
+    beq CODE_8A85EB             ; $8A85DE static
+    cmp.w #$0003                ; $8A85E0 static
+    beq CODE_8A85F2             ; $8A85E3 static
+    cmp.w #$0005                ; $8A85E5 static
+    beq CODE_8A85F9             ; $8A85E8 static
+    rts                         ; $8A85EA static
+CODE_8A85EB:
+    ldx.w #$005A                ; $8A85EB static
+    jsr.w anim_tiles_put        ; $8A85EE static
+    rts                         ; $8A85F1 static
+CODE_8A85F2:
+    ldx.w #$0078                ; $8A85F2 static
+    jsr.w anim_tiles_put        ; $8A85F5 static
+    rts                         ; $8A85F8 static
+CODE_8A85F9:
+    ldx.w #$003C                ; $8A85F9 static
+    jsr.w anim_tiles_put        ; $8A85FC static
+    rts                         ; $8A85FF static
+anim_tiles_put:
+    lda.w #$0496                ; $8A8600 static
+    sta.w $2116                 ; $8A8603 static
+    lda.l $7E8000,x             ; $8A8606 static
+    sta.w $2118                 ; $8A860A static
+    lda.l $7E8002,x             ; $8A860D static
+    sta.w $2118                 ; $8A8611 static
+    lda.l $7E8004,x             ; $8A8614 static
+    sta.w $2118                 ; $8A8618 static
+    lda.l $7E8006,x             ; $8A861B static
+    sta.w $2118                 ; $8A861F static
+    lda.l $7E8008,x             ; $8A8622 static
+    sta.w $2118                 ; $8A8626 static
+    lda.w #$0516                ; $8A8629 static
+    sta.w $2116                 ; $8A862C static
+    lda.l $7E800A,x             ; $8A862F static
+    sta.w $2118                 ; $8A8633 static
+    lda.l $7E800C,x             ; $8A8636 static
+    sta.w $2118                 ; $8A863A static
+    lda.l $7E800E,x             ; $8A863D static
+    sta.w $2118                 ; $8A8641 static
+    lda.l $7E8010,x             ; $8A8644 static
+    sta.w $2118                 ; $8A8648 static
+    lda.l $7E8012,x             ; $8A864B static
+    sta.w $2118                 ; $8A864F static
+    lda.w #$0596                ; $8A8652 static
+    sta.w $2116                 ; $8A8655 static
+    lda.l $7E8014,x             ; $8A8658 static
+    sta.w $2118                 ; $8A865C static
+    lda.l $7E8016,x             ; $8A865F static
+    sta.w $2118                 ; $8A8663 static
+    lda.l $7E8018,x             ; $8A8666 static
+    sta.w $2118                 ; $8A866A static
+    lda.l $7E801A,x             ; $8A866D static
+    sta.w $2118                 ; $8A8671 static
+    lda.l $7E801C,x             ; $8A8674 static
+    sta.w $2118                 ; $8A8678 static
+    rts                         ; $8A867B static
 rotation_from_angle:
     lda.b $34                   ; $8A867C
     lsr a                       ; $8A867E

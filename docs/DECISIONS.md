@@ -1789,6 +1789,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A tile animation that never runs (roots-40, 2026-11-19)
+
+- **`tile_anim_step` ($8A:85AF):** 785 entries in the 60k movie, all with D+`$42` = 0, where
+  it does nothing.
+  - Mode 1: D+`$40` counts 0-7, and frames `$5A`, `$78` and `$3C` show at 1, 3 and 5.
+  - Other modes: D+`$40` counts 0-15, and the frame is 0 or `$1E` by its bit 1.
+- **`anim_tiles_put` ($8A:8600):** a 5x3 block of tile words from `$7E:8000` + frame,
+  written straight to VRAM at `$0496`, `$0516` and `$0596` (`$2116`/`$2118`, through
+  `video_write_vram_word`).
+- **Never-run code.** Everything past the mode-0 check (200 bytes, `$8A:85B3`-`$8A:867C`)
+  was unknown in the map and is now static code. Its branches past the routine's `RTS`
+  stay inside that block, so the row's extent covers it.
+- **Exit.** A = the frame's last word with X = the frame; or, in mode 1 with no frame, the
+  count with its `CMP #5`'s flags.
+- **Full gate.** Four incremental commits had passed since the last full run.
+
 ## Player 1's effect request (roots-39, 2026-11-19)
 
 - **`effect_request_p1` ($81:F48B):** `func_83FE9A` for player 1's car, its cooldown at

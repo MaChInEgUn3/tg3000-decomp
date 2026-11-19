@@ -81,3 +81,5 @@
 8A:C355 8A:C379 m16x16 ; money_skip_bonus: + 75,000 to both players' money with $03DC bit 12 (never run)
 81:F496 81:F4A2 m16x16 ; effect_request_p1: the cooldown (never run)
 81:F4AD 81:F4AF m16x16 ; effect_request_p1: PLA, RTS when the cooldown keeps the request (never run)
+8A:85B3 8A:85CB m16x16 ; tile_anim_step: the animation (D+$42 set; never run)
+8A:85CC 8A:867C m16x16 ; tile_anim_step's frames and anim_tiles_put, 5x3 VRAM words (never run)

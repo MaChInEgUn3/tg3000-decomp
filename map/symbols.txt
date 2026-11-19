@@ -399,3 +399,5 @@ func    808199   save_data_seal      ; the saved data's checksum at $0366, copie
 func    8AC2DD   track_snap          ; $0444 to the first track of the variant's list at or above it -> src/misc.c
 func    8AC355   money_skip_bonus    ; + 75,000 to both players' money with $03DC bit 12 (never run) -> src/misc.c
 func    81F48B   effect_request_p1   ; func_83FE9A for player 1's car (cooldown $0223) -> src/misc.c
+func    8A85AF   tile_anim_step      ; a tile animation by D+$42 (only 0 in the movies) -> src/misc.c
+func    8A8600   anim_tiles_put      ; a 5x3 block of tiles straight to VRAM $0496/$0516/$0596 -> src/misc.c

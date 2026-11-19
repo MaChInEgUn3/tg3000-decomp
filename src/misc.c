@@ -2622,3 +2622,28 @@ uint16_t track_snap(bool* overflow) {
 
 // TG3000_ROUTINE($81:F48B) effect_request_p1
 bool effect_request_p1(uint16_t a, uint16_t x, uint16_t y) { return func_83FE9A(0x0200, a, x, y); }
+
+// TG3000_ROUTINE($8A:8600) anim_tiles_put
+void anim_tiles_put(uint16_t x) {
+  static const uint16_t rows[3] = {0x0496, 0x0516, 0x0596};
+  for(uint32_t r = 0; r < 3; r++)
+    for(uint32_t k = 0; k < 5; k++)
+      video_write_vram_word((uint16_t)(rows[r] + k), rd16(0x8000 + (uint32_t)(uint16_t)(x + 2 * (5 * r + k))));
+}
+
+// TG3000_ROUTINE($8A:85AF) tile_anim_step
+void tile_anim_step(void) {
+  const uint16_t mode = rd16(DP + 0x42);
+  if(mode == 0) return;
+  if(mode == 1) {
+    const uint16_t f = (uint16_t)((rd16(DP + 0x40) + 1) & 0x0007);
+    wr16(DP + 0x40, f);
+    if(f == 1) anim_tiles_put(0x005A);
+    else if(f == 3) anim_tiles_put(0x0078);
+    else if(f == 5) anim_tiles_put(0x003C);
+    return;
+  }
+  const uint16_t f = (uint16_t)((rd16(DP + 0x40) + 1) & 0x000F);
+  wr16(DP + 0x40, f);
+  anim_tiles_put((f & 0x0002) ? 0x0000 : 0x001E);
+}
