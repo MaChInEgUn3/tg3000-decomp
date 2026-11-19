@@ -50,6 +50,7 @@ typedef struct {
 
 typedef struct {
   unsigned long entries, samples, pass, fail, interrupted, abandoned, fuzzPass, fuzzFail, fuzzRequested;
+  unsigned long replayPass, replayFail, replayRequested;  // interrupted entries run again (see Replay)
   bool contractBroken;
   Contract contracts[MAX_CONTRACTS];
   int contractCount;
@@ -77,7 +78,7 @@ static Stats* stats;
 // Samples in progress, innermost last: a registered routine called from inside another
 // one's sample gets its own sample too (it would otherwise never be sampled once its
 // callers are registered).
-#define MAX_DEPTH 4
+#define MAX_DEPTH 8
 #define MAX_EFFECTS 128
 typedef struct { int kind; uint32_t target, src, size; } Effect;
 
@@ -144,9 +145,30 @@ typedef struct {
   uint8_t chanWritten[8], chanPrepared[8], chanVal[8][8];
   uint16_t cgPtrEntry;
   bool m7Latch, scrollLatch, scrollLatch2;  // latch bytes written inside the sample
+  int replaySlot;  // the entry state kept in case an interrupt drops the sample, or -1
 } Sample;
 
 static Sample samples[MAX_DEPTH];
+
+// Replays. A live sample an interrupt lands in is dropped (the handler changes memory the C
+// does not model). While a routine has no completed live sample yet, its entry states
+// (WRAM, PPU, DMA, registers) are kept, at most REPLAYS_PER_ROUTINE; the ones whose sample
+// an interrupt dropped are run again in the fuzz phase, from that exact state with the
+// interrupts off, and compared like any sample. They are counted apart ("replayed"), not
+// as live samples: the original did not run them that way in the movie.
+#define MAX_REPLAYS 64
+#define REPLAYS_PER_ROUTINE 2
+typedef struct {
+  bool used, kept;  // taken by a sample; kept: its sample was dropped by an interrupt
+  int idx;
+  Regs regs;
+  bool decimal;
+  uint8_t ram[TG3000_WRAM_SIZE];
+  Ppu ppu;
+  Dma dma;
+} Replay;
+static Replay* replays;
+static bool replaying;
 
 static uint8_t sampleRam[MAX_DEPTH][TG3000_WRAM_SIZE];  // WRAM at each sample's entry
 static int depth;
@@ -1022,6 +1044,7 @@ static void finishSample(int k, const Cpu* cpu) {
     if(!owner || irqOverflow || irqActive) { s->abandoned++; return; }
   } else if(cpu_interruptCount != smp->interruptsAtEntry) {
     s->interrupted++;
+    if(smp->replaySlot >= 0) replays[smp->replaySlot].kept = true;  // run it again later
     return;
   }
   char why[320] = "";
@@ -1073,7 +1096,8 @@ static void finishSample(int k, const Cpu* cpu) {
     if(s->firstFlagFailure[f][0] == '\0') {
       bool orig = f == 0 ? after.n : f == 1 ? after.v : f == 2 ? after.z : after.c;
       snprintf(s->firstFlagFailure[f], sizeof s->firstFlagFailure[f], "%s%c: original %d, C %d (D=%04X A=%04X)",
-        fuzzing ? "fuzz " : "", flagNames[f], (int)orig, (int)!orig, smp->entryRegs.d, smp->entryRegs.a);
+        replaying ? "replay " : fuzzing ? "fuzz " : "", flagNames[f], (int)orig, (int)!orig, smp->entryRegs.d,
+        smp->entryRegs.a);
     }
   }
   Watch* w = &watches[idx];
@@ -1081,17 +1105,35 @@ static void finishSample(int k, const Cpu* cpu) {
     *w = (Watch){true, FN | FV | FZ | FC, 0, cpu_interruptCount, -1};
     s->watched++;
   }
-  if(fuzzing) { if(ok) s->fuzzPass++; else s->fuzzFail++; }
+  if(replaying) { if(ok) s->replayPass++; else s->replayFail++; }
+  else if(fuzzing) { if(ok) s->fuzzPass++; else s->fuzzFail++; }
   else { s->samples++; if(ok) s->pass++; else s->fail++; if(ok && smp->foreignStack) s->foreignStack++; }
   if(!ok && s->firstFailure[0] == '\0') {
     snprintf(s->firstFailure, sizeof s->firstFailure, "%s%s at D=%04X A=%04X X=%04X Y=%04X: %s",
-      fuzzing ? "fuzz " : "", table[idx].name, smp->entryRegs.d, smp->entryRegs.a, smp->entryRegs.x,
+      replaying ? "replay " : fuzzing ? "fuzz " : "", table[idx].name, smp->entryRegs.d, smp->entryRegs.a, smp->entryRegs.x,
       smp->entryRegs.y, why);
   }
 }
 
+// A slot for an entry state: free, or taken by a sample that is no longer running and was
+// not dropped by an interrupt. -1 when none (or the routine has its share).
+static int replaySlotFor(int idx) {
+  if(replays == NULL) replays = calloc(MAX_REPLAYS, sizeof *replays);
+  int mine = 0, slot = -1;
+  for(int q = 0; q < MAX_REPLAYS; q++) {
+    Replay* p = &replays[q];
+    bool active = false;
+    for(int k = 0; k < depth; k++) if(samples[k].replaySlot == q) active = true;
+    if(p->used && (p->kept || active)) { if(p->idx == idx) mine++; continue; }
+    if(slot < 0) slot = q;
+  }
+  return mine < REPLAYS_PER_ROUTINE ? slot : -1;
+}
+
 static void startSample(int idx, const Cpu* cpu) {
   const Routine* r = &table[idx];
+  int slot = -1;
+  if(!fuzzing && !r->waitsForInterrupts && !r->rti && stats[idx].samples == 0) slot = replaySlotFor(idx);
   int k = depth++;
   Sample* smp = &samples[k];
   memcpy(sampleRam[k], snes->ram, TG3000_WRAM_SIZE);
@@ -1103,6 +1145,19 @@ static void startSample(int idx, const Cpu* cpu) {
     .retSp = (uint16_t)(sp + (r->rtl ? 3 : 2)),
     .interruptsAtEntry = cpu_interruptCount,
   };
+  smp->replaySlot = slot;
+  if(slot >= 0) {
+    Replay* p = &replays[slot];
+    p->used = true;
+    p->kept = false;
+    p->idx = idx;
+    p->regs = smp->entryRegs;
+    p->regs.sp = sp;
+    p->decimal = cpu->d;
+    memcpy(p->ram, snes->ram, TG3000_WRAM_SIZE);
+    memcpy(&p->ppu, snes->ppu, sizeof p->ppu);
+    memcpy(&p->dma, snes->dma, sizeof p->dma);
+  }
   if(r->mayLeaveCaller) {  // the caller's return address, above this routine's
     smp->altRetPc = (uint16_t)((snes->ram[(uint16_t)(sp + 3)] | (snes->ram[(uint16_t)(sp + 4)] << 8)) + 1);
     smp->altRetSp = (uint16_t)(sp + 4);
@@ -1371,6 +1426,36 @@ void difftest_fuzz(int iterations) {
   for(int i = 0; i < tableCount; i++) {
     const Routine* r = &table[i];
     Stats* s = &stats[i];
+    for(int q = 0; replays != NULL && q < MAX_REPLAYS; q++) {
+      Replay* p = &replays[q];
+      if(!p->used || !p->kept || p->idx != i) continue;
+      memcpy(snes->ram, p->ram, sizeof p->ram);
+      memcpy(snes->ppu, &p->ppu, sizeof p->ppu);
+      memcpy(snes->dma, &p->dma, sizeof p->dma);
+      snes->nmiEnabled = false;
+      snes->hIrqEnabled = snes->vIrqEnabled = false;
+      for(int ch = 0; ch < 8; ch++) snes->dma->channel[ch].hdmaActive = false;
+      snes->dma->hdmaInitRequested = snes->dma->hdmaRunRequested = false;
+      dsp4_bridge_reset();
+      s->replayRequested++;
+      Cpu* cpu = snes->cpu;
+      cpu->nmiWanted = cpu->irqWanted = cpu->intWanted = false;
+      cpu->i = true;
+      cpu->d = p->decimal;
+      cpu->e = p->regs.e;
+      cpu->mf = p->regs.m8; cpu->xf = p->regs.x8;
+      cpu->a = p->regs.a; cpu->x = p->regs.x; cpu->y = p->regs.y; cpu->dp = p->regs.d; cpu->db = p->regs.db;
+      cpu->n = p->regs.n; cpu->v = p->regs.v; cpu->z = p->regs.z; cpu->c = p->regs.c;
+      cpu->sp = p->regs.sp;  // the real stack: the sample ends at the real return
+      cpu->k = r->entry >> 16;
+      cpu->pc = r->entry & 0xFFFF;
+      replaying = true;
+      startSample(i, cpu);
+      s->visited[0] = true;
+      for(int n = 0; n < MAX_INSNS && depth > 0; n++) cpu_runOpcode(cpu);
+      if(depth > 0) { depth = 0; irqOwner = -1; }  // lost: counted against it below
+      replaying = false;
+    }
     if(r->fuzz == NULL || s->contractCount == 0) continue;
     // Each routine's inputs depend only on its own entry, not on its place in the
     // registry: adding a routine must not change what the others are tested with.
@@ -1490,13 +1575,17 @@ bool difftest_report(const char* resultsPath) {
     // harness lost it, and a lost case may hide a deviation (e.g. an input on which the
     // original runs away), so it fails the routine
     unsigned long fuzzLost = s->fuzzRequested - (s->fuzzPass + s->fuzzFail);
-    bool ok = flagsOk && s->fail == 0 && s->fuzzFail == 0 && fuzzLost == 0 && (s->pass + s->fuzzPass) > 0 &&
-              seen == need && !s->contractBroken;
+    unsigned long replayLost = s->replayRequested - (s->replayPass + s->replayFail);
+    bool ok = flagsOk && s->fail == 0 && s->fuzzFail == 0 && fuzzLost == 0 && s->replayFail == 0 && replayLost == 0 &&
+              (s->pass + s->fuzzPass + s->replayPass) > 0 && seen == need && !s->contractBroken;
     const char* status = !reached ? "unreached" : ok ? "verified" : "failed";
     if(reached) allOk &= ok;  // a routine this run never reached is reported, not failed
     printf("difftest %-16s $%06X: %s  live %lu/%lu pass (%lu entries, %lu interrupted, %lu abandoned), fuzz %lu/%lu (%lu lost), paths %d/%d%s\n",
       r->name, r->entry, !reached ? "UNREACHED" : ok ? "PASS" : "FAIL", s->pass, s->samples, s->entries, s->interrupted, s->abandoned,
       s->fuzzPass, s->fuzzPass + s->fuzzFail, fuzzLost, seen, need, s->contractBroken ? ", ENTRY CONTRACT BROKEN" : "");
+    if(s->replayRequested)
+      printf("    replayed %lu/%lu interrupted entries from their entry state (%lu lost)\n", s->replayPass,
+        s->replayPass + s->replayFail, replayLost);
     for(int c = 0; c < s->contractCount; c++) {
       Contract* k = &s->contracts[c];
       printf("    entry state: D=%04X DB=%02X %s %s%s\n", k->d, k->db, k->m8 ? "m8" : "m16", k->x8 ? "x8" : "x16", k->e ? " emu" : "");
@@ -1533,8 +1622,9 @@ bool difftest_report(const char* resultsPath) {
       }
     }
     if(out != NULL && !keptRow) {
-      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s\n", r->entry, r->name, r->source,
-        (unsigned long long)verificationHash(r->source), s->pass, s->fuzzPass, seen, need, status, liveFlags);
+      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s replayed:%lu\n", r->entry, r->name, r->source,
+        (unsigned long long)verificationHash(r->source), s->pass, s->fuzzPass, seen, need, status, liveFlags,
+        s->replayPass);
     }
   }
   if(out != NULL) fclose(out);

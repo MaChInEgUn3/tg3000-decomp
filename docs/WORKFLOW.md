@@ -62,7 +62,9 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
    `build/bench/bench TG3000.sfc 9450 --movie tools/bench/movies/race1.txt --difftest map/verified.txt --fuzz 500`
    (and other movies until it is reached) and `python3 -I tools/progress.py`.
    To iterate on a few rows, add `--difftest-only name1,name2` (a scratch results file:
-   live counts differ when another row no longer owns the interrupts).
+   live counts differ when another row no longer owns the interrupts). Entries an
+   interrupt lands in are run again from their entry state in the fuzz phase
+   (`replayed N/M`, counted apart from live samples).
    Before committing, verify one of two ways:
    - `tools/verify_new.sh name1,name2` when the unit only adds lines to `src/` and
      `tools/bench/` (new routines, rows and adapters) and does not touch `difftest.c` or

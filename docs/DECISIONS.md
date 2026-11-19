@@ -1789,6 +1789,35 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Interrupted entries replayed; nesting cap 8 (2026-11-19)
+
+**Why.** An interrupt landing inside a live sample drops it, because the handler changes
+memory the C does not model. Eight verified rows had every sampled entry interrupted
+(`clear_vram`: 11 of 11), so their only evidence was fuzz on synthetic inputs. Those
+inputs overwrite the very fields that select the work, like the track number.
+
+**How replay works.**
+- While a routine has no completed live sample yet, the bench keeps its entry states:
+  WRAM, PPU, DMA, the registers and the stack pointer. At most 2 per routine, 64 in all.
+- A kept state whose sample an interrupt dropped is run again in the fuzz phase, from
+  that exact state, with interrupts off, from the real stack, so the sample ends at the
+  real return. It is compared like any sample.
+- These cases are counted apart: the report line `replayed N/M` and a `replayed:N`
+  token in `map/verified.txt`. They are not live samples, because the original did not
+  run them that way in the movie.
+- A replay that fails or is lost fails the row.
+
+**Proof that a replay can fail.** The `track_map_load` adapter was made deliberately
+wrong (one bit of `$7E:6C40` flipped), run, then put back. The row failed, with the first
+failure on a replay: `WRAM $06C40: original 7B, C 7A`.
+
+**The nesting cap.** `MAX_DEPTH` went from 4 to 8: once every early entry is sampled,
+more outer samples hold slots. `wait_frames` went back to 3,358 live samples (from
+2,629), and `star_layers_init` to 4.
+
+**Result on the eight rows.** All replays passed: 2/2 each for the six with two or more
+interrupted entries, 1/1 for the other two. The full run follows.
+
 ## Every early entry sampled; a full run (2026-11-19)
 
 **Why.** The bench compared one entry in three (`SAMPLE_STRIDE`). A routine the movies
