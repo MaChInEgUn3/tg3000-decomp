@@ -386,3 +386,4 @@ func    80E8F4   car_blocks_7f2000   ; the player's car's blocks (and block $BE)
 func    80E911   car_block_7f2000    ; the player's car's block from $81:D3F1 to $7F:2000 -> src/misc.c
 func    84A41B   track_next          ; the next track in the variant's order ($8A:CAC4/CADE/CB01) -> src/misc.c
 func    84A4ED   results_init        ; the results reset: tables from bank $83, $0446 words -> src/misc.c
+func    84A388   prize_money_award   ; the prize money (BCD) by place and bonus bits, both players -> src/misc.c

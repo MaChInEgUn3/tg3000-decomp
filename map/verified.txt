@@ -371,3 +371,4 @@
 80F549 upload_slice_13 src/video_dma.c badf2590f64bcdfc 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c badf2590f64bcdfc 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c badf2590f64bcdfc 1 500 20/20 verified live-flags:NVZC replayed:0
+84A388 prize_money_award src/misc.c 14988ce77ef0a594 4 500 63/63 verified live-flags:NVZC replayed:0

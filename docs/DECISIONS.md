@@ -1789,6 +1789,25 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The prize money (roots-32, 2026-11-19)
+
+- **`prize_money_award` ($84:A388, `JSL`):** both players' prize money, in decimal mode
+  (`SED` ... `CLD`), eight BCD digits each (low word, then high word).
+  - Player 1: place `$03A8`, money `$038E`/`$0390`, bonus bits `$03AB`. Player 2: `$03D7`,
+    `$03BD`/`$03BF`, `$03DA`.
+  - A player with a place (not negative) gets the pair at `$84:A2B3` + 4 * place.
+  - Then the bonus word is shifted right until it is 0 (at least once). Each bit shifted
+    out that is set adds the pair at `$84:A2DB` + 4 * bit.
+  - The C returns the carry the original leaves: that of the last bonus step, or the
+    entry carry when neither player has a place.
+- **The decimal add, as the CPU does it.** The bonus table holds `$FFFF` from bit 7 on
+  (bonuses the game does not define). A valid-BCD add would differ there, so
+  `adc_decimal16` follows the 65816 digit by digit, also for digits above 9, the way the
+  bench's CPU does. The fuzz uses all 16 bonus bits.
+- **V is modelled too.** Too few returns are watched (4) to show the caller ignores the
+  flags, and the first gate failed on V alone (243 fuzz mismatches). `adc_decimal16`
+  gives the CPU's decimal V: taken before the last digit's +`$6000` adjustment.
+
 ## The next track and the results reset; a full run (roots-31, 2026-11-19)
 
 - **`track_next` ($84:A41B, `JSL`):** the next track in the variant's order.

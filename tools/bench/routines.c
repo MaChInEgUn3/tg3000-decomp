@@ -1979,6 +1979,50 @@ static void fuzz_results_init(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x03E2, (uint16_t)rnd());
 }
 
+// ---- prize_money_award ($84:A388) ----  player 2 placed: A = 0 (its bonus word, Z set, N
+// clear), X = 4 * the bonus steps; else A = $03D7 (N set) and X as player 1 left it (4 * its
+// steps, or as on entry). C and V as the C returns them (the last decimal ADC's, as the CPU
+// computes V)
+static uint16_t prizeSteps(uint16_t bits) {
+  uint16_t n = 1;
+  while(bits >>= 1) n++;
+  return n;
+}
+static void call_prize_money_award(const Regs* in, Regs* out) {
+  uint16_t p1 = rd16(0x03A8), p2 = rd16(0x03D7), b1 = rd16(0x03AB), b2 = rd16(0x03DA);
+  bool v = in->v;
+  out->c = prize_money_award(in->c, &v);
+  out->v = v;
+  out->x = in->x;
+  if(!(p1 & 0x8000)) out->x = (uint16_t)(4 * prizeSteps(b1));
+  if(!(p2 & 0x8000)) {
+    out->x = (uint16_t)(4 * prizeSteps(b2));
+    out->a = 0;
+    out->n = false;
+    out->z = true;
+  } else {
+    out->a = p2;
+    out->n = true;
+    out->z = false;
+  }
+}
+// places 0-9 or none, BCD money (often near a carry), bonus bits
+static uint16_t bcdWord(uint32_t (*rnd)(void)) {
+  uint16_t v = 0;
+  for(int shift = 0; shift < 16; shift += 4) v |= (uint16_t)((rnd() % 10) << shift);
+  return v;
+}
+static void fuzz_prize_money_award(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const uint16_t place[2] = {0x03A8, 0x03D7}, money[2] = {0x038E, 0x03BD}, bonus[2] = {0x03AB, 0x03DA};
+  for(int k = 0; k < 2; k++) {
+    wr16ram(ram, place[k], (rnd() % 4 == 0) ? (uint16_t)(0x8000 | rnd()) : (uint16_t)(rnd() % 10));
+    wr16ram(ram, money[k], (rnd() & 1) ? (uint16_t)(0x9900 | (bcdWord(rnd) & 0x00FF)) : bcdWord(rnd));
+    wr16ram(ram, (uint16_t)(money[k] + 2), (rnd() & 1) ? 0x9999 : bcdWord(rnd));
+    wr16ram(ram, bonus[k], (rnd() & 1) ? (uint16_t)(rnd() & 0x00FF) : (uint16_t)rnd());
+  }
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6500,6 +6544,9 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_track_next, ALL_OUTPUTS, .fuzz = fuzz_track_next},
   {.name = "results_init", .entry = 0x84A4ED, .end = 0x84A553, .rtl = true, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_results_init, ALL_OUTPUTS, .fuzz = fuzz_results_init},
+  {.name = "prize_money_award", .entry = 0x84A388, .end = 0x84A41B, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_prize_money_award, ALL_OUTPUTS,
+   .fuzz = fuzz_prize_money_award},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

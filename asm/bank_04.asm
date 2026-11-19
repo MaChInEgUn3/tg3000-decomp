@@ -54,6 +54,7 @@ CODE_84A374:
     inc.w $036E,x               ; $84A384
 CODE_84A387:
     rtl                         ; $84A387
+prize_money_award:
     sed                         ; $84A388
     lda.w $03A8                 ; $84A389
     bmi CODE_84A3A6             ; $84A38C

@@ -2402,3 +2402,47 @@ void results_init(void) {
     for(int i = 0; i < 8; i++) wr8(items[i], 0x01);
   }
 }
+
+// The 65816's 16-bit ADC in decimal mode, a digit at a time as the CPU does it (also for
+// digits above 9, as in the unused $FFFF bonus entries); *carry in and out; *overflow =
+// its V (taken before the last digit's adjustment, as the CPU does).
+static uint16_t adc_decimal16(uint16_t a, uint16_t b, bool* carry, bool* overflow) {
+  uint32_t r = (a & 0xF) + (b & 0xF) + (*carry ? 1u : 0u);
+  if(r > 0x9) r = ((r + 0x6) & 0xF) + 0x10;
+  r = (a & 0xF0) + (b & 0xF0) + r;
+  if(r > 0x9F) r = ((r + 0x60) & 0xFF) + 0x100;
+  r = (a & 0xF00) + (b & 0xF00) + r;
+  if(r > 0x9FF) r = ((r + 0x600) & 0xFFF) + 0x1000;
+  r = (uint32_t)(a & 0xF000) + (b & 0xF000) + r;
+  *overflow = (a & 0x8000) == (b & 0x8000) && (b & 0x8000) != (r & 0x8000);
+  if(r > 0x9FFF) r += 0x6000;
+  *carry = r > 0xFFFF;
+  return (uint16_t)r;
+}
+
+// One player's prize: decimal adds into the money at `money`; *v = the last add's V.
+static bool prize_one(uint16_t place_at, uint16_t money, uint16_t bonus_at, bool carry, bool* v) {
+  const uint16_t place = rd16(place_at);
+  if(place & 0x8000) return carry;
+  const uint32_t p = (uint16_t)(place << 2);
+  bool c = false;
+  wr16(money, adc_decimal16(rd16(money), bus_rd16(0x84A2B3 + p), &c, v));
+  wr16(money + 2u, adc_decimal16(rd16(money + 2u), bus_rd16(0x84A2B5 + p), &c, v));
+  for(uint32_t x = 0;; x += 4) {
+    const uint16_t bits = rd16(bonus_at);
+    wr16(bonus_at, (uint16_t)(bits >> 1));
+    c = bits & 1;
+    if(c) {
+      c = false;
+      wr16(money, adc_decimal16(rd16(money), bus_rd16(0x84A2DB + x), &c, v));
+      wr16(money + 2u, adc_decimal16(rd16(money + 2u), bus_rd16(0x84A2DD + x), &c, v));
+    }
+    if(rd16(bonus_at) == 0) return c;
+  }
+}
+
+// TG3000_ROUTINE($84:A388) prize_money_award
+bool prize_money_award(bool carry, bool* overflow) {
+  carry = prize_one(0x03A8, 0x038E, 0x03AB, carry, overflow);
+  return prize_one(0x03D7, 0x03BD, 0x03DA, carry, overflow);
+}

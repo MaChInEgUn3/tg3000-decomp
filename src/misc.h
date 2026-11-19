@@ -777,4 +777,13 @@ uint16_t track_next(void);
 // $0399, $039A, $039C, $03C7, $03C8, $03C9, $03CB = 1.
 void results_init(void);
 
+// $84:A388: the prize money, in decimal (BCD, eight digits: low word, high word), for both
+// players (place $03A8, money $038E/$0390, bonus bits $03AB; player 2: $03D7, $03BD/$03BF,
+// $03DA). A player with a place (not negative) gets the pair at $84:A2B3 + 4 * place,
+// then, for each bit of the bonus word shifted out (LSR until it is 0, at least once),
+// the pair at $84:A2DB + 4 * bit when the bit is set. Returns the carry the original
+// leaves: that of the last bonus step, or `carry` when neither player has a place;
+// *overflow likewise becomes the V of the last decimal add (kept when there is none).
+bool prize_money_award(bool carry, bool* overflow);
+
 #endif

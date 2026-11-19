@@ -1170,7 +1170,7 @@ CODE_808B0F:
     bpl CODE_808B12             ; $808B0F
     incbin !baserom:$B11..$B12
 CODE_808B12:
-    jsl.l $84A388               ; $808B12
+    jsl.l prize_money_award     ; $808B12
     jsl.l $80FBDC               ; $808B16
     lda.w $047B                 ; $808B1A
     jsl.l $80FBA5               ; $808B1D
