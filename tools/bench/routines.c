@@ -1619,6 +1619,24 @@ static void fuzz_sprite_slots_six(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   wr16ram(ram, DP + 0x44, (uint16_t)rnd());
 }
 
+// ---- tiles_planar_upload ($8A:8CB7) ----  upload_vram_now's exit (A = $1801), then X =
+// the entry X (N Z of its PLX), Y = $6FE0; C V of the ADC that found the graphic
+static void call_tiles_planar_upload(const Regs* in, Regs* out) {
+  uint16_t base = bus_rd16(0x8384B1 + (uint32_t)in->x);
+  tiles_planar_upload(in->a, in->x);
+  out->a = 0x1801;
+  out->x = in->x;
+  out->y = 0x6FE0;
+  setAdc16(out, base, in->a);
+  setNZ16(out, in->x);
+}
+// one of the first 20 graphics (all at least one tile), anywhere low in bank $7F
+static void fuzz_tiles_planar_upload(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->x = (uint16_t)(2 * (rnd() % 20));
+  r->a = (uint16_t)(rnd() % 0x6000);
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -6102,6 +6120,9 @@ const Routine routines[] = {
   {.name = "sprite_slots_six", .entry = 0x8AC19C, .end = 0x8AC1C6, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_sprite_slots_six, ALL_OUTPUTS,
    .fuzz = fuzz_sprite_slots_six},
+  {.name = "tiles_planar_upload", .entry = 0x8A8CB7, .end = 0x8A8D81, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_tiles_planar_upload, ALL_OUTPUTS,
+   .fuzz = fuzz_tiles_planar_upload},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -681,4 +681,12 @@ bool variant_flags_apply(void);
 // $0600 = D+$42 (which moves on by $10), $0700 = D+$44, $0500 = 1.
 void sprite_slots_six(void);
 
+// $8A:8CB7: graphic `x` (an even index) at $7F:(the word at $83:84B1 + x + `offset`, kept
+// in D+$38), (the word at $83:851B + x) bytes of packed pixels (two 4-bit pixels a byte,
+// eight a row, eight rows a tile), turned into the SNES's 4-bit planar tiles in place: per
+// row, bit 0 of each pixel to plane 0, bit 1 to plane 1 (bytes 0-15, the planes of a row
+// together), bits 2 and 3 to planes 2 and 3 (bytes 16-31). D+$14..$33 hold the tile
+// being built. Then the whole graphic goes to VRAM word $6FE0 (upload_vram_now).
+void tiles_planar_upload(uint16_t offset, uint16_t x);
+
 #endif

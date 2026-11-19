@@ -370,3 +370,4 @@ func    82A954   track_segments_load ; the track's segments to $7E:4F31, as runn
 func    84A4CD   wait_03e0           ; wait until $03E0 is 0 (JSL) -> src/frame.c
 func    8AB0E1   variant_flags_apply ; $1526/$1528 bits 2-5 from $03DC bits 8-10 -> src/misc.c
 func    8AC19C   sprite_slots_six    ; six sprite slots from $8A:C443 and D+$42/$44 -> src/misc.c
+func    8A8CB7   tiles_planar_upload ; packed 4-bit pixels to planar tiles in $7F, then to VRAM $6FE0 -> src/misc.c

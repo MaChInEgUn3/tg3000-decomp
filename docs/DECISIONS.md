@@ -1789,6 +1789,21 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Packed pixels to planar tiles (roots-22, 2026-11-19)
+
+- **`tiles_planar_upload` ($8A:8CB7):** graphic X (even) at `$7F:(word $83:84B1 + X + A)`,
+  `$83:851B + X` bytes of packed pixels: two 4-bit pixels a byte, high nibble first,
+  eight a row, eight rows a tile.
+  - Each tile is turned into the SNES's 4-bit planar format in place. Per row, each
+    pixel's bit 0 is rotated into plane 0, bit 1 into plane 1 (bytes 0-15, a row's two
+    planes together), and bits 2 and 3 into planes 2 and 3 (bytes 16-31). `$0114`-`$0133`
+    hold the tile being built.
+  - Then the whole graphic goes to VRAM word `$6FE0` (`upload_vram_now`).
+  - Exit: A = `$1801` (`upload_vram_now`'s), X = the entry X (`PLX`), Y = `$6FE0`, C and
+    V of the `ADC` that found the graphic.
+  - Its live entries are all interrupted, so this is the first row the replays cover from
+    the start.
+
 ## Interrupted entries replayed; nesting cap 8 (2026-11-19)
 
 **Why.** An interrupt landing inside a live sample drops it, because the handler changes

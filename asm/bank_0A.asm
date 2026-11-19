@@ -871,7 +871,7 @@ CODE_8A8BBB:
     incbin !baserom:$50BED..$50C5B
     plx                         ; $8A8C5B
     lda.w #$0420                ; $8A8C5C
-    jsr.w $8CB7                 ; $8A8C5F
+    jsr.w tiles_planar_upload   ; $8A8C5F
     lda.w #$0000                ; $8A8C62
     jsr.w upload_tiles_c280     ; $8A8C65
     lda.w #$0200                ; $8A8C68
@@ -880,7 +880,7 @@ CODE_8A8BBB:
     rts                         ; $8A8C71
     plx                         ; $8A8C72
     lda.w #$0820                ; $8A8C73
-    jsr.w $8CB7                 ; $8A8C76
+    jsr.w tiles_planar_upload   ; $8A8C76
     lda.w #$0000                ; $8A8C79
     jsr.w upload_tiles_c280     ; $8A8C7C
     lda.w #$0200                ; $8A8C7F
@@ -889,7 +889,7 @@ CODE_8A8BBB:
     rts                         ; $8A8C88
     plx                         ; $8A8C89
     lda.w #$0440                ; $8A8C8A
-    jsr.w $8CB7                 ; $8A8C8D
+    jsr.w tiles_planar_upload   ; $8A8C8D
     lda.w #$0020                ; $8A8C90
     jsr.w upload_tiles_c280     ; $8A8C93
     lda.w #$0220                ; $8A8C96
@@ -898,13 +898,14 @@ CODE_8A8BBB:
     rts                         ; $8A8C9F
     plx                         ; $8A8CA0
     lda.w #$0840                ; $8A8CA1
-    jsr.w $8CB7                 ; $8A8CA4
+    jsr.w tiles_planar_upload   ; $8A8CA4
     lda.w #$0020                ; $8A8CA7
     jsr.w upload_tiles_c280     ; $8A8CAA
     lda.w #$0220                ; $8A8CAD
     jsr.w upload_tiles_c680     ; $8A8CB0
     jsr.w $8DBF                 ; $8A8CB3
     rts                         ; $8A8CB6
+tiles_planar_upload:
     sta.b $38                   ; $8A8CB7
     phx                         ; $8A8CB9
     lda.w $851B,x               ; $8A8CBA

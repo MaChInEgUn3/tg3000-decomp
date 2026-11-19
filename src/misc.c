@@ -2024,3 +2024,34 @@ void sprite_slots_six(void) {
     wr16(0x0500 + x, 0x0001);
   }
 }
+
+// TG3000_ROUTINE($8A:8CB7) tiles_planar_upload
+void tiles_planar_upload(uint16_t offset, uint16_t x) {
+  wr16(DP + 0x38, offset);
+  const uint16_t size = bus_rd16(0x83851B + (uint32_t)x);  // DB = $83 at entry
+  wr16(DP + 0x3C, (uint16_t)(size >> 5));  // tiles
+  uint16_t at = (uint16_t)(bus_rd16(0x8384B1 + (uint32_t)x) + offset);
+  do {
+    for(uint32_t row = 0; row < 0x10; row += 2) {
+      wr8(DP + 0x3A, 0x04);
+      do {  // a byte: two pixels, high nibble first, each bit rotated into its plane byte
+        uint8_t b = rd8(0x10000 + (uint32_t)at);
+        for(int half = 0; half < 2; half++, b = (uint8_t)(b << 4)) {
+          static const uint8_t plane[4] = {0x25, 0x24, 0x15, 0x14};  // bit 3, 2, 1, 0
+          for(int bit = 0; bit < 4; bit++) {
+            const uint32_t p = DP + plane[bit] + row;
+            wr8(p, (uint8_t)((rd8(p) << 1) | ((b >> (7 - bit)) & 1)));
+          }
+        }
+        at = (uint16_t)(at + 1);
+        wr8(DP + 0x3A, (uint8_t)(rd8(DP + 0x3A) - 1));
+      } while(rd8(DP + 0x3A) != 0);
+    }
+    at = (uint16_t)(at - 0x20);
+    for(uint32_t i = 0; i < 0x20; i += 2) wr16(0x10000 + (uint32_t)(uint16_t)(at + i), rd16(DP + 0x14 + i));
+    at = (uint16_t)(at + 0x20);
+    wr16(DP + 0x3C, (uint16_t)(rd16(DP + 0x3C) - 1));
+  } while(rd16(DP + 0x3C) != 0);
+  wr16(DP + 0x14, 0x007F);
+  upload_vram_now(0x6FE0, 0x7F, (uint16_t)(bus_rd16(0x8384B1 + (uint32_t)x) + rd16(DP + 0x38)), size);
+}
