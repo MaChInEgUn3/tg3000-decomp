@@ -365,3 +365,5 @@ func    80EBCE   queue_7f_init       ; a queue reset: its list at $7F:(D+$5E) to
 func    8A9BF6   text_map_clear      ; the text map ($7F:7918, $7F:7FBC) cleared -> src/misc.c
 func    8A98B4   variant_offsets_add ; per entry, a $041C word gains $8A:9D8D's (variant 2: $9DB5) -> src/misc.c
 func    8A81BA   palettes_load_8a    ; five palettes into CGRAM from bank $7E -> src/misc.c
+func    859D7B   track_map_load      ; the map at $7E:6C33: $3FFF, or unpacked from $8C:95E3 -> src/misc.c
+func    82A954   track_segments_load ; the track's segments to $7E:4F31, as running sums -> src/misc.c

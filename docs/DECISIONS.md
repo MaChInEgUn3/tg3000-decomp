@@ -1789,6 +1789,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The track's map and segments (roots-20, 2026-11-19)
+
+- **`track_map_load` ($85:9D7B, `JSL`):** the map at `$7E:6C33`.
+  - On a track whose word at `$85:A439` + `$047B` has bit 15 set, with the byte `$039C`
+    set: `$820` words of `$3FFF`. Exit: A = `$3FFF`, X = `$1040`, C and Z set by the
+    `CPX`.
+  - Otherwise `decompress` unpacks `$8C:95E3` into it, and the exit is `decompress`'s.
+  - The C returns the length and the source's end, so the adapter models that exit
+    exactly as `call_decompress` does.
+- **`track_segments_load` ($82:A954):** the track's segments.
+  - It unpacks `$9A:8000` to `$7F:0000`, then `MVN` copies the track's part (start
+    `$85:9FAA`, length `$85:A008`, by 2 * `$047B`) to `$7E:4F31`.
+  - Both words of each 4-byte entry then become running sums.
+  - Every length in `$85:A008` is at least 4 (checked over the 47 entries), so the fuzz
+    can pick any track. A length of 0 would make the `MVN` copy 64 KB.
+
 ## Four more leaves, with the selftest in parallel (roots-19, 2026-11-19)
 
 The gate now runs `verify_new.sh` and the selftest at the same time. Both must pass,

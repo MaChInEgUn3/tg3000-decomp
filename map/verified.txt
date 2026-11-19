@@ -350,3 +350,5 @@
 8A9BF6 text_map_clear src/misc.c 9bcda9a88053d2ea 2 0 16/16 verified live-flags:NVZC
 8A98B4 variant_offsets_add src/misc.c 9bcda9a88053d2ea 2 500 28/28 verified live-flags:NVZC
 8A81BA palettes_load_8a src/misc.c 9bcda9a88053d2ea 2 500 27/27 verified live-flags:NVZC
+859D7B track_map_load src/misc.c 4a20ce1d05cce37e 0 500 19/19 verified live-flags:NVZC
+82A954 track_segments_load src/misc.c 4a20ce1d05cce37e 0 500 48/48 verified live-flags:NVZC

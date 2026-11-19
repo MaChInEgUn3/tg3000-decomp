@@ -137,7 +137,7 @@ CODE_828422:
     lda.w #$000C                ; $82848C
     mvn $7E,$85                 ; $82848F
     plb                         ; $828492
-    jsr.w $A954                 ; $828493
+    jsr.w track_segments_load   ; $828493
     ldx.w #$85F5                ; $828496
     ldy.w #$5AC0                ; $828499
     lda.w #$008F                ; $82849C
@@ -249,7 +249,7 @@ CODE_82856D:
     stz.b $54                   ; $8285BF
     stz.b $56                   ; $8285C1
     stz.b $58                   ; $8285C3
-    jsl.l $859D7B               ; $8285C5
+    jsl.l track_map_load        ; $8285C5
     jsr.w $A7F9                 ; $8285C9
     jsl.l $81E631               ; $8285CC
     jsr.w $AF33                 ; $8285D0
@@ -1320,6 +1320,7 @@ CODE_82A94C:
     bne CODE_82A90F             ; $82A950
     plb                         ; $82A952
     rts                         ; $82A953
+track_segments_load:
     ldx.w #$8000                ; $82A954
     ldy.w #$0000                ; $82A957
     lda.w #$7F9A                ; $82A95A

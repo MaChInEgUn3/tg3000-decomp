@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "misc.h"
 
+#include "decompress.h"
 #include "dsp4.h"
 #include "frame.h"
 #include "pads.h"
@@ -1972,4 +1973,35 @@ void palettes_load_8a(void) {
   upload_cgram_now(0x01, 0x7E, 0x8114, 0x001E);
   const uint16_t at = bus_rd16(0x8A934F + (uint32_t)(uint16_t)(rd16(0x1536) << 3));
   upload_cgram_now(0xA0, 0x7E, at, 0x0020);
+}
+
+// TG3000_ROUTINE($85:9D7B) track_map_load
+uint16_t track_map_load(uint16_t dp, uint16_t* end) {
+  if((bus_rd16(0x85A439 + (uint32_t)rd16(0x047B)) & 0x8000) && rd8(0x039C)) {
+    for(uint32_t x = 0; x < 0x1040; x += 2) wr16(0x6C33 + x, 0x3FFF);
+    return 0;
+  }
+  return decompress(dp, 0x8C, 0x95E3, 0x7E, 0x6C33, end);
+}
+
+// TG3000_ROUTINE($82:A954) track_segments_load
+void track_segments_load(uint16_t dp) {
+  uint16_t end;
+  decompress(dp, 0x9A, 0x8000, 0x7F, 0x0000, &end);
+  const uint16_t t = (uint16_t)(rd16(0x047B) << 1);
+  uint16_t from = bus_rd16(0x859FAA + (uint32_t)t), to = 0x4F31;
+  const uint16_t n = bus_rd16(0x85A008 + (uint32_t)t);
+  for(uint32_t i = 0; i < (n ? n : 0x10000u); i++) {  // MVN $7F to $7E, a byte at a time
+    wr8(to, rd8(0x10000 + (uint32_t)from));
+    from = (uint16_t)(from + 1);
+    to = (uint16_t)(to + 1);
+  }
+  const uint16_t count = (uint16_t)(n >> 2);
+  for(uint32_t field = 0; field < 4; field += 2) {
+    uint16_t sum = 0;
+    for(uint16_t k = 0, x = 0; k < count; k++, x = (uint16_t)(x + 4)) {
+      sum = (uint16_t)(sum + rd16(0x4F31 + field + x));
+      wr16(0x4F31 + field + x, sum);
+    }
+  }
 }

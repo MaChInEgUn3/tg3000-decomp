@@ -662,4 +662,15 @@ void variant_offsets_add(void);
 // points at to $A0.
 void palettes_load_8a(void);
 
+// $85:9D7B: the map at $7E:6C33. On a track whose word at $85:A439 + $047B has bit 15
+// set, with the byte $039C set: $820 words of $3FFF. Otherwise unpacked (decompress, D =
+// `dp`) from $8C:95E3; returns its length and leaves the source's end in `*end` (0 and
+// `*end` untouched when filled).
+uint16_t track_map_load(uint16_t dp, uint16_t* end);
+
+// $82:A954: the track's segments. Unpacks $9A:8000 to $7F:0000 (decompress, D = `dp`), copies
+// the track's part of it (start $85:9FAA, length $85:A008, by 2 * $047B) to $7E:4F31 (MVN),
+// then turns both words of each 4-byte entry into running sums.
+void track_segments_load(uint16_t dp);
+
 #endif

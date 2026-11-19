@@ -1635,6 +1635,7 @@ race_section_seek_2:
     jmp.w race_section_seek_2   ; $859D77
 CODE_859D7A:
     rts                         ; $859D7A
+track_map_load:
     ldx.w $047B                 ; $859D7B
     lda.l $85A439,x             ; $859D7E
     bpl CODE_859D9F             ; $859D82

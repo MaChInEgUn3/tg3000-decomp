@@ -1525,6 +1525,56 @@ static void fuzz_palettes_load_8a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   wr16ram(ram, 0x1536, (uint16_t)(rnd() % 16));
 }
 
+// ---- track_map_load ($85:9D7B) ----  filled: A = $3FFF, X = $1040 (C Z set by the CPX, N
+// clear), V as on entry; unpacked: decompress's exit (as call_decompress)
+static void call_track_map_load(const Regs* in, Regs* out) {
+  bool filled = (bus_rd16(0x85A439 + (uint32_t)rd16(0x047B)) & 0x8000) && rd8(0x039C);
+  uint16_t end = 0, len = track_map_load(in->d, &end);
+  if(filled) {
+    out->a = 0x3FFF;
+    out->x = 0x1040;
+    out->n = false;
+    out->z = out->c = true;
+    return;
+  }
+  Regs t = *in;
+  t.y = 0x6C33;
+  out->a = len;
+  out->x = end;
+  out->y = (uint16_t)(t.y + len);
+  setNZ16(out, len);
+  uint16_t a = (uint16_t)~t.y;
+  uint32_t sum = (uint32_t)a + out->y + 1;
+  out->c = sum > 0xFFFF;
+  out->v = (~(a ^ out->y) & (a ^ sum) & 0x8000) != 0;
+}
+// the tracks (both kinds of entry), the player flag set half the time
+static void fuzz_track_map_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x047B, (uint16_t)(rnd() % 0x40));
+  ram[0x039C] = (rnd() & 1) ? (uint8_t)(1 + rnd() % 255) : 0;
+}
+
+// ---- track_segments_load ($82:A954) ----  A = the second field's last sum (C V of its
+// ADC), X = 4 * the entry count, Y = 0 (N clear and Z set by the last DEY)
+static void call_track_segments_load(const Regs* in, Regs* out) {
+  track_segments_load(in->d);
+  uint16_t count = (uint16_t)(bus_rd16(0x85A008 + (uint32_t)(uint16_t)(rd16(0x047B) << 1)) >> 2);
+  uint16_t last = (uint16_t)(4 * (count - 1)), sum = rd16(0x4F33 + (uint32_t)last);
+  uint16_t prev = count > 1 ? rd16(0x4F33 + (uint32_t)(uint16_t)(last - 4)) : 0;
+  out->a = sum;
+  out->x = (uint16_t)(4 * count);
+  out->y = 0;
+  setAdc16(out, prev, (uint16_t)(sum - prev));
+  out->n = false;
+  out->z = true;
+}
+// any of the 47 tracks (every length in $85:A008 is at least 4)
+static void fuzz_track_segments_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x047B, (uint16_t)(rnd() % 47));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -5996,6 +6046,10 @@ const Routine routines[] = {
    .fuzz = fuzz_variant_offsets_add},
   {.name = "palettes_load_8a", .entry = 0x8A81BA, .end = 0x8A8205, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x8A, .call = call_palettes_load_8a, ALL_OUTPUTS, .fuzz = fuzz_palettes_load_8a},
+  {.name = "track_map_load", .entry = 0x859D7B, .end = 0x859DAD, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .db = 0x83, .call = call_track_map_load, ALL_OUTPUTS, .fuzz = fuzz_track_map_load},
+  {.name = "track_segments_load", .entry = 0x82A954, .end = 0x82A9AF, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x83, .call = call_track_segments_load, ALL_OUTPUTS, .fuzz = fuzz_track_segments_load},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
