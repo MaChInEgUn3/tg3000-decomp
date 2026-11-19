@@ -2633,6 +2633,33 @@ static void fuzz_palette_fade_60(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->a = (uint16_t)(rnd() % 0x50);
 }
 
+// ---- stars_scatter_8a ($8A:971B) ----  A = X = $300, Y kept; the CPX that ends the loop
+// (Z C set, N clear), V of its ADC #6 (clear)
+static void call_stars_scatter_8a(const Regs* in, Regs* out) {
+  stars_scatter_8a();
+  out->a = out->x = 0x0300;
+  out->y = in->y;
+  out->n = out->v = false;
+  out->z = out->c = true;
+}
+static void fuzz_stars_scatter_8a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  fuzz_rng_state(ram, rnd);
+}
+
+// ---- hdma_coldata_setup ($8A:9C69) ----  A = $0D00, X = $81 (LDX #$81 with X 8-bit: N
+// set Z clear), Y = 0 from hdma_table_0d00_init; C V kept
+static void call_hdma_coldata_setup(const Regs* in, Regs* out) {
+  hdma_coldata_setup();
+  out->a = 0x0D00;
+  out->x = 0x0081;
+  out->y = 0;
+  out->n = true;
+  out->z = false;
+  out->c = in->c;
+  out->v = in->v;
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7207,6 +7234,12 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_window_curve_build, ALL_OUTPUTS, .fuzz = fuzz_window_curve_build},
   {.name = "palette_fade_60", .entry = 0x80FAEE, .end = 0x80FB5C, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_palette_fade_60, ALL_OUTPUTS, .fuzz = fuzz_palette_fade_60},
+  {.name = "stars_scatter_8a", .entry = 0x8A971B, .end = 0x8A9773, .source = "src/stars.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_stars_scatter_8a, ALL_OUTPUTS,
+   .fuzz = fuzz_stars_scatter_8a},
+  {.name = "hdma_coldata_setup", .entry = 0x8A9C69, .end = 0x8A9C86, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_hdma_coldata_setup, ALL_OUTPUTS,
+   .fuzz = fuzz_hdma_table_0d00_init},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

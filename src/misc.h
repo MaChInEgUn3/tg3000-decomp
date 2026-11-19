@@ -889,4 +889,8 @@ void track_palettes_load(uint16_t dp);
 // sent to CGRAM colours $60-$6F by DMA.
 void palette_fade_60(uint16_t level);
 
+// $8A:9C69: hdma_table_0d00_init, then HDMA channel 2 set up on the fixed colour ($2132,
+// one byte a line) from the table at $81:0D00 (not enabled here).
+void hdma_coldata_setup(void);
+
 #endif

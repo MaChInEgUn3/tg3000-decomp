@@ -410,3 +410,5 @@ func    80F950   stars_draw          ; the title's 128 stars projected (CPU mult
 func    8A9773   stars_draw_8a       ; the same in bank $8A (tiles $86:F46B) -> src/stars.c
 func    80FA5B   window_curve_build  ; a curved two-edge line table at $1500 (CPU divider, PPU multiplier) -> src/line_tables.c
 func    80FAEE   palette_fade_60     ; 16 colours faded by a step, DMA to CGRAM $60 -> src/misc.c
+func    8A971B   stars_scatter_8a    ; the 128 stars scattered by depth (PPU multiplier) -> src/stars.c
+func    8A9C69   hdma_coldata_setup  ; HDMA channel 2 on the fixed colour from $0D00 -> src/misc.c

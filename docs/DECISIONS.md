@@ -1789,6 +1789,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Stars scattered and a colour HDMA (roots-48, 2026-11-19)
+
+**`stars_scatter_8a` ($8A:971B):** the 128 stars placed.
+- The depth starts at `$2000` and grows by `$BE` a star.
+- x and y are bits 8-23 of the depth times a signed random byte, on the PPU multiplier.
+  The bytes are the low byte of one `rng_next`, then the high byte of the next.
+- It has no bank-`$80` twin in the ROM.
+
+**`hdma_coldata_setup` ($8A:9C69):** `hdma_table_0d00_init`, then HDMA channel 2 on the
+fixed colour (`$2132`, one byte a line) from `$81:0D00`. It does not enable the channel.
+
+Both: live 4/4, fuzz 500/500, reached only on the 60k movie, first try.
+
 ## A 16-colour fade (roots-47, 2026-11-19)
 
 **`palette_fade_60` ($80:FAEE):** 16 colours faded by a step and sent to CGRAM `$60`-`$6F`

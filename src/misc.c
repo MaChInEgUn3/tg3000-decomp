@@ -2797,3 +2797,9 @@ void palette_fade_60(uint16_t level) {
   }
   video_upload_cgram(0x60, 0x810500, 0x0020);
 }
+
+// TG3000_ROUTINE($8A:9C69) hdma_coldata_setup
+void hdma_coldata_setup(void) {
+  hdma_table_0d00_init();
+  dma_hdma_setup(2, 0x00, 0x32, 0x810D00);
+}

@@ -1817,7 +1817,7 @@ CODE_8A954E:
     plb                         ; $8A9580
     jsr.w clear_tilemap_7f      ; $8A9581
     inc.b $6A                   ; $8A9584
-    jsr.w $971B                 ; $8A9586
+    jsr.w stars_scatter_8a      ; $8A9586
     lda.w #$0000                ; $8A9589
     ldx.w #$0040                ; $8A958C
     jsr.w stars_draw_8a         ; $8A958F
@@ -1837,7 +1837,7 @@ CODE_8A954E:
     pea.w $8A8A                 ; $8A95B2
     plb                         ; $8A95B5
     plb                         ; $8A95B6
-    jsr.w $9C69                 ; $8A95B7
+    jsr.w hdma_coldata_setup    ; $8A95B7
     stz.w $000E                 ; $8A95BA
     stz.w $0012                 ; $8A95BD
     stz.b $40                   ; $8A95C0
@@ -1944,6 +1944,7 @@ func_8A96C2:
     clc                         ; $8A96C6
     rts                         ; $8A96C7
     incbin !baserom:$516C8..$5171B
+stars_scatter_8a:
     ldx.w #$0000                ; $8A971B
     lda.w #$2000                ; $8A971E
     sta.b $14                   ; $8A9721
@@ -2597,6 +2598,7 @@ CODE_8A9C61:
     bne CODE_8A9C53             ; $8A9C64
     rep.b #$20                  ; $8A9C66
     rts                         ; $8A9C68
+hdma_coldata_setup:
     jsr.w hdma_table_0d00_init  ; $8A9C69
     sep.b #$10                  ; $8A9C6C
     ldx.b #$32                  ; $8A9C6E

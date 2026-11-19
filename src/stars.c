@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+#include "platform.h"
 #include "rng.h"
 #include "tg3000.h"
 
@@ -105,4 +106,24 @@ void stars_draw(uint16_t step, uint16_t multiplier) { stars_draw_using(step, mul
 // TG3000_ROUTINE($8A:9773) stars_draw_8a
 void stars_draw_8a(uint16_t step, uint16_t multiplier) {
   stars_draw_using(step, multiplier, 0x86F46B, star_spawn);  // star_spawn_8a is the same C
+}
+
+// d times the signed byte `r` on the PPU multiplier: matrix A = d, B = r over the latch
+// (the high byte of d, just written); returns bits 8-23 of the product.
+static uint16_t star_scale(uint16_t d, uint8_t r) {
+  video_set_m7a((int16_t)d);
+  video_set_m7b((int16_t)(r << 8 | d >> 8));
+  return (uint16_t)((uint32_t)((int32_t)(int16_t)d * (int8_t)r) >> 8);
+}
+
+// TG3000_ROUTINE($8A:971B) stars_scatter_8a
+void stars_scatter_8a(void) {
+  wr16(DP + 0x14, 0x2000);
+  for(uint32_t x = 0; x < 0x300; x += 6) {
+    const uint16_t d = rd16(DP + 0x14);
+    wr16(STAR_X + x, star_scale(d, (uint8_t)rng_next(RNG_STATE, NULL)));
+    wr16(STAR_Y + x, star_scale(d, (uint8_t)(rng_next(RNG_STATE, NULL) >> 8)));
+    wr16(STAR_DEPTH + x, d);
+    wr16(DP + 0x14, (uint16_t)(d + 0x00BE));
+  }
 }

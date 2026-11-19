@@ -40,4 +40,10 @@ void stars_draw(uint16_t step, uint16_t multiplier);
 // $8A:9773: the same in bank $8A (tiles from $86:F46B; its star_spawn copy).
 void stars_draw_8a(uint16_t step, uint16_t multiplier);
 
+// $8A:971B: the 128 stars scattered (D = $0100). Depth d (D+$14) starts at $2000 and
+// grows by $BE a star; each star's x and y are bits 8-23 of d times a signed random byte
+// (the low byte of one rng_next, then the high byte of the next), on the PPU multiplier
+// (left with the last d and that byte); its depth is d.
+void stars_scatter_8a(void);
+
 #endif
