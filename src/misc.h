@@ -1184,4 +1184,15 @@ void player2_segment_step(void);
 // bit 0 from the bit 15 the settle left.
 void road_shift_by_place(void);
 
+// $82:EC36: the road shift's frame step (D = $0100; DB = $30 inside, $83 after). D+$3C = 0,
+// D+$16 = the row offset ($0226 * 2, & $3E), D+$14 = t ($0224 / 2, & $FF80); $1EF4:$1EF6 =
+// the road's place at t ($7E:3DEC row and its slope times t, a DSP-4 multiply; the high
+// word less 1 when positive). Then a handler by $0261 (the table at $82:ED23: clear $0242
+// and $0208, or the road's edges from rows $3C6C/$3F6C/$3E6C, never run) and one by $0260
+// (the table at $82:ED17: race_scroll_commit, the edge shift from $1EFA (never run),
+// road_shift_by_place, by row (never run), race_scroll_commit, road_shift_apply);
+// $1EC2:$1EC4 = $1EF4:$1EF6 from between the two; $0229 = $01CE; $01CE = |$01CE| / the
+// low byte of $1E9E (the CPU divider) with the opposite sign (a DSP-4 multiply by -1 or 1).
+void road_shift_frame(void);
+
 #endif

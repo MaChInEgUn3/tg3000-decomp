@@ -448,3 +448,6 @@ func    82D8C6   minimap_car         ; one car's dot on the mini-map: a DSP-4 sp
 func    82F2B3   player_segment_step ; the player crosses the track's segments: armed jumps, the segment kinds' handlers -> src/misc.c
 func    82FA4F   player2_segment_step ; the second player crosses the track's segments (as $82:F2B3) -> src/misc.c
 func    82EEB7   road_shift_by_place ; the road shift applied or settled by bit 5 of $0226, $1E66's bits 0/15 swapped around it -> src/misc.c
+func    82EC36   road_shift_frame    ; the road shift's frame step: the road at the car (DSP-4), two handler tables, $01CE scaled (CPU divider) -> src/misc.c
+func    82ED27   road_edges_side     ; the road's edges against the car (never run; through road_shift_frame) -> src/misc.c
+func    82EE2A   road_edge_shift     ; the edge shift (never run; through road_shift_frame) -> src/misc.c

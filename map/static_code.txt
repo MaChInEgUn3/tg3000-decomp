@@ -111,3 +111,4 @@
 82:FA59 82:FAB9 m16x16 ; player2_segment_step: an armed jump reached (never run)
 82:FB22 82:FB53 m16x16 ; player2_segment_step: kinds 6/10, the jump armed (never run)
 82:FB6C 82:FB70 m16x16 ; player2_segment_step: kind 8, $1E68 cleared (never run)
+82:ED27 82:EEB7 m16x16 ; road_shift_frame: the road-edge and edge-shift handlers (never run)

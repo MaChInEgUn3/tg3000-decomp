@@ -429,3 +429,4 @@
 82F2B3 player_segment_step src/misc.c b1e49feb2e906a12 4000 500 79/79 verified live-flags:- replayed:1
 82FA4F player2_segment_step src/misc.c acfde053b828a9bb 5 500 79/79 verified live-flags:NVZC replayed:0
 82EEB7 road_shift_by_place src/misc.c 08d5dddf53c2c875 62 500 26/26 verified live-flags:NVZC replayed:0
+82EC36 road_shift_frame src/misc.c cea1536fc9548099 4000 500 76/76 verified live-flags:- replayed:0

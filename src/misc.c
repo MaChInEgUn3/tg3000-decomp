@@ -4162,3 +4162,112 @@ void road_shift_by_place(void) {
     wr16(0x1E66, (uint16_t)((flags & 0xFFFE) | (rd16(0x1E66) >> 15)));
   }
 }
+
+// The high word of a DSP-4 product.
+static uint16_t dsp4_high(uint16_t a, uint16_t b) {
+  return (uint16_t)((uint32_t)dsp4_multiply((int16_t)a, (int16_t)b) >> 16);
+}
+
+// A road row's place at t: the row's word plus the high word of (its slope * 2) * t.
+static uint16_t road_row_at(uint32_t row, uint32_t x, uint16_t t) {
+  return (uint16_t)(dsp4_high((uint16_t)((uint16_t)(rd16(row + 2 + x) - rd16(row + x)) << 1), t) + rd16(row + x));
+}
+
+// TG3000_ROUTINE($82:ED27) road_edges_side
+// The road's edges against the car (never run): D+$1C and D+$1E = $1EF6 less the rows
+// $3C6C and $3F6C at t; unless -$0202 lies below the first and at or above the second,
+// $0242, $0208 and D+$3C are cleared. Else $0242 = -(row $3E6C at t), D+$18 = its slope * 2,
+// D+$1A:$1C = $1EF8 * 4 * ($8000 - t) / 2 plus that slope * t (DSP-4 multiplies), $0208 =
+// -(its bits 8-23) and D+$3C = 1.
+static void road_edges_side(void) {
+  const uint32_t x = rd16(DP + 0x16);
+  const uint16_t t = rd16(DP + 0x14);
+  wr16(DP + 0x1C, (uint16_t)(rd16(0x1EF6) - road_row_at(0x3C6C, x, t)));
+  wr16(DP + 0x1E, (uint16_t)(rd16(0x1EF6) - road_row_at(0x3F6C, x, t)));
+  const uint16_t a = (uint16_t)-rd16(0x0202);
+  if(!((uint16_t)(a - rd16(DP + 0x1C)) & 0x8000) || ((uint16_t)(a - rd16(DP + 0x1E)) & 0x8000)) {
+    wr16(0x0242, 0);
+    wr16(0x0208, 0);
+    wr16(DP + 0x3C, 0);
+    return;
+  }
+  const uint16_t slope = (uint16_t)((uint16_t)(rd16(0x3E6E + x) - rd16(0x3E6C + x)) << 1);
+  wr16(DP + 0x18, slope);
+  wr16(0x0242, (uint16_t)-(uint16_t)(dsp4_high(slope, t) + rd16(0x3E6C + x)));
+  const uint32_t p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)(rd16(0x1EF8) << 2), (int16_t)(uint16_t)((uint16_t)(0x8000 - t) >> 1));
+  wr16(DP + 0x1A, (uint16_t)p);
+  wr16(DP + 0x1C, (uint16_t)(p >> 16));
+  const uint32_t q = (uint32_t)dsp4_multiply((int16_t)slope, (int16_t)t);
+  const uint32_t lo = (uint32_t)rd16(DP + 0x1A) + (uint16_t)q;
+  wr16(DP + 0x1A, (uint16_t)lo);
+  wr16(DP + 0x1C, (uint16_t)(rd16(DP + 0x1C) + (uint16_t)(q >> 16) + (lo >> 16)));
+  wr16(0x0208, (uint16_t)-rd16(DP + 0x1B));
+  wr16(DP + 0x3C, 1);
+}
+
+// TG3000_ROUTINE($82:EE2A) road_edge_shift
+// The edge shift (never run): with D+$3C clear, race_scroll_commit's moves without its
+// $1EEE/$1EF0 clears; else $020A = 0 and $020C = -($1EFA * 4 * ($8000 - t) / 2 plus the
+// row $3DEC's slope * 2 * t, the high word), $1EEE = $1EF0 = 0.
+static void road_edge_shift(void) {
+  const uint32_t x = rd16(DP + 0x16);
+  const uint16_t t = rd16(DP + 0x14);
+  if(rd16(DP + 0x3C) == 0) {
+    wr16(0x020A, 0);
+    wr16(0x020C, 0);
+    wr16(0x0200, rd16(0x0204));
+    const uint32_t lo = (uint32_t)rd16(0x0204) + rd16(0x1EF4);
+    wr16(0x1EF4, (uint16_t)lo);
+    wr16(0x0202, rd16(0x0206));
+    wr16(0x1EF6, (uint16_t)(rd16(0x0206) + rd16(0x1EF6) + (lo >> 16)));
+    return;
+  }
+  const uint32_t p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)(rd16(0x1EFA) << 2), (int16_t)(uint16_t)((uint16_t)(0x8000 - t) >> 1));
+  wr16(DP + 0x1A, (uint16_t)p);
+  wr16(0x020C, (uint16_t)(p >> 16));
+  wr16(0x020A, 0);
+  const uint32_t q = (uint32_t)dsp4_multiply((int16_t)(uint16_t)((uint16_t)(rd16(0x3DEE + x) - rd16(0x3DEC + x)) << 1), (int16_t)t);
+  const uint16_t carry = (uint16_t)(((uint32_t)rd16(DP + 0x1A) + (uint16_t)q) >> 16);
+  wr16(0x020C, (uint16_t)-(uint16_t)((uint16_t)(q >> 16) + carry + rd16(0x020C)));
+  wr16(0x1EEE, 0);
+  wr16(0x1EF0, 0);
+}
+
+// TG3000_ROUTINE($82:EC36) road_shift_frame
+void road_shift_frame(void) {
+  wr16(DP + 0x3C, 0);
+  const uint32_t x = (uint16_t)(rd16(0x0226) << 1) & 0x003E;
+  wr16(DP + 0x16, (uint16_t)x);
+  const uint16_t t = (uint16_t)((rd16(0x0224) >> 1) & 0xFF80);
+  const uint32_t p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)((uint16_t)(rd16(0x3DEE + x) - rd16(0x3DEC + x)) << 1), (int16_t)t);
+  wr16(DP + 0x14, t);
+  wr16(0x1EF4, (uint16_t)p);
+  uint16_t at = (uint16_t)((uint16_t)(p >> 16) + rd16(0x3DEC + x));
+  if(at != 0 && !(at & 0x8000)) at--;
+  wr16(0x1EF6, at);
+  switch(bus_rd16(0x82ED23 + (uint32_t)rd8(0x0261))) {
+    case 0xECEA: race_clear_0242_0208(); break;
+    case 0xED27: road_edges_side(); break;
+    default: break;
+  }
+  const uint16_t lo = rd16(0x1EF4), hi = rd16(0x1EF6);
+  switch(bus_rd16(0x82ED17 + (uint32_t)rd8(0x0260))) {
+    case 0xECF1: race_scroll_commit(); break;
+    case 0xEE2A: road_edge_shift(); break;
+    case 0xEEB7: road_shift_by_place(); break;
+    case 0xEFCC:  // never run: by the row
+      if((rd16(0x0226) & 0x003E) < 0x0018) road_shift_settle();
+      else road_shift_apply();
+      break;
+    case 0xF1C1: road_shift_apply(); break;
+    default: break;
+  }
+  wr16(0x1EC4, hi);
+  wr16(0x1EC2, lo);
+  const uint16_t v = rd16(0x01CE);
+  wr16(0x0229, v);
+  const uint16_t n = (v & 0x8000) ? (uint16_t)-v : v;
+  const uint8_t d = rd8(0x1E9E);
+  const uint16_t q = d ? (uint16_t)(n / d) : 0xFFFF;  // the CPU divider
+  wr16(0x01CE, (uint16_t)dsp4_multiply((v & 0x8000) ? 1 : -1, (int16_t)q));
+}

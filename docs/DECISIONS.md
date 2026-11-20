@@ -1789,6 +1789,56 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The road shift's frame step (roots-78, 2026-11-20)
+
+**`road_shift_frame` ($82:EC36, D = `$0100`, DB = `$30` inside, `$83` after):** 18,559
+entries on the 60k movie.
+- **The road's place at the car.**
+  - `D+$16` = the row offset (`$0226` × 2, & `$3E`).
+  - `D+$14` = t (`$0224` / 2, & `$FF80`).
+  - `$1EF4:$1EF6` = the row at `$7E:3DEC` plus its slope × t (a DSP-4 multiply). The high
+    word is less 1 when positive.
+- **A first handler, by `$0261`** (the table at `$82:ED23`):
+  - `race_clear_0242_0208`;
+  - or `road_edges_side` (`$82:ED27`, never run). It compares the car against the rows
+    `$3C6C`/`$3F6C` at t and sets `$0242`, `$0208` and `D+$3C` from row `$3E6C` and
+    `$1EF8`.
+- **A second handler, by `$0260`** (the table at `$82:ED17`):
+  - `race_scroll_commit`;
+  - `road_edge_shift` (`$82:EE2A`, never run), which scales `$020C` from `$1EFA` and the
+    row when `D+$3C` is set;
+  - `road_shift_by_place`;
+  - by row (`$82:EFCC`, never run): settle below row `$18`, else apply;
+  - `race_scroll_commit` again;
+  - `road_shift_apply`.
+- **After both:** `$1EC2:$1EC4` take `$1EF4:$1EF6` as they were between the two
+  handlers. Then `$0229` = `$01CE`, and `$01CE` = |`$01CE`| / the low byte of `$1E9E`
+  (the CPU divider; `$FFFF` for a divisor of 0), with the opposite sign (a DSP-4 multiply
+  by ±1).
+- **The two never-run handlers** sat in about 400 undecoded bytes (`$82:ED27`-`$82:EEB7`).
+  They decode as coherent code and are now static code. Their C functions have no rows:
+  this row's fuzz reaches them, as with `track_object_random`.
+- **The fuzz's stack collides with the game's words.** The fuzz runs the original with its
+  stack at `$1EFE`, over the game's words `$1EEE`-`$1EFD`; the game's own stack is
+  elsewhere.
+  - The second handler is called with two pushed words at `$1EFA`-`$1EFD` and its return
+    address at `$1EF8`.
+  - `road_shift_by_place`'s `PHA` and its callee's return address land on
+    `$1EF4`-`$1EF7`, which the settle writes. So the fuzz leaves index 4 to the live
+    samples (123 entries).
+  - The edge shift reads `$1EFA`, which in the fuzz holds the pushed `$1EF6`. So the fuzz
+    sets `$1EFA` to that value.
+  - For the same reason the 4-byte wrapper `$82:EC32` (`JSR`; `RTS`) has no row: one
+    level deeper, every fuzz case collides.
+  - A per-row fuzz stack would lift this. It is a harness change, not made here.
+- **Fuzz bias.** Half the cases put the car between the road's two edges and pair both
+  never-run handlers. A temporary count saw the edges set 107 times and the scaled shift
+  66 times in 200 cases.
+- **No register outputs but DB.** The caller returns into a routine that loads its own
+  registers.
+- **Result:** live 4,000/4,000 (60k) and 216/216 (race1), fuzz 200/200 (race1), paths
+  76/76.
+
 ## The road shift by the player's place (roots-77, 2026-11-20)
 
 **`road_shift_by_place` ($82:EEB7, DB = `$30`):** one of the road-shift handlers that

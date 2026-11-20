@@ -4509,8 +4509,9 @@ CODE_82EC25:
     asl.b $1E                   ; $82EC28
     rts                         ; $82EC2A
     incbin !baserom:$16C2B..$16C32
-    jsr.w $EC36                 ; $82EC32
+    jsr.w road_shift_frame      ; $82EC32
     rts                         ; $82EC35
+road_shift_frame:
     pea.w $8330                 ; $82EC36
     plb                         ; $82EC39
     stz.b $3C                   ; $82EC3A
@@ -4609,7 +4610,169 @@ race_scroll_commit:
     stz.w $020A                 ; $82ED10
     stz.w $020C                 ; $82ED13
     rts                         ; $82ED16
-    incbin !baserom:$16D17..$16EB7
+    incbin !baserom:$16D17..$16D27
+road_edges_side:
+    ldx.b $16                   ; $82ED27 static
+    stz.w $8000                 ; $82ED29 static
+    lda.l $7E3C6E,x             ; $82ED2C static
+    sec                         ; $82ED30 static
+    sbc.l $7E3C6C,x             ; $82ED31 static
+    asl a                       ; $82ED35 static
+    sta.w $8000                 ; $82ED36 static
+    lda.b $14                   ; $82ED39 static
+    sta.w $8000                 ; $82ED3B static
+    nop                         ; $82ED3E static
+    lda.w $8000                 ; $82ED3F static
+    lda.w $8000                 ; $82ED42 static
+    clc                         ; $82ED45 static
+    adc.l $7E3C6C,x             ; $82ED46 static
+    eor.w #$FFFF                ; $82ED4A static
+    sec                         ; $82ED4D static
+    adc.w $1EF6                 ; $82ED4E static
+    sta.b $1C                   ; $82ED51 static
+    stz.w $8000                 ; $82ED53 static
+    lda.l $7E3F6E,x             ; $82ED56 static
+    sec                         ; $82ED5A static
+    sbc.l $7E3F6C,x             ; $82ED5B static
+    asl a                       ; $82ED5F static
+    sta.w $8000                 ; $82ED60 static
+    lda.b $14                   ; $82ED63 static
+    sta.w $8000                 ; $82ED65 static
+    nop                         ; $82ED68 static
+    lda.w $8000                 ; $82ED69 static
+    lda.w $8000                 ; $82ED6C static
+    clc                         ; $82ED6F static
+    adc.l $7E3F6C,x             ; $82ED70 static
+    eor.w #$FFFF                ; $82ED74 static
+    sec                         ; $82ED77 static
+    adc.w $1EF6                 ; $82ED78 static
+    sta.b $1E                   ; $82ED7B static
+    lda.w $0202                 ; $82ED7D static
+    eor.w #$FFFF                ; $82ED80 static
+    inc a                       ; $82ED83 static
+    cmp.b $1C                   ; $82ED84 static
+    bpl CODE_82ED8C             ; $82ED86 static
+    cmp.b $1E                   ; $82ED88 static
+    bpl CODE_82ED95             ; $82ED8A static
+CODE_82ED8C:
+    stz.w $0242                 ; $82ED8C static
+    stz.w $0208                 ; $82ED8F static
+    stz.b $3C                   ; $82ED92 static
+    rts                         ; $82ED94 static
+CODE_82ED95:
+    lda.w #$0000                ; $82ED95 static
+    sta.l $308000               ; $82ED98 static
+    lda.l $7E3E6E,x             ; $82ED9C static
+    sec                         ; $82EDA0 static
+    sbc.l $7E3E6C,x             ; $82EDA1 static
+    asl a                       ; $82EDA5 static
+    sta.b $18                   ; $82EDA6 static
+    sta.l $308000               ; $82EDA8 static
+    lda.b $14                   ; $82EDAC static
+    sta.l $308000               ; $82EDAE static
+    nop                         ; $82EDB2 static
+    lda.l $308000               ; $82EDB3 static
+    lda.l $308000               ; $82EDB7 static
+    clc                         ; $82EDBB static
+    adc.l $7E3E6C,x             ; $82EDBC static
+    eor.w #$FFFF                ; $82EDC0 static
+    inc a                       ; $82EDC3 static
+    sta.w $0242                 ; $82EDC4 static
+    lda.w #$0000                ; $82EDC7 static
+    sta.l $308000               ; $82EDCA static
+    lda.w $1EF8                 ; $82EDCE static
+    asl a                       ; $82EDD1 static
+    asl a                       ; $82EDD2 static
+    sta.l $308000               ; $82EDD3 static
+    lda.w #$8000                ; $82EDD7 static
+    sec                         ; $82EDDA static
+    sbc.b $14                   ; $82EDDB static
+    lsr a                       ; $82EDDD static
+    sta.l $308000               ; $82EDDE static
+    nop                         ; $82EDE2 static
+    lda.l $308000               ; $82EDE3 static
+    sta.b $1A                   ; $82EDE7 static
+    lda.l $308000               ; $82EDE9 static
+    sta.b $1C                   ; $82EDED static
+    lda.w #$0000                ; $82EDEF static
+    sta.l $308000               ; $82EDF2 static
+    lda.l $7E3E6E,x             ; $82EDF6 static
+    sec                         ; $82EDFA static
+    sbc.l $7E3E6C,x             ; $82EDFB static
+    asl a                       ; $82EDFF static
+    sta.l $308000               ; $82EE00 static
+    lda.b $14                   ; $82EE04 static
+    sta.l $308000               ; $82EE06 static
+    lda.b $1A                   ; $82EE0A static
+    clc                         ; $82EE0C static
+    adc.l $308000               ; $82EE0D static
+    sta.b $1A                   ; $82EE11 static
+    lda.b $1C                   ; $82EE13 static
+    adc.l $308000               ; $82EE15 static
+    sta.b $1C                   ; $82EE19 static
+    lda.b $1B                   ; $82EE1B static
+    eor.w #$FFFF                ; $82EE1D static
+    inc a                       ; $82EE20 static
+    sta.w $0208                 ; $82EE21 static
+    lda.w #$0001                ; $82EE24 static
+    sta.b $3C                   ; $82EE27 static
+    rts                         ; $82EE29 static
+road_edge_shift:
+    ldx.b $16                   ; $82EE2A static
+    lda.b $3C                   ; $82EE2C static
+    bne CODE_82EE50             ; $82EE2E static
+    stz.w $020A                 ; $82EE30 static
+    stz.w $020C                 ; $82EE33 static
+    lda.w $0204                 ; $82EE36 static
+    sta.w $0200                 ; $82EE39 static
+    clc                         ; $82EE3C static
+    adc.w $1EF4                 ; $82EE3D static
+    sta.w $1EF4                 ; $82EE40 static
+    lda.w $0206                 ; $82EE43 static
+    sta.w $0202                 ; $82EE46 static
+    adc.w $1EF6                 ; $82EE49 static
+    sta.w $1EF6                 ; $82EE4C static
+    rts                         ; $82EE4F static
+CODE_82EE50:
+    lda.w #$0000                ; $82EE50 static
+    sta.l $308000               ; $82EE53 static
+    lda.w $1EFA                 ; $82EE57 static
+    asl a                       ; $82EE5A static
+    asl a                       ; $82EE5B static
+    sta.l $308000               ; $82EE5C static
+    lda.w #$8000                ; $82EE60 static
+    sec                         ; $82EE63 static
+    sbc.b $14                   ; $82EE64 static
+    lsr a                       ; $82EE66 static
+    sta.l $308000               ; $82EE67 static
+    nop                         ; $82EE6B static
+    lda.l $308000               ; $82EE6C static
+    sta.b $1A                   ; $82EE70 static
+    lda.l $308000               ; $82EE72 static
+    sta.w $020C                 ; $82EE76 static
+    stz.w $020A                 ; $82EE79 static
+    lda.w #$0000                ; $82EE7C static
+    sta.l $308000               ; $82EE7F static
+    lda.l $7E3DEE,x             ; $82EE83 static
+    sec                         ; $82EE87 static
+    sbc.l $7E3DEC,x             ; $82EE88 static
+    asl a                       ; $82EE8C static
+    sta.l $308000               ; $82EE8D static
+    lda.b $14                   ; $82EE91 static
+    sta.l $308000               ; $82EE93 static
+    lda.b $1A                   ; $82EE97 static
+    clc                         ; $82EE99 static
+    adc.l $308000               ; $82EE9A static
+    lda.l $308000               ; $82EE9E static
+    adc.w #$0000                ; $82EEA2 static
+    clc                         ; $82EEA5 static
+    adc.w $020C                 ; $82EEA6 static
+    eor.w #$FFFF                ; $82EEA9 static
+    inc a                       ; $82EEAC static
+    sta.w $020C                 ; $82EEAD static
+    stz.w $1EEE                 ; $82EEB0 static
+    stz.w $1EF0                 ; $82EEB3 static
+    rts                         ; $82EEB6 static
 road_shift_by_place:
     lda.w $0226                 ; $82EEB7
     and.w #$0020                ; $82EEBA
