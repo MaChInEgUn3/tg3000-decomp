@@ -427,3 +427,4 @@ func    80D823   race_hud_sprites    ; the race HUD: windows, readouts (PPU mult
 func    8AC15D   text_buffer_screen  ; the $7F:7D00 text buffer as tiles, then text_screen_init -> src/misc.c
 func    80DCBB   scenery_build       ; the track's scenery records: map blocks, palettes, tiles, sprite lists -> src/misc.c
 func    81F21E   car_contacts_chain  ; an object's contacts down the chain of objects just ahead -> src/misc.c
+func    80E925   ticker_scene_step   ; one frame of the scrolling-text scene: camera, view, ticker lines, sparks -> src/misc.c

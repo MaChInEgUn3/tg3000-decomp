@@ -1789,6 +1789,31 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The scrolling-text scene, one frame (roots-61, 2026-11-20)
+
+**`ticker_scene_step` ($80:E925):** about 2,500 entries.
+- **Camera:** the 24-bit `D+$7B` gains the sign-extended `D+$80`, and `D+$7E` gains
+  `D+$82`, which decays by `$12`.
+- **View words:** `D+$2E`-`$3C`.
+- **Text state machine on `D+$46`.** It feeds `ticker_draw` with the line at
+  `$7F:2000 + D+$5E`, or with the list at `$81:D5CF`, stepping through it by the bits of
+  `D+$48`. It also starts the fades.
+- **The rest:** sparks, `func_80EB66`, `oam_finish_near`.
+- **Never run**, decoded as static code: `D+$82` decaying from below, and a 9-bit sign
+  extension.
+- **C is read after it.** On a negative `D+$46` it is the `CMP #$FFFF`'s; otherwise it is
+  `oam_finish_near`'s: its `SBC #$0900` of the old `D+$6E`, which is `D+$6C` afterwards.
+  The adapter simulates the `D+$46` steps to tell which.
+- **Fuzz lessons:**
+  - `D+$5E` is the `$7F` double buffer (0 or `$8000`) shared by the sparks and the ticker,
+    so their state has to agree.
+  - The fuzz starts from the RAM at the end of the movie, a race, whose `$6C` (`$270C`)
+    sent the OAM packer's direct page into I/O. The fuzz now sets the title's OAM buffers
+    first.
+  - A temporary print of the PC in `difftest.c`, reverted afterwards, found it at
+    `$81:810E`.
+- Live 852/852, fuzz 500/500, paths 159/159.
+
 ## A car's contacts down the chain (roots-60, 2026-11-19)
 
 **`car_contacts_chain` ($81:F21E):** about 357,000 entries in the 60k movie.

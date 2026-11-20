@@ -999,4 +999,22 @@ void scenery_build(void);
 // to its counted-up value. Returns whether one hit.
 bool car_contacts_chain(uint16_t x, uint16_t y);
 
+// $80:E925: one frame of the scrolling-text scene (D = $0100).
+// - D+$82 decays toward 0 by $12 (from below: never run); the 24-bit D+$7B gains the
+//   sign-extended D+$80, D+$7E gains D+$82; $0026 gets bit 1.
+// - The view: D+$2E = D+$7C / 8 (signed) + $88 + the signed high byte of D+$22; D+$30 = the
+//   9-bit row from D+$7E's high byte (rounded by bit 7; sign-extended: never run) - $2E -
+//   D+$E8 + the signed high byte of D+$24; D+$32 = D+$38 and D+$34 = -D+$36 from $81:CEA9 /
+//   $81:CDA9 by D+$84 & $3FE; D+$3A = D+$2C, D+$3C = $1C.
+// - The text (ticker_draw at x $0A10 + D+$E7): with D+$46 not negative, the line at
+//   $7F:2000 + D+$5E. Else the list $81:D5CF by D+$4A: on an even D+$46, D+$48 = 0 starts a
+//   fade ($98 = 0, $96 = $FF80), or else D+$4A moves on past D+$48's lowest set bit, D+$46
+//   counts up, the queue restarts and D+$4C = $A0; D+$4C counts the line's frames, D+$46
+//   counting up at 0.
+// - spark_step unless the car's $03A8 is set, func_80EB66, oam_finish_near; D+$86 counts.
+// - D+$46 not negative counts down; at 0, unless D+$48 is set and the car's $03A8 is not
+//   negative (then D+$46 = $8000), it counts back up and a fade starts. At $FFFF a fade
+//   starts.
+void ticker_scene_step(void);
+
 #endif

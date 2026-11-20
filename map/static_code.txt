@@ -93,3 +93,5 @@
 80:D9A3 80:D9BC m16x16 ; race_hud_draw: the first $0700 entry's sprites when it is on screen (never run)
 8A:C17C 8A:C17F m16x16 ; text_buffer_screen: the other title string when $1B37 bit 15 is set (never run)
 80:DD7A 80:DD7F m16x16 ; scenery_build: a 6x6 block's map row for a column below $20 (never run)
+80:E929 80:E936 m16x16 ; ticker_scene_step: a negative D+$82 decays up to 0 (never run)
+80:E9A0 80:E9A3 m16x16 ; ticker_scene_step: the 9-bit row sign-extended (never run)

@@ -3262,3 +3262,84 @@ bool car_contacts_chain(uint16_t x, uint16_t y) {
   wr16(DP + 0x3C, count);
   return hit;
 }
+
+// The high byte of a word, sign-extended.
+static uint16_t high_signed(uint16_t v) { return (uint16_t)(int16_t)(int8_t)(v >> 8); }
+
+// TG3000_ROUTINE($80:E925) ticker_scene_step
+void ticker_scene_step(void) {
+  uint16_t a = rd16(DP + 0x82);
+  if(a & 0x8000) {  // never run
+    a = (uint16_t)(a + 0x0012);
+    if(!(a & 0x8000)) a = 0;
+  } else {
+    a = (uint16_t)(a - 0x0012);
+    if(a & 0x8000) a = 0;
+  }
+  wr16(DP + 0x82, a);
+  const uint16_t v80 = rd16(DP + 0x80);
+  const uint32_t lo = (uint32_t)rd16(DP + 0x7B) + v80;
+  wr16(DP + 0x7B, (uint16_t)lo);
+  wr8(DP + 0x7D, (uint8_t)(((v80 & 0x8000) ? 0xFF : 0x00) + rd8(DP + 0x7D) + (lo >> 16)));
+  wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x82) + rd16(DP + 0x7E)));
+  wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
+  const uint16_t x = (uint16_t)(rd16(DP + 0x84) & 0x03FE);
+  uint16_t c = rd16(DP + 0x7C);
+  for(int i = 0; i < 3; i++) c = (uint16_t)((c >> 1) | (c & 0x8000));
+  wr16(DP + 0x2E, (uint16_t)(c + 0x0088));
+  wr16(DP + 0x2E, (uint16_t)(high_signed(rd16(DP + 0x22)) + rd16(DP + 0x2E)));
+  uint16_t row = rd16(DP + 0x7E);
+  row = (uint16_t)(row << 8 | row >> 8);
+  row = (uint16_t)(((row << 1) | (row >> 15)) & 0x01FF);
+  if(row & 0x0100) row |= 0xFE00;  // never run
+  wr16(DP + 0x30, (uint16_t)(row - 0x002E - rd16(DP + 0xE8)));
+  wr16(DP + 0x30, (uint16_t)(high_signed(rd16(DP + 0x24)) + rd16(DP + 0x30)));
+  wr16(DP + 0x32, bus_rd16(0x81CEA9 + (uint32_t)x));
+  wr16(DP + 0x38, bus_rd16(0x81CEA9 + (uint32_t)x));
+  wr16(DP + 0x34, bus_rd16(0x81CDA9 + (uint32_t)x));
+  wr16(DP + 0x36, (uint16_t)-rd16(DP + 0x34));
+  wr16(DP + 0x3A, rd16(DP + 0x2C));
+  wr16(DP + 0x3C, 0x001C);
+  const uint16_t at = (uint16_t)(0x0A10 + rd16(DP + 0xE7));
+  if(!(rd16(DP + 0x46) & 0x8000)) {
+    ticker_draw(0x7F, at, (uint16_t)(0x2000 + rd16(DP + 0x5E)));
+  } else {
+    if(!(rd16(DP + 0x46) & 0x0001)) {
+      if(rd16(DP + 0x48) == 0) {
+        wr16(DP + 0x98, 0);
+        wr16(DP + 0x96, 0xFF80);
+      } else {
+        bool out;
+        do {
+          wr16(DP + 0x4A, (uint16_t)(rd16(DP + 0x4A) + 2));
+          out = (rd16(DP + 0x48) & 1) != 0;
+          wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) >> 1));
+        } while(!out);
+        wr16(DP + 0x46, (uint16_t)(rd16(DP + 0x46) + 1));
+        queue_7f_init(DP);
+        wr16(DP + 0x4C, 0x00A0);
+      }
+    }
+    ticker_draw(0x81, at, bus_rd16(0x81D5CF + (uint32_t)rd16(DP + 0x4A)));
+    wr16(DP + 0x4C, (uint16_t)(rd16(DP + 0x4C) - 1));
+    if(rd16(DP + 0x4C) == 0) wr16(DP + 0x46, (uint16_t)(rd16(DP + 0x46) + 1));
+  }
+  if(rd16(0x03A8 + (uint32_t)rd16(DP + 0x94)) == 0) spark_step();
+  func_80EB66(DP);
+  oam_finish_near(DP);
+  wr16(DP + 0x86, (uint16_t)(rd16(DP + 0x86) + 1));
+  const uint16_t s = rd16(DP + 0x46);
+  if(!(s & 0x8000)) {
+    wr16(DP + 0x46, (uint16_t)(s - 1));
+    if(rd16(DP + 0x46) != 0) return;
+    if(rd16(DP + 0x48) != 0 && !(rd16(0x03A8 + (uint32_t)rd16(DP + 0x94)) & 0x8000)) {
+      wr16(DP + 0x46, 0x8000);
+      return;
+    }
+    wr16(DP + 0x46, (uint16_t)(rd16(DP + 0x46) + 1));
+  } else if(s != 0xFFFF) {
+    return;
+  }
+  wr16(DP + 0x98, 0);
+  wr16(DP + 0x96, 0xFF80);
+}

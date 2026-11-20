@@ -11095,7 +11095,7 @@ CODE_80E7DF:
     adc.b $84                   ; $80E7E5
     sta.b $84                   ; $80E7E7
 CODE_80E7E9:
-    jsr.w $E925                 ; $80E7E9
+    jsr.w ticker_scene_step     ; $80E7E9
     lda.b $9A                   ; $80E7EC
     bit.w #$7FFF                ; $80E7EE
     bne CODE_80E7F6             ; $80E7F1
@@ -11164,7 +11164,7 @@ CODE_80E85A:
 CODE_80E868:
     sta.b $80                   ; $80E868
 CODE_80E86A:
-    jsr.w $E925                 ; $80E86A
+    jsr.w ticker_scene_step     ; $80E86A
     lda.b $9A                   ; $80E86D
     bit.w #$7FFF                ; $80E86F
     bne CODE_80E877             ; $80E872
@@ -11243,9 +11243,16 @@ CODE_80E91B:
     tay                         ; $80E920
     jsr.w block_copy_7f2000     ; $80E921
     rts                         ; $80E924
+ticker_scene_step:
     lda.b $82                   ; $80E925
     bpl CODE_80E936             ; $80E927
-    incbin !baserom:$6929..$6936
+    clc                         ; $80E929 static
+    adc.w #$0012                ; $80E92A static
+    bmi CODE_80E932             ; $80E92D static
+    lda.w #$0000                ; $80E92F static
+CODE_80E932:
+    sta.b $82                   ; $80E932 static
+    bra CODE_80E941             ; $80E934 static
 CODE_80E936:
     sec                         ; $80E936
     sbc.w #$0012                ; $80E937
@@ -11253,6 +11260,7 @@ CODE_80E936:
     lda.w #$0000                ; $80E93C
 CODE_80E93F:
     sta.b $82                   ; $80E93F
+CODE_80E941:
     ldx.w #$0000                ; $80E941
     lda.b $80                   ; $80E944
     bpl CODE_80E949             ; $80E946
@@ -11302,7 +11310,7 @@ CODE_80E98C:
     and.w #$01FF                ; $80E998
     bit.w #$0100                ; $80E99B
     beq CODE_80E9A3             ; $80E99E
-    incbin !baserom:$69A0..$69A3
+    ora.w #$FE00                ; $80E9A0 static
 CODE_80E9A3:
     sec                         ; $80E9A3
     sbc.w #$002E                ; $80E9A4

@@ -3219,6 +3219,56 @@ static void fuzz_car_contacts_chain(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   wr16ram(ram, DP + 0x3C, (uint16_t)(rnd() % 5));
 }
 
+// ---- ticker_scene_step ($80:E925) ----  both callers load A and test it with BIT #, then
+// wait_frames: no register outputs. C is read after it: with D+$46 negative at the end (as
+// the steps leave it, simulated here), that of its CMP #$FFFF; else oam_finish_near's (its
+// SBC #$0900 of the old D+$6E, which is D+$6C after it).
+static void call_ticker_scene_step(const Regs* in, Regs* out) {
+  (void)in;
+  uint16_t s = rd16(DP + 0x46), count = rd16(DP + 0x4C);
+  if(s & 0x8000) {
+    if(!(s & 1) && rd16(DP + 0x48) != 0) {
+      s = (uint16_t)(s + 1);
+      count = 0x00A0;
+    }
+    count = (uint16_t)(count - 1);
+    if(count == 0) s = (uint16_t)(s + 1);
+  }
+  ticker_scene_step();
+  out->c = (s & 0x8000) ? s == 0xFFFF : rd16(DP + 0x6C) >= 0x0900;
+}
+// the sparks', the sprites' and the ticker's state; a valid line at $7F:2000 + D+$5E; the
+// camera and view words; D+$46 counting either way (and $FFFF), D+$48/$4A keeping the list
+// index within its five lines; the car's $03A8
+static void fuzz_func_80EB66(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_oam_finish(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_ticker_scene_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_oam_finish(r, ram, rnd);  // the OAM buffers ($6C, $6E): the fuzz starts from a race's RAM
+  fuzz_spark_step(r, ram, rnd);
+  fuzz_func_80EB66(r, ram, rnd);
+  // D+$5E is the $7F double buffer (0 or $8000) of both the sparks and the ticker: the
+  // ticker's queue and line go to the sparks' buffer
+  const uint32_t buffer = (uint32_t)(ram[DP + 0x5E] | ram[DP + 0x5F] << 8);
+  fuzz_ticker_draw(r, ram, rnd);
+  const uint32_t q = (uint32_t)(ram[DP + 0x5E] | ram[DP + 0x5F] << 8);
+  for(uint32_t i = 0; i < 0x40; i++) ram[0x10000 + buffer + i] = ram[0x10000 + q + i];
+  wr16ram(ram, DP + 0x5E, (uint16_t)buffer);
+  for(uint32_t i = 0; i < 0x80; i++) ram[0x12000 + buffer + i] = ram[0x1C00 + i];
+  static const uint16_t words[] = {0x80, 0x82, 0x7B, 0x7D, 0x7E, 0x84, 0x22, 0x24, 0xE8, 0x2C, 0xE7};
+  for(unsigned i = 0; i < sizeof words / sizeof words[0]; i++) wr16ram(ram, DP + words[i], (uint16_t)rnd());
+  const uint32_t d = rnd() % 4;
+  wr16ram(ram, DP + 0x82, (uint16_t)(d == 0 ? 0x8000 | rnd() : d == 1 ? 0xFFE8 + rnd() % 0x18 : rnd() % 0x100));
+  wr16ram(ram, DP + 0xE7, (uint16_t)(rnd() % 0x100));
+  const uint32_t k = rnd() % 5;
+  wr16ram(ram, DP + 0x46, k == 0 ? 0xFFFF : k == 1 ? (uint16_t)(1 + rnd() % 3) : (uint16_t)(0x8000 | (rnd() % 4)));
+  wr16ram(ram, DP + 0x48, (uint16_t)(rnd() % 4 == 0 ? 0 : 1u << (rnd() % 3)));
+  wr16ram(ram, DP + 0x4A, (uint16_t)(2 * (rnd() % 2)));
+  wr16ram(ram, DP + 0x4C, (uint16_t)(1 + rnd() % 3));
+  const uint16_t car = (uint16_t)(2 * (rnd() % 8));
+  wr16ram(ram, DP + 0x94, car);
+  wr16ram(ram, 0x03A8 + car, (uint16_t)(rnd() % 3 == 0 ? 0 : rnd() % 2 ? 0x8000 | rnd() : 1 + rnd() % 0x100));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7833,6 +7883,8 @@ const Routine routines[] = {
    .holes = {{0x80DD65, 0x80DD71}}},  // the kinds' handler table
   {.name = "car_contacts_chain", .entry = 0x81F21E, .end = 0x81F251, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_car_contacts_chain, ALL_OUTPUTS, .fuzz = fuzz_car_contacts_chain},
+  {.name = "ticker_scene_step", .entry = 0x80E925, .end = 0x80EA77, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_ticker_scene_step, .fuzz = fuzz_ticker_scene_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
