@@ -411,3 +411,5 @@
 80F555 upload_slice_14 src/video_dma.c 8aadec86f51c5d25 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 8aadec86f51c5d25 1 500 20/20 verified live-flags:NVZC replayed:0
 80E925 ticker_scene_step src/misc.c 22086370a24047e6 852 500 159/159 verified live-flags:C replayed:0
+80F5DE title_frame_step src/misc.c 56482de4fe0c2e3f 84 500 82/82 verified live-flags:NVZC replayed:0
+80F6AD title_fade_step src/misc.c 56482de4fe0c2e3f 58 500 36/36 verified live-flags:NVZC replayed:0

@@ -3269,6 +3269,71 @@ static void fuzz_ticker_scene_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
   wr16ram(ram, 0x03A8 + car, (uint16_t)(rnd() % 3 == 0 ? 0 : rnd() % 2 ? 0x8000 | rnd() : 1 + rnd() % 0x100));
 }
 
+// ---- title_frame_step / title_fade_step ($80:F5DE, $80:F6AD) ----  both end with SEC.
+// After decompress_near (input Y = 0): X = the input end, Y = A = the length (N Z of it in
+// the fade), V clear. The frame step: A = the new D+$40, N Z of its CMP #$17C or of the
+// INC D+$3E at $17C. The fade without an unpack: A = D+$42 (N Z of its CMP #$3F), X Y and V
+// as window_curve_build leaves them (X = 0, Y = $170; V of its last add).
+static uint16_t titleUnpackEnd(uint16_t src) {
+  // the input end, from a second unpack of the same stream into scratch (the C's own is
+  // compared as WRAM); the routine's output region is written again with the same bytes
+  uint16_t end;
+  decompress_near(DP, 0x7E, src, 0x7F, 0x0000, &end);
+  return end;
+}
+static void call_title_frame_step(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t src = rd16(0xA920 + (uint32_t)(rd16(DP + 0x40) & 0xFFFE));
+  const uint16_t len = title_frame_step();
+  out->a = rd16(DP + 0x40);
+  out->x = titleUnpackEnd(src);
+  out->y = len;
+  if(out->a == 0x017C) setNZ16(out, rd16(DP + 0x3E));
+  else setNZ16(out, (uint16_t)(out->a - 0x017C));
+  out->c = true;
+  out->v = false;
+}
+static void call_title_fade_step(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t len = title_fade_step();
+  out->c = true;
+  if(rd16(DP + 0x42) == 0x003F) {
+    out->a = out->y = len;
+    out->x = titleUnpackEnd(0xC730);
+    setNZ16(out, len);
+    out->v = false;
+    return;
+  }
+  out->a = rd16(DP + 0x42);
+  setNZ16(out, (uint16_t)(out->a - 0x003F));
+  out->x = 0;
+  out->y = 0x0170;
+  const uint16_t p = rd16(DP + 0x14), q = rd16(DP + 0x17), prev = (uint16_t)(p - q);
+  out->v = ((prev ^ p) & (q ^ p) & 0x8000) != 0;
+}
+// a compressed stream from the ROM ($88:929A, the palettes' picture) copied to WRAM at
+// $7E:`at`, as the title's pictures lie there
+static void fuzzTitleStream(uint8_t* ram, uint32_t at) {
+  for(uint32_t i = 0; i < 0x1000; i++) ram[at + i] = rom8(0x88929A + i);
+}
+// the frames around the uploads and the curve's start, the table pointing at a stream
+static void fuzz_title_frame_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_window_curve_build(r, ram, rnd);
+  const uint32_t k = rnd() % 3;
+  wr16ram(ram, DP + 0x40, (uint16_t)(k == 0 ? 0x013A + 2 * (rnd() % 4) : k == 1 ? 0x015A + 2 * (rnd() % 0x12) : 0x0100 + 2 * (rnd() % 0x3E)));
+  fuzzTitleStream(ram, 0xC000);
+  for(uint32_t i = 0; i < 0x80; i += 2) wr16ram(ram, 0xA920 + 0x0100 + i, 0xC000);
+  for(uint32_t i = 0; i < 0x100; i += 2) wr16ram(ram, 0xA920 + i, 0xC000);
+  for(uint32_t i = 0x100; i < 0x180; i += 2) wr16ram(ram, 0xA920 + i, 0xC000);
+}
+// the count around its turns ($20, $3F, $7F)
+static void fuzz_title_fade_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_window_curve_build(r, ram, rnd);
+  static const uint16_t near[] = {0x001E, 0x001F, 0x0020, 0x003D, 0x003E, 0x003F, 0x0040, 0x007D, 0x007E, 0x007F};
+  wr16ram(ram, DP + 0x42, (rnd() & 1) ? near[rnd() % 10] : (uint16_t)(rnd() % 0x90));
+  fuzzTitleStream(ram, 0xC730);
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7885,6 +7950,10 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_car_contacts_chain, ALL_OUTPUTS, .fuzz = fuzz_car_contacts_chain},
   {.name = "ticker_scene_step", .entry = 0x80E925, .end = 0x80EA77, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_ticker_scene_step, .fuzz = fuzz_ticker_scene_step},
+  {.name = "title_frame_step", .entry = 0x80F5DE, .end = 0x80F6AD, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_title_frame_step, ALL_OUTPUTS, .fuzz = fuzz_title_frame_step},
+  {.name = "title_fade_step", .entry = 0x80F6AD, .end = 0x80F6FD, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_title_fade_step, ALL_OUTPUTS, .fuzz = fuzz_title_fade_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

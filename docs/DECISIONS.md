@@ -1789,6 +1789,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Two title steps (roots-62, 2026-11-20)
+
+**`title_frame_step` ($80:F5DE):** one step of the title picture, by its frame `D+$40`.
+- At frames `$13A`-`$140` it sends a `$614`-byte VRAM upload from bank `$7E`.
+- Then, from `$80:F670` on, the windows: both at 255-0, BG1/BG2 masked by window 1
+  (`$2123` = `$0A`, then `$02`), the HDMA line tables cleared.
+- From frame `$15C` on: `D+$42` counts and `window_curve_build` runs.
+- Then the frame's picture unpacks from the pointer table at `$7E:A920`.
+- `$80:F5CD` (parked for its tail into `$80:F670`) can come next.
+
+**`title_fade_step` ($80:F6AD):** `D+$42` counts. The level (two ramps, at most `$3F`) goes
+to `palette_fade_60`, then `window_curve_build`. At `$3F` the picture `$7E:C730` unpacks.
+
+**Both, in common:**
+- They end with `SEC`. Their other exit registers are `decompress_near`'s or
+  `window_curve_build`'s. The adapters get the input end by unpacking the same stream a
+  second time, which writes the same bytes.
+- The pictures are compressed in WRAM bank `$7E`, which is junk in the race RAM the fuzz
+  starts from. The fuzz copies a compressed stream from the ROM (`$88:929A`) there and
+  points the table at it.
+- Live 84/84 and 58/58, fuzz 500/500, paths 82/82 and 36/36, first try.
+
 ## The scrolling-text scene, one frame (roots-61, 2026-11-20)
 
 **`ticker_scene_step` ($80:E925):** about 2,500 entries.

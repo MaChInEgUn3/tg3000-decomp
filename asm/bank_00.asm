@@ -12694,6 +12694,7 @@ CODE_80F5C5:
     lda.w #$003C                ; $80F5D6
     sta.b $1E                   ; $80F5D9
     jmp.w $F670                 ; $80F5DB
+title_frame_step:
     lda.b $40                   ; $80F5DE
     cmp.w #$013A                ; $80F5E0
     bne CODE_80F5F3             ; $80F5E3
@@ -12783,6 +12784,7 @@ CODE_80F68A:
 CODE_80F6AB:
     sec                         ; $80F6AB
     rts                         ; $80F6AC
+title_fade_step:
     lda.b $42                   ; $80F6AD
     inc a                       ; $80F6AF
     cmp.w #$007F                ; $80F6B0

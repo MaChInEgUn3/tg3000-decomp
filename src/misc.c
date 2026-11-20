@@ -4,6 +4,7 @@
 #include "decompress.h"
 #include "dsp4.h"
 #include "frame.h"
+#include "line_tables.h"
 #include "pads.h"
 #include "rng.h"
 #include "platform.h"
@@ -3342,4 +3343,66 @@ void ticker_scene_step(void) {
   }
   wr16(DP + 0x98, 0);
   wr16(DP + 0x96, 0xFF80);
+}
+
+// The window settings of the title's picture ($80:F644): windows 1 and 2 at 255-0, BG1/BG2
+// masked by window 1, the line tables cleared.
+static void title_windows(void) {
+  wr16(DP + 0x7E, 0xFFFF);
+  video_set_window_bg12(0x0A);
+  wr16(0x0D00, 0);
+  wr16(0x0D40, 0);
+  wr16(0x0E00, 0);
+  wr16(0x0E40, 0);
+  video_set_window_position(0, 0xFF);
+  video_set_window_position(1, 0x00);
+  video_set_window_position(2, 0xFF);
+  video_set_window_position(3, 0x00);
+  video_set_window_bg12(0x02);
+  video_set_window_bg34(0x00);
+  video_set_window_logic_bg(0x00);
+  video_set_window_logic_obj(0x00);
+}
+
+// TG3000_ROUTINE($80:F5DE) title_frame_step
+uint16_t title_frame_step(void) {
+  static const uint16_t from[4] = {0x9180, 0x9768, 0x9D50, 0xA338}, to[4] = {0x0000, 0x02F4, 0x05E8, 0x08DC};
+  const uint16_t f = rd16(DP + 0x40);
+  for(int i = 0; i < 4; i++)
+    if(f == 0x013A + 2 * i) video_upload_vram(to[i], 0x7E0000 | from[i], 0x0614);
+  title_windows();
+  if(rd16(DP + 0x40) >= 0x015C) {
+    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 1));
+    wr16(DP + 0x30, (uint16_t)((rd16(DP + 0x42) >> 1) + 0x0040));
+    wr16(DP + 0x36, 0x0800);
+    window_curve_build();
+  }
+  uint16_t end;
+  const uint16_t src = rd16(0xA920 + (uint32_t)(rd16(DP + 0x40) & 0xFFFE));
+  const uint16_t len = decompress_near(DP, 0x7E, src, 0x7F, 0x0000, &end);
+  wr16(DP + 0x40, (uint16_t)(rd16(DP + 0x40) + 2));
+  if(rd16(DP + 0x40) == 0x017C) wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
+  return len;
+}
+
+// TG3000_ROUTINE($80:F6AD) title_fade_step
+uint16_t title_fade_step(void) {
+  const uint16_t n = (uint16_t)(rd16(DP + 0x42) + 1);
+  if(n == 0x007F) wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
+  wr16(DP + 0x42, n);
+  uint16_t level;
+  if(n < 0x0020) {
+    level = (uint16_t)((n >> 1) + 0x0040);
+  } else {
+    const uint16_t t = n >= 0x003F ? (uint16_t)(n - 0x003F) : 0;
+    level = (uint16_t)((t >> 1) + 0x0020);
+    if(level >= 0x0040) level = 0x003F;
+  }
+  wr16(DP + 0x30, level);
+  palette_fade_60(level);
+  wr16(DP + 0x36, 0x0800);
+  window_curve_build();
+  if(rd16(DP + 0x42) != 0x003F) return 0;
+  uint16_t end;
+  return decompress_near(DP, 0x7E, 0xC730, 0x7F, 0x0000, &end);
 }

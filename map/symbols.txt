@@ -428,3 +428,5 @@ func    8AC15D   text_buffer_screen  ; the $7F:7D00 text buffer as tiles, then t
 func    80DCBB   scenery_build       ; the track's scenery records: map blocks, palettes, tiles, sprite lists -> src/misc.c
 func    81F21E   car_contacts_chain  ; an object's contacts down the chain of objects just ahead -> src/misc.c
 func    80E925   ticker_scene_step   ; one frame of the scrolling-text scene: camera, view, ticker lines, sparks -> src/misc.c
+func    80F5DE   title_frame_step    ; a title frame: VRAM upload, windows, curve, the frame's picture unpacked -> src/misc.c
+func    80F6AD   title_fade_step     ; a title fade step: level, palette_fade_60, curve, picture -> src/misc.c
