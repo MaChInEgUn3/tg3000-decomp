@@ -421,3 +421,4 @@
 80F549 upload_slice_13 src/video_dma.c 25f4db2a077d1a04 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 25f4db2a077d1a04 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 25f4db2a077d1a04 1 500 20/20 verified live-flags:NVZC replayed:0
+83F73E follow_car_step src/misc.c f9f05deee88ed156 136 500 74/74 verified live-flags:- replayed:0

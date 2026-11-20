@@ -1103,4 +1103,12 @@ void road_shift_apply(void);
 // multiplies: $020C = the product >> 8, the offset = the product << 8).
 void road_shift_settle(void);
 
+// $83:F73E: the view follows car $1EBA (D = `dp`, $0200 in the game; DB = $30), while bit 0
+// of D+$44 is set (else nothing: never run). The gap ($7E:FAB5 of the car, 32 bits, less
+// D+$25:$27, less $40) / 16 + 8, at most $80, times $1E9E (a DSP-4 multiply) moves D+$25:$27
+// on; the new gap is left in $0114:$0116. Reaching or passing it (the gap 0 or below $40
+// before the $40) snaps D+$25:$27 to the car's position less $40, clears bit 0 of D+$44 and
+// counts $1ECE down ($8000 becomes $118).
+void follow_car_step(uint16_t dp);
+
 #endif

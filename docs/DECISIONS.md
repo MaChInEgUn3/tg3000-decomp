@@ -1789,6 +1789,25 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The view follows a car (roots-70, 2026-11-20)
+
+**`follow_car_step` ($83:F73E, D = `$0200`, DB = `$30`):** the third multiply-only DSP-4
+root.
+- **The step:** while bit 0 of `D+$44` is set, the 32-bit view `D+$25:$27` moves toward
+  car `$1EBA`'s position less `$40`. The step is the gap / 16 + 8, at most `$80`, times
+  `$1E9E`, on the chip. The new gap is left in `$0114:$0116`.
+- **Arrival** means the new gap lands between 0 and `$40`: the original's carry is that
+  of the last `SBC #$40` alone. An overshoot wraps the 32-bit gap past `$40` and counts as
+  still behind. On arrival it snaps to the car less `$40`, clears the bit, and counts
+  `$1ECE` down (`$8000` becomes `$118`).
+- **Never run:** with the bit clear, a `JMP` to the `RTS`, decoded as static code.
+- **The fuzz took three tries.**
+  - My first "arrives" case used a high speed, so every case overshot.
+  - Two attempts to decorrelate the generator's bits changed nothing, because the
+    generator was not the problem.
+  - Landing in the window needs a crawl (speed 0-8 from a few units behind).
+- Live 136/136 (60k) and 43/43 (race1), fuzz 500/500 and 200/200, paths 74/74 on both.
+
 ## The road shift settled (roots-69, 2026-11-20)
 
 **`road_shift_settle` ($82:EFDA, DB = `$30`):** `road_shift_apply`'s twin.

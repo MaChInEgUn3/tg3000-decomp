@@ -752,7 +752,7 @@ func_83EA9B:
     lda.w $1ECE                 ; $83EACA
     beq CODE_83EB31             ; $83EACD
     bpl CODE_83EAD4             ; $83EACF
-    jsr.w $F73E                 ; $83EAD1
+    jsr.w follow_car_step       ; $83EAD1
 CODE_83EAD4:
     lda.w $1E9C                 ; $83EAD4
     bit.w #$0001                ; $83EAD7
@@ -2095,10 +2095,11 @@ CODE_83F71D:
     adc.l $308000               ; $83F736
     sta.w $0118                 ; $83F73A
     rts                         ; $83F73D
+follow_car_step:
     lda.w #$0001                ; $83F73E
     bit.b $44                   ; $83F741
     bne CODE_83F748             ; $83F743
-    incbin !baserom:$1F745..$1F748
+    jmp.w $F7F8                 ; $83F745 static
 CODE_83F748:
     ldx.w $1EBA                 ; $83F748
     lda.l $7EFAB5,x             ; $83F74B

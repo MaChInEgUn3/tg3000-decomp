@@ -3530,6 +3530,73 @@ static void fuzz_road_shift_settle(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
   if(rnd() & 1) wr16ram(ram, 0x0206, (uint16_t)((rnd() % 0x400) - 0x200));
 }
 
+// ---- follow_car_step ($83:F73E) ----  nothing to follow (never run): A = 1, the BIT of D+$44
+// (Z set, N V its bits 15 and 14), X Y C kept. Else X = $1EBA, Y = $1E9E and: still behind:
+// A = the gap's two words ORed (N Z of it), C set, V of the high word's SBC #0; arrived: A
+// = $1ECE (or $118: N Z clear, C set) with N Z C of its CMP #$8000, V of the snap's high
+// SBC #0
+static void call_follow_car_step(const Regs* in, Regs* out) {
+  const uint16_t dp = in->d, flags = rd16((uint16_t)(dp + 0x44));
+  const uint16_t car = rd16(0x1EBA), lo5 = rd16(0xFAB5 + (uint32_t)car), hi7 = rd16(0xFAB7 + (uint32_t)car);
+  const uint16_t count = rd16(0x1ECE);
+  follow_car_step(dp);
+  out->x = in->x;
+  out->y = in->y;
+  if(!(flags & 1)) {
+    out->a = 0x0001;
+    out->z = true;
+    out->n = (flags & 0x8000) != 0;
+    out->v = (flags & 0x4000) != 0;
+    return;
+  }
+  out->x = car;
+  out->y = rd16(0x1E9E);
+  if(rd16((uint16_t)(dp + 0x44)) & 1) {  // still behind
+    const uint16_t lo2 = rd16(0x0114), hi2 = rd16(0x0116);
+    const uint16_t lo1 = (uint16_t)(lo2 + 0x40);
+    const bool borrow = lo1 < 0x40;
+    const uint16_t hi1 = (uint16_t)(hi2 + borrow);
+    out->a = (uint16_t)(hi2 | lo2);
+    setNZ16(out, out->a);
+    out->c = true;
+    out->v = (hi1 & (hi1 ^ hi2) & 0x8000) != 0;
+    return;
+  }
+  const uint16_t hi = (uint16_t)(hi7 - (lo5 < 0x40));
+  out->v = (hi7 & (hi7 ^ hi) & 0x8000) != 0;
+  out->a = rd16(0x1ECE);
+  if((uint16_t)(count - 1) == 0x8000) {
+    out->n = out->z = false;
+    out->c = true;
+    return;
+  }
+  setNZ16(out, (uint16_t)(out->a - 0x8000));
+  out->c = out->a >= 0x8000;
+}
+// a car (its stride $35) and the view near it, behind, at or past it; a speed; the count
+// near its wrap; bit 0 of D+$44 now and then clear
+static void fuzz_follow_car_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  const uint16_t dp = r->d;
+  const uint16_t car = (uint16_t)(0x35 * (rnd() % 20));
+  wr16ram(ram, 0x1EBA, car);
+  const uint32_t at = rnd();
+  wr16ram(ram, 0xFAB5 + car, (uint16_t)at);
+  wr16ram(ram, 0xFAB7 + car, (uint16_t)(at >> 16));
+  const uint32_t view = at - 0x40 - (rnd() % 4 == 0 ? rnd() % 0x10 : rnd() % 0x2000) + (rnd() % 4 == 0 ? 0x20 : 0);
+  wr16ram(ram, (uint16_t)(dp + 0x25), (uint16_t)view);
+  wr16ram(ram, (uint16_t)(dp + 0x27), (uint16_t)(view >> 16));
+  wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 0x400));
+  if(rnd() & 1) {  // a few units behind at a crawl: it lands in the last $40 and arrives
+    // (an overshoot wraps the 32-bit gap past $40 and counts as still behind)
+    const uint32_t near = at - 0x40 - rnd() % 0x10;
+    wr16ram(ram, (uint16_t)(dp + 0x25), (uint16_t)near);
+    wr16ram(ram, (uint16_t)(dp + 0x27), (uint16_t)(near >> 16));
+    wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 9));
+  }
+  wr16ram(ram, (uint16_t)(dp + 0x44), (uint16_t)(rnd() % 8 == 0 ? rnd() & 0xFFFE : rnd() | 1));
+  wr16ram(ram, 0x1ECE, ((rnd() >> 20) % 3 == 0) ? 0x8001 : (uint16_t)(1 + rnd() % 0x200));  // (high bits: the low ones pair with the arrival's)
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -8171,6 +8238,8 @@ const Routine routines[] = {
   {.name = "road_shift_settle", .entry = 0x82EFDA, .end = 0x82F1C1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_road_shift_settle, ALL_OUTPUTS, .fuzz = fuzz_road_shift_settle,
    .holes = {{0x82F0D6, 0x82F0E7}}},  // dead bytes after a JMP (a 32-bit halving nothing reaches)
+  {.name = "follow_car_step", .entry = 0x83F73E, .end = 0x83F7F9, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x30, .call = call_follow_car_step, ALL_OUTPUTS, .fuzz = fuzz_follow_car_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

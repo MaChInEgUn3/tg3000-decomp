@@ -3689,3 +3689,31 @@ snap:
   road_shift_offset();
   road_shift_move();
 }
+
+// A 32-bit word pair at `at` (low word first).
+static uint32_t rd32pair(uint32_t at) { return rd16(at) | (uint32_t)rd16(at + 2) << 16; }
+
+// TG3000_ROUTINE($83:F73E) follow_car_step
+void follow_car_step(uint16_t dp) {
+  if(!(rd16(dp + 0x44) & 0x0001)) return;  // never run
+  const uint32_t car = rd32pair(0xFAB5 + (uint32_t)rd16(0x1EBA));
+  uint32_t gap = car - rd32pair(dp + 0x25) - 0x40;
+  wr16(0x0114, (uint16_t)gap);
+  wr16(0x0116, (uint16_t)(gap >> 16));
+  uint16_t step = (uint16_t)((uint16_t)(rd16(0x0114) >> 4) + 8);
+  if(step >= 0x0080) step = 0x0080;
+  const uint32_t pos = rd32pair(dp + 0x25) + (uint32_t)dsp4_multiply((int16_t)rd16(0x1E9E), (int16_t)step);
+  wr16(dp + 0x25, (uint16_t)pos);
+  wr16(dp + 0x27, (uint16_t)(pos >> 16));
+  const uint32_t ahead = car - pos;  // before the $40
+  gap = ahead - 0x40;
+  wr16(0x0114, (uint16_t)gap);
+  wr16(0x0116, (uint16_t)(gap >> 16));
+  if(gap != 0 && ahead >= 0x40) return;
+  const uint32_t at = car - 0x40;
+  wr16(dp + 0x25, (uint16_t)at);
+  wr16(dp + 0x27, (uint16_t)(at >> 16));
+  wr16(dp + 0x44, (uint16_t)(rd16(dp + 0x44) & ~0x0001));
+  wr16(0x1ECE, (uint16_t)(rd16(0x1ECE) - 1));
+  if(rd16(0x1ECE) == 0x8000) wr16(0x1ECE, 0x0118);
+}
