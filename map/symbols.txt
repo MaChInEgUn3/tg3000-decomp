@@ -434,3 +434,4 @@ func    80F5CD   title_frame_begin   ; the title frames restarted, then title_fr
 func    80C35E   menu_bar_draw       ; a four-item menu: the bar placed between keys (CPU divider, PPU multiplier), labels -> src/misc.c
 func    858000   track_tiles_load    ; the track's tiles: unpack, then four layouts of uploads and palette rows (long) -> src/misc.c
 func    8A8BC2   track_tiles_preview ; the track's tiles for a preview: unpack, four layouts of uploads, palette -> src/misc.c
+func    8AC056   title_card_show     ; a title card: load, fade in, 180 frames, fade out -> src/misc.c

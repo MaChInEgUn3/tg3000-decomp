@@ -60,6 +60,10 @@ typedef struct {
   // Addresses where the linear decode must switch to 8-bit A (code reached by a branch
   // from an 8-bit section after a REP that the sweep would otherwise carry over).
   uint32_t m8At[2];
+  // The most instructions a live sample may run (0: MAX_INSNS), honoured only for a routine
+  // that waits for interrupts (a title card waiting a few hundred frames). A budget only:
+  // what is compared does not change.
+  uint32_t maxInsns;
 } Routine;
 
 // Hardware effects, in canonical form: what the original did through DMA and what the C

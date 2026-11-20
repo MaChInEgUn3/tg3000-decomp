@@ -1789,6 +1789,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A per-row instruction budget, and the title card (harness-1, 2026-11-20)
+
+**The harness.** This is the first of the two changes decided above.
+- A row may set `maxInsns`, honoured only when it also sets `waitsForInterrupts`; the
+  default stays `MAX_INSNS`, 4M.
+- `MAX_IRQS` (the interrupts recorded in one sample, each with two WRAM snapshots) goes
+  from 64 to 512. A 200-frame wait records more than 64.
+- The arrays are BSS and touched only when used, so other rows cost nothing.
+- Nothing compared changes; samples that were abandoned are now compared.
+
+**`title_card_show` ($8A:C056), now verified.** It was written in roots-56 and reverted.
+- It clears the fade state and the direct page.
+- It loads the screen and clears VRAM, unpacks the tiles, then loads the text palettes,
+  the sprites and the tilemap.
+- It sets the frame handler to `$FC5F` and BG1's vertical scroll, then lays out six sprite
+  slots and five lines of tile text.
+- Then it fades in, waits 180 frames one at a time, fades out and waits for the fade's end.
+- **The flags.** The C returns the frame its last one-frame wait ended on, so the adapter
+  can model V (`wait_frames(1)` from `$7FFF`). Y is `func_8AC0F2`'s, `$14`, fixed by the
+  ROM's lines.
+- Live 1/1, `maxInsns` = 40M, paths 57/57. It has no fuzz: it waits for interrupts.
+
 ## Audit: return values no adapter compares (audit-1, 2026-11-20)
 
 **Why.** roots-53 showed it: a C function's return value is unverified when no adapter

@@ -3421,6 +3421,21 @@ static void fuzz_track_tiles_preview(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   wr16ram(ram, 0x0444, (uint16_t)(rnd() % 0x37));
 }
 
+// ---- title_card_show ($8A:C056) ----  A = the handler put back (N Z of its PLA), X = 0, Y
+// = func_8AC0F2's ($14: its last line's, fixed by the ROM); C and V of the last
+// wait_frames(1) (C set; V when it started at $7FFF)
+static void call_title_card_show(const Regs* in, Regs* out) {
+  const uint16_t handler = rd16(0x0008);
+  const uint16_t frame = title_card_show();
+  out->a = handler;
+  out->x = 0;
+  out->y = 0x0014;
+  setNZ16(out, handler);
+  out->c = true;
+  out->v = frame == 0x8000;
+  (void)in;
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -8052,6 +8067,9 @@ const Routine routines[] = {
   {.name = "track_tiles_preview", .entry = 0x8A8BC2, .end = 0x8A8CB7, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_tiles_preview, ALL_OUTPUTS,
    .fuzz = fuzz_track_tiles_preview, .holes = {{0x8A8BED, 0x8A8C5B}}},  // the layouts' table
+  {.name = "title_card_show", .entry = 0x8AC056, .end = 0x8AC0F2, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .waitsForInterrupts = true, .maxInsns = 40000000,
+   .call = call_title_card_show, ALL_OUTPUTS},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

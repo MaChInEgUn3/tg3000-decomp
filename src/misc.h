@@ -1067,4 +1067,14 @@ void track_tiles_load(uint16_t track);
 // offsets, and palette_load_70 (all with k).
 void track_tiles_preview(uint16_t track);
 
+// $8A:C056: a title card shown for three seconds (D = $0100). The fade state ($0196-$019A)
+// and the direct page scratch are cleared; the screen is loaded ($8A:C4B0), VRAM cleared,
+// tiles unpacked ($8A:BA55, $87:F861 to VRAM $0800, $87:F5BC to 0) with the text
+// palettes; sprites and the $7F tilemap cleared; the frame handler $0008 set to $FC5F
+// (the old one put back at the end); BG1's vertical scroll $FFBF; six sprite slots at
+// ($58, $14) and five lines of tile text. It fades in ($0198 = $0F00, $0196 = $80), waits
+// 180 frames one at a time, fades out ($0196 = $FFC0) and waits until the fade ends
+// ($019A = 0). Returns the frame its last one-frame wait ended on.
+uint16_t title_card_show(void);
+
 #endif

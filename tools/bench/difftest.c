@@ -178,7 +178,7 @@ static uint8_t afterRam[TG3000_WRAM_SIZE];
 // Interrupts inside the sample of a routine that waits for them (at most one such sample
 // at a time): each one's WRAM before and after the handler, replayed in order by
 // platform_wait_vblank() on the C side.
-#define MAX_IRQS 64
+#define MAX_IRQS 512  // interrupts recorded in one sample (a 200-frame wait); pages are touched only when used
 static uint8_t irqPre[MAX_IRQS][TG3000_WRAM_SIZE], irqPost[MAX_IRQS][TG3000_WRAM_SIZE];
 static int irqOwner = -1;  // depth of the sample that records them
 static int irqCount, irqReplayed, irqLimit;
@@ -1346,7 +1346,7 @@ void difftest_on_insn(Cpu* cpu) {
       smp->leftExtent = true;
       smp->leftExtentPc = pc;
     }
-    if(++smp->insns > MAX_INSNS) {
+    if(++smp->insns > ((r->waitsForInterrupts && r->maxInsns) ? r->maxInsns : MAX_INSNS)) {
       for(int j = depth - 1; j >= k; j--) stats[samples[j].idx].abandoned++;
       if(irqOwner >= k) irqOwner = -1;
       depth = k;

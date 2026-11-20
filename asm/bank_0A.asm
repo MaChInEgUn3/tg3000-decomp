@@ -2723,7 +2723,7 @@ CODE_8A9E5F:
     jsr.w $BE2E                 ; $8A9E76
     rtl                         ; $8A9E79
 CODE_8A9E7A:
-    jsr.w $C056                 ; $8A9E7A
+    jsr.w title_card_show       ; $8A9E7A
     rtl                         ; $8A9E7D
     incbin !baserom:$51E7E..$51E82
 CODE_8A9E82:
@@ -4352,6 +4352,7 @@ CODE_8AC04C:
     dey                         ; $8AC052
     bne CODE_8AC04C             ; $8AC053
     rts                         ; $8AC055
+title_card_show:
     lda.w $0008                 ; $8AC056
     pha                         ; $8AC059
     stz.w $0196                 ; $8AC05A

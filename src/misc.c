@@ -3510,3 +3510,37 @@ void track_tiles_preview(uint16_t track) {
   upload_tiles_c680(k, o[2]);
   palette_load_70(k);
 }
+
+// TG3000_ROUTINE($8A:C056) title_card_show
+uint16_t title_card_show(void) {
+  const uint16_t handler = rd16(0x0008);
+  wr16(0x0196, 0);
+  wr16(0x0198, 0);
+  wr16(0x019A, 0);
+  clear_dp_scratch();
+  wr16(DP + 0x8E, 0);
+  video_load_screen_long(0x8AC4B0);
+  clear_vram();
+  func_8ABA55(DP);
+  decompress_to_vram(DP, 0x87, 0xF861, 0x0800);
+  text_palettes_load();
+  decompress_to_vram(DP, 0x87, 0xF5BC, 0x0000);
+  func_8A8EEF();
+  clear_tilemap_7f();
+  wr16(0x0008, 0xFC5F);
+  wr16(DP + 0x8E, (uint16_t)(rd16(DP + 0x8E) + 1));
+  video_set_bg1_vofs(0xFFBF);
+  wr16(DP + 0x42, 0x0058);
+  wr16(DP + 0x44, 0x0014);
+  sprite_slots_six();
+  func_8AC0F2();
+  wr16(0x0198, 0x0F00);
+  wr16(0x0196, 0x0080);
+  uint16_t frame = 0;
+  for(int i = 0; i < 0xB4; i++) frame = wait_frames(1);
+  wr16(0x0198, 0);
+  wr16(0x0196, 0xFFC0);
+  while(rd16(0x019A) != 0) platform_wait_vblank();
+  wr16(0x0008, handler);
+  return frame;
+}
