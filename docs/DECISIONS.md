@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The road shift settled (roots-69, 2026-11-20)
+
+**`road_shift_settle` ($82:EFDA, DB = `$30`):** `road_shift_apply`'s twin.
+- **Shared code:** the same front (the two multiplies, the negated sum) and the same tail
+  (the offset applied to the car). Both are now shared functions; that edits verified C,
+  hence the full gate.
+- **The difference: how the offset is settled.**
+  - **Zeroed** when `$0206` and `D+$24` (-`$1EF6`) differ in sign (`$020C` = 0, `$1E66`
+    bit 15 cleared).
+  - **Snapped** to `$1EF4` - `$1EC2` when `$0206` has passed `D+$24` (bit 15 set).
+  - **Otherwise scaled** by a factor v. Below `$100` it is a fraction on the CPU divider:
+    the remainder, times 256, over |`D+$24`|. Above, it is the gap less half of it, plus
+    `$80`, zeroed or snapped out of range.
+  - v scales `$020C` and `$1EF6` - `$1EC4` through two more DSP-4 multiplies: `$020C` =
+    product >> 8, the offset = product << 8.
+- **Never run:** the flagged-row width (`$82:F010`, as in `road_shift_apply`), decoded as
+  static code. The bytes at `$82:F0D6` (a 32-bit halving after a `JMP`) are dead; nothing
+  branches there, and the row declares them a hole.
+- Live 42/42, fuzz 500/500, paths 198/198, first try. `road_shift_apply` passes again
+  (41/41).
+
 ## The player car's shift along the road (roots-68, 2026-11-20)
 
 **`road_shift_apply` ($82:F1C1, DB = `$30`):** the first of the six multiply-only DSP-4

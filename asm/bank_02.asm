@@ -4596,7 +4596,7 @@ CODE_82EED7:
     lda.w $1E66                 ; $82EED7
     and.w #$FFFE                ; $82EEDA
     pha                         ; $82EEDD
-    jsr.w $EFDA                 ; $82EEDE
+    jsr.w road_shift_settle     ; $82EEDE
     lda.w $1E66                 ; $82EEE1
     asl a                       ; $82EEE4
     lda.w #$0000                ; $82EEE5
@@ -4609,9 +4609,9 @@ CODE_82EED7:
     lda.w $0226                 ; $82EFCC
     and.w #$003E                ; $82EFCF
     cmp.w #$0018                ; $82EFD2
-    bcc CODE_82EFDA             ; $82EFD5
+    bcc road_shift_settle       ; $82EFD5
     jmp.w road_shift_apply      ; $82EFD7
-CODE_82EFDA:
+road_shift_settle:
     lda.w $020B                 ; $82EFDA
     sta.b $22                   ; $82EFDD
     ldx.b $16                   ; $82EFDF
@@ -4635,11 +4635,25 @@ CODE_82EFDA:
     stz.w $8000                 ; $82F007
     lda.l $7E3D6C,x             ; $82F00A
     bpl CODE_82F033             ; $82F00E
-    incbin !baserom:$17010..$17033
+    bit.w #$0002                ; $82F010 static
+    bne CODE_82F033             ; $82F013 static
+    lda.l $7E3AEF,x             ; $82F015 static
+    and.w #$00FF                ; $82F019 static
+    bit.w #$0080                ; $82F01C static
+    beq CODE_82F024             ; $82F01F static
+    ora.w #$FF00                ; $82F021 static
+CODE_82F024:
+    eor.w #$FFFF                ; $82F024 static
+    sec                         ; $82F027 static
+    adc.l $7E3DEE,x             ; $82F028 static
+    sec                         ; $82F02C static
+    sbc.l $7E3DEC,x             ; $82F02D static
+    bra CODE_82F03C             ; $82F031 static
 CODE_82F033:
     lda.l $7E3DF0,x             ; $82F033
     sec                         ; $82F037
     sbc.l $7E3DEE,x             ; $82F038
+CODE_82F03C:
     asl a                       ; $82F03C
     sta.w $8000                 ; $82F03D
     lda.b $14                   ; $82F040

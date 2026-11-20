@@ -3569,8 +3569,9 @@ void vram_planes_build(void) {
   video_set_vram_increment(0x80);
 }
 
-// TG3000_ROUTINE($82:F1C1) road_shift_apply
-void road_shift_apply(void) {
+// The road shift's front ($82:F1C1, $82:EFDA): D+$22 = the word at $020B; the 32-bit sum
+// of the two DSP-4 multiplies, negated into $020A:$020C; D+$24 = -$1EF6.
+static void road_shift_front(void) {
   wr16(DP + 0x22, rd16(0x020B));
   const uint32_t x = rd16(DP + 0x16);
   const uint16_t near = rd16(0x3DEC + x), mid = rd16(0x3DEE + x);
@@ -3592,16 +3593,19 @@ void road_shift_apply(void) {
   wr16(0x020A, (uint16_t)-sum);
   wr16(0x020C, (uint16_t)((uint32_t)-sum >> 16));
   wr16(DP + 0x24, (uint16_t)-rd16(0x1EF6));
-  if(!(rd16(0x1E66) & 0x8000)) {
-    wr16(0x020C, 0);
-    wr16(DP + 0x1E, 0);
-    wr16(DP + 0x20, 0);
-  } else {
-    const uint32_t off = ((uint32_t)rd16(0x1EF4) | (uint32_t)rd16(0x1EF6) << 16) -
-                         ((uint32_t)rd16(0x1EC2) | (uint32_t)rd16(0x1EC4) << 16);
-    wr16(DP + 0x1E, (uint16_t)off);
-    wr16(DP + 0x20, (uint16_t)(off >> 16));
-  }
+}
+
+// The car's offset D+$1E:$20 = $1EF4:$1EF6 less $1EC2:$1EC4.
+static void road_shift_offset(void) {
+  const uint32_t off = ((uint32_t)rd16(0x1EF4) | (uint32_t)rd16(0x1EF6) << 16) -
+                       ((uint32_t)rd16(0x1EC2) | (uint32_t)rd16(0x1EC4) << 16);
+  wr16(DP + 0x1E, (uint16_t)off);
+  wr16(DP + 0x20, (uint16_t)(off >> 16));
+}
+
+// The road shift's tail: $01CE gains D+$22 less the new $020B; $0204:$0206 lose the offset,
+// are copied to $0200:$0202 and added to $1EF4:$1EF6.
+static void road_shift_move(void) {
   wr16(0x01CE, (uint16_t)(rd16(DP + 0x22) - rd16(0x020B) + rd16(0x01CE)));
   const uint32_t at = ((uint32_t)rd16(0x0204) | (uint32_t)rd16(0x0206) << 16) -
                       ((uint32_t)rd16(DP + 0x1E) | (uint32_t)rd16(DP + 0x20) << 16);
@@ -3612,4 +3616,76 @@ void road_shift_apply(void) {
   const uint32_t car = ((uint32_t)rd16(0x1EF4) | (uint32_t)rd16(0x1EF6) << 16) + at;
   wr16(0x1EF4, (uint16_t)car);
   wr16(0x1EF6, (uint16_t)(car >> 16));
+}
+
+// TG3000_ROUTINE($82:F1C1) road_shift_apply
+void road_shift_apply(void) {
+  road_shift_front();
+  if(!(rd16(0x1E66) & 0x8000)) {
+    wr16(0x020C, 0);
+    wr16(DP + 0x1E, 0);
+    wr16(DP + 0x20, 0);
+  } else {
+    road_shift_offset();
+  }
+  road_shift_move();
+}
+
+// TG3000_ROUTINE($82:EFDA) road_shift_settle
+void road_shift_settle(void) {
+  road_shift_front();
+  uint16_t s24 = rd16(DP + 0x24);
+  const uint16_t a206 = rd16(0x0206);
+  uint16_t v;
+  if((a206 ^ s24) & 0x8000) goto zero;
+  if(!(((uint16_t)(a206 - s24) ^ s24) & 0x8000)) goto snap;
+  {
+    uint16_t v26 = a206;
+    if(a206 & 0x8000) {
+      s24 = (uint16_t)-s24;
+      wr16(DP + 0x24, s24);
+      v26 = (uint16_t)-a206;
+    }
+    wr16(DP + 0x26, v26);
+    if(!((uint16_t)(s24 - 0x0100) & 0x8000)) {
+      const uint16_t a = (uint16_t)-(uint16_t)((s24 >> 1) - v26);
+      if(!((uint16_t)(a - 0x0080) & 0x8000)) goto snap;
+      if((uint16_t)(a - 0xFF80) & 0x8000) goto zero;
+      v = (uint16_t)(a + 0x0080);
+    } else {
+      // the fraction remainder * 256 / s, on the CPU divider ($FFFF and the dividend kept
+      // as the remainder for a divisor of 0)
+      const uint8_t d = (uint8_t)s24;
+      const uint16_t r = d ? (uint16_t)(v26 % d) : v26;
+      const uint16_t r8 = (uint16_t)(r << 8 | r >> 8);
+      v = d ? (uint16_t)(r8 / d) : 0xFFFF;
+    }
+  }
+  wr16(DP + 0x28, v);
+  {
+    int32_t p = dsp4_multiply((int16_t)v, (int16_t)rd16(0x020C));
+    wr16(DP + 0x24, (uint16_t)p);
+    wr16(DP + 0x26, (uint16_t)((uint32_t)p >> 16));
+    wr16(0x020C, rd16(DP + 0x25));
+    p = dsp4_multiply((int16_t)v, (int16_t)(uint16_t)(rd16(0x1EF6) - rd16(0x1EC4)));
+    wr16(DP + 0x24, (uint16_t)p);
+    wr16(DP + 0x26, (uint16_t)((uint32_t)p >> 16));
+    wr16(DP + 0x1E, (uint16_t)(rd16(DP + 0x23) & 0xFF00));
+    wr16(DP + 0x20, rd16(DP + 0x25));
+  }
+  road_shift_move();
+  return;
+zero:
+  wr16(0x020C, 0);
+  wr16(DP + 0x1E, 0);
+  wr16(DP + 0x20, 0);
+  wr16(0x1E66, (uint16_t)(rd16(0x1E66) & ~0x8000));
+  road_shift_move();
+  return;
+snap:
+  wr16(DP + 0x1E, rd16(0x1EF4));
+  wr16(DP + 0x20, rd16(0x1EF6));
+  wr16(0x1E66, (uint16_t)(rd16(0x1E66) | 0x8000));
+  road_shift_offset();
+  road_shift_move();
 }

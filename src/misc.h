@@ -1095,4 +1095,12 @@ void vram_planes_build(void);
 // $1EF4:$1EF6. D+$24 = -$1EF6 (the old).
 void road_shift_apply(void);
 
+// $82:EFDA: road_shift_apply's front and tail with the offset settled (D = $0100, DB = $30):
+// $0206 and D+$24 (-$1EF6) of opposite signs zero it ($020C = 0, $1E66 bit 15 cleared);
+// $0206 past D+$24 snaps it to $1EF4 - $1EC2 ($1E66 bit 15 set); else the factor v (from
+// the gap and |D+$24|: a fraction on the CPU divider below $100, else the gap less half
+// of it, plus $80, zeroed or snapped out of range) scales $020C and $1EF6 - $1EC4 (DSP-4
+// multiplies: $020C = the product >> 8, the offset = the product << 8).
+void road_shift_settle(void);
+
 #endif

@@ -3509,6 +3509,27 @@ static void fuzz_road_shift_apply(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   wr16ram(ram, 0x1E66, (uint16_t)rnd());
 }
 
+// ---- road_shift_settle ($82:EFDA) ----  as road_shift_apply (the same tail)
+static void call_road_shift_settle(const Regs* in, Regs* out) {
+  const uint16_t lo = rd16(0x1EF4), hi = rd16(0x1EF6);
+  road_shift_settle();
+  const uint16_t at = rd16(0x0204), atHi = rd16(0x0206);
+  const uint32_t c0 = ((uint32_t)lo + at) >> 16;
+  const uint32_t sum = (uint32_t)atHi + hi + c0;
+  out->a = (uint16_t)sum;
+  out->x = rd16(DP + 0x16);
+  out->y = in->y;
+  setNZ16(out, (uint16_t)sum);
+  out->c = sum > 0xFFFF;
+  out->v = (~(atHi ^ hi) & (atHi ^ (uint16_t)sum) & 0x8000) != 0;
+}
+// road_shift_apply's, with the car's and the gap's words small so every way is taken
+static void fuzz_road_shift_settle(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_road_shift_apply(r, ram, rnd);
+  if(rnd() & 1) wr16ram(ram, 0x1EF6, (uint16_t)((rnd() % 0x400) - 0x200));
+  if(rnd() & 1) wr16ram(ram, 0x0206, (uint16_t)((rnd() % 0x400) - 0x200));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -8147,6 +8168,9 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x8A, .call = call_vram_planes_build, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "road_shift_apply", .entry = 0x82F1C1, .end = 0x82F2B3, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_road_shift_apply, ALL_OUTPUTS, .fuzz = fuzz_road_shift_apply},
+  {.name = "road_shift_settle", .entry = 0x82EFDA, .end = 0x82F1C1, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_road_shift_settle, ALL_OUTPUTS, .fuzz = fuzz_road_shift_settle,
+   .holes = {{0x82F0D6, 0x82F0E7}}},  // dead bytes after a JMP (a 32-bit halving nothing reaches)
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

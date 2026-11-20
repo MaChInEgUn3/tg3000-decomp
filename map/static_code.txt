@@ -98,3 +98,4 @@
 85:8132 85:8135 m16x16 ; track_tiles_load: player 2's rows moved on (never run)
 85:8166 85:8169 m16x16 ; track_tiles_load: player 1's rows moved on, fourth layout (never run)
 85:8174 85:8177 m16x16 ; track_tiles_load: player 2's rows moved on, fourth layout (never run)
+82:F010 82:F033 m16x16 ; road_shift_settle: a flagged row's width (never run)
