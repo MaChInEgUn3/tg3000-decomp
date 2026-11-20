@@ -7486,6 +7486,70 @@ static void fuzz_race_hud_digits(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x4C, (uint16_t)(rnd() % 10));
 }
 
+// ---- car_track_step ($83:F7F9) ----  its caller PLDs and returns into a routine that loads
+// A and X first: no register outputs but DB ($83, its PLB); the bench judges the flags
+static void call_car_track_step(const Regs* in, Regs* out) {
+  car_track_step(in->d);
+  out->db = 0x83;
+}
+// the handlers' and the lap check's inputs; the car's state bits, speeds and counters;
+// a short move forward (a few segments) and objects of every kind the table handles (the
+// random pickup, kinds 24 and 93, often) on the segments ahead
+static void fuzz_car_track_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  const uint16_t dp = r->d;
+  const uint16_t frames = (uint16_t)(ram[0x019A] | ram[0x019B] << 8);
+  fuzz_track_object(r, ram, rnd);
+  fuzz_car_lap_check(r, ram, rnd);
+  fuzz_rng_state(ram, rnd);
+  uint16_t laps = frames;
+  if(laps == 0 || laps > 0x400 || (rnd() & 1)) laps = (uint16_t)(0x40 + rnd() % 0x200);
+  wr16ram(ram, 0x019A, laps);
+  const uint32_t pos = (uint32_t)(rnd() % ((uint32_t)laps << 8)) | (rnd() % 4 == 0 ? (uint32_t)(rnd() % 4) << 24 : 0);
+  wr16ram(ram, (uint16_t)(dp + 0x25), (uint16_t)pos);
+  wr16ram(ram, (uint16_t)(dp + 0x27), (uint16_t)(pos >> 16));
+  static const uint16_t bits[] = {0x0000, 0x0020, 0x0120, 0x0021, 0x0001, 0x0080, 0x00A0, 0x01A0};
+  wr16ram(ram, (uint16_t)(dp + 0x44), (uint16_t)(bits[rnd() % 8] | (rnd() & 0xFE5E)));
+  wr16ram(ram, 0x1E9E, (uint16_t)(1 + rnd() % 4));
+  // the car moves forward (a backward move crosses tens of thousands of segments, through
+  // the table's unused kinds)
+  wr16ram(ram, (uint16_t)(dp + 0x10), (uint16_t)(rnd() % 0x200));
+  wr16ram(ram, (uint16_t)(dp + 0x70), (uint16_t)((rnd() & 1) ? 0xF0 + rnd() % 0x20 : rnd() % 0x100));
+  wr16ram(ram, (uint16_t)(dp + 0x72), (uint16_t)(rnd() % 0x100));
+  // D+$5E: with bit 8 a countdown (0 half the time), else the segment to stop at, ahead
+  const bool countdown = (ram[dp + 0x45] & 0x01) != 0;
+  wr16ram(ram, (uint16_t)(dp + 0x5E), countdown ? ((rnd() & 1) ? 0 : (uint16_t)(rnd() % 8)) : (uint16_t)((pos >> 8) + 1 + rnd() % 8));
+  wr16ram(ram, (uint16_t)(dp + 0x0C), (uint16_t)rnd());
+  wr16ram(ram, (uint16_t)(dp + 0x4E), (uint16_t)((rnd() & 0xFF00) | (rnd() % 12)));
+  const uint16_t car = (uint16_t)(0x35 * (rnd() % 20));
+  wr16ram(ram, 0x1EBA, car);
+  wr16ram(ram, (uint16_t)(0xFADE + car), (uint16_t)rnd());
+  // $012C (from the car's +$0A) within the pickups' height limits (+-32) half the time,
+  // and the car's D+$06 inside the 12-bit range the objects' bytes reach
+  wr16ram(ram, (uint16_t)(0xFABF + car), (rnd() & 1) ? (uint16_t)(rnd() % 64 - 32) : (uint16_t)rnd());
+  const uint16_t across = (uint16_t)(rnd() % 0x400 - 0x200);
+  wr16ram(ram, (uint16_t)(dp + 0x06), across);
+  for(int i = 0; i < 0x22; i++) wr16ram(ram, (uint16_t)(0x3DEC + 2 * i), (uint16_t)rnd());
+  // the segments ahead: kinds whose handler entry is not 0, the random pickup a third of
+  // the time
+  uint16_t at = (uint16_t)(((pos + 0x100) >> 8) & 0xFFFF);
+  for(int i = 0; i < 12; i++, at++) {
+    const uint32_t e = 0x8CB3 + (uint32_t)(uint16_t)((uint16_t)(at << 2) % (uint16_t)(laps << 2));
+    uint16_t kind;
+    do kind = (rnd() % 3 == 0) ? (rnd() & 1 ? 24 : 93) : (uint16_t)(1 + rnd() % 104);
+    while(rom16(0x837FFE + 2u * kind) == 0);
+    if(rnd() % 4 == 0) wr16ram(ram, (uint16_t)e, 0);
+    else {
+      ram[e] = (uint8_t)rnd();
+      ram[e + 1] = (uint8_t)kind;
+      ram[e + 2] = (uint8_t)rnd();
+      if(rnd() & 1) {  // aimed at the car: across within +-32, height 0
+        ram[e] = (uint8_t)((uint16_t)(across + rnd() % 64 - 32) >> 4);
+        ram[e + 2] &= 0x0F;
+      }
+    }
+  }
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8335,6 +8399,8 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x7E, .call = call_car_sync_player, ALL_OUTPUTS, .fuzz = fuzz_car_sync_player},
   {.name = "race_hud_digits", .entry = 0x82B4ED, .end = 0x82B769, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_hud_digits, .fuzz = fuzz_race_hud_digits},
+  {.name = "car_track_step", .entry = 0x83F7F9, .end = 0x83F9D1, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x83, .call = call_car_track_step, .fuzz = fuzz_car_track_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

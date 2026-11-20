@@ -338,7 +338,7 @@ func_838989_long:
     lda.w #$0200                ; $83E253
     tcd                         ; $83E256
     jsr.w $EAC6                 ; $83E257
-    jsr.w $F7F9                 ; $83E25A
+    jsr.w car_track_step        ; $83E25A
     pld                         ; $83E25D
     rtl                         ; $83E25E
     incbin !baserom:$1E25F..$1E2D7
@@ -2174,6 +2174,7 @@ CODE_83F7CF:
     sta.w $1ECE                 ; $83F7F5
 CODE_83F7F8:
     rts                         ; $83F7F8
+car_track_step:
     pea.w $8330                 ; $83F7F9
     plb                         ; $83F7FC
     lda.b $25                   ; $83F7FD
@@ -2560,6 +2561,7 @@ track_object_count:
     sta.b $33                   ; $83FB47
 CODE_83FB49:
     rts                         ; $83FB49
+track_object_random:
     jsr.w func_83FC05           ; $83FB4A
     bcc CODE_83FB75             ; $83FB4D
     ldx.w $011A                 ; $83FB4F
@@ -2577,7 +2579,39 @@ CODE_83FB49:
     jmp.w ($FB76,x)             ; $83FB72
 CODE_83FB75:
     rts                         ; $83FB75
-    incbin !baserom:$1FB76..$1FBE2
+    incbin !baserom:$1FB76..$1FB96
+    lda.b $4E                   ; $83FB96 static
+    and.w #$00FF                ; $83FB98 static
+    cmp.w #$000A                ; $83FB9B static
+    beq CODE_83FBA7             ; $83FB9E static
+    inc.b $4E                   ; $83FBA0 static
+    lda.w #$004C                ; $83FBA2 static
+    sta.b $33                   ; $83FBA5 static
+CODE_83FBA7:
+    rts                         ; $83FBA7 static
+    ldx.w #$0047                ; $83FBA8 static
+    lda.w #$4000                ; $83FBAB static
+    ldy.w #$0000                ; $83FBAE static
+    jmp.w $FBCC                 ; $83FBB1 static
+    ldx.w #$004D                ; $83FBB4 static
+    lda.w #$0000                ; $83FBB7 static
+    ldy.w #$0001                ; $83FBBA static
+    jmp.w $FBCC                 ; $83FBBD static
+    ldx.w #$0048                ; $83FBC0 static
+    lda.w #$1000                ; $83FBC3 static
+    ldy.w #$0000                ; $83FBC6 static
+    jmp.w $FBCC                 ; $83FBC9 static
+    stx.b $33                   ; $83FBCC static
+    sed                         ; $83FBCE static
+    ldx.w $1ECC                 ; $83FBCF static
+    clc                         ; $83FBD2 static
+    adc.w $038E,x               ; $83FBD3 static
+    sta.w $038E,x               ; $83FBD6 static
+    tya                         ; $83FBD9 static
+    adc.w $0390,x               ; $83FBDA static
+    sta.w $0390,x               ; $83FBDD static
+    cld                         ; $83FBE0 static
+    rts                         ; $83FBE1 static
     lda.w #$0028                ; $83FBE2
     sta.b $58                   ; $83FBE5
     lda.w #$FFFF                ; $83FBE7
@@ -2585,7 +2619,15 @@ CODE_83FB75:
     lda.w #$004A                ; $83FBEC
     sta.b $33                   ; $83FBEF
     rts                         ; $83FBF1
-    incbin !baserom:$1FBF2..$1FC05
+    stz.b $5A                   ; $83FBF2 static
+    lda.w #$004B                ; $83FBF4 static
+    sta.b $33                   ; $83FBF7 static
+    rts                         ; $83FBF9 static
+    lda.w #$0300                ; $83FBFA static
+    sta.b $48                   ; $83FBFD static
+    lda.w #$004E                ; $83FBFF static
+    sta.b $33                   ; $83FC02 static
+    rts                         ; $83FC04 static
 func_83FC05:
     ldx.w $011A                 ; $83FC05
     lda.l $7E8CB3,x             ; $83FC08
@@ -2750,6 +2792,7 @@ car_clear_53:
     sta.b $53                   ; $83FD61
     rep.b #$20                  ; $83FD63
     jmp.w $FD45                 ; $83FD65
+car_object_stop:
     lda.b $44                   ; $83FD68
     bit.w #$0020                ; $83FD6A
     bne CODE_83FD89             ; $83FD6D

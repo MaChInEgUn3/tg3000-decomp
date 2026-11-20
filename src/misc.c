@@ -3828,3 +3828,171 @@ void race_hud_digits(void) {
   wr16(0x4E45, rd16(DP + 0x1A));
   wr16(0x4E4D, rd16(DP + 0x1C));
 }
+
+// TG3000_ROUTINE($83:FB4A) track_object_random
+void track_object_random(uint16_t dp) {
+  if(!func_83FC05(dp)) return;
+  wr16(0x8CB3 + (uint32_t)rd16(0x011A), 0);
+  func_83FE9A(dp, 0xFF19, rd16(0x1EBE), 0x0000);
+  wr16(dp + 0x4A, 0x801E);
+  const uint32_t car = rd16(0x1ECC);
+  uint16_t lo = 0, hi = 0, shown = 0;
+  switch(bus_rd16(0x83FB76 + (uint32_t)(rng_next_long(0) & 0x001E))) {
+    case 0xFBA8: lo = 0x4000; shown = 0x0047; break;
+    case 0xFBC0: lo = 0x1000; shown = 0x0048; break;
+    case 0xFBB4: hi = 0x0001; shown = 0x004D; break;
+    case 0xFB96:
+      if((rd16(dp + 0x4E) & 0x00FF) == 10) return;
+      wr16(dp + 0x4E, (uint16_t)(rd16(dp + 0x4E) + 1));
+      wr16(dp + 0x33, 0x004C);
+      return;
+    case 0xFBE2:
+      wr16(dp + 0x58, 0x0028);
+      wr16(dp + 0x56, 0xFFFF);
+      wr16(dp + 0x33, 0x004A);
+      return;
+    case 0xFBF2:
+      wr16(dp + 0x5A, 0);
+      wr16(dp + 0x33, 0x004B);
+      return;
+    default:  // $FBFA
+      wr16(dp + 0x48, 0x0300);
+      wr16(dp + 0x33, 0x004E);
+      return;
+  }
+  wr16(dp + 0x33, shown);
+  bool carry = false;
+  wr16(0x038E + car, bcd_add4(rd16(0x038E + car), lo, &carry));
+  wr16(0x0390 + car, bcd_add4(rd16(0x0390 + car), hi, &carry));
+}
+
+// The car's 32-bit position at D+$25.
+static uint32_t car_position(uint16_t dp) { return rd16(dp + 0x25) | (uint32_t)rd16(dp + 0x27) << 16; }
+static void car_position_set(uint16_t dp, uint32_t v) {
+  wr16(dp + 0x25, (uint16_t)v);
+  wr16(dp + 0x27, (uint16_t)(v >> 16));
+}
+// The segment the position is in (its bits 8-23, rounded up by $100).
+static uint16_t car_segment(uint16_t dp) { return (uint16_t)((car_position(dp) + 0x100) >> 8); }
+
+// $83:F898 / $83:F8AA: D+$70 rises by 4 * $1E9E to at most $100 (`rise`), then the position
+// moves by $1E9E * D+$70 (a DSP-4 multiply).
+static void car_step_speed(uint16_t dp, bool rise) {
+  if(rise) {
+    uint16_t v = (uint16_t)(4 * rd16(0x1E9E) + rd16(dp + 0x70));
+    if(v >= 0x0100) v = 0x0100;
+    wr16(dp + 0x70, v);
+  }
+  car_position_set(dp, car_position(dp) + (uint32_t)dsp4_multiply((int16_t)rd16(0x1E9E), (int16_t)rd16(dp + 0x70)));
+}
+
+// $83:FD45: D+$B1 = the object entry's bytes 0 and 2 (the tail of car_set_53).
+static void car_object_mark(uint16_t dp) {
+  const uint32_t x = rd16(0x011A);
+  wr16(dp + 0xB1, (uint16_t)(rd8(0x8CB3 + x) | rd8(0x8CB5 + x) << 8));
+}
+
+// TG3000_ROUTINE($83:FD68) car_object_stop
+// A stop marker: unless bit 5 of D+$44 is set, D+$53 = 4, D+$B1 = the entry's byte 0 and
+// D+$5E = its word at +2 (the segment to stop at).
+static void car_object_stop(uint16_t dp) {
+  if(rd16(dp + 0x44) & 0x0020) return;
+  wr8(dp + 0x53, 4);
+  const uint32_t x = rd16(0x011A);
+  wr16(dp + 0xB1, rd8(0x8CB3 + x));
+  wr16(dp + 0x5E, rd16(0x8CB5 + x));
+}
+
+// One track object's handler, by its kind's entry in the table at $83:7FFE (kinds 1-104;
+// those whose entry is 0 never occur).
+static void track_object_run(uint16_t dp, uint16_t kind) {
+  switch(bus_rd16(0x837FFE + 2u * kind)) {
+    case 0xFA34: track_object_test(dp); break;
+    case 0xFC65: track_object_test_sides(dp); break;
+    case 0xFA32: clc_83FA32(); break;
+    case 0xFB15: track_object_count(dp); break;
+    case 0xFAD7: track_object_money(dp); break;
+    case 0xFB4A: track_object_random(dp); break;
+    case 0xFA6A: track_object_bump(dp); break;
+    case 0xFD26: car_set_53(dp, 1); break;
+    case 0xFD31: car_set_53(dp, 2); break;
+    case 0xFD5D: car_set_53(dp, 3); break;
+    case 0xFD3C: car_clear_53(dp); break;
+    case 0xFD45: car_object_mark(dp); break;
+    case 0xFD68: car_object_stop(dp); break;
+    default: break;
+  }
+}
+
+// TG3000_ROUTINE($83:F7F9) car_track_step
+void car_track_step(uint16_t dp) {
+  wr16(dp + 0x2D, rd16(dp + 0x25));
+  wr16(dp + 0x2F, rd16(dp + 0x27));
+  wr16(0x0114, car_segment(dp));
+  wr16(0x0120, 0);
+  if(rd16(dp + 0x44) & 0x0080) {
+    wr16(dp + 0x44, (uint16_t)(rd16(dp + 0x44) & ~0x0080));
+    const uint32_t f = 0xFADE + (uint32_t)rd16(0x1EBA);
+    wr16(f, (uint16_t)(rd16(f) & 0xFFF7));
+  }
+  const uint16_t state = rd16(dp + 0x44);
+  bool end = false;
+  if(!(state & 0x0020)) {
+    if(!(state & 0x0001))
+      car_position_set(dp, car_position(dp) + (uint32_t)dsp4_multiply((int16_t)rd16(0x1E9E), (int16_t)rd16(dp + 0x10)));
+  } else if(!(state & 0x0001)) {
+    if(state & 0x0100) {
+      if(rd16(dp + 0x5E) != 0) {
+        const uint16_t v = rd16(dp + 0x5E), step = rd16(0x1E9E);
+        wr16(dp + 0x5E, v >= step ? (uint16_t)(v - step) : 0);
+        car_step_speed(dp, true);
+      } else {
+        const uint16_t v = (uint16_t)(rd16(dp + 0x70) - 4 * rd16(0x1E9E));
+        if((uint16_t)(v - rd16(dp + 0x72)) & 0x8000) end = true;
+        else {
+          wr16(dp + 0x70, v);
+          car_step_speed(dp, false);
+        }
+      }
+    } else {
+      car_step_speed(dp, true);
+      if(rd16(dp + 0x26) >= rd16(dp + 0x5E)) {
+        wr16(dp + 0x26, rd16(dp + 0x5E));
+        end = true;
+      } else {
+        wr16(0x0120, (uint16_t)(rd16(0x0120) - 1));
+      }
+    }
+  }
+  if(end) {
+    wr16(dp + 0x44, (uint16_t)((rd16(dp + 0x44) & ~0x0120) | 0x0080));
+    wr16(dp + 0x1A, 0x0004);
+    func_83FE9A(dp, 0xFF2A, rd16(0x1EBE), 0x0000);
+    wr16(0x0120, (uint16_t)(rd16(0x0120) - 1));
+  }
+  car_lap_check(dp);
+  wr16(0x0116, (uint16_t)(car_segment(dp) - rd16(0x0114)));
+  if(rd16(0x0116) != 0) {
+    wr16(0x0114, (uint16_t)(rd16(0x0114) << 2));
+    wr16(0x0118, (uint16_t)(rd16(0x019A) << 2));
+    wr16(0x012C, rd16(0xFABF + (uint32_t)rd16(0x1EBA)));
+    wr16(0x011E, (uint16_t)-rd16(0x3DEC + (uint32_t)((rd16(0x0114) >> 1) & 0x003E)));
+    do {
+      const uint32_t x = (rd16(0x0114) >> 1) & 0x003E;
+      const uint16_t curve = (uint16_t)(rd16(0x3DEE + x) - rd16(0x3DEC + x));
+      wr16(0x011E, (uint16_t)(rd16(0x011E) - curve - rd16(dp + 0x0C)));
+      if(rd16(0x0114) >= rd16(0x0118)) wr16(0x0114, (uint16_t)(rd16(0x0114) - rd16(0x0118)));
+      wr16(0x011A, rd16(0x0114));
+      const uint16_t entry = rd16(0x8CB3 + (uint32_t)rd16(0x0114));
+      if(entry != 0) {
+        wr16(0x011C, (uint16_t)((entry >> 8) << 2));
+        track_object_run(dp, (uint16_t)(entry >> 8));
+      }
+      wr16(0x0114, (uint16_t)(rd16(0x0114) + 4));
+      wr16(0x0116, (uint16_t)(rd16(0x0116) - 1));
+    } while(rd16(0x0116) != 0);
+  }
+  const uint32_t moved = car_position(dp) - (rd16(dp + 0x2D) | (uint32_t)rd16(dp + 0x2F) << 16);
+  wr16(dp + 0x2D, (uint16_t)moved);
+  wr16(dp + 0x2F, (uint16_t)(moved >> 16));
+}

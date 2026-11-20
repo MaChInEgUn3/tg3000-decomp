@@ -441,3 +441,6 @@ func    82EFDA   road_shift_settle   ; road_shift_apply with the offset zeroed, 
 func    83F73E   follow_car_step     ; the view follows a car by a DSP-4-scaled step, snapping on arrival -> src/misc.c
 func    81FA8F   car_sync_player     ; the player's car takes the player's motion (directly or a DSP-4 multiply), then func_81FBB1 -> src/track.c
 func    82B4ED   race_hud_digits     ; the race HUD's numbers: gear, speed digits, bar, tiles; the car's block; messages -> src/misc.c
+func    83F7F9   car_track_step      ; the player's car moves (DSP-4 multiplies) and runs the track objects it passes -> src/misc.c
+func    83FB4A   track_object_random ; the random pickup: one of 16 prizes by the RNG (never run; through car_track_step) -> src/misc.c
+func    83FD68   car_object_stop     ; a stop marker: D+$53 = 4, D+$B1, D+$5E from the object (through car_track_step) -> src/misc.c

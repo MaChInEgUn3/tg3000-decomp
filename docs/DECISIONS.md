@@ -1789,6 +1789,46 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The player's car moves and meets the track objects (roots-74, 2026-11-20)
+
+**`car_track_step` ($83:F7F9, D = `$0200`, DB = `$30` inside):** the last multiply-only
+DSP-4 root.
+- **The move, by `D+$44`.** Free running moves the position `D+$25:$27` by
+  `$1E9E × D+$10`. Bit 5 is a scripted approach: `D+$70` ramps by `4 × $1E9E` (at most
+  `$100`) and the position moves `$1E9E × D+$70` until it reaches the stop at `D+$5E`.
+  With bit 8, `D+$5E` counts down instead and `D+$70` ramps down to `D+$72`.
+- **Reaching the end** sets bit 7 and requests effect `$FF2A`.
+- **Then** `car_lap_check` runs, and every 256-unit segment crossed runs its object from
+  `$7E:8CB3` (4 bytes a segment, wrapping at `4 × $019A`). Each object goes through its
+  kind's entry in the handler table at `$83:7FFE`. `$011E` sums the road's curve as it
+  goes.
+- **The table has 104 kinds**, not 63 as first read. A first test failed live on one
+  sample (`$0253`): kinds 80-97 use six more handlers, the `D+$53` markers (`$83:FD26`,
+  `FD31`, `FD3C`, `FD45`, `FD5D`) and a stop marker (`$83:FD68`, which sets `D+$5E`).
+  Kinds 9, 121 and 122 have a null entry; past 104 the table is other data. The C maps
+  each handler address to its C.
+- **The random pickup** (`$83:FB4A`, kinds 24 and 93) never runs in a movie. Its C,
+  `track_object_random`, has no row of its own (a row needs live samples): it is checked
+  through this row's fuzz.
+  - On a hit it clears the entry and requests effect `$FF19`.
+  - One of 16 prizes is drawn by `rng_next_long` (the table at `$83:FB76`):
+    - money + 4000, + 1000 or + 10000 (BCD);
+    - `D+$4E` + 1 up to 10;
+    - `D+$58`/`D+$56`;
+    - `D+$5A` = 0;
+    - `D+$48` = `$300`.
+  - Each prize also sets `D+$33`.
+  - The 95 bytes that never run are decoded as static code (`$83:FB96`, `$83:FBF2`).
+- **The fuzz moves the car forward.** A backward move makes the segment count negative,
+  so the original walks tens of thousands of segments, through the null kinds, and
+  crashes. The game never moves backward here.
+- **The fuzz aims half the pickups at the car** (across within ±32, height 0). Without
+  that, `func_83FC05`'s hit test almost never passed. With it, a debugging count saw all 7
+  prizes in one 500-case run.
+- **No register outputs but DB** (`$83`, its final `PLB`). The caller `PLD`s, and the next
+  routine loads A and X first.
+- **Result:** race1 196/196 live, fuzz 500/500, paths 201/201.
+
 ## The race HUD's numbers (roots-73, 2026-11-20)
 
 **`race_hud_digits` ($82:B4ED, DB = `$83`):** about 650 bytes, the last of the
@@ -1810,9 +1850,8 @@ multiply-only DSP-4 roots ported so far.
   - a thousands digit;
   - both players' blocks.
 - **No register outputs.** Both callers set what they read; the bench saw no live flag.
-- **Still to do:** `$83:F7F9`, the track object dispatcher, waits for `$83:FB4A`. That
-  random-pickup handler has never run and has about 150 undecoded bytes, with a 16-way
-  jump table on the RNG.
+- **Still to do:** `$83:F7F9`, the track object dispatcher, waits for `$83:FB4A`, the
+  random-pickup handler (ported next, in roots-74).
 - Live 4,000/4,000 (60k) and 216/216 (race1), fuzz 500/500 and 200/200, paths 269/269,
   first try.
 

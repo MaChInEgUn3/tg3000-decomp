@@ -1129,4 +1129,27 @@ void follow_car_step(uint16_t dp);
 // messages at $7E:4E3D/$0233/$7E:4E45/$7E:4E4D (written back after).
 void race_hud_digits(void);
 
+// $83:FB4A: the random pickup (object kind 24; never run in a movie, reached through
+// car_track_step). On func_83FC05's hit: the entry at $7E:8CB3 + $011A cleared, effect
+// $FF19 for $1EBE (func_83FE9A), D+$4A = $801E, and one of 16 prizes by rng_next_long's
+// bits 1-4 (the table at $83:FB76): money + 4000, + 1000 or + 10000 (BCD, car $1ECC;
+// D+$33 = $47, $48, $4D); D+$4E + 1 unless its low byte is 10 ($4C); D+$58 = $28 and
+// D+$56 = $FFFF ($4A); D+$5A = 0 ($4B); D+$48 = $300 ($4E). The value in parentheses
+// goes to D+$33.
+void track_object_random(uint16_t dp);
+
+// $83:F7F9: the player's car moves on (D = `dp`, $0200 in the game; DB = $30 inside, $83
+// after). By D+$44: bit 5 clear: position D+$25:$27 += $1E9E * D+$10 (unless bit 0); bit 5
+// set, bit 0 clear: bit 8 set: D+$5E counts down by $1E9E, else (D+$5E 0) D+$70 drops by
+// 4 * $1E9E, ending at D+$72 (the end below); bit 8 clear: D+$70 rises by 4 * $1E9E to at
+// most $100 and the position moves by $1E9E * D+$70, ending when D+$26 reaches D+$5E. The
+// end: D+$44 loses bits 5 and 8, gains bit 7, D+$1A = 4, effect $FF2A for $1EBE. Bit 7 of
+// D+$44 on entry clears bit 3 of the car's flags ($7E:FADE + $1EBA). Then car_lap_check,
+// and every track segment (256 position units) crossed runs its object (the entry at
+// $7E:8CB3 + 4 * the segment, wrapping at 4 * $019A) through its kind's handler (the
+// table at $83:7FFE, kinds 1-104: the hit tests and pickups, D+$53 markers, a stop
+// marker setting D+$5E), with $011E summing the road's curve ($7E:3DEC) less D+$0C. D+$2D:$2F
+// = the position's change.
+void car_track_step(uint16_t dp);
+
 #endif
