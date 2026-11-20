@@ -7728,17 +7728,12 @@ static void call_road_shift_frame(const Regs* in, Regs* out) {
 // the handlers' inputs (road_shift_by_place's fuzz covers the shift's), both handler
 // indexes over their tables (the never-run handlers among them), the rows the edges read,
 // the place, t, $01CE either sign, the step (0 now and then: the divider's $FFFF).
-// The fuzz runs the original with its stack at $1EFE, over the game's words $1EEE-$1EFD
-// (the game's own stack is elsewhere): the second handler's call sits at $1EF8, under the
-// two words pushed at $1EFA-$1EFD. So road_shift_by_place (index 4) is left to the live
-// samples: its PHA and its callee's return address land on $1EF4-$1EF7, which the settle
-// writes. And $1EFA, which the edge shift reads, is set to the $1EF6 the routine pushes
-// there (as the original sees it).
+// The row fuzzes on the game's own stack (fuzzStack, entry SP $1FEF as measured live): the
+// usual fuzz stack at $1EFE lies over the game's words $1EEE-$1EFD, which its handlers write.
 static void fuzz_road_shift_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_road_shift_by_place(r, ram, rnd);
   ram[0x0261] = (uint8_t)(2 * (rnd() % 2));
-  static const uint8_t handlers[] = {0, 2, 6, 8, 10};
-  ram[0x0260] = handlers[rnd() % 5];
+  ram[0x0260] = (uint8_t)(2 * (rnd() % 6));
   wr16ram(ram, 0x0224, (uint16_t)rnd());
   static const uint16_t rows[] = {0x3C6C, 0x3F6C, 0x3E6C, 0x3DEC};
   for(unsigned k = 0; k < 4; k++)
@@ -7747,7 +7742,8 @@ static void fuzz_road_shift_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   for(unsigned i = 0; i < sizeof words / sizeof words[0]; i++) wr16ram(ram, words[i], (uint16_t)rnd());
   if(rnd() & 1) wr16ram(ram, 0x0202, (uint16_t)(rnd() % 0x200 - 0x100));
   wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 16 == 0 ? (rnd() & 0xFF00) : rnd()));
-  // $1EFA: the $1EF6 pushed before the second handler (the road's place at t)
+  wr16ram(ram, 0x1EFA, (uint16_t)rnd());
+  // the road's place at t, as the routine computes it (the row $3DEC and its slope)
   const uint32_t x = (uint16_t)((ram[0x0226] | ram[0x0227] << 8) << 1) & 0x003E;
   const uint16_t t = (uint16_t)(((ram[0x0224] | ram[0x0225] << 8) >> 1) & 0xFF80);
   const uint16_t row = (uint16_t)(ram[0x3DEC + x] | ram[0x3DED + x] << 8);
@@ -7755,7 +7751,6 @@ static void fuzz_road_shift_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   const int32_t p = (int32_t)(int16_t)(uint16_t)((uint16_t)(next - row) << 1) * (int16_t)t;
   uint16_t at = (uint16_t)((uint16_t)((uint32_t)p >> 16) + row);
   if(at != 0 && !(at & 0x8000)) at--;
-  wr16ram(ram, 0x1EFA, at);
   // half the time the car between the road's two edges (the rows $3C6C below and $3F6C above
   // its place), so the edges are set and the edge shift scales, both handlers paired
   if(rnd() & 1) {
@@ -7767,6 +7762,13 @@ static void fuzz_road_shift_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
     ram[0x0261] = 2;
     if(rnd() & 1) ram[0x0260] = 2;
   }
+}
+
+// ---- road_shift_frame_call ($82:EC32) ----  JSR road_shift_frame; RTS (as it)
+static void call_road_shift_frame_call(const Regs* in, Regs* out) {
+  (void)in;
+  road_shift_frame_call();
+  out->db = 0x83;
 }
 
 const Routine routines[] = {
@@ -8629,7 +8631,11 @@ const Routine routines[] = {
   {.name = "road_shift_by_place", .entry = 0x82EEB7, .end = 0x82EEF0, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_road_shift_by_place, .fuzz = fuzz_road_shift_by_place},
   {.name = "road_shift_frame", .entry = 0x82EC36, .end = 0x82ECEA, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_shift_frame, .fuzz = fuzz_road_shift_frame},
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_shift_frame, .fuzz = fuzz_road_shift_frame,
+   .fuzzStack = 0x1FF1},
+  {.name = "road_shift_frame_call", .entry = 0x82EC32, .end = 0x82EC36, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_shift_frame_call, .fuzz = fuzz_road_shift_frame,
+   .fuzzStack = 0x1FF3},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

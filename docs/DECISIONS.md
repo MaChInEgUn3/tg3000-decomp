@@ -1789,6 +1789,33 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A per-row fuzz stack (harness-3, 2026-11-20; decided by the advisor, open to the owner's veto)
+
+- **The problem.** The fuzz runs each case's original with a sentinel frame topped at
+  `$1F00` (stack pointer `$1EFE`). That lies over the game's own words `$1EEE`-`$1EFD`
+  (`$1EF4`/`$1EF6` the road's place, `$1EF8`/`$1EFA` the edges' factors). A routine whose
+  callees write them overwrote its own return addresses. One that reads them read its own
+  pushed words. Roots-78 had to work around this.
+- **The change.** A row may set `.fuzzStack`, the highest byte of its fuzz sentinel frame.
+  0 keeps `$1F00`. All three frame layouts (`RTS`, `RTL`, interrupt) are now built from
+  that one base, so rows without the field are byte-identical to before.
+- **The value comes from a live measurement.** Each live sample's entry stack pointer is
+  recorded. For `road_shift_frame` it is `$1FEF` on the 60k movie (the game sets `$1FFF`
+  at boot and runs the race there). So the row uses `$1FF1`, and its wrapper `$82:EC32`
+  `$1FF3`. The C's game words in `$1Fxx` stop at `$1F34`, far below.
+- **Workarounds removed in the same unit:**
+  - index 4 (`road_shift_by_place`) is back in the fuzz;
+  - `$1EFA` is an independent random word;
+  - `road_shift_frame_call` (`$82:EC32`) has its row.
+- **Acceptance (race1).** It is the first direct test of the stack diagnosis, which had
+  been inferred from addresses.
+  - `$0260` pinned to 4: before, 0/0 with 100 lost; now 100/100.
+  - `$0260` pinned to 2 with a random `$1EFA`: 100/100.
+  - Both rows: fuzz 200/200, paths 76/76 and 2/2.
+- **Still open.** On the default stack, bytes an original pushes over `$1EEE`-`$1EFD` are
+  skipped by the fuzz compare (live samples still compare them). Moving the default for
+  every row is a larger change, not made.
+
 ## The road shift's frame step (roots-78, 2026-11-20)
 
 **`road_shift_frame` ($82:EC36, D = `$0100`, DB = `$30` inside, `$83` after):** 18,559
@@ -1818,19 +1845,10 @@ entries on the 60k movie.
 - **The two never-run handlers** sat in about 400 undecoded bytes (`$82:ED27`-`$82:EEB7`).
   They decode as coherent code and are now static code. Their C functions have no rows:
   this row's fuzz reaches them, as with `track_object_random`.
-- **The fuzz's stack collides with the game's words.** The fuzz runs the original with its
-  stack at `$1EFE`, over the game's words `$1EEE`-`$1EFD`; the game's own stack is
-  elsewhere.
-  - The second handler is called with two pushed words at `$1EFA`-`$1EFD` and its return
-    address at `$1EF8`.
-  - `road_shift_by_place`'s `PHA` and its callee's return address land on
-    `$1EF4`-`$1EF7`, which the settle writes. So the fuzz leaves index 4 to the live
-    samples (123 entries).
-  - The edge shift reads `$1EFA`, which in the fuzz holds the pushed `$1EF6`. So the fuzz
-    sets `$1EFA` to that value.
-  - For the same reason the 4-byte wrapper `$82:EC32` (`JSR`; `RTS`) has no row: one
-    level deeper, every fuzz case collides.
-  - A per-row fuzz stack would lift this. It is a harness change, not made here.
+- **The fuzz's stack collided with the game's words.** At first the fuzz ran the original
+  with its stack at `$1EFE`, over the game's words `$1EEE`-`$1EFD`, which these handlers
+  write. That needed workarounds (one handler left out of the fuzz, `$1EFA` forced, no row
+  for the `$82:EC32` wrapper). Harness-3, the next unit, removed them.
 - **Fuzz bias.** Half the cases put the car between the road's two edges and pair both
   never-run handlers. A temporary count saw the edges set 107 times and the scaled shift
   66 times in 200 cases.

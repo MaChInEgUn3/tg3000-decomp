@@ -1194,5 +1194,7 @@ void road_shift_by_place(void);
 // $1EC2:$1EC4 = $1EF4:$1EF6 from between the two; $0229 = $01CE; $01CE = |$01CE| / the
 // low byte of $1E9E (the CPU divider) with the opposite sign (a DSP-4 multiply by -1 or 1).
 void road_shift_frame(void);
+// $82:EC32: JSR road_shift_frame.
+void road_shift_frame_call(void);
 
 #endif

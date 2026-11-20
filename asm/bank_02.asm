@@ -304,7 +304,7 @@ CODE_828656:
     bne CODE_828656             ; $828659
     jsr.w player_segment_step   ; $82865B
     jsr.w $DFA9                 ; $82865E
-    jsr.w $EC32                 ; $828661
+    jsr.w road_shift_frame_call ; $828661
     jsr.w race_positions_update ; $828664
     lda.w $00B8                 ; $828667
     bit.w #$0004                ; $82866A
@@ -4509,6 +4509,7 @@ CODE_82EC25:
     asl.b $1E                   ; $82EC28
     rts                         ; $82EC2A
     incbin !baserom:$16C2B..$16C32
+road_shift_frame_call:
     jsr.w road_shift_frame      ; $82EC32
     rts                         ; $82EC35
 road_shift_frame:

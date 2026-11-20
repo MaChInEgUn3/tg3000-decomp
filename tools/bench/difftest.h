@@ -64,6 +64,10 @@ typedef struct {
   // that waits for interrupts (a title card waiting a few hundred frames). A budget only:
   // what is compared does not change.
   uint32_t maxInsns;
+  // The fuzz's stack: the highest byte of the sentinel frame (0: $1F00, the fuzz's usual
+  // place). A routine whose callees write the game's words $1EEE-$1EFD needs the game's own
+  // stack instead (measured from its live samples' entry SP).
+  uint16_t fuzzStack;
 } Routine;
 
 // Hardware effects, in canonical form: what the original did through DMA and what the C

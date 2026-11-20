@@ -1544,20 +1544,22 @@ void difftest_fuzz(int iterations) {
       cpu->mf = in.m8; cpu->xf = in.x8;
       cpu->a = in.a; cpu->x = in.x; cpu->y = in.y; cpu->dp = in.d; cpu->db = in.db;
       cpu->n = in.n; cpu->v = in.v; cpu->z = in.z; cpu->c = in.c;
-      // sentinel return to $8000 of the entry bank (a BRA * trap), stack at $1F00
+      // sentinel return to $8000 of the entry bank (a BRA * trap), stack at $1F00 (or the
+      // row's fuzzStack)
+      const uint16_t top = r->fuzzStack ? r->fuzzStack : 0x1F00;
       if(r->rti) {  // an interrupt frame: PB, PC = $8000, a random P; then what the prologue pushed
-        snes->ram[0x1F00] = r->entry >> 16;
-        snes->ram[0x1EFF] = 0x80; snes->ram[0x1EFE] = 0x00;
-        snes->ram[0x1EFD] = (uint8_t)(fuzzRandom() & ~0x08);  // decimal mode off
-        for(int b = 0; b < r->rtiFrame; b++) snes->ram[0x1EFC - b] = (uint8_t)fuzzRandom();
-        cpu->sp = (uint16_t)(0x1EFC - r->rtiFrame);
+        snes->ram[top] = r->entry >> 16;
+        snes->ram[top - 1] = 0x80; snes->ram[top - 2] = 0x00;
+        snes->ram[top - 3] = (uint8_t)(fuzzRandom() & ~0x08);  // decimal mode off
+        for(int b = 0; b < r->rtiFrame; b++) snes->ram[top - 4 - b] = (uint8_t)fuzzRandom();
+        cpu->sp = (uint16_t)(top - 4 - r->rtiFrame);
       } else if(r->rtl) {
-        snes->ram[0x1F00] = r->entry >> 16;
-        snes->ram[0x1EFF] = 0x7F; snes->ram[0x1EFE] = 0xFF;
-        cpu->sp = 0x1EFD;
+        snes->ram[top] = r->entry >> 16;
+        snes->ram[top - 1] = 0x7F; snes->ram[top - 2] = 0xFF;
+        cpu->sp = (uint16_t)(top - 3);
       } else {
-        snes->ram[0x1F00] = 0x7F; snes->ram[0x1EFF] = 0xFF;
-        cpu->sp = 0x1EFE;
+        snes->ram[top] = 0x7F; snes->ram[top - 1] = 0xFF;
+        cpu->sp = (uint16_t)(top - 2);
       }
       cpu->k = r->entry >> 16;
       cpu->pc = r->entry & 0xFFFF;

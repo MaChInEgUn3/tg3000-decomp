@@ -4271,3 +4271,6 @@ void road_shift_frame(void) {
   const uint16_t q = d ? (uint16_t)(n / d) : 0xFFFF;  // the CPU divider
   wr16(0x01CE, (uint16_t)dsp4_multiply((v & 0x8000) ? 1 : -1, (int16_t)q));
 }
+
+// TG3000_ROUTINE($82:EC32) road_shift_frame_call
+void road_shift_frame_call(void) { road_shift_frame(); }
