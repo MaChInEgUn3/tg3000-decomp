@@ -426,3 +426,4 @@
 80F549 upload_slice_13 src/video_dma.c 755b87bd4936d088 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 755b87bd4936d088 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 755b87bd4936d088 1 500 20/20 verified live-flags:NVZC replayed:0
+82F2B3 player_segment_step src/misc.c b1e49feb2e906a12 4000 500 79/79 verified live-flags:- replayed:1
