@@ -4149,3 +4149,16 @@ void player2_segment_step(void) {
   };
   segment_step(&second);
 }
+
+// TG3000_ROUTINE($82:EEB7) road_shift_by_place
+void road_shift_by_place(void) {
+  const uint16_t flags = rd16(0x1E66);
+  if(rd16(0x0226) & 0x0020) {
+    wr16(0x1E66, (uint16_t)(((flags & 0x7FFF) >> 1) | ((flags & 0x0001) ? 0x8000 : 0)));
+    road_shift_apply();
+    wr16(0x1E66, flags);
+  } else {
+    road_shift_settle();
+    wr16(0x1E66, (uint16_t)((flags & 0xFFFE) | (rd16(0x1E66) >> 15)));
+  }
+}

@@ -1178,4 +1178,10 @@ void player_segment_step(void);
 // ($019C) and handler kinds (the table at $82:FB10).
 void player2_segment_step(void);
 
+// $82:EEB7: one of the road-shift handlers (the table at $82:ED17), by bit 5 of $0226. Set:
+// road_shift_apply with $1E66's bit 0 moved to bit 15 (the rest shifted right), then $1E66
+// as it was. Clear: road_shift_settle, then $1E66 keeps its bits 15-1 from before and takes
+// bit 0 from the bit 15 the settle left.
+void road_shift_by_place(void);
+
 #endif

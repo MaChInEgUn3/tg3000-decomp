@@ -1789,6 +1789,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The road shift by the player's place (roots-77, 2026-11-20)
+
+**`road_shift_by_place` ($82:EEB7, DB = `$30`):** one of the road-shift handlers that
+`$82:EC36` reaches through its table at `$82:ED17`. 123 entries on the 60k movie, none on
+race1.
+- **Bit 5 of `$0226` set:** `road_shift_apply` runs with `$1E66`'s bit 0 moved to bit 15
+  (the rest shifted right), then `$1E66` is put back.
+- **Clear:** `road_shift_settle` runs. Then `$1E66` keeps its bits 15-1 from before and
+  takes bit 0 from the bit 15 the settle left.
+- **Flags.** The caller pulls and stores saved words next, so no registers are compared.
+  But only 62 returns are watched, so every flag counts as live:
+  - N and Z come from the final `PLA`;
+  - V comes from the callees' last `ADC` (`$1EF4:$1EF6` plus the move), as their adapters
+    compute it;
+  - C also comes from that `ADC` after the apply, and is 0 after the settle (a `ROL` of
+    0).
+- **Result:** live 62/62, fuzz 500/500, paths 26/26, flags 0 mismatches.
+
 ## The second player's segment step (roots-76, 2026-11-20)
 
 **`player2_segment_step` ($82:FA4F):** `player_segment_step` for the second player, 5

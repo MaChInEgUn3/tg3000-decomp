@@ -4610,6 +4610,7 @@ race_scroll_commit:
     stz.w $020C                 ; $82ED13
     rts                         ; $82ED16
     incbin !baserom:$16D17..$16EB7
+road_shift_by_place:
     lda.w $0226                 ; $82EEB7
     and.w #$0020                ; $82EEBA
     beq CODE_82EED7             ; $82EEBD

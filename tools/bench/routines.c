@@ -7693,6 +7693,31 @@ static void fuzz_player2_segment_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(voi
   for(int i = 0; i < 0x22; i++) wr16ram(ram, (uint16_t)(0x436C + 2 * i), (uint16_t)rnd());
 }
 
+// ---- road_shift_by_place ($82:EEB7) ----  its caller pulls and stores its saved words next:
+// no register outputs. With 62 watched returns every flag counts as live: N and Z of the
+// final PLA ($1E66 as it was, or without bit 0), V of the callees' last ADC ($1EF4:$1EF6
+// plus the move, as in their adapters), C of it too after the apply, 0 after the settle
+// (the ROL of 0)
+static void call_road_shift_by_place(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t lo = rd16(0x1EF4), hi = rd16(0x1EF6), flags = rd16(0x1E66);
+  const bool apply = (rd16(0x0226) & 0x0020) != 0;
+  road_shift_by_place();
+  const uint16_t at = rd16(0x0204), atHi = rd16(0x0206);
+  const uint32_t c0 = ((uint32_t)lo + at) >> 16;
+  const uint32_t sum = (uint32_t)atHi + hi + c0;
+  out->c = apply && sum > 0xFFFF;
+  out->v = (~(atHi ^ hi) & (atHi ^ (uint16_t)sum) & 0x8000) != 0;
+  setNZ16(out, apply ? flags : (uint16_t)(flags & 0xFFFE));
+}
+// both callees' inputs (road_shift_settle's fuzz covers road_shift_apply's), bit 5 of
+// $0226 either way, $1E66's bits 15 and 0 all four ways
+static void fuzz_road_shift_by_place(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_road_shift_settle(r, ram, rnd);
+  wr16ram(ram, 0x0226, (uint16_t)rnd());
+  wr16ram(ram, 0x1E66, (uint16_t)rnd());
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8550,6 +8575,8 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player_segment_step, .fuzz = fuzz_player_segment_step},
   {.name = "player2_segment_step", .entry = 0x82FA4F, .end = 0x82FB10, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player2_segment_step, .fuzz = fuzz_player2_segment_step},
+  {.name = "road_shift_by_place", .entry = 0x82EEB7, .end = 0x82EEF0, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_road_shift_by_place, .fuzz = fuzz_road_shift_by_place},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
