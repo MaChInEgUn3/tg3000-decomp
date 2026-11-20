@@ -279,7 +279,8 @@ static FILE* cmdlog;
 static bool cmdlogOn;
 static uint8_t cmdlogIn[64], cmdlogOut[64];
 static int cmdlogNIn, cmdlogNOut;
-static unsigned long cmdlogRuns, cmdlogWrong;
+static unsigned long cmdlogRuns, cmdlogWrong, cmdlogOther;
+static uint32_t cmdlogPc;  // where the command word was written
 static void cmdlogFlush() {
   if(!cmdlogOn) return;
   // commands with a native function: check it on this run (src/dsp4.c)
@@ -296,6 +297,22 @@ static void cmdlogFlush() {
     for(int j = 0; j < 4; j++) edge[j] = int16_t(cmdlogIn[2 * j] | cmdlogIn[2 * j + 1] << 8);
     cmdlogRuns++;
     if(dsp4_row(edge) != uint16_t(cmdlogOut[0] | cmdlogOut[1] << 8)) cmdlogWrong++;
+  }
+  // $03 (its word, then a $0B entry) and $0B: the entry is the last six bytes in; the flag
+  // is always read, the two words only when it is not 0. Only the game's sprite entries
+  // (their command words written at $82:CBE1 and $82:D8FA) are checked: elsewhere the
+  // shadow sometimes takes another command's data word $0003 or $000B for a command.
+  const bool sprite = (cmdlogCmd == 0x03 && cmdlogPc == 0x82CBE1) || (cmdlogCmd == 0x0B && cmdlogPc == 0x82D8FA);
+  if((cmdlogCmd == 0x03 || cmdlogCmd == 0x0B) && !sprite) cmdlogOther++;
+  if(sprite && ((cmdlogCmd == 0x03 && cmdlogNIn == 10) || (cmdlogCmd == 0x0B && cmdlogNIn == 6))) {
+    const uint8_t* e = cmdlogIn + cmdlogNIn - 6;
+    uint16_t mine[2];
+    const uint16_t flag = dsp4_sprite(uint16_t(e[0] | e[1] << 8), uint16_t(e[2] | e[3] << 8), uint16_t(e[4] | e[5] << 8), mine);
+    cmdlogRuns++;
+    bool same = cmdlogNOut >= 2 && flag == uint16_t(cmdlogOut[0] | cmdlogOut[1] << 8);
+    for(int j = 0; same && j < 2 && cmdlogNOut >= 4 + 2 * j; j++)
+      same = mine[j] == uint16_t(cmdlogOut[2 + 2 * j] | cmdlogOut[3 + 2 * j] << 8);
+    if(!same) cmdlogWrong++;
   }
   for(int i = 0; i < cmdlogNIn; i++) std::fprintf(cmdlog, "%02X", cmdlogIn[i]);
   std::fprintf(cmdlog, " ");
@@ -319,7 +336,7 @@ static void catalogueAccess(unsigned addr, unsigned char v, bool write) {
       curIn = curOut = 0;
       if(cmdlog != nullptr) {
         cmdlogFlush();
-        if(curCmd == cmdlogCmd) { cmdlogOn = true; cmdlogNIn = cmdlogNOut = 0; }
+        if(curCmd == cmdlogCmd) { cmdlogOn = true; cmdlogNIn = cmdlogNOut = 0; cmdlogPc = lastPc; }
       }
       curBad = false;
       notePc(cmdStats[curCmd].writers, &cmdStats[curCmd].nWriters, lastPc);
@@ -572,6 +589,7 @@ int main(int argc, char** argv) {
     std::fclose(cmdlog);
     if(cmdlogRuns) std::fprintf(stderr, "dsp4 command $%02X: %lu runs checked against src/dsp4.c, %lu differ\n", cmdlogCmd,
                                 cmdlogRuns, cmdlogWrong);
+    if(cmdlogOther) std::fprintf(stderr, "dsp4 command $%02X: %lu runs from other writers (not checked)\n", cmdlogCmd, cmdlogOther);
   }
   if(!mulPath.empty()) {
     finishCapture();

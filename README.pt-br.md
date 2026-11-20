@@ -34,8 +34,8 @@ a matemática do DSP-4, o vídeo e o driver de som viram código nativo.
 | Bytes de código | 70,199 (`0x11237`) |
 | Bytes de dados | 770,615 (`0xBC237`) |
 | Pontos de entrada de rotinas em C, aprovados no teste diferencial | **413** |
-| Última reverificação completa de todas as rotinas | 2026-11-20T12:49:35Z |
-| Destes, aprovados num commit anterior, com o código só acrescido desde então | 412 (rodada mais antiga: `52c4d7d`) |
+| Última reverificação completa de todas as rotinas | 2026-11-20T17:17:39Z |
+| Destes, aprovados num commit anterior, com o código só acrescido desde então | 0 (todos contra este código) |
 | Bytes de código dentro de rotinas em C aprovadas | **36,036 / 70,199 (51.33%)** |
 
 _Gerado por `tools/progress.py` a partir de `map/` e `src/`._

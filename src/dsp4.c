@@ -26,3 +26,9 @@ uint16_t dsp4_row(const int16_t edge[4]) {
   for(int j = 0; j < 4; j++) row = (uint16_t)((row << 4) | (dsp4_floor_div48((int32_t)edge[j] - (j & 1)) & 0xF));
   return row;
 }
+
+uint16_t dsp4_sprite(uint16_t x, uint16_t y, uint16_t attr, uint16_t out[2]) {
+  out[0] = (uint16_t)((x & 0x00FF) | (y & 0x00FF) << 8);
+  out[1] = attr;
+  return 1;
+}

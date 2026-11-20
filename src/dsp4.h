@@ -29,4 +29,16 @@ void dsp4_edges(uint16_t t, uint16_t near, uint16_t far, int16_t out[4]);
 // 48 and no edge 0 or 2 is positive (docs/DECISIONS.md, "DSP-4 command $11").
 uint16_t dsp4_row(const int16_t edge[4]);
 
+// Command $000B, a sprite entry (and command $0003, which takes one word, $0005 in every
+// run, then one such entry): three words in (x, y, an attribute word), three out: 1 (the
+// sprite is shown), the low bytes of x and y as one word (x in bits 7-0, y in bits 15-8),
+// the attribute unchanged. `out` gets the last two; the function returns the first.
+// Measured on the firmware (tools/refbench --dsp4-cmdlog 03 and 0B over the whole TAS:
+// 117,650 and 117,664 runs, pure, 0 differ from this function). The game's runs are the
+// mini-map's two cars: x 192-227, y 32-67, attributes $30FD/$32FD, always shown. The chip must answer 0 for
+// something (the game skips the entry then) but never did there: off-screen inputs are
+// not measured, and the C shows every entry (docs/DECISIONS.md, "DSP-4 commands $03 and
+// $0B").
+uint16_t dsp4_sprite(uint16_t x, uint16_t y, uint16_t attr, uint16_t out[2]);
+
 #endif

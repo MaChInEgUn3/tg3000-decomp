@@ -1789,6 +1789,33 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## DSP-4 commands $03 and $0B (dsp4-03, 2026-11-20)
+
+- **Measured, outputs only**, as for `$0A` and `$11` (`refbench --dsp4-cmdlog 03` and
+  `0B`).
+- **The protocol.** `$82:CBD4` sends `$0003` and one word, `$0005` in every run. Then
+  `$82:D8C6`, the mini-map's two cars, sends one entry for each car:
+  - The first car's entry goes straight after `$03`'s word. The shadow counts it as part
+    of `$03`: 10 bytes in, 6 out.
+  - The second car's entry is a command `$000B` of its own: 6 bytes in, 6 out.
+  - Each entry is three words in: x (a map byte + `$BE`), y, and an attribute.
+  - Three words come out: a flag (the game skips the entry when it is 0), the low bytes
+    of x and y packed into one word (x in bits 7-0), and the attribute unchanged.
+- **`dsp4_sprite` (src/dsp4.c)** is that formula. refbench checks every one of the game's
+  entries over the whole TAS: **`$03` 117,650 runs, `$0B` 117,664, 0 differ.**
+- **Only the game's entries are checked.** These are the runs whose command word is
+  written at `$82:CBE1` or `$82:D8FA`. Elsewhere the shadow sometimes takes a data word
+  `$0003` or `$000B` of another command for a command: 195 and 528 runs, of odd sizes.
+  The first unfiltered pass counted those as differing until the filter was added.
+- **The domain is small:** x 192-227, y 32-67, attributes `$30FD`/`$32FD`, and the flag is
+  always 1.
+  - The chip's 0 (an off-screen entry, probably) never occurs, so it is not measured. The
+    C shows every entry, and `src/dsp4.h` says so.
+  - Chosen inputs fed to the idle chip would measure it (outputs only). They were not
+    needed for the game's runs.
+- **Next:** `$03` and `$0B` join the difftest's command table and the bench bridge's
+  routing. Then `$82:D8C6` becomes a row, and `$82:CBD4` after the `$09` stream.
+
 ## The player's car moves and meets the track objects (roots-74, 2026-11-20)
 
 **`car_track_step` ($83:F7F9, D = `$0200`, DB = `$30` inside):** the last multiply-only
