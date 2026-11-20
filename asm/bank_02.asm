@@ -4405,6 +4405,7 @@ func_82EA49:
     tax                         ; $82EA7A
     lda.l $850000,x             ; $82EA7B
     rts                         ; $82EA7F
+track_event_none:
     rts                         ; $82EA80
 track_event_2007:
     lda.w #$2007                ; $82EA81

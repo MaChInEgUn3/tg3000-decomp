@@ -4274,3 +4274,6 @@ void road_shift_frame(void) {
 
 // TG3000_ROUTINE($82:EC32) road_shift_frame_call
 void road_shift_frame_call(void) { road_shift_frame(); }
+
+// TG3000_ROUTINE($82:EA80) track_event_none
+void track_event_none(void) {}

@@ -7771,6 +7771,9 @@ static void call_road_shift_frame_call(const Regs* in, Regs* out) {
   out->db = 0x83;
 }
 
+// ---- track_event_none ($82:EA80) ----  RTS: nothing changes
+static void call_track_event_none(const Regs* in, Regs* out) { (void)in; (void)out; track_event_none(); }
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8636,6 +8639,8 @@ const Routine routines[] = {
   {.name = "road_shift_frame_call", .entry = 0x82EC32, .end = 0x82EC36, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_shift_frame_call, .fuzz = fuzz_road_shift_frame,
    .fuzzStack = 0x1FF3},
+  {.name = "track_event_none", .entry = 0x82EA80, .end = 0x82EA81, .source = "src/misc.c",
+   .call = call_track_event_none, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

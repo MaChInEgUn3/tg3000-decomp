@@ -1197,4 +1197,7 @@ void road_shift_frame(void);
 // $82:EC32: JSR road_shift_frame.
 void road_shift_frame_call(void);
 
+// $82:EA80: the track-event table's empty handler (RTS).
+void track_event_none(void);
+
 #endif

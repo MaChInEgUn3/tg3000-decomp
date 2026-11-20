@@ -1789,6 +1789,11 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The track-event table's empty handler (roots-79, 2026-11-20)
+
+- **`track_event_none` ($82:EA80):** an `RTS`, one entry of the track-event table (8,350
+  entries on the 60k movie). Nothing changes. Live 2,805/2,805, fuzz 500/500.
+
 ## A per-row fuzz stack (harness-3, 2026-11-20; decided by the advisor, open to the owner's veto)
 
 - **The problem.** The fuzz runs each case's original with a sentinel frame topped at
@@ -1815,6 +1820,15 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - **Still open.** On the default stack, bytes an original pushes over `$1EEE`-`$1EFD` are
   skipped by the fuzz compare (live samples still compare them). Moving the default for
   every row is a larger change, not made.
+- **Checked after the full run.** `map/verified.txt` was diffed against the previous commit
+  with the hash column left out:
+  - one new row (`road_shift_frame_call`), none gone;
+  - two rows changed only in their live sample counts: `race_cycle_blocks` 3,715 to 3,713
+    and `wait_frames_82` 23 to 19. Both stay verified, with the same fuzz and path counts.
+
+  Those counts depend on which row records each interrupt, which the rows added since the
+  last full run change (WORKFLOW notes the effect). The fuzz stack does not touch live
+  samples.
 
 ## The road shift's frame step (roots-78, 2026-11-20)
 
