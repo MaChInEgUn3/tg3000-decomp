@@ -7182,7 +7182,7 @@ CODE_80C269:
     bne CODE_80C269             ; $80C28C
     stz.b $48                   ; $80C28E
     stz.b $4A                   ; $80C290
-    jsr.w $C35E                 ; $80C292
+    jsr.w menu_bar_draw         ; $80C292
     jsr.w oam_finish_near       ; $80C295
     lda.w #$007F                ; $80C298
     sta.b $14                   ; $80C29B
@@ -7213,7 +7213,7 @@ CODE_80C2BB:
     clc                         ; $80C2D1
     adc.w #$0020                ; $80C2D2
     sta.b $1E                   ; $80C2D5
-    jsr.w $C35E                 ; $80C2D7
+    jsr.w menu_bar_draw         ; $80C2D7
     jsr.w oam_finish_near       ; $80C2DA
     lda.w #$0800                ; $80C2DD
     trb.b $0E                   ; $80C2E0
@@ -7267,6 +7267,7 @@ block_c4_build:
     lda.w #$0040                ; $80C357
     sta.w $0124,y               ; $80C35A
     rts                         ; $80C35D
+menu_bar_draw:
     lda.b $4A                   ; $80C35E
     and.w #$FF00                ; $80C360
     ldx.w #$0000                ; $80C363
@@ -7556,7 +7557,7 @@ CODE_80C566:
     lda.w #$0013                ; $80C5B9
     sta.b $BC                   ; $80C5BC
     jsr.w block_c4_build        ; $80C5BE
-    jsr.w $C35E                 ; $80C5C1
+    jsr.w menu_bar_draw         ; $80C5C1
     jsr.w oam_finish_near       ; $80C5C4
     lda.b $8C                   ; $80C5C7
 CODE_80C5C9:

@@ -414,3 +414,4 @@
 80F549 upload_slice_13 src/video_dma.c 3904289053fd6592 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 3904289053fd6592 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 3904289053fd6592 1 500 20/20 verified live-flags:NVZC replayed:0
+80C35E menu_bar_draw src/misc.c eb2935f609a97abb 836 500 127/127 verified live-flags:- replayed:0

@@ -1039,4 +1039,14 @@ uint16_t title_frame_begin(void);
 // set).
 uint16_t title_fade_step(void);
 
+// $80:C35E: a four-item menu with a sliding bar (D = $0100). The bar's position
+// D+$4A & $FF00 is placed between the keys at $81:BE0A (0, $B00, $1600, $2100): at a key,
+// D+$14 = its value at $81:BE12; between two, the value less (key - position) / (the keys'
+// high bytes' step, the CPU divider) times the values' step (bits 8-23, the PPU
+// multiplier). Two 8-sprite bars at D+$4A + $1D80 + D+$E7 (sprite_bar8, $1A = 0 and
+// $8000; D+$74 after them); the four labels $81:BDE0/$BDE5/$BDED/$BDF3 centred at $2080 +
+// D+$E7 and $B00 apart, item D+$48 in attribute $300 (the others $100). Last, D+$4B moves
+// one step toward item D+$48's key.
+void menu_bar_draw(void);
+
 #endif

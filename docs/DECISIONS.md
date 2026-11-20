@@ -1789,6 +1789,20 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A menu with a sliding bar (roots-64, 2026-11-20)
+
+**`menu_bar_draw` ($80:C35E):** a four-item menu, about 3,200 entries.
+- **The bar's position:** `D+$4A` & `$FF00`, placed between the keys at `$81:BE0A` (0,
+  `$B00`, `$1600`, `$2100`). At a key it takes that key's value from `$81:BE12`.
+  Between two keys it takes the value less (key - position) / (the step between the keys'
+  high bytes, on the CPU divider) times the values' step (bits 8-23, on the PPU
+  multiplier).
+- **Drawing:** two 8-sprite bars (`sprite_bar8`), then the four labels centred,
+  `$B00` apart, the chosen item in attribute `$300`.
+- **The slide:** `D+$4B` moves one step toward the chosen item's key.
+- **No outputs:** both callers go on to `oam_finish_near`.
+- Live 836/836, fuzz 500/500, paths 127/127, first try.
+
 ## The title frames restarted (roots-63, 2026-11-20)
 
 **`title_frame_begin` ($80:F5CD):** resets the title frames.

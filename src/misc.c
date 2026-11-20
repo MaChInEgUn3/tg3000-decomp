@@ -3422,3 +3422,45 @@ uint16_t title_frame_begin(void) {
   wr16(DP + 0x1E, 0x003C);
   return title_frame_tail();
 }
+
+// TG3000_ROUTINE($80:C35E) menu_bar_draw
+void menu_bar_draw(void) {
+  const uint16_t at = (uint16_t)(rd16(DP + 0x4A) & 0xFF00);
+  for(uint16_t x = 0;; x = (uint16_t)(x + 2)) {
+    const uint16_t key = bus_rd16(0x81BE0A + (uint32_t)x), d = (uint16_t)(at - key);
+    if(d & 0x8000) {
+      const uint8_t step = (uint8_t)(bus_rd8(0x81BE0B + (uint32_t)x) - bus_rd8(0x81BE09 + (uint32_t)x));
+      const uint16_t q = step ? (uint16_t)((uint16_t)(key - at) / step) : 0xFFFF;  // the CPU divider
+      const uint8_t m = (uint8_t)(bus_rd8(0x81BE12 + (uint32_t)x) - bus_rd8(0x81BE10 + (uint32_t)x));
+      video_set_m7a((int16_t)q);
+      video_set_m7b((int16_t)(m << 8 | q >> 8));
+      const uint16_t mid = (uint16_t)((uint32_t)((int32_t)(int16_t)q * (int8_t)m) >> 8);
+      wr16(DP + 0x14, (uint16_t)(bus_rd16(0x81BE12 + (uint32_t)x) - mid));
+      break;
+    }
+    if(d == 0) {
+      wr16(DP + 0x14, bus_rd16(0x81BE12 + (uint32_t)x));
+      break;
+    }
+  }
+  uint16_t slot = rd16(DP + 0x74);
+  wr16(DP + 0x18, (uint16_t)(rd16(DP + 0x4A) + 0x1D80 + rd16(DP + 0xE7)));
+  wr16(DP + 0x1A, 0);
+  slot = sprite_bar8(slot);
+  wr16(DP + 0x18, (uint16_t)(rd16(DP + 0x18) + 0x0600));
+  wr16(DP + 0x1A, 0x8000);
+  slot = sprite_bar8(slot);
+  wr16(DP + 0x74, slot);
+  wr16(DP + 0x18, (uint16_t)(0x2080 + rd16(DP + 0xE7)));
+  wr16(DP + 0x1A, (uint16_t)(rd16(DP + 0x48) + 1));
+  static const uint16_t label[4] = {0xBDE0, 0xBDE5, 0xBDED, 0xBDF3};
+  for(int i = 0; i < 4; i++) {
+    wr16(DP + 0x14, 0x0100);
+    wr16(DP + 0x1A, (uint16_t)(rd16(DP + 0x1A) - 1));
+    if(rd16(DP + 0x1A) == 0) wr16(DP + 0x14, 0x0300);
+    sprite_text_centered(0x810000 | label[i], (uint16_t)(rd16(DP + 0x18) + 0x0B00 * i));
+  }
+  const uint16_t key = bus_rd16(0x81BE0A + (uint32_t)(uint16_t)(rd16(DP + 0x48) << 1));
+  const uint16_t d = (uint16_t)(at - key);
+  if(d != 0) wr16(DP + 0x4B, (uint16_t)(rd16(DP + 0x4B) + ((d & 0x8000) ? 1 : (uint16_t)-1)));
+}

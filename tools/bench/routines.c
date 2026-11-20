@@ -3348,6 +3348,25 @@ static void call_title_frame_begin(const Regs* in, Regs* out) {
   out->v = false;
 }
 
+// ---- menu_bar_draw ($80:C35E) ----  both callers go on to oam_finish_near: no register
+// outputs (the bench judges the flags from the watched returns)
+static void call_menu_bar_draw(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  menu_bar_draw();
+}
+// the bar at the keys, between them and now and then past the last; any item; the slot
+static void fuzz_menu_bar_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const uint8_t keys[4] = {0x00, 0x0B, 0x16, 0x21};
+  const uint32_t k = rnd() % 4;
+  const uint8_t hi = k == 0 ? keys[rnd() % 4] : k == 3 ? (uint8_t)(0x21 + rnd() % 0x10) : (uint8_t)(rnd() % 0x22);
+  wr16ram(ram, DP + 0x4A, (uint16_t)(hi << 8 | (rnd() & 0xFF)));
+  wr16ram(ram, DP + 0x48, (uint16_t)(rnd() % 4));
+  wr16ram(ram, DP + 0xE7, (uint16_t)(rnd() % 0x100));
+  wr16ram(ram, DP + 0x74, (uint16_t)(4 * (rnd() % 0x30)));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7971,6 +7990,8 @@ const Routine routines[] = {
   {.name = "title_frame_begin", .entry = 0x80F5CD, .end = 0x80F5DE, .alsoIn = {{0x80F670, 0x80F6AD}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_title_frame_begin,
    ALL_OUTPUTS, .fuzz = fuzz_title_frame_step},
+  {.name = "menu_bar_draw", .entry = 0x80C35E, .end = 0x80C475, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_menu_bar_draw, .fuzz = fuzz_menu_bar_draw},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
