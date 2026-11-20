@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A race object's segment (roots-71, 2026-11-20)
+
+**`segment_advance` ($81:FBB1, DB = `$7E`):** about 351,000 entries.
+- **The index:** race object y's segment index (`$FAE0`, into the 20-byte segments at
+  `$84:0000`) moves on while its position (`$FAB6`) is `$3F` or more past the segment's
+  start.
+- **The first visit** (flag bit 6) only does that.
+- **Later visits.** On a new segment the object draws once (bit 4) whether to take the
+  segment's jump: bit 5, a random bit from `rng_next_long`.
+  - Passing a segment, it either adds the segment's length to the position at once, or
+    arms the jump: `$FAE2` = start + length + `$3F`, with the carry chained through both
+    adds; `$FAE4` = the segment's +`$12`.
+  - An armed jump fires once the position reaches `$FAE2`, which then goes back to
+    `$7000`. Either jump sets bit 7.
+- **Outputs.** Its three callers reload A and set X before reading them, so the row
+  compares Y alone.
+  - C is read after it. It is clear on every exit but the armed jump, where it is that
+    add's carry. The C returns it, as the audit's rule asks.
+  - `$81:FA8F` (a multiply-only DSP-4 root) calls it, and can come next.
+- Live 4,000/4,000 (60k) and 2,675/2,675 (race1), fuzz 500/500 and 200/200, paths 76/76.
+
 ## The view follows a car (roots-70, 2026-11-20)
 
 **`follow_car_step` ($83:F73E, D = `$0200`, DB = `$30`):** the third multiply-only DSP-4

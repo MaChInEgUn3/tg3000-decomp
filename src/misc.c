@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "misc.h"
 
+#include <stddef.h>
+
 #include "decompress.h"
 #include "dsp4.h"
 #include "frame.h"
@@ -3716,4 +3718,45 @@ void follow_car_step(uint16_t dp) {
   wr16(dp + 0x44, (uint16_t)(rd16(dp + 0x44) & ~0x0001));
   wr16(0x1ECE, (uint16_t)(rd16(0x1ECE) - 1));
   if(rd16(0x1ECE) == 0x8000) wr16(0x1ECE, 0x0118);
+}
+
+// TG3000_ROUTINE($81:FBB1) segment_advance
+bool segment_advance(uint16_t y) {
+  const uint32_t o = y;
+  if(!(rd16(0xFADE + o) & 0x0040)) {
+    wr16(0xFADE + o, (uint16_t)(rd16(0xFADE + o) | 0x0040));
+    for(;;) {
+      const uint16_t x = rd16(0xFAE0 + o);
+      const uint16_t start = bus_rd16(0x840000 + (uint32_t)x);
+      if(rd16(0xFAB6 + o) < start || (uint16_t)(rd16(0xFAB6 + o) - start) < 0x003F) return false;
+      wr16(0xFAE0 + o, (uint16_t)(x + 0x14));
+    }
+  }
+  for(;;) {
+    const uint16_t x = rd16(0xFAE0 + o);
+    const uint16_t start = bus_rd16(0x840000 + (uint32_t)x);
+    if(rd16(0xFAB6 + o) < start) break;
+    const uint16_t past = (uint16_t)(rd16(0xFAB6 + o) - start);
+    if(!(rd16(0xFADE + o) & 0x0010)) {  // a new segment: draw the jump once
+      wr16(0xFADE + o, (uint16_t)(rd16(0xFADE + o) & ~0x0020));
+      const uint16_t r = rng_next_long(NULL);
+      wr16(0xFADE + o, (uint16_t)((r & 0x0020) | rd16(0xFADE + o) | 0x0010));
+    }
+    if(past < 0x003F) break;
+    wr16(0xFAE0 + o, (uint16_t)(x + 0x14));
+    if(rd16(0xFADE + o) & 0x0020) {  // arm it: the start + length + $3F (one carry chain)
+      const uint32_t s1 = (uint32_t)start + bus_rd16(0x840010 + (uint32_t)x);
+      wr16(0xFAE2 + o, (uint16_t)(s1 + 0x003F + (s1 >> 16)));
+      wr16(0xFAE4 + o, bus_rd16(0x840012 + (uint32_t)x));
+    } else {
+      wr16(0xFAB6 + o, (uint16_t)(bus_rd16(0x840010 + (uint32_t)x) + rd16(0xFAB6 + o)));
+      wr16(0xFADE + o, (uint16_t)(rd16(0xFADE + o) | 0x0080));
+    }
+  }
+  if(rd16(0xFAB6 + o) < rd16(0xFAE2 + o)) return false;
+  const uint32_t sum = (uint32_t)rd16(0xFAB6 + o) + rd16(0xFAE4 + o);
+  wr16(0xFAB6 + o, (uint16_t)sum);
+  wr16(0xFAE2 + o, 0x7000);
+  wr16(0xFADE + o, (uint16_t)(rd16(0xFADE + o) | 0x0080));
+  return sum > 0xFFFF;
 }

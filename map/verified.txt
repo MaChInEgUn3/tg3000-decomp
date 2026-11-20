@@ -162,7 +162,7 @@
 8ABB5C func_8ABB5C src/misc.c fc7fd0dfa090822b 17 500 25/25 verified live-flags:NVZC replayed:0
 8ABC8A password_encode src/misc.c fc7fd0dfa090822b 1 500 46/46 verified live-flags:NVZC replayed:0
 8ABBF4 func_8ABBF4 src/misc.c fc7fd0dfa090822b 30 500 26/26 verified live-flags:NVZC replayed:0
-81FBB1 func_81FBB1 src/track.c 386b9d5254bc5289 4000 500 76/76 verified live-flags:C replayed:0
+81FBB1 segment_advance src/misc.c 47284e7e12147360 4000 500 76/76 verified live-flags:C replayed:0
 81F887 car_road_step src/track.c 386b9d5254bc5289 4000 500 201/201 verified live-flags:- replayed:0
 83E8AB player_road_limits src/track.c 386b9d5254bc5289 200 500 216/216 verified live-flags:- replayed:0
 809F23 shop_part_level_2 src/shop.c 903ce0c8f6b05338 3163 500 3/3 verified live-flags:- replayed:0

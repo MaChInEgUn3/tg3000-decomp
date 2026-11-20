@@ -3597,6 +3597,27 @@ static void fuzz_follow_car_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x1ECE, ((rnd() >> 20) % 3 == 0) ? 0x8001 : (uint16_t)(1 + rnd() % 0x200));  // (high bits: the low ones pair with the arrival's)
 }
 
+// ---- segment_advance ($81:FBB1) ----  Y kept; its three callers reload A and set X before
+// reading them; C (read after it) is the C's return (the armed jump's carry, else clear)
+static void call_segment_advance(const Regs* in, Regs* out) {
+  out->c = segment_advance(in->y);
+  out->y = in->y;
+}
+// an object on a segment of the table, its position a little past the start (a few
+// segments to cross), its flags (first visit, drawn or not, jump armed), an armed target
+static void fuzz_segment_advance(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_rng_state(ram, rnd);
+  const uint16_t y = (uint16_t)(0x35 * (rnd() % 20));
+  r->y = y;
+  const uint16_t x = (uint16_t)(0x14 * (rnd() % 40));
+  wr16ram(ram, 0xFAE0 + y, x);
+  const uint16_t start = rom16(0x840000 + (uint32_t)x);
+  wr16ram(ram, 0xFAB6 + y, (uint16_t)(start + (rnd() % 4 == 0 ? (uint16_t)-(int)(rnd() % 0x40) : rnd() % 0x300)));
+  wr16ram(ram, 0xFADE + y, (uint16_t)rnd());
+  wr16ram(ram, 0xFAE2 + y, (uint16_t)((rnd() & 1) ? 0x7000 : start + rnd() % 0x400));
+  wr16ram(ram, 0xFAE4 + y, (uint16_t)rnd());
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -8240,6 +8261,8 @@ const Routine routines[] = {
    .holes = {{0x82F0D6, 0x82F0E7}}},  // dead bytes after a JMP (a 32-bit halving nothing reaches)
   {.name = "follow_car_step", .entry = 0x83F73E, .end = 0x83F7F9, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x30, .call = call_follow_car_step, ALL_OUTPUTS, .fuzz = fuzz_follow_car_step},
+  {.name = "segment_advance", .entry = 0x81FBB1, .end = 0x81FC72, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .call = call_segment_advance, .compareY = true, .fuzz = fuzz_segment_advance},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

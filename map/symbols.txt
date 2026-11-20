@@ -439,3 +439,4 @@ func    8A8828   vram_planes_build   ; VRAM built byte by byte: high-byte upload
 func    82F1C1   road_shift_apply    ; the player car's shift along the road (two DSP-4 multiplies) -> src/misc.c
 func    82EFDA   road_shift_settle   ; road_shift_apply with the offset zeroed, snapped or scaled (DSP-4, CPU divider) -> src/misc.c
 func    83F73E   follow_car_step     ; the view follows a car by a DSP-4-scaled step, snapping on arrival -> src/misc.c
+func    81FBB1   segment_advance     ; a race object's segment index moved on, with the segment's jump (random, once) -> src/misc.c
