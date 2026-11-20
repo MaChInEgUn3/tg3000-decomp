@@ -1111,16 +1111,4 @@ void road_shift_settle(void);
 // counts $1ECE down ($8000 becomes $118).
 void follow_car_step(uint16_t dp);
 
-// $81:FBB1: race object `y` (offset into the tables at $7E:FAB5 on) moves its segment
-// index (+$2B, $FAE0: an offset into the 20-byte segments at $84:0000) on while its
-// position (+$01, $FAB6) is $3F or more past the segment's start. The first time (bit 6
-// of its flags +$29 clear, then set) only that. After it, on a new segment it draws once
-// (flag bit 4 clear: then set) whether to take the segment's jump (flag bit 5 = a random
-// bit); passing a segment it either adds the segment's length (+$10) to the position at
-// once (bit 5 clear) or arms it: +$2D = the segment's start + length + $3F, +$2F = its
-// +$12. Once the position reaches an armed +$2D it gains +$2F and +$2D goes back to
-// $7000; either jump sets flag bit 7. Returns the original's carry: set only when that
-// armed jump's add carries out.
-bool segment_advance(uint16_t y);
-
 #endif

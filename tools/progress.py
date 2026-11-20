@@ -314,10 +314,30 @@ def lost_rows():
     return lost
 
 
+def duplicate_symbols():
+    """ROM addresses map/symbols.txt names more than once (a routine ported twice)."""
+    seen, dups = {}, []
+    with open(os.path.join(ROOT, "map", "symbols.txt")) as f:
+        for line in f:
+            parts = line.split()
+            if len(parts) < 3 or parts[0] != "func":
+                continue
+            if parts[1] in seen:
+                dups.append("%s %s and %s" % (parts[1], seen[parts[1]], parts[2]))
+            else:
+                seen[parts[1]] = parts[2]
+    return dups
+
+
 def main():
     check = "--check" in sys.argv[1:]
     _, stale_rows, _ = ported_routines()
     if check:
+        dups = duplicate_symbols()
+        if dups:
+            for d in dups:
+                print("named twice in map/symbols.txt: " + d, file=sys.stderr)
+            return 1
         lost = lost_rows()
         if lost:
             for r in lost:
