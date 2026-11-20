@@ -44,12 +44,67 @@
 
 static Snes* snes;
 static FILE* dsp4Log;
+
+// --dsp4-report: each data access to the chip attributed to the command running around it
+// (a write that starts a run belongs to the new command, the read that ends one to the
+// command that ran), summed by PC and direction, with bytes per run. The chip is the
+// bench's (the clean-room one, src/dsp4.c answering $0A and $11): the command boundaries
+// are exact for what the game is answered here, the read counts of the variable-length
+// road commands are this chip's.
+int dsp4_bridge_busy(void);
+int dsp4_bridge_command(void);
+static const char* dsp4ReportPath;
+#define DSP4_SITES 4096
+static struct { uint32_t pc; int cmd; bool write; unsigned long n; } dsp4Sites[DSP4_SITES];
+static int dsp4Prev = 0, dsp4Cmd = -1;
+static unsigned long dsp4Runs[33], dsp4RunIn, dsp4RunOut;
+static unsigned long dsp4InMin[33], dsp4InMax[33], dsp4OutMin[33], dsp4OutMax[33];
+static void dsp4RunEnd(void) {
+  if(dsp4Cmd < 0) return;
+  if(dsp4Runs[dsp4Cmd] == 1 || dsp4RunIn < dsp4InMin[dsp4Cmd]) dsp4InMin[dsp4Cmd] = dsp4RunIn;
+  if(dsp4RunIn > dsp4InMax[dsp4Cmd]) dsp4InMax[dsp4Cmd] = dsp4RunIn;
+  if(dsp4Runs[dsp4Cmd] == 1 || dsp4RunOut < dsp4OutMin[dsp4Cmd]) dsp4OutMin[dsp4Cmd] = dsp4RunOut;
+  if(dsp4RunOut > dsp4OutMax[dsp4Cmd]) dsp4OutMax[dsp4Cmd] = dsp4RunOut;
+}
+static void dsp4Note(bool write, uint32_t pc) {
+  const int busy = dsp4_bridge_busy();
+  if(!dsp4Prev && busy) {  // a run starts with this write
+    dsp4RunEnd();
+    dsp4Cmd = dsp4_bridge_command();
+    dsp4Runs[dsp4Cmd]++;
+    dsp4RunIn = dsp4RunOut = 0;
+  }
+  const int cmd = (busy || dsp4Prev) ? dsp4Cmd : 32;  // 32: the chip idle
+  if(cmd < 32) { if(write) dsp4RunIn++; else dsp4RunOut++; }
+  dsp4Prev = busy;
+  uint32_t h = (pc * 2654435761u + (uint32_t)cmd * 97u + write) % DSP4_SITES;
+  for(int i = 0; i < DSP4_SITES; i++, h = (h + 1) % DSP4_SITES) {
+    if(dsp4Sites[h].n == 0) { dsp4Sites[h].pc = pc; dsp4Sites[h].cmd = cmd; dsp4Sites[h].write = write; }
+    if(dsp4Sites[h].pc == pc && dsp4Sites[h].cmd == cmd && dsp4Sites[h].write == write) { dsp4Sites[h].n++; return; }
+  }
+}
+static void dsp4Report(void) {
+  dsp4RunEnd();
+  FILE* f = fopen(dsp4ReportPath, "w");
+  if(f == NULL) { perror(dsp4ReportPath); return; }
+  fprintf(f, "# command: runs, bytes written per run min-max, bytes read per run min-max\n");
+  for(int c = 0; c < 32; c++)
+    if(dsp4Runs[c]) fprintf(f, "cmd %02X runs %lu in %lu-%lu out %lu-%lu\n", c, dsp4Runs[c], dsp4InMin[c], dsp4InMax[c], dsp4OutMin[c], dsp4OutMax[c]);
+  fprintf(f, "# site: command (-- idle), W/R, PB:PC, accesses\n");
+  for(int i = 0; i < DSP4_SITES; i++) {
+    if(!dsp4Sites[i].n) continue;
+    if(dsp4Sites[i].cmd < 32) fprintf(f, "site %02X", dsp4Sites[i].cmd); else fprintf(f, "site --");
+    fprintf(f, " %c %02X:%04X %lu\n", dsp4Sites[i].write ? 'W' : 'R', dsp4Sites[i].pc >> 16, dsp4Sites[i].pc & 0xFFFF, dsp4Sites[i].n);
+  }
+  fclose(f);
+}
 static unsigned long dsp4Counts[2][2];  // [write][data]
 static unsigned long dsp4WritesByFrame[1 << 16];
 
 void bench_log_dsp4(bool write, bool data, uint8_t bank, uint16_t adr, uint8_t val) {
   dsp4Counts[write][data]++;
   if(write) dsp4WritesByFrame[snes->frames & 0xFFFF]++;
+  if(dsp4ReportPath != NULL && data) dsp4Note(write, (uint32_t)snes->cpu->k << 16 | snes->cpu->pc);
   if(dsp4Log != NULL) {
     // frame, cpu PB:PC (points into the accessing instruction), access, address, value
     fprintf(dsp4Log, "%u %02X:%04X %c%c %02X:%04X %02X\n", snes->frames, snes->cpu->k, snes->cpu->pc,
@@ -357,6 +412,9 @@ int main(int argc, char** argv) {
   const char* saveStatePath = NULL;
   int frames = 600, every = 60;
   for(int i = 2; i < argc; i++) {
+    if(strcmp(argv[i], "--dsp4-report") == 0 && i + 1 < argc) {
+      dsp4ReportPath = argv[++i];
+    } else
     if(strcmp(argv[i], "--dsp4-log") == 0 && i + 1 < argc) {
       dsp4Log = fopen(argv[++i], "w");
       if(dsp4Log == NULL) { perror(argv[i]); return 1; }
@@ -543,6 +601,7 @@ int main(int argc, char** argv) {
   for(int i = 0; i < (int)snes->frames && i < (1 << 16); i++) if(dsp4WritesByFrame[i]) { firstWrite = i; break; }
   printf("frames=%u dsp4 data: %lu reads %lu writes; status: %lu reads %lu writes; first write frame %d\n",
     snes->frames, dsp4Counts[0][1], dsp4Counts[1][1], dsp4Counts[0][0], dsp4Counts[1][0], firstWrite);
+  if(dsp4ReportPath != NULL) dsp4Report();
   if(dsp4Log != NULL) fclose(dsp4Log);
   if(hashes != NULL) fclose(hashes);
   if(wramDump != NULL) fclose(wramDump);

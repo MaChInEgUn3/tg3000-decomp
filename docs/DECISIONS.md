@@ -1789,6 +1789,46 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## DSP-4 step 2: which command each root uses (dsp4-1, 2026-11-20)
+
+**The instrument.** `bench ... --dsp4-report FILE` attributes every data access to the
+command running around it. A write that starts a run belongs to the new command, and the
+read that ends one to the command that ran. It sums accesses by PC and direction, with
+bytes per run.
+- The chip is the bench's (clean-room, `src/dsp4.c` answering `$0A`/`$11`), so the
+  boundaries are exact for what the game is answered here. The road commands' read counts
+  are this chip's, not the firmware's.
+- The chip turns busy after the command word's high byte and idle before the last result
+  byte. Corrected for that, the sizes over the 60k movie are below. `$0A` and `$11` match
+  the harness table; the catalogue's result counts were one short, as the advisor said.
+
+| cmd | runs | parameter bytes | result bytes |
+|---|---|---|---|
+| `$00` multiply | 2,553,460 | 4 (+ skips) | 2-4 |
+| `$0A` | 333,895 | 6 | 8 |
+| `$11` | 4,416 | 8 | 2 |
+| `$03` | 18,559 | 10 | 6 |
+| `$0B` | 18,559 | 6 | 6 |
+| `$06` | 18,559 | 0 | 32 |
+| `$09` | 18,559 | 118-3,520 | 1-1,389 |
+| `$01` | 18,564 | 254-262 | 463-947 |
+| `$07` | 18,564 | 348-360 | 355-835 |
+| `$08` | 18,559 | 578-632 | 368-1,004 |
+
+**By root,** from the access sites inside each one's own code:
+- **Only whole `$00` multiplies** (portable now; "stream" was the wrong label):
+  `$82:F1C1`, `$82:EFDA`, `$83:F73E`, `$81:FA8F`, `$83:F7F9`, `$82:B4ED`.
+- **`$03` and `$0B`, whole commands:** `$82:D8C6`.
+- **Road commands opened here:** `$85:B828` (`$07` and `$00`), `$85:B3D7` (`$01` and `$00`).
+- **`$09` (sprites), streamed:** `$82:D934` (writes only), `$81:8527`, `$82:D988`,
+  `$82:D267`, `$82:DEA8`. Its bulk is in the callee `$82:DB87`.
+- **`$08` drained:** `$81:89F5` (reads only). `$81:8564` opens it.
+- **Through callees only:** `$82:DAFD`, `$82:DB4D`, `$82:8961`.
+
+**Next for DSP-4:** the six `$00`-only roots, then `$03`/`$0B` in `src/dsp4.c` (checked on the
+firmware with refbench; the TAS is at the session scratchpad's `tas_hdr/`). After those,
+the replay tape for the streamed `$09`/road commands.
+
 ## Raw VMDATA DMA carries its VRAM state (harness-2, 2026-11-20)
 
 **The harness.** This is the second change decided above.

@@ -101,3 +101,7 @@ extern "C" void dsp4_bridge_load_state(const uint8_t* data, int size) {
 		std::abort();  // a silently wrong DSP-4 would poison every comparison
 	}
 }
+
+// For the bench's report: whether the chip is running a command, and which (low 5 bits).
+extern "C" int dsp4_bridge_busy(void) { return chip.m.busy != 0; }
+extern "C" int dsp4_bridge_command(void) { return chip.m.command & 31; }

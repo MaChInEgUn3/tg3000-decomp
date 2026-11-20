@@ -29,6 +29,7 @@ build/bench/bench TG3000.sfc 7650 --movie tools/bench/movies/race1.txt --coverag
 python3 -I tools/map.py && python3 -I tools/progress.py   # -> map/*.txt, README numbers
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --hdma-report /tmp/hdma.txt   # HDMA setup and writers, handlers, two-task screens
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --apu-report /tmp/apu.txt     # APU port traffic
+build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --dsp4-report /tmp/d4.txt    # DSP-4 commands by site, bytes per run
 tools/bench/selftest.sh         # determinism + fresh-process save/load + race reached
 python3 -I tools/listing.py && tools/build_asm.sh   # asm/ -> exact ROM (SHA-1 + code-from-text proof)
 tools/refbench/fetch.sh && make -C tools/refbench    # TAS reference: bsnes from BizHawk 1.9.4
