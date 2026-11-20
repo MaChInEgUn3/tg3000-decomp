@@ -3544,3 +3544,27 @@ uint16_t title_card_show(void) {
   wr16(0x0008, handler);
   return frame;
 }
+
+// TG3000_ROUTINE($8A:8828) vram_planes_build
+void vram_planes_build(void) {
+  video_set_vram_address(0x0000);
+  dma_stream_setup(0, 0x00, 0x19, 0x7E8633);
+  dma_stream_size(0, 0x1200);
+  dma_stream_kick(0x01);
+  video_set_vram_address(0x1200);
+  dma_stream_setup(0, 0x00, 0x19, 0x7E9833);
+  dma_stream_size(0, 0x06C0);
+  dma_stream_kick(0x01);
+  video_set_vram_address(0x0000);
+  video_set_vram_increment(0x00);
+  dma_stream_setup(0, 0x08, 0x18, 0x8A88DD);  // a fixed source
+  dma_stream_size(0, 0x4000);
+  dma_stream_kick(0x01);
+  for(uint32_t i = 0; i < 6; i++) {
+    dma_stream_setup(0, 0x00, 0x18, 0x7E80BA + 15 * i);
+    dma_stream_size(0, 0x000F);
+    video_set_vram_address((uint16_t)(0x0308 + 0x80 * i));
+    dma_stream_kick(0x01);
+  }
+  video_set_vram_increment(0x80);
+}

@@ -3436,6 +3436,49 @@ static void call_title_card_show(const Regs* in, Regs* out) {
   (void)in;
 }
 
+// ---- vram_planes_build ($8A:8828) ----  A = $0680 (its row address went to $0608; LDA #$80
+// with A 8-bit: N set, Z clear), X = 0, Y = $0F, C V of the last ADC #$80 (clear)
+static void call_vram_planes_build(const Regs* in, Regs* out) {
+  (void)in;
+  vram_planes_build();
+  out->a = 0x0680;
+  out->x = 0;
+  out->y = 0x000F;
+  out->n = true;
+  out->z = false;
+  out->c = out->v = false;
+}
+// deliberately wrong: the second upload one word off (the raw DMA's VRAM address checked)
+static void call_vram_planes_build_wrong(const Regs* in, Regs* out) {
+  (void)in;
+  video_set_vram_address(0x0000);
+  dma_stream_setup(0, 0x00, 0x19, 0x7E8633);
+  dma_stream_size(0, 0x1200);
+  dma_stream_kick(0x01);
+  video_set_vram_address(0x1201);  // wrong: $1200
+  dma_stream_setup(0, 0x00, 0x19, 0x7E9833);
+  dma_stream_size(0, 0x06C0);
+  dma_stream_kick(0x01);
+  video_set_vram_address(0x0000);
+  video_set_vram_increment(0x00);
+  dma_stream_setup(0, 0x08, 0x18, 0x8A88DD);
+  dma_stream_size(0, 0x4000);
+  dma_stream_kick(0x01);
+  for(uint32_t i = 0; i < 6; i++) {
+    dma_stream_setup(0, 0x00, 0x18, 0x7E80BA + 15 * i);
+    dma_stream_size(0, 0x000F);
+    video_set_vram_address((uint16_t)(0x0308 + 0x80 * i));
+    dma_stream_kick(0x01);
+  }
+  video_set_vram_increment(0x80);
+  out->a = 0x0680;
+  out->x = 0;
+  out->y = 0x000F;
+  out->n = true;
+  out->z = false;
+  out->c = out->v = false;
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -8070,6 +8113,8 @@ const Routine routines[] = {
   {.name = "title_card_show", .entry = 0x8AC056, .end = 0x8AC0F2, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .waitsForInterrupts = true, .maxInsns = 40000000,
    .call = call_title_card_show, ALL_OUTPUTS},
+  {.name = "vram_planes_build", .entry = 0x8A8828, .end = 0x8A88DD, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x8A, .call = call_vram_planes_build, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
@@ -8160,6 +8205,8 @@ const Routine routines[] = {
 const int routineCount = sizeof routines / sizeof routines[0];
 
 const Routine negativeRoutines[] = {
+  {.name = "vram_planes_build_wrong", .entry = 0x8A8828, .end = 0x8A88DD, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x8A, .call = call_vram_planes_build_wrong, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "rng_next_wrong", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next_wrong, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
   {.name = "upload_vram_now_wrong", .entry = 0x8083AD, .end = 0x8083CB, .rtl = true, .source = "src/video_dma.c",

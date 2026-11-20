@@ -1077,4 +1077,11 @@ void track_tiles_preview(uint16_t track);
 // ($019A = 0). Returns the frame its last one-frame wait ended on.
 uint16_t title_card_show(void);
 
+// $8A:8828: VRAM built byte by byte with DMA channel 0 (one register a time). The high
+// bytes of words 0-$8FF from $7E:8633 and of $1200-$155F from $7E:9833 (VMAIN as found);
+// then, with VMAIN = 0 (step after the low byte), the low bytes of words 0-$3FFF filled with
+// the byte at $8A:88DD; then six rows of 15 low bytes from $7E:80BA on (the source going
+// on) at $0308, $0388, ... $0588; VMAIN = $80 at the end.
+void vram_planes_build(void);
+
 #endif

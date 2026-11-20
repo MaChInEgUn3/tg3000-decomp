@@ -81,7 +81,9 @@ static Stats* stats;
 // callers are registered).
 #define MAX_DEPTH 8
 #define MAX_EFFECTS 128
-typedef struct { int kind; uint32_t target, src, size; } Effect;
+// `vram`: for a raw DMA to VMDATA ($2118/$2119), the VRAM state it wrote with (vramPack:
+// the word pointer and VMAIN's fields), 0 otherwise.
+typedef struct { int kind; uint32_t target, src, size, vram; } Effect;
 
 // PPU fields the C sets through platform calls (src/platform.h): the original's register
 // writes are compared by end state, as the bench's PPU decoded them (which fields were
@@ -145,6 +147,7 @@ typedef struct {
   // values; the CGRAM address at entry (a stream kick records the one at the kick)
   uint8_t chanWritten[8], chanPrepared[8], chanVal[8][8];
   uint16_t cgPtrEntry;
+  uint32_t vramEntry;  // the VRAM pointer and VMAIN at entry (vramPack)
   bool m7Latch, scrollLatch, scrollLatch2;  // latch bytes written inside the sample
   int replaySlot;  // the entry state kept in case an interrupt drops the sample, or -1
 } Sample;
@@ -226,6 +229,20 @@ static int32_t cCgPtr;  // the C's CGRAM address (-1: the one at entry)
 // an address the C set and nothing used yet (-1: none), compared with the original's
 // $2116/$2117 or $2121 left written but unused
 static int32_t cVramAdrClaim, cCgAdrClaim;
+static int32_t cVramPtr;  // the C's VRAM pointer after a raw VMDATA DMA (-1: not moved)
+static uint64_t cRegWritten;  // (defined with the byte registers below)
+static uint8_t cRegVal[64];
+
+// The VRAM state a raw VMDATA DMA writes with: the word pointer, and VMAIN as the PPU keeps
+// it (increment after the high byte, the step 1/32/128, the remap mode), flagged present.
+static uint32_t vramPack(uint16_t ptr, bool onHigh, uint16_t inc, uint8_t remap) {
+  const uint32_t code = inc == 1 ? 0 : inc == 32 ? 1 : 2;
+  return 0x80000000u | ptr | (uint32_t)onHigh << 16 | code << 17 | (uint32_t)(remap & 3) << 19;
+}
+static uint32_t vramNow(void) {
+  const Ppu* p = snes->ppu;
+  return vramPack(p->vramPointer, p->vramIncrementOnHigh, p->vramIncrement, p->vramRemapMode);
+}
 static bool cInputUsed[256], cInputMissing;
 static uint16_t cMissingReg;
 
@@ -325,6 +342,30 @@ void difftest_stream_kick(uint8_t mask) {
     Effect e = {EFFECT_RAW_DMA, ((uint32_t)target << 8) | (dmap & 7), src, size};
     if(!fromB && !fixed && !decrement && target == 0x22 && ((dmap & 7) == 0 || (dmap & 7) == 2))
       e = (Effect){EFFECT_CGRAM, ptr, src, size};
+    if(e.kind == EFFECT_RAW_DMA && !fromB && (target == 0x18 || target == 0x19)) {
+      // the VRAM state as the C left it: its address, else where its last such DMA ended,
+      // else the entry's; VMAIN as the C wrote it, else the entry's
+      const Sample* sm = (const Sample*)cSample;
+      uint32_t st = sm->vramEntry;
+      bool onHigh = (st >> 16) & 1;
+      uint16_t inc = ((st >> 17) & 3) == 0 ? 1 : ((st >> 17) & 3) == 1 ? 32 : 128;
+      uint8_t remap = (uint8_t)((st >> 19) & 3);
+      for(int i = 0; i < N_BYTE_REGS; i++) {
+        if(byteRegs[i] != 0x2115 || !(cRegWritten & (1ull << i))) continue;
+        const uint8_t v = cRegVal[i];
+        onHigh = (v & 0x80) != 0;
+        inc = (v & 3) == 0 ? 1 : (v & 3) == 1 ? 32 : 128;
+        remap = (uint8_t)((v >> 2) & 3);
+      }
+      const uint16_t at = cVramAdrClaim >= 0 ? (uint16_t)cVramAdrClaim : cVramPtr >= 0 ? (uint16_t)cVramPtr : (uint16_t)st;
+      e.vram = vramPack(at, onHigh, inc, remap);
+      // the pointer moves on with each write to the byte that increments it
+      uint32_t steps = 0;
+      if((dmap & 7) == 0) steps = ((target == 0x19) == onHigh) ? size : 0;
+      else if((dmap & 7) == 1 && target == 0x18) steps = onHigh ? size / 2 : (size + 1) / 2;
+      cVramPtr = (uint16_t)(at + steps * inc);
+      cVramAdrClaim = -1;
+    }
     if(!fromB && target == 0x22) ptr = (uint16_t)((ptr + size / 2) & 0xFF);
     else if(!fromB && target == 0x21) ptr = peekByte(fixed ? src : src + size - 1);
     if(cEffectCount >= MAX_EFFECTS) { cEffectOverflow = true; return; }
@@ -502,6 +543,7 @@ static void recordKick(uint8_t val) {
       // a fixed source writes the same byte to both halves of every word
       e = (Effect){EFFECT_VRAM_FILL, ppu->vramPointer, peekByte(src), size};
     }
+    if(e.kind == EFFECT_RAW_DMA && !ch->fromB && (ch->bAdr == 0x18 || ch->bAdr == 0x19)) e.vram = vramNow();
     plainEffect[c] = e;
     if(!ch->fromB && ch->bAdr == 0x22) cgPtr = (uint16_t)((cgPtr + size / 2) & 0xFF);
     else if(!ch->fromB && ch->bAdr == 0x21) cgPtr = peekByte(ch->fixed ? src : src + size - 1);
@@ -912,6 +954,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   memset(cStreamSize, 0, sizeof cStreamSize);
   cCgPtr = -1;
   cVramAdrClaim = cCgAdrClaim = -1;
+  cVramPtr = -1;
   cSample = smp;
   memset(cInputUsed, 0, sizeof cInputUsed);
   cInputMissing = false;
@@ -942,9 +985,9 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
     }
     Effect* o = &smp->effects[i];
     Effect* c = &cEffects[i];
-    if(o->kind != c->kind || o->target != c->target || o->src != c->src || o->size != c->size) {
-      snprintf(why, whyLen, "effect %d: original %s $%X <- $%06X x%u, C %s $%X <- $%06X x%u", i,
-        effectName(o->kind), o->target, o->src, o->size, effectName(c->kind), c->target, c->src, c->size);
+    if(o->kind != c->kind || o->target != c->target || o->src != c->src || o->size != c->size || o->vram != c->vram) {
+      snprintf(why, whyLen, "effect %d: original %s $%X <- $%06X x%u (VRAM %06X), C %s $%X <- $%06X x%u (VRAM %06X)", i,
+        effectName(o->kind), o->target, o->src, o->size, o->vram, effectName(c->kind), c->target, c->src, c->size, c->vram);
       return false;
     }
   }
@@ -1150,6 +1193,7 @@ static void startSample(int idx, const Cpu* cpu) {
     .interruptsAtEntry = cpu_interruptCount,
   };
   smp->replaySlot = slot;
+  smp->vramEntry = vramNow();
   if(slot >= 0) {
     Replay* p = &replays[slot];
     p->used = true;

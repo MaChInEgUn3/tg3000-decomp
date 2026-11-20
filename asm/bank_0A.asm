@@ -38,7 +38,7 @@ CODE_8A803B:
     jsl.l hdma_gradients_init   ; $8A804C
     jsl.l clear_dp_scratch      ; $8A8050
     jsl.l func_8A8EEF           ; $8A8054
-    jsr.w $8828                 ; $8A8058
+    jsr.w vram_planes_build     ; $8A8058
     jsr.w $891C                 ; $8A805B
     jsr.w mode7_view            ; $8A805E
     jsl.l oam_from_objects      ; $8A8061
@@ -596,6 +596,7 @@ hdma_title_setup:
     sta.w $4377                 ; $8A8822
     rep.b #$20                  ; $8A8825
     rts                         ; $8A8827
+vram_planes_build:
     ldy.w #$1900                ; $8A8828
     sty.w $4300                 ; $8A882B
     ldy.w #$8633                ; $8A882E

@@ -1789,6 +1789,32 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Raw VMDATA DMA carries its VRAM state (harness-2, 2026-11-20)
+
+**The harness.** This is the second change decided above.
+- **The new field:** a DMA recorded raw (not a plain `$2118` word upload, a fill or CGRAM)
+  to `$2118`/`$2119` now carries `vram`: the word pointer and `VMAIN`'s fields (increment
+  after the high byte, the step 1/32/128, the remap mode).
+- **The original's side** reads them from the PPU at the kick.
+- **The C's side** uses the address the C claimed (`video_set_vram_address`), or else
+  where its last such DMA left the pointer, or else the entry's.
+  - `VMAIN` is the one the C wrote (`video_set_vram_increment`), or else the entry's.
+  - After each kick the pointer moves on as the hardware's does (in modes 0 and 1), and
+    the claim is used up.
+- **The proof:** a negative row, `vram_planes_build_wrong`, with its second upload one word
+  off, fails on exactly that field (VRAM `80011200` against `80011201`).
+- No verified C made a raw VMDATA DMA before, so no verified row changes.
+
+**`vram_planes_build` ($8A:8828), now verified.** It builds VRAM one register at a time
+with DMA channel 0:
+- the high bytes of words 0-`$8FF` and `$1200`-`$155F`, from `$7E:8633` and `$7E:9833`;
+- with `VMAIN` = 0, the low bytes of words 0-`$3FFF` filled from `$8A:88DD`;
+- six rows of 15 low bytes from `$7E:80BA` on, the source going on;
+- then `VMAIN` = `$80`.
+
+Live 3/3, paths 71/71 (no fuzz: no inputs besides WRAM it only copies). Still to check
+against this: `$80:EE56`, which sets up a DMA to `$2119`.
+
 ## Two rows lost by harness-1, and the gate that now refuses that (harness-1b, 2026-11-20)
 
 **What happened.** harness-1's full gate passed while two verified rows, `func_82F380` and
