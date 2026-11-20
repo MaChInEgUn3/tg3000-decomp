@@ -1379,8 +1379,10 @@ CODE_82A99E:
     dey                         ; $82A9AB
     bne CODE_82A99E             ; $82A9AC
     rts                         ; $82A9AE
+player_segment_step_long:
     jsr.w player_segment_step   ; $82A9AF
     rtl                         ; $82A9B2
+player2_segment_step_long:
     jsr.w player2_segment_step  ; $82A9B3
     rtl                         ; $82A9B6
 func_82A9B7:

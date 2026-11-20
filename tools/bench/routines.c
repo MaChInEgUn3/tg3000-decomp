@@ -7774,6 +7774,30 @@ static void call_road_shift_frame_call(const Regs* in, Regs* out) {
 // ---- track_event_none ($82:EA80) ----  RTS: nothing changes
 static void call_track_event_none(const Regs* in, Regs* out) { (void)in; (void)out; track_event_none(); }
 
+// ---- player_segment_step_long / player2_segment_step_long ($82:A9AF, $82:A9B3) ----  JSR;
+// RTL. The bank-$85 caller goes on to code that reads no register; with 5 watched returns
+// every flag counts as live: the callee's last SBC, the second cursor's segment start
+// against the place + 2 (N set, Z clear, C and V of the SBC; see player2_segment_step)
+static void segmentStepFlags(Regs* out, uint16_t place, uint16_t cursor2) {
+  const uint32_t a = (uint32_t)rd16(place) + 2;
+  const uint16_t start = rom16(0x840000 + (uint32_t)(uint16_t)(rd16(0x019C) + rd16(cursor2)));
+  const uint32_t sum = (a & 0xFFFF) + (uint16_t)~start + (a >> 16);
+  out->n = true;
+  out->z = false;
+  out->c = sum > 0xFFFF;
+  out->v = (((uint16_t)a ^ start) & ((uint16_t)a ^ (uint16_t)sum) & 0x8000) != 0;
+}
+static void call_player_segment_step_long(const Regs* in, Regs* out) {
+  (void)in;
+  player_segment_step_long();
+  segmentStepFlags(out, 0x0226, 0x1E60);
+}
+static void call_player2_segment_step_long(const Regs* in, Regs* out) {
+  (void)in;
+  player2_segment_step_long();
+  segmentStepFlags(out, 0x02D9, 0x1E64);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8641,6 +8665,12 @@ const Routine routines[] = {
    .fuzzStack = 0x1FF3},
   {.name = "track_event_none", .entry = 0x82EA80, .end = 0x82EA81, .source = "src/misc.c",
    .call = call_track_event_none, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "player_segment_step_long", .entry = 0x82A9AF, .end = 0x82A9B3, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player_segment_step_long,
+   .fuzz = fuzz_player_segment_step},
+  {.name = "player2_segment_step_long", .entry = 0x82A9B3, .end = 0x82A9B7, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player2_segment_step_long,
+   .fuzz = fuzz_player2_segment_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

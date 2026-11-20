@@ -4277,3 +4277,9 @@ void road_shift_frame_call(void) { road_shift_frame(); }
 
 // TG3000_ROUTINE($82:EA80) track_event_none
 void track_event_none(void) {}
+
+// TG3000_ROUTINE($82:A9AF) player_segment_step_long
+void player_segment_step_long(void) { player_segment_step(); }
+
+// TG3000_ROUTINE($82:A9B3) player2_segment_step_long
+void player2_segment_step_long(void) { player2_segment_step(); }

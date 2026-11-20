@@ -453,3 +453,5 @@ func    82ED27   road_edges_side     ; the road's edges against the car (never r
 func    82EE2A   road_edge_shift     ; the edge shift (never run; through road_shift_frame) -> src/misc.c
 func    82EC32   road_shift_frame_call ; JSR road_shift_frame -> src/misc.c
 func    82EA80   track_event_none    ; the track-event table's empty handler (RTS) -> src/misc.c
+func    82A9AF   player_segment_step_long ; JSR player_segment_step; RTL -> src/misc.c
+func    82A9B3   player2_segment_step_long ; JSR player2_segment_step; RTL -> src/misc.c

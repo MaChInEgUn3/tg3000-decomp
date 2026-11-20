@@ -1789,6 +1789,37 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The segment steps' long wrappers; the plan for the streamed DSP-4 commands (roots-80, 2026-11-20)
+
+- **`player_segment_step_long` ($82:A9AF) and `player2_segment_step_long` ($82:A9B3):**
+  `JSR` the segment step, then `RTL`. The bank-`$85` code reaches them by `JSL` after a
+  race section seek.
+  - Each has 5 entries, so every flag counts as live. A shared helper models them from
+    the callee's last `SBC`.
+  - Live 4/4 (plus 1 replayed) and 5/5, fuzz 500/500, paths 2/2, flags 0 mismatches.
+- **`$06` is stateful.** It takes no parameters and returns 32 bytes, which `$82:AE15`
+  copies to `$1776`+Y: the OAM high table, 2 bits for each of 128 sprites. The chip
+  builds it from the earlier sprite commands (`$09`, `$03`/`$0B`), so it cannot be
+  measured as a pure function the way `$0A`, `$11` and `$0B` were. This is inferred from
+  its shape; one `--dsp4-cmdlog 06` run would confirm it.
+- **The plan, after the advisor (2026-11-20).** The ordinary roots are not used up.
+  `roots.py` prints only 15 of its 33 roots (`tools/roots.py 40` shows them all). They
+  come first, in incremental units: `$8A:9908`, `$82:A7F9`, `$8A:898F` and the parked ones,
+  re-triaged.
+- **The tape: harness-4, the unit that pays the next full gate.** It records every DSP-4
+  data byte of a taped sample in order, and the C side consumes all of it.
+  - It does not rely on the shadow's command boundaries, which are not reliable. The 195
+    and 528 runs from other writers show it. So does `$03`'s "10 bytes": the game waits
+    on the status register before `$0005` and before the first `$000B`.
+  - The bench consumes a native's whole transaction (and compares its operands) where a
+    taped routine's callee uses one.
+  - The pilot is `$82:D934` (writes only), then the `$06` reader `$82:AE15`.
+  - It is opt-in per row and has a negative row.
+- **Open question for the owner.** Routines verified on the tape still need a chip behind
+  the port: native `$09` (sprites) and the road commands `$01`/`$07`/`$08` in
+  `src/dsp4.c`. Whether that is in this project's scope, or left to the ports, is the
+  owner's call. Until then the tape verifies how the routines use the chip, not the chip.
+
 ## The track-event table's empty handler (roots-79, 2026-11-20)
 
 - **`track_event_none` ($82:EA80):** an `RTS`, one entry of the track-event table (8,350

@@ -1200,4 +1200,9 @@ void road_shift_frame_call(void);
 // $82:EA80: the track-event table's empty handler (RTS).
 void track_event_none(void);
 
+// $82:A9AF / $82:A9B3: JSR player_segment_step / player2_segment_step; RTL (reached by JSL
+// from bank $85).
+void player_segment_step_long(void);
+void player2_segment_step_long(void);
+
 #endif

@@ -1584,8 +1584,8 @@ CODE_859C55:
     sta.w $1EE2                 ; $859CF9
     jsr.w race_section_seek_1   ; $859CFC
     jsr.w race_section_seek_2   ; $859CFF
-    jsl.l $82A9AF               ; $859D02
-    jsl.l $82A9B3               ; $859D06
+    jsl.l player_segment_step_long; $859D02
+    jsl.l player2_segment_step_long; $859D06
     stz.w $1EE6                 ; $859D0A
     stz.w $1EE8                 ; $859D0D
     lda.w #$FFFF                ; $859D10
