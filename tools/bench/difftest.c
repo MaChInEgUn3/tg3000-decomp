@@ -50,6 +50,7 @@ typedef struct {
 
 typedef struct {
   unsigned long entries, samples, pass, fail, interrupted, abandoned, fuzzPass, fuzzFail, fuzzRequested;
+  unsigned long hidden;  // entries inside a handler a waiting sample records (not sampled)
   unsigned long replayPass, replayFail, replayRequested;  // interrupted entries run again (see Replay)
   bool contractBroken;
   Contract contracts[MAX_CONTRACTS];
@@ -178,7 +179,10 @@ static uint8_t afterRam[TG3000_WRAM_SIZE];
 // Interrupts inside the sample of a routine that waits for them (at most one such sample
 // at a time): each one's WRAM before and after the handler, replayed in order by
 // platform_wait_vblank() on the C side.
-#define MAX_IRQS 512  // interrupts recorded in one sample (a 200-frame wait); pages are touched only when used
+#define MAX_IRQS 512        // interrupts a row with a budget (maxInsns) records in one sample
+#define MAX_IRQS_DEFAULT 64 // the others: past it a recording stops, and the routines its
+                            // handlers call are sampled again (raising it for every row hid
+                            // two rows only reached from handlers inside wait_flag_76)
 static uint8_t irqPre[MAX_IRQS][TG3000_WRAM_SIZE], irqPost[MAX_IRQS][TG3000_WRAM_SIZE];
 static int irqOwner = -1;  // depth of the sample that records them
 static int irqCount, irqReplayed, irqLimit;
@@ -1250,7 +1254,10 @@ static void watchAll(const Cpu* cpu, bool inHandler) {
 static void checkEntries(Cpu* cpu, uint32_t pc, bool inHandler) {
   for(int i = 0; i < tableCount; i++) {
     if(table[i].entry != pc) continue;
-    if(inHandler && !table[i].rti) return;  // inside a recorded handler: only handler rows
+    if(inHandler && !table[i].rti) {  // inside a recorded handler: only handler rows
+      stats[i].hidden++;
+      return;
+    }
     Stats* s = &stats[i];
     Regs in = readRegs(cpu);
     noteContract(s, &table[i], &in);
@@ -1278,7 +1285,7 @@ void difftest_on_insn(Cpu* cpu) {
     if(cpu_interruptCount != irqSeen) {  // this instruction is a handler's first
       irqSeen = cpu_interruptCount;
       if(!irqActive) {
-        if(irqCount >= MAX_IRQS) irqOverflow = true;
+        if(irqCount >= (table[samples[irqOwner].idx].maxInsns ? MAX_IRQS : MAX_IRQS_DEFAULT)) irqOverflow = true;
         else {
           memcpy(irqPre[irqCount], snes->ram, TG3000_WRAM_SIZE);
           irqActive = true;
@@ -1592,6 +1599,8 @@ bool difftest_report(const char* resultsPath) {
     }
     printf("    %s; mismatches N%lu V%lu Z%lu C%lu\n", flagNote, s->flagMismatch[0], s->flagMismatch[1], s->flagMismatch[2], s->flagMismatch[3]);
     if(s->firstFailure[0]) printf("    first failure: %s\n", s->firstFailure);
+    if(s->hidden)
+      printf("    %lu entries inside interrupt handlers a waiting sample recorded (not sampled)\n", s->hidden);
     if(s->foreignStack)
       printf("    %lu passing sample(s) waited through a switch to the other task's stack (left out of the stack window)\n", s->foreignStack);
     if(s->ppuLines) {

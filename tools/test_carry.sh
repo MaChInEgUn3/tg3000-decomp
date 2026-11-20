@@ -82,4 +82,17 @@ check 0 "five commits of additions"
 printf '\n// added 6\n' >> src/misc.c
 python3 -I tools/progress.py >/dev/null || true
 check 1 "a sixth commit of additions"
+# a row verified at HEAD that is not verified any more (a full run that lost it): refused
+git reset -q --hard "$base"
+python3 -I - <<'PY'
+rows = open("map/verified.txt").read().splitlines(True)
+for i, line in enumerate(rows):
+    parts = line.split()
+    if not line.startswith("#") and len(parts) >= 8 and parts[7] == "verified":
+        parts[7] = "unreached"
+        rows[i] = " ".join(parts) + "\n"
+        break
+open("map/verified.txt", "w").write("".join(rows))
+PY
+check 1 "a verified row lost"
 echo "carry rule: all cases as expected"

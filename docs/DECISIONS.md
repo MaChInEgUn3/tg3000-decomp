@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Two rows lost by harness-1, and the gate that now refuses that (harness-1b, 2026-11-20)
+
+**What happened.** harness-1's full gate passed while two verified rows, `func_82F380` and
+`func_82FB1C` (one byte each), came out `unreached`: 404 routines instead of 406.
+- Inside an interrupt that a waiting sample records, only handler rows are sampled.
+- With `MAX_IRQS` = 64, `wait_flag_76`'s recording overflowed and stopped, so the routines
+  its handlers call (the only place those two run) were sampled again.
+- At 512 the recording went on and hid them. A temporary print in `difftest.c`, reverted
+  afterwards, found the owner: `wait_flag_76`, at 64 interrupts or more.
+
+**The fixes.**
+- **Recorded interrupts:** 512 only for a row with a budget (`maxInsns`, the title card);
+  every other waiting row keeps 64 (`MAX_IRQS_DEFAULT`).
+- **The report** counts entries skipped inside recorded handlers, so a hidden row no
+  longer reads as merely `unreached`.
+- **`progress.py --check`** refuses a row verified at HEAD that the new
+  `map/verified.txt` no longer has as verified. `test_carry.sh` has the case ("a verified
+  row lost").
+- Both checks only tighten, and are recorded under the owner's delegation, open to veto.
+- The two rows pass again (1/1 and 3/3), with `title_card_show` and every waiting row.
+
 ## A per-row instruction budget, and the title card (harness-1, 2026-11-20)
 
 **The harness.** This is the first of the two changes decided above.
@@ -1797,7 +1818,8 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
 - `MAX_IRQS` (the interrupts recorded in one sample, each with two WRAM snapshots) goes
   from 64 to 512. A 200-frame wait records more than 64.
 - The arrays are BSS and touched only when used, so other rows cost nothing.
-- Nothing compared changes; samples that were abandoned are now compared.
+- **Corrected (harness-1b):** "nothing compared changes" was wrong. Raising `MAX_IRQS` for
+  every row changed what is sampled, and two rows were lost (see below).
 
 **`title_card_show` ($8A:C056), now verified.** It was written in roots-56 and reverted.
 - It clears the fade state and the direct page.

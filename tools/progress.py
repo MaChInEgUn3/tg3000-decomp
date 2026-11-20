@@ -286,9 +286,43 @@ def block(lang):
     return "\n".join(lines)
 
 
+def lost_rows():
+    """Rows verified at HEAD that the working map/verified.txt no longer has as verified."""
+    try:
+        head = subprocess.run(["git", "-C", ROOT, "show", "HEAD:map/verified.txt"], capture_output=True,
+                              text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    def verified(text):
+        rows = {}
+        for line in text.splitlines():
+            parts = line.split()
+            if line.startswith("#") or len(parts) < 8:
+                continue
+            rows[parts[0]] = (parts[1], parts[7])
+        return rows
+    before = verified(head)
+    with open(os.path.join(ROOT, "map", "verified.txt")) as f:
+        now = verified(f.read())
+    lost = []
+    for entry, (name, status) in sorted(before.items()):
+        if status != "verified":
+            continue
+        after = now.get(entry, (name, "missing"))[1]
+        if after != "verified":
+            lost.append("%s %s (verified at HEAD, now %s)" % (entry, name, after))
+    return lost
+
+
 def main():
     check = "--check" in sys.argv[1:]
     _, stale_rows, _ = ported_routines()
+    if check:
+        lost = lost_rows()
+        if lost:
+            for r in lost:
+                print("lost verification: " + r, file=sys.stderr)
+            return 1
     problem = full_run_problem()
     if check and problem:
         print(problem, file=sys.stderr)
