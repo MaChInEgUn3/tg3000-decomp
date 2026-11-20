@@ -7646,6 +7646,53 @@ static void fuzz_player_segment_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   }
 }
 
+// ---- player2_segment_step ($82:FA4F) ----  as player_segment_step (the same continuations);
+// with only 5 watched returns every flag counts as live: they are the last SBC's, the
+// second cursor's segment start against $02D9 + 2 (N set, Z clear, C and V of the SBC)
+static void call_player2_segment_step(const Regs* in, Regs* out) {
+  (void)in;
+  player2_segment_step();
+  const uint32_t a = (uint32_t)rd16(0x02D9) + 2;
+  const uint16_t start = rom16(0x840000 + (uint32_t)(uint16_t)(rd16(0x019C) + rd16(0x1E64)));
+  const uint32_t sum = (a & 0xFFFF) + (uint16_t)~start + (a >> 16);
+  const uint16_t r = (uint16_t)sum;
+  out->n = true;
+  out->z = false;
+  out->c = sum > 0xFFFF;
+  out->v = (((uint16_t)a ^ start) & ((uint16_t)a ^ r) & 0x8000) != 0;
+}
+// as player_segment_step's fuzz, with the second player's words (and cursors)
+static void fuzz_player2_segment_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t base = (uint16_t)(ram[0x019C] | ram[0x019D] << 8);
+  uint16_t c = (uint16_t)(ram[0x1E62] | ram[0x1E63] << 8);
+  if(rnd() & 1) {
+    static const uint16_t tables[] = {0xC1C1, 0xE171, 0xE675, 0xF257};
+    base = tables[rnd() % 4];
+    c = (uint16_t)(0x14 * (rnd() % 4));
+    wr16ram(ram, 0x019C, base);
+  }
+  wr16ram(ram, 0x1E62, c);
+  wr16ram(ram, 0x1E64, (uint16_t)(c + 0x14 * (rnd() % 3)));
+  const uint16_t start = rom16(0x840000 + (uint32_t)(uint16_t)(base + c));
+  uint16_t place = (uint16_t)(start + rnd() % 0x180);
+  for(uint16_t s = c, n = 0; n < 40; s += 0x14, n++) {
+    const uint8_t kind = rom8(0x840002 + (uint32_t)(uint16_t)(base + s));
+    if(kind <= 10 && !(kind & 1)) continue;
+    const uint16_t limit = (uint16_t)(rom16(0x840000 + (uint32_t)(uint16_t)(base + s)) - 0x00C0);
+    if((uint16_t)(limit - start) & 0x8000) place = (uint16_t)(start - 0x0100);
+    else if((uint16_t)(place - start) > (uint16_t)(limit - start)) place = limit;
+    break;
+  }
+  wr16ram(ram, 0x02D9, place);
+  wr16ram(ram, 0x1EE2, (rnd() & 1) ? 0x7FFF : (uint16_t)(place - 0x20 + rnd() % 0x40));
+  static const uint16_t words[] = {0x02F1, 0x02B9, 0x02B7, 0x1EC6, 0x1EC8, 0x1E68};
+  for(unsigned i = 0; i < sizeof words / sizeof words[0]; i++) wr16ram(ram, words[i], (uint16_t)rnd());
+  wr16ram(ram, 0x1EE4, (uint16_t)(rnd() % 0x80));
+  wr16ram(ram, 0x1EE8, (uint16_t)(rnd() % 0x80));
+  for(int i = 0; i < 0x22; i++) wr16ram(ram, (uint16_t)(0x436C + 2 * i), (uint16_t)rnd());
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8501,6 +8548,8 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_minimap_car, .fuzz = fuzz_minimap_car},
   {.name = "player_segment_step", .entry = 0x82F2B3, .end = 0x82F374, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player_segment_step, .fuzz = fuzz_player_segment_step},
+  {.name = "player2_segment_step", .entry = 0x82FA4F, .end = 0x82FB10, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player2_segment_step, .fuzz = fuzz_player2_segment_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

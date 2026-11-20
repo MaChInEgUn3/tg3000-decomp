@@ -1381,7 +1381,7 @@ CODE_82A99E:
     rts                         ; $82A9AE
     jsr.w player_segment_step   ; $82A9AF
     rtl                         ; $82A9B2
-    jsr.w $FA4F                 ; $82A9B3
+    jsr.w player2_segment_step  ; $82A9B3
     rtl                         ; $82A9B6
 func_82A9B7:
     pea.w $837E                 ; $82A9B7
@@ -5079,11 +5079,49 @@ CODE_82F3B7:
     stz.w $1E66                 ; $82F3D0 static
     rts                         ; $82F3D3 static
     incbin !baserom:$173D4..$17A4F
+player2_segment_step:
     stz.b $2A                   ; $82FA4F
     lda.w $02D9                 ; $82FA51
     cmp.w $1EE2                 ; $82FA54
     bcc CODE_82FAB9             ; $82FA57
-    incbin !baserom:$17A59..$17AB9
+    lda.w $1EE4                 ; $82FA59 static
+    clc                         ; $82FA5C static
+    adc.w $02D9                 ; $82FA5D static
+    sta.w $02D9                 ; $82FA60 static
+    lda.w $1EE4                 ; $82FA63 static
+    clc                         ; $82FA66 static
+    adc.w $02F1                 ; $82FA67 static
+    sta.w $02F1                 ; $82FA6A static
+    lda.w $1EE2                 ; $82FA6D static
+    asl a                       ; $82FA70 static
+    and.w #$003E                ; $82FA71 static
+    tax                         ; $82FA74 static
+    lda.l $7E436E,x             ; $82FA75 static
+    sec                         ; $82FA79 static
+    sbc.l $7E4370,x             ; $82FA7A static
+    pha                         ; $82FA7E static
+    clc                         ; $82FA7F static
+    adc.l $7E436E,x             ; $82FA80 static
+    sta.l $7E436C,x             ; $82FA84 static
+    sta.l $7E43AC,x             ; $82FA88 static
+    eor.w #$FFFF                ; $82FA8C static
+    inc a                       ; $82FA8F static
+    clc                         ; $82FA90 static
+    adc.w $02B9                 ; $82FA91 static
+    sta.w $02B9                 ; $82FA94 static
+    sta.w $02B5                 ; $82FA97 static
+    pla                         ; $82FA9A static
+    sta.w $02BF                 ; $82FA9B static
+    lda.w $1EE2                 ; $82FA9E static
+    asl a                       ; $82FAA1 static
+    and.w #$003E                ; $82FAA2 static
+    tax                         ; $82FAA5 static
+    lda.l $7E436C,x             ; $82FAA6 static
+    stz.w $1EC6                 ; $82FAAA static
+    sta.w $1EC8                 ; $82FAAD static
+    stz.w $1EE4                 ; $82FAB0 static
+    lda.w #$7FFF                ; $82FAB3 static
+    sta.w $1EE2                 ; $82FAB6 static
 CODE_82FAB9:
     lda.w $019C                 ; $82FAB9
     clc                         ; $82FABC
@@ -5129,7 +5167,24 @@ func_82FB1C:
     rts                         ; $82FB1C
     bit.w $1E68                 ; $82FB1D
     bpl CODE_82FB53             ; $82FB20
-    incbin !baserom:$17B22..$17B53
+    lda.w $02B7                 ; $82FB22 static
+    clc                         ; $82FB25 static
+    adc.w $1EC6                 ; $82FB26 static
+    sta.w $02B7                 ; $82FB29 static
+    lda.w $02B9                 ; $82FB2C static
+    adc.w $1EC8                 ; $82FB2F static
+    sta.w $02B9                 ; $82FB32 static
+    tyx                         ; $82FB35 static
+    lda.l $840000,x             ; $82FB36 static
+    clc                         ; $82FB3A static
+    adc.w #$003F                ; $82FB3B static
+    adc.l $840010,x             ; $82FB3E static
+    sta.w $1EE2                 ; $82FB42 static
+    lda.l $840012,x             ; $82FB45 static
+    sta.w $1EE4                 ; $82FB49 static
+    stz.w $02BD                 ; $82FB4C static
+    stz.w $02BF                 ; $82FB4F static
+    rts                         ; $82FB52 static
 CODE_82FB53:
     tyx                         ; $82FB53
     lda.w $1EE8                 ; $82FB54
@@ -5142,7 +5197,8 @@ CODE_82FB53:
     sta.w $02F1                 ; $82FB65
     stz.w $1EE8                 ; $82FB68
     rts                         ; $82FB6B
-    incbin !baserom:$17B6C..$17B70
+    stz.w $1E68                 ; $82FB6C static
+    rts                         ; $82FB6F static
 decompress:
     phy                         ; $82FB70
     phb                         ; $82FB71

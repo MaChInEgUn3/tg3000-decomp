@@ -1172,4 +1172,10 @@ void minimap_car(uint16_t y, uint16_t at, uint16_t attr);
 // setting bit 1 of D+$2A (cleared first).
 void player_segment_step(void);
 
+// $82:FA4F: player_segment_step for the second player: its place $02D9 (and $02F1), its
+// jump $1EE2/$1EE4, its cursors $1E62/$1E64, its road rows at $7E:436C/$43AC, its words
+// $02B5-$02BF (as $0202-$020C), $1EC6/$1EC8, $1E68 and $1EE8; the same segment table
+// ($019C) and handler kinds (the table at $82:FB10).
+void player2_segment_step(void);
+
 #endif

@@ -1789,6 +1789,31 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The second player's segment step (roots-76, 2026-11-20)
+
+**`player2_segment_step` ($82:FA4F):** `player_segment_step` for the second player, 5
+entries on the 60k movie.
+- **Its variables:** its place `$02D9`/`$02F1`, its jump `$1EE2`/`$1EE4`, its cursors
+  `$1E62`/`$1E64`, its road rows at `$7E:436C`/`$43AC`, its words `$02B5`-`$02BF` (where
+  the first player has `$0202`-`$020C`), `$1EC6`/`$1EC8`, `$1E68` and `$1EE8`. The handler
+  table is at `$82:FB10`.
+- **Three stretches never ran:**
+  - the armed jump (`$82:FA59`);
+  - the kind 6/10 handler's armed side (`$82:FB22`);
+  - the kind 8 handler (`$82:FB6C`, `STZ $1E68; RTS`).
+
+  They were undecoded and are now static code. Each mirrors the first player's code
+  byte for byte, with these addresses.
+- **The C:** a helper `segment_step` that takes the player's addresses. The new routine
+  calls it. `player_segment_step` keeps its own body: changing it now would not be an
+  additive change, and could share the helper in a later full-gate unit.
+- **Flags.** Only 5 returns are watched, so every flag counts as live. The adapter models
+  them from the last `SBC`: N set, Z clear, C and V of the subtraction, carry-in from the
+  `ADC #2`.
+- The fuzz is `player_segment_step`'s, on the second player's words.
+- **Result:** live 5/5 (60k) and 1/1 (race1), fuzz 500/500 and 200/200, paths 79/79,
+  flags 0 mismatches.
+
 ## The player crosses the track's segments (roots-75, 2026-11-20)
 
 **`player_segment_step` ($82:F2B3, D = `$0100`):** 18,564 entries on the 60k movie. It was

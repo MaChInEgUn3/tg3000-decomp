@@ -446,3 +446,4 @@ func    83FB4A   track_object_random ; the random pickup: one of 16 prizes by th
 func    83FD68   car_object_stop     ; a stop marker: D+$53 = 4, D+$B1, D+$5E from the object (through car_track_step) -> src/misc.c
 func    82D8C6   minimap_car         ; one car's dot on the mini-map: a DSP-4 sprite entry (command $0B) -> src/misc.c
 func    82F2B3   player_segment_step ; the player crosses the track's segments: armed jumps, the segment kinds' handlers -> src/misc.c
+func    82FA4F   player2_segment_step ; the second player crosses the track's segments (as $82:F2B3) -> src/misc.c

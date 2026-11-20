@@ -4073,3 +4073,79 @@ void player_segment_step(void) {
     wr16(DP + 0x2A, (uint16_t)(rd16(DP + 0x2A) | 0x0002));
   }
 }
+
+// One player's words for the segment step ($82:F2B3 and $82:FA4F differ only in these). The
+// handlers sit at fixed places after their table: +$0C nothing, +$0D kinds 6/10, +$5C kind 8.
+typedef struct {
+  uint16_t place, place2, jumpAt, jumpBy, cursor, cursor2, rows, rows2;
+  uint16_t at0, at2, at4, at6, atA, atC, shiftLo, shiftHi, flags, pending;
+  uint32_t handlers;
+} SegmentPlayer;
+
+// The player's place against a segment's start (see segment_gap).
+static uint16_t segment_gap_of(const SegmentPlayer* p, uint32_t seg) {
+  const uint32_t a = (uint32_t)rd16(p->place) + 2;
+  return (uint16_t)(a - bus_rd16(0x840000 + seg) - 1 + (a >> 16));
+}
+
+static void segment_step(const SegmentPlayer* p) {
+  wr16(DP + 0x2A, 0);
+  if(rd16(p->place) >= rd16(p->jumpAt)) {
+    wr16(p->place, (uint16_t)(rd16(p->jumpBy) + rd16(p->place)));
+    wr16(p->place2, (uint16_t)(rd16(p->jumpBy) + rd16(p->place2)));
+    const uint32_t x = (uint16_t)(rd16(p->jumpAt) << 1) & 0x003E;
+    const uint16_t d = (uint16_t)(rd16(p->rows + 2 + x) - rd16(p->rows + 4 + x));
+    const uint16_t v = (uint16_t)(d + rd16(p->rows + 2 + x));
+    wr16(p->rows + x, v);
+    wr16(p->rows2 + x, v);
+    wr16(p->at6, (uint16_t)(rd16(p->at6) - v));
+    wr16(p->at2, rd16(p->at6));
+    wr16(p->atC, d);
+    wr16(p->shiftLo, 0);
+    wr16(p->shiftHi, rd16(p->rows + x));
+    wr16(p->jumpBy, 0);
+    wr16(p->jumpAt, 0x7FFF);
+  }
+  for(;;) {
+    uint32_t seg = (uint16_t)(rd16(0x019C) + rd16(p->cursor));
+    if(!((uint16_t)(segment_gap_of(p, seg) - 0x0040) & 0x8000)) {
+      const uint16_t handler = bus_rd16(p->handlers + (uint32_t)bus_rd8(0x840002 + seg));
+      if(handler == (uint16_t)(p->handlers + 0x0D)) {  // kinds 6 and 10
+        if(rd16(p->flags) & 0x8000) {
+          const uint32_t at = ((uint32_t)rd16(p->at4) | (uint32_t)rd16(p->at6) << 16) +
+                              ((uint32_t)rd16(p->shiftLo) | (uint32_t)rd16(p->shiftHi) << 16);
+          wr16(p->at4, (uint16_t)at);
+          wr16(p->at6, (uint16_t)(at >> 16));
+          const uint32_t s1 = (uint32_t)bus_rd16(0x840000 + seg) + 0x003F;
+          wr16(p->jumpAt, (uint16_t)(s1 + bus_rd16(0x840010 + seg) + (s1 >> 16)));
+          wr16(p->jumpBy, bus_rd16(0x840012 + seg));
+          wr16(p->atA, 0);
+          wr16(p->atC, 0);
+        } else {
+          wr16(p->place, (uint16_t)(rd16(p->pending) + rd16(p->place)));
+          wr16(p->place2, (uint16_t)(rd16(p->pending) + rd16(p->place2)));
+          wr16(p->pending, 0);
+        }
+      } else if(handler == (uint16_t)(p->handlers + 0x5C)) {  // kind 8 (kinds 0-4: nothing)
+        wr16(p->flags, 0);
+      }
+      wr16(p->cursor, (uint16_t)(rd16(p->cursor) + 0x0014));
+      continue;
+    }
+    seg = (uint16_t)(rd16(0x019C) + rd16(p->cursor2));
+    if(segment_gap_of(p, seg) & 0x8000) return;
+    wr16(p->cursor2, (uint16_t)(rd16(p->cursor2) + 0x0014));
+    wr16(DP + 0x2A, (uint16_t)(rd16(DP + 0x2A) | 0x0002));
+  }
+}
+
+// TG3000_ROUTINE($82:FA4F) player2_segment_step
+void player2_segment_step(void) {
+  static const SegmentPlayer second = {
+    .place = 0x02D9, .place2 = 0x02F1, .jumpAt = 0x1EE2, .jumpBy = 0x1EE4, .cursor = 0x1E62,
+    .cursor2 = 0x1E64, .rows = 0x436C, .rows2 = 0x43AC, .at0 = 0x02B3, .at2 = 0x02B5,
+    .at4 = 0x02B7, .at6 = 0x02B9, .atA = 0x02BD, .atC = 0x02BF, .shiftLo = 0x1EC6,
+    .shiftHi = 0x1EC8, .flags = 0x1E68, .pending = 0x1EE8, .handlers = 0x82FB10,
+  };
+  segment_step(&second);
+}
