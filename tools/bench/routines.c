@@ -3334,6 +3334,20 @@ static void fuzz_title_fade_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzzTitleStream(ram, 0xC730);
 }
 
+// ---- title_frame_begin ($80:F5CD) ----  title_frame_step's exit from $80:F670: A = D+$40
+// (2), N Z of its CMP #$17C, X = the input end, Y = the length, C set, V clear
+static void call_title_frame_begin(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t src = rd16(0xA920);
+  const uint16_t len = title_frame_begin();
+  out->a = rd16(DP + 0x40);
+  out->x = titleUnpackEnd(src);
+  out->y = len;
+  setNZ16(out, (uint16_t)(out->a - 0x017C));
+  out->c = true;
+  out->v = false;
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7954,6 +7968,9 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_title_frame_step, ALL_OUTPUTS, .fuzz = fuzz_title_frame_step},
   {.name = "title_fade_step", .entry = 0x80F6AD, .end = 0x80F6FD, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_title_fade_step, ALL_OUTPUTS, .fuzz = fuzz_title_fade_step},
+  {.name = "title_frame_begin", .entry = 0x80F5CD, .end = 0x80F5DE, .alsoIn = {{0x80F670, 0x80F6AD}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_title_frame_begin,
+   ALL_OUTPUTS, .fuzz = fuzz_title_frame_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

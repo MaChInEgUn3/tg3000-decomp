@@ -3364,6 +3364,8 @@ static void title_windows(void) {
   video_set_window_logic_obj(0x00);
 }
 
+static uint16_t title_frame_tail(void);
+
 // TG3000_ROUTINE($80:F5DE) title_frame_step
 uint16_t title_frame_step(void) {
   static const uint16_t from[4] = {0x9180, 0x9768, 0x9D50, 0xA338}, to[4] = {0x0000, 0x02F4, 0x05E8, 0x08DC};
@@ -3371,6 +3373,11 @@ uint16_t title_frame_step(void) {
   for(int i = 0; i < 4; i++)
     if(f == 0x013A + 2 * i) video_upload_vram(to[i], 0x7E0000 | from[i], 0x0614);
   title_windows();
+  return title_frame_tail();
+}
+
+// $80:F670 on: the curve from frame $15C, the frame's picture, the next frame.
+static uint16_t title_frame_tail(void) {
   if(rd16(DP + 0x40) >= 0x015C) {
     wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 1));
     wr16(DP + 0x30, (uint16_t)((rd16(DP + 0x42) >> 1) + 0x0040));
@@ -3405,4 +3412,13 @@ uint16_t title_fade_step(void) {
   if(rd16(DP + 0x42) != 0x003F) return 0;
   uint16_t end;
   return decompress_near(DP, 0x7E, 0xC730, 0x7F, 0x0000, &end);
+}
+
+// TG3000_ROUTINE($80:F5CD) title_frame_begin
+uint16_t title_frame_begin(void) {
+  wr16(DP + 0x40, 0);
+  wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
+  wr16(DP + 0x42, 0x0001);
+  wr16(DP + 0x1E, 0x003C);
+  return title_frame_tail();
 }

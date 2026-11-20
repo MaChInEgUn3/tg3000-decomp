@@ -430,3 +430,4 @@ func    81F21E   car_contacts_chain  ; an object's contacts down the chain of ob
 func    80E925   ticker_scene_step   ; one frame of the scrolling-text scene: camera, view, ticker lines, sparks -> src/misc.c
 func    80F5DE   title_frame_step    ; a title frame: VRAM upload, windows, curve, the frame's picture unpacked -> src/misc.c
 func    80F6AD   title_fade_step     ; a title fade step: level, palette_fade_60, curve, picture -> src/misc.c
+func    80F5CD   title_frame_begin   ; the title frames restarted, then title_frame_step's tail -> src/misc.c

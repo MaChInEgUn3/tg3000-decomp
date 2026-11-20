@@ -12687,6 +12687,7 @@ CODE_80F5C5:
     jsr.w func_80F745           ; $80F5C8
     clc                         ; $80F5CB
     rts                         ; $80F5CC
+title_frame_begin:
     stz.b $40                   ; $80F5CD
     inc.b $3E                   ; $80F5CF
     lda.w #$0001                ; $80F5D1

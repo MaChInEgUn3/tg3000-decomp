@@ -1789,13 +1789,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The title frames restarted (roots-63, 2026-11-20)
+
+**`title_frame_begin` ($80:F5CD):** resets the title frames.
+- It sets `D+$40` = 0, `D+$42` = 1, `D+$1E` = `$3C`, and `D+$3E` counts.
+- Then it jumps to `$80:F670`, `title_frame_step`'s tail: the curve from frame `$15C` (not
+  here), frame 0's picture, then `D+$40` = 2.
+- The row declares that tail with `alsoIn`. In the C, the tail is a shared function
+  (`title_frame_tail`).
+- **A correction.** Reading this showed that roots-62's header put the windows inside the
+  `$80:F670` part; they come before it. Header and doc are fixed.
+- This edits verified code, so the unit takes the full gate. `title_frame_step` passes
+  again (84/84, 500/500).
+- Live 1/1, fuzz 500/500, paths 7/7.
+
 ## Two title steps (roots-62, 2026-11-20)
 
 **`title_frame_step` ($80:F5DE):** one step of the title picture, by its frame `D+$40`.
 - At frames `$13A`-`$140` it sends a `$614`-byte VRAM upload from bank `$7E`.
-- Then, from `$80:F670` on, the windows: both at 255-0, BG1/BG2 masked by window 1
-  (`$2123` = `$0A`, then `$02`), the HDMA line tables cleared.
-- From frame `$15C` on: `D+$42` counts and `window_curve_build` runs.
+- Then the windows: both at 255-0, BG1/BG2 masked by window 1 (`$2123` = `$0A`, then
+  `$02`), the HDMA line tables cleared.
+- From `$80:F670` on (corrected in roots-63: the windows come before it): from frame
+  `$15C` on, `D+$42` counts and `window_curve_build` runs.
 - Then the frame's picture unpacks from the pointer table at `$7E:A920`.
 - `$80:F5CD` (parked for its tail into `$80:F670`) can come next.
 

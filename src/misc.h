@@ -1018,14 +1018,19 @@ bool car_contacts_chain(uint16_t x, uint16_t y);
 void ticker_scene_step(void);
 
 // $80:F5DE: a title step by its frame D+$40 (D = $0100). At frames $13A-$140 (even), $614
-// bytes from $7E:9180 / $9768 / $9D50 / $A338 go to VRAM 0 / $2F4 / $5E8 / $8DC. Then (from
-// $80:F670 on, also the tail of $80:F5CD) D+$7E = $FFFF; window 1 at 255-0 and window 2
-// likewise, BG1/BG2 masked by window 1 ($2123 = $0A, then $02), the HDMA line tables at
-// $0D00/$0D40/$0E00/$0E40 cleared; from frame $15C on D+$42 counts, D+$30 = D+$42 / 2 +
-// $40, D+$36 = $800 and window_curve_build. The frame's picture unpacks from $7E:(the
+// bytes from $7E:9180 / $9768 / $9D50 / $A338 go to VRAM 0 / $2F4 / $5E8 / $8DC. Then
+// D+$7E = $FFFF; window 1 at 255-0 and window 2 likewise, BG1/BG2 masked by window 1
+// ($2123 = $0A, then $02), the HDMA line tables at $0D00/$0D40/$0E00/$0E40 cleared. From
+// $80:F670 on (also the tail of $80:F5CD): from frame $15C on D+$42 counts, D+$30 = D+$42 /
+// 2 + $40, D+$36 = $800 and window_curve_build; the frame's picture unpacks from $7E:(the
 // word at $7E:A920 + the frame) to $7F:0000; D+$40 moves on by 2 (D+$3E counting at
 // $17C). Returns the unpacked length (the original also returns with C set).
 uint16_t title_frame_step(void);
+
+// $80:F5CD: the title frames restarted: D+$40 = 0, D+$3E counts, D+$42 = 1, D+$1E = $3C;
+// then $80:F670 on, as title_frame_step (frame 0's picture unpacked, D+$40 = 2). Returns
+// the unpacked length.
+uint16_t title_frame_begin(void);
 
 // $80:F6AD: a title fade step (D = $0100): D+$42 counts (D+$3E counting at $7F); the
 // level D+$30 = D+$42 / 2 + $40 below $20, else (D+$42 - $3F, 0 below) / 2 + $20, at most
