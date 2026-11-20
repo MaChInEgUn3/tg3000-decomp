@@ -1789,6 +1789,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The track tiles for a preview (roots-66, 2026-11-20)
+
+**`track_tiles_preview` ($8A:8BC2, DB = `$83`):** the bank-`$8A` twin of
+`track_tiles_load`.
+- **The front is the same:** the kind from `$83:8410` and its picture unpacked to `$7F`.
+- **The layouts:** four, chosen by `$0444` through a 55-entry table at `$8A:8BED` (a
+  hole). Each runs `tiles_planar_upload`, `upload_tiles_c280`, `upload_tiles_c680`, then
+  `palette_load_70`.
+- **The exit:** `palette_load_70`'s, which keeps C and V, so those flags are
+  `upload_tiles_c680`'s `ADC`.
+- All 4 live entries were interrupted; the replays passed (2/2). Fuzz 500/500, paths
+  57/57, first try.
+
 ## The track tiles (roots-65, 2026-11-20)
 
 **`track_tiles_load` ($85:8000, long, DB = `$83`):** loads the track's tiles.

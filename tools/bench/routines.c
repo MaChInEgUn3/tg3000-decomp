@@ -3392,6 +3392,29 @@ static void fuzz_track_tiles_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   ram[0x03CB] = (rnd() & 1) ? (uint8_t)(1 + rnd() % 255) : 0;
 }
 
+// ---- track_tiles_preview ($8A:8BC2) ----  palette_load_70's exit (A = $7001, X = the kind
+// k: N Z of it, Y = $20), which keeps C and V: those of upload_tiles_c680's ADC (its table
+// word + $20, plus the layout's offset)
+static void call_track_tiles_preview(const Regs* in, Regs* out) {
+  const uint16_t k = bus_rd8(0x838410 + (uint32_t)in->a);
+  const uint16_t handler = bus_rd16(0x8A8BED + (uint32_t)(uint16_t)(rd16(0x0444) << 1));
+  const uint16_t off = (handler == 0x8C5B || handler == 0x8C72) ? 0x0200 : 0x0220;
+  track_tiles_preview(in->a);
+  out->a = 0x7001;
+  out->x = k;
+  out->y = 0x0020;
+  setNZ16(out, k);
+  const uint16_t t = (uint16_t)(rom16(0x8384B1 + (uint32_t)k) + 0x20);
+  const uint32_t sum = (uint32_t)t + off;
+  out->c = sum > 0xFFFF;
+  out->v = (~(t ^ off) & (t ^ sum) & 0x8000) != 0;
+}
+// any track (A), any layout ($0444 over its 55 entries)
+static void fuzz_track_tiles_preview(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (uint16_t)(rnd() % 0x37);
+  wr16ram(ram, 0x0444, (uint16_t)(rnd() % 0x37));
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -8020,6 +8043,9 @@ const Routine routines[] = {
   {.name = "track_tiles_load", .entry = 0x858000, .end = 0x85817B, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_tiles_load, ALL_OUTPUTS,
    .fuzz = fuzz_track_tiles_load, .holes = {{0x858025, 0x858093}}},  // the layouts' table
+  {.name = "track_tiles_preview", .entry = 0x8A8BC2, .end = 0x8A8CB7, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_tiles_preview, ALL_OUTPUTS,
+   .fuzz = fuzz_track_tiles_preview, .holes = {{0x8A8BED, 0x8A8C5B}}},  // the layouts' table
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

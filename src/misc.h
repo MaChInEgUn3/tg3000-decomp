@@ -1059,4 +1059,10 @@ void menu_bar_draw(void);
 // never run).
 void track_tiles_load(uint16_t track);
 
+// $8A:8BC2: the track's tiles for a preview (D = $0100, DB = $83): the kind k and its
+// picture as track_tiles_load; then by the layout of $0444 (a table at $8A:8BED: four
+// layouts) tiles_planar_upload, upload_tiles_c280 and upload_tiles_c680 at the layout's
+// offsets, and palette_load_70 (all with k).
+void track_tiles_preview(uint16_t track);
+
 #endif

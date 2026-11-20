@@ -3492,3 +3492,21 @@ void track_tiles_load(uint16_t track) {
   row_copy_6a33((rows && rd8(0x039C)) ? 0x0020 : 0, k);  // the fourth layout's: never run
   row_copy_6b33((rows && rd8(0x03CB)) ? 0x0020 : 0, k);  // never run
 }
+
+// TG3000_ROUTINE($8A:8BC2) track_tiles_preview
+void track_tiles_preview(uint16_t track) {
+  const uint16_t k = bus_rd8(0x838410 + (uint32_t)track);
+  const uint16_t y = (uint16_t)(bus_rd16(0x838447 + (uint32_t)k) << 1);
+  const uint16_t banks = bus_rd16(0x838597 + (uint32_t)y);
+  uint16_t end;
+  decompress(DP, (uint8_t)banks, bus_rd16(0x838585 + (uint32_t)y), (uint8_t)(banks >> 8), 0x0000, &end);
+  static const uint16_t offsets[4][3] = {
+    {0x0420, 0x0000, 0x0200}, {0x0820, 0x0000, 0x0200}, {0x0440, 0x0020, 0x0220}, {0x0840, 0x0020, 0x0220},
+  };
+  const uint16_t handler = bus_rd16(0x8A8BED + (uint32_t)(uint16_t)(rd16(0x0444) << 1));
+  const uint16_t* o = offsets[handler == 0x8C5B ? 0 : handler == 0x8C72 ? 1 : handler == 0x8C89 ? 2 : 3];
+  tiles_planar_upload(o[0], k);
+  upload_tiles_c280(k, o[1]);
+  upload_tiles_c680(k, o[2]);
+  palette_load_70(k);
+}

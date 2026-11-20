@@ -529,7 +529,7 @@ CODE_8A8779:
     plb                         ; $8A877D
     plb                         ; $8A877E
     lda.w $1536                 ; $8A877F
-    jsr.w $8BC2                 ; $8A8782
+    jsr.w track_tiles_preview   ; $8A8782
     plb                         ; $8A8785
     rts                         ; $8A8786
 hdma_title_setup:
@@ -924,6 +924,7 @@ CODE_8A8BBB:
     cmp.l $810024               ; $8A8BBB
     bne CODE_8A8BBB             ; $8A8BBF
     rtl                         ; $8A8BC1
+track_tiles_preview:
     tax                         ; $8A8BC2
     lda.w $8410,x               ; $8A8BC3
     and.w #$00FF                ; $8A8BC6
