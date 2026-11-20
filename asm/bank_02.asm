@@ -309,7 +309,7 @@ CODE_828656:
     lda.w $00B8                 ; $828667
     bit.w #$0004                ; $82866A
     bne CODE_828678             ; $82866D
-    jsr.w $B4ED                 ; $82866F
+    jsr.w race_hud_digits       ; $82866F
     lda.w #$0004                ; $828672
     tsb.w $00B8                 ; $828675
 CODE_828678:
@@ -457,7 +457,7 @@ CODE_82897E:
     lda.l $83A502               ; $8289AA
     sta.l $002118               ; $8289AE
 CODE_8289B2:
-    jmp.w $B4ED                 ; $8289B2
+    jmp.w race_hud_digits       ; $8289B2
     incbin !baserom:$109B5..$10F8F
 shake_step:
     lda.w $0231                 ; $828F8F
@@ -2127,6 +2127,7 @@ CODE_82B22F:
 CODE_82B233:
     rts                         ; $82B233
     incbin !baserom:$13234..$134ED
+race_hud_digits:
     lda.w $0244                 ; $82B4ED
     bit.w #$0004                ; $82B4F0
     beq CODE_82B4F8             ; $82B4F3
@@ -2142,7 +2143,8 @@ CODE_82B4F8:
     lda.l $308000               ; $82B50E
     lda.l $308000               ; $82B512
     bpl CODE_82B51C             ; $82B516
-    incbin !baserom:$13518..$1351C
+    eor.w #$FFFF                ; $82B518 static
+    inc a                       ; $82B51B static
 CODE_82B51C:
     cmp.w #$000C                ; $82B51C
     bcc CODE_82B524             ; $82B51F
@@ -2160,7 +2162,8 @@ CODE_82B524:
     sta.l $308000               ; $82B53F
     lda.w $0210                 ; $82B543
     bpl CODE_82B54C             ; $82B546
-    incbin !baserom:$13548..$1354C
+    eor.w #$FFFF                ; $82B548 static
+    inc a                       ; $82B54B static
 CODE_82B54C:
     asl a                       ; $82B54C
     asl a                       ; $82B54D
@@ -2179,12 +2182,28 @@ CODE_82B561:
     lda.l $308000               ; $82B56B
     bit.w $1E94                 ; $82B56F
     bmi CODE_82B578             ; $82B572
-    incbin !baserom:$13574..$13578
+    lda.w $1E94                 ; $82B574 static
+    inc a                       ; $82B577 static
 CODE_82B578:
     ldx.w #$0000                ; $82B578
     cmp.w #$03E8                ; $82B57B
     bcc CODE_82B59E             ; $82B57E
-    incbin !baserom:$13580..$1359E
+    sbc.w #$03E8                ; $82B580 static
+CODE_82B583:
+    inx                         ; $82B583 static
+    inx                         ; $82B584 static
+    inx                         ; $82B585 static
+    inx                         ; $82B586 static
+    sec                         ; $82B587 static
+    sbc.w #$03E8                ; $82B588 static
+    bcs CODE_82B583             ; $82B58B static
+    adc.w #$03E8                ; $82B58D static
+    pha                         ; $82B590 static
+    lda.w $A4AC,x               ; $82B591 static
+    sta.w $1E96                 ; $82B594 static
+    lda.w $A4AE,x               ; $82B597 static
+    sta.w $1E98                 ; $82B59A static
+    pla                         ; $82B59D static
 CODE_82B59E:
     cmp.w #$000A                ; $82B59E
     bcc CODE_82B5F4             ; $82B5A1
@@ -2360,7 +2379,19 @@ CODE_82B6C5:
     lda.w $03DC                 ; $82B6F3
     and.w #$0003                ; $82B6F6
     beq CODE_82B71D             ; $82B6F9
-    incbin !baserom:$136FB..$1371D
+    ldx.b $50                   ; $82B6FB static
+    jsr.w func_82B838           ; $82B6FD static
+    ldx.b $52                   ; $82B700 static
+    jsr.w func_82B838           ; $82B702 static
+    lda.w $0226                 ; $82B705 static
+    ldy.w $0235                 ; $82B708 static
+    jsr.w func_82B769           ; $82B70B static
+    stx.b $50                   ; $82B70E static
+    lda.w $02D9                 ; $82B710 static
+    ldy.w $02E8                 ; $82B713 static
+    jsr.w func_82B769           ; $82B716 static
+    stx.b $52                   ; $82B719 static
+    bra CODE_82B72D             ; $82B71B static
 CODE_82B71D:
     ldx.b $50                   ; $82B71D
     jsr.w func_82B838           ; $82B71F
@@ -2368,6 +2399,7 @@ CODE_82B71D:
     ldy.w $0235                 ; $82B725
     jsr.w func_82B769           ; $82B728
     stx.b $50                   ; $82B72B
+CODE_82B72D:
     lda.l $7E4E3D               ; $82B72D
     sta.b $14                   ; $82B731
     lda.w $0233                 ; $82B733

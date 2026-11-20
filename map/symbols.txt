@@ -440,3 +440,4 @@ func    82F1C1   road_shift_apply    ; the player car's shift along the road (tw
 func    82EFDA   road_shift_settle   ; road_shift_apply with the offset zeroed, snapped or scaled (DSP-4, CPU divider) -> src/misc.c
 func    83F73E   follow_car_step     ; the view follows a car by a DSP-4-scaled step, snapping on arrival -> src/misc.c
 func    81FA8F   car_sync_player     ; the player's car takes the player's motion (directly or a DSP-4 multiply), then func_81FBB1 -> src/track.c
+func    82B4ED   race_hud_digits     ; the race HUD's numbers: gear, speed digits, bar, tiles; the car's block; messages -> src/misc.c

@@ -1111,4 +1111,22 @@ void road_shift_settle(void);
 // counts $1ECE down ($8000 becomes $118).
 void follow_car_step(uint16_t dp);
 
+// $82:B4ED: the race HUD's numbers (D = $0100, DB = $83), unless $0244 has bit 2:
+// - $003E = the high word of $0213 * $160 (a DSP-4 multiply), at most $0C (its absolute
+//   value: never run);
+// - the speed: the high word of $0210 (made positive: never run) * 8 times $3000 ($4D3B
+//   when $03A7 is set) on the chip, or $1E94 + 1 while $1E94 is not negative (never run);
+//   its digits as tile pairs from $83:A4AC (4 bytes a digit): thousands to $1E96/$1E98
+//   (never run), hundreds to $0042/$0044, tens to $0046/$0048, ones to $004A/$004C
+//   (blank ones, $0157, where none);
+// - $0064/$0066: D+$42 as a tens tile ($83:A486/$A488 from 10/20) and a ones tile
+//   ($83:A484 + 2n);
+// - a bar of 8 cells from $0258 (0 below 9 while $0297 is negative): $0074, $006C-$0072
+//   ($2959 empty, $295A full, $295C partial) and the partial cell's 8 rows at $0080-$008E;
+// - $00A0 from $83:8C35 by $025B, $00A4-$00AA from $83:A4D4 by D+$4C.
+// Then the car's map block: func_82B838 at D+$50, func_82B769 with $0226/$0235, D+$50 = the
+// block's offset (two players' blocks: never run); and race_message_update on the
+// messages at $7E:4E3D/$0233/$7E:4E45/$7E:4E4D (written back after).
+void race_hud_digits(void);
+
 #endif

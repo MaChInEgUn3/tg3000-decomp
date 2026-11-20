@@ -3717,3 +3717,114 @@ void follow_car_step(uint16_t dp) {
   wr16(0x1ECE, (uint16_t)(rd16(0x1ECE) - 1));
   if(rd16(0x1ECE) == 0x8000) wr16(0x1ECE, 0x0118);
 }
+
+// The tile pair of digit `d` at $83:A4AC.
+static void hud_digit(uint16_t d, uint32_t lo, uint32_t hi) {
+  wr16(lo, bus_rd16(0x83A4AC + 4u * d));
+  wr16(hi, bus_rd16(0x83A4AE + 4u * d));
+}
+
+// The 8 rows of a bar's partial cell at $0080-$008E: `first`, then $0022 from row n on.
+static void hud_bar_cell(uint16_t n, uint16_t first) {
+  wr16(DP + 0x14, n);
+  uint16_t a = first;
+  for(int y = 0x0E; y >= 0; y -= 2) {
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
+    if(rd16(DP + 0x14) == 0) a = 0x0022;
+    wr16(0x0080 + (uint32_t)y, a);
+  }
+}
+
+// The offset of the block func_82B7B0 masked (the X it leaves): 2 * $0158 + the word at
+// $83:8C65 + ($0156 & ~1).
+static uint16_t hud_block_offset(void) {
+  return (uint16_t)(2 * rd16(DP + 0x58) + bus_rd16(0x838C65 + (uint32_t)(rd16(DP + 0x56) & 0xFFFE)));
+}
+
+// TG3000_ROUTINE($82:B4ED) race_hud_digits
+void race_hud_digits(void) {
+  if(!(rd16(0x0244) & 0x0004)) {
+    uint16_t a = (uint16_t)((uint32_t)dsp4_multiply((int16_t)rd16(0x0213), 0x0160) >> 16);
+    if(a & 0x8000) a = (uint16_t)-a;  // never run
+    if(a >= 0x000C) a = 0x000C;
+    wr16(0x003E, a);
+    static const uint16_t blanks[] = {0x0042, 0x0044, 0x0046, 0x0048, 0x1E96, 0x1E98};
+    for(unsigned i = 0; i < sizeof blanks / sizeof blanks[0]; i++) wr16(blanks[i], 0x0157);
+    uint16_t s = rd16(0x0210);
+    if(s & 0x8000) s = (uint16_t)-s;  // never run
+    a = (uint16_t)((uint32_t)dsp4_multiply((int16_t)(uint16_t)(s << 3), (int16_t)(rd8(0x03A7) ? 0x4D3B : 0x3000)) >> 16);
+    if(!(rd16(0x1E94) & 0x8000)) a = (uint16_t)(rd16(0x1E94) + 1);  // never run
+    if(a >= 0x03E8) {  // never run
+      hud_digit((uint16_t)(a / 0x03E8), 0x1E96, 0x1E98);
+      a = (uint16_t)(a % 0x03E8);
+    }
+    if(a >= 10) {
+      if(a >= 100) {  // the CPU divider
+        hud_digit((uint16_t)(a / 100), 0x0042, 0x0044);
+        a = (uint16_t)(a % 100);
+      }
+      hud_digit((uint16_t)(a / 10), 0x0046, 0x0048);
+      a = (uint16_t)(a % 10);
+    }
+    hud_digit(a, 0x004A, 0x004C);
+    wr16(0x0064, 0x0157);
+    a = rd16(DP + 0x42);
+    if(a >= 10) {
+      if(a >= 20) {
+        wr16(0x0064, bus_rd16(0x83A488));
+        a = (uint16_t)(a - 20);
+      } else {
+        wr16(0x0064, bus_rd16(0x83A486));
+        a = (uint16_t)(a - 10);
+      }
+    }
+    wr16(0x0066, bus_rd16(0x83A484 + 2u * a));
+    a = rd16(0x0258);
+    if(a < 9 && (rd16(0x0297) & 0x8000)) a = 0;
+    wr16(0x0074, 0x295B);
+    if(a < 8) {
+      wr16(0x0074, 0x295C);
+      hud_bar_cell((uint16_t)(a + 1), 0x1C3E);
+      wr16(0x008E, 0x003E);
+      for(int x = 6; x >= 0; x -= 2) wr16(0x006C + (uint32_t)x, 0x2959);
+    } else {
+      for(int x = 6; x >= 0; x -= 2) {
+        a = (uint16_t)(a - 8);
+        if(a >= 8) {
+          wr16(0x006C + (uint32_t)x, 0x295A);
+          continue;
+        }
+        wr16(0x006C + (uint32_t)x, 0x295C);
+        hud_bar_cell((uint16_t)(a + 1), 0x1C22);
+        for(x -= 2; x >= 0; x -= 2) wr16(0x006C + (uint32_t)x, 0x2959);
+        break;
+      }
+    }
+    wr16(0x00A0, bus_rd16(0x838C35 + (uint32_t)((rd16(0x025B) >> 3) & 0x001E)));
+    const uint32_t row = (uint16_t)(rd16(DP + 0x4C) << 3);
+    for(uint32_t i = 0; i < 8; i += 2) wr16(0x00A4 + i, bus_rd16(0x83A4D4 + row + i));
+  }
+  if(rd16(0x03DC) & 0x0003) {  // never run: both players' blocks
+    func_82B838(rd16(DP + 0x50));
+    func_82B838(rd16(DP + 0x52));
+    func_82B769(rd16(0x0226), rd16(0x0235));
+    wr16(DP + 0x50, hud_block_offset());
+    func_82B769(rd16(0x02D9), rd16(0x02E8));
+    wr16(DP + 0x52, hud_block_offset());
+  } else {
+    func_82B838(rd16(DP + 0x50));
+    func_82B769(rd16(0x0226), rd16(0x0235));
+    wr16(DP + 0x50, hud_block_offset());
+  }
+  wr16(DP + 0x14, rd16(0x4E3D));
+  wr16(DP + 0x16, rd16(0x0233));
+  wr16(DP + 0x18, 0x4E61);
+  wr16(DP + 0x1A, rd16(0x4E45));
+  wr16(DP + 0x1C, rd16(0x4E4D));
+  wr16(DP + 0x3A, 0x0C00);
+  race_message_update();
+  wr16(0x4E3D, rd16(DP + 0x14));
+  wr16(0x0233, rd16(DP + 0x16));
+  wr16(0x4E45, rd16(DP + 0x1A));
+  wr16(0x4E4D, rd16(DP + 0x1C));
+}

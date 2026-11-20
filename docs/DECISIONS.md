@@ -1789,6 +1789,33 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The race HUD's numbers (roots-73, 2026-11-20)
+
+**`race_hud_digits` ($82:B4ED, DB = `$83`):** about 650 bytes, the last of the
+multiply-only DSP-4 roots ported so far.
+- **Gear:** `$003E` = the high word of `$0213` * `$160` (on the chip), capped at `$0C`.
+- **Speed:** the high word of `$0210` * 8 * `$3000` (`$4D3B` with `$03A7` set), on the
+  chip. Its digits come from the CPU divider and go out as tile pairs from `$83:A4AC`:
+  hundreds, tens and ones into `$0042`-`$004C`, with blanks (`$0157`) where there are none.
+- **Two tiles** for `D+$42` (`$0064`/`$0066`).
+- **An 8-cell bar** from `$0258`: `$006C`-`$0074`, the partial cell's rows at `$0080`.
+- **Two more tile sets** from `$025B` and `D+$4C`.
+- **Then the car's map block** (`func_82B838`, `func_82B769`) and `race_message_update` on
+  the messages at `$7E:4E3D`/`$0233`/`$4E45`/`$4E4D`.
+- **The block's offset.** The C stores `func_82B7B0`'s block offset, the X that `STX`
+  saves, computed the same way, because `func_82B769`'s C returns nothing.
+- **Never run**, decoded as static code and reached by the fuzz:
+  - two negations of negative products;
+  - the `$1E94` + 1 override;
+  - a thousands digit;
+  - both players' blocks.
+- **No register outputs.** Both callers set what they read; the bench saw no live flag.
+- **Still to do:** `$83:F7F9`, the track object dispatcher, waits for `$83:FB4A`. That
+  random-pickup handler has never run and has about 150 undecoded bytes, with a 16-way
+  jump table on the RNG.
+- Live 4,000/4,000 (60k) and 216/216 (race1), fuzz 500/500 and 200/200, paths 269/269,
+  first try.
+
 ## The player's car takes the player's motion (roots-72, 2026-11-20)
 
 **`car_sync_player` ($81:FA8F, DB = `$7E`):** the fourth multiply-only DSP-4 root, about

@@ -7450,6 +7450,42 @@ static void fuzz_car_sync_player(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x0210, (uint16_t)(rnd() % 0x20));
 }
 
+// ---- race_hud_digits ($82:B4ED) ----  both callers go on to code that sets what it reads
+// (one returns, JMP'd to, into the race frame's next step): no register outputs; the
+// bench judges the flags from the watched returns
+static void call_race_hud_digits(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  race_hud_digits();
+}
+// the blocks' and the messages' state; the HUD's inputs on all sides of their tests (the
+// never-run ones now and then)
+static void fuzz_race_hud_digits(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_82B769(r, ram, rnd);
+  fuzz_race_message_update(r, ram, rnd);
+  wr16ram(ram, 0x4E3D, (uint16_t)(rnd() % 0x4F));
+  wr16ram(ram, 0x0233, (uint16_t)(rnd() % 0x4F));
+  wr16ram(ram, 0x4E45, (uint16_t)(rnd() % 0x40));
+  wr16ram(ram, 0x4E4D, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x50, (uint16_t)(2 * (rnd() % 0x40)));
+  wr16ram(ram, DP + 0x52, (uint16_t)(2 * (rnd() % 0x40)));
+  wr16ram(ram, 0x0226, (uint16_t)((rnd() % 0x40) << 4));
+  wr16ram(ram, 0x02D9, (uint16_t)((rnd() % 0x40) << 4));
+  wr16ram(ram, 0x0235, (uint16_t)rnd());
+  wr16ram(ram, 0x02E8, (uint16_t)rnd());
+  wr16ram(ram, 0x0244, (uint16_t)(rnd() % 4 == 0 ? 0x0004 : rnd() & 0xFFFB));
+  wr16ram(ram, 0x03DC, (uint16_t)(rnd() % 6 == 0 ? 1 + rnd() % 3 : 0));
+  wr16ram(ram, 0x0213, (uint16_t)rnd());
+  wr16ram(ram, 0x0210, (uint16_t)(rnd() % 6 == 0 ? 0x8000 | rnd() : rnd() % 0x2000));
+  ram[0x03A7] = (uint8_t)(rnd() & 1);
+  wr16ram(ram, 0x1E94, (uint16_t)(rnd() % 5 == 0 ? rnd() % 0x800 : 0x8000 | rnd()));
+  wr16ram(ram, DP + 0x42, (uint16_t)(rnd() % 30));
+  wr16ram(ram, 0x0258, (uint16_t)(rnd() % 0x48));
+  wr16ram(ram, 0x0297, (uint16_t)rnd());
+  wr16ram(ram, 0x025B, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x4C, (uint16_t)(rnd() % 10));
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8297,6 +8333,8 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x30, .call = call_follow_car_step, ALL_OUTPUTS, .fuzz = fuzz_follow_car_step},
   {.name = "car_sync_player", .entry = 0x81FA8F, .end = 0x81FB20, .source = "src/track.c", .needM16 = true,
    .needX16 = true, .db = 0x7E, .call = call_car_sync_player, ALL_OUTPUTS, .fuzz = fuzz_car_sync_player},
+  {.name = "race_hud_digits", .entry = 0x82B4ED, .end = 0x82B769, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_hud_digits, .fuzz = fuzz_race_hud_digits},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
