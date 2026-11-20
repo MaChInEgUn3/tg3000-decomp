@@ -1789,6 +1789,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The player car's shift along the road (roots-68, 2026-11-20)
+
+**`road_shift_apply` ($82:F1C1, DB = `$30`):** the first of the six multiply-only DSP-4
+roots.
+- **The sum:** two chip multiplies. The road row's step (`$7E:3DEE` - `$3DEC`, times 4)
+  times (`$8000` - `D+$14`) / 2, plus the next step's width times 2 times `D+$14`. The
+  width comes from `$3DF0`, or for a flagged row from `$3DEE` less its signed byte at
+  `$3AEF`.
+- **The 32-bit sum, negated,** goes into `$020A`/`$020C`, after `$020B` is read.
+- **The car's offset** (`$1EF4` - `$1EC2`, or 0 while `$1E66` is not negative) moves its
+  `$0200`-`$0206` and `$1EF4`/`$1EF6`.
+- **The C** uses `dsp4_multiply`, whose traffic the harness checks as whole `$00`
+  commands.
+- **A slip:** the first try read the tables at WRAM `$1xxxx` (bank `$7F`) instead of
+  `$7E`. Every live sample failed.
+- Live 41/41, fuzz 500/500, paths 99/99 (the flagged branch only by the fuzz).
+
 ## DSP-4 step 2: which command each root uses (dsp4-1, 2026-11-20)
 
 **The instrument.** `bench ... --dsp4-report FILE` attributes every data access to the

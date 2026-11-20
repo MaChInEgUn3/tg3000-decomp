@@ -3479,6 +3479,36 @@ static void call_vram_planes_build_wrong(const Regs* in, Regs* out) {
   out->c = out->v = false;
 }
 
+// ---- road_shift_apply ($82:F1C1) ----  A = the new $1EF6, N Z C V of its ADC (the old
+// $1EF6 + $0206 + the low half's carry), X = D+$16, Y kept
+static void call_road_shift_apply(const Regs* in, Regs* out) {
+  const uint16_t lo = rd16(0x1EF4), hi = rd16(0x1EF6);
+  road_shift_apply();
+  const uint16_t at = rd16(0x0204), atHi = rd16(0x0206);
+  const uint32_t c0 = ((uint32_t)lo + at) >> 16;
+  const uint32_t sum = (uint32_t)atHi + hi + c0;
+  out->a = (uint16_t)sum;
+  out->x = rd16(DP + 0x16);
+  out->y = in->y;
+  setNZ16(out, (uint16_t)sum);
+  out->c = sum > 0xFFFF;
+  out->v = (~(atHi ^ hi) & (atHi ^ (uint16_t)sum) & 0x8000) != 0;
+}
+// a row of the tables (flagged or not), the step D+$14, the car's words and the offset's
+// sign
+static void fuzz_road_shift_apply(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  const uint16_t x = (uint16_t)(2 * (rnd() % 0x40));
+  wr16ram(ram, DP + 0x16, x);
+  wr16ram(ram, DP + 0x14, (uint16_t)rnd());
+  for(uint32_t t = 0; t < 3; t++) wr16ram(ram, 0x3DEC + 2 * t + x, (uint16_t)rnd());
+  wr16ram(ram, 0x3D6C + x, (uint16_t)(rnd() % 3 == 0 ? 0x8000 | (rnd() & 0x7FFD) : rnd()));
+  ram[0x3AEF + x] = (uint8_t)rnd();
+  static const uint16_t words[] = {0x0200, 0x0202, 0x0204, 0x0206, 0x020A, 0x020C, 0x01CE, 0x1EF4, 0x1EF6, 0x1EC2, 0x1EC4};
+  for(unsigned i = 0; i < sizeof words / sizeof words[0]; i++) wr16ram(ram, words[i], (uint16_t)rnd());
+  wr16ram(ram, 0x1E66, (uint16_t)rnd());
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -8115,6 +8145,8 @@ const Routine routines[] = {
    .call = call_title_card_show, ALL_OUTPUTS},
   {.name = "vram_planes_build", .entry = 0x8A8828, .end = 0x8A88DD, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x8A, .call = call_vram_planes_build, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "road_shift_apply", .entry = 0x82F1C1, .end = 0x82F2B3, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_road_shift_apply, ALL_OUTPUTS, .fuzz = fuzz_road_shift_apply},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

@@ -419,3 +419,4 @@
 80F549 upload_slice_13 src/video_dma.c 6067acadd2f51eab 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 6067acadd2f51eab 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 6067acadd2f51eab 1 500 20/20 verified live-flags:NVZC replayed:0
+82F1C1 road_shift_apply src/misc.c 7d48915f8ec12cee 41 500 99/99 verified live-flags:NVZC replayed:0

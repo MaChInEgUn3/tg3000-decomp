@@ -4588,7 +4588,7 @@ race_scroll_commit:
     ora.w #$8000                ; $82EEC9
 CODE_82EECC:
     sta.w $1E66                 ; $82EECC
-    jsr.w $F1C1                 ; $82EECF
+    jsr.w road_shift_apply      ; $82EECF
     pla                         ; $82EED2
     sta.w $1E66                 ; $82EED3
     rts                         ; $82EED6
@@ -4610,7 +4610,7 @@ CODE_82EED7:
     and.w #$003E                ; $82EFCF
     cmp.w #$0018                ; $82EFD2
     bcc CODE_82EFDA             ; $82EFD5
-    jmp.w $F1C1                 ; $82EFD7
+    jmp.w road_shift_apply      ; $82EFD7
 CODE_82EFDA:
     lda.w $020B                 ; $82EFDA
     sta.b $22                   ; $82EFDD
@@ -4807,6 +4807,7 @@ CODE_82F189:
     adc.w $1EF6                 ; $82F1BA
     sta.w $1EF6                 ; $82F1BD
     rts                         ; $82F1C0
+road_shift_apply:
     lda.w $020B                 ; $82F1C1
     sta.b $22                   ; $82F1C4
     ldx.b $16                   ; $82F1C6

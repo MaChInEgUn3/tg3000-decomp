@@ -1084,4 +1084,15 @@ uint16_t title_card_show(void);
 // on) at $0308, $0388, ... $0588; VMAIN = $80 at the end.
 void vram_planes_build(void);
 
+// $82:F1C1: the player car's shift along the road (D = $0100, DB = $30). Row x = D+$16 of
+// the tables at $7E:3DEC/$3DEE/$3DF0: the 32-bit sum of (+$3DEE - +$3DEC) * 4 times ($8000
+// - D+$14) / 2 and of the next step's width times 2 times D+$14 (two DSP-4 multiplies; the
+// width is +$3DF0 - +$3DEE, or, for a row flagged at $3D6C (bit 15 set, bit 1 clear),
+// +$3DEE less its signed byte at $3AEF less +$3DEC), negated into $020A:$020C (the word at
+// $020B is read first into D+$22). Then the car's offset D+$1E:$20 ($1EF4:$1EF6 less
+// $1EC2:$1EC4, or 0 with $020C = 0 while $1E66 is not negative); $01CE gains D+$22 less the
+// new $020B; $0204:$0206 lose the offset and are copied to $0200:$0202, and added to
+// $1EF4:$1EF6. D+$24 = -$1EF6 (the old).
+void road_shift_apply(void);
+
 #endif

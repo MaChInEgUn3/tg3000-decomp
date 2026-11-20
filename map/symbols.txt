@@ -436,3 +436,4 @@ func    858000   track_tiles_load    ; the track's tiles: unpack, then four layo
 func    8A8BC2   track_tiles_preview ; the track's tiles for a preview: unpack, four layouts of uploads, palette -> src/misc.c
 func    8AC056   title_card_show     ; a title card: load, fade in, 180 frames, fade out -> src/misc.c
 func    8A8828   vram_planes_build   ; VRAM built byte by byte: high-byte uploads, a low-byte fill, six rows -> src/misc.c
+func    82F1C1   road_shift_apply    ; the player car's shift along the road (two DSP-4 multiplies) -> src/misc.c

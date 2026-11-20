@@ -3568,3 +3568,48 @@ void vram_planes_build(void) {
   }
   video_set_vram_increment(0x80);
 }
+
+// TG3000_ROUTINE($82:F1C1) road_shift_apply
+void road_shift_apply(void) {
+  wr16(DP + 0x22, rd16(0x020B));
+  const uint32_t x = rd16(DP + 0x16);
+  const uint16_t near = rd16(0x3DEC + x), mid = rd16(0x3DEE + x);
+  int32_t p = dsp4_multiply((int16_t)(uint16_t)((uint16_t)(mid - near) << 2),
+                            (int16_t)(uint16_t)((uint16_t)(0x8000 - rd16(DP + 0x14)) >> 1));
+  wr16(DP + 0x1A, (uint16_t)p);
+  wr16(DP + 0x1C, (uint16_t)((uint32_t)p >> 16));
+  uint16_t width;
+  const uint16_t flags = rd16(0x3D6C + x);
+  if((flags & 0x8000) && !(flags & 0x0002))
+    width = (uint16_t)(mid - (uint16_t)(int16_t)(int8_t)rd8(0x3AEF + x) - near);
+  else
+    width = (uint16_t)(rd16(0x3DF0 + x) - mid);
+  p = dsp4_multiply((int16_t)(uint16_t)(width << 1), (int16_t)rd16(DP + 0x14));
+  const uint32_t lo = (uint32_t)rd16(DP + 0x1A) + (uint16_t)p;
+  wr16(DP + 0x1A, (uint16_t)lo);
+  wr16(DP + 0x1C, (uint16_t)(rd16(DP + 0x1C) + (uint16_t)((uint32_t)p >> 16) + (lo >> 16)));
+  const uint32_t sum = (uint32_t)rd16(DP + 0x1A) | (uint32_t)rd16(DP + 0x1C) << 16;
+  wr16(0x020A, (uint16_t)-sum);
+  wr16(0x020C, (uint16_t)((uint32_t)-sum >> 16));
+  wr16(DP + 0x24, (uint16_t)-rd16(0x1EF6));
+  if(!(rd16(0x1E66) & 0x8000)) {
+    wr16(0x020C, 0);
+    wr16(DP + 0x1E, 0);
+    wr16(DP + 0x20, 0);
+  } else {
+    const uint32_t off = ((uint32_t)rd16(0x1EF4) | (uint32_t)rd16(0x1EF6) << 16) -
+                         ((uint32_t)rd16(0x1EC2) | (uint32_t)rd16(0x1EC4) << 16);
+    wr16(DP + 0x1E, (uint16_t)off);
+    wr16(DP + 0x20, (uint16_t)(off >> 16));
+  }
+  wr16(0x01CE, (uint16_t)(rd16(DP + 0x22) - rd16(0x020B) + rd16(0x01CE)));
+  const uint32_t at = ((uint32_t)rd16(0x0204) | (uint32_t)rd16(0x0206) << 16) -
+                      ((uint32_t)rd16(DP + 0x1E) | (uint32_t)rd16(DP + 0x20) << 16);
+  wr16(0x0204, (uint16_t)at);
+  wr16(0x0206, (uint16_t)(at >> 16));
+  wr16(0x0200, (uint16_t)at);
+  wr16(0x0202, (uint16_t)(at >> 16));
+  const uint32_t car = ((uint32_t)rd16(0x1EF4) | (uint32_t)rd16(0x1EF6) << 16) + at;
+  wr16(0x1EF4, (uint16_t)car);
+  wr16(0x1EF6, (uint16_t)(car >> 16));
+}
