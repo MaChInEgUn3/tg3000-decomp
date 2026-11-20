@@ -302,7 +302,7 @@ CODE_828642:
 CODE_828656:
     bit.w $00B8                 ; $828656
     bne CODE_828656             ; $828659
-    jsr.w $F2B3                 ; $82865B
+    jsr.w player_segment_step   ; $82865B
     jsr.w $DFA9                 ; $82865E
     jsr.w $EC32                 ; $828661
     jsr.w race_positions_update ; $828664
@@ -1379,7 +1379,7 @@ CODE_82A99E:
     dey                         ; $82A9AB
     bne CODE_82A99E             ; $82A9AC
     rts                         ; $82A9AE
-    jsr.w $F2B3                 ; $82A9AF
+    jsr.w player_segment_step   ; $82A9AF
     rtl                         ; $82A9B2
     jsr.w $FA4F                 ; $82A9B3
     rtl                         ; $82A9B6
@@ -4958,6 +4958,7 @@ CODE_82F26A:
     adc.w $1EF6                 ; $82F2AC
     sta.w $1EF6                 ; $82F2AF
     rts                         ; $82F2B2
+player_segment_step:
     stz.b $2A                   ; $82F2B3
     lda.w $0226                 ; $82F2B5
     cmp.w $1EDE                 ; $82F2B8
@@ -5075,7 +5076,9 @@ CODE_82F3B7:
     sta.w $023E                 ; $82F3C9
     stz.w $1EE6                 ; $82F3CC
     rts                         ; $82F3CF
-    incbin !baserom:$173D0..$17A4F
+    stz.w $1E66                 ; $82F3D0 static
+    rts                         ; $82F3D3 static
+    incbin !baserom:$173D4..$17A4F
     stz.b $2A                   ; $82FA4F
     lda.w $02D9                 ; $82FA51
     cmp.w $1EE2                 ; $82FA54

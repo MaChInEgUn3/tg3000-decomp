@@ -7585,6 +7585,67 @@ static void fuzz_minimap_car(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x0184, (uint16_t)(4 * (rnd() % 0x40)));
 }
 
+// ---- player_segment_step ($82:F2B3) ----  both callers go on to code that reads none of
+// its registers: no register outputs; the bench judges the flags
+static void call_player_segment_step(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  player_segment_step();
+}
+// the race's own segment table ($019C) and cursors, the player's place up to a few segments
+// past the first cursor's start, an armed jump reached or not, the handlers' words; now and
+// then the cursor moved to a segment of the never-run kinds (6, 8, 10) further on in the
+// same table (random tables reach odd kinds, whose table entries jump anywhere)
+static void fuzz_player_segment_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  // the race's own table, or (half the time) one of the ROM's tables holding kinds 6 and 10
+  // (the movies end on a track whose table has no segment within reach)
+  uint16_t base = (uint16_t)(ram[0x019C] | ram[0x019D] << 8);
+  uint16_t c = (uint16_t)(ram[0x1E5E] | ram[0x1E5F] << 8);
+  if(rnd() & 1) {
+    static const uint16_t tables[] = {0xC1C1, 0xE171, 0xE675, 0xF257};
+    base = tables[rnd() % 4];
+    c = (uint16_t)(0x14 * (rnd() % 4));
+    wr16ram(ram, 0x019C, base);
+  }
+  wr16ram(ram, 0x1E5E, c);
+  wr16ram(ram, 0x1E60, (uint16_t)(c + 0x14 * (rnd() % 3)));
+  const uint16_t start = rom16(0x840000 + (uint32_t)(uint16_t)(base + c));
+  // the place stays well before the first segment past the table's end (a kind other than
+  // 0-10, even), even after the armed jump and $1EE6 move it on (up to $7F each), so the
+  // original never jumps through a stray table entry
+  uint16_t place = (uint16_t)(start + rnd() % 0x180);
+  for(uint16_t s = c, n = 0; n < 40; s += 0x14, n++) {
+    const uint8_t kind = rom8(0x840002 + (uint32_t)(uint16_t)(base + s));
+    if(kind <= 10 && !(kind & 1)) continue;
+    const uint16_t limit = (uint16_t)(rom16(0x840000 + (uint32_t)(uint16_t)(base + s)) - 0x00C0);
+    if((uint16_t)(limit - start) & 0x8000) place = (uint16_t)(start - 0x0100);
+    else if((uint16_t)(place - start) > (uint16_t)(limit - start)) place = limit;
+    break;
+  }
+  wr16ram(ram, 0x0226, place);
+  wr16ram(ram, 0x1EDE, (rnd() & 1) ? 0x7FFF : (uint16_t)(place - 0x20 + rnd() % 0x40));
+  static const uint16_t words[] = {0x1EE0, 0x023E, 0x0206, 0x0204, 0x1EC2, 0x1EC4, 0x1EE6, 0x1E66};
+  for(unsigned i = 0; i < sizeof words / sizeof words[0]; i++) wr16ram(ram, words[i], (uint16_t)rnd());
+  wr16ram(ram, 0x1EE0, (uint16_t)(rnd() % 0x80));
+  wr16ram(ram, 0x1EE6, (uint16_t)(rnd() % 0x80));
+  for(int i = 0; i < 0x22; i++) wr16ram(ram, (uint16_t)(0x3DEC + 2 * i), (uint16_t)rnd());
+  if(rnd() % 3 == 0) {  // a later segment of a never-run kind, if the table has one
+    for(uint16_t s = c, n = 0; n < 200; s += 0x14, n++) {
+      const uint8_t kind = rom8(0x840002 + (uint32_t)(uint16_t)(base + s));
+      if(kind > 10 || (kind & 1)) break;  // the table's end
+      if(kind == 6 || kind == 8 || kind == 10) {
+        wr16ram(ram, 0x1E5E, s);
+        wr16ram(ram, 0x1E60, s);
+        wr16ram(ram, 0x0226, (uint16_t)(rom16(0x840000 + (uint32_t)(uint16_t)(base + s)) + 0x40 + rnd() % 0x40));
+        wr16ram(ram, 0x1EDE, 0x7FFF);  // no armed jump to carry the place further
+        wr16ram(ram, 0x1EE6, 0);
+        break;
+      }
+    }
+  }
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8438,6 +8499,8 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x83, .call = call_car_track_step, .fuzz = fuzz_car_track_step},
   {.name = "minimap_car", .entry = 0x82D8C6, .end = 0x82D934, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_minimap_car, .fuzz = fuzz_minimap_car},
+  {.name = "player_segment_step", .entry = 0x82F2B3, .end = 0x82F374, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player_segment_step, .fuzz = fuzz_player_segment_step},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

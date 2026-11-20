@@ -107,3 +107,4 @@
 82:B6FB 82:B71D m16x16 ; race_hud_digits: two players' blocks (never run)
 83:FB96 83:FBE2 m16x16 ; track_object_random: four of its prizes and the money add (never run)
 83:FBF2 83:FC05 m16x16 ; track_object_random: two of its prizes (never run)
+82:F3D0 82:F3D4 m16x16 ; player_segment_step: the handler clearing $1E66 (never run)

@@ -1160,4 +1160,16 @@ void car_track_step(uint16_t dp);
 // $1576/$1578 + $0184, which moves on by 4.
 void minimap_car(uint16_t y, uint16_t at, uint16_t attr);
 
+// $82:F2B3: the player's position $0226 crosses the track's segments (the 20-byte entries
+// at $84:0000 + $019C; D = $0100). An armed jump ($0226 at or past $1EDE) first moves
+// $0226 and $023E by $1EE0, rebuilds the road's curve at $7E:3DEC/$3E2C for row $1EDE
+// (moving $0206/$0202 and setting $020C, $1EC2:$1EC4), and disarms ($1EE0 = 0, $1EDE =
+// $7FFF). Then each segment whose start is $3F or more behind $0226 + 1 (the cursor $1E5E)
+// runs its kind's handler (byte +2: the table at $82:F374): nothing; with bit 15 of $1E66,
+// $0204:$0206 += $1EC2:$1EC4 and the segment's jump is armed ($1EDE = start + $3F + its
+// +$10, $1EE0 = its +$12, $020A = $020C = 0), else $0226 and $023E move by $1EE6 (then 0);
+// or $1E66 = 0 (never run). A second cursor ($1E60) follows each start $0226 + 1 reaches,
+// setting bit 1 of D+$2A (cleared first).
+void player_segment_step(void);
+
 #endif

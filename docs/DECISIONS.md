@@ -1789,6 +1789,41 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The player crosses the track's segments (roots-75, 2026-11-20)
+
+**`player_segment_step` ($82:F2B3, D = `$0100`):** 18,564 entries on the 60k movie. It was
+parked for a handler that had never run and was not decoded.
+- **What it does** (the player's version of `segment_advance`, `$81:FBB1`):
+  - an armed jump (`$0226` at or past `$1EDE`) moves `$0226`/`$023E` by `$1EE0`,
+    rebuilds the road's curve row for `$1EDE` at `$7E:3DEC`/`$3E2C`, moves `$0206`/`$0202`
+    and disarms;
+  - then every segment (20 bytes at `$84:0000 + $019C`, cursor `$1E5E`) whose start is
+    `$3F` or more behind `$0226 + 1` runs its kind's handler (byte +2; the table at
+    `$82:F374`, kinds 0-10, even);
+  - a second cursor (`$1E60`) follows the starts reached and sets bit 1 of `D+$2A`.
+- **The handlers:**
+  - kinds 0, 2 and 4 do nothing (`func_82F380`);
+  - kinds 6 and 10 (`$82:F381`, never run in a movie) do one of two things. With bit 15
+    of `$1E66` they move `$0204:$0206` by `$1EC2:$1EC4` and arm the segment's jump.
+    Otherwise they move `$0226`/`$023E` by `$1EE6`;
+  - kind 8 (`$82:F3D0`, 4 bytes never decoded before) is `STZ $1E66; RTS`. It is now
+    static code.
+- **Kind 8 is in no real segment table.** A scan of bank `$84` for runs of valid
+  segments finds kinds 6 and 10 but not 8. So that handler's C is written from the bytes
+  and reached by neither the movies nor the fuzz.
+- **The fuzz:**
+  - Both movies end on a track whose table has no segment within reach (its first start
+    is `$7000`). So half the cases use one of the ROM's tables that holds kinds 6 and 10
+    (`$84:C1C1`, `$E171`, `$E675`, `$F257`; bank `$84` is ROM only from `$8000`).
+  - The player's place stays well before the table's end, even after the armed jump and
+    `$1EE6` move it on: past the end, the original jumps through stray table entries.
+  - A temporary count saw both branches of the kind 6/10 handler (45 and 38 times in 200
+    cases).
+- **No register outputs.** Neither continuation (`$82:DFA9`, then `$82:A9B3` after the
+  `RTL`) reads them.
+- **Result:** live 4,000/4,000 (60k) and 215/215 (race1), fuzz 500/500 and 200/200, paths
+  79/79.
+
 ## $03/$0B in the harness; the mini-map's cars (dsp4-1b, 2026-11-20)
 
 - **In the difftest's DSP-4 command table:**

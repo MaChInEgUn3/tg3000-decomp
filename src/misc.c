@@ -4010,3 +4010,66 @@ void minimap_car(uint16_t y, uint16_t at, uint16_t attr) {
   wr16(0x1578 + o, out[1]);
   wr16(0x0184, (uint16_t)(o + 4));
 }
+
+// The player's place against a segment's start: $0226 + 2 - start - 1 (+1 when $0226 + 2
+// wrapped: the carry of the original's ADC #2 feeds its SBC).
+static uint16_t segment_gap(uint32_t seg) {
+  const uint32_t a = (uint32_t)rd16(0x0226) + 2;
+  return (uint16_t)(a - bus_rd16(0x840000 + seg) - 1 + (a >> 16));
+}
+
+// TG3000_ROUTINE($82:F2B3) player_segment_step
+void player_segment_step(void) {
+  wr16(DP + 0x2A, 0);
+  if(rd16(0x0226) >= rd16(0x1EDE)) {
+    wr16(0x0226, (uint16_t)(rd16(0x1EE0) + rd16(0x0226)));
+    wr16(0x023E, (uint16_t)(rd16(0x1EE0) + rd16(0x023E)));
+    const uint32_t x = (uint16_t)(rd16(0x1EDE) << 1) & 0x003E;
+    const uint16_t d = (uint16_t)(rd16(0x3DEE + x) - rd16(0x3DF0 + x));
+    const uint16_t v = (uint16_t)(d + rd16(0x3DEE + x));
+    wr16(0x3DEC + x, v);
+    wr16(0x3E2C + x, v);
+    wr16(0x0206, (uint16_t)(rd16(0x0206) - v));
+    wr16(0x0202, rd16(0x0206));
+    wr16(0x020C, d);
+    wr16(0x1EC2, 0);
+    wr16(0x1EC4, rd16(0x3DEC + x));
+    wr16(0x1EE0, 0);
+    wr16(0x1EDE, 0x7FFF);
+  }
+  for(;;) {
+    uint32_t seg = (uint16_t)(rd16(0x019C) + rd16(0x1E5E));
+    if(!((uint16_t)(segment_gap(seg) - 0x0040) & 0x8000)) {
+      switch(bus_rd16(0x82F374 + (uint32_t)bus_rd8(0x840002 + seg))) {
+        case 0xF381:  // never run
+          if(rd16(0x1E66) & 0x8000) {
+            const uint32_t at = ((uint32_t)rd16(0x0204) | (uint32_t)rd16(0x0206) << 16) +
+                                ((uint32_t)rd16(0x1EC2) | (uint32_t)rd16(0x1EC4) << 16);
+            wr16(0x0204, (uint16_t)at);
+            wr16(0x0206, (uint16_t)(at >> 16));
+            const uint32_t s1 = (uint32_t)bus_rd16(0x840000 + seg) + 0x003F;
+            wr16(0x1EDE, (uint16_t)(s1 + bus_rd16(0x840010 + seg) + (s1 >> 16)));
+            wr16(0x1EE0, bus_rd16(0x840012 + seg));
+            wr16(0x020A, 0);
+            wr16(0x020C, 0);
+          } else {
+            wr16(0x0226, (uint16_t)(rd16(0x1EE6) + rd16(0x0226)));
+            wr16(0x023E, (uint16_t)(rd16(0x1EE6) + rd16(0x023E)));
+            wr16(0x1EE6, 0);
+          }
+          break;
+        case 0xF3D0:  // never run
+          wr16(0x1E66, 0);
+          break;
+        default:  // $F380: nothing
+          break;
+      }
+      wr16(0x1E5E, (uint16_t)(rd16(0x1E5E) + 0x0014));
+      continue;
+    }
+    seg = (uint16_t)(rd16(0x019C) + rd16(0x1E60));
+    if(segment_gap(seg) & 0x8000) return;
+    wr16(0x1E60, (uint16_t)(rd16(0x1E60) + 0x0014));
+    wr16(DP + 0x2A, (uint16_t)(rd16(DP + 0x2A) | 0x0002));
+  }
+}
