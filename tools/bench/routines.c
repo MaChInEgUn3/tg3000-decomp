@@ -5980,10 +5980,13 @@ static void call_func_8ABBF4(const Regs* in, Regs* out) {
 // N/Z of that or of it - $3F); later calls: A = the position and N/Z/C of its compare with
 // the jump point, or, after a jump, A = the flags (C/V of the jump's ADC). V otherwise from
 // the last position - start.
+// When set, func_81FBB1's adapter runs this at its call instead of the routine (a caller
+// whose exit is that call's: see car_sync_player).
+static bool (*fbb1Run)(void) = NULL;
 static void call_func_81FBB1(const Regs* in, Regs* out) {
   uint16_t car = in->y;
   bool first = !(rd16(CAR_FLAGS + (uint32_t)car) & 0x40);
-  bool jumped = func_81FBB1(car);
+  bool jumped = fbb1Run ? fbb1Run() : func_81FBB1(car);
   uint16_t seg = rd16(CAR_SEG + (uint32_t)car), pos = rd16(CAR_POS + (uint32_t)car);
   uint16_t start = bus_rd16(0x840000 + (uint32_t)seg);
   out->x = seg;
@@ -7395,6 +7398,58 @@ static void call_upload_vram_now_wrong(const Regs* in, Regs* out) {
 
 #define ALL_OUTPUTS .compareA = true, .compareX = true, .compareY = true
 
+// ---- car_sync_player ($81:FA8F) ----  func_81FBB1's exit, through its adapter (fbb1Run),
+// given the car's record as it stands at that call: the adapter writes it (the product
+// in plain C, no chip traffic) and the hook puts the record back before the C runs.
+// Directly, then: A = the car's new flags (N Z of the ORA), V = bit 14 of $1E66 (its BIT);
+// C and X stay func_81FBB1's.
+static uint8_t syncHeld[0x35];
+static uint16_t syncCar;
+static bool run_car_sync_player(void) {
+  memcpy(&g_ram[0xFAB5 + (uint32_t)syncCar], syncHeld, sizeof syncHeld);
+  return car_sync_player(syncCar);
+}
+static void call_car_sync_player(const Regs* in, Regs* out) {
+  const uint16_t car = in->y;
+  const uint32_t o = car;
+  const bool direct = !(rd16(0x0244) & 0x0001);
+  memcpy(syncHeld, &g_ram[0xFAB5 + o], sizeof syncHeld);
+  uint32_t pos = rd16(0xFAB5 + o) | (uint32_t)rd16(0xFAB7 + o) << 16;
+  if(direct) pos += rd16(0x022D) | (uint32_t)rd16(0x022F) << 16;
+  else pos += (uint32_t)((int32_t)(int16_t)rd16(0x1E9E) * (int16_t)rd16(0x0210));
+  wr16(0xFAB5 + o, (uint16_t)pos);
+  wr16(0xFAB7 + o, (uint16_t)(pos >> 16));
+  wr16(0xFAC9 + o, rd16(0x020E));
+  wr16(0xFACB + o, rd16(0x0210));
+  if(direct) {
+    wr16(0xFAB9 + o, rd16(0x0204));
+    wr16(0xFABB + o, rd16(0x0206));
+  }
+  wr16(0xFAC7 + o, 0xFFFF);
+  syncCar = car;
+  fbb1Run = run_car_sync_player;
+  Regs t = *in;
+  call_func_81FBB1(&t, out);
+  fbb1Run = NULL;
+  out->y = car;
+  if(direct) {
+    out->a = rd16(CAR_FLAGS + o);
+    setNZ16(out, out->a);
+    out->v = (rd16(0x1E66) & 0x4000) != 0;
+  }
+}
+// func_81FBB1's state for the car, either way of $0244, the player's words
+static void fuzz_car_sync_player(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_81FBB1(r, ram, rnd);
+  wr16ram(ram, 0x0244, (uint16_t)rnd());
+  static const uint16_t words[] = {0x022D, 0x022F, 0x020E, 0x0210, 0x0204, 0x0206, 0x1E66};
+  for(unsigned i = 0; i < sizeof words / sizeof words[0]; i++) wr16ram(ram, words[i], (uint16_t)rnd());
+  wr16ram(ram, 0x022D, (uint16_t)(rnd() % 0x200));
+  wr16ram(ram, 0x022F, 0);
+  wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 0x10));
+  wr16ram(ram, 0x0210, (uint16_t)(rnd() % 0x20));
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8240,6 +8295,8 @@ const Routine routines[] = {
    .holes = {{0x82F0D6, 0x82F0E7}}},  // dead bytes after a JMP (a 32-bit halving nothing reaches)
   {.name = "follow_car_step", .entry = 0x83F73E, .end = 0x83F7F9, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x30, .call = call_follow_car_step, ALL_OUTPUTS, .fuzz = fuzz_follow_car_step},
+  {.name = "car_sync_player", .entry = 0x81FA8F, .end = 0x81FB20, .source = "src/track.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .call = call_car_sync_player, ALL_OUTPUTS, .fuzz = fuzz_car_sync_player},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

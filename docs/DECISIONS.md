@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The player's car takes the player's motion (roots-72, 2026-11-20)
+
+**`car_sync_player` ($81:FA8F, DB = `$7E`):** the fourth multiply-only DSP-4 root, about
+18,500 entries.
+- **The motion,** two ways by bit 0 of `$0244`:
+  - **directly:** the car's 32-bit position gains `$022D:$022F`, and it takes the player's
+    speed and +`$04`/+`$06`;
+  - **or by the chip:** the position gains `$1E9E` * `$0210` (a DSP-4 multiply), and the
+    speed is taken as before.
+- **Then** +`$12` = `$FFFF` and `func_81FBB1` (the segment advance, in C since long
+  before). Directly, the car's flags then take bit 5 from bit 15 of `$1E66`, and bit 4.
+- **The exit is `func_81FBB1`'s,** read through its adapter by a hook (`fbb1Run`), as for
+  the contact chain.
+  - The adapter writes the car's record as it stands at that call. The product is
+    computed in plain C, so there is no second chip multiply.
+  - The hook puts the record back before the C runs.
+  - Directly, A is then the new flags and V is the `BIT` of `$1E66`.
+  - Editing that adapter's line is why this unit takes the full gate.
+- Live 4,000/4,000 (60k) and 205/205 (race1), fuzz 500/500 and 200/200, paths 50/50,
+  first try. `func_81FBB1` passes unchanged.
+
 ## A duplicate port, reverted (roots-71 reverted, 2026-11-20)
 
 - **What happened.** roots-71 ported `$81:FBB1` as `segment_advance` in `src/misc.c`.

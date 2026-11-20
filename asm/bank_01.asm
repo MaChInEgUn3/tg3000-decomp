@@ -2645,6 +2645,7 @@ CODE_81FA65:
     sbc.l $308000               ; $81FA87
     sta.w $FACB,y               ; $81FA8B
     rts                         ; $81FA8E
+car_sync_player:
     lda.w $0244                 ; $81FA8F
     bit.w #$0001                ; $81FA92
     bne CODE_81FAE0             ; $81FA95

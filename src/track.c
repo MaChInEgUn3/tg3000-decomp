@@ -235,3 +235,28 @@ void player_road_limits(void) {
   if(off & 0x8000) wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | 0x0004));
   else if(off) wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | 0x0008));
 }
+
+// TG3000_ROUTINE($81:FA8F) car_sync_player
+bool car_sync_player(uint16_t car) {
+  const uint32_t o = car;
+  const bool direct = !(rd16(0x0244) & 0x0001);
+  uint32_t pos = rd16(0xFAB5 + o) | (uint32_t)rd16(0xFAB7 + o) << 16;
+  if(direct) pos += rd16(0x022D) | (uint32_t)rd16(0x022F) << 16;
+  else pos += (uint32_t)dsp4_multiply((int16_t)rd16(0x1E9E), (int16_t)rd16(0x0210));
+  wr16(0xFAB5 + o, (uint16_t)pos);
+  wr16(0xFAB7 + o, (uint16_t)(pos >> 16));
+  wr16(0xFAC9 + o, rd16(0x020E));
+  wr16(0xFACB + o, rd16(0x0210));
+  if(direct) {
+    wr16(0xFAB9 + o, rd16(0x0204));
+    wr16(0xFABB + o, rd16(0x0206));
+  }
+  wr16(0xFAC7 + o, 0xFFFF);
+  const bool carry = func_81FBB1(car);
+  if(direct) {
+    uint16_t f = (uint16_t)(rd16(CAR_FLAGS + o) & ~0x0020);
+    if(rd16(0x1E66) & 0x8000) f |= 0x0020;
+    wr16(CAR_FLAGS + o, (uint16_t)(f | 0x0010));
+  }
+  return carry;
+}

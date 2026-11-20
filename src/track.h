@@ -34,4 +34,12 @@ void car_road_step(uint16_t car);
 // ($83:E8AB)
 void player_road_limits(void);
 
+// $81:FA8F: the player's car `car` (its offset in the tables at $7E:FAB5) takes the player's
+// motion. Directly (bit 0 of $0244 clear): its position gains $022D:$022F, its speed
+// (+$14, +$16) = $020E/$0210 and its +$04/+$06 = $0204/$0206; else its position gains
+// $1E9E * $0210 (a DSP-4 multiply) and its speed = $020E/$0210. Its +$12 = $FFFF; then
+// func_81FBB1. Directly, its flags lose bit 5, get it back from bit 15 of $1E66, and get
+// bit 4. Returns func_81FBB1's result (the original's carry).
+bool car_sync_player(uint16_t car);
+
 #endif
