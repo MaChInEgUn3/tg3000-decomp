@@ -1789,6 +1789,30 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## $03/$0B in the harness; the mini-map's cars (dsp4-1b, 2026-11-20)
+
+- **In the difftest's DSP-4 command table:**
+  - `$03`: 10 bytes in (its word, then the first sprite entry, `$000B` word included),
+    6 out;
+  - `$0B`: 6 bytes in, 6 out.
+
+  A sample starting at `$82:D8C6` sees its own `$000B` as a command word even when the
+  chip takes it as `$03`'s data. The recogniser starts each sample at the command
+  boundary, so both shapes fit.
+- **The bench chip answers both with `dsp4_sprite`** (the bridge's route table), as for
+  `$0A` and `$11`. The game's own runs do not change: every row the full re-verification
+  runs still passes.
+- **`minimap_car` ($82:D8C6, DB = `$30`):** one car's dot on the mini-map, two calls a
+  race frame.
+  - Its place in the map table `$7E:4F31` is X. When the `$82:DC68` entry for `$047B`
+    is negative and `D+$14` is set, the place is the track's start or end instead.
+  - The table's two bytes give x (+ `$BE`) and y (+ A, low byte). Y is the attribute.
+  - A shown entry's words go to `$1576`/`$1578` + `$0184`, which moves on by 4.
+  - Both callers reload A, X and Y next, so the row has no register outputs.
+  - 60k: live 4,000/4,000, fuzz 500/500, paths 53/53. race1: 393/393.
+  - **Negative row `minimap_car_wrong`:** the sprite's word with x and y swapped. It fails:
+    race1 0/393 live, 0/50 fuzz.
+
 ## DSP-4 commands $03 and $0B (dsp4-03, 2026-11-20)
 
 - **Measured, outputs only**, as for `$0A` and `$11` (`refbench --dsp4-cmdlog 03` and

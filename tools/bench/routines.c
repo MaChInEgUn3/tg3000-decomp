@@ -7550,6 +7550,41 @@ static void fuzz_car_track_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   }
 }
 
+// ---- minimap_car ($82:D8C6) ----  both callers reload A, X and Y next: no register outputs;
+// the bench judges the flags
+static void call_minimap_car(const Regs* in, Regs* out) {
+  (void)out;
+  minimap_car(in->a, in->x, in->y);
+}
+// Negative row: the dot's word with y in the low byte and x in the high one (the
+// sprite's two coordinates swapped), which the comparison must catch
+static void call_minimap_car_wrong(const Regs* in, Regs* out) {
+  call_minimap_car(in, out);
+  const uint32_t o = (uint16_t)(rd16(0x0184) - 4);
+  const uint16_t w = rd16(0x1576 + o);
+  wr16(0x1576 + o, (uint16_t)(w << 8 | w >> 8));
+}
+// a place in the map table (a multiple of 4 below its end), its bytes, y, the attribute; the
+// track-end case ($047B on a negative $82:DC68 entry, D+$14 either sign) half the time; the
+// output offset
+static void fuzz_minimap_car(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  const uint16_t laps = (uint16_t)(0x40 + rnd() % 0x240);
+  wr16ram(ram, 0x019A, laps);
+  r->x = (uint16_t)(4 * (rnd() % (laps / 4)));
+  r->a = (uint16_t)rnd();
+  r->y = (rnd() & 1) ? 0x30FD : (uint16_t)rnd();
+  static const uint16_t negative[] = {17, 27, 47};
+  wr16ram(ram, 0x047B, (rnd() & 1) ? negative[rnd() % 3] : (uint16_t)(rnd() % 48));
+  wr16ram(ram, DP + 0x14, (rnd() % 3 == 0) ? 0 : (uint16_t)rnd());
+  for(int i = 0; i < 8; i++) ram[0x4F31 + (uint32_t)r->x + i] = (uint8_t)rnd();
+  const uint16_t end = (uint16_t)(((uint16_t)(laps - 1) >> 2) & 0xFFFC);
+  ram[0x4F31] = (uint8_t)rnd();
+  ram[0x4F32] = (uint8_t)rnd();
+  ram[0x4F31 + (uint32_t)end] = (uint8_t)rnd();
+  ram[0x4F32 + (uint32_t)end] = (uint8_t)rnd();
+  wr16ram(ram, 0x0184, (uint16_t)(4 * (rnd() % 0x40)));
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8401,6 +8436,8 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_hud_digits, .fuzz = fuzz_race_hud_digits},
   {.name = "car_track_step", .entry = 0x83F7F9, .end = 0x83F9D1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x83, .call = call_car_track_step, .fuzz = fuzz_car_track_step},
+  {.name = "minimap_car", .entry = 0x82D8C6, .end = 0x82D934, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_minimap_car, .fuzz = fuzz_minimap_car},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
@@ -8491,6 +8528,8 @@ const Routine routines[] = {
 const int routineCount = sizeof routines / sizeof routines[0];
 
 const Routine negativeRoutines[] = {
+  {.name = "minimap_car_wrong", .entry = 0x82D8C6, .end = 0x82D934, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_minimap_car_wrong, .fuzz = fuzz_minimap_car},
   {.name = "vram_planes_build_wrong", .entry = 0x8A8828, .end = 0x8A88DD, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x8A, .call = call_vram_planes_build_wrong, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "rng_next_wrong", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",

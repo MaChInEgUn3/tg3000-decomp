@@ -1152,4 +1152,12 @@ void track_object_random(uint16_t dp);
 // = the position's change.
 void car_track_step(uint16_t dp);
 
+// $82:D8C6: one car's dot on the mini-map (DB = $30). Its place in the map table at
+// $7E:4F31 is `at` (4 bytes a step), or, when the $82:DC68 entry for $047B is negative and
+// D+$14 is not 0, the start (D+$14 negative) or the end (($019A - 1) / 4, a multiple of 4)
+// of the track. A DSP-4 sprite entry (dsp4_sprite) gets x = the table's byte 0 + $BE, y =
+// (`y` + its byte 1) & $FF and the attribute `attr`; a shown entry's two words go to
+// $1576/$1578 + $0184, which moves on by 4.
+void minimap_car(uint16_t y, uint16_t at, uint16_t attr);
+
 #endif

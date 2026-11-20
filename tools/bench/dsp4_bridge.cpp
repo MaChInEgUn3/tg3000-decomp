@@ -39,9 +39,23 @@ static void answerRow(const uint8_t* in, uint8_t* out) {
 	out[0] = uint8_t(row);
 	out[1] = uint8_t(row >> 8);
 }
+// A sprite entry: the last six bytes in (x, y, attribute); its three words out.
+static void answerSpriteAt(const uint8_t* e, uint8_t* out) {
+	uint16_t mine[2];
+	const uint16_t flag = dsp4_sprite(uint16_t(e[0] | e[1] << 8), uint16_t(e[2] | e[3] << 8), uint16_t(e[4] | e[5] << 8), mine);
+	const uint16_t words[3] = {flag, mine[0], mine[1]};
+	for(int j = 0; j < 3; j++) {
+		out[2 * j] = uint8_t(words[j]);
+		out[2 * j + 1] = uint8_t(words[j] >> 8);
+	}
+}
+static void answerSprite(const uint8_t* in, uint8_t* out) { answerSpriteAt(in, out); }
+static void answerSpriteList(const uint8_t* in, uint8_t* out) { answerSpriteAt(in + 4, out); }
 static const struct { int cmd, in, out; void (*answer)(const uint8_t*, uint8_t*); } routes[] = {
 	{0x0A, 6, 8, answerEdges},
 	{0x11, 8, 2, answerRow},
+	{0x03, 10, 6, answerSpriteList},
+	{0x0B, 6, 6, answerSprite},
 };
 static int routed = -1;  // index into routes, or -1
 static uint8_t routedIn[16], routedOut[16];

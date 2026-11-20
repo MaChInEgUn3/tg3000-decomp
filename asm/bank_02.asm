@@ -2596,7 +2596,7 @@ CODE_82CC5B:
     lda.w $0235                 ; $82CC5B
     sta.b $14                   ; $82CC5E
     lda.w #$001E                ; $82CC60
-    jsr.w $D8C6                 ; $82CC63
+    jsr.w minimap_car           ; $82CC63
     ldx.w #$0035                ; $82CC66
     lda.l $7EFAD1,x             ; $82CC69
     ora.w #$30FD                ; $82CC6D
@@ -2613,7 +2613,7 @@ CODE_82CC81:
     lda.w $02E8                 ; $82CC81
     sta.b $14                   ; $82CC84
     lda.w #$001E                ; $82CC86
-    jsr.w $D8C6                 ; $82CC89
+    jsr.w minimap_car           ; $82CC89
     lda.w #$0009                ; $82CC8C
     sta.w $8000                 ; $82CC8F
     lda.w #$0080                ; $82CC92
@@ -3210,6 +3210,7 @@ CODE_82D28C:
     sta.b $2A                   ; $82D2C9
     rts                         ; $82D2CB
     incbin !baserom:$152CC..$158C6
+minimap_car:
     pha                         ; $82D8C6
     phx                         ; $82D8C7
     ldx.w $047B                 ; $82D8C8

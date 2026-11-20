@@ -3996,3 +3996,17 @@ void car_track_step(uint16_t dp) {
   wr16(dp + 0x2D, (uint16_t)moved);
   wr16(dp + 0x2F, (uint16_t)(moved >> 16));
 }
+
+// TG3000_ROUTINE($82:D8C6) minimap_car
+void minimap_car(uint16_t y, uint16_t at, uint16_t attr) {
+  if((bus_rd16(0x82DC68 + (uint32_t)rd16(0x047B)) & 0x8000) && rd16(DP + 0x14) != 0)
+    at = (rd16(DP + 0x14) & 0x8000) ? 0 : (uint16_t)(((uint16_t)(rd16(0x019A) - 1) >> 2) & 0xFFFC);
+  const uint16_t py = (uint16_t)((y + rd8(0x4F32 + (uint32_t)at)) & 0x00FF);
+  const uint16_t px = (uint16_t)(rd8(0x4F31 + (uint32_t)at) + 0x00BE);
+  uint16_t out[2];
+  if(!dsp4_sprite(px, py, attr, out)) return;
+  const uint32_t o = rd16(0x0184);
+  wr16(0x1576 + o, out[0]);
+  wr16(0x1578 + o, out[1]);
+  wr16(0x0184, (uint16_t)(o + 4));
+}

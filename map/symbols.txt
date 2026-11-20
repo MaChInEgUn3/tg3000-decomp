@@ -444,3 +444,4 @@ func    82B4ED   race_hud_digits     ; the race HUD's numbers: gear, speed digit
 func    83F7F9   car_track_step      ; the player's car moves (DSP-4 multiplies) and runs the track objects it passes -> src/misc.c
 func    83FB4A   track_object_random ; the random pickup: one of 16 prizes by the RNG (never run; through car_track_step) -> src/misc.c
 func    83FD68   car_object_stop     ; a stop marker: D+$53 = 4, D+$B1, D+$5E from the object (through car_track_step) -> src/misc.c
+func    82D8C6   minimap_car         ; one car's dot on the mini-map: a DSP-4 sprite entry (command $0B) -> src/misc.c
