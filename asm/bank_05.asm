@@ -1,6 +1,7 @@
 ; bank $85 (file offset $028000)
 org $858000
 
+track_tiles_load:
     tax                         ; $858000
     lda.w $8410,x               ; $858001
     and.w #$00FF                ; $858004
@@ -78,7 +79,7 @@ CODE_858127:
     lda.w $03CB                 ; $85812A
     and.w #$00FF                ; $85812D
     beq CODE_858135             ; $858130
-    incbin !baserom:$28132..$28135
+    lda.w #$0020                ; $858132 static
 CODE_858135:
     jsr.w row_copy_6b33         ; $858135
     rtl                         ; $858138
@@ -98,13 +99,13 @@ CODE_858135:
     lda.w $039C                 ; $85815E
     and.w #$00FF                ; $858161
     beq CODE_858169             ; $858164
-    incbin !baserom:$28166..$28169
+    lda.w #$0020                ; $858166 static
 CODE_858169:
     jsr.w row_copy_6a33         ; $858169
     lda.w $03CB                 ; $85816C
     and.w #$00FF                ; $85816F
     beq CODE_858177             ; $858172
-    incbin !baserom:$28174..$28177
+    lda.w #$0020                ; $858174 static
 CODE_858177:
     jsr.w row_copy_6b33         ; $858177
     rtl                         ; $85817A

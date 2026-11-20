@@ -3464,3 +3464,31 @@ void menu_bar_draw(void) {
   const uint16_t d = (uint16_t)(at - key);
   if(d != 0) wr16(DP + 0x4B, (uint16_t)(rd16(DP + 0x4B) + ((d & 0x8000) ? 1 : (uint16_t)-1)));
 }
+
+// TG3000_ROUTINE($85:8000) track_tiles_load
+void track_tiles_load(uint16_t track) {
+  const uint16_t k = bus_rd8(0x838410 + (uint32_t)track);
+  const uint16_t y = (uint16_t)(bus_rd16(0x838447 + (uint32_t)k) << 1);
+  const uint16_t banks = bus_rd16(0x838597 + (uint32_t)y);
+  uint16_t end;
+  decompress(DP, (uint8_t)banks, bus_rd16(0x838585 + (uint32_t)y), (uint8_t)(banks >> 8), 0x0000, &end);
+  static const uint16_t offsets[4][5] = {
+    {0x0420, 0x0020, 0x0220, 0x0020, 0x0220},
+    {0x0820, 0x0020, 0x0220, 0x0420, 0x0620},
+    {0x0440, 0x0040, 0x0240, 0x0040, 0x0240},
+    {0x0840, 0x0040, 0x0240, 0x0440, 0x0640},
+  };
+  const uint16_t handler = bus_rd16(0x858025 + (uint32_t)(uint16_t)(rd16(0x047B) << 1));
+  const int layout = handler == 0x8093 ? 0 : handler == 0x80C5 ? 1 : handler == 0x80F7 ? 2 : 3;
+  if(layout & 1) wr16(0x1F33, (uint16_t)(rd16(0x1F33) | 0x0080));
+  else wr16(0x1F33, (uint16_t)(rd16(0x1F33) & ~0x0080));
+  const uint16_t* o = offsets[layout];
+  tiles_planar_upload_5fe0(o[0], k);
+  upload_tiles_3300(k, o[1]);
+  upload_tiles_3700(k, o[2]);
+  upload_tiles_7700(k, o[3]);
+  upload_tiles_7b00(k, o[4]);
+  const bool rows = layout >= 2;
+  row_copy_6a33((rows && rd8(0x039C)) ? 0x0020 : 0, k);  // the fourth layout's: never run
+  row_copy_6b33((rows && rd8(0x03CB)) ? 0x0020 : 0, k);  // never run
+}

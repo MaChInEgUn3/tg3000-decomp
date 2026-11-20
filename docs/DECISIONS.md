@@ -1789,6 +1789,27 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The track tiles (roots-65, 2026-11-20)
+
+**`track_tiles_load` ($85:8000, long, DB = `$83`):** loads the track's tiles.
+- **The kind:** the byte at `$83:8410` + the track picks it. Its picture unpacks to
+  `$7F:0000`, by the bank and address at `$83:8597`/`$8585`.
+- **The layout,** by `$047B`, through a 55-entry table at `$85:8025` (a hole in the row)
+  pointing to four layouts. Each layout:
+  - clears or sets bit 7 of `$1F33`;
+  - runs `tiles_planar_upload_5fe0` and the four `upload_tiles_*` at its own offsets;
+  - then `row_copy_6a33`/`6b33`.
+- **Player rows:** in the third and fourth layouts the rows move on by `$20` for a player
+  whose flag (`$039C`, `$03CB`) is set. Every callee keeps X, so all calls get the kind.
+- **Never run:** the third and fourth layouts, and three 3-byte `LDA #$20`, decoded as
+  static code.
+- **Parked this session:** `$80:8EB4` (its `BNE` goes past the first `RTS` into a whole
+  shop screen, `$80:8EC6`, with waits, MVN and many callees; the C written for the first
+  17 bytes was reverted) and `$80:C5E0`. Four of `$80:C5E0`'s six handlers never ran, and
+  two of those call never-run, unported `$80:D026`/`$80:CCE1`.
+- All live entries were interrupted; the replays passed (2/2, 1/1). Fuzz 500/500 and
+  200/200, paths 102/102.
+
 ## A menu with a sliding bar (roots-64, 2026-11-20)
 
 **`menu_bar_draw` ($80:C35E):** a four-item menu, about 3,200 entries.

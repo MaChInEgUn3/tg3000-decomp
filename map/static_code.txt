@@ -95,3 +95,6 @@
 80:DD7A 80:DD7F m16x16 ; scenery_build: a 6x6 block's map row for a column below $20 (never run)
 80:E929 80:E936 m16x16 ; ticker_scene_step: a negative D+$82 decays up to 0 (never run)
 80:E9A0 80:E9A3 m16x16 ; ticker_scene_step: the 9-bit row sign-extended (never run)
+85:8132 85:8135 m16x16 ; track_tiles_load: player 2's rows moved on (never run)
+85:8166 85:8169 m16x16 ; track_tiles_load: player 1's rows moved on, fourth layout (never run)
+85:8174 85:8177 m16x16 ; track_tiles_load: player 2's rows moved on, fourth layout (never run)

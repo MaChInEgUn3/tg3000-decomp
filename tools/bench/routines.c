@@ -3367,6 +3367,31 @@ static void fuzz_menu_bar_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x74, (uint16_t)(4 * (rnd() % 0x30)));
 }
 
+// ---- track_tiles_load ($85:8000, long) ----  row_copy_6b33's exit (its input A = 0 or
+// $20, X = the kind k): A = the last word it copied, X = k (N Z of it), Y = $20, C set, V
+// of its ADC of the base
+static void call_track_tiles_load(const Regs* in, Regs* out) {
+  const uint16_t k = bus_rd8(0x838410 + (uint32_t)in->a);
+  const uint16_t handler = bus_rd16(0x858025 + (uint32_t)(uint16_t)(rd16(0x047B) << 1));
+  const bool rows = handler == 0x80F7 || handler == 0x8139;
+  const uint16_t a6b = (rows && rd8(0x03CB)) ? 0x0020 : 0;
+  track_tiles_load(in->a);
+  const uint16_t base = bus_rd16(0x8384B1 + (uint32_t)k), from = (uint16_t)(a6b + base);
+  out->a = bus_rd16(0x7F0000 + (uint32_t)(uint16_t)(from + 0x1E));
+  out->x = k;
+  out->y = 0x0020;
+  setAdc16(out, a6b, base);
+  setNZ16(out, k);
+  out->c = true;
+}
+// any track (A) and any layout ($047B over its 55 entries), the players' flags
+static void fuzz_track_tiles_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (uint16_t)(rnd() % 0x37);
+  wr16ram(ram, 0x047B, (uint16_t)(rnd() % 0x37));
+  ram[0x039C] = (rnd() & 1) ? (uint8_t)(1 + rnd() % 255) : 0;
+  ram[0x03CB] = (rnd() & 1) ? (uint8_t)(1 + rnd() % 255) : 0;
+}
+
 // ---- track_event_clear ($82:EADA) ----  A = the $3D6C word (N Z of its ORA), X = D+$1A
 static void call_track_event_clear(const Regs* in, Regs* out) {
   (void)in;
@@ -7992,6 +8017,9 @@ const Routine routines[] = {
    ALL_OUTPUTS, .fuzz = fuzz_title_frame_step},
   {.name = "menu_bar_draw", .entry = 0x80C35E, .end = 0x80C475, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_menu_bar_draw, .fuzz = fuzz_menu_bar_draw},
+  {.name = "track_tiles_load", .entry = 0x858000, .end = 0x85817B, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_tiles_load, ALL_OUTPUTS,
+   .fuzz = fuzz_track_tiles_load, .holes = {{0x858025, 0x858093}}},  // the layouts' table
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

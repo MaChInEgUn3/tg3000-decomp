@@ -1049,4 +1049,14 @@ uint16_t title_fade_step(void);
 // one step toward item D+$48's key.
 void menu_bar_draw(void);
 
+// $85:8000: the track's tiles (long; D = $0100, DB = $83). The kind k = the byte at $83:8410
+// + `track`; its picture (the word at $83:8447 + k, doubled, picks the bank and address at
+// $83:8597 / $83:8585) unpacks to $7F:0000. Then by the layout of $047B (a table at
+// $85:8025: four layouts), $1F33 bit 7 cleared (first and third) or set, and the uploads
+// (each with k): tiles_planar_upload_5fe0 and the four upload_tiles_* at the layout's
+// offsets; row_copy_6a33 / row_copy_6b33 at 0, or in the third and fourth layouts at $20
+// for a player whose flag ($039C, $03CB) is set (player 2's, and the fourth layout's:
+// never run).
+void track_tiles_load(uint16_t track);
+
 #endif

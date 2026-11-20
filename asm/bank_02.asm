@@ -124,7 +124,7 @@ CODE_828422:
     rep.b #$20                  ; $828463
     jsl.l track_settings_load   ; $828465
     lda.w $047B                 ; $828469
-    jsl.l $858000               ; $82846C
+    jsl.l track_tiles_load      ; $82846C
     jsr.w $A28B                 ; $828470
     lda.w #$0000                ; $828473
     sta.l $7EFAFA               ; $828476
