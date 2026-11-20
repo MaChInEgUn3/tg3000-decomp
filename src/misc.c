@@ -3246,7 +3246,7 @@ void scenery_build(void) {
 
 // TG3000_ROUTINE($81:F21E) car_contacts_chain
 bool car_contacts_chain(uint16_t x, uint16_t y) {
-  if((uint16_t)(rd16(0xFAB5 + (uint32_t)y) - rd16(0xFAB5 + (uint32_t)x)) >= 0x0060) return false;
+  if((uint16_t)(rd16(0xFAB5 + (uint32_t)y) - rd16(0xFAB5 + (uint32_t)x)) >= 0x0060) return true;  // BCS to the RTS
   wr16(DP + 0x3C, (uint16_t)(rd16(DP + 0x3C) + 1));
   const uint16_t count = rd16(DP + 0x3C);
   bool hit = false;

@@ -420,7 +420,8 @@ uint16_t take_nibble(void);
 // bit 15 set (returns false, nothing stored) or while a cooldown runs: with the direct
 // page `dp`'s word $23 non-zero, it is reduced by $1E9E; if still >= 0 the request is
 // refused (returns true), else the cooldown restarts from y and the request is stored.
-// Returns true when refused (the original's carry).
+// Returns true when refused by the cooldown, where the original's carry is set too; on the
+// other paths the original leaves the caller's carry, so false there is not a carry.
 bool func_83FE9A(uint16_t dp, uint16_t a, uint16_t x, uint16_t y);
 
 // Draw the sprite frame of the table entry at byte offset `entry`: first its width
@@ -996,7 +997,8 @@ void scenery_build(void);
 // more ahead of x (+$00, unsigned), D+$3C counts up and, from y along the links at +$18
 // ($7E:FACD), car_pair_contact(x, y) runs for each object less than $60 ahead, until one
 // hits, the chain leaves that range, or D+$3C (counting down) reaches 0. D+$3C is put back
-// to its counted-up value. Returns whether one hit.
+// to its counted-up value. Returns the original's carry: set when y is $60 or more ahead
+// (nothing done) or on a hit (a swap), clear otherwise.
 bool car_contacts_chain(uint16_t x, uint16_t y);
 
 // $80:E925: one frame of the scrolling-text scene (D = $0100).

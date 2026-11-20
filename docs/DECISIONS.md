@@ -1789,6 +1789,41 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Audit: return values no adapter compares (audit-1, 2026-11-20)
+
+**Why.** roots-53 showed it: a C function's return value is unverified when no adapter
+compares it. The rule now is that a non-`void` return feeds a compared output, or it is
+documented as what it is. The `bool` functions were checked against their adapters.
+- **`car_contacts_chain`:** the early exit (`$81:F228`, `BCS` to the `RTS`) leaves the
+  carry set, but the C returned false. It now returns the original's carry. The adapter
+  had set C itself, so nothing compared changes.
+- **`func_83FE9A`'s header** said its return is the original's carry. Off the cooldown
+  path the original keeps the caller's carry; the header now says so.
+- The rest either feed their adapters (`race_upload_queue_drain` the DB, the shop moves,
+  the hit tests' carry through `calleeRun`) or are the carry that their adapters model.
+
+**The title steps' probe.** `titleUnpackEnd` found the input end by unpacking a second time
+after the C, into the WRAM under comparison. It now runs before the C and puts WRAM back,
+so the compared bytes are the C's alone.
+
+All four rows pass again: `car_contacts_chain` 4,000/4,000; the three title steps 84/84,
+58/58 and 1/1, each with fuzz 500/500.
+
+## Two harness changes, decided by the advisor (2026-11-20)
+
+The owner's standing delegation covers these, since neither weakens a comparison. They
+are recorded here and open to the owner's veto, and each comes as a unit of its own.
+- **Raw DMA to VRAM.** A DMA the harness records raw, to `$2118`/`$2119`, will carry the
+  VRAM pointer and `VMAIN`, on both the original's side and the C's. It comes with a
+  negative row (a wrong address), and the full gate audits the existing rows. This
+  unblocks `$8A:8828`; `$80:EE56` (a DMA to `$2119`) is to be checked against the same gap.
+- **Instruction cap.** A per-row budget for `waitsForInterrupts` rows only, so the title
+  cards (`$8A:C056`, `$8A:9E82`) that wait about 200 frames are compared instead of
+  abandoned at `MAX_INSNS`. Nothing compared changes.
+
+**Also found:** the TAS for refbench is at the session scratchpad's `tas_hdr/Input
+Log.txt` (the `.bk2` in `tas_dl/`).
+
 ## The track tiles for a preview (roots-66, 2026-11-20)
 
 **`track_tiles_preview` ($8A:8BC2, DB = `$83`):** the bank-`$8A` twin of

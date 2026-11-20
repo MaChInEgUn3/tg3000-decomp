@@ -8,6 +8,7 @@
 #include "routines.h"
 
 #include <stddef.h>
+#include <string.h>
 
 #include "rng.h"
 #include "scroll_tables.h"
@@ -3274,19 +3275,23 @@ static void fuzz_ticker_scene_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
 // the fade), V clear. The frame step: A = the new D+$40, N Z of its CMP #$17C or of the
 // INC D+$3E at $17C. The fade without an unpack: A = D+$42 (N Z of its CMP #$3F), X Y and V
 // as window_curve_build leaves them (X = 0, Y = $170; V of its last add).
+// the input end of the stream at $7E:`src`, from an unpack made before the C and undone
+// (WRAM put back), so the WRAM compared holds the C's writes only
+static uint8_t titleProbeRam[TG3000_WRAM_SIZE];
 static uint16_t titleUnpackEnd(uint16_t src) {
-  // the input end, from a second unpack of the same stream into scratch (the C's own is
-  // compared as WRAM); the routine's output region is written again with the same bytes
+  memcpy(titleProbeRam, g_ram, sizeof titleProbeRam);
   uint16_t end;
   decompress_near(DP, 0x7E, src, 0x7F, 0x0000, &end);
+  memcpy(g_ram, titleProbeRam, sizeof titleProbeRam);
   return end;
 }
 static void call_title_frame_step(const Regs* in, Regs* out) {
   (void)in;
   const uint16_t src = rd16(0xA920 + (uint32_t)(rd16(DP + 0x40) & 0xFFFE));
+  const uint16_t end = titleUnpackEnd(src);
   const uint16_t len = title_frame_step();
   out->a = rd16(DP + 0x40);
-  out->x = titleUnpackEnd(src);
+  out->x = end;
   out->y = len;
   if(out->a == 0x017C) setNZ16(out, rd16(DP + 0x3E));
   else setNZ16(out, (uint16_t)(out->a - 0x017C));
@@ -3295,11 +3300,12 @@ static void call_title_frame_step(const Regs* in, Regs* out) {
 }
 static void call_title_fade_step(const Regs* in, Regs* out) {
   (void)in;
+  const uint16_t end = (uint16_t)(rd16(DP + 0x42) + 1) == 0x003F ? titleUnpackEnd(0xC730) : 0;
   const uint16_t len = title_fade_step();
   out->c = true;
   if(rd16(DP + 0x42) == 0x003F) {
     out->a = out->y = len;
-    out->x = titleUnpackEnd(0xC730);
+    out->x = end;
     setNZ16(out, len);
     out->v = false;
     return;
@@ -3338,10 +3344,10 @@ static void fuzz_title_fade_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // (2), N Z of its CMP #$17C, X = the input end, Y = the length, C set, V clear
 static void call_title_frame_begin(const Regs* in, Regs* out) {
   (void)in;
-  const uint16_t src = rd16(0xA920);
+  const uint16_t end = titleUnpackEnd(rd16(0xA920));
   const uint16_t len = title_frame_begin();
   out->a = rd16(DP + 0x40);
-  out->x = titleUnpackEnd(src);
+  out->x = end;
   out->y = len;
   setNZ16(out, (uint16_t)(out->a - 0x017C));
   out->c = true;
