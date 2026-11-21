@@ -468,3 +468,4 @@ func    82D267   car_sprite_head     ; a car's sprite head streamed to the DSP-4
 func    82DAFD   object_sprite_raised ; a track object's sprite with its height, streamed (a tape row) -> src/misc.c
 func    82DB4D   object_sprite_flat  ; a track object's sprite on the road, streamed (a tape row) -> src/misc.c
 func    82DB87   object_sprite_group ; a track object as four sprites about the road's middle, streamed (a tape row) -> src/misc.c
+func    82DA48   object_sprite_shadowed ; a track object and its second sprite ($BC30), streamed (a tape row) -> src/misc.c

@@ -1789,6 +1789,26 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A track object and its second sprite (roots-89, 2026-11-21)
+
+**`object_sprite_shadowed` ($82:DA48):** 75,701 entries on the 60k movie.
+- **Setup:** `D+$24`, `D+$20` and `D+$26` as for the other object sprites. `D+$22` = the
+  height at `$84:A200` + r, less `$40` (r = (`$0024` - the object's word at +3) & `$3E`).
+- **Then** `sprite_put_rows_a`. Unless that fills the buffer, a second sprite: `D+$22` = 0,
+  `D+$24` = `$BC30`, then `_b` when bit 4 of the word at `$7E:8CB5` + r is set, else `_a`.
+- **A quirk of the original, kept.** That test reads `$8CB5` indexed by r (X was reloaded
+  with the height row), not by the object's offset.
+- **Flags.** race1 reaches it only 22 times, so all flags count there. The adapter models
+  them:
+  - N clear and Z set: every exit of the stream's tail follows a 0 word read or written;
+  - V clear: its `ADC`s (a graphics place plus an offset, a list's +6) stay small in the
+    game;
+  - one fuzz case on the 60k movie had V set, where V is not live (4,000 returns, only C).
+- **The fuzz** writes the parts lists for both graphics words (`$BC30` first), and
+  randomizes the words the second sprite's test reads.
+- **Result:** live 4,000/4,000 (60k) and 22/22 (race1), fuzz 500/500 and 200/200, paths
+  43/43.
+
 ## A track object as a group of four sprites (roots-88, 2026-11-21)
 
 **`object_sprite_group` ($82:DB87):** 146,642 entries on the 60k movie.

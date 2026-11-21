@@ -4621,3 +4621,20 @@ bool object_sprite_group(uint16_t x) {
   sprite_place_negate();
   return put();
 }
+
+// TG3000_ROUTINE($82:DA48) object_sprite_shadowed
+bool object_sprite_shadowed(uint16_t x) {
+  wr16(DP + 0x24, bus_rd16(0x86AF06 + (uint32_t)x));
+  const uint32_t o = rd16(DP + 0x1C);
+  uint16_t at = (uint16_t)(rd8(0x8CB3 + o) << 4);
+  if(at & 0x0800) at |= 0xF000;
+  wr16(DP + 0x20, at);
+  wr16(DP + 0x26, (uint16_t)(((rd16(0x8CB4 + o) & 0x0700) << 1) | rd16(DP + 0x26)));
+  const uint32_t r = (uint16_t)(rd16(0x0024) - rd16(0x8CB6 + o)) & 0x003E;
+  wr16(DP + 0x22, (uint16_t)(bus_rd16(0x84A200 + r) - 0x0040));
+  const bool second_b = (rd16(0x8CB5 + r) & 0x0010) != 0;  // indexed by r, as the original
+  if(sprite_put_rows_a()) return true;
+  wr16(DP + 0x22, 0);
+  wr16(DP + 0x24, 0xBC30);
+  return second_b ? sprite_put_rows_b() : sprite_put_rows_a();
+}

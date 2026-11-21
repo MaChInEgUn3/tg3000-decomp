@@ -8136,6 +8136,27 @@ static void fuzz_object_sprite(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // buffer filled; the other flags by liveness)
 static void call_object_sprite_group(const Regs* in, Regs* out) { out->c = object_sprite_group(in->x); }
 
+// ---- object_sprite_shadowed ($82:DA48) ----  a DSP-4 tape row: C = the buffer filled; N
+// clear and Z set (every exit of the stream's tail follows a 0 word read or written); V
+// clear (its ADCs, the graphics place plus an offset and the list's +6, stay small in the
+// game). race1 reaches it 22 times, so all flags count there
+static void call_object_sprite_shadowed(const Regs* in, Regs* out) {
+  (void)in;
+  out->c = object_sprite_shadowed(in->x);
+  out->n = false;
+  out->z = true;
+  out->v = false;
+}
+// object_sprite's fuzz, with the parts lists for the second sprite's graphics word ($BC30)
+// written first
+static void fuzz_object_sprite_shadowed(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  wr16ram(ram, DP + 0x24, 0xBC30);
+  fuzz_sprite_put_rows(r, ram, rnd);
+  fuzz_object_sprite(r, ram, rnd);
+  // the words its second sprite's test reads ($7E:8CB5 + the height row, up to $3E)
+  for(uint32_t i = 0; i <= 0x40; i++) ram[0x8CB5 + i] = (uint8_t)rnd();
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9040,6 +9061,9 @@ const Routine routines[] = {
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_object_sprite_group, .fuzz = fuzz_object_sprite, .dsp4Tape = true,
    .holes = {{0x82DBAA, 0x82DBB2}}},  // the handlers' jump table
+  {.name = "object_sprite_shadowed", .entry = 0x82DA48, .end = 0x82DAAF, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
+   .call = call_object_sprite_shadowed, .fuzz = fuzz_object_sprite_shadowed, .dsp4Tape = true},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

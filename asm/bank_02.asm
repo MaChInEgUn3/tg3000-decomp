@@ -3354,6 +3354,7 @@ sprite_put_rows_b:
 clc_82DA46:
     clc                         ; $82DA46
     rts                         ; $82DA47
+object_sprite_shadowed:
     lda.l $86AF06,x             ; $82DA48
     sta.b $24                   ; $82DA4C
     ldx.b $1C                   ; $82DA4E

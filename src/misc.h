@@ -1284,4 +1284,12 @@ bool object_sprite_flat(uint16_t x);
 // the four places (kind 2). It stops at the first that fills the buffer; returns its result.
 bool object_sprite_group(uint16_t x);
 
+// $82:DA48: a track object with a shadow (D = $0100): D+$24 = the graphics word at $86:AF06
+// + `x`; for the object at $7E:8CB3 + D+$1C: D+$20 = its place, D+$26 gains its bits 8-10
+// moved up one, D+$22 = the height at $84:A200 + r less $40 (r = ($0024 - its word at +3) &
+// $3E); sprite_put_rows_a; then, unless that filled the buffer, D+$22 = 0, D+$24 = $BC30
+// and sprite_put_rows_b when bit 4 of the word at $7E:8CB5 + r is set, else _a (the
+// original tests the word at r, not at the object). Returns the last one's result.
+bool object_sprite_shadowed(uint16_t x);
+
 #endif
