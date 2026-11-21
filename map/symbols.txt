@@ -473,3 +473,7 @@ func    818527   sprite_part_put     ; one sprite part streamed to the DSP-4, it
 func    818487   sprite_bar_put      ; a bar of sprite parts streamed to the DSP-4 (RTL; a tape row) -> src/misc.c
 func    859ADB   race_grid_setup     ; the race's starting grid: the 20 cars' records, lanes, random offsets and drifts, the players placed (RTL) -> src/misc.c
 func    82A28B   race_state_reset    ; the race's state reset: players' words, colour offsets, car order, grid, car records, palettes, tiles -> src/misc.c
+func    82DFAD   road_rows_build     ; the road's rows built as the player crosses them; objects, lap wrap, road kind, tilt -> src/misc.c
+func    82EA93   track_event_20c7    ; a track event: pattern $20C7 at the object's place (never run; through road_rows_build) -> src/misc.c
+func    82EAFE   track_event_place_only ; a track event's positions only (never run; through road_rows_build) -> src/misc.c
+func    82EB45   track_event2_set    ; the second road's track events $EB45-$EC08 (never run; through road_rows_build) -> src/misc.c

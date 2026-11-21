@@ -3862,8 +3862,9 @@ CODE_82DF8A:
     sec                         ; $82DF8F
     rts                         ; $82DF90
     incbin !baserom:$15F91..$15FA9
-    jsr.w $DFAD                 ; $82DFA9
+    jsr.w road_rows_build       ; $82DFA9
     rts                         ; $82DFAC
+road_rows_build:
     pea.w $837E                 ; $82DFAD
     plb                         ; $82DFB0
     lda.w $023E                 ; $82DFB1
@@ -4066,12 +4067,22 @@ CODE_82E166:
     ldx.b $18                   ; $82E171
     lda.l $840004,x             ; $82E173
     tax                         ; $82E177
+CODE_82E178:
     lda.l $850000,x             ; $82E178
     tay                         ; $82E17C
     lda.l $850002,x             ; $82E17D
     cmp.b $1A                   ; $82E181
     bcs CODE_82E19A             ; $82E183
-    incbin !baserom:$16185..$1619A
+    lda.l $850004,x             ; $82E185 static
+    tay                         ; $82E189 static
+    lda.l $850006,x             ; $82E18A static
+    cmp.b $1A                   ; $82E18E static
+    bcs CODE_82E19A             ; $82E190 static
+    txa                         ; $82E192 static
+    clc                         ; $82E193 static
+    adc.w #$0008                ; $82E194 static
+    tax                         ; $82E197 static
+    bra CODE_82E178             ; $82E198 static
 CODE_82E19A:
     tya                         ; $82E19A
     ldy.b $1A                   ; $82E19B
@@ -4161,7 +4172,14 @@ CODE_82E22E:
     lda.l $84000A,x             ; $82E259
     tax                         ; $82E25D
     jmp.w ($E261,x)             ; $82E25E
-    incbin !baserom:$16261..$16279
+    incbin !baserom:$16261..$16265
+    lda.w #$FF00                ; $82E265 static
+    sta.w $3C6C,y               ; $82E268 static
+    sta.w $3CAC,y               ; $82E26B static
+    lda.w #$0100                ; $82E26E static
+    sta.w $3F6C,y               ; $82E271 static
+    sta.w $3FAC,y               ; $82E274 static
+    bra CODE_82E2A3             ; $82E277 static
     lda.w $3DEC,y               ; $82E279
     bpl CODE_82E291             ; $82E27C
     sec                         ; $82E27E
@@ -4490,6 +4508,7 @@ track_event_2047:
 track_event_2087:
     lda.w #$2087                ; $82EA8D
     jmp.w $EB1A                 ; $82EA90
+track_event_20c7:
     lda.w #$20C7                ; $82EA93
     sta.w $1F0A                 ; $82EA96
     tyx                         ; $82EA99
@@ -4535,6 +4554,7 @@ track_event_clear:
     sta.w $3D6C,x               ; $82EAF7
     sta.w $3DAC,x               ; $82EAFA
     rts                         ; $82EAFD
+track_event_place_only:
     tyx                         ; $82EAFE
     jsr.w func_82EC09           ; $82EAFF
     ldx.b $1A                   ; $82EB02
@@ -4564,7 +4584,84 @@ track_event_clear:
     sta.w $3D6C,x               ; $82EB3E
     sta.w $3DAC,x               ; $82EB41
     rts                         ; $82EB44
-    incbin !baserom:$16B45..$16C09
+track_event2_set:
+    lda.w #$2007                ; $82EB45 static
+    jmp.w $EBDE                 ; $82EB48 static
+    lda.w #$2047                ; $82EB4B static
+    jmp.w $EBDE                 ; $82EB4E static
+    lda.w #$2087                ; $82EB51 static
+    jmp.w $EBDE                 ; $82EB54 static
+    lda.w #$C2E7                ; $82EB57 static
+    jmp.w $EBDE                 ; $82EB5A static
+    lda.w #$20C7                ; $82EB5D static
+    sta.w $1F0C                 ; $82EB60 static
+    tyx                         ; $82EB63 static
+    lda.l $7E8CB3,x             ; $82EB64 static
+    and.w #$00FF                ; $82EB68 static
+    asl a                       ; $82EB6B static
+    asl a                       ; $82EB6C static
+    asl a                       ; $82EB6D static
+    asl a                       ; $82EB6E static
+    bit.w #$0800                ; $82EB6F static
+    beq CODE_82EB77             ; $82EB72 static
+    ora.w #$F000                ; $82EB74 static
+CODE_82EB77:
+    ldx.b $1A                   ; $82EB77 static
+    sta.w $1F12                 ; $82EB79 static
+    sta.w $41EC,x               ; $82EB7C static
+    sta.w $422C,x               ; $82EB7F static
+    sta.w $1F14                 ; $82EB82 static
+    sta.w $44EC,x               ; $82EB85 static
+    sta.w $452C,x               ; $82EB88 static
+    lda.w #$0001                ; $82EB8B static
+    ora.w $42EC,x               ; $82EB8E static
+    sta.w $42EC,x               ; $82EB91 static
+    sta.w $432C,x               ; $82EB94 static
+    rts                         ; $82EB97 static
+    lda.w #$2107                ; $82EB98 static
+    jmp.w $EBDE                 ; $82EB9B static
+    ldx.b $1A                   ; $82EB9E static
+    lda.w #$0000                ; $82EBA0 static
+    sta.w $1F12                 ; $82EBA3 static
+    sta.w $41EC,x               ; $82EBA6 static
+    sta.w $422C,x               ; $82EBA9 static
+    sta.w $1F14                 ; $82EBAC static
+    sta.w $44EC,x               ; $82EBAF static
+    sta.w $452C,x               ; $82EBB2 static
+    lda.w #$0001                ; $82EBB5 static
+    ora.w $42EC,x               ; $82EBB8 static
+    sta.w $42EC,x               ; $82EBBB static
+    sta.w $432C,x               ; $82EBBE static
+    rts                         ; $82EBC1 static
+    tyx                         ; $82EBC2 static
+    jsr.w func_82EC09           ; $82EBC3 static
+    ldx.b $1A                   ; $82EBC6 static
+    sta.w $1F12                 ; $82EBC8 static
+    sta.w $41EC,x               ; $82EBCB static
+    sta.w $422C,x               ; $82EBCE static
+    clc                         ; $82EBD1 static
+    adc.b $1E                   ; $82EBD2 static
+    sta.w $1F14                 ; $82EBD4 static
+    sta.w $44EC,x               ; $82EBD7 static
+    sta.w $452C,x               ; $82EBDA static
+    rts                         ; $82EBDD static
+    sta.w $1F0C                 ; $82EBDE static
+    tyx                         ; $82EBE1 static
+    jsr.w func_82EC09           ; $82EBE2 static
+    ldx.b $1A                   ; $82EBE5 static
+    sta.w $1F12                 ; $82EBE7 static
+    sta.w $41EC,x               ; $82EBEA static
+    sta.w $422C,x               ; $82EBED static
+    clc                         ; $82EBF0 static
+    adc.b $1E                   ; $82EBF1 static
+    sta.w $1F14                 ; $82EBF3 static
+    sta.w $44EC,x               ; $82EBF6 static
+    sta.w $452C,x               ; $82EBF9 static
+    lda.w #$0001                ; $82EBFC static
+    ora.w $42EC,x               ; $82EBFF static
+    sta.w $42EC,x               ; $82EC02 static
+    sta.w $432C,x               ; $82EC05 static
+    rts                         ; $82EC08 static
 func_82EC09:
     lda.l $7E8CB5,x             ; $82EC09
     and.w #$00FF                ; $82EC0D

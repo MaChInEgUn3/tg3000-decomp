@@ -4988,3 +4988,334 @@ void race_state_reset(void) {
   wr16(DP + 0x14, 0);
   for(uint32_t x = 0x14; x != 0; x -= 2) wr16(0x0444 + x, 0xFFFF);
 }
+
+// A track object's place as an event's position: its byte * 16, a signed 12-bit value.
+static uint16_t track_event_place(uint16_t y) {
+  uint16_t at = (uint16_t)(rd8(0x8CB3 + (uint32_t)y) << 4);
+  if(at & 0x0800) at |= 0xF000;
+  return at;
+}
+
+// One road's track event written: `pattern` (unless 0) to its pattern word, the near and
+// far positions to its two words and its rows at D+$1A; its flag row's bit 0 set (`flag`).
+typedef struct { uint16_t pattern, nearWord, farWord, nearRow, farRow, flagRow; } TrackEventRoad;
+static const TrackEventRoad TRACK_ROAD_1 = {0x1F0A, 0x1F0E, 0x1F10, 0x3C6C, 0x3F6C, 0x3D6C};
+static const TrackEventRoad TRACK_ROAD_2 = {0x1F0C, 0x1F12, 0x1F14, 0x41EC, 0x44EC, 0x42EC};
+static void track_event_put(const TrackEventRoad* road, uint16_t pattern, uint16_t nearAt, uint16_t farAt, bool flag) {
+  const uint32_t x = rd16(DP + 0x1A);
+  if(pattern) wr16(road->pattern, pattern);
+  wr16(road->nearWord, nearAt);
+  wr16(road->nearRow + x, nearAt);
+  wr16(road->nearRow + 0x40 + x, nearAt);
+  wr16(road->farWord, farAt);
+  wr16(road->farRow + x, farAt);
+  wr16(road->farRow + 0x40 + x, farAt);
+  if(flag) {
+    const uint16_t f = (uint16_t)(rd16(road->flagRow + x) | 0x0001);
+    wr16(road->flagRow + x, f);
+    wr16(road->flagRow + 0x40 + x, f);
+  }
+}
+
+// TG3000_ROUTINE($82:EA93) track_event_20c7
+// TG3000_ROUTINE($82:EAFE) track_event_place_only
+// TG3000_ROUTINE($82:EB45) track_event2_set (and $82:EB4B, $82:EB51, $82:EB57, $82:EB98)
+// TG3000_ROUTINE($82:EB5D) track_event2_20c7
+// TG3000_ROUTINE($82:EB9E) track_event2_clear
+// TG3000_ROUTINE($82:EBC2) track_event2_place_only
+// Object `y`'s track event (kind: its +1 byte), by its handler in the table at $82:819E.
+// The first road's handlers are track_event_set/_clear and two never run ($82:EA93: pattern
+// $20C7, both positions the object's place; $82:EAFE: func_82EC09's positions, no pattern,
+// no flag); the second road's ($82:EB45-$82:EC08, never run) mirror them on $1F0C, $1F12/
+// $1F14 and the rows $41EC/$44EC/$42EC.
+static void track_event_run(uint16_t kind, uint16_t y) {
+  const uint16_t handler = bus_rd16(0x82819E + 2u * kind);
+  uint16_t at;
+  switch(handler) {
+    case 0xEA81: track_event_set(0x2007, y); break;
+    case 0xEA87: track_event_set(0x2047, y); break;
+    case 0xEA8D: track_event_set(0x2087, y); break;
+    case 0xEACE: track_event_set(0x2107, y); break;
+    case 0xEAD4: track_event_set(0xC2E7, y); break;
+    case 0xEADA: track_event_clear(); break;
+    case 0xEA93:  // never run
+      at = track_event_place(y);
+      track_event_put(&TRACK_ROAD_1, 0x20C7, at, at, true);
+      break;
+    case 0xEAFE:  // never run
+      at = func_82EC09(y);
+      track_event_put(&TRACK_ROAD_1, 0, at, (uint16_t)(at + rd16(DP + 0x1E)), false);
+      break;
+    case 0xEB45: case 0xEB4B: case 0xEB51: case 0xEB57: case 0xEB98: {  // never run
+      const uint16_t pattern = handler == 0xEB45 ? 0x2007 : handler == 0xEB4B ? 0x2047 : handler == 0xEB51 ? 0x2087
+                             : handler == 0xEB57 ? 0xC2E7 : 0x2107;
+      at = func_82EC09(y);
+      track_event_put(&TRACK_ROAD_2, pattern, at, (uint16_t)(at + rd16(DP + 0x1E)), true);
+      break;
+    }
+    case 0xEB5D:  // never run
+      at = track_event_place(y);
+      track_event_put(&TRACK_ROAD_2, 0x20C7, at, at, true);
+      break;
+    case 0xEB9E:  // never run
+      track_event_put(&TRACK_ROAD_2, 0, 0, 0, true);
+      break;
+    case 0xEBC2:  // never run
+      at = func_82EC09(y);
+      track_event_put(&TRACK_ROAD_2, 0, at, (uint16_t)(at + rd16(DP + 0x1E)), false);
+      break;
+    default:  // $EA80: nothing
+      break;
+  }
+}
+
+// One road object spawned from the stream at $7E:5B91 + x into slot y (the tables at
+// $7E:F433-$F933): its kind's entry (`table`, `field` its offsets), its graphics slot's
+// place added, its lane and row from the stream's bytes; func_85CDAF. Returns the next slot.
+static uint16_t road_object_spawn(uint32_t x, uint16_t y, uint16_t kind2, uint32_t table, uint32_t field, uint16_t base) {
+  const uint32_t t = bus_rd16(table + kind2);
+  const uint32_t s = y;
+  wr16(0xF533 + s, bus_rd16(0x860000 + field + t));
+  wr16(0xF433 + s, bus_rd16(0x860002 + field + t));
+  wr16(0xF733 + s, 0x007F);
+  wr16(0xF533 + s, (uint16_t)(rd16(0x6591 + (uint32_t)bus_rd16(0x860000 + t)) + rd16(0xF533 + s)));
+  const uint16_t lane = rd8(0x5B93 + x);
+  wr16(0xF633 + s, (uint16_t)(lane << 5));
+  wr16(0xF933 + s, (uint16_t)(lane << 1));
+  wr16(0xF833 + s, (uint16_t)((rd8(0x5B94 + x) << 1) + base));
+  func_85CDAF(y);
+  return (uint16_t)((y + 2) & 0x00FF);
+}
+
+// TG3000_ROUTINE($82:DFAD) road_rows_build
+void road_rows_build(void) {
+  // the road's sideways place $01CE over the rows crossed ($7E:3AEE, by DSP-4 products)
+  uint32_t x = (uint16_t)((uint16_t)(rd16(0x023E) + rd16(0x1EE6)) << 1) & 0x003E;
+  uint16_t crossed = (uint16_t)(rd16(0x0226) - rd16(0x023E));
+  if(crossed != 0) {
+    const uint16_t back = (uint16_t)(0 - rd16(0x023C));
+    uint32_t p = (uint32_t)dsp4_multiply((int16_t)((back >> 8) & 0x00FF), (int16_t)rd16(0x3AEE + x));
+    wr16(DP + 0x14, (uint16_t)((p << 8) & 0xFF00));
+    wr16(DP + 0x16, (uint16_t)((p >> 8) & 0x00FF));
+    uint16_t a = (uint16_t)(p >> 8);
+    wr16(0x01CE, a);
+    x += 2;
+    if(--crossed != 0) {
+      uint32_t c = rd16(0x023C) == 0;  // the carry of the SBC above
+      do {
+        const uint32_t sum = (uint32_t)a + rd16(0x3AEE + x) + c;
+        a = (uint16_t)sum;
+        c = sum >> 16;
+        x += 2;
+      } while(--crossed != 0);
+      wr16(0x01CE, a);
+    }
+    p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)((rd16(0x0224) & 0xFF00) >> 1), (int16_t)(uint16_t)(rd16(0x3AEE + x) << 1));
+    wr16(0x01CE, (uint16_t)((uint16_t)(p >> 16) + rd16(0x01CE)));
+  } else {
+    const uint32_t p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)((uint16_t)((rd16(0x0224) & 0xFF00) - rd16(0x023C)) >> 1),
+                                               (int16_t)(uint16_t)(rd16(0x3AEE + x) << 1));
+    wr16(0x01CE, (uint16_t)(p >> 16));
+  }
+  uint16_t row = (uint16_t)(rd16(0x023E) + 0x0020 + rd16(0x1EE6));
+  if(row >= rd16(0x019A)) row = (uint16_t)(row - rd16(0x019A));
+  wr16(DP + 0x16, row);
+  wr16(0x023C, (uint16_t)(rd16(0x0224) & 0xFF00));
+  const uint16_t rows = (uint16_t)(rd16(0x0226) - rd16(0x023E));
+  if(rows != 0) {
+    wr16(DP + 0x14, rows);
+    wr16(0x0240, (uint16_t)(rows + rd16(0x0240)));
+    wr16(DP + 0x22, rd16(0x1EDE));
+    x = (uint16_t)(rd16(0x023E) << 1) & 0x003E;
+    wr16(0x1EF8, (uint16_t)(rd16(0x3E6E + x) - rd16(0x3E6C + x)));
+    wr16(0x1EFA, (uint16_t)(rd16(0x3DEE + x) - rd16(0x3DEC + x)));
+    // each new row of the road (D+$14 of them), at row D+$16
+    do {
+      if(rd16(DP + 0x16) >= rd16(DP + 0x22)) {  // the armed jump: the rows past it
+        wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + rd16(0x1EE0)));
+        wr16(DP + 0x22, 0x7FFF);
+      }
+      const uint16_t d16 = rd16(DP + 0x16);
+      wr16(DP + 0x18, (uint16_t)((uint16_t)dsp4_multiply((int16_t)((uint16_t)(d16 << 2) >> 8), 0x000A) + rd16(DP + 0x98)));
+      const uint32_t entry = rd16(DP + 0x18);
+      const uint32_t y = (uint16_t)(d16 << 1) & 0x003E;
+      wr16(DP + 0x1A, (uint16_t)y);
+      wr16(DP + 0x1C, (uint16_t)(d16 & 0x003E));
+      const uint32_t c16 = d16 >> 15;  // the ASL's carry
+      uint32_t at = (uint16_t)(rd16(DP + 0x1C) + bus_rd16(0x840000 + entry) + c16);
+      wr16(0x3AEC + y, bus_rd16(0x850000 + at));
+      wr16(0x3B2C + y, bus_rd16(0x850000 + at));
+      at = (uint16_t)(rd16(DP + 0x1C) + bus_rd16(0x840002 + entry));
+      const uint16_t up = (uint16_t)(bus_rd16(0x850000 + at) - rd16(0x1E1E));
+      wr16(0x3B6C + y, up);
+      wr16(0x3BAC + y, up);
+      if((y & 0x0006) == 0x0006) wr16(0x1E1E, bus_rd16(0x850000 + at));
+      uint16_t a = (y & 0x0002) ? (uint16_t)(rd16(DP + 0x1C) | 0x0001) : rd16(DP + 0x1C);
+      a = (uint16_t)(a << 1);
+      if(!(a & 0x0040)) at = (uint16_t)(a + bus_rd16(0x840006 + entry));
+      else at = (uint16_t)((a & 0x003F) + bus_rd16(0x840008 + entry));
+      wr16(0x3CEC + y, rd16(0x5391 + at));
+      wr16(0x3D2C + y, rd16(0x5391 + at));
+      // the first pair of the list at $85:(+4) whose limit reaches the row
+      uint32_t list = bus_rd16(0x840004 + entry);
+      uint16_t v;
+      for(;;) {
+        v = bus_rd16(0x850000 + list);
+        if(bus_rd16(0x850002 + list) >= rd16(DP + 0x1A)) break;
+        v = bus_rd16(0x850004 + list);  // never run
+        if(bus_rd16(0x850006 + list) >= rd16(DP + 0x1A)) break;
+        list = (uint16_t)(list + 8);
+      }
+      wr16(0x3BEC + y, v);
+      wr16(0x3C2C + y, v);
+      wr16(0x3D6C + y, 0);
+      wr16(0x3DAC + y, 0);
+      uint32_t seg = (uint16_t)(rd16(DP + 0x9C) + rd16(DP + 0xA2));
+      if(rd16(DP + 0x16) < bus_rd16(0x840000 + seg)) {  // before the segment
+        if((uint16_t)(rd16(DP + 0x16) + 1) == rd16(DP + 0x22) && (rd16(0x1E66) & 0x8000)) {
+          wr16(0x3D6C + y, 0x8002);
+          wr16(0x3DAC + y, 0x8002);
+        }
+        const uint16_t edge = (uint16_t)(((rd16(DP + 0x16) & 0x0007) << 3) + rd16(0x1F0A));
+        wr16(0x3FEC + y, edge);
+        wr16(0x402C + y, edge);
+        goto flat;
+      }
+      uint16_t diff = (uint16_t)(rd16(DP + 0x16) - bus_rd16(0x840000 + seg));
+      while(diff >= 0x0040) {  // past the segment's end: the next ones
+        const uint16_t f = (uint16_t)(0x0008 | rd16(0x3D6C + y));
+        wr16(0x3D6C + y, f);
+        wr16(0x3DAC + y, f);
+        wr16(0x3FEC + y, rd16(0x3CEA + y));
+        wr16(0x402C + y, rd16(0x3CEA + y));
+        wr16(DP + 0xA2, (uint16_t)(rd16(DP + 0xA2) + 0x0014));
+        if(!(rd16(0x1E66) & 0x8000)) {
+          wr16(0x1EE6, bus_rd16(0x840010 + seg));
+          wr16(DP + 0x16, (uint16_t)(rd16(0x1EE6) + rd16(DP + 0x16)));
+        }
+        seg = (uint16_t)(rd16(DP + 0x9C) + rd16(DP + 0xA2));
+        if(rd16(DP + 0x16) < bus_rd16(0x840000 + seg)) goto flat;
+        diff = (uint16_t)(rd16(DP + 0x16) - bus_rd16(0x840000 + seg));
+      }
+      if(diff == 0x003E && (rd16(0x1E66) & 0x8000)) {
+        wr16(0x3D6C + y, 0x8001);
+        wr16(0x3DAC + y, 0x8001);
+      }
+      {
+        const uint16_t d1e = (uint16_t)(diff << 1);
+        wr16(DP + 0x1E, d1e);
+        wr16(DP + 0x20, (uint16_t)seg);
+        at = (uint16_t)(d1e + bus_rd16(0x840004 + seg));
+        wr16(0x3DEC + y, bus_rd16(0x850000 + at));
+        wr16(0x3E2C + y, bus_rd16(0x850000 + at));
+        at = (uint16_t)(d1e + bus_rd16(0x840006 + seg));
+        wr16(0x3E6C + y, bus_rd16(0x850000 + at));
+        wr16(0x3EAC + y, bus_rd16(0x850000 + at));
+        if(bus_rd16(0x82E261 + (uint32_t)bus_rd16(0x84000A + seg)) == 0xE265) {  // a flat shape
+          wr16(0x3C6C + y, 0xFF00);
+          wr16(0x3CAC + y, 0xFF00);
+          wr16(0x3F6C + y, 0x0100);
+          wr16(0x3FAC + y, 0x0100);
+        } else if(rd16(0x3DEC + y) & 0x8000) {  // $E279: the edges by the curve's sign
+          const uint16_t e = (uint16_t)((rd16(0x3DEC + y) >> 1) | 0x8000);
+          wr16(0x3C6C + y, e);
+          wr16(0x3CAC + y, e);
+          wr16(0x3F6C + y, 0x3FFF);
+          wr16(0x3FAC + y, 0x3FFF);
+        } else {
+          const uint16_t e = (uint16_t)(rd16(0x3DEC + y) >> 1);
+          wr16(0x3F6C + y, e);
+          wr16(0x3FAC + y, e);
+          wr16(0x3C6C + y, 0xC001);
+          wr16(0x3CAC + y, 0xC001);
+        }
+        uint32_t s2 = rd16(DP + 0x20);
+        uint16_t b = d1e;
+        if(b >= 0x0040) {
+          b = (uint16_t)(b - 0x0040);
+          s2 += 2;
+        }
+        at = (uint16_t)(b + bus_rd16(0x84000C + s2));
+        wr16(0x3FEC + y, rd16(0x5391 + at));
+        wr16(0x402C + y, rd16(0x5391 + at));
+        goto event;
+      }
+    flat:  // $E2D5: no curve, the edges at the events' places
+      wr16(0x3DEC + y, 0);
+      wr16(0x3E2C + y, 0);
+      wr16(0x3E6C + y, 0);
+      wr16(0x3EAC + y, 0);
+      wr16(0x3C6C + y, rd16(0x1F0E));
+      wr16(0x3CAC + y, rd16(0x1F0E));
+      wr16(0x3F6C + y, rd16(0x1F10));
+      wr16(0x3FAC + y, rd16(0x1F10));
+    event: {
+        const uint16_t obj = (uint16_t)(rd16(DP + 0x16) << 2);
+        const uint16_t kind = rd8(0x8CB4 + (uint32_t)obj);
+        if(kind != 0) track_event_run(kind, obj);
+      }
+      wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + 1));
+      if(rd16(DP + 0x16) == rd16(0x019A)) {
+        wr16(DP + 0x16, 0);
+        wr16(DP + 0xA2, 0);
+      }
+      wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
+    } while(rd16(DP + 0x14) != 0);
+    // the road objects whose place came up, and the lap's wrap
+    for(;;) {
+      uint32_t ox = rd16(DP + 0xA0);
+      if(rd16(0x0226) >= rd16(0x5B91 + ox)) {
+        uint16_t slot = rd16(0x0100);
+        do {
+          const uint16_t v = rd16(0x5B94 + ox);
+          if(v == 0) {
+            wr16(0x45EC, (uint16_t)(rd8(0x5B93 + ox) << 1));
+          } else if(v & 0xFF00) {
+            slot = road_object_spawn(ox, slot, (uint16_t)(v << 1), 0x86AC36, 0x22, 0x495C);
+          } else {
+            slot = road_object_spawn(ox, slot, (uint16_t)(v << 1), 0x86AE36, 0x1E, 0x45EC);
+          }
+          ox += 5;
+          wr16(DP + 0xA0, (uint16_t)ox);
+        } while(rd16(0x0226) >= rd16(0x5B91 + ox));
+        wr16(0x0100, slot);
+      }
+      if(rd16(0x0226) < rd16(0x019A)) break;
+      wr16(0x0226, (uint16_t)(rd16(0x0226) - rd16(0x019A)));
+      wr16(0x023E, rd16(0x0226));
+      wr16(DP + 0xA0, 0);
+      wr16(0x1E5E, 0);
+      wr16(0x1E60, 0);
+      wr16(0x45EC, 0x0140);
+    }
+    wr16(0x023E, rd16(0x0226));
+    // the road's kind at the player ($0260): the segment it is in
+    wr16(0x0260, 0);
+    for(uint32_t s = rd16(DP + 0x9C);; s = (uint16_t)(s + 0x0014)) {
+      const uint16_t ahead = (uint16_t)(rd16(0x0226) + 2);
+      const uint16_t start = bus_rd16(0x840000 + s);
+      if(ahead < start) break;
+      const uint16_t into = (uint16_t)(ahead - start);
+      if(into >= 0x0041) continue;
+      if((bus_rd16(0x840002 + s) & 0x00FF) == 0x000A && (uint16_t)(rd16(0x1EDE) + 1) == start) break;
+      wr16(0x0260, bus_rd16(0x840002 + s));
+      break;
+    }
+    wr16(0x0142, (uint16_t)(rd16(0x0260) & 0x00FF));
+  }
+  // $E497: the road's tilt $0237 from the heights a row ahead and three behind
+  uint16_t a = (uint16_t)(rd16(0x0226) + 1);
+  if(a >= rd16(0x019A)) a = (uint16_t)(a - rd16(0x019A));
+  wr16(DP + 0x14, func_82EA49(a));
+  a = rd16(0x0226);
+  if(a < 3) a = (uint16_t)(a - 3 + rd16(0x019A));
+  else a = (uint16_t)(a - 3);
+  wr16(DP + 0x16, func_82EA49(a));
+  const uint16_t d16 = rd16(DP + 0x16);
+  const uint32_t p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)(rd16(DP + 0x14) - d16), (int16_t)(uint16_t)((rd16(0x0225) + 0x0100) & 0x03FF));
+  const uint16_t top = (d16 & 0x8000) ? 3 : 0;
+  const uint16_t r = (uint16_t)((uint16_t)(d16 << 2) | top);
+  uint16_t s = (uint16_t)(((r >> 8) | (r << 8)) & 0x03FF);
+  if(s & 0x0080) s |= 0xFF00;
+  wr16(0x0237, (uint16_t)-(uint16_t)((uint16_t)(s + (uint16_t)(p >> 16)) + 9));
+}

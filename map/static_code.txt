@@ -127,3 +127,6 @@
 81:8562 81:8564 m16x16 ; sprite_part_put: the OAM buffer full (SEC; RTS; never run)
 81:8508 81:8527 m16x16 ; sprite_bar_put: the OAM buffer full, the rest drained (never run; returns with two words pushed)
 85:9B25 85:9B29 m16x16 ; race_grid_setup: variant 0's forward offsets ($85:9EEB; never run)
+82:E185 82:E19A m16x16 ; road_rows_build: a row's pair list past its first pair (never run)
+82:E265 82:E279 m16x16 ; road_rows_build: the flat road shape, the shape table's second entry (never run)
+82:EB45 82:EC09 m16x16 ; the second road's track events ($1F0C, $1F12/$1F14; never run)

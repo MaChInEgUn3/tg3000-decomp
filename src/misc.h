@@ -1334,4 +1334,18 @@ void race_grid_setup(void);
 // $FFFF.
 void race_state_reset(void);
 
+// $82:DFAD: the road's rows built as the player crosses them (D = $0100; DB = $7E inside,
+// $83 after). The road's sideways place $01CE from the rows crossed ($7E:3AEE; DSP-4 bits
+// 8-23 of products, then the high word). For each new row (row D+$16, D+$14 of them; the
+// armed jump $1EDE moving the rows on by $1EE0): its entry in the track's row table (D+$98
+// + row / 64 * 10, DSP-4), the heights and widths of $7E:3AEC-$3D2C from banks $84/$85 and
+// the header at $7E:5391, its segment's curve and edges ($3DEC-$402C; the shape table at
+// $82:E261, the segment cursor D+$A2 moving on past each segment's end with $1EE6 its
+// length), or before a segment the events' edges ($1F0A/$1F0E/$1F10); flags at $3D6C;
+// then its object's track event (the table at $82:819E). Then the road objects whose place
+// came up (the stream at $7E:5B91, slots $F433-$F933; func_85CDAF), the lap's wrap, the
+// road kind $0260/$0142 at the player, and the road's tilt $0237 (func_82EA49 a row ahead
+// and three behind; DSP-4).
+void road_rows_build(void);
+
 #endif

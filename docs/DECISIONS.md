@@ -1789,6 +1789,95 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The DSP-4's streamed commands are in scope (the owner's decision, 2026-11-21)
+
+- **The decision.** The owner leaned yes and asked the advisor, who agreed. Native C for
+  `$09` and `$06` (sprites) and `$01`/`$07`/`$08` (the road) belongs in this project, in
+  `src/dsp4.c`, in stages.
+  - Why here: `src/dsp4.c` already has five of the game's ten commands, and the firmware
+    oracle and the TAS exist only here.
+  - Without the native commands, every taped routine's C ends at `dsp4_port_*` with
+    nothing behind it.
+- **How.**
+  - The routines' C stays as it is. The native chip goes behind
+    `dsp4_port_write16`/`read16` and consumes the same word stream.
+  - The checks compose: the tape checks a routine against the stream, and refbench
+    checks the stream against the firmware.
+- **The first unit is an instrument.** refbench gets an ordered read/write tape like
+  harness-4's, anchored on the game's PCs (`$0009` is written at `$82:CC8F`). It is not
+  anchored on the shadow's busy flag, which produced the stray runs.
+- **Then one measurement.** Split the firmware tape into the record shapes the ported
+  routines encode, and check whether each record's answer is a function of its own words.
+  - If it is, `$09` is derived as `$0A` was, and `$06` follows.
+  - If not, the dependencies come first.
+  - The numbers go to the owner.
+- **No promise yet on the road commands** (`$01`/`$07`/`$08`) until the same measurement.
+- **The method stays outputs only.** Chosen inputs to the idle chip are allowed (as in
+  the `$0A` section) and get noted at first use. If outputs-only proves insufficient for a
+  command, stop and ask: the alternatives are licence questions.
+- **Pace.** These units move neither the routine count nor the byte percentage. They are
+  interleaved with roots, and long refbench captures run in the background, never during
+  a gate.
+
+## The road's rows (roots-94, 2026-11-21)
+
+**`road_rows_build` ($82:DFAD-$82:E502):** about 1,360 bytes, 18,564 entries on the 60k
+movie. It runs with D = `$0100`, DB = `$7E` inside and `$83` after: the second `PEA` is
+pulled at `$82:E429`, the first by the last `PLB`.
+- **The road's sideways place `$01CE`** comes from the rows crossed (`$7E:3AEE`), by DSP-4
+  products. The first is the product's bits 8-23. Then an `ADC` chain starts with the
+  carry of `SEC; SBC $023C`, which is set only when `$023C` is 0. Last comes a product's
+  high word.
+- **Each new row** (row `D+$16`, `D+$14` rows; the armed jump `$1EDE` moves the rows on by
+  `$1EE0`):
+  - **Its row-table entry:** `D+$98` + (row / 64) × 10 (DSP-4).
+  - **Its heights and widths** (`$7E:3AEC`-`$3D2C`) from banks `$84`/`$85` and the header at
+    `$7E:5391`. One `ADC` takes the carry of the `ASL` of `D+$16`, without a `CLC`.
+  - **Its segment's curve and edges** (`$3DEC`-`$402C`):
+    - the shape table at `$82:E261` gives a curve shape or a flat one;
+    - the segment cursor `D+$A2` moves on past each segment's end, adding the segment's
+      length via `$1EE6` while bit 15 of `$1E66` is clear;
+    - before a segment, the edges come from the track events' words
+      (`$1F0A`/`$1F0E`/`$1F10`);
+    - flags `$8001`/`$8002`/`$0008` go to `$3D6C`.
+  - **Then its object's track event** (the table at `$82:819E`).
+- **After the rows:**
+  - the road objects whose place has come up (the stream at `$7E:5B91`, slots
+    `$F433`-`$F933`, `func_85CDAF`);
+  - the lap's wrap;
+  - the road kind `$0260`/`$0142` at the player;
+  - the road's tilt `$0237`, from `func_82EA49` one row ahead and three behind (DSP-4; the
+    original skips the product's low word with a write).
+- **Both roads' track events.**
+  - The first road's two never-run handlers, `$82:EA93` (pattern `$20C7` at the object's
+    place) and `$82:EAFE` (positions only), are already decoded.
+  - The second road's events (`$82:EB45`-`$82:EC08`) were undecoded. They mirror the
+    first set on `$1F0C`, `$1F12`/`$1F14` and the rows `$41EC`/`$44EC`/`$42EC`, and are now
+    static code.
+  - In the C one helper writes either road. The handlers have no rows: this row's fuzz
+    runs them.
+- **Two holes in the extent.** No movie or fuzz case reaches them:
+  - a row list's second pair (`$82:E185`, decoded);
+  - the shape table (`$82:E261`) and its flat shape (`$82:E265`, decoded from inside the
+    table).
+
+  Both depend only on ROM data that no track scanned here uses.
+- **The fuzz** needed many rounds. It works in three scenarios:
+  - **(0) one of the segment-like tables:** only where its next 8 segments' lists stay in
+    ROM and its rows stay inside this track. Bit 15 of `$1E66` is clear only when the
+    simulated chain of length jumps ends inside those checks. The rows are put before,
+    inside, past, or exactly `$3E` into a segment;
+  - **(1) the race's object stream rewound** to an entry, with the place at it or at the
+    next one;
+  - **(2) the lap's ends:** the rows reaching `$019A`, the place passing it, or the lap's
+    start.
+
+  It also writes the byte `$0225` and not the word, since the word reaches `$0226`. The
+  next rows' objects get every kind the event table handles, including the second road's.
+  The row fuzzes on the game's stack (`.fuzzStack`, as `road_shift_frame`).
+- **Result:** live 4,000/4,000 (60k) and 216/216 (race1), fuzz 500/500 and 200/200, paths
+  549/549. The live samples passed from the first run; the rounds were all the fuzz's.
+
 ## The race's state reset (roots-93, 2026-11-21)
 
 **`race_state_reset` ($82:A28B):** about 1,000 bytes, 5 entries, all of them interrupted.
@@ -2329,8 +2418,10 @@ parked for a handler that had never run and was not decoded.
   and reached by neither the movies nor the fuzz.
 - **The fuzz:**
   - Both movies end on a track whose table has no segment within reach (its first start
-    is `$7000`). So half the cases use one of the ROM's tables that holds kinds 6 and 10
-    (`$84:C1C1`, `$E171`, `$E675`, `$F257`; bank `$84` is ROM only from `$8000`).
+    is `$7000`). So half the cases use byte runs of bank `$84` that parse as segments
+    holding kinds 6 and 10 (`$84:C1C1`, `$E171`, `$E675`, `$F257`; bank `$84` is ROM only
+    from `$8000`). Roots-94 found that some of them are not real tracks' tables: their
+    pointers can lead out of ROM.
   - The player's place stays well before the table's end, even after the armed jump and
     `$1EE6` move it on: past the end, the original jumps through stray table entries.
   - A temporary count saw both branches of the kind 6/10 handler (45 and 38 times in 200

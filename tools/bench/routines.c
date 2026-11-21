@@ -8281,6 +8281,132 @@ static void fuzz_race_state_reset(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   wr16ram(ram, 0x6B33, (uint16_t)rnd());
 }
 
+// ---- road_rows_build ($82:DFAD) ----  its caller returns into code that loads its own
+// registers: no register outputs but DB ($83, its last PLB); the bench judges the flags
+static void call_road_rows_build(const Regs* in, Regs* out) {
+  (void)in;
+  road_rows_build();
+  out->db = 0x83;
+}
+// the race's road (its tables, cursors and object stream as the race left them); 0-3 rows
+// crossed (past the lap's end now and then), the multipliers' inputs, $1E66's bit 15, the
+// armed jump near the rows; the next rows' objects of every kind the event table handles
+// (both roads', the never-run ones among them)
+static void fuzz_road_rows_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  const uint16_t laps = (uint16_t)(ram[0x019A] | ram[0x019B] << 8);
+  uint16_t at = (uint16_t)(ram[0x023E] | ram[0x023F] << 8);
+  // three kinds of case: (0) a segment table's rows, (1) the race's object stream rewound to
+  // one of its entries, the place at it (the spawns run), (2) the lap's ends or the race's
+  // own state
+  const uint32_t scenario = rnd() % 3;
+  bool rewound = false;
+  if(scenario == 1) {
+    uint32_t n = 0;  // the stream's entries in order (their places rising, below the lap)
+    for(uint16_t last = 0; n < 64; n++) {
+      const uint16_t place = (uint16_t)(ram[0x5B91 + 5 * n] | ram[0x5B92 + 5 * n] << 8);
+      if(place < last || place >= laps) break;
+      last = place;
+    }
+    if(n > 0) {
+      const uint32_t j = rnd() % n;
+      wr16ram(ram, DP + 0xA0, (uint16_t)(5 * j));
+      // the place at that entry, or at the next one (both spawn in one frame)
+      const uint32_t k = (j + 1 < n && (rnd() & 1)) ? j + 1 : j;
+      at = (uint16_t)(ram[0x5B91 + 5 * k] | ram[0x5B92 + 5 * k] << 8);
+      rewound = true;
+    }
+  }
+  // near the lap's end: the rows (32 ahead) reach $019A, or the place itself passes it
+  const bool passing = scenario == 2 && laps > 0x30 && rnd() % 3 == 0;
+  if(scenario == 2 && laps > 0x30 && !passing && (rnd() & 1)) at = (uint16_t)(laps - 0x21 - rnd() % 3);
+  if(passing) at = (uint16_t)(laps - 1 - rnd() % 2);
+  static const uint16_t tables[] = {0xC1C1, 0xE171, 0xE675, 0xF257};
+  uint16_t base = 0, seg = 0;
+  uint32_t s = 0;
+  for(int tries = 0; tries < 16; tries++) {  // a table and segment valid for this track (below)
+    base = tables[rnd() % 4];
+    seg = (uint16_t)(0x14 * (rnd() % 4));
+    s = 0x840000 + (uint32_t)(uint16_t)(base + seg);
+    bool ok = rom16(s) + 0x60 < laps;
+    for(uint32_t k = 0; ok && k < 8 * 0x14; k += 0x14)
+      if(rom16(s + k + 4) < 0x8000 || rom16(s + k + 6) < 0x8000 || rom16(s + k + 0x0A) > 2) ok = false;
+    if(ok) break;
+  }
+  // one of the ROM's segment tables (only where its segment's curve lists stay in ROM), the
+  // rows near one of its segments
+  bool valid = true, exact = false;  // this segment and the next ones it may move on to
+  for(uint32_t k = 0; k < 8 * 0x14; k += 0x14)
+    if(rom16(s + k + 4) < 0x8000 || rom16(s + k + 6) < 0x8000 || rom16(s + k + 0x0A) > 2) valid = false;
+  // (its rows below this track's length, as a row always is: the rows' table entries past
+  // it are not the track's)
+  if(rom16(s) + 0x60 >= laps) valid = false;
+  if(scenario == 0 && valid) {
+    wr16ram(ram, DP + 0x9C, base);
+    wr16ram(ram, DP + 0xA2, seg);
+    wr16ram(ram, 0x1EE6, 0);
+    // the row (32 ahead) before, inside, or exactly $3E into the segment (then with bit 15
+    // of $1E66 and no armed jump: the $8001 flag)
+    exact = rnd() % 3 == 0;
+    at = (uint16_t)(rom16(0x840000 + (uint32_t)(uint16_t)(base + seg)) - 0x20 + (exact ? 0x3E : rnd() % 0x80 - 2));
+  }
+  wr16ram(ram, 0x0224, (uint16_t)rnd());
+  ram[0x0225] = (uint8_t)rnd();  // a byte: the word would reach $0226
+  const bool lapStart = scenario == 2 && rnd() % 4 == 0;  // the lap's start (the tilt's rows wrap back)
+  if(lapStart) at = (uint16_t)(rnd() % 3);
+  if(rewound) {  // the place at the entry, 0-3 rows crossed to it
+    wr16ram(ram, 0x0226, at);
+    at = (uint16_t)(at >= 3 ? at - rnd() % 4 : at);
+    wr16ram(ram, 0x023E, at);
+  } else {
+    wr16ram(ram, 0x023E, at);
+    wr16ram(ram, 0x0226, lapStart ? at : passing ? (uint16_t)(at + 1 + rnd() % 3) : (uint16_t)(at + rnd() % 4));
+  }
+  wr16ram(ram, 0x023C, (rnd() & 1) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, 0x1E66, (uint16_t)rnd());
+  const uint16_t d1ee6 = (uint16_t)(ram[0x1EE6] | ram[0x1EE7] << 8);
+  uint16_t row = (uint16_t)(at + 0x20 + d1ee6);
+  if(laps != 0 && row >= laps) row = (uint16_t)(row - laps);
+  wr16ram(ram, 0x1EDE, (exact || scenario == 0 || (rnd() & 1)) ? 0x7FFF : (uint16_t)(row + rnd() % 4));
+  if(exact) wr16ram(ram, 0x1E66, (uint16_t)(rnd() | 0x8000));
+  else if(scenario == 0 && valid && rnd() % 3 != 0) {
+    // past a segment with bit 15 clear: each segment passed adds its length to the row; only
+    // when that whole chain (up to 32 segments) visits segments whose lists stay in ROM, ends,
+    // and keeps the row inside the track
+    uint16_t r16 = (uint16_t)(at + 0x20);
+    uint32_t k = 0;
+    bool fine = true;
+    for(; k < 32; k++) {
+      const uint32_t sk = s + 0x14 * k;
+      if(rom16(sk + 4) < 0x8000 || rom16(sk + 6) < 0x8000 || rom16(sk + 0x0A) > 2 || r16 >= laps) {
+        fine = false;
+        break;
+      }
+      const uint16_t d = (uint16_t)(r16 - rom16(sk));
+      if((d & 0x8000) || d < 0x40) break;
+      r16 = (uint16_t)(r16 + rom16(sk + 0x10));
+    }
+    if(fine && k < 32 && r16 < laps) wr16ram(ram, 0x1E66, (uint16_t)(rnd() & 0x7FFF));
+    else wr16ram(ram, 0x1E66, (uint16_t)(rnd() | 0x8000));
+  } else if(scenario == 0 && valid) {
+    wr16ram(ram, 0x1E66, (uint16_t)(rnd() | 0x8000));  // no lengths added: the row stays near the checked segments
+  }
+  // the road object stream's next entry (at D+$A0) now and then one without a kind (its lane
+  // to $45EC), its place reached
+  if(rnd() % 3 == 0) {
+    const uint32_t ox = (uint16_t)(ram[DP + 0xA0] | ram[DP + 0xA1] << 8);
+    wr16ram(ram, 0x5B91 + ox, (uint16_t)(ram[0x0226] | ram[0x0227] << 8));
+    wr16ram(ram, 0x5B94 + ox, 0);
+  }
+  static const uint8_t kinds[] = {0, 1, 80, 81, 82, 83, 84, 95, 96, 97, 184, 185, 186, 187, 188, 199, 200, 201};
+  for(int i = 0; i < 6; i++) {
+    const uint32_t obj = (uint16_t)((uint16_t)(row + i) << 2);
+    ram[0x8CB4 + obj] = kinds[rnd() % (sizeof kinds / sizeof kinds[0])];
+    ram[0x8CB3 + obj] = (uint8_t)rnd();
+    ram[0x8CB5 + obj] = (uint8_t)rnd();
+  }
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9201,6 +9327,11 @@ const Routine routines[] = {
   {.name = "race_state_reset", .entry = 0x82A28B, .end = 0x82A672, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_state_reset, ALL_OUTPUTS,
    .fuzz = fuzz_race_state_reset},
+  {.name = "road_rows_build", .entry = 0x82DFAD, .end = 0x82E503, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_build, .fuzz = fuzz_road_rows_build,
+   .fuzzStack = 0x1FF1,  // the game's stack (entry SP $1FEF, as road_shift_frame): it writes $1EE6-$1EFA
+   .holes = {{0x82E185, 0x82E19A}, {0x82E261, 0x82E279}}},  // never reachable with the ROM's data: a row
+                       // list's second pair; the shape table and its flat shape (no segment uses it)
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
