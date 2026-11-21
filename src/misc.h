@@ -1463,4 +1463,11 @@ void scene_step(void);
 // $BC9B (at $0005).
 void split_screen_setup(uint16_t ret, uint8_t db);
 
+// $8A:891C: the title scene's tiles and starting state (D = $0100). Three tile sets unpacked
+// to VRAM ($7E:8256 at $2000, $7E:B385 at $2A00, $7E:9F07 at $3000), $0800 bytes of
+// $7E:A071 uploaded to $3600; D+$5A = 0; the objects placed from (0, $200)
+// (screen_objects_place); D+$36 = 3, D+$4A = 0, D+$38 = 0, D+$4C = 0; the car's sprite at
+// ($FF36, $9B), tile $0100, shown ($0500 = 1).
+void title_scene_load(void);
+
 #endif

@@ -1819,6 +1819,23 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The title scene's load (roots-105, 2026-11-21)
+
+**`title_scene_load` ($8A:891C):**
+- **The tiles:** three sets unpacked to VRAM (`$7E:8256` at `$2000`, `$7E:B385` at
+  `$2A00`, `$7E:9F07` at `$3000`), and `$0800` bytes of `$7E:A071` uploaded to `$3600`.
+- **The objects** are placed from (0, `$200`) by `screen_objects_place`.
+- **The starting state:** D+$36 = 3 and D+$4A/D+$38/D+$4C = 0. The car's sprite goes to
+  (`$FF36`, `$9B`) with tile `$0100`, shown.
+- **All four live entries are interrupted,** because the unpacking runs across frames. Two
+  were replayed from their entry state, and the fuzz replays the live state 500 times.
+  - With no return watched, every flag counts as live. So V is modelled: it comes from
+    screen_objects_place's last ADC, since D+$3C = 0 always takes that path (or, with
+    D+$5E set, from decompress_to_vram's clear V).
+  - X and Y are not compared: they are screen_objects_place's, and mode7_view (next) does
+    not read them.
+- **Result:** fuzz 500/500, replayed 2/2, paths 43/43.
+
 ## The split screen's setup (roots-104, 2026-11-21)
 
 **`split_screen_setup` ($80:B7E7-$80:B94E):** the two players' views set up for a split

@@ -6262,3 +6262,24 @@ void split_screen_setup(uint16_t ret, uint8_t db) {
   platform_set_interrupts(0xB1);
   wr16(0x0005, 0xBC9B);  // then CLI
 }
+
+// TG3000_ROUTINE($8A:891C) title_scene_load
+void title_scene_load(void) {
+  (void)decompress_to_vram(DP, 0x7E, 0x8256, 0x2000);
+  (void)decompress_to_vram(DP, 0x7E, 0xB385, 0x2A00);
+  (void)decompress_to_vram(DP, 0x7E, 0x9F07, 0x3000);
+  wr16(DP + 0x14, 0x007E);
+  upload_vram_now(0x3600, 0x7E, 0xA071, 0x0800);
+  wr16(DP + 0x5A, 0);
+  wr16(DP + 0x3C, 0);
+  wr16(DP + 0x3E, 0x0200);
+  (void)screen_objects_place();
+  wr16(DP + 0x36, 3);
+  wr16(DP + 0x4A, 0);  // 3 / 4
+  wr16(DP + 0x38, 0);
+  wr16(DP + 0x4C, 0);
+  wr16(0x0600, 0xFF36);
+  wr16(0x0700, 0x009B);
+  wr16(0x0800, 0x0100);
+  wr16(0x0500, 1);
+}

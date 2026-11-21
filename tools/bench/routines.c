@@ -8862,6 +8862,39 @@ static void call_split_screen_setup(const Regs* in, Regs* out) {
   out->v = (~(now ^ 1) & (now ^ sum) & 0x8000) != 0;
 }
 
+// ---- title_scene_load ($8A:891C) ----  A = 1 (Z N clear), C clear (the LSRs of 0); X and Y
+// are screen_objects_place's (its caller, mode7_view next, does not read them); V is its
+// right column's last ADC (D+$3C = 0 always takes that path), or with D+$5E set (no
+// placing) decompress_to_vram's clear V
+static void call_title_scene_load(const Regs* in, Regs* out) {
+  (void)in;
+  const bool placed = rd16(DP + 0x5E) == 0;
+  title_scene_load();
+  out->a = 1;
+  out->n = out->z = false;
+  out->c = false;
+  out->v = false;
+  if(placed) {
+    uint32_t c = 0, s;
+    uint16_t v = rd16(0x072A);
+    for(int i = 0; i < 3; i++) {
+      s = (uint32_t)v + (i == 0 ? 0x10 : 0x08) + c;
+      c = s >> 16;
+      v = (uint16_t)s;
+    }
+    v = rd16(0x062A);
+    uint16_t before = 0, add = 0;
+    for(int i = 0; i < 4; i++) {
+      before = v;
+      add = i == 0 ? 0x50 : 0x08;
+      s = (uint32_t)v + add + c;
+      c = s >> 16;
+      v = (uint16_t)s;
+    }
+    out->v = (~(before ^ add) & (before ^ v) & 0x8000) != 0;
+  }
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9329,6 +9362,9 @@ const Routine routines[] = {
    .lowWramDb = true, .fixedD = true, .call = call_scene_step, .fuzz = fuzz_scene_step,
    .holes = {{0x8A833C, 0x8A833D},    // a lone RTS no state points at
              {0x8A84B9, 0x8A8524}}},  // objects_scatter_init and its rng_next copy (screen_objects_place's)
+  {.name = "title_scene_load", .entry = 0x8A891C, .end = 0x8A898F, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_title_scene_load, .compareA = true,
+   .fuzz = fuzz_nothing},
   {.name = "screen_objects_place", .entry = 0x8A898F, .end = 0x8A8AE7, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_screen_objects_place, ALL_OUTPUTS,
    .fuzz = fuzz_screen_objects_place, .holes = {{0x8A89E1, 0x8A8A43}}},  // other code (unknown bytes), not reached from here

@@ -39,7 +39,7 @@ CODE_8A803B:
     jsl.l clear_dp_scratch      ; $8A8050
     jsl.l func_8A8EEF           ; $8A8054
     jsr.w vram_planes_build     ; $8A8058
-    jsr.w $891C                 ; $8A805B
+    jsr.w title_scene_load      ; $8A805B
     jsr.w mode7_view            ; $8A805E
     jsl.l oam_from_objects      ; $8A8061
     jsr.w hdma_title_setup      ; $8A8065
@@ -984,6 +984,7 @@ CODE_8A88BB:
     rep.b #$20                  ; $8A88DA
     rts                         ; $8A88DC
     incbin !baserom:$508DD..$5091C
+title_scene_load:
     lda.w #$007E                ; $8A891C
     ldx.w #$8256                ; $8A891F
     ldy.w #$2000                ; $8A8922
