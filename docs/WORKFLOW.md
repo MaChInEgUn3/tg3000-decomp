@@ -37,6 +37,7 @@ build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.
 build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --dsp4-mul /tmp/mul.txt   # src/dsp4.c vs the chip
 build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --dsp4-catalogue /tmp/cat.txt   # commands + clean-room shadow
 build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --frames 50000 --dsp4-cmdlog 0A /tmp/0a.txt   # one command's runs (in, out); checked against src/dsp4.c
+build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --frames 20000 --dsp4-tape /tmp/t.bin 0 && python3 -I tools/dsp4_tape.py /tmp/t.bin   # every DSP-4 data byte in order; the $09 streams measured
 ```
 
 Frame dumps are game assets: write them outside the repo (they are also ignored).

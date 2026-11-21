@@ -1819,6 +1819,41 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## DSP-4 command $09 measured: it is stateful (dsp4-09a, 2026-11-21)
+
+**The first step of the owner's decision: an instrument and one measurement.**
+- **`refbench --dsp4-tape FILE FROM`** writes every DSP-4 data-port byte from frame FROM on,
+  in order. Each is a 5-byte record: the PC (3 bytes), the value, and read or write. This
+  is outputs only: what the game sends and gets back, never the chip's memory.
+- **`tools/dsp4_tape.py`** splits the capture into the game's `$09` streams. It anchors on
+  the game's PCs, not the shadow:
+  - a stream opens with the `$0009` word at `$82:CC8F` and closes with `$0006` at
+    `$82:AE1C`;
+  - inside, a record is the words written since the chip's last answer, then the answer.
+- **The measurement**, over the first 20,000 TAS frames (213 MB of tape: 6,062 streams,
+  837,462 records). For each key, the share that got more than one answer:
+
+  | Key | Keys with more than one answer |
+  |---|---|
+  | the record's own words | 1,020 of 265,928 (0.38%) |
+  | + the stream's preamble and the object's head | 1,820 of 692,258 (0.26%) |
+  | + all of the frame's earlier DSP-4 traffic | 821 of 801,225 (0.10%) |
+
+- **What that says:**
+  - **The answer is not a function of the record alone.** Whether an object is shown
+    also depends on the frame's earlier traffic, the road commands before `$09`, probably
+    the road's profile hiding sprites behind hills. Adding that traffic halves the
+    conflicts.
+  - **What remains depends on earlier records of the same stream.** In one stream, the
+    same car's identical head and part words get different OAM positions and palettes
+    (attribute `$72`/`$76`/`$78`). The chip keeps state from part to part.
+  - **Not OAM filling up:** objects are hidden at any count of sprites already returned.
+- **So `$09` cannot be derived the way `$0A` was.** A native `$09` needs a model of the
+  chip's state: what the road commands leave, and what carries from part to part. The
+  next step, still outputs only, is to find those dependencies: which earlier words decide
+  visibility, and which counter moves the positions and palettes. Per the decision, the
+  numbers go to the owner before any formula is written.
+
 ## The road's rows (roots-94, 2026-11-21)
 
 **`road_rows_build` ($82:DFAD-$82:E502):** about 1,360 bytes, 18,564 entries on the 60k

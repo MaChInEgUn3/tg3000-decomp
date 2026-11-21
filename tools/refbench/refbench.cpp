@@ -209,8 +209,22 @@ static void finishCapture() {
 static bool catalogueOn;
 static void catalogueAccess(unsigned addr, unsigned char v, bool write);
 
+// --dsp4-tape FILE FROM: every DSP-4 data-port byte from frame FROM on, in order, as 5-byte
+// records (the PC as 3 bytes low first, the value, 1 for a read or 0 for a write): the game's
+// streams to split offline by the PCs of their command words (outputs only: what the game
+// writes and reads, never the chip's memory)
+static FILE* tape;
+static long tapeFrom;
+static bool tapeOn;  // from frame tapeFrom on (set by the frame loop)
+static void tapeAccess(unsigned char v, bool write) {
+  const unsigned char rec[5] = {(unsigned char)lastPc, (unsigned char)(lastPc >> 8), (unsigned char)(lastPc >> 16), v,
+                                (unsigned char)(write ? 0 : 1)};
+  std::fwrite(rec, 1, sizeof rec, tape);
+}
+
 static void rwHook(unsigned addr, unsigned char v, bool write) {
   if(!isDsp4Data(addr)) return;
+  if(tapeOn) tapeAccess(v, write);
   if(catalogueOn) catalogueAccess(addr, v, write);
   if(write && isCommand0Site(lastPc) && !(cap.active && cap.nw == 1)) {  // a new command $0000
     finishCapture();
@@ -476,6 +490,11 @@ int main(int argc, char** argv) {
       cmdlogPath = argv[++i];
     }
     else if(!std::strcmp(argv[i], "--wram-at") && i + 2 < argc) { wramAt = std::atol(argv[++i]); wramFile = argv[++i]; }
+    else if(!std::strcmp(argv[i], "--dsp4-tape") && i + 2 < argc) {
+      tape = std::fopen(argv[++i], "wb");
+      if(tape == nullptr) { std::perror(argv[i]); return 1; }
+      tapeFrom = std::atol(argv[++i]);
+    }
     else { std::fprintf(stderr, "unknown option %s\n", argv[i]); return 2; }
   }
 
@@ -495,7 +514,7 @@ int main(int argc, char** argv) {
     if(cataloguePath.empty()) cataloguePath = cmdlogPath + ".catalogue";
   }
   catalogueOn = !cataloguePath.empty();
-  if(!mulPath.empty() || catalogueOn) SNES::refbench_rw_hook = rwHook;
+  if(!mulPath.empty() || catalogueOn || tape != nullptr) SNES::refbench_rw_hook = rwHook;
   FILE* log = std::fopen(argv[2], "r");
   if(log == nullptr) { std::perror(argv[2]); return 1; }
 
@@ -571,6 +590,7 @@ int main(int argc, char** argv) {
     snes_run();
     frame++;
     curFrame = frame;
+    tapeOn = tape != nullptr && frame >= tapeFrom;
     unsigned long writes = SNES::necdsp_writes - writesBefore;
     writesBefore = SNES::necdsp_writes;
     if(writes > 0) racing++;
@@ -584,6 +604,7 @@ int main(int argc, char** argv) {
   std::fclose(log);
   if(hashes) std::fclose(hashes);
   if(catalogueOn) writeCatalogue(cataloguePath);
+  if(tape != nullptr) std::fclose(tape);
   if(cmdlog != nullptr) {
     cmdlogFlush();
     std::fclose(cmdlog);
