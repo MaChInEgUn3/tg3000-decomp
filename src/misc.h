@@ -1277,4 +1277,11 @@ uint16_t car_sprite_head(uint16_t x, uint16_t y);
 bool object_sprite_raised(uint16_t x);
 bool object_sprite_flat(uint16_t x);
 
+// $82:DB87: a track object drawn as a group of four sprites (D = $0100): D+$24 = the graphics
+// word at $86:AF06 + `x`, D+$26 gains the object's bits 8-10 moved up one, D+$22 = 0, D+$20 =
+// its place p; then by bits 4-5 of its +2 byte (the table at $82:DBAA): sprite_put_rows_a
+// at p, -p, -p - $80, p + $80 (kinds 0, 3); _a and _b at p, then at -p (kind 1); or _b at
+// the four places (kind 2). It stops at the first that fills the buffer; returns its result.
+bool object_sprite_group(uint16_t x);
+
 #endif

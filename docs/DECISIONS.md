@@ -1789,6 +1789,22 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A track object as a group of four sprites (roots-88, 2026-11-21)
+
+**`object_sprite_group` ($82:DB87):** 146,642 entries on the 60k movie.
+- **Setup:** `D+$24` and `D+$26`'s bits as in `object_sprite_flat`, `D+$22` = 0, and
+  `D+$20` = the object's place p.
+- **Then by bits 4-5 of the object's +2 byte** (a jump table at `$82:DBAA`, a hole in the
+  row's extent):
+  - kinds 0 and 3: `sprite_put_rows_a` at p, -p, -p - `$80` and p + `$80` (four sprites
+    about the road's middle);
+  - kind 1: `_a` and `_b` at p, then at -p;
+  - kind 2: `_b` at the four places.
+- It stops at the first sprite that fills the buffer and returns its result (the carry).
+- **Never run:** kind 2's sign extension of a negative place (`$82:DC38`), now static code.
+- **Result:** live 4,000/4,000 (60k) and 1,208/1,208 (race1), fuzz 500/500 and 200/200,
+  paths 102/102.
+
 ## Two track objects' sprites (roots-87, 2026-11-21)
 
 **`object_sprite_raised` ($82:DAFD) and `object_sprite_flat` ($82:DB4D):** handlers from the

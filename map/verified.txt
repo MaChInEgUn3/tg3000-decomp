@@ -444,3 +444,4 @@
 82D267 car_sprite_head src/misc.c ac303af64a1576a6 4000 500 42/42 verified live-flags:- replayed:0
 82DAFD object_sprite_raised src/misc.c e37bbe76cd6d7817 1342 500 35/35 verified live-flags:C replayed:0
 82DB4D object_sprite_flat src/misc.c e37bbe76cd6d7817 2166 500 24/24 verified live-flags:C replayed:0
+82DB87 object_sprite_group src/misc.c 69b8e22309d92141 4000 500 102/102 verified live-flags:C replayed:0

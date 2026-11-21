@@ -467,3 +467,4 @@ func    82DEA8   sprite_parts_stream_rom ; a sprite's parts streamed from a ROM 
 func    82D267   car_sprite_head     ; a car's sprite head streamed to the DSP-4, its answer to D+$2A (a tape row) -> src/misc.c
 func    82DAFD   object_sprite_raised ; a track object's sprite with its height, streamed (a tape row) -> src/misc.c
 func    82DB4D   object_sprite_flat  ; a track object's sprite on the road, streamed (a tape row) -> src/misc.c
+func    82DB87   object_sprite_group ; a track object as four sprites about the road's middle, streamed (a tape row) -> src/misc.c

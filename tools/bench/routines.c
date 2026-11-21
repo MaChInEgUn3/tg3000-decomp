@@ -8132,6 +8132,10 @@ static void fuzz_object_sprite(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x0024, (uint16_t)rnd());
 }
 
+// ---- object_sprite_group ($82:DB87) ----  a DSP-4 tape row: as object_sprite_flat (C = the
+// buffer filled; the other flags by liveness)
+static void call_object_sprite_group(const Regs* in, Regs* out) { out->c = object_sprite_group(in->x); }
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9032,6 +9036,10 @@ const Routine routines[] = {
   {.name = "object_sprite_flat", .entry = 0x82DB4D, .end = 0x82DB87, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_object_sprite_flat, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
+  {.name = "object_sprite_group", .entry = 0x82DB87, .end = 0x82DC69, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
+   .call = call_object_sprite_group, .fuzz = fuzz_object_sprite, .dsp4Tape = true,
+   .holes = {{0x82DBAA, 0x82DBB2}}},  // the handlers' jump table
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

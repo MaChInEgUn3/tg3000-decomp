@@ -3498,6 +3498,7 @@ CODE_82DB74:
     jmp.w sprite_put_rows_b     ; $82DB81
 CODE_82DB84:
     jmp.w sprite_put_rows_a     ; $82DB84
+object_sprite_group:
     lda.l $86AF06,x             ; $82DB87
     sta.b $24                   ; $82DB8B
     ldx.b $1C                   ; $82DB8D
@@ -3582,7 +3583,7 @@ CODE_82DC09:
     asl a                       ; $82DC32
     bit.w #$0800                ; $82DC33
     beq CODE_82DC3B             ; $82DC36
-    incbin !baserom:$15C38..$15C3B
+    ora.w #$F000                ; $82DC38 static
 CODE_82DC3B:
     sta.b $20                   ; $82DC3B
     stz.b $22                   ; $82DC3D
