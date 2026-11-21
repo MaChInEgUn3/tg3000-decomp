@@ -54,7 +54,7 @@ CODE_8A803B:
     lda.w #$0001                ; $8A807C
     sta.w $050A                 ; $8A807F
     sta.w $050C                 ; $8A8082
-    jsr.w $82C0                 ; $8A8085
+    jsr.w scene_step            ; $8A8085
     jsr.w func_8A8232           ; $8A8088
     jsr.w func_8A823D           ; $8A808B
     jsr.w func_8A8290           ; $8A808E
@@ -101,7 +101,7 @@ CODE_8A8142:
     jsr.w tile_anim_step        ; $8A8142
     lda.w #$0002                ; $8A8145
     tsb.w $0026                 ; $8A8148
-    jsr.w $82C0                 ; $8A814B
+    jsr.w scene_step            ; $8A814B
     jsr.w func_8A8232           ; $8A814E
     jsr.w func_8A823D           ; $8A8151
     jsr.w func_8A8290           ; $8A8154
@@ -244,6 +244,7 @@ CODE_8A82B1:
     stx.b $50                   ; $8A82B1 static
     rts                         ; $8A82B3 static
     incbin !baserom:$502B4..$502C0
+scene_step:
     lda.b $48                   ; $8A82C0
     beq CODE_8A82C7             ; $8A82C2
     dec.b $48                   ; $8A82C4
@@ -296,7 +297,8 @@ CODE_8A830B:
     sta.b $44                   ; $8A831F
 CODE_8A8321:
     rts                         ; $8A8321
-    incbin !baserom:$50322..$50325
+    inc.b $58                   ; $8A8322 static
+    rts                         ; $8A8324 static
 func_8A8325:
     lda.b $3C                   ; $8A8325
     lsr a                       ; $8A8327
@@ -311,7 +313,197 @@ func_8A8325:
     adc.w #$001B                ; $8A8335
     sta.w $0700                 ; $8A8338
     rts                         ; $8A833B
-    incbin !baserom:$5033C..$504B9
+    rts                         ; $8A833C static
+    inc.w $0600                 ; $8A833D static
+    lda.w $0600                 ; $8A8340 static
+    cmp.w #$006C                ; $8A8343 static
+    bne CODE_8A834D             ; $8A8346 static
+    lda.w #$0001                ; $8A8348 static
+    sta.b $42                   ; $8A834B static
+CODE_8A834D:
+    dec.b $46                   ; $8A834D static
+    bne CODE_8A8360             ; $8A834F static
+    lda.w #$0008                ; $8A8351 static
+    sta.b $48                   ; $8A8354 static
+    lda.w #$0000                ; $8A8356 static
+    sta.b $46                   ; $8A8359 static
+    lda.w #$8361                ; $8A835B static
+    sta.b $44                   ; $8A835E static
+CODE_8A8360:
+    rts                         ; $8A8360 static
+    lda.w #$0006                ; $8A8361 static
+    sta.b $48                   ; $8A8364 static
+    ldx.b $46                   ; $8A8366 static
+    lda.l $7E8096,x             ; $8A8368 static
+    sta.w $0800                 ; $8A836C static
+    inx                         ; $8A836F static
+    inx                         ; $8A8370 static
+    cpx.w #$0024                ; $8A8371 static
+    bne CODE_8A8390             ; $8A8374 static
+    stz.w $0500                 ; $8A8376 static
+    lda.w #$0020                ; $8A8379 static
+    sta.b $48                   ; $8A837C static
+    lda.w #$8393                ; $8A837E static
+    sta.b $44                   ; $8A8381 static
+    lda.w #$000E                ; $8A8383 static
+    sta.b $46                   ; $8A8386 static
+    lda.w #$0001                ; $8A8388 static
+    sta.b $5A                   ; $8A838B static
+    inc.b $5C                   ; $8A838D static
+    rts                         ; $8A838F static
+CODE_8A8390:
+    stx.b $46                   ; $8A8390 static
+    rts                         ; $8A8392 static
+    inc.b $4E                   ; $8A8393 static
+    lda.b $4E                   ; $8A8395 static
+    and.w #$0007                ; $8A8397 static
+    beq CODE_8A839D             ; $8A839A static
+    rts                         ; $8A839C static
+CODE_8A839D:
+    inc.b $5C                   ; $8A839D static
+    dec.b $46                   ; $8A839F static
+    bne CODE_8A83B9             ; $8A83A1 static
+    lda.w #$83D6                ; $8A83A3 static
+    sta.b $44                   ; $8A83A6 static
+    lda.w #$005A                ; $8A83A8 static
+    sta.b $46                   ; $8A83AB static
+    stz.b $56                   ; $8A83AD static
+    lda.w #$0002                ; $8A83AF static
+    sta.b $5A                   ; $8A83B2 static
+    stz.b $78                   ; $8A83B4 static
+    jsr.w $83BA                 ; $8A83B6 static
+CODE_8A83B9:
+    rts                         ; $8A83B9 static
+    ldy.w #$0000                ; $8A83BA static
+    ldx.b $78                   ; $8A83BD static
+CODE_8A83BF:
+    lda.l $7EBDF2,x             ; $8A83BF static
+    sta.w $0812,y               ; $8A83C3 static
+    lda.w #$FFFF                ; $8A83C6 static
+    sta.w $0512,y               ; $8A83C9 static
+    inx                         ; $8A83CC static
+    inx                         ; $8A83CD static
+    iny                         ; $8A83CE static
+    iny                         ; $8A83CF static
+    cpy.w #$0018                ; $8A83D0 static
+    bne CODE_8A83BF             ; $8A83D3 static
+    rts                         ; $8A83D5 static
+    lda.b $38                   ; $8A83D6 static
+    clc                         ; $8A83D8 static
+    adc.b $56                   ; $8A83D9 static
+    sta.b $38                   ; $8A83DB static
+    inc.b $60                   ; $8A83DD static
+    lda.b $60                   ; $8A83DF static
+    and.w #$000F                ; $8A83E1 static
+    bne CODE_8A83E8             ; $8A83E4 static
+    inc.b $56                   ; $8A83E6 static
+CODE_8A83E8:
+    dec.b $46                   ; $8A83E8 static
+    bne CODE_8A83F8             ; $8A83EA static
+    lda.w #$8412                ; $8A83EC static
+    sta.b $44                   ; $8A83EF static
+    lda.w #$0010                ; $8A83F1 static
+    sta.b $46                   ; $8A83F4 static
+    inc.b $54                   ; $8A83F6 static
+CODE_8A83F8:
+    lda.b $4C                   ; $8A83F8 static
+    sec                         ; $8A83FA static
+    sbc.w #$FFB7                ; $8A83FB static
+    cmp.w #$0015                ; $8A83FE static
+    bpl CODE_8A8411             ; $8A8401 static
+    asl a                       ; $8A8403 static
+    asl a                       ; $8A8404 static
+    asl a                       ; $8A8405 static
+    sta.b $4E                   ; $8A8406 static
+    asl a                       ; $8A8408 static
+    clc                         ; $8A8409 static
+    adc.b $4E                   ; $8A840A static
+    sta.b $78                   ; $8A840C static
+    jsr.w $83BA                 ; $8A840E static
+CODE_8A8411:
+    rts                         ; $8A8411 static
+    inc.w $0160                 ; $8A8412 static
+    lda.w $0160                 ; $8A8415 static
+    and.w #$0003                ; $8A8418 static
+    bne CODE_8A843C             ; $8A841B static
+    inc.b $74                   ; $8A841D static
+    dec.b $76                   ; $8A841F static
+    dec.b $46                   ; $8A8421 static
+    bne CODE_8A843C             ; $8A8423 static
+    lda.w #$843D                ; $8A8425 static
+    sta.b $44                   ; $8A8428 static
+    lda.w #$0370                ; $8A842A static
+    sta.b $46                   ; $8A842D static
+    lda.w #$0006                ; $8A842F static
+    sta.b $48                   ; $8A8432 static
+    stz.b $56                   ; $8A8434 static
+    stz.w $050A                 ; $8A8436 static
+    stz.w $050C                 ; $8A8439 static
+CODE_8A843C:
+    rts                         ; $8A843C static
+    jsr.w $8524                 ; $8A843D static
+    lda.w #$0002                ; $8A8440 static
+    sta.b $42                   ; $8A8443 static
+    lda.b $3C                   ; $8A8445 static
+    clc                         ; $8A8447 static
+    adc.b $56                   ; $8A8448 static
+    clc                         ; $8A844A static
+    adc.b $56                   ; $8A844B static
+    sta.b $3C                   ; $8A844D static
+    inc.b $60                   ; $8A844F static
+    lda.b $60                   ; $8A8451 static
+    and.w #$0001                ; $8A8453 static
+    bne CODE_8A84A9             ; $8A8456 static
+    lda.b $56                   ; $8A8458 static
+    cmp.w #$0063                ; $8A845A static
+    bne CODE_8A8466             ; $8A845D static
+    lda.w #$0003                ; $8A845F static
+    sta.b $5A                   ; $8A8462 static
+    inc.b $56                   ; $8A8464 static
+CODE_8A8466:
+    cmp.w #$0064                ; $8A8466 static
+    bmi CODE_8A849F             ; $8A8469 static
+    dec.b $62                   ; $8A846B static
+    lda.b $34                   ; $8A846D static
+    cmp.w #$0100                ; $8A846F static
+    bmi CODE_8A8476             ; $8A8472 static
+    dec.b $62                   ; $8A8474 static
+CODE_8A8476:
+    lda.w #$0001                ; $8A8476 static
+    jsr.w $855A                 ; $8A8479 static
+    lda.l $7E2C01               ; $8A847C static
+    dec a                       ; $8A8480 static
+    dec a                       ; $8A8481 static
+    dec a                       ; $8A8482 static
+    dec a                       ; $8A8483 static
+    sta.l $7E2C01               ; $8A8484 static
+    clc                         ; $8A8488 static
+    adc.w #$0200                ; $8A8489 static
+    sta.l $7E2C04               ; $8A848C static
+    lda.b $34                   ; $8A8490 static
+    cmp.w #$01E0                ; $8A8492 static
+    bpl CODE_8A84A0             ; $8A8495 static
+    clc                         ; $8A8497 static
+    adc.w #$0008                ; $8A8498 static
+    sta.b $34                   ; $8A849B static
+    bra CODE_8A84A0             ; $8A849D static
+CODE_8A849F:
+    nop                         ; $8A849F static
+CODE_8A84A0:
+    lda.b $56                   ; $8A84A0 static
+    cmp.w #$00AA                ; $8A84A2 static
+    beq CODE_8A84A9             ; $8A84A5 static
+    inc.b $56                   ; $8A84A7 static
+CODE_8A84A9:
+    dec.b $46                   ; $8A84A9 static
+    bne CODE_8A84B8             ; $8A84AB static
+    lda.w #$0046                ; $8A84AD static
+    sta.b $46                   ; $8A84B0 static
+    lda.w #$856D                ; $8A84B2 static
+    sta.b $44                   ; $8A84B5 static
+    rts                         ; $8A84B7 static
+CODE_8A84B8:
+    rts                         ; $8A84B8 static
 objects_scatter_init:
     ldy.w #$FE84                ; $8A84B9 static
     ldx.w #$0000                ; $8A84BC static
@@ -362,7 +554,78 @@ CODE_8A851D:
     rol.b $12                   ; $8A851F static
     lda.b $10                   ; $8A8521 static
     rts                         ; $8A8523 static
-    incbin !baserom:$50524..$505AF
+    ldx.w #$001E                ; $8A8524 static
+CODE_8A8527:
+    lda.b $8A                   ; $8A8527 static
+    pha                         ; $8A8529 static
+    lda.w $0610,x               ; $8A852A static
+    clc                         ; $8A852D static
+    adc.b $8A                   ; $8A852E static
+    and.w #$00FF                ; $8A8530 static
+    sta.w $0610,x               ; $8A8533 static
+    dec.b $8A                   ; $8A8536 static
+    lda.w $064C,x               ; $8A8538 static
+    clc                         ; $8A853B static
+    adc.b $8A                   ; $8A853C static
+    and.w #$00FF                ; $8A853E static
+    sta.w $064C,x               ; $8A8541 static
+    dec.b $8A                   ; $8A8544 static
+    lda.w $0688,x               ; $8A8546 static
+    clc                         ; $8A8549 static
+    adc.b $8A                   ; $8A854A static
+    and.w #$00FF                ; $8A854C static
+    sta.w $0688,x               ; $8A854F static
+    pla                         ; $8A8552 static
+    sta.b $8A                   ; $8A8553 static
+    dex                         ; $8A8555 static
+    dex                         ; $8A8556 static
+    bpl CODE_8A8527             ; $8A8557 static
+    rts                         ; $8A8559 static
+    sta.b $7E                   ; $8A855A static
+    ldx.w #$00DE                ; $8A855C static
+CODE_8A855F:
+    lda.w $0710,x               ; $8A855F static
+    clc                         ; $8A8562 static
+    adc.b $7E                   ; $8A8563 static
+    sta.w $0710,x               ; $8A8565 static
+    dex                         ; $8A8568 static
+    dex                         ; $8A8569 static
+    bpl CODE_8A855F             ; $8A856A static
+    rts                         ; $8A856C static
+    jsr.w $8524                 ; $8A856D static
+    lda.b $34                   ; $8A8570 static
+    beq CODE_8A8576             ; $8A8572 static
+    bpl CODE_8A8580             ; $8A8574 static
+CODE_8A8576:
+    stz.b $34                   ; $8A8576 static
+    lda.w #$0001                ; $8A8578 static
+    sta.b $42                   ; $8A857B static
+    jmp.w $8596                 ; $8A857D static
+CODE_8A8580:
+    lda.b $38                   ; $8A8580 static
+    clc                         ; $8A8582 static
+    adc.w #$0002                ; $8A8583 static
+    sta.b $38                   ; $8A8586 static
+    lda.b $36                   ; $8A8588 static
+    clc                         ; $8A858A static
+    adc.w #$0002                ; $8A858B static
+    sta.b $36                   ; $8A858E static
+    lda.w #$0001                ; $8A8590 static
+    jsr.w $855A                 ; $8A8593 static
+    dec.b $46                   ; $8A8596 static
+    bne CODE_8A85A0             ; $8A8598 static
+    lda.w #$8322                ; $8A859A static
+    sta.b $44                   ; $8A859D static
+    rts                         ; $8A859F static
+CODE_8A85A0:
+    lda.b $46                   ; $8A85A0 static
+    cmp.w #$0032                ; $8A85A2 static
+    bne CODE_8A85AE             ; $8A85A5 static
+    stz.b $98                   ; $8A85A7 static
+    lda.w #$FFC0                ; $8A85A9 static
+    sta.b $96                   ; $8A85AC static
+CODE_8A85AE:
+    rts                         ; $8A85AE static
 tile_anim_step:
     lda.b $42                   ; $8A85AF
     beq CODE_8A85CB             ; $8A85B1

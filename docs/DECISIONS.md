@@ -1819,6 +1819,37 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## A screen's scene; `$8A:82C0` unparked (roots-103, 2026-11-21)
+
+**`scene_step` ($8A:82C0):** one step a frame of a screen's scene (D = `$0100`). It
+was parked because its state machine (`JMP ($0144)`: the state pointer at D+$44) leads
+into the 627 unknown bytes. Those bytes are all code, now decoded as static code
+(`$8A:8322`-`$8324`, `$833C`-`$84B8`, `$8524`-`$85AE`; `$84B9`-`$8523` came with roots-102).
+- D+$48 counts the frames to wait, then the state runs. The states:
+  - **`$82CA`** then **`$82EC`** (the only two that ran): the car slides (D+$3C +=
+    D+$56, D+$36 -= D+$56; in `$82EC` D+$56 slows by one every other frame), placed by
+    `func_8A8325`;
+  - **`$833D`**: the sprite moves right to `$6C`;
+  - **`$8361`**: 18 words of `$7E:8096` into `$0800`, 6 frames apart;
+  - **`$8393`**: D+$5C counts up every 8 frames;
+  - **`$83D6`**: D+$38 accelerates, and a 12-word row from `$7E:BDF2` (`$8A:83BA`) goes
+    to `$0812` when D+$4C is in range;
+  - **`$8412`**: D+$74/D+$76 step every 4 frames (`$0160`);
+  - **`$843D`** and **`$856D`**: the 16 objects jitter (`$8A:8524`), the car speeds up, the
+    rows move (`$8A:855A`) and `$7E:2C01`/`$2C04` scroll;
+  - **`$8322`**: D+$58 counts up.
+- **A quirk kept:** in `$843D`, when D+$56 is `$63`, the next `CMP #$64` sees the `LDA #3` of
+  the branch, not D+$56.
+- **One row** covers the dispatcher, the states and the helpers (`$8A:82C0`-`$85AE`).
+  `func_8A8325`, inside the range, keeps its own row.
+  - The holes are a lone RTS no state points at (`$833C`) and `objects_scatter_init` with
+    its `rng_next` copy (screen_objects_place's).
+  - There are no register outputs: the caller goes on to `func_8A8232`, which loads A.
+- **The fuzz** picks any of the ten states. It puts each counter at the point where its
+  state ends, because three ends needed a counter aligned on its step (`$0160` by 4, D+$4E
+  by 8, D+$46 at `$33`).
+- **Result:** live 284/284 (60k), fuzz 500/500, paths 303/303.
+
 ## A screen's objects placed; `$8A:898F` unparked (roots-102, 2026-11-21)
 
 - **Why it was parked:** a never-run path of `$8A:898F` calls `$8A:84B9`, inside 627 unknown

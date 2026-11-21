@@ -8807,6 +8807,44 @@ static void fuzz_screen_objects_place(Regs* r, uint8_t* ram, uint32_t (*rnd)(voi
   for(uint32_t i = 0; i < 0x48; i++) wr16ram(ram, 0x8152 + 2 * i, rnd() % 4 == 0 ? 4 : (uint16_t)(rnd() % 0x0400));
 }
 
+// ---- scene_step ($8A:82C0) ----  no register outputs: its caller goes on to func_8A8232,
+// which loads A (and nothing after reads X or Y first)
+static void call_scene_step(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  scene_step();
+}
+// any of the ten states (D+$44), the wait D+$48 (mostly 0), the counters near their ends
+// (D+$46 1-3 or anything; $8361's index even below $24), the speeds near their tests
+// (D+$56 around $63/$64/$AA, D+$34 around 0/$100/$1E0), D+$4C both sides of the row test
+static void fuzz_scene_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const uint16_t states[] = {0x82CA, 0x82EC, 0x8322, 0x833D, 0x8361, 0x8393, 0x83D6, 0x8412, 0x843D, 0x856D};
+  const uint16_t state = states[rnd() % 10];
+  wr16ram(ram, DP + 0x44, state);
+  wr16ram(ram, DP + 0x48, rnd() % 5 == 0 ? (uint16_t)(1 + rnd() % 8) : 0);
+  wr16ram(ram, DP + 0x46, state == 0x8361 ? (uint16_t)(2 * (rnd() % 0x12)) : rnd() & 1 ? (uint16_t)(1 + rnd() % 3) : (uint16_t)rnd());
+  static const uint16_t speeds[] = {0x62, 0x63, 0x64, 0x65, 0xA9, 0xAA, 0, 1};
+  wr16ram(ram, DP + 0x56, rnd() & 1 ? speeds[rnd() % 8] : (uint16_t)(rnd() % 0x100));
+  static const uint16_t places[] = {0, 1, 0xFFFF, 0x00FF, 0x0100, 0x01DF, 0x01E0, 0x8000};
+  wr16ram(ram, DP + 0x34, rnd() & 1 ? places[rnd() % 8] : (uint16_t)rnd());
+  wr16ram(ram, DP + 0x4C, rnd() & 1 ? (uint16_t)(0xFFB0 + rnd() % 0x20) : (uint16_t)rnd());
+  wr16ram(ram, DP + 0x78, (uint16_t)(2 * (rnd() % 0x100)));
+  static const uint16_t words[] = {0x3C, 0x36, 0x38, 0x4E, 0x5C, 0x60, 0x62, 0x74, 0x76, 0x8A, 0x58, 0x54};
+  for(unsigned i = 0; i < sizeof words / sizeof words[0]; i++) if(rnd() & 1) wr16ram(ram, DP + words[i], (uint16_t)rnd());
+  if(rnd() & 1) wr16ram(ram, 0x0600, (uint16_t)(0x0068 + rnd() % 8));
+  if(rnd() & 1) wr16ram(ram, 0x0160, (uint16_t)rnd());
+  if(state == 0x8412 && (rnd() & 1)) {  // its end: the 4-frame step lands with D+$46 at 1
+    wr16ram(ram, 0x0160, (uint16_t)(4 * (rnd() % 0x400) + 3));
+    wr16ram(ram, DP + 0x46, 1);
+  }
+  if(state == 0x856D && (rnd() & 1)) wr16ram(ram, DP + 0x46, 0x0033);  // its midpoint: D+$46 down to $32
+  if(state == 0x8393 && (rnd() & 1)) {  // its end: the 8-frame step lands with D+$46 at 1
+    wr16ram(ram, DP + 0x4E, (uint16_t)(8 * (rnd() % 0x200) + 7));
+    wr16ram(ram, DP + 0x46, 1);
+  }
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9266,6 +9304,10 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_hdma_table_0d00_init, ALL_OUTPUTS, .fuzz = fuzz_hdma_table_0d00_init},
   {.name = "string_space_fours", .entry = 0x8ABF2A, .end = 0x8ABF4E, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_string_space_fours, ALL_OUTPUTS, .fuzz = fuzz_string_space_fours},
+  {.name = "scene_step", .entry = 0x8A82C0, .end = 0x8A85AF, .source = "src/misc.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_scene_step, .fuzz = fuzz_scene_step,
+   .holes = {{0x8A833C, 0x8A833D},    // a lone RTS no state points at
+             {0x8A84B9, 0x8A8524}}},  // objects_scatter_init and its rng_next copy (screen_objects_place's)
   {.name = "screen_objects_place", .entry = 0x8A898F, .end = 0x8A8AE7, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_screen_objects_place, ALL_OUTPUTS,
    .fuzz = fuzz_screen_objects_place, .holes = {{0x8A89E1, 0x8A8A43}}},  // other code (unknown bytes), not reached from here

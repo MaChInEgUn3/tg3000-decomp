@@ -157,3 +157,6 @@
 8A:8506 8A:8524 m16x16 ; rng_next: a fourth copy, on D+$10 (never run)
 8A:8993 8A:8994 m16x16 ; screen_objects_place: D+$5E set, the RTS (never run)
 8A:89A4 8A:89AD m16x16 ; screen_objects_place: past the edge, objects_scatter_init (never run)
+8A:8322 8A:8325 m16x16 ; attract_state: a state (never run)
+8A:833C 8A:84B9 m16x16 ; attract_state: the states after $82EC (never run)
+8A:8524 8A:85AF m16x16 ; attract_state: the last states (never run)

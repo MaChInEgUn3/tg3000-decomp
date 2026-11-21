@@ -489,3 +489,4 @@ func    85B36F   race_road_frame_alt ; the road for the frame (both projections,
 func    85B3A9   race_road_frame     ; the race's road for the frame: both projections, scroll tables, bands merged (RTL) -> src/misc.c
 func    8A84B9   objects_scatter_init ; 16 objects in four tables, three random words each (never run) -> src/misc.c
 func    8A898F   screen_objects_place ; a screen's objects placed from D+$3C/D+$3E (corners, 6 rows, kinds, right column) -> src/misc.c
+func    8A82C0   scene_step          ; a screen's scene, one step a frame: the state machine at D+$44 (ten states, eight never run) -> src/misc.c

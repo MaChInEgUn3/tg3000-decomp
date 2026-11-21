@@ -6032,3 +6032,187 @@ uint16_t screen_objects_place(void) {
   }
   return v;
 }
+
+#define SCENE(o) (DP + (o))
+static void scene_inc(uint32_t a) { wr16(a, (uint16_t)(rd16(a) + 1)); }
+static bool scene_dec(uint32_t a) {  // DEC: true when it reaches 0
+  wr16(a, (uint16_t)(rd16(a) - 1));
+  return rd16(a) == 0;
+}
+
+// $8A:83BA: the 12-word row at $7E:BDF2 + D+$78 into $0812, $0512 = $FFFF
+static void scene_row_copy(void) {
+  for(uint32_t y = 0, x = rd16(SCENE(0x78)); y != 0x18; y += 2, x += 2) {
+    wr16(0x0812 + y, rd16(0xBDF2 + (uint32_t)(uint16_t)x));
+    wr16(0x0512 + y, 0xFFFF);
+  }
+}
+
+// $8A:8524: the 16 objects' three bytes stepped by D+$8A, D+$8A - 1, D+$8A - 2
+static void scene_objects_jitter(void) {
+  for(int32_t x = 0x1E; x >= 0; x -= 2) {
+    const uint16_t j = rd16(SCENE(0x8A));
+    wr16(0x0610 + (uint32_t)x, (uint16_t)((rd16(0x0610 + (uint32_t)x) + j) & 0x00FF));
+    wr16(0x064C + (uint32_t)x, (uint16_t)((rd16(0x064C + (uint32_t)x) + (uint16_t)(j - 1)) & 0x00FF));
+    wr16(0x0688 + (uint32_t)x, (uint16_t)((rd16(0x0688 + (uint32_t)x) + (uint16_t)(j - 2)) & 0x00FF));
+  }
+}
+
+// $8A:855A: D+$7E = by; 112 words from $0710 moved by it
+static void scene_rows_move(uint16_t by) {
+  wr16(SCENE(0x7E), by);
+  for(int32_t x = 0xDE; x >= 0; x -= 2) wr16(0x0710 + (uint32_t)x, (uint16_t)(rd16(0x0710 + (uint32_t)x) + by));
+}
+
+static void scene_slide(void) {
+  wr16(SCENE(0x54), 0);
+  wr16(SCENE(0x3C), (uint16_t)(rd16(SCENE(0x3C)) + rd16(SCENE(0x56))));
+  wr16(SCENE(0x36), (uint16_t)(rd16(SCENE(0x36)) - rd16(SCENE(0x56))));
+}
+
+// TG3000_ROUTINE($8A:82C0) scene_step
+void scene_step(void) {
+  if(rd16(SCENE(0x48)) != 0) {
+    wr16(SCENE(0x48), (uint16_t)(rd16(SCENE(0x48)) - 1));
+    return;
+  }
+  switch(rd16(SCENE(0x44))) {
+    case 0x82CA:
+      scene_slide();
+      if(scene_dec(SCENE(0x46))) {
+        wr16(SCENE(0x46), 0x0040);
+        wr16(SCENE(0x44), 0x82EC);
+      }
+      (void)func_8A8325();
+      break;
+    case 0x82EC:
+      scene_slide();
+      scene_inc(SCENE(0x60));
+      if(!(rd16(SCENE(0x60)) & 1) && rd16(SCENE(0x56)) != 0) wr16(SCENE(0x56), (uint16_t)(rd16(SCENE(0x56)) - 1));
+      (void)func_8A8325();
+      if(scene_dec(SCENE(0x46))) {
+        wr16(SCENE(0x48), 0x0008);
+        wr16(SCENE(0x46), 0x0036);
+        wr16(SCENE(0x44), 0x833D);
+      }
+      break;
+    case 0x8322:  // never run, from here on
+      scene_inc(SCENE(0x58));
+      break;
+    case 0x833D:
+      scene_inc(0x0600);
+      if(rd16(0x0600) == 0x006C) wr16(SCENE(0x42), 1);
+      if(scene_dec(SCENE(0x46))) {
+        wr16(SCENE(0x48), 0x0008);
+        wr16(SCENE(0x46), 0);
+        wr16(SCENE(0x44), 0x8361);
+      }
+      break;
+    case 0x8361: {
+      wr16(SCENE(0x48), 0x0006);
+      uint16_t x = rd16(SCENE(0x46));
+      wr16(0x0800, rd16(0x8096 + (uint32_t)x));  // bank $7E
+      x = (uint16_t)(x + 2);
+      if(x == 0x0024) {
+        wr16(0x0500, 0);
+        wr16(SCENE(0x48), 0x0020);
+        wr16(SCENE(0x44), 0x8393);
+        wr16(SCENE(0x46), 0x000E);
+        wr16(SCENE(0x5A), 1);
+        scene_inc(SCENE(0x5C));
+      } else wr16(SCENE(0x46), x);
+      break;
+    }
+    case 0x8393:
+      scene_inc(SCENE(0x4E));
+      if(rd16(SCENE(0x4E)) & 0x0007) break;
+      scene_inc(SCENE(0x5C));
+      if(scene_dec(SCENE(0x46))) {
+        wr16(SCENE(0x44), 0x83D6);
+        wr16(SCENE(0x46), 0x005A);
+        wr16(SCENE(0x56), 0);
+        wr16(SCENE(0x5A), 2);
+        wr16(SCENE(0x78), 0);
+        scene_row_copy();
+      }
+      break;
+    case 0x83D6: {
+      wr16(SCENE(0x38), (uint16_t)(rd16(SCENE(0x38)) + rd16(SCENE(0x56))));
+      scene_inc(SCENE(0x60));
+      if(!(rd16(SCENE(0x60)) & 0x000F)) scene_inc(SCENE(0x56));
+      if(scene_dec(SCENE(0x46))) {
+        wr16(SCENE(0x44), 0x8412);
+        wr16(SCENE(0x46), 0x0010);
+        scene_inc(SCENE(0x54));
+      }
+      const uint16_t a = (uint16_t)(rd16(SCENE(0x4C)) + 0x0049);  // - $FFB7
+      if(!((uint16_t)(a - 0x0015) & 0x8000)) break;
+      wr16(SCENE(0x4E), (uint16_t)(a << 3));
+      wr16(SCENE(0x78), (uint16_t)((uint16_t)(a << 4) + rd16(SCENE(0x4E))));
+      scene_row_copy();
+      break;
+    }
+    case 0x8412:
+      scene_inc(0x0160);
+      if(rd16(0x0160) & 0x0003) break;
+      scene_inc(SCENE(0x74));
+      wr16(SCENE(0x76), (uint16_t)(rd16(SCENE(0x76)) - 1));
+      if(scene_dec(SCENE(0x46))) {
+        wr16(SCENE(0x44), 0x843D);
+        wr16(SCENE(0x46), 0x0370);
+        wr16(SCENE(0x48), 0x0006);
+        wr16(SCENE(0x56), 0);
+        wr16(0x050A, 0);
+        wr16(0x050C, 0);
+      }
+      break;
+    case 0x843D:
+      scene_objects_jitter();
+      wr16(SCENE(0x42), 2);
+      wr16(SCENE(0x3C), (uint16_t)(rd16(SCENE(0x3C)) + rd16(SCENE(0x56)) + rd16(SCENE(0x56))));
+      scene_inc(SCENE(0x60));
+      if(!(rd16(SCENE(0x60)) & 1)) {
+        uint16_t a = rd16(SCENE(0x56));
+        if(a == 0x0063) {
+          wr16(SCENE(0x5A), 3);
+          scene_inc(SCENE(0x56));
+          a = 3;  // the LDA #3 is what the next CMP sees
+        }
+        if(!((uint16_t)(a - 0x0064) & 0x8000)) {
+          wr16(SCENE(0x62), (uint16_t)(rd16(SCENE(0x62)) - 1));
+          if(!((uint16_t)(rd16(SCENE(0x34)) - 0x0100) & 0x8000)) wr16(SCENE(0x62), (uint16_t)(rd16(SCENE(0x62)) - 1));
+          scene_rows_move(1);
+          const uint16_t w = (uint16_t)(rd16(0x2C01) - 4);  // bank $7E
+          wr16(0x2C01, w);
+          wr16(0x2C04, (uint16_t)(w + 0x0200));
+          if((uint16_t)(rd16(SCENE(0x34)) - 0x01E0) & 0x8000) wr16(SCENE(0x34), (uint16_t)(rd16(SCENE(0x34)) + 8));
+        }
+        if(rd16(SCENE(0x56)) != 0x00AA) scene_inc(SCENE(0x56));
+      }
+      if(scene_dec(SCENE(0x46))) {
+        wr16(SCENE(0x46), 0x0046);
+        wr16(SCENE(0x44), 0x856D);
+      }
+      break;
+    case 0x856D: {
+      scene_objects_jitter();
+      const uint16_t a = rd16(SCENE(0x34));
+      if(a == 0 || (a & 0x8000)) {
+        wr16(SCENE(0x34), 0);
+        wr16(SCENE(0x42), 1);
+      } else {
+        wr16(SCENE(0x38), (uint16_t)(rd16(SCENE(0x38)) + 2));
+        wr16(SCENE(0x36), (uint16_t)(rd16(SCENE(0x36)) + 2));
+        scene_rows_move(1);
+      }
+      if(scene_dec(SCENE(0x46))) wr16(SCENE(0x44), 0x8322);
+      else if(rd16(SCENE(0x46)) == 0x0032) {
+        wr16(SCENE(0x98), 0);
+        wr16(SCENE(0x96), 0xFFC0);
+      }
+      break;
+    }
+    default:  // no state the game sets
+      break;
+  }
+}

@@ -1441,4 +1441,16 @@ void objects_scatter_init(void);
 // or D+$5E).
 uint16_t screen_objects_place(void);
 
+// $8A:82C0: a screen's scene, one step a frame (D = $0100). D+$48 counts the frames to wait;
+// then the state at D+$44 (the original's JMP ($0144)) runs:
+// - $82CA / $82EC: the car slides (D+$3C += D+$56, D+$36 -= D+$56; in $82EC D+$56 slows by
+//   one every other frame), its sprite placed (func_8A8325), for $40 / D+$46 frames;
+// - (never run from here on) $833D: the sprite moves right to $6C (then D+$42 = 1);
+//   $8361: 18 words of $7E:8096 into $0800, 6 frames apart; $8393: D+$5C counts up every 8
+//   frames; $83D6: D+$38 accelerates, and the 12-word row from $7E:BDF2 + D+$78 (by D+$4C)
+//   goes to $0812 ($0512 = $FFFF); $8412: D+$74/D+$76 step every 4 frames ($0160);
+//   $843D / $856D: the objects jitter ($8A:8524), the car speeds up and the rows move down
+//   ($8A:855A), $7E:2C01/$2C04 scroll; $8322: D+$58 counts up.
+void scene_step(void);
+
 #endif

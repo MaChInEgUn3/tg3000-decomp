@@ -460,3 +460,4 @@
 85B3A9 race_road_frame src/misc.c b237de95bc891e93 3029 500 15/15 verified live-flags:- replayed:0
 85B36F race_road_frame_alt src/misc.c b237de95bc891e93 5 500 19/19 verified live-flags:NVZC replayed:0
 8A898F screen_objects_place src/misc.c e830d1be811e1cc8 284 500 103/103 verified live-flags:V replayed:0
+8A82C0 scene_step src/misc.c 808d8b3c00d55983 284 500 303/303 verified live-flags:- replayed:0
