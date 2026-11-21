@@ -7892,6 +7892,67 @@ static void fuzz_results_text(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   }
 }
 
+// ---- save_data_check ($80:8119) ----  A = $00FF (N clear), Z of the TSB/TRB of $045A (its
+// low byte was 0), C = the C's result. The stored copy valid: X = $FAB7, Y = $03E2 (past
+// the MVN), V of the first sum's last ADC. The data valid: X = 0 (the loop's end), Y as on
+// entry, V of the second sum's last ADC. Else save_data_seal's exit: X = $03E0, Y = $FAB5,
+// V of its sum's last ADC (over the defaults now at $0368)
+static uint16_t saveSum(uint32_t at) {
+  uint16_t sum = 0;
+  for(uint32_t x = 0x78; x != 0; x--) sum = (uint16_t)(sum + rd8(at + x));
+  return (uint16_t)(sum ^ 0x7645);
+}
+static bool saveSumV(uint32_t at) {
+  uint16_t sum = 0, last = 0;
+  for(uint32_t x = 0x78; x != 0; x--) {
+    last = sum;
+    sum = (uint16_t)(sum + rd8(at + x));
+  }
+  const uint16_t b = rd8(at + 1);
+  return (~(last ^ b) & (last ^ sum) & 0x8000) != 0;
+}
+static void call_save_data_check(const Regs* in, Regs* out) {
+  const uint16_t old = rd16(0x045A);
+  const bool copyValid = saveSum(0xFA3C) == rd16(0xFA3B);
+  const bool v1 = saveSumV(0xFA3C);
+  const bool dataValid = !copyValid && saveSum(0x0367) == rd16(0x0366);
+  const bool v2 = saveSumV(0x0367);
+  out->c = save_data_check();
+  out->a = 0x00FF;
+  out->n = false;
+  out->z = (old & 0x00FF) == 0;
+  if(copyValid) {
+    out->x = 0xFAB7;
+    out->y = 0x03E2;
+    out->v = v1;
+  } else if(dataValid) {
+    out->x = 0;
+    out->y = in->y;
+    out->v = v2;
+  } else {
+    out->x = 0x03E0;
+    out->y = 0xFAB5;
+    out->v = saveSumV(0x0367);
+  }
+}
+// the saved data random; a third of the time its stored copy, a third the data itself, made
+// valid (its checksum written); $045A's low byte 0 now and then
+static void fuzz_save_data_check(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t i = 0; i < 0x7A; i++) {
+    ram[0xFA3B + i] = (uint8_t)rnd();
+    ram[0x0366 + i] = (uint8_t)rnd();
+  }
+  const uint32_t k = rnd() % 3;
+  if(k < 2) {
+    const uint32_t at = k == 0 ? 0xFA3C : 0x0367;
+    uint16_t sum = 0;
+    for(uint32_t x = 0x78; x != 0; x--) sum = (uint16_t)(sum + ram[at + x]);
+    wr16ram(ram, at - 1, (uint16_t)(sum ^ 0x7645));
+  }
+  wr16ram(ram, 0x045A, (uint16_t)((rnd() & 1) ? rnd() & 0xFF00 : rnd()));
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8769,6 +8830,8 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_setup_load, .fuzz = fuzz_track_setup_load},
   {.name = "results_text", .entry = 0x8A9908, .end = 0x8A99B4, .rtl = true, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_results_text, .fuzz = fuzz_results_text},
+  {.name = "save_data_check", .entry = 0x808119, .end = 0x808199, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x00, .call = call_save_data_check, ALL_OUTPUTS, .fuzz = fuzz_save_data_check},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

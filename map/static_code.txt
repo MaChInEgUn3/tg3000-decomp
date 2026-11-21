@@ -117,3 +117,5 @@
 82:A8F7 82:A8FC m16x16 ; track_setup_load: variant 2's first graphics slot $0612 (never run)
 8A:9946 8A:999F m16x16 ; results_text: the one-slot variant ($1B37 negative; never run)
 8A:99FC 8A:9A33 m16x16 ; text_line_centered (never run; through results_text)
+80:813F 80:8155 m16x16 ; save_data_check: the stored copy at $7E:FA3B valid, restored (never run)
+80:8177 80:817F m16x16 ; save_data_check: the data at $0366 valid (never run)

@@ -4381,3 +4381,30 @@ void results_text(void) {
   }
   byte_buffer_string(0x9DBD, 0xFF);
 }
+
+// The $78 bytes after `at` summed into a word (kept in $0114, as the original's running
+// sum), ^ $7645 (the saved data's checksum).
+static uint16_t save_data_sum(uint32_t at) {
+  uint16_t sum = 0;
+  for(uint32_t x = 0x78; x != 0; x--) sum = (uint16_t)(sum + rd8(at + x));
+  wr16(0x0114, sum);
+  return (uint16_t)(sum ^ 0x7645);
+}
+
+// TG3000_ROUTINE($80:8119) save_data_check
+bool save_data_check(void) {
+  wr16(0x03E2, 0);
+  if(save_data_sum(0xFA3C) == rd16(0xFA3B)) {  // never run: the stored copy restored
+    for(uint32_t i = 0; i < 0x7A; i++) wr8(0x0368 + i, rd8(0xFA3D + i));
+    wr16(0x045A, (uint16_t)(rd16(0x045A) & ~0x00FF));
+    return false;
+  }
+  if(save_data_sum(0x0367) == rd16(0x0366)) {  // never run
+    wr16(0x045A, (uint16_t)(rd16(0x045A) & ~0x00FF));
+    return false;
+  }
+  for(uint32_t i = 0; i < 0x7A; i++) wr8(0x0366 + i, bus_rd8(0x8385A9 + i));
+  save_data_seal();
+  wr16(0x045A, (uint16_t)(rd16(0x045A) | 0x00FF));
+  return true;
+}

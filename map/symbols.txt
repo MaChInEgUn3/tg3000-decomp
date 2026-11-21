@@ -458,3 +458,4 @@ func    82A9B3   player2_segment_step_long ; JSR player2_segment_step; RTL -> sr
 func    82A7F9   track_setup_load    ; the track's setup: header, objects, scenery unpacked; each kind's graphics once into $7F -> src/misc.c
 func    8A9908   results_text        ; the results text: each slot's rank, name and value; a one-slot variant (never run) -> src/misc.c
 func    8A99FC   text_line_centered  ; a text map line centred in $1C columns (never run; through results_text) -> src/misc.c
+func    808119   save_data_check     ; the saved data checked at boot: its copy or itself restored, else the defaults sealed -> src/misc.c

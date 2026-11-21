@@ -1230,4 +1230,12 @@ void text_line_centered(uint16_t x);
 // line ends, and the string at $8A:9DD5. Last the string at $8A:9DBD (to $FF).
 void results_text(void);
 
+// $80:8119: the saved data checked at boot ($03E2 = 0). The $78 bytes at $7E:FA3D summed
+// (8-bit bytes into a word) ^ $7645 equal to $7E:FA3B: that copy is restored to $0368 ($7A
+// bytes) and $045A loses its low byte (never run). Else the same over $0368 against $0366:
+// $045A loses its low byte (never run). Else the defaults ($7A bytes from $83:85A9) go to
+// $0366, save_data_seal, and $045A's low byte is set. Returns whether the defaults were
+// loaded (the original's carry).
+bool save_data_check(void);
+
 #endif

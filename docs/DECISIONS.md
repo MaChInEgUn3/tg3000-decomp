@@ -1789,6 +1789,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The saved data checked at boot (roots-83, 2026-11-21)
+
+**`save_data_check` ($80:8119):** 1 entry, at boot. `$03E2` = 0, then three cases:
+- **The stored copy is valid.** The `$78` bytes at `$7E:FA3D`, summed as bytes into a
+  word and `^ $7645`, equal `$7E:FA3B`. The copy is restored to `$0368` (an `MVN` of `$7A`
+  bytes) and `$045A` loses its low byte. Never run.
+- **The data itself is valid** (the same check over `$0368` against `$0366`). `$045A`
+  loses its low byte. Never run.
+- **Neither:** the defaults (`$7A` bytes from `$83:85A9`) go to `$0366`, `save_data_seal`
+  runs and `$045A`'s low byte is set.
+- **Return value.** The C returns whether the defaults were loaded, which is the
+  original's carry. The running sum stays in `$0114`, as the original leaves it.
+- **The two valid-data branches** (`$80:813F`, `$80:8177`) were undecoded and are now
+  static code. On the bench the saved data is never valid, so they run only in the fuzz.
+  The fuzz writes a correct checksum a third of the time for each.
+- **Registers.** With 1 entry, every flag and register is compared:
+  - A = `$00FF`, N clear;
+  - Z from the `TSB`/`TRB` of `$045A`;
+  - X, Y and V per case: past the `MVN`, the loop's end, or `save_data_seal`'s exit, with
+    V of the last sum's `ADC`.
+- **Result:** live 1/1, fuzz 500/500, paths 52/52.
+
 ## The results text (roots-82, 2026-11-21)
 
 **`results_text` ($8A:9908, D = `$0100`, DB = `$8A`, `RTL`):** the results screen's text, 4

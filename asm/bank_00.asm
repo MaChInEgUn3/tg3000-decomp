@@ -65,7 +65,7 @@ CODE_808058:
     lda.b #$81                  ; $808075
     sta.w $4200                 ; $808077
     rep.b #$20                  ; $80807A
-    jsr.w $8119                 ; $80807C
+    jsr.w save_data_check       ; $80807C
     phb                         ; $80807F
     pea.w $3030                 ; $808080
     plb                         ; $808083
@@ -104,6 +104,7 @@ interrupt_vectors_init:
     stz.w $002A                 ; $808112
     stz.w $0028                 ; $808115
     rts                         ; $808118
+save_data_check:
     stz.w $03E2                 ; $808119
     ldx.w #$0078                ; $80811C
     stz.w $0114                 ; $80811F
@@ -119,7 +120,16 @@ CODE_808122:
     eor.w #$7645                ; $808136
     cmp.l $7EFA3B               ; $808139
     bne CODE_808155             ; $80813D
-    incbin !baserom:$13F..$155
+    phb                         ; $80813F static
+    ldx.w #$FA3D                ; $808140 static
+    ldy.w #$0368                ; $808143 static
+    lda.w #$0079                ; $808146 static
+    mvn $81,$7E                 ; $808149 static
+    plb                         ; $80814C static
+    lda.w #$00FF                ; $80814D static
+    trb.w $045A                 ; $808150 static
+    clc                         ; $808153 static
+    rts                         ; $808154 static
 CODE_808155:
     ldx.w #$0078                ; $808155
     stz.w $0114                 ; $808158
@@ -135,7 +145,10 @@ CODE_80815B:
     eor.w #$7645                ; $80816F
     cmp.w $0366                 ; $808172
     bne CODE_80817F             ; $808175
-    incbin !baserom:$177..$17F
+    lda.w #$00FF                ; $808177 static
+    trb.w $045A                 ; $80817A static
+    clc                         ; $80817D static
+    rts                         ; $80817E static
 CODE_80817F:
     ldx.w #$85A9                ; $80817F
     ldy.w #$0366                ; $808182
