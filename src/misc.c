@@ -5809,3 +5809,119 @@ void road_rows_project(void) {
   wr16(0x015C, (uint16_t)(rd16(DP + 0x18) + 1));
   wr16(0x1E3E, rd16(DP + 0x1A));
 }
+
+// an object's source byte: bank $90 (ROM) when the pointer is negative, else bank $7E
+static uint8_t road_object_byte(bool rom, uint16_t at) { return rom ? bus_rd8(0x900000 + at) : rd8(at); }
+static uint16_t road_object_word(bool rom, uint16_t at) {  // a long read (its high byte may cross the bank)
+  return rom ? bus_rd16(0x900000 + (uint32_t)at) : rd16(at);
+}
+
+// TG3000_ROUTINE($85:B828) road_rows_project2
+void road_rows_project2(void) {
+  const bool small = rd16(0x00B4) != 0;
+  const uint16_t band = small ? 0x0023 : 0x0045;
+  wr16(DP + 0x18, small ? 0x292B : 0x2A2B);
+  wr16(DP + 0x1A, small ? 0x035C : 0x050C);
+  wr16(DP + 0x1C, small ? 0x0004 : 0x01A4);
+  wr16(DP + 0x14, (uint16_t)(0x0080 - ((rd16(0x0225) >> 1) & 0x007E)));
+  wr16(DP + 0x16, (uint16_t)((rd16(0x0226) << 1) & 0x003E));
+  const uint32_t x = rd16(DP + 0x16);
+  const uint16_t at = rd16(DP + 0x14);
+  const uint16_t ahead = xba16((uint16_t)((uint16_t)(0x0080 - at) >> 1)), behind = xba16((uint16_t)(at >> 1));
+  wr16(0x376C, rd16(0x3E6C + x));
+  wr16(0x356C, rd16(0x3DEC + x));
+  uint16_t lo, hi;
+  road_port_product32((uint16_t)((rd16(0x3E6E + x) - rd16(0x3E6C + x)) << 1), (uint16_t)((rd16(0x0224) >> 1) & 0xFF00), &lo, &hi);
+  wr16(0x1EF2, (uint16_t)(rd16(0x0242) + hi + rd16(0x3E6C + x)));
+  road_port_product32(rd16(0x3AEC + x), 0xFC00, &lo, &hi);
+  wr16(0x017C, (uint16_t)(hi + (lo >= 0x8000 ? 1 : 0)));
+  road_port_product32(rd16(0x3B6E + x), ahead, &lo, &hi);
+  wr16(DP + 0x1E, (uint16_t)(rd16(0x1EDA) - (uint16_t)(hi << 2 | lo >> 14)));
+  road_port_product32(rd16(0x3AEE + x), ahead, &lo, &hi);
+  wr16(DP + 0x26, (uint16_t)-(uint16_t)(hi << 2 | lo >> 14));
+  road_port_product32(rd16(DP + 0x26), behind, &lo, &hi);
+  wr16(DP + 0x2A, (uint16_t)(hi << 2 | lo >> 14));
+  wr16(0x4D49 + (uint32_t)band, 0);
+  if(rd16(DP + 0xE4) & 0x8000) dsp4_port_write16(0x0007);
+  else {
+    dsp4_port_write16(0x0010);
+    dsp4_port_write16(rd16(DP + 0xE4));
+  }
+  dsp4_port_write16(0);
+  const uint16_t q = rd16(0x1EF2);
+  const bool in = (q & 0x8000) != 0;
+  dsp4_port_write16((uint16_t)(q + 0x0033));
+  wr16(0x4D49 + (uint32_t)band, in ? (uint16_t)(q + 0x0033 + 0x00A9) : 0x00DC);
+  dsp4_port_write16(in ? (uint16_t)(q + 0x0033) : 0x0033);
+  dsp4_port_write16(0xFF5B);
+  dsp4_port_write16(0x00BF);
+  dsp4_port_write16(in ? (uint16_t)(q + 0x00DC) : 0x00DC);
+  dsp4_port_write16(rd16(0x1EF4));
+  dsp4_port_write16(rd16(0x1EF6));
+  dsp4_port_write16(0x0180);
+  dsp4_port_write16(in ? (uint16_t)((uint16_t)(q << 2) + rd16(DP + 0x1A)) : rd16(DP + 0x1A));
+  dsp4_port_write16(0x00C0);
+  wr16(DP + 0x22, (uint16_t)(band - 1));
+  wr16(DP + 0x24, 2);
+  do {
+    wr16(DP + 0x30, bus_rd16(0x83ACEC + (uint32_t)rd16(DP + 0x14)));
+    dsp4_port_write16(rd16(DP + 0x30));
+    uint32_t r = rd16(DP + 0x24), k = rd16(DP + 0x16);
+    dsp4_port_write16(rd16(0x37EC + r));
+    dsp4_port_write16(rd16(0x3E6E + k));
+    dsp4_port_write16(rd16(0x35EC + r));
+    dsp4_port_write16(rd16(0x3DEE + k));
+    dsp4_port_write16(rd16(0x3BEC + k));
+    k += 2;
+    wr16(DP + 0x16, (uint16_t)k);
+    wr16(0x376C + r, (uint16_t)(rd16(0x3E6C + k) + rd16(0x36EC + r)));
+    wr16(0x356C + r, (uint16_t)(rd16(0x3DEC + k) + rd16(0x34EC + r)));
+    wr16(0x366C + r, dsp4_port_read16());
+    wr16(0x386C + r, dsp4_port_read16());
+    wr16(0x396C + r, rd16(DP + 0x30));
+    wr16(0x3A6C + r, rd16(DP + 0x14));
+    wr16(DP + 0x24, (uint16_t)(r + 2));
+    const uint16_t count = dsp4_port_read16();
+    if(count != 0) {
+      const uint32_t b = rd16(DP + 0x22);
+      wr8(0x4D49 + b, (uint8_t)(rd8(0x4D4A + b) - (uint8_t)count));
+      const uint16_t s = rd16(0x3FEC + (uint32_t)rd16(DP + 0x16));  // the object's bytes
+      if(rd16(DP + 0xE4) & 0x8000) {  // copied (MVP, top down), from bank $90 or $7E by its sign
+        const bool rom = (s & 0x8000) != 0;
+        const uint16_t y = rd16(DP + 0x18);
+        for(uint16_t i = 0; i < 8; i++) wr8((uint16_t)(y - i), road_object_byte(rom, (uint16_t)(s - i)));
+        wr16(DP + 0x18, (uint16_t)(y - 8));
+      } else {
+        const uint16_t src = (uint16_t)(s - 7);
+        const bool rom = (src & 0x8000) != 0;
+        dsp4_port_write16(bus_rd16(0x83ACEC + (uint32_t)rd16(DP + 0x14)));
+        dsp4_port_write16(road_object_word(rom, src));
+        wr16(DP + 0x18, (uint16_t)(rd16(DP + 0x18) - 8));
+        wr16(0x0001 + (uint32_t)rd16(DP + 0x18), dsp4_port_read16());
+        for(uint16_t w = 2; w < 8; w += 2) {
+          dsp4_port_write16(rd16(0x6C33 + (uint32_t)rd16(DP + 0x14)));
+          dsp4_port_write16(road_object_word(rom, (uint16_t)(src + w)));
+          wr16((uint32_t)w + 1 + rd16(DP + 0x18), dsp4_port_read16());
+        }
+      }
+      for(uint16_t n = count; n != 0; n--) {
+        const uint32_t i = dsp4_port_read16();
+        wr16(0x0E58 + i, dsp4_port_read16());  // in low WRAM (DB $30)
+        wr16(0x0E56 + i, dsp4_port_read16());
+      }
+      wr16(DP + 0x22, (uint16_t)(rd16(DP + 0x22) - 1));
+    }
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 0x0080));
+  } while(rd16(DP + 0x14) < 0x0E00);
+  dsp4_port_write16(0x8000);
+  wr16(DP + 0x94, rd16(DP + 0x24));
+  uint16_t end = 0;
+  if(in) {
+    end = (uint16_t)(q + 0x00DC);
+    if((uint16_t)(end - 4) & 0x8000) end = 4;
+  }
+  wr16(0x4D49 + (uint32_t)band, end);
+  wr16(0x0168, rd16(DP + 0x22));
+  wr16(0x0160, (uint16_t)(rd16(DP + 0x18) + 1));
+  wr16(0x1E40, rd16(DP + 0x1A));
+}

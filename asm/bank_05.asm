@@ -1849,7 +1849,7 @@ CODE_85B2B4:
     rts                         ; $85B2B6
     incbin !baserom:$2B2B7..$2B36F
     jsl.l road_rows_project     ; $85B36F
-    jsl.l $85B828               ; $85B373
+    jsl.l road_rows_project2    ; $85B373
     lda.w $00D0                 ; $85B377
     sta.w $1E46                 ; $85B37A
     sta.w $1E4A                 ; $85B37D
@@ -1868,7 +1868,7 @@ CODE_85B2B4:
     jsr.w race_bands_merge      ; $85B3A5
     rtl                         ; $85B3A8
     jsl.l road_rows_project     ; $85B3A9
-    jsl.l $85B828               ; $85B3AD
+    jsl.l road_rows_project2    ; $85B3AD
     jsl.l scroll_tables_build   ; $85B3B1
     lda.w $00D0                 ; $85B3B5
     sta.w $1E46                 ; $85B3B8
@@ -2375,6 +2375,7 @@ CODE_85B811:
     sta.w $1E3E                 ; $85B823
     plb                         ; $85B826
     rtl                         ; $85B827
+road_rows_project2:
     pea.w $8330                 ; $85B828
     plb                         ; $85B82B
     ldy.w #$0023                ; $85B82C
@@ -2516,19 +2517,28 @@ CODE_85B95F:
     sta.w $8000                 ; $85B967
     lda.w $1EF2                 ; $85B96A
     bpl CODE_85B97C             ; $85B96D
-    incbin !baserom:$2B96F..$2B97C
+    clc                         ; $85B96F static
+    adc.w #$0033                ; $85B970 static
+    sta.w $8000                 ; $85B973 static
+    clc                         ; $85B976 static
+    adc.w #$00A9                ; $85B977 static
+    bra CODE_85B986             ; $85B97A static
 CODE_85B97C:
     clc                         ; $85B97C
     adc.w #$0033                ; $85B97D
     sta.w $8000                 ; $85B980
     lda.w #$00DC                ; $85B983
+CODE_85B986:
     sta.l $7E4D49,x             ; $85B986
     dex                         ; $85B98A
     lda.w $1EF2                 ; $85B98B
     bpl CODE_85B996             ; $85B98E
-    incbin !baserom:$2B990..$2B996
+    clc                         ; $85B990 static
+    adc.w #$0033                ; $85B991 static
+    bra CODE_85B999             ; $85B994 static
 CODE_85B996:
     lda.w #$0033                ; $85B996
+CODE_85B999:
     sta.w $8000                 ; $85B999
     lda.w #$FF5B                ; $85B99C
     sta.w $8000                 ; $85B99F
@@ -2536,9 +2546,12 @@ CODE_85B996:
     sta.w $8000                 ; $85B9A5
     lda.w $1EF2                 ; $85B9A8
     bpl CODE_85B9B3             ; $85B9AB
-    incbin !baserom:$2B9AD..$2B9B3
+    clc                         ; $85B9AD static
+    adc.w #$00DC                ; $85B9AE static
+    bra CODE_85B9B6             ; $85B9B1 static
 CODE_85B9B3:
     lda.w #$00DC                ; $85B9B3
+CODE_85B9B6:
     sta.w $8000                 ; $85B9B6
     lda.w $1EF4                 ; $85B9B9
     sta.w $8000                 ; $85B9BC
@@ -2548,9 +2561,14 @@ CODE_85B9B3:
     sta.w $8000                 ; $85B9C8
     lda.w $1EF2                 ; $85B9CB
     bpl CODE_85B9D7             ; $85B9CE
-    incbin !baserom:$2B9D0..$2B9D7
+    asl a                       ; $85B9D0 static
+    asl a                       ; $85B9D1 static
+    clc                         ; $85B9D2 static
+    adc.b $1A                   ; $85B9D3 static
+    bra CODE_85B9D9             ; $85B9D5 static
 CODE_85B9D7:
     lda.b $1A                   ; $85B9D7
+CODE_85B9D9:
     sta.w $8000                 ; $85B9D9
     lda.w #$00C0                ; $85B9DC
     sta.w $8000                 ; $85B9DF
@@ -2781,7 +2799,13 @@ CODE_85BBF4:
     ldy.w #$0000                ; $85BBF4
     lda.w $1EF2                 ; $85BBF7
     bpl CODE_85BC09             ; $85BBFA
-    incbin !baserom:$2BBFC..$2BC09
+    clc                         ; $85BBFC static
+    adc.w #$00DC                ; $85BBFD static
+    cmp.w #$0004                ; $85BC00 static
+    bpl CODE_85BC08             ; $85BC03 static
+    lda.w #$0004                ; $85BC05 static
+CODE_85BC08:
+    tay                         ; $85BC08 static
 CODE_85BC09:
     tya                         ; $85BC09
     sta.l $7E4D49,x             ; $85BC0A

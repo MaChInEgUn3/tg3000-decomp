@@ -1405,4 +1405,16 @@ bool road_rows_stream(void);
 // and $1E3E (D+$1A).
 void road_rows_project(void);
 
+// $85:B828: road_rows_project for the second view (D = $0100; DB = $30 inside, $83 on return;
+// RTL). Its own bands ($7E:4D49), buffer ends ($00B4: $292B/$2A2B) and outputs ($017C,
+// $0160, $0168, $1E40). A first product (by the port) of the row pair's $7E:3E6E-$3E6C by
+// $0224's row, plus $0242 and $3E6C, gives $1EF2, which then plays $0242's part; four more
+// give $017C and the offsets (from $1EDA). Command $07 (or $10 with D+$E4) gets the
+// constants and $1EF4/$1EF6. Each row (as road_rows_project's) sends its height, the first
+// view's widths ($7E:37EC/$35EC) and its pair, stores the sums at $376C/$356C and the chip's
+// two answers at $366C/$386C (+ height and place at $396C/$3A6C); an object's 8 bytes come
+// from the chip or are copied (D+$E4 negative), from bank $90 or $7E by the pointer's
+// sign ($7E:3FEC), and its entries go to $0E56/$0E58. No edges.
+void road_rows_project2(void);
+
 #endif

@@ -8666,6 +8666,62 @@ static void fuzz_road_rows_project(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
   dsp4_bridge_script(script, n);
 }
 
+// ---- road_rows_project2 ($85:B828) ----  a DSP-4 tape row (RTL); outputs as
+// road_rows_project's: A = D+$1A, X = the band, Y = $0160, N set, Z clear, C of the CMP #4
+// ($1EF2 negative, as it computed it) or of the rows' CMP #$0E00, V clear, DB = $83
+static void call_road_rows_project2(const Regs* in, Regs* out) {
+  (void)in;
+  road_rows_project2();
+  out->a = rd16(DP + 0x1A);
+  out->x = rd16(0x00B4) ? 0x0023 : 0x0045;
+  out->y = rd16(0x0160);
+  out->n = true;
+  out->z = false;
+  const uint16_t q = rd16(0x1EF2);
+  out->c = (q & 0x8000) ? (uint16_t)(q + 0x00DC) >= 4 : true;
+  out->v = false;
+  out->db = 0x83;
+}
+// as road_rows_project's: the buffer, the place, D+$E4's sign; the first product's answer
+// chosen so that $1EF2 comes out negative now and then; each row's two answers and object
+// count (objects from bank $7E below $7000 or from ROM in bank $90; entries in low WRAM)
+static void fuzz_road_rows_project2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x00B4, (rnd() & 1) ? 0 : 1);
+  ram[0x0225] = (uint8_t)rnd();
+  const bool copied = (rnd() & 1) != 0;
+  wr16ram(ram, DP + 0xE4, (uint16_t)(copied ? 0x8000 | rnd() : rnd() & 0x7FFF));
+  uint16_t at = (uint16_t)(0x0080 - ((ram[0x0225] >> 1) & 0x7E));
+  uint32_t k = (uint32_t)(((ram[0x0226] | ram[0x0227] << 8) << 1) & 0x3E);
+  const uint16_t base = (uint16_t)((ram[0x0242] | ram[0x0243] << 8) + (ram[0x3E6C + k] | ram[0x3E6D + k] << 8));
+  const uint16_t q = rnd() % 3 == 0 ? (uint16_t)(0 - (1 + rnd() % 0xE0)) : (uint16_t)(rnd() % 0x40);
+  uint16_t script[256];
+  int n = 0;
+  script[n++] = (uint16_t)rnd();
+  script[n++] = (uint16_t)(q - base);  // $1EF2 = $0242 + this + $3E6C
+  for(int i = 0; i < 8; i++) script[n++] = (uint16_t)rnd();
+  int objects = 0;
+  do {
+    k += 2;
+    for(int i = 0; i < 2; i++) script[n++] = (uint16_t)rnd();
+    const int pairs = (objects < 8 && rnd() % 5 == 0) ? 1 + (int)(rnd() % 2) : 0;
+    script[n++] = (uint16_t)pairs;
+    if(pairs) {
+      objects++;
+      wr16ram(ram, 0x3FEC + k, (rnd() & 1) ? (uint16_t)(0x2010 + 2 * (rnd() % 0x2800)) : (uint16_t)(0x8110 + 2 * (rnd() % 0x3000)));
+      if(!copied)
+        for(int i = 0; i < 4; i++) script[n++] = (uint16_t)rnd();
+      for(int i = 0; i < pairs; i++) {
+        script[n++] = (uint16_t)(2 * (rnd() % 0x300));
+        script[n++] = (uint16_t)rnd();
+        script[n++] = (uint16_t)rnd();
+      }
+    }
+    at = (uint16_t)(at + 0x0080);
+  } while(at < 0x0E00);
+  dsp4_bridge_script(script, n);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9579,6 +9635,9 @@ const Routine routines[] = {
   {.name = "object_sprite_shadowed", .entry = 0x82DA48, .end = 0x82DAAF, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_object_sprite_shadowed, .fuzz = fuzz_object_sprite_shadowed, .dsp4Tape = true},
+  {.name = "road_rows_project2", .entry = 0x85B828, .end = 0x85BC20, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project2, ALL_OUTPUTS,
+   .fuzz = fuzz_road_rows_project2, .dsp4Tape = true, .fuzzStack = 0x1FF1},
   {.name = "road_rows_project", .entry = 0x85B3D7, .end = 0x85B828, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project, ALL_OUTPUTS,
    .fuzz = fuzz_road_rows_project, .dsp4Tape = true, .fuzzStack = 0x1FF1},

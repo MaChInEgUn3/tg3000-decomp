@@ -1819,6 +1819,31 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The second view's road rows (roots-100, 2026-11-21)
+
+**`road_rows_project2` ($85:B828-$85:BC1F), a DSP-4 tape row:** 1,016 bytes. The race calls
+it right after `road_rows_project` (`$85:B36F`/`$85:B3A9`). It is a separate routine, not a
+copy: only 95 bytes match `road_rows_project`'s at the same offsets, so its C is its own.
+- **Its outputs:** the bands at `$7E:4D49`, buffer ends `$292B`/`$2A2B`, `$017C`, `$0160`,
+  `$0168` and `$1E40`.
+- **A first product of its own.** The row pair's `$7E:3E6E-$3E6C` by `$0224`'s row, plus
+  `$0242` and `$3E6C`, gives `$1EF2`, which then plays `$0242`'s part. `$376C`/`$356C` start
+  from the pair. Four more products give `$017C` and the offsets, from `$1EDA` instead of
+  `$0208`.
+- **Command `$07`** (or `$10` followed by D+$E4) gets the constants and `$1EF4`/`$1EF6`. It
+  has none of the 8.8 offset words.
+- **Each row:**
+  - **It sends** its height, the first view's widths (`$7E:37EC`/`$35EC`) and its pair.
+  - **It stores** the sums at `$376C`/`$356C`, then the chip's two answers at
+    `$366C`/`$386C`, plus the height and the place.
+  - **An object's 8 bytes** come from the chip or are copied. The source is bank `$90` or
+    bank `$7E`, by the sign of the pointer at `$7E:3FEC`. For the copy that is the
+    pointer's own sign; for the chip it is the sign of the pointer less 7.
+  - **Its entries** go to `$0E56`/`$0E58`. There is no edge section.
+- **Decoded as static code:** five ranges, the `$1EF2`-negative branches. The fuzz reaches
+  them by choosing the first product's answer so that `$1EF2` comes out negative.
+- **Result:** live 142/142 (race1), fuzz 200/200, paths 419/419.
+
 ## The road's rows projected by the DSP-4 (roots-99, 2026-11-21)
 
 **`road_rows_project` ($85:B3D7-$85:B827), a DSP-4 tape row:** 1,105 bytes. It runs with

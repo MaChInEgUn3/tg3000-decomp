@@ -148,3 +148,8 @@
 85:B5B3 85:B5BA m16x16 ; road_profile_stream: never run
 85:B7BF 85:B7C2 m16x16 ; road_profile_stream: never run
 85:B804 85:B811 m16x16 ; road_profile_stream: never run
+85:B96F 85:B97C m16x16 ; road_rows_project2: never run
+85:B990 85:B996 m16x16 ; road_rows_project2: never run
+85:B9AD 85:B9B3 m16x16 ; road_rows_project2: never run
+85:B9D0 85:B9D7 m16x16 ; road_rows_project2: never run
+85:BBFC 85:BC09 m16x16 ; road_rows_project2: never run
