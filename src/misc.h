@@ -1322,4 +1322,16 @@ bool sprite_bar_put(uint16_t length, uint16_t at, uint16_t d32);
 // sides ($0204/$0206, $02B7/$02B9) from their cars.
 void race_grid_setup(void);
 
+// $82:A28B: the race's state reset before a race (D = $0100): the players' and the race's
+// words cleared or set to their start (the second player copies the first's car $0393/
+// $0395 unless the variant's bits 4-5 are both set, moved on one unless its car is 5); 8
+// tables of 4 words at $7E:272C on = $18A6; the two players' colour offsets ($4E55-$4E5F)
+// from their palettes' $6A33/$6B33 (5-bit channels less 6, 7, 8; the first player's with
+// bits $20/$40/$80); the cars' order $1E6A = $0446's byte * $35 (DSP-4); race_grid_setup;
+// $11 bytes from $83:A411 to $7E:4CCC; the players' $1E-byte car records from $85:A118 +
+// $1E * their car ($0392, $03C1; DSP-4) to $7E:2140 / $215E; track_palettes_load; $1E66 =
+// $1E68 = 0; 40 entries from $97:A2B8 each to four words at $7E:2000 + 8n; $0446-$0458 =
+// $FFFF.
+void race_state_reset(void);
+
 #endif

@@ -1789,6 +1789,34 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The race's state reset (roots-93, 2026-11-21)
+
+**`race_state_reset` ($82:A28B):** about 1,000 bytes, 5 entries, all of them interrupted.
+- **The players' and the race's words** are cleared or set to their start, about 150
+  stores. The second player copies the first's car (`$0393`/`$0395`) unless the variant's
+  bits 4-5 are both set, and it moves on one unless that car is 5.
+- **Tables and colours:**
+  - 8 tables of 4 words from `$7E:272C` are set to `$18A6`;
+  - the players' colour offsets (`$4E55`-`$4E5F`) come from their palettes' `$6A33`/`$6B33`:
+    the 5-bit channels less 6, 7 and 8, with bits `$20`/`$40`/`$80` for the first player.
+- **The cars:**
+  - the cars' order `$1E6A` = `$0446`'s byte × `$35` (DSP-4);
+  - `race_grid_setup`;
+  - `$11` bytes from `$83:A411` to `$7E:4CCC`;
+  - each player's `$1E`-byte car record from `$85:A118` + `$1E` × the car (DSP-4; the
+    original skips the product's high word with a write) to `$7E:2140`/`$215E`.
+- **Then:** `track_palettes_load`, 40 entries from `$97:A2B8` to four words each at
+  `$7E:2000`, and `$0446`-`$0458` = `$FFFF`.
+- **The C:** the runs of constant stores were transcribed from the listing by a script,
+  which flags any instruction it does not handle (none were left). The branches, the
+  8-bit stores, the copies and the loops were written by hand.
+- **Registers.** A, X, Y, DB and every flag are compared (A = `$FFFF`, X = 0, Y = `$140`).
+- **The fuzz:** `race_grid_setup`'s and `track_palettes_load`'s inputs, the variant's bits,
+  the first player's car (5 now and then), a shuffled car order, the players' cars and
+  the palettes' colours.
+- **Result:** replays 2/2 (60k) and 1/1 (race1), fuzz 500/500 and 200/200, paths 360/360,
+  first try.
+
 ## The race's starting grid (roots-92, 2026-11-21)
 
 **`race_grid_setup` ($85:9ADB, `RTL`, DB = `$85` for its tables):** 5 entries, 3 of them

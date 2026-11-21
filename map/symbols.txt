@@ -472,3 +472,4 @@ func    82DA48   object_sprite_shadowed ; a track object and its second sprite (
 func    818527   sprite_part_put     ; one sprite part streamed to the DSP-4, its OAM pairs read (a tape row) -> src/misc.c
 func    818487   sprite_bar_put      ; a bar of sprite parts streamed to the DSP-4 (RTL; a tape row) -> src/misc.c
 func    859ADB   race_grid_setup     ; the race's starting grid: the 20 cars' records, lanes, random offsets and drifts, the players placed (RTL) -> src/misc.c
+func    82A28B   race_state_reset    ; the race's state reset: players' words, colour offsets, car order, grid, car records, palettes, tiles -> src/misc.c

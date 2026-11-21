@@ -8243,6 +8243,44 @@ static void fuzz_race_grid_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   ram[0x03C1] = (uint8_t)(rnd() % 7);
 }
 
+// ---- race_state_reset ($82:A28B) ----  A = $FFFF, X = 0, Y = $140 (past the 40 tiles), N
+// clear and Z set (the last DEX), C and V clear (the tiles' last ADC #8), DB = $83
+static void call_race_state_reset(const Regs* in, Regs* out) {
+  (void)in;
+  race_state_reset();
+  out->a = 0xFFFF;
+  out->x = 0;
+  out->y = 0x0140;
+  out->n = false;
+  out->z = true;
+  out->c = false;
+  out->v = false;
+  out->db = 0x83;
+}
+// race_grid_setup's and track_palettes_load's inputs; the variant's bits 4-5 (both set now
+// and then), the first player's car (5 now and then), the cars' order (a shuffle of 0-19),
+// the players' cars (0-6), the palettes' colours
+static void fuzz_race_state_reset(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_race_grid_setup(r, ram, rnd);
+  fuzz_track_palettes_load(r, ram, rnd);
+  ram[0x03DC] = (uint8_t)((ram[0x03DC] & 0xCF) | (rnd() % 4) << 4);
+  wr16ram(ram, 0x0393, (uint16_t)((rnd() & 0xFF00) | ((rnd() & 1) ? 5 : rnd() % 8)));
+  wr16ram(ram, 0x0395, (uint16_t)rnd());
+  uint8_t order[20];
+  for(int i = 0; i < 20; i++) order[i] = (uint8_t)i;
+  for(int i = 19; i > 0; i--) {
+    const int j = (int)(rnd() % (uint32_t)(i + 1));
+    const uint8_t t = order[i];
+    order[i] = order[j];
+    order[j] = t;
+  }
+  for(int i = 0; i < 20; i++) ram[0x0446 + i] = order[i];
+  ram[0x0392] = (uint8_t)(rnd() % 7);
+  ram[0x03C1] = (uint8_t)(rnd() % 7);
+  wr16ram(ram, 0x6A33, (uint16_t)rnd());
+  wr16ram(ram, 0x6B33, (uint16_t)rnd());
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9160,6 +9198,9 @@ const Routine routines[] = {
   {.name = "race_grid_setup", .entry = 0x859ADB, .end = 0x859D39, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_grid_setup,
    .fuzz = fuzz_race_grid_setup},
+  {.name = "race_state_reset", .entry = 0x82A28B, .end = 0x82A672, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_state_reset, ALL_OUTPUTS,
+   .fuzz = fuzz_race_state_reset},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

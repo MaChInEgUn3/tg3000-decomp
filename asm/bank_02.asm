@@ -125,7 +125,7 @@ CODE_828422:
     jsl.l track_settings_load   ; $828465
     lda.w $047B                 ; $828469
     jsl.l track_tiles_load      ; $82846C
-    jsr.w $A28B                 ; $828470
+    jsr.w race_state_reset      ; $828470
     lda.w #$0000                ; $828473
     sta.l $7EFAFA               ; $828476
     lda.w #$FF7D                ; $82847A
@@ -665,6 +665,7 @@ CODE_82A24B:
     lda.w #$0600                ; $82A283
     jsl.l upload_vram_now       ; $82A286
     rts                         ; $82A28A
+race_state_reset:
     stz.w $00B4                 ; $82A28B
     stz.w $00B6                 ; $82A28E
     stz.w $00B8                 ; $82A291
