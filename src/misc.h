@@ -1474,4 +1474,11 @@ void title_scene_load(void);
 // of its entry in the 8-byte table at $8A:9351 is set. Returns whether it ran.
 bool track_preview_maybe(void);
 
+// $82:8961: the HUD's four markers and its badge, then race_hud_digits (a tail jump). Word
+// $7C57 + i of VRAM gets tile $0157 where byte i of $81:0398 is 0 (the original steps over
+// the others by reading $2139); with $03A7's low byte set, four words of $83:A4FC go to
+// $7F45-$7F48. hud_markers_put is that part alone (up to the tail jump).
+void hud_markers_put(void);
+void hud_markers_write(void);
+
 #endif

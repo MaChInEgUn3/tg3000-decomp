@@ -6291,3 +6291,16 @@ bool track_preview_maybe(void) {
   track_tiles_preview(track);
   return true;
 }
+
+void hud_markers_put(void) {
+  for(uint16_t i = 0; i < 4; i++)
+    if(rd8(0x0398 + i) == 0) video_write_vram_word((uint16_t)(0x7C57 + i), 0x0157);
+  if(rd8(0x03A7) != 0)
+    for(uint16_t i = 0; i < 4; i++) video_write_vram_word((uint16_t)(0x7F45 + i), bus_rd16(0x83A4FC + 2 * (uint32_t)i));
+}
+
+// TG3000_ROUTINE($82:8961) hud_markers_write
+void hud_markers_write(void) {
+  hud_markers_put();
+  race_hud_digits();
+}

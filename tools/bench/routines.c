@@ -8929,6 +8929,26 @@ static void fuzz_track_preview_maybe(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
   wr16ram(ram, 0x0444, (uint16_t)(rnd() % 0x37));
 }
 
+// ---- hud_markers_write ($82:8961) ----  the sample ends at its tail jump to race_hud_digits
+// ($82:89B2, which has its own row): hud_markers_put. X = 4, Y = $0157, C set (the CPX #4), V
+// as on entry; A = the last load: $03A7's byte (0, Z set) or the word at $83:A502
+static void call_hud_markers_write(const Regs* in, Regs* out) {
+  (void)in;
+  hud_markers_put();
+  out->x = 4;
+  out->y = 0x0157;
+  out->c = true;
+  out->a = rd8(0x03A7) ? bus_rd16(0x83A502) : 0;
+  setNZ16(out, out->a);
+}
+// the badge's byte ($03A7) either way; the markers' bytes ($0398-$039B) kept at 0, since the
+// step over a set one (a read of $2139) is a hole
+static void fuzz_hud_markers_write(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint32_t i = 0; i < 4; i++) ram[0x0398 + i] = 0;
+  ram[0x03A7] = (rnd() & 1) ? 0 : (uint8_t)(1 + rnd() % 0xFF);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9799,6 +9819,10 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x30, .call = call_follow_car_step, ALL_OUTPUTS, .fuzz = fuzz_follow_car_step},
   {.name = "car_sync_player", .entry = 0x81FA8F, .end = 0x81FB20, .source = "src/track.c", .needM16 = true,
    .needX16 = true, .db = 0x7E, .call = call_car_sync_player, ALL_OUTPUTS, .fuzz = fuzz_car_sync_player},
+  {.name = "hud_markers_write", .entry = 0x828961, .end = 0x8289B2, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_hud_markers_write, ALL_OUTPUTS,
+   .fuzz = fuzz_hud_markers_write, .endAt = 0x8289B2,  // its tail jump to race_hud_digits
+   .holes = {{0x828976, 0x82897B}}},  // a set marker's step over (LDA $2139): no movie, no VRAM read in the harness
   {.name = "race_hud_digits", .entry = 0x82B4ED, .end = 0x82B769, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_hud_digits, .fuzz = fuzz_race_hud_digits},
   {.name = "car_track_step", .entry = 0x83F7F9, .end = 0x83F9D1, .source = "src/misc.c", .needM16 = true,

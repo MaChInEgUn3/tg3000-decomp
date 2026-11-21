@@ -253,7 +253,7 @@ CODE_82856D:
     jsr.w track_setup_load      ; $8285C9
     jsl.l track_rows_build      ; $8285CC
     jsr.w track_objects_stream  ; $8285D0
-    jsr.w $8961                 ; $8285D3
+    jsr.w hud_markers_write     ; $8285D3
     lda.w #$0001                ; $8285D6
     jsr.w wait_frames_82        ; $8285D9
     stz.w $4315                 ; $8285DC
@@ -427,6 +427,7 @@ CODE_828933:
     jsr.w func_82A9B7           ; $828941
     jmp.w oam_high_load         ; $828944
     incbin !baserom:$10947..$10961
+hud_markers_write:
     lda.w #$7C57                ; $828961
     sta.w $2116                 ; $828964
     ldx.w #$0000                ; $828967

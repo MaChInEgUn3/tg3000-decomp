@@ -1819,6 +1819,36 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The HUD's markers (roots-107, 2026-11-21)
+
+**`hud_markers_write` ($82:8961):** it runs once per race setup, 5 entries on the 60k
+movie, and ends with a tail jump to `race_hud_digits`.
+- **The markers:** VRAM word `$7C57` + i gets tile `$0157` where byte i of `$81:0398` is 0.
+  For a set one, the original steps over the word by reading `$2139`.
+- **The badge:** with `$03A7`'s low byte set, four words of `$83:A4FC` go to `$7F45`-`$7F48`.
+- **The row ends at the tail jump** (`.endAt` = `.end` = `$82:89B2`), and race_hud_digits
+  keeps its own row.
+  - The first try ran into race_hud_digits. With 5 entries every flag counts as live, and
+    that routine's C and V come from deep inside `race_message_update`.
+  - The advisor ruled out a "flags dead" override: it would turn the measured rule into a
+    declared one.
+  - Ended at the jump, the outputs owed are the routine's own: X = 4, Y = `$0157`, C set
+    (the `CPX #4`), V as on entry, and A/N/Z from the last load.
+- **A hole: the step over a set marker** (`$82:8976`-`$897A`, the `$2139` read). It is
+  unverified: no movie reaches it, and the harness has no VRAM read, so the fuzz keeps the
+  marker bytes at 0. In C, the step is the skipped word, since every write names its
+  address. The VRAM address the original leaves behind is not compared, because the
+  harness doesn't count it as left set.
+- **Result:** live 5/5 (60k), fuzz 500/500, paths 24/24.
+
+**`$83:EAC6` is not blocked after all** (this corrects roots-102). Its writes at `$83:ED72`
+and `$83:F4EB` land in the second word of a product's answer that the game didn't read.
+On the 20,000-frame tape the next command `$0000` returns the exact product: for example
+`$13C0` × `$200` = `$278000` right after the write at `$ED72`, and 3 × `$800` after
+`$F4EB`. This is the idiom roots-94 found in road_rows_build's tilt. `$83:F227`/`$F236`
+don't occur in those frames. So `$83:EAC6` can be a plain row with `dsp4_multiply`. The
+stop rule that parked it ("every sequence opens with `$0000`") was the wrong test.
+
 ## A track's preview when shown (roots-106, 2026-11-21)
 
 - **`track_preview_maybe` ($8A:8768):** when bit 1 of the track `$1536`'s entry in the
