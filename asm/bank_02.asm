@@ -3281,6 +3281,7 @@ CODE_82D916:
     sty.w $0184                 ; $82D930
 CODE_82D933:
     rts                         ; $82D933
+sprite_put_rows_a:
     ldx.b $14                   ; $82D934
     lda.l $7E386C,x             ; $82D936
     sta.w $8000                 ; $82D93A
@@ -3313,7 +3314,8 @@ CODE_82D933:
     clc                         ; $82D97F
     adc.l $860002,x             ; $82D980
     tax                         ; $82D984
-    jmp.w $DDBF                 ; $82D985
+    jmp.w sprite_parts_stream   ; $82D985
+sprite_put_rows_b:
     ldx.b $14                   ; $82D988
     lda.l $7E386C,x             ; $82D98A
     sta.w $8000                 ; $82D98E
@@ -3346,7 +3348,7 @@ CODE_82D933:
     clc                         ; $82D9D4
     adc.l $860002,x             ; $82D9D5
     tax                         ; $82D9D9
-    jmp.w $DDBF                 ; $82D9DA
+    jmp.w sprite_parts_stream   ; $82D9DA
     incbin !baserom:$159DD..$15A46
 clc_82DA46:
     clc                         ; $82DA46
@@ -3382,21 +3384,21 @@ CODE_82DA63:
     lda.l $7E8CB5,x             ; $82DA87
     and.w #$0010                ; $82DA8B
     beq CODE_82DAA0             ; $82DA8E
-    jsr.w $D934                 ; $82DA90
+    jsr.w sprite_put_rows_a     ; $82DA90
     bcs CODE_82DA9F             ; $82DA93
     stz.b $22                   ; $82DA95
     lda.w #$BC30                ; $82DA97
     sta.b $24                   ; $82DA9A
-    jmp.w $D988                 ; $82DA9C
+    jmp.w sprite_put_rows_b     ; $82DA9C
 CODE_82DA9F:
     rts                         ; $82DA9F
 CODE_82DAA0:
-    jsr.w $D934                 ; $82DAA0
+    jsr.w sprite_put_rows_a     ; $82DAA0
     bcs CODE_82DA9F             ; $82DAA3
     stz.b $22                   ; $82DAA5
     lda.w #$BC30                ; $82DAA7
     sta.b $24                   ; $82DAAA
-    jmp.w $D934                 ; $82DAAC
+    jmp.w sprite_put_rows_a     ; $82DAAC
     lda.l $86AF06,x             ; $82DAAF
     sta.b $24                   ; $82DAB3
     ldx.b $1C                   ; $82DAB5
@@ -3428,9 +3430,9 @@ CODE_82DACA:
     lda.l $7E8CB5,x             ; $82DAEE
     and.w #$0010                ; $82DAF2
     beq CODE_82DAFA             ; $82DAF5
-    jmp.w $D934                 ; $82DAF7
+    jmp.w sprite_put_rows_a     ; $82DAF7
 CODE_82DAFA:
-    jmp.w $D934                 ; $82DAFA
+    jmp.w sprite_put_rows_a     ; $82DAFA
     lda.l $86AF06,x             ; $82DAFD
     sta.b $24                   ; $82DB01
     ldx.b $1C                   ; $82DB03
@@ -3466,7 +3468,7 @@ CODE_82DB18:
     clc                         ; $82DB44
     adc.w #$FFE0                ; $82DB45
     sta.b $22                   ; $82DB48
-    jmp.w $D934                 ; $82DB4A
+    jmp.w sprite_put_rows_a     ; $82DB4A
     lda.l $86AF06,x             ; $82DB4D
     sta.b $24                   ; $82DB51
     ldx.b $1C                   ; $82DB53
@@ -3490,9 +3492,9 @@ CODE_82DB74:
     lda.l $7E8CB5,x             ; $82DB78
     and.w #$0010                ; $82DB7C
     beq CODE_82DB84             ; $82DB7F
-    jmp.w $D988                 ; $82DB81
+    jmp.w sprite_put_rows_b     ; $82DB81
 CODE_82DB84:
-    jmp.w $D934                 ; $82DB84
+    jmp.w sprite_put_rows_a     ; $82DB84
     lda.l $86AF06,x             ; $82DB87
     sta.b $24                   ; $82DB8B
     ldx.b $1C                   ; $82DB8D
@@ -3523,25 +3525,25 @@ CODE_82DB84:
 CODE_82DBC6:
     sta.b $20                   ; $82DBC6
     stz.b $22                   ; $82DBC8
-    jsr.w $D934                 ; $82DBCA
+    jsr.w sprite_put_rows_a     ; $82DBCA
     bcs CODE_82DBF4             ; $82DBCD
     lda.b $20                   ; $82DBCF
     eor.w #$FFFF                ; $82DBD1
     inc a                       ; $82DBD4
     sta.b $20                   ; $82DBD5
-    jsr.w $D934                 ; $82DBD7
+    jsr.w sprite_put_rows_a     ; $82DBD7
     bcs CODE_82DBF4             ; $82DBDA
     lda.b $20                   ; $82DBDC
     sec                         ; $82DBDE
     sbc.w #$0080                ; $82DBDF
     sta.b $20                   ; $82DBE2
-    jsr.w $D934                 ; $82DBE4
+    jsr.w sprite_put_rows_a     ; $82DBE4
     bcs CODE_82DBF4             ; $82DBE7
     lda.b $20                   ; $82DBE9
     eor.w #$FFFF                ; $82DBEB
     inc a                       ; $82DBEE
     sta.b $20                   ; $82DBEF
-    jmp.w $D934                 ; $82DBF1
+    jmp.w sprite_put_rows_a     ; $82DBF1
 CODE_82DBF4:
     rts                         ; $82DBF4
     tyx                         ; $82DBF5
@@ -3557,17 +3559,17 @@ CODE_82DBF4:
 CODE_82DC09:
     sta.b $20                   ; $82DC09
     stz.b $22                   ; $82DC0B
-    jsr.w $D934                 ; $82DC0D
+    jsr.w sprite_put_rows_a     ; $82DC0D
     bcs CODE_82DBF4             ; $82DC10
-    jsr.w $D988                 ; $82DC12
+    jsr.w sprite_put_rows_b     ; $82DC12
     bcs CODE_82DBF4             ; $82DC15
     lda.b $20                   ; $82DC17
     eor.w #$FFFF                ; $82DC19
     inc a                       ; $82DC1C
     sta.b $20                   ; $82DC1D
-    jsr.w $D934                 ; $82DC1F
+    jsr.w sprite_put_rows_a     ; $82DC1F
     bcs CODE_82DBF4             ; $82DC22
-    jmp.w $D988                 ; $82DC24
+    jmp.w sprite_put_rows_b     ; $82DC24
     tyx                         ; $82DC27
     lda.l $7E8CB3,x             ; $82DC28
     and.w #$00FF                ; $82DC2C
@@ -3581,26 +3583,27 @@ CODE_82DC09:
 CODE_82DC3B:
     sta.b $20                   ; $82DC3B
     stz.b $22                   ; $82DC3D
-    jsr.w $D988                 ; $82DC3F
+    jsr.w sprite_put_rows_b     ; $82DC3F
     bcs CODE_82DBF4             ; $82DC42
     lda.b $20                   ; $82DC44
     eor.w #$FFFF                ; $82DC46
     inc a                       ; $82DC49
     sta.b $20                   ; $82DC4A
-    jsr.w $D988                 ; $82DC4C
+    jsr.w sprite_put_rows_b     ; $82DC4C
     bcs CODE_82DBF4             ; $82DC4F
     lda.b $20                   ; $82DC51
     sec                         ; $82DC53
     sbc.w #$0080                ; $82DC54
     sta.b $20                   ; $82DC57
-    jsr.w $D988                 ; $82DC59
+    jsr.w sprite_put_rows_b     ; $82DC59
     bcs CODE_82DBF4             ; $82DC5C
     lda.b $20                   ; $82DC5E
     eor.w #$FFFF                ; $82DC60
     inc a                       ; $82DC63
     sta.b $20                   ; $82DC64
-    jmp.w $D988                 ; $82DC66
+    jmp.w sprite_put_rows_b     ; $82DC66
     incbin !baserom:$15C69..$15DBF
+sprite_parts_stream:
     ldy.b $84                   ; $82DDBF
     lda.l $7F0000,x             ; $82DDC1
     sta.w $8000                 ; $82DDC5
@@ -3625,7 +3628,7 @@ CODE_82DDE2:
     lda.w $8000                 ; $82DDEC
     sta.w $1574,y               ; $82DDEF
     cpy.b $1A                   ; $82DDF2
-    db $F0,$6D ; beq            ; $82DDF4
+    beq CODE_82DE63             ; $82DDF4
 CODE_82DDF6:
     lda.w $C000                 ; $82DDF6
     bpl CODE_82DDF6             ; $82DDF9
@@ -3683,7 +3686,28 @@ CODE_82DE5F:
     sty.b $84                   ; $82DE5F
     clc                         ; $82DE61
     rts                         ; $82DE62
-    incbin !baserom:$15E63..$15E87
+CODE_82DE63:
+    lda.w $C000                 ; $82DE63 static
+    bpl CODE_82DE63             ; $82DE66 static
+    lda.w $8000                 ; $82DE68 static
+    beq CODE_82DE7D             ; $82DE6B static
+    lda.w $8000                 ; $82DE6D static
+    xba                         ; $82DE70 static
+    xba                         ; $82DE71 static
+    xba                         ; $82DE72 static
+    xba                         ; $82DE73 static
+    lda.w $8000                 ; $82DE74 static
+    xba                         ; $82DE77 static
+    xba                         ; $82DE78 static
+    xba                         ; $82DE79 static
+    xba                         ; $82DE7A static
+    bra CODE_82DE63             ; $82DE7B static
+CODE_82DE7D:
+    stz.w $8000                 ; $82DE7D static
+    stz.w $8000                 ; $82DE80 static
+    sty.b $84                   ; $82DE83 static
+    sec                         ; $82DE85 static
+    rts                         ; $82DE86 static
 CODE_82DE87:
     lda.w $C000                 ; $82DE87
     bpl CODE_82DE87             ; $82DE8A

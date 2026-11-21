@@ -1245,4 +1245,16 @@ bool save_data_check(void);
 // count below 4 bytes is taken as 65536).
 void oam_high_load(void);
 
+// $82:D934 / $82:D988: one object's sprite streamed to the DSP-4 (D = $0100; a $09 sprite
+// stream is open): seven words through the port (the object's rows $386C, $38EC, then $35EC
+// and $37EC, or $366C and $386C, at D+$14; D+$20, D+$22; D+$26 | D+$3A, or | $1000), then
+// its parts from the list at $7F:0000 + the object's graphics place ($7E:6591 slot of
+// $86:0000 + D+$24, plus $86:0002 + the part set's offset): $82:DDBF. Two lists, each
+// 6-byte parts (a nonzero word, two more), ended by a 0 word; each part's answer is pairs
+// of OAM words (to $1574 + Y, Y from D+$84 on, 4 bytes a pair) while the chip's flag is
+// not 0. Y reaching D+$1A fills the buffer: the rest of the answers are drained, the open
+// lists ended (a 0 word each) and the result is true. D+$84 = Y.
+bool sprite_put_rows_a(void);
+bool sprite_put_rows_b(void);
+
 #endif

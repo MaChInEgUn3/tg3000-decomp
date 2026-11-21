@@ -8013,6 +8013,45 @@ static void call_oam_high_load_wrong_command(const Regs* in, Regs* out) {
   oamHighOut(in, out, d86, d8e);
 }
 
+// ---- sprite_put_rows_a / _b ($82:D934, $82:D988) ----  DSP-4 tape rows. C = the buffer
+// filled (the callers' BCS); the other flags by liveness; A X Y not read (the callers
+// return or reload them)
+static void call_sprite_put_rows_a(const Regs* in, Regs* out) { (void)in; out->c = sprite_put_rows_a(); }
+static void call_sprite_put_rows_b(const Regs* in, Regs* out) { (void)in; out->c = sprite_put_rows_b(); }
+// the race's object (D+$14, D+$24 as it left them: their tables lead into ROM); the parts
+// lists written where the routine will look (up to three parts in each, then their 0
+// word); the OAM pointer, its limit on a pair now and then (the buffer fills); the chip's
+// answers scripted: 40 words, a third of them 0 (each ends a part's pairs)
+static void fuzz_sprite_put_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  const uint16_t d14 = (uint16_t)(ram[DP + 0x14] | ram[DP + 0x15] << 8);
+  const uint16_t d24 = (uint16_t)(ram[DP + 0x24] | ram[DP + 0x25] << 8);
+  const uint16_t slot = rom16(0x860000 + (uint32_t)d24);
+  const uint16_t place = (uint16_t)(ram[0x6591 + (uint32_t)slot] | ram[0x6592 + (uint32_t)slot] << 8);
+  const uint16_t row = (uint16_t)(ram[0x39EC + (uint32_t)d14] | ram[0x39ED + (uint32_t)d14] << 8);
+  const uint16_t set = (uint16_t)(rom16(0x848000 + (uint32_t)row) + d24);
+  uint16_t x = (uint16_t)(place + rom16(0x860002 + (uint32_t)set));
+  for(int list = 0; list < 2; list++) {
+    // the first list empty half the time, so the second one fills the buffer too
+    const int parts = (list == 0 && (rnd() & 1)) ? 0 : (int)(rnd() % 4);
+    for(int i = 0; i < parts; i++, x = (uint16_t)(x + 6)) {
+      wr16ram(ram, 0x10000 + (uint32_t)x, (uint16_t)(1 + rnd() % 0xFFFF));
+      wr16ram(ram, 0x10002 + (uint32_t)x, (uint16_t)rnd());
+      wr16ram(ram, 0x10004 + (uint32_t)x, (uint16_t)rnd());
+    }
+    wr16ram(ram, 0x10000 + (uint32_t)x, 0);
+    x = (uint16_t)(x + 2);
+  }
+  const uint16_t at = (uint16_t)(4 * (rnd() % 0x40));
+  wr16ram(ram, DP + 0x84, at);
+  wr16ram(ram, DP + 0x1A, (rnd() & 1) ? (uint16_t)(at + 4 * (1 + rnd() % 6)) : (uint16_t)(at + 2));
+  static const uint16_t words[] = {DP + 0x20, DP + 0x22, DP + 0x26, DP + 0x3A};
+  for(unsigned i = 0; i < sizeof words / sizeof words[0]; i++) wr16ram(ram, words[i], (uint16_t)rnd());
+  uint16_t script[40];
+  for(int i = 0; i < 40; i++) script[i] = (rnd() % 3 == 0) ? 0 : (uint16_t)rnd();
+  dsp4_bridge_script(script, 40);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8895,6 +8934,12 @@ const Routine routines[] = {
   {.name = "oam_high_load", .entry = 0x82AE15, .end = 0x82AEA4, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load, ALL_OUTPUTS, .fuzz = fuzz_oam_high_load,
    .dsp4Tape = true},
+  {.name = "sprite_put_rows_a", .entry = 0x82D934, .end = 0x82D988, .alsoIn = {{0x82DDBF, 0x82DEA8}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
+   .call = call_sprite_put_rows_a, .fuzz = fuzz_sprite_put_rows, .dsp4Tape = true},
+  {.name = "sprite_put_rows_b", .entry = 0x82D988, .end = 0x82D9DD, .alsoIn = {{0x82DDBF, 0x82DEA8}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
+   .call = call_sprite_put_rows_b, .fuzz = fuzz_sprite_put_rows, .dsp4Tape = true},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

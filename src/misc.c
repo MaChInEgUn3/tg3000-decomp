@@ -4423,3 +4423,79 @@ void oam_high_load(void) {
     n = (uint16_t)(n - 1);
   } while(n != 0);
 }
+
+// $82:DDBF's overflow: the chip's remaining answers drained (each nonzero flag with its
+// pair), then `open` 0 words ending the lists still open.
+static void sprite_parts_drain(int open) {
+  while(dsp4_port_read16() != 0) {
+    (void)dsp4_port_read16();
+    (void)dsp4_port_read16();
+  }
+  for(int i = 0; i < open; i++) dsp4_port_write16(0);
+}
+
+// One list of parts from $7F:0000 + *x (the 0 word ending it left at *x). Returns false
+// when the buffer filled (its rest drained, `open` lists ended).
+static bool sprite_parts_list(uint16_t* x, uint16_t* y, int open) {
+  uint16_t w = rd16(0x10000 + (uint32_t)*x);
+  dsp4_port_write16(w);
+  while(w != 0) {
+    dsp4_port_write16(rd16(0x10002 + (uint32_t)*x));
+    dsp4_port_write16(rd16(0x10004 + (uint32_t)*x));
+    if(dsp4_port_read16() != 0) {
+      for(;;) {
+        *y = (uint16_t)(*y + 2);
+        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
+        *y = (uint16_t)(*y + 2);
+        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
+        if(*y == rd16(DP + 0x1A)) {
+          sprite_parts_drain(open);
+          return false;
+        }
+        if(dsp4_port_read16() == 0) break;
+      }
+    }
+    *x = (uint16_t)(*x + 6);
+    w = rd16(0x10000 + (uint32_t)*x);
+    dsp4_port_write16(w);
+  }
+  return true;
+}
+
+// TG3000_ROUTINE($82:DDBF) sprite_parts_stream
+static bool sprite_parts_stream(uint16_t x) {
+  uint16_t y = rd16(DP + 0x84);
+  bool full = !sprite_parts_list(&x, &y, 2);  // the first list's overflow: never run
+  if(!full) {
+    x = (uint16_t)(x + 2);
+    full = !sprite_parts_list(&x, &y, 1);
+  }
+  wr16(DP + 0x84, y);
+  return full;
+}
+
+// The object's graphics place: its slot's place plus its part set's offset.
+static uint16_t sprite_parts_at(void) {
+  const uint16_t d24 = rd16(DP + 0x24);
+  const uint16_t place = rd16(0x6591 + (uint32_t)bus_rd16(0x860000 + (uint32_t)d24));
+  const uint16_t set = (uint16_t)(bus_rd16(0x848000 + (uint32_t)rd16(0x39EC + (uint32_t)rd16(DP + 0x14))) + d24);
+  return (uint16_t)(place + bus_rd16(0x860002 + (uint32_t)set));
+}
+
+static bool sprite_put_rows(uint32_t third, uint32_t fourth, uint16_t flags) {
+  const uint32_t x = rd16(DP + 0x14);
+  dsp4_port_write16(rd16(0x386C + x));
+  dsp4_port_write16(rd16(0x38EC + x));
+  dsp4_port_write16(rd16(third + x));
+  dsp4_port_write16(rd16(fourth + x));
+  dsp4_port_write16(rd16(DP + 0x20));
+  dsp4_port_write16(rd16(DP + 0x22));
+  dsp4_port_write16((uint16_t)(rd16(DP + 0x26) | flags));
+  return sprite_parts_stream(sprite_parts_at());
+}
+
+// TG3000_ROUTINE($82:D934) sprite_put_rows_a
+bool sprite_put_rows_a(void) { return sprite_put_rows(0x35EC, 0x37EC, rd16(DP + 0x3A)); }
+
+// TG3000_ROUTINE($82:D988) sprite_put_rows_b
+bool sprite_put_rows_b(void) { return sprite_put_rows(0x366C, 0x386C, 0x1000); }

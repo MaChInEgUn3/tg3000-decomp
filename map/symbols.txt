@@ -460,3 +460,6 @@ func    8A9908   results_text        ; the results text: each slot's rank, name 
 func    8A99FC   text_line_centered  ; a text map line centred in $1C columns (never run; through results_text) -> src/misc.c
 func    808119   save_data_check     ; the saved data checked at boot: its copy or itself restored, else the defaults sealed -> src/misc.c
 func    82AE15   oam_high_load       ; the sprites' high table from DSP-4 command $06 (a tape row); unused sprites off screen -> src/misc.c
+func    82D934   sprite_put_rows_a   ; one object's sprite streamed to the DSP-4 (rows $35EC/$37EC; a tape row) -> src/misc.c
+func    82D988   sprite_put_rows_b   ; one object's sprite streamed to the DSP-4 (rows $366C/$386C; a tape row) -> src/misc.c
+func    82DDBF   sprite_parts_stream ; a sprite's parts streamed, the OAM pairs read to $1574 (through the two above) -> src/misc.c

@@ -1789,6 +1789,38 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The objects' sprites streamed to the DSP-4 (roots-84, 2026-11-21)
+
+**`sprite_put_rows_a` ($82:D934) and `sprite_put_rows_b` ($82:D988)**, the first real
+users of the tape: one race object's sprite sent to an open `$09` sprite stream.
+- **Seven words through the port:**
+  - the object's rows `$386C`, `$38EC`, then `$35EC`/`$37EC` (a) or `$366C`/`$386C` (b),
+    at `D+$14`;
+  - `D+$20`, `D+$22`;
+  - `D+$26 | D+$3A` (a) or `| $1000` (b).
+- **Then its parts, through the shared tail `sprite_parts_stream` ($82:DDBF).**
+  - The parts list is at `$7F:0000` + the object's graphics place: its `$7E:6591` slot,
+    from `$86:0000 + D+$24`, plus `$86:0002` + its part set's offset.
+  - There are two lists, each of 6-byte parts ended by a 0 word. For each part the chip
+    answers OAM word pairs, read to `$1574` + Y (Y from `D+$84`, 4 bytes a pair), while
+    its flag is not 0.
+  - **The buffer filling up.** When Y reaches `D+$1A`, the rest of the answers are
+    drained, the lists still open are ended with a 0 word each, and the routine returns
+    with carry set.
+  - The first list's overflow (`$82:DE63`, never run) was undecoded and is now static
+    code: two 0 words, where the second list's overflow writes one.
+- **Outputs.** C is the overflow, which the callers' `BCS` reads. The other flags are
+  judged by liveness, and only C came out live.
+- **The fuzz.**
+  - It keeps the race's object (`D+$14`, `D+$24`, whose tables lead into ROM). It computes
+    the place the routine will read and writes both lists there (up to three parts each;
+    the first one empty half the time).
+  - The OAM limit sometimes falls exactly on a pair. The chip's answers are scripted: 40
+    words, a third of them 0.
+  - A temporary count over 200 cases: the first list's overflow 87 times, the second's 6.
+- **Result:** 60k: a live 4,000/4,000 (748,825 entries), b 706/706, fuzz 500/500 each.
+  race1: a 4,000/4,000, fuzz 200/200.
+
 ## A DSP-4 tape for the streamed commands (harness-4, 2026-11-21; decided by the advisor, open to the owner's veto)
 
 - **Why.** The remaining DSP-4 roots stream commands `src/dsp4.c` does not have: the

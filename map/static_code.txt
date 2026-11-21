@@ -119,3 +119,4 @@
 8A:99FC 8A:9A33 m16x16 ; text_line_centered (never run; through results_text)
 80:813F 80:8155 m16x16 ; save_data_check: the stored copy at $7E:FA3B valid, restored (never run)
 80:8177 80:817F m16x16 ; save_data_check: the data at $0366 valid (never run)
+82:DE63 82:DE87 m16x16 ; sprite_parts_stream: the OAM buffer full in the first list (never run)
