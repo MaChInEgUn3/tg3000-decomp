@@ -1417,4 +1417,12 @@ void road_rows_project(void);
 // sign ($7E:3FEC), and its entries go to $0E56/$0E58. No edges.
 void road_rows_project2(void);
 
+// $85:B3A9 (every race frame) / $85:B36F (5 entries on the 60k movie): the race's road for
+// the frame (RTL): road_rows_project, road_rows_project2, the scroll tables, the bands
+// merged (race_bands_merge's result is returned). $85:B3A9: then $1E46 = $00D0, $1E48 =
+// $00D2, $016C/$0170 = $015C/$0160, $01DC = $00E0. $85:B36F: $1E46 and $1E4A = $00D0 before
+// the scroll tables, then $016C-$0172 = $015C-$0162, $01DC and $01DE = $00E0.
+uint16_t race_road_frame(void);
+uint16_t race_road_frame_alt(void);
+
 #endif

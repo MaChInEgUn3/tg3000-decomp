@@ -485,3 +485,5 @@ func    8189F5   dsp4_answers_store  ; two runs of DSP-4 (address, value) answer
 func    818564   road_rows_stream    ; the road's rows streamed to the DSP-4 (command $08), its answers stored, the edges' scan (RTL; a tape row) -> src/misc.c
 func    85B3D7   road_rows_project   ; the road's rows projected by the DSP-4 (command $01): rows $7E:34EC-$39EC, objects, edges (RTL; a tape row) -> src/misc.c
 func    85B828   road_rows_project2  ; road_rows_project for the second view (command $07; $1EF2, bands $7E:4D49; RTL; a tape row) -> src/misc.c
+func    85B36F   race_road_frame_alt ; the road for the frame (both projections, scroll tables, bands; the $1E4A/$016E/$01DE copies; RTL) -> src/misc.c
+func    85B3A9   race_road_frame     ; the race's road for the frame: both projections, scroll tables, bands merged (RTL) -> src/misc.c

@@ -1819,6 +1819,21 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The race's road for the frame (roots-101, 2026-11-21)
+
+- **`race_road_frame` ($85:B3A9) and `race_road_frame_alt` ($85:B36F)** are two short RTL
+  routines, both DSP-4 tape rows. Each runs `road_rows_project`, `road_rows_project2`,
+  `scroll_tables_build` and `race_bands_merge`, and returns race_bands_merge's result.
+  - **`$85:B3A9`** runs every race frame. After the scroll tables it copies `$00D0`/`$00D2`
+    to `$1E46`/`$1E48`, `$015C`/`$0160` to `$016C`/`$0170`, and `$00E0` to `$01DC`.
+  - **`$85:B36F`** has 5 entries on the 60k movie. It copies `$00D0` to `$1E46` and `$1E4A`
+    before the scroll tables, then all four of `$015C`-`$0162` and `$00E0` twice.
+- **Outputs** are race_bands_merge's. V comes from scroll_tables_build's SBC, because
+  nothing after it touches V.
+- **The fuzz** varies the buffer and scripts the chip empty, so every answer is 0. The two
+  projections are checked with real answers in their own rows.
+- **Result:** race1 live 135/135 and 1/1, fuzz 200/200 each, paths 15/15 and 19/19.
+
 ## The second view's road rows (roots-100, 2026-11-21)
 
 **`road_rows_project2` ($85:B828-$85:BC1F), a DSP-4 tape row:** 1,016 bytes. The race calls

@@ -8,6 +8,7 @@
 #include "pads.h"
 #include "rng.h"
 #include "platform.h"
+#include "scroll_tables.h"
 #include "sprites.h"
 #include "text.h"
 #include "video_dma.h"
@@ -5924,4 +5925,30 @@ void road_rows_project2(void) {
   wr16(0x0168, rd16(DP + 0x22));
   wr16(0x0160, (uint16_t)(rd16(DP + 0x18) + 1));
   wr16(0x1E40, rd16(DP + 0x1A));
+}
+
+// TG3000_ROUTINE($85:B36F) race_road_frame_alt
+uint16_t race_road_frame_alt(void) {
+  road_rows_project();
+  road_rows_project2();
+  wr16(0x1E46, rd16(0x00D0));
+  wr16(0x1E4A, rd16(0x00D0));
+  (void)scroll_tables_build();
+  for(uint32_t i = 0; i < 8; i += 2) wr16(0x016C + i, rd16(0x015C + i));
+  wr16(0x01DC, rd16(0x00E0));
+  wr16(0x01DE, rd16(0x00E0));
+  return race_bands_merge();
+}
+
+// TG3000_ROUTINE($85:B3A9) race_road_frame
+uint16_t race_road_frame(void) {
+  road_rows_project();
+  road_rows_project2();
+  (void)scroll_tables_build();
+  wr16(0x1E46, rd16(0x00D0));
+  wr16(0x1E48, rd16(0x00D2));
+  wr16(0x016C, rd16(0x015C));
+  wr16(0x0170, rd16(0x0160));
+  wr16(0x01DC, rd16(0x00E0));
+  return race_bands_merge();
 }

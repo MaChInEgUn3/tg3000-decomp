@@ -272,7 +272,7 @@ CODE_82856D:
     sta.w $0007                 ; $828600
     rep.b #$20                  ; $828603
     jsr.w road_rows_build_call  ; $828605
-    jsl.l $85B36F               ; $828608
+    jsl.l race_road_frame_alt   ; $828608
     lda.w #$0F00                ; $82860C
     sta.w $0148                 ; $82860F
     lda.w #$0080                ; $828612
@@ -420,7 +420,7 @@ CODE_82877F:
     sta.b $86                   ; $82892F
     sta.b $8E                   ; $828931
 CODE_828933:
-    jsl.l $85B3A9               ; $828933
+    jsl.l race_road_frame       ; $828933
     jsl.l road_rows_stream      ; $828937
     jsr.w shake_step            ; $82893B
     jsr.w $CBD4                 ; $82893E

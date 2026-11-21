@@ -1848,6 +1848,7 @@ CODE_85B2B4:
     rep.b #$20                  ; $85B2B4
     rts                         ; $85B2B6
     incbin !baserom:$2B2B7..$2B36F
+race_road_frame_alt:
     jsl.l road_rows_project     ; $85B36F
     jsl.l road_rows_project2    ; $85B373
     lda.w $00D0                 ; $85B377
@@ -1867,6 +1868,7 @@ CODE_85B2B4:
     sta.w $01DE                 ; $85B3A2
     jsr.w race_bands_merge      ; $85B3A5
     rtl                         ; $85B3A8
+race_road_frame:
     jsl.l road_rows_project     ; $85B3A9
     jsl.l road_rows_project2    ; $85B3AD
     jsl.l scroll_tables_build   ; $85B3B1

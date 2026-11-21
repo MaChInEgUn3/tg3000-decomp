@@ -8722,6 +8722,37 @@ static void fuzz_road_rows_project2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   dsp4_bridge_script(script, n);
 }
 
+// ---- race_road_frame ($85:B3A9) / race_road_frame_alt ($85:B36F) ----  DSP-4 tape rows (RTL):
+// race_bands_merge's outputs (A = $00B4's high byte, X = D+$16, Y its result; N clear, Z C
+// set), V of scroll_tables_build's SBC (its $BB - $0237 less $70; nothing after touches V)
+static void roadFrameOutputs(Regs* out, uint16_t merged, uint16_t t) {
+  out->a = (uint16_t)(rd16(0x00B4) & 0xFF00);
+  out->x = rd16(DP + 0x16);
+  out->y = merged;
+  out->n = false;
+  out->z = out->c = true;
+  Regs s;
+  setSbc16(&s, t, 0x70);
+  out->v = s.v;
+}
+static void call_race_road_frame(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t t = (uint16_t)(0xBB - rd16(0x0237));
+  roadFrameOutputs(out, race_road_frame(), t);
+}
+static void call_race_road_frame_alt(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t t = (uint16_t)(0xBB - rd16(0x0237));
+  roadFrameOutputs(out, race_road_frame_alt(), t);
+}
+// the race's road as the movie left it, with the buffer ($00B4) either way; the chip
+// scripted empty (every answer 0: no objects), the two projections having their own rows
+static void fuzz_race_road_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x00B4, (rnd() & 1) ? 0 : 1);
+  dsp4_bridge_script(NULL, 0);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9635,6 +9666,12 @@ const Routine routines[] = {
   {.name = "object_sprite_shadowed", .entry = 0x82DA48, .end = 0x82DAAF, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_object_sprite_shadowed, .fuzz = fuzz_object_sprite_shadowed, .dsp4Tape = true},
+  {.name = "race_road_frame", .entry = 0x85B3A9, .end = 0x85B3D7, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_road_frame, ALL_OUTPUTS,
+   .fuzz = fuzz_race_road_frame, .dsp4Tape = true, .fuzzStack = 0x1FF1},
+  {.name = "race_road_frame_alt", .entry = 0x85B36F, .end = 0x85B3A9, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_road_frame_alt, ALL_OUTPUTS,
+   .fuzz = fuzz_race_road_frame, .dsp4Tape = true, .fuzzStack = 0x1FF1},
   {.name = "road_rows_project2", .entry = 0x85B828, .end = 0x85BC20, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project2, ALL_OUTPUTS,
    .fuzz = fuzz_road_rows_project2, .dsp4Tape = true, .fuzzStack = 0x1FF1},
