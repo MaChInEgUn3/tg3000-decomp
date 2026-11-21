@@ -1819,6 +1819,24 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The DSP-4's answers stored where it says (roots-97, 2026-11-21)
+
+- **`dsp4_answers_store` ($81:89F5-$81:8A49), a DSP-4 tape row.** On the 60k movie it runs
+  about 524,000 times, called twice by the road's row loop at `$81:8802`/`$81:8851`.
+- **What it does:** two runs, each a count followed by that many (address, value) pairs.
+  Each value goes to `$7E:address`; a pair at `$FFFF` writes its high byte to `$7F:0000`.
+  - The original waits on the chip's status (`$C000`) before each count. The tape leaves
+    status reads free, and the C has no wait.
+  - It unrolls the last pair of each run (`DEY; BEQ` before the loop); the C loops.
+- **Outputs:** X is the last pair's address and Y is 0.
+  - A is the last pair's value. When the second run is empty, A is the chip's status word
+    instead, which the tape does not hold, so A is not compared. The callers load A.
+  - N and Z come from that value, or Z is set by the `LDY` of a 0 count. C and V are as on
+    entry.
+- **The fuzz** scripts two runs of 0-6 pairs. The addresses fall anywhere in bank `$7E`
+  from `$2000` up (below lie the stack and the direct page), with `$FFFF` now and then.
+- **Result:** live 4,000/4,000 (race1), fuzz 200/200, paths 41/41.
+
 ## The 20 cars' frame (roots-96, 2026-11-21)
 
 **`race_cars_frame` ($81:E812-$81:F1FB):** 2,538 bytes, 18,560 entries on the 60k movie. It

@@ -967,7 +967,7 @@ CODE_8187E6:
     lda.l $7E3F6E,x             ; $8187FB
     sta.w $8000                 ; $8187FF
 CODE_818802:
-    jsr.w $89F5                 ; $818802
+    jsr.w dsp4_answers_store    ; $818802
     ldx.b $1A                   ; $818805
     lda.l $7E3D6E,x             ; $818807
     lsr a                       ; $81880B
@@ -992,7 +992,7 @@ CODE_818802:
     sta.w $8000                 ; $818847
     lda.l $7E3F6E,x             ; $81884A
     sta.w $8000                 ; $81884E
-    jsr.w $89F5                 ; $818851
+    jsr.w dsp4_answers_store    ; $818851
 CODE_818854:
     ldx.b $14                   ; $818854
     inc.b $1A                   ; $818856
@@ -1067,9 +1067,9 @@ CODE_8189F0:
     sta.w $00EA                 ; $8189F0
     plb                         ; $8189F3
     rtl                         ; $8189F4
-CODE_8189F5:
+dsp4_answers_store:
     lda.w $C000                 ; $8189F5
-    bpl CODE_8189F5             ; $8189F8
+    bpl dsp4_answers_store      ; $8189F8
     ldy.w $8000                 ; $8189FA
     beq CODE_818A1F             ; $8189FD
     nop                         ; $8189FF

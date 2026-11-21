@@ -5462,3 +5462,20 @@ void race_cars_frame(void) {
   }
   cars_order_link();
 }
+
+static bool dsp4_answers_run(uint16_t* x, uint16_t* a) {
+  uint16_t n = dsp4_port_read16();
+  if(n == 0) return false;
+  do {
+    *x = dsp4_port_read16();
+    *a = dsp4_port_read16();
+    wr16(*x, *a);  // bank $7E (its last byte's word reaches $7F:0000)
+  } while(--n != 0);
+  return true;
+}
+
+// TG3000_ROUTINE($81:89F5) dsp4_answers_store
+bool dsp4_answers_store(uint16_t* x, uint16_t* a) {
+  (void)dsp4_answers_run(x, a);
+  return dsp4_answers_run(x, a);
+}

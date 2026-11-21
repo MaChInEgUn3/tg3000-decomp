@@ -1369,4 +1369,10 @@ void road_rows_build(void);
 // cleared; the links rebuilt.
 void race_cars_frame(void);
 
+// $81:89F5: two runs of the DSP-4's answers stored where it says (DB = $30). Each run is a
+// count, then that many (address, value) pairs: the value goes to $7E:address. The original
+// waits for the chip's status before each count. Returns whether the second run had pairs;
+// *x and *a are the last pair's address and value (untouched when there is none).
+bool dsp4_answers_store(uint16_t* x, uint16_t* a);
+
 #endif

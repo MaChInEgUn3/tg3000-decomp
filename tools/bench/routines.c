@@ -8503,6 +8503,39 @@ static void fuzz_race_cars_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   }
 }
 
+// ---- dsp4_answers_store ($81:89F5) ----  a DSP-4 tape row. X = the last pair's address, Y =
+// 0. A is the last pair's value, or (no pair in the second run) the chip's status word,
+// which is not on the tape: not compared (its callers load A). N Z of that value, or Z set
+// (the LDY of a 0 count); C V as on entry
+static void call_dsp4_answers_store(const Regs* in, Regs* out) {
+  uint16_t x = in->x, a = in->a;
+  const bool pairs = dsp4_answers_store(&x, &a);
+  out->x = x;
+  out->y = 0;
+  if(pairs) setNZ16(out, a);
+  else {
+    out->n = false;
+    out->z = true;
+  }
+}
+// two runs of 0-6 pairs each (one count often 0), the addresses anywhere in bank $7E from
+// $2000 (below are the stack and the direct page), $FFFF now and then
+static void fuzz_dsp4_answers_store(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  (void)ram;
+  uint16_t script[32];
+  int n = 0;
+  for(int run = 0; run < 2; run++) {
+    const int pairs = rnd() % 3 == 0 ? 0 : 1 + (int)(rnd() % 6);
+    script[n++] = (uint16_t)pairs;
+    for(int i = 0; i < pairs; i++) {
+      script[n++] = rnd() % 16 == 0 ? 0xFFFF : (uint16_t)(0x2000 + rnd() % 0xE000);
+      script[n++] = (uint16_t)rnd();
+    }
+  }
+  dsp4_bridge_script(script, n);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9416,6 +9449,9 @@ const Routine routines[] = {
   {.name = "object_sprite_shadowed", .entry = 0x82DA48, .end = 0x82DAAF, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_object_sprite_shadowed, .fuzz = fuzz_object_sprite_shadowed, .dsp4Tape = true},
+  {.name = "dsp4_answers_store", .entry = 0x8189F5, .end = 0x818A4A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x30, .call = call_dsp4_answers_store, .compareX = true, .compareY = true,
+   .fuzz = fuzz_dsp4_answers_store, .dsp4Tape = true},
   {.name = "sprite_part_put", .entry = 0x818527, .end = 0x818564, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_part_put, .compareY = true,
    .fuzz = fuzz_sprite_part_put, .dsp4Tape = true},
