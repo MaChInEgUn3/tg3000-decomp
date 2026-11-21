@@ -34,7 +34,7 @@ CODE_8A803B:
     bpl CODE_8A803B             ; $8A8040
     lda.w #$0001                ; $8A8042
     jsl.l wait_frames_8a8bb6    ; $8A8045
-    jsr.w $8768                 ; $8A8049
+    jsr.w track_preview_maybe   ; $8A8049
     jsl.l hdma_gradients_init   ; $8A804C
     jsl.l clear_dp_scratch      ; $8A8050
     jsl.l func_8A8EEF           ; $8A8054
@@ -828,6 +828,7 @@ CODE_8A86BC:
     sta.b $7A                   ; $8A8762
     jsr.w func_8A92CF           ; $8A8764
     rts                         ; $8A8767
+track_preview_maybe:
     lda.w $1536                 ; $8A8768
     asl a                       ; $8A876B
     asl a                       ; $8A876C

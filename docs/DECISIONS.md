@@ -1819,6 +1819,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## A track's preview when shown (roots-106, 2026-11-21)
+
+- **`track_preview_maybe` ($8A:8768):** when bit 1 of the track `$1536`'s entry in the
+  8-byte table at `$8A:9351` is set, it runs `track_tiles_preview` with DB = `$83`
+  (`PEA $8383`).
+- **Outputs when it doesn't run:** A = 0, X = `$1536` × 8, and C = bit 13 of `$1536`, the
+  carry left by the third `ASL`.
+- **Outputs when it runs:** track_tiles_preview's, with N set and Z clear from the `PLB` of
+  `$8A`.
+- All four live entries are interrupted, so every flag counts as live. The first run
+  failed on that C in 62 fuzz cases.
+- **Result:** fuzz 500/500, replayed 2/2, paths 17/17.
+
 ## The title scene's load (roots-105, 2026-11-21)
 
 **`title_scene_load` ($8A:891C):**

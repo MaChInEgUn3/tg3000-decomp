@@ -8895,6 +8895,40 @@ static void call_title_scene_load(const Regs* in, Regs* out) {
   }
 }
 
+// ---- track_preview_maybe ($8A:8768) ----  not shown: A = 0 (Z set, N clear), X = $1536 * 8,
+// C = its bit 13 (the third ASL's).
+// Shown: track_tiles_preview's A X Y C V (as its adapter), N set and Z clear (the PLB of $8A)
+static void call_track_preview_maybe(const Regs* in, Regs* out) {
+  const uint16_t track = rd16(0x1536);
+  const uint16_t k = bus_rd8(0x838410 + (uint32_t)track);
+  const uint16_t handler = bus_rd16(0x8A8BED + (uint32_t)(uint16_t)(rd16(0x0444) << 1));
+  const uint16_t off = (handler == 0x8C5B || handler == 0x8C72) ? 0x0200 : 0x0220;
+  if(!track_preview_maybe()) {
+    out->a = 0;
+    out->x = (uint16_t)(track << 3);
+    out->n = false;
+    out->z = true;
+    out->c = (track & 0x2000) != 0;
+    return;
+  }
+  out->a = 0x7001;
+  out->x = k;
+  out->y = 0x0020;
+  out->db = in->db;
+  out->n = (in->db & 0x80) != 0;
+  out->z = in->db == 0;
+  const uint16_t t = (uint16_t)(rom16(0x8384B1 + (uint32_t)k) + 0x20);
+  const uint32_t sum = (uint32_t)t + off;
+  out->c = sum > 0xFFFF;
+  out->v = (~(t ^ off) & (t ^ sum) & 0x8000) != 0;
+}
+// any track ($1536, over the 55 the preview table holds), any layout ($0444)
+static void fuzz_track_preview_maybe(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x1536, (uint16_t)(rnd() % 0x37));
+  wr16ram(ram, 0x0444, (uint16_t)(rnd() % 0x37));
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9745,6 +9779,9 @@ const Routine routines[] = {
   {.name = "track_tiles_load", .entry = 0x858000, .end = 0x85817B, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_tiles_load, ALL_OUTPUTS,
    .fuzz = fuzz_track_tiles_load, .holes = {{0x858025, 0x858093}}},  // the layouts' table
+  {.name = "track_preview_maybe", .entry = 0x8A8768, .end = 0x8A8787, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_track_preview_maybe, ALL_OUTPUTS,
+   .fuzz = fuzz_track_preview_maybe},
   {.name = "track_tiles_preview", .entry = 0x8A8BC2, .end = 0x8A8CB7, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_tiles_preview, ALL_OUTPUTS,
    .fuzz = fuzz_track_tiles_preview, .holes = {{0x8A8BED, 0x8A8C5B}}},  // the layouts' table

@@ -1470,4 +1470,8 @@ void split_screen_setup(uint16_t ret, uint8_t db);
 // ($FF36, $9B), tile $0100, shown ($0500 = 1).
 void title_scene_load(void);
 
+// $8A:8768: the track $1536's preview tiles (track_tiles_preview, with DB = $83) when bit 1
+// of its entry in the 8-byte table at $8A:9351 is set. Returns whether it ran.
+bool track_preview_maybe(void);
+
 #endif

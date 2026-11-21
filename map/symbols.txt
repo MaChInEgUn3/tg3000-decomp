@@ -492,3 +492,4 @@ func    8A898F   screen_objects_place ; a screen's objects placed from D+$3C/D+$
 func    8A82C0   scene_step          ; a screen's scene, one step a frame: the state machine at D+$44 (ten states, eight never run) -> src/misc.c
 func    80B7E7   split_screen_setup  ; the two players' views set up for a split screen; one frame waited; the IRQ chain and vectors -> src/misc.c
 func    8A891C   title_scene_load    ; the title scene's tiles (three unpacked, one uploaded) and starting state -> src/misc.c
+func    8A8768   track_preview_maybe ; the track $1536's preview tiles when its $8A:9351 entry has bit 1 -> src/misc.c

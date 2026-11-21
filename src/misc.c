@@ -6283,3 +6283,11 @@ void title_scene_load(void) {
   wr16(0x0800, 0x0100);
   wr16(0x0500, 1);
 }
+
+// TG3000_ROUTINE($8A:8768) track_preview_maybe
+bool track_preview_maybe(void) {
+  const uint16_t track = rd16(0x1536);
+  if(!(bus_rd16(0x8A9351 + (uint32_t)(uint16_t)(track << 3)) & 0x0002)) return false;
+  track_tiles_preview(track);
+  return true;
+}
