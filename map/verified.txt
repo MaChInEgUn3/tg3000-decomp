@@ -440,3 +440,4 @@
 80F561 upload_slice_15 src/video_dma.c 914368980109b7c5 1 500 20/20 verified live-flags:NVZC replayed:0
 82D934 sprite_put_rows_a src/misc.c 36941138ef542cf3 4000 500 33/33 verified live-flags:C replayed:0
 82D988 sprite_put_rows_b src/misc.c 36941138ef542cf3 706 500 33/33 verified live-flags:C replayed:0
+82DEA8 sprite_parts_stream_rom src/misc.c 74dc7360751e91eb 4000 500 109/109 verified live-flags:C replayed:0

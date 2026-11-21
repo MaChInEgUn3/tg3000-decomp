@@ -463,3 +463,4 @@ func    82AE15   oam_high_load       ; the sprites' high table from DSP-4 comman
 func    82D934   sprite_put_rows_a   ; one object's sprite streamed to the DSP-4 (rows $35EC/$37EC; a tape row) -> src/misc.c
 func    82D988   sprite_put_rows_b   ; one object's sprite streamed to the DSP-4 (rows $366C/$386C; a tape row) -> src/misc.c
 func    82DDBF   sprite_parts_stream ; a sprite's parts streamed, the OAM pairs read to $1574 (through the two above) -> src/misc.c
+func    82DEA8   sprite_parts_stream_rom ; a sprite's parts streamed from a ROM list ($86), the OAM pairs read (a tape row) -> src/misc.c

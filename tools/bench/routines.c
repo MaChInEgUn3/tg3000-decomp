@@ -8052,6 +8052,36 @@ static void fuzz_sprite_put_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   dsp4_bridge_script(script, 40);
 }
 
+// ---- sprite_parts_stream_rom ($82:DEA8) ----  a DSP-4 tape row: as sprite_put_rows_a (C =
+// the buffer filled; the other flags by liveness; its callers restore X and Y)
+static void call_sprite_parts_stream_rom(const Regs* in, Regs* out) { out->c = sprite_parts_stream_rom(in->x); }
+// a ROM parts list whose two lists end within 8 parts each, as the game's do (X a random
+// offset from $8000 on, searched); the OAM pointer and its limit, the answers scripted as
+// for sprite_put_rows_a
+static bool romPartsEnd(uint16_t* x) {
+  for(int n = 0; n < 8; n++, *x = (uint16_t)(*x + 6)) {
+    if(*x < 0x8000) return false;
+    if(rom16(0x860000 + (uint32_t)*x) == 0) return true;
+  }
+  return false;
+}
+static void fuzz_sprite_parts_stream_rom(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  for(int tries = 0; tries < 4000; tries++) {
+    uint16_t x = (uint16_t)(0x8000 + 2 * (rnd() % 0x3FF0)), at = x;
+    if(!romPartsEnd(&at)) continue;
+    at = (uint16_t)(at + 2);
+    if(!romPartsEnd(&at)) continue;
+    r->x = x;
+    break;
+  }
+  const uint16_t at = (uint16_t)(4 * (rnd() % 0x40));
+  wr16ram(ram, DP + 0x84, at);
+  wr16ram(ram, DP + 0x1A, (rnd() & 1) ? (uint16_t)(at + 4 * (1 + rnd() % 6)) : (uint16_t)(at + 2));
+  uint16_t script[40];
+  for(int i = 0; i < 40; i++) script[i] = (rnd() % 3 == 0) ? 0 : (uint16_t)rnd();
+  dsp4_bridge_script(script, 40);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8940,6 +8970,9 @@ const Routine routines[] = {
   {.name = "sprite_put_rows_b", .entry = 0x82D988, .end = 0x82D9DD, .alsoIn = {{0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_sprite_put_rows_b, .fuzz = fuzz_sprite_put_rows, .dsp4Tape = true},
+  {.name = "sprite_parts_stream_rom", .entry = 0x82DEA8, .end = 0x82DF91, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_parts_stream_rom,
+   .fuzz = fuzz_sprite_parts_stream_rom, .dsp4Tape = true},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

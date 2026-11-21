@@ -2853,7 +2853,7 @@ CODE_82CF1A:
     tax                         ; $82CF69
     lda.l $86C8B2,x             ; $82CF6A
     tax                         ; $82CF6E
-    jsr.w $DEA8                 ; $82CF6F
+    jsr.w sprite_parts_stream_rom; $82CF6F
     plx                         ; $82CF72
     ply                         ; $82CF73
 CODE_82CF74:
@@ -2877,7 +2877,7 @@ CODE_82CF74:
     tax                         ; $82CF9A
     lda.l $86CBEC,x             ; $82CF9B
     tax                         ; $82CF9F
-    jsr.w $DEA8                 ; $82CFA0
+    jsr.w sprite_parts_stream_rom; $82CFA0
     plx                         ; $82CFA3
     ply                         ; $82CFA4
 CODE_82CFA5:
@@ -2901,7 +2901,7 @@ CODE_82CFA5:
     tax                         ; $82CFC8
     lda.l $86C97A,x             ; $82CFC9
     tax                         ; $82CFCD
-    jsr.w $DEA8                 ; $82CFCE
+    jsr.w sprite_parts_stream_rom; $82CFCE
     plx                         ; $82CFD1
     ply                         ; $82CFD2
     jsr.w $D267                 ; $82CFD3
@@ -2954,7 +2954,7 @@ CODE_82CFA5:
     lda.b $3C                   ; $82D04D
     sta.w $8000                 ; $82D04F
     ldx.w #$AD4A                ; $82D052
-    jsr.w $DEA8                 ; $82D055
+    jsr.w sprite_parts_stream_rom; $82D055
 CODE_82D058:
     lda.w #$FFFF                ; $82D058
     sta.w $0281                 ; $82D05B
@@ -3099,7 +3099,7 @@ CODE_82D1A2:
     tax                         ; $82D1AC
     lda.l $7F0000,x             ; $82D1AD
     tax                         ; $82D1B1
-    jsr.w $DEA8                 ; $82D1B2
+    jsr.w sprite_parts_stream_rom; $82D1B2
     bcs CODE_82D1E7             ; $82D1B5
     inc.b $28                   ; $82D1B7
     inc.b $28                   ; $82D1B9
@@ -3729,6 +3729,7 @@ CODE_82DEA1:
     sty.b $84                   ; $82DEA4
     sec                         ; $82DEA6
     rts                         ; $82DEA7
+sprite_parts_stream_rom:
     ldy.b $84                   ; $82DEA8
     lda.l $860000,x             ; $82DEAA
     sta.w $8000                 ; $82DEAE
@@ -3753,7 +3754,7 @@ CODE_82DECB:
     lda.w $8000                 ; $82DED5
     sta.w $1574,y               ; $82DED8
     cpy.b $1A                   ; $82DEDB
-    db $F0,$6D ; beq            ; $82DEDD
+    beq CODE_82DF4C             ; $82DEDD
 CODE_82DEDF:
     lda.w $C000                 ; $82DEDF
     bpl CODE_82DEDF             ; $82DEE2
@@ -3811,13 +3812,44 @@ CODE_82DF48:
     sty.b $84                   ; $82DF48
     clc                         ; $82DF4A
     rts                         ; $82DF4B
-    incbin !baserom:$15F4C..$15F70
+CODE_82DF4C:
+    lda.w $C000                 ; $82DF4C static
+    bpl CODE_82DF4C             ; $82DF4F static
+    lda.w $8000                 ; $82DF51 static
+    beq CODE_82DF66             ; $82DF54 static
+    lda.w $8000                 ; $82DF56 static
+    xba                         ; $82DF59 static
+    xba                         ; $82DF5A static
+    xba                         ; $82DF5B static
+    xba                         ; $82DF5C static
+    lda.w $8000                 ; $82DF5D static
+    xba                         ; $82DF60 static
+    xba                         ; $82DF61 static
+    xba                         ; $82DF62 static
+    xba                         ; $82DF63 static
+    bra CODE_82DF4C             ; $82DF64 static
+CODE_82DF66:
+    stz.w $8000                 ; $82DF66 static
+    stz.w $8000                 ; $82DF69 static
+    sty.b $84                   ; $82DF6C static
+    sec                         ; $82DF6E static
+    rts                         ; $82DF6F static
 CODE_82DF70:
     lda.w $C000                 ; $82DF70
     bpl CODE_82DF70             ; $82DF73
     lda.w $8000                 ; $82DF75
     beq CODE_82DF8A             ; $82DF78
-    incbin !baserom:$15F7A..$15F8A
+    lda.w $8000                 ; $82DF7A static
+    xba                         ; $82DF7D static
+    xba                         ; $82DF7E static
+    xba                         ; $82DF7F static
+    xba                         ; $82DF80 static
+    lda.w $8000                 ; $82DF81 static
+    xba                         ; $82DF84 static
+    xba                         ; $82DF85 static
+    xba                         ; $82DF86 static
+    xba                         ; $82DF87 static
+    bra CODE_82DF70             ; $82DF88 static
 CODE_82DF8A:
     stz.w $8000                 ; $82DF8A
     sty.b $84                   ; $82DF8D

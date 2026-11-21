@@ -4499,3 +4499,43 @@ bool sprite_put_rows_a(void) { return sprite_put_rows(0x35EC, 0x37EC, rd16(DP + 
 
 // TG3000_ROUTINE($82:D988) sprite_put_rows_b
 bool sprite_put_rows_b(void) { return sprite_put_rows(0x366C, 0x386C, 0x1000); }
+
+// One list of parts from `base` + *x (bus addresses: $7F:0000 or $86:0000), as
+// sprite_parts_list.
+static bool sprite_parts_list_at(uint32_t base, uint16_t* x, uint16_t* y, int open) {
+  uint16_t w = bus_rd16(base + *x);
+  dsp4_port_write16(w);
+  while(w != 0) {
+    dsp4_port_write16(bus_rd16(base + (uint16_t)(*x + 2)));
+    dsp4_port_write16(bus_rd16(base + (uint16_t)(*x + 4)));
+    if(dsp4_port_read16() != 0) {
+      for(;;) {
+        *y = (uint16_t)(*y + 2);
+        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
+        *y = (uint16_t)(*y + 2);
+        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
+        if(*y == rd16(DP + 0x1A)) {
+          sprite_parts_drain(open);
+          return false;
+        }
+        if(dsp4_port_read16() == 0) break;
+      }
+    }
+    *x = (uint16_t)(*x + 6);
+    w = bus_rd16(base + *x);
+    dsp4_port_write16(w);
+  }
+  return true;
+}
+
+// TG3000_ROUTINE($82:DEA8) sprite_parts_stream_rom
+bool sprite_parts_stream_rom(uint16_t x) {
+  uint16_t y = rd16(DP + 0x84);
+  bool full = !sprite_parts_list_at(0x860000, &x, &y, 2);  // the first list's overflow: never run
+  if(!full) {
+    x = (uint16_t)(x + 2);
+    full = !sprite_parts_list_at(0x860000, &x, &y, 1);
+  }
+  wr16(DP + 0x84, y);
+  return full;
+}

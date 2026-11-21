@@ -1789,6 +1789,21 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A sprite's parts from a ROM list (roots-85, 2026-11-21)
+
+- **`sprite_parts_stream_rom` ($82:DEA8)** is `sprite_parts_stream` for a parts list in
+  ROM, at `$86:0000` + X, with X given by the caller (68,619 entries on the 60k movie).
+  - Its two never-run stretches match `$82:DE63` byte for byte: the first list's overflow
+    (`$82:DF4C`) and the drain's pairs (`$82:DF7A`). Both are now static code.
+  - The C shares a helper, `sprite_parts_list_at`, that takes the list's bus base. The
+    first copy, `sprite_parts_list`, keeps its own body; folding them together is not an
+    additive change.
+- **The fuzz** searches for an X whose two lists both end within 8 parts, as the game's
+  lists do. A random X runs into lists hundreds of parts long and overflows the tape. The
+  OAM limit and the script are as in roots-84.
+- **Result:** live 4,000/4,000 (60k) and 1,386/1,386 (race1), fuzz 500/500 and 200/200,
+  paths 109/109; only C live.
+
 ## The objects' sprites streamed to the DSP-4 (roots-84, 2026-11-21)
 
 **`sprite_put_rows_a` ($82:D934) and `sprite_put_rows_b` ($82:D988)**, the first real

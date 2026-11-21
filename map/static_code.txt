@@ -120,3 +120,5 @@
 80:813F 80:8155 m16x16 ; save_data_check: the stored copy at $7E:FA3B valid, restored (never run)
 80:8177 80:817F m16x16 ; save_data_check: the data at $0366 valid (never run)
 82:DE63 82:DE87 m16x16 ; sprite_parts_stream: the OAM buffer full in the first list (never run)
+82:DF4C 82:DF70 m16x16 ; sprite_parts_stream_rom: the OAM buffer full in the first list (never run)
+82:DF7A 82:DF8A m16x16 ; sprite_parts_stream_rom: the drain's pairs (never run)

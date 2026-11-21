@@ -1257,4 +1257,8 @@ void oam_high_load(void);
 bool sprite_put_rows_a(void);
 bool sprite_put_rows_b(void);
 
+// $82:DEA8: sprite_parts_stream for a parts list in ROM, at $86:0000 + `x` (D = $0100; a
+// $09 sprite stream open). Returns whether the OAM buffer filled (the original's carry).
+bool sprite_parts_stream_rom(uint16_t x);
+
 #endif
