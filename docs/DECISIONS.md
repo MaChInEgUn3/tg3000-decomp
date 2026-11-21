@@ -1789,6 +1789,33 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The race's starting grid (roots-92, 2026-11-21)
+
+**`race_grid_setup` ($85:9ADB, `RTL`, DB = `$85` for its tables):** 5 entries, 3 of them
+interrupted. The 20 cars' records at `$7E:FAB5` (`$35` bytes each) are cleared and
+numbered.
+- **Each car's lane `D+$1A`** moves on by `$200` a car, wraps at `$E00`, and skips the
+  players' lanes ((`$0391`/`$03C0` & `$FF00`) × 2).
+- **Its forward offset:**
+  - `+$22` = its `$85:9DDF` entry, less a random 0-`$1F`, less `D+$1E`. `D+$1E` is the
+    variant's `$85:9FA7` byte plus the track's entry in `$85:9E2F`, `$85:9E8D`, or
+    `$85:9EEB` for variant 0 (never run, now static code);
+  - `+$24` = its `$85:9E07` entry less the track's `$85:9F49` one.
+- **Its drift `+$26`:** random, redrawn while it lies in -`$10`..`$0F`, sign-extended from 9
+  bits.
+- **Then:**
+  - the cars in the order at `$1E6A` are placed from `$019A` - `$14` on, one apart, their
+    sides alternating `$40`/-`$41`, and staggered by `$600`/`$300` a place;
+  - the players' places (`$0225`/`$02D8`) = their cars' place less `$4040`;
+  - the two section seeks and the two segment steps run;
+  - the players' sides come from their cars.
+- **Flags.** With 5 entries every flag counts. N and Z come from the last load. C and V
+  come from `player2_segment_step_long`'s last `SBC`, with the shared helper.
+- **The fuzz** keeps the race's track and car order, since the segment steps walk its
+  table. It varies the variant, the players' lanes and the random state.
+- **Result:** live 2/2 plus replays 2/2 (60k) and 1/1 (race1), fuzz 500/500 and 200/200,
+  paths 226/226, first try.
+
 ## A bar of sprite parts (roots-91, 2026-11-21)
 
 **`sprite_bar_put` ($81:8487, `RTL`):** a bar A pixels long centred on X (17,654 entries on

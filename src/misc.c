@@ -4691,3 +4691,102 @@ full:  // never run
   wr16(DP + 0x84, y);
   return true;
 }
+
+// TG3000_ROUTINE($85:9ADB) race_grid_setup
+void race_grid_setup(void) {
+  wr16(DP + 0x18, 0x00B9);
+  wr16(DP + 0x1A, 0);
+  wr16(DP + 0x1C, 0);
+  wr16(DP + 0x16, 0x0040);
+  wr16(DP + 0x14, (uint16_t)(rd16(0x019A) - 0x0014));
+  const uint16_t variant = rd16(0x03DD) & 0x0003;
+  uint16_t ahead = bus_rd8(0x859FA7 + variant);
+  wr16(DP + 0x1E, ahead);
+  const uint32_t t = (uint16_t)(rd16(0x047B) << 1);
+  const uint32_t table = variant == 0 ? 0x859EEB : variant == 1 ? 0x859E8D : 0x859E2F;  // variant 0: never run
+  wr16(DP + 0x1E, (uint16_t)(bus_rd16(table + t) + ahead));
+  wr16(DP + 0x20, bus_rd16(0x859F49 + t));
+  wr16(DP + 0x22, (uint16_t)((rd16(0x0391) & 0xFF00) << 1));
+  wr16(DP + 0x24, (uint16_t)((rd16(0x03C0) & 0xFF00) << 1));
+  for(uint32_t x = 0, y = 0; y != 0x28; x += 0x35, y += 2) {
+    wr16(0xFADD + x, rd16(DP + 0x1C));
+    wr16(DP + 0x1C, (uint16_t)(rd16(DP + 0x1C) + 1));
+    static const uint16_t cleared[] = {0xFAB5, 0xFAB7, 0xFABD, 0xFABF, 0xFAB9, 0xFABB, 0xFAC5, 0xFADE};
+    for(unsigned i = 0; i < sizeof cleared / sizeof cleared[0]; i++) wr16(cleared[i] + x, 0);
+    wr16(0xFAD3 + x, 0xFFFF);
+    wr16(0xFAE0 + x, rd16(0x019C));
+    wr16(0xFAE2 + x, 0x7000);
+    wr16(0xFACB + x, 0);
+    wr16(DP + 0x18, 0);  // (0 - 5, negative, kept at 0)
+    uint16_t lane = rd16(DP + 0x1A);
+    wr16(0xFAD1 + x, lane);
+    do {
+      lane = (uint16_t)(lane + 0x0200);
+      if(lane == 0x0E00) lane = 0;
+    } while(lane == rd16(DP + 0x22) || lane == rd16(DP + 0x24));
+    wr16(DP + 0x1A, lane);
+    const uint16_t r = (uint16_t)(rng_next_long(0) & 0x001F);
+    wr16(0xFAD7 + x, (uint16_t)(bus_rd16(0x859DDF + y) - r - rd16(DP + 0x1E)));
+    wr16(0xFAD9 + x, (uint16_t)(bus_rd16(0x859E07 + y) - rd16(DP + 0x20)));
+    uint16_t drift;
+    for(;;) {
+      drift = rng_next_long(0);
+      if((uint16_t)(drift - 0xFFF0) & 0x8000) break;
+      if(!((uint16_t)(drift - 0x0010) & 0x8000)) break;
+    }
+    drift &= 0x81FF;
+    if(drift & 0x8000) drift |= 0xFE00;
+    wr16(0xFADB + x, drift);
+  }
+  wr16(0xFAD1, (uint16_t)((rd16(0x0391) & 0xFF00) << 1));
+  wr16(0xFB06, (uint16_t)((rd16(0x03C0) & 0xFF00) << 1));
+  wr16(DP + 0x16, 0x0040);
+  wr16(DP + 0x14, (uint16_t)(rd16(0x019A) - 0x0014));
+  for(uint32_t y = 0; y != 0x28; y += 2) {
+    const uint32_t x = rd16(0x1E6A + y);
+    wr16(0xFAB6 + x, rd16(DP + 0x14));
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 1));
+    wr16(0xFABB + x, rd16(DP + 0x16));
+    wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) ^ 0xFF80));
+  }
+  wr16(DP + 0x14, 0);
+  wr16(DP + 0x16, 0);
+  for(uint32_t y = 0; y != 0x28; y += 2) {
+    const uint32_t x = rd16(0x1E6A + y);
+    wr16(0xFAE6 + x, rd16(DP + 0x14));
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 0x0600));
+    wr16(0xFAE8 + x, rd16(DP + 0x16));
+    wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + 0x0300));
+  }
+  wr16(0xFADE, 2);
+  wr16(0xFB13, 2);
+  wr16(0xFED9, 0xFFFF);
+  wr16(0xFEDB, 0x7FFF);
+  uint32_t p = (rd16(0xFAB5) | (uint32_t)rd16(0xFAB7) << 16) - 0x4040;
+  wr16(0x0225, (uint16_t)p);
+  wr16(0x0227, (uint16_t)(p >> 16));
+  wr16(0xFAC5, 2);
+  p = (rd16(0xFAEA) | (uint32_t)rd16(0xFAEC) << 16) - 0x4040;
+  wr16(0x02D8, (uint16_t)p);
+  wr16(0x02DA, (uint16_t)(p >> 16));
+  wr16(0xFAFA, 4);
+  wr16(0x023E, (uint16_t)(rd16(0x0226) - 0x0020));
+  wr16(0x02F1, (uint16_t)(rd16(0x02D9) - 0x0020));
+  wr16(0xFED9, 0xFFFF);
+  wr16(0xFEDB, 0x7FFF);
+  wr16(0x1E92, 0x0424);
+  wr16(0x1EDE, 0xFFFF);
+  wr16(0x1EE2, 0xFFFF);
+  race_section_seek_1();
+  race_section_seek_2();
+  player_segment_step_long();
+  player2_segment_step_long();
+  wr16(0x1EE6, 0);
+  wr16(0x1EE8, 0);
+  wr16(0x1EDE, 0xFFFF);
+  wr16(0x1EE2, 0xFFFF);
+  wr16(0x0204, rd16(0xFAB9));
+  wr16(0x0206, rd16(0xFABB));
+  wr16(0x02B7, rd16(0xFAB9 + 0x35));
+  wr16(0x02B9, rd16(0xFABB + 0x35));
+}

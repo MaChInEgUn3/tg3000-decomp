@@ -448,3 +448,4 @@
 80F561 upload_slice_15 src/video_dma.c e9450f412ca86346 1 500 20/20 verified live-flags:NVZC replayed:0
 818527 sprite_part_put src/misc.c 8eb98d4a9c44d579 4000 500 29/29 verified live-flags:C replayed:0
 818487 sprite_bar_put src/misc.c c8cd600da5185d26 4000 500 65/65 verified live-flags:- replayed:0
+859ADB race_grid_setup src/misc.c 7d461768e3854718 2 500 226/226 verified live-flags:NVZC replayed:2

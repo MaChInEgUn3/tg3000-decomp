@@ -126,3 +126,4 @@
 82:DC38 82:DC3B m16x16 ; object_sprite_group: kind 2's negative place sign-extended (never run)
 81:8562 81:8564 m16x16 ; sprite_part_put: the OAM buffer full (SEC; RTS; never run)
 81:8508 81:8527 m16x16 ; sprite_bar_put: the OAM buffer full, the rest drained (never run; returns with two words pushed)
+85:9B25 85:9B29 m16x16 ; race_grid_setup: variant 0's forward offsets ($85:9EEB; never run)

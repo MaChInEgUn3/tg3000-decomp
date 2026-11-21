@@ -1364,6 +1364,7 @@ irq_ack_only:
     plb                         ; $8595C5
     rti                         ; $8595C6
     incbin !baserom:$295C7..$29ADB
+race_grid_setup:
     phb                         ; $859ADB
     phk                         ; $859ADC
     plb                         ; $859ADD
@@ -1389,7 +1390,7 @@ irq_ack_only:
     tax                         ; $859B0D
     lda.w $03DD                 ; $859B0E
     and.w #$0003                ; $859B11
-    db $F0,$0F ; beq            ; $859B14
+    beq CODE_859B25             ; $859B14
     dec a                       ; $859B16
     beq CODE_859B1F             ; $859B17
     lda.l $859E2F,x             ; $859B19
@@ -1397,7 +1398,8 @@ irq_ack_only:
 CODE_859B1F:
     lda.l $859E8D,x             ; $859B1F
     bra CODE_859B29             ; $859B23
-    incbin !baserom:$29B25..$29B29
+CODE_859B25:
+    lda.l $859EEB,x             ; $859B25 static
 CODE_859B29:
     clc                         ; $859B29
     adc.b $1E                   ; $859B2A

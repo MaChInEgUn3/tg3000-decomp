@@ -8220,6 +8220,29 @@ static void fuzz_sprite_bar_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   dsp4_bridge_script(script, 60);
 }
 
+// ---- race_grid_setup ($85:9ADB) ----  RTL; its caller reloads A X Y. With 5 entries every
+// flag counts: N Z of the last load (the second player's car's +$06), C V of
+// player2_segment_step_long's last SBC (nothing after it touches them)
+static void call_race_grid_setup(const Regs* in, Regs* out) {
+  (void)in;
+  race_grid_setup();
+  Regs t;
+  segmentStepFlags(&t, 0x02D9, 0x1E64);
+  out->c = t.c;
+  out->v = t.v;
+  setNZ16(out, rd16(0xFABB + 0x35));
+}
+// the race's track (its length, segment table, cursors, car order and tables by $047B stay
+// as the race left them: the segment steps at the end walk its table); the variant, the
+// players' lanes and the random state
+static void fuzz_race_grid_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  fuzz_rng_state(ram, rnd);
+  ram[0x03DD] = (uint8_t)((ram[0x03DD] & 0xFC) | (rnd() % 4));
+  ram[0x0392] = (uint8_t)(rnd() % 7);
+  ram[0x03C1] = (uint8_t)(rnd() % 7);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9134,6 +9157,9 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_bar_put, ALL_OUTPUTS,
    .fuzz = fuzz_sprite_bar_put, .dsp4Tape = true, .alsoIn = {{0x818527, 0x818564}},
    .holes = {{0x818508, 0x818527}}},  // the full buffer's path: it would return with two words left on the stack
+  {.name = "race_grid_setup", .entry = 0x859ADB, .end = 0x859D39, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_grid_setup,
+   .fuzz = fuzz_race_grid_setup},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

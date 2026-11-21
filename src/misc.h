@@ -1308,4 +1308,18 @@ bool sprite_part_put(uint16_t x, uint16_t* y);
 // Returns whether it filled.
 bool sprite_bar_put(uint16_t length, uint16_t at, uint16_t d32);
 
+// $85:9ADB: the race's starting grid (D = $0100; RTL). The 20 cars' records at $7E:FAB5
+// ($35 bytes each) cleared and numbered (+$28 = 0, 1, ...; +$1E = $FFFF, +$2B = $019C, +$2D
+// = $7000, +$1C = the lane D+$1A, which moves on by $200 a car up to $C00 and past the two
+// players' lanes (($0391 / $03C0 & $FF00) * 2)); each car's forward offset +$22 = its
+// $85:9DDF entry less a random 0-$1F less D+$1E (the variant's $85:9FA7 byte plus the
+// track's entry in $85:9E2F, $85:9E8D or (variant 0, never run) $85:9EEB) and +$24 = its
+// $85:9E07 entry less the track's $85:9F49 one; a random drift +$26 (redrawn while it lies
+// in -$10..$0F; 9 bits, signed). The players' lanes written to their cars; each car in the
+// order at $1E6A placed from $019A - $14 on (one apart, side $40 / -$41 alternating) and
+// staggered (+$31 by $600, +$33 by $300 a place); then the players' places ($0225 / $02D8
+// = their cars' 32-bit place less $4040), the section seeks and segment steps, and their
+// sides ($0204/$0206, $02B7/$02B9) from their cars.
+void race_grid_setup(void);
+
 #endif

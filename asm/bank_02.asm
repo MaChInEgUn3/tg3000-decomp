@@ -957,7 +957,7 @@ CODE_82A58D:
     iny                         ; $82A5B3
     cpy.w #$0014                ; $82A5B4
     bne CODE_82A58D             ; $82A5B7
-    jsl.l $859ADB               ; $82A5B9
+    jsl.l race_grid_setup       ; $82A5B9
     lda.w #$A411                ; $82A5BD
     sta.w $00EA                 ; $82A5C0
     phb                         ; $82A5C3
