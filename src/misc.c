@@ -4324,3 +4324,60 @@ void track_setup_load(void) {
     wr16(DP + 0x14, (uint16_t)(len + at));
   }
 }
+
+// The bytes at $8A:`at` pushed to the byte buffer up to `stop`.
+static void byte_buffer_string(uint16_t at, uint8_t stop) {
+  for(uint32_t i = 0; bus_rd8(0x8A0000 + (uint32_t)(uint16_t)(at + i)) != stop; i++)
+    byte_buffer_push(bus_rd8(0x8A0000 + (uint32_t)(uint16_t)(at + i)));
+}
+
+// TG3000_ROUTINE($8A:99FC) text_line_centered
+void text_line_centered(uint16_t x) {
+  const uint32_t line = 0x7F7918 - 0x7E0000 + (uint32_t)(uint16_t)((x >> 1) << 4);
+  uint16_t pad = 0x001C;
+  for(uint32_t i = 0; rd8(line + (uint16_t)i) != 0; i++) pad = (uint16_t)(pad - 1);
+  uint16_t n = (uint16_t)(pad >> 1);
+  do {
+    byte_buffer_space();
+    n = (uint16_t)(n - 1);
+  } while(n != 0);
+  for(uint32_t i = 0; rd8(line + (uint16_t)i) != 0; i++) byte_buffer_push(rd8(line + (uint16_t)i));
+}
+
+// TG3000_ROUTINE($8A:9908) results_text
+void results_text(void) {
+  results_text_build();
+  func_8A9BE2();
+  wr16(DP + 0x5E, 0);
+  variant_66();
+  uint16_t slot;
+  while(func_8A9BB5(&slot)) {
+    wr16(DP + 0x5E, (uint16_t)(rd16(DP + 0x5E) + 1));
+    byte_buffer_decimal2();
+    byte_buffer_space();
+    text_line_push(slot);
+    byte_buffer_pad(0x0016);
+    byte_buffer_space();
+    byte_buffer_space();
+    byte_buffer_space();
+    byte_buffer_decimal(rd16(0x041C + (uint32_t)slot));
+    byte_buffer_end();
+  }
+  if(rd16(0x1B37) & 0x8000) {  // never run
+    byte_buffer_end();
+    byte_buffer_end();
+    byte_buffer_string(0x9DBF, 0x00);
+    func_8A9BE2();
+    wr16(DP + 0x5E, 0);
+    wr16(DP + 0x66, 0x0008);
+    for(uint32_t i = 0; i < 8; i += 2) wr16(0x17FBC + i, 0);
+    func_8A9BB5(&slot);
+    byte_buffer_end();
+    byte_buffer_end();
+    text_line_centered(slot);
+    byte_buffer_end();
+    byte_buffer_end();
+    byte_buffer_string(0x9DD5, 0x00);
+  }
+  byte_buffer_string(0x9DBD, 0xFF);
+}

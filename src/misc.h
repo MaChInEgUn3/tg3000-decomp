@@ -1217,4 +1217,17 @@ void player2_segment_step_long(void);
 // takes the place.
 void track_setup_load(void);
 
+// $8A:99FC: line `x` of the text map at $7F:7918 (as text_line_push) centred in $1C
+// columns: ($1C - its length) / 2 spaces first (none counted as 65536), then the line.
+void text_line_centered(uint16_t x);
+
+// $8A:9908: the results text (D = $0100, DB = $8A). results_text_build, func_8A9BE2 (the
+// largest kind), D+$5E = 0, variant_66; then for each slot func_8A9BB5 takes, D+$5E + 1:
+// its rank (byte_buffer_decimal2), a space, its name (text_line_push), padding to $16, three
+// spaces, its value ($041C + slot, byte_buffer_decimal) and the line's end. With bit 15 of
+// $1B37 (never run): two line ends, the string at $8A:9DBF, the slots restarted (func_8A9BE2,
+// D+$66 = 8, the first four cleared), one taken and its name centred between two pairs of
+// line ends, and the string at $8A:9DD5. Last the string at $8A:9DBD (to $FF).
+void results_text(void);
+
 #endif

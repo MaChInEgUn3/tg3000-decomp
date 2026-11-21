@@ -1756,7 +1756,7 @@ func_8A92CF:
     trb.w $1B38                 ; $8A94C6
     jsl.l text_map_clear        ; $8A94C9
     jsl.l variant_offsets_add   ; $8A94CD
-    jsl.l $8A9908               ; $8A94D1
+    jsl.l results_text          ; $8A94D1
     jsl.l clear_vram            ; $8A94D5
     stz.w $0196                 ; $8A94D9
     stz.w $0198                 ; $8A94DC
@@ -2197,6 +2197,7 @@ CODE_8A9902:
     lda.w #$000A                ; $8A9902
     sta.b $5A                   ; $8A9905
     rts                         ; $8A9907
+results_text:
     jsr.w results_text_build    ; $8A9908
     jsr.w func_8A9BE2           ; $8A990B
     stz.b $5E                   ; $8A990E
@@ -2219,9 +2220,46 @@ CODE_8A9913:
     bra CODE_8A9913             ; $8A993C
 CODE_8A993E:
     bit.w $1B37                 ; $8A993E
-    db $30,$03 ; bmi            ; $8A9941
+    bmi CODE_8A9946             ; $8A9941
     jmp.w $999F                 ; $8A9943
-    incbin !baserom:$51946..$5199F
+CODE_8A9946:
+    jsr.w byte_buffer_end       ; $8A9946 static
+    jsr.w byte_buffer_end       ; $8A9949 static
+    sep.b #$20                  ; $8A994C static
+    ldx.w #$0000                ; $8A994E static
+CODE_8A9951:
+    lda.w $9DBF,x               ; $8A9951 static
+    beq CODE_8A995C             ; $8A9954 static
+    jsr.w byte_buffer_push      ; $8A9956 static
+    inx                         ; $8A9959 static
+    bra CODE_8A9951             ; $8A995A static
+CODE_8A995C:
+    rep.b #$20                  ; $8A995C static
+    jsr.w func_8A9BE2           ; $8A995E static
+    stz.b $5E                   ; $8A9961 static
+    lda.w #$0008                ; $8A9963 static
+    sta.b $66                   ; $8A9966 static
+    lda.w #$0000                ; $8A9968 static
+    sta.l $7F7FBC               ; $8A996B static
+    sta.l $7F7FBE               ; $8A996F static
+    sta.l $7F7FC0               ; $8A9973 static
+    sta.l $7F7FC2               ; $8A9977 static
+    jsr.w func_8A9BB5           ; $8A997B static
+    jsr.w byte_buffer_end       ; $8A997E static
+    jsr.w byte_buffer_end       ; $8A9981 static
+    jsr.w text_line_centered    ; $8A9984 static
+    jsr.w byte_buffer_end       ; $8A9987 static
+    jsr.w byte_buffer_end       ; $8A998A static
+    sep.b #$20                  ; $8A998D static
+    ldx.w #$0000                ; $8A998F static
+CODE_8A9992:
+    lda.w $9DD5,x               ; $8A9992 static
+    beq CODE_8A999D             ; $8A9995 static
+    jsr.w byte_buffer_push      ; $8A9997 static
+    inx                         ; $8A999A static
+    bra CODE_8A9992             ; $8A999B static
+CODE_8A999D:
+    rep.b #$20                  ; $8A999D static
     sep.b #$20                  ; $8A999F
     ldx.w #$0000                ; $8A99A1
 CODE_8A99A4:
@@ -2280,7 +2318,46 @@ CODE_8A99F8:
     rep.b #$20                  ; $8A99F8
     plx                         ; $8A99FA
     rts                         ; $8A99FB
-    incbin !baserom:$519FC..$51A33
+text_line_centered:
+    phx                         ; $8A99FC static
+    txa                         ; $8A99FD static
+    lsr a                       ; $8A99FE static
+    asl a                       ; $8A99FF static
+    asl a                       ; $8A9A00 static
+    asl a                       ; $8A9A01 static
+    asl a                       ; $8A9A02 static
+    tax                         ; $8A9A03 static
+    sep.b #$20                  ; $8A9A04 static
+    phx                         ; $8A9A06 static
+    ldy.w #$001C                ; $8A9A07 static
+CODE_8A9A0A:
+    lda.l $7F7918,x             ; $8A9A0A static
+    beq CODE_8A9A14             ; $8A9A0E static
+    dey                         ; $8A9A10 static
+    inx                         ; $8A9A11 static
+    bra CODE_8A9A0A             ; $8A9A12 static
+CODE_8A9A14:
+    plx                         ; $8A9A14 static
+    rep.b #$20                  ; $8A9A15 static
+    tya                         ; $8A9A17 static
+    lsr a                       ; $8A9A18 static
+CODE_8A9A19:
+    pha                         ; $8A9A19 static
+    jsr.w byte_buffer_space     ; $8A9A1A static
+    pla                         ; $8A9A1D static
+    dec a                       ; $8A9A1E static
+    bne CODE_8A9A19             ; $8A9A1F static
+    sep.b #$20                  ; $8A9A21 static
+CODE_8A9A23:
+    lda.l $7F7918,x             ; $8A9A23 static
+    beq CODE_8A9A2F             ; $8A9A27 static
+    jsr.w byte_buffer_push      ; $8A9A29 static
+    inx                         ; $8A9A2C static
+    bra CODE_8A9A23             ; $8A9A2D static
+CODE_8A9A2F:
+    rep.b #$20                  ; $8A9A2F static
+    plx                         ; $8A9A31 static
+    rts                         ; $8A9A32 static
 byte_buffer_decimal:
     pha                         ; $8A9A33
     phx                         ; $8A9A34

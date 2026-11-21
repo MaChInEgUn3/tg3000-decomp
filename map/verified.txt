@@ -435,3 +435,4 @@
 82A9AF player_segment_step_long src/misc.c 1b1fc6e6d647484f 4 500 2/2 verified live-flags:NVZC replayed:1
 82A9B3 player2_segment_step_long src/misc.c 1b1fc6e6d647484f 5 500 2/2 verified live-flags:NVZC replayed:0
 82A7F9 track_setup_load src/misc.c cabf9e39886468db 0 500 146/146 verified live-flags:NVZC replayed:2
+8A9908 results_text src/misc.c 9071b372117958e3 0 500 65/65 verified live-flags:NVZC replayed:2

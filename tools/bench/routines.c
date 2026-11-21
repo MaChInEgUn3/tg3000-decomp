@@ -7858,6 +7858,40 @@ static void fuzz_track_setup_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   ram[0x03CB] = (uint8_t)((rnd() & 1) ? 0 : rnd());
 }
 
+// ---- results_text ($8A:9908) ----  its caller goes on to clear_vram: no register outputs.
+// With 4 watched returns every flag counts as live: N Z C of the last CMP #$FF (equal), V
+// = bit 14 of $1B37 (its BIT; no callee after it touches V)
+static void call_results_text(const Regs* in, Regs* out) {
+  (void)in;
+  results_text();
+  out->n = false;
+  out->z = out->c = true;
+  out->v = (rd16(0x1B37) & 0x4000) != 0;
+}
+// results_text_build's inputs (the variant, the lines), the slots' state, the results'
+// values and names; $1B37's bit 15 (the never-run variant) and 14 both ways
+static void fuzz_results_text_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_func_8A9BB5(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_results_text(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_results_text_build(r, ram, rnd);
+  fuzz_func_8A9BB5(r, ram, rnd);
+  for(uint32_t s = 0; s < 0x168; s += 2) wr16ram(ram, 0x041C + s, (uint16_t)(rnd() % 16));  // small: the slot taker walks the kinds down one by one
+  wr16ram(ram, 0x1B37, (uint16_t)rnd());
+  // the byte buffer's count at a line's start (D+$60, a word: its INC is 16-bit, and a
+  // high byte set makes byte_buffer_pad push ~65536 spaces) and its index (D+$58) small, as
+  // in the game: the push is a long store to $7F:7D00 + the index, which past $82FF crosses
+  // into bank $80 (low WRAM: the direct page and the stack)
+  wr16ram(ram, DP + 0x60, 0);
+  wr16ram(ram, DP + 0x58, (uint16_t)(rnd() % 0x100));
+  // the slots' names: each text map line (16 bytes at $7F:7918) a short name and its zero,
+  // as in the game (a name past the padding column makes byte_buffer_pad wrap its count)
+  for(uint32_t line = 0; line < 0xB4; line++) {
+    const uint32_t at = 0x17918 + 16 * line, n = 1 + rnd() % 12;
+    for(uint32_t i = 0; i < n; i++) ram[at + i] = (uint8_t)(0x41 + rnd() % 26);
+    ram[at + n] = 0;
+  }
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8733,6 +8767,8 @@ const Routine routines[] = {
    .fuzz = fuzz_player2_segment_step},
   {.name = "track_setup_load", .entry = 0x82A7F9, .end = 0x82A954, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_setup_load, .fuzz = fuzz_track_setup_load},
+  {.name = "results_text", .entry = 0x8A9908, .end = 0x8A99B4, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_results_text, .fuzz = fuzz_results_text},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

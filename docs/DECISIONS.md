@@ -1789,6 +1789,41 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The results text (roots-82, 2026-11-21)
+
+**`results_text` ($8A:9908, D = `$0100`, DB = `$8A`, `RTL`):** the results screen's text, 4
+entries on the 60k movie, all of them interrupted.
+- **Normal path:** `results_text_build`, `func_8A9BE2`, `D+$5E` = 0 and `variant_66`. Then,
+  for each slot `func_8A9BB5` takes, one line:
+  - the rank;
+  - a space;
+  - the name (`text_line_push`);
+  - padding to `$16`;
+  - three spaces;
+  - its value (`$041C` + slot);
+  - the line's end.
+
+  The routine ends with the string at `$8A:9DBD` (up to `$FF`).
+- **Never run, now static code** (both with bit 15 of `$1B37`):
+  - a one-slot variant (`$8A:9946`) with a header and a footer from `$8A:9DBF`/`$9DD5`;
+  - **`text_line_centered` ($8A:99FC):** a text map line centred in `$1C` columns.
+- **Flags.** Only 4 returns are watched, so every flag counts as live. The adapter models
+  them: N, Z and C from the final `CMP #$FF` (equal); V = bit 14 of `$1B37`, from its `BIT`,
+  which no later callee touches.
+- **The fuzz needed the game's buffer state.** Three times, the original walked past the
+  instruction budget:
+  - Slot values up to 1000. The slot taker walks the kinds down one by one, so they are
+    now below 16.
+  - Text map lines without a zero (they are now short names).
+  - The byte buffer's count. `D+$60` is a word: its `INC` is 16-bit, so a random high
+    byte made `byte_buffer_pad` push about 65,536 spaces. The push is a long store to
+    `$7F:7D00` + `D+$58`, and past `$82FF` it crosses into bank `$80` (low WRAM, the direct
+    page and the stack). So the fuzz zeroes the count word and keeps the index small.
+
+  The C of `byte_buffer_push` masks to the WRAM size there instead of crossing banks. That
+  differs from the hardware only outside the game's domain.
+- **Result:** replays 2/2, fuzz 500/500, paths 65/65, flags 0 mismatches.
+
 ## The track's setup load (roots-81, 2026-11-20)
 
 **`track_setup_load` ($82:A7F9, D = `$0100`):** 5 entries on the 60k movie, all of them
