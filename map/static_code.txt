@@ -160,3 +160,4 @@
 8A:8322 8A:8325 m16x16 ; attract_state: a state (never run)
 8A:833C 8A:84B9 m16x16 ; attract_state: the states after $82EC (never run)
 8A:8524 8A:85AF m16x16 ; attract_state: the last states (never run)
+80:B828 80:B830 m16x16 ; split_screen_setup: $03DC's low nibble set, the $30 test (never run)

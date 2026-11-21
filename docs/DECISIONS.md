@@ -1819,6 +1819,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The split screen's setup (roots-104, 2026-11-21)
+
+**`split_screen_setup` ($80:B7E7-$80:B94E):** the two players' views set up for a split
+screen. It has 14 entries on the 60k movie, from four callers.
+- **The view records** at `$0196` and `$0296` are copied from `$84:A2EF` (`MVN`, `$2C`
+  bytes). Their counters are cleared, and their scroll and buffer words set (player 2's at
+  `$4000`/`$8000`, the buffers `$0800`-`$1500`).
+- **`$0276` bit 5** is set unless `$03DC`'s low nibble is set without `$10` in its `$30`
+  bits. That test (`$80:B828`) never ran: it is decoded as static code and is a hole, because
+  no movie reaches it and a fuzz case cannot wait for a frame.
+- **The sprite buffers** `$0900`-`$17FF` are cleared to `$E0E0`/0.
+- **Then it waits one frame** (`wait_frames`) and sets up the interrupts:
+  - the IRQ chain at `$1D8C`, holding the routine's entry DB and the caller's return
+    address, which the original reads off its own stack (`PLA; PHA`);
+  - `$0008` = `$B97B` and `$0005` = `$BC9B`;
+  - the line interrupt at line `$6C`, dot `$10`, with `$4200` = `$B1`; then `CLI`.
+- **No fuzz:** a fuzz case gets no frames, so all 500 were lost while it waited. The two
+  movies reach every other path.
+- **Outputs:** A = `$BC9B`, X = 0, Y = `$02C2` (the second `MVN`'s end); N set, Z clear; C
+  and V from `wait_frames`' add.
+- **Result:** live 14/14 (60k) and 2/2 (race1), paths 127/127.
+
 ## A screen's scene; `$8A:82C0` unparked (roots-103, 2026-11-21)
 
 **`scene_step` ($8A:82C0):** one step a frame of a screen's scene (D = `$0100`). It

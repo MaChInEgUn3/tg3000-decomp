@@ -1243,7 +1243,7 @@ CODE_808C19:
     stz.w $2118                 ; $808C19
     dex                         ; $808C1C
     bne CODE_808C19             ; $808C1D
-    jsr.w $B7E7                 ; $808C1F
+    jsr.w split_screen_setup    ; $808C1F
     ldx.b $92                   ; $808C22
     lda.w $8B35,x               ; $808C24
     sta.b $B8                   ; $808C27
@@ -6036,6 +6036,7 @@ CODE_80B7C9:
     lda.w #$0001                ; $80B7D3
     jmp.w $B63A                 ; $80B7D6
     incbin !baserom:$37D9..$37E7
+split_screen_setup:
     phb                         ; $80B7E7
     ldx.w #$A2EF                ; $80B7E8
     ldy.w #$0196                ; $80B7EB
@@ -6059,10 +6060,13 @@ CODE_80B7C9:
     lda.l $8103DC               ; $80B81F
     bit.w #$000F                ; $80B823
     beq CODE_80B830             ; $80B826
-    incbin !baserom:$3828..$3830
+    and.w #$0030                ; $80B828 static
+    cmp.w #$0010                ; $80B82B static
+    bne CODE_80B836             ; $80B82E static
 CODE_80B830:
     lda.w #$0020                ; $80B830
     tsb.w $0276                 ; $80B833
+CODE_80B836:
     lda.w #$0500                ; $80B836
     sta.w $01C4                 ; $80B839
     lda.w #$0700                ; $80B83C
@@ -6768,7 +6772,7 @@ CODE_80BEB1:
     dex                         ; $80BEB7
     dex                         ; $80BEB8
     bne CODE_80BEB1             ; $80BEB9
-    jsr.w $B7E7                 ; $80BEBB
+    jsr.w split_screen_setup    ; $80BEBB
     lda.w #$0040                ; $80BEBE
     tsb.b $76                   ; $80BEC1
     jmp.w $BF0F                 ; $80BEC3
@@ -6798,7 +6802,7 @@ CODE_80BEB1:
     stz.w $01F2                 ; $80BF03
     lda.w #$000C                ; $80BF06
     sta.w $02F2                 ; $80BF09
-    jsr.w $B7E7                 ; $80BF0C
+    jsr.w split_screen_setup    ; $80BF0C
     ldx.b $92                   ; $80BF0F
     lda.w $8B2C,x               ; $80BF11
     sta.b $B8                   ; $80BF14
@@ -10868,7 +10872,7 @@ CODE_80E577:
     sta.w $0148                 ; $80E5EE
     lda.w $03DA                 ; $80E5F1
     sta.w $0248                 ; $80E5F4
-    jsr.w $B7E7                 ; $80E5F7
+    jsr.w split_screen_setup    ; $80E5F7
     lda.w #$FFFE                ; $80E5FA
     sta.b $4A                   ; $80E5FD
     ldx.b $92                   ; $80E5FF

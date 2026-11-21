@@ -8845,6 +8845,23 @@ static void fuzz_scene_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   }
 }
 
+// ---- split_screen_setup ($80:B7E7) ----  it waits a frame (wait_frames). A = $BC9B (N set,
+// Z clear), X = 0 (the clearing loop), Y = $02C2 (the second MVN's end), C set and V of
+// wait_frames' add (1 + the frame counter); the return address it stores comes from the
+// stack, DB from the entry
+static void call_split_screen_setup(const Regs* in, Regs* out) {
+  const uint16_t now = rd16(FRAME_COUNTER);
+  split_screen_setup(rd16((uint32_t)(uint16_t)(in->sp + 1)), in->db);
+  out->a = 0xBC9B;
+  out->x = 0;
+  out->y = 0x02C2;
+  out->n = true;
+  out->z = false;
+  out->c = true;
+  const uint16_t sum = (uint16_t)(now + 1);
+  out->v = (~(now ^ 1) & (now ^ sum) & 0x8000) != 0;
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9138,6 +9155,10 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_step_toward_0d70, ALL_OUTPUTS, .fuzz = fuzz_step_toward_0d70},
   {.name = "step_toward_0d68", .entry = 0x8AA296, .end = 0x8AA2AF, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_step_toward_0d68, ALL_OUTPUTS, .fuzz = fuzz_step_toward_0d68},
+  {.name = "split_screen_setup", .entry = 0x80B7E7, .end = 0x80B94F, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .waitsForInterrupts = true, .call = call_split_screen_setup,
+   ALL_OUTPUTS,  // no fuzz: a case cannot wait for a frame
+   .holes = {{0x80B828, 0x80B830}}},  // $03DC's low nibble set (its $30 test): no movie reaches it
   {.name = "wait_frames", .entry = 0x808373, .end = 0x80837D, .source = "src/frame.c", .needM16 = true,
    .lowWramDb = true, .waitsForInterrupts = true, .call = call_wait_frames, ALL_OUTPUTS},
   {.name = "wait_frames_long", .entry = 0x8ABA90, .end = 0x8ABA9C, .rtl = true, .source = "src/frame.c",

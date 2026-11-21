@@ -1453,4 +1453,14 @@ uint16_t screen_objects_place(void);
 //   ($8A:855A), $7E:2C01/$2C04 scroll; $8322: D+$58 counts up.
 void scene_step(void);
 
+// $80:B7E7: the two players' views set up for a split screen (D = $0100). Both view records
+// ($0196 and $0296) from $84:A2EF ($2C bytes), their counters cleared, their scroll and
+// buffer words (player 2's at $4000/$8000 and the $0800-$1500 buffers), $0276 bit 5 unless
+// $03DC's low nibble is set without (its $30 bits) $10; the four sprite buffers ($0900-
+// $17FF) cleared to $E0E0/0; one frame waited; then the IRQ chain at $1D8C (its bank `db`
+// and the caller's return address `ret`, as the original reads them off its stack), the
+// NMI target $B97B (at $0008), the line interrupt at line $6C, dot $10, the IRQ target
+// $BC9B (at $0005).
+void split_screen_setup(uint16_t ret, uint8_t db);
+
 #endif
