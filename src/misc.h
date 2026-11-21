@@ -1298,4 +1298,14 @@ bool object_sprite_shadowed(uint16_t x);
 // result is true (the buffer filled; never run). Returns false otherwise.
 bool sprite_part_put(uint16_t x, uint16_t* y);
 
+// $81:8487: a bar of sprites `length` pixels long centred on `at` (D = $0100; a sprite
+// stream open; RTL). 0: two 0 words, nothing else. Else D+$32 = `d32`, D+$14 = length | 1,
+// D+$16 = at - D+$14 / 2; a 0 word, then sprite_part_put of the first part ($20F6) and the
+// middle ones ($20F7) every 8 pixels while D+$14 (8 less each) stays positive, and the end
+// ($60F6, mirrored) moved back by the rest; D+$14 and D+$16 as they were, a 0 word, D+$84 =
+// the OAM place. The buffer filling up (never run): the chip's answers drained, a 0 word,
+// D+$84 set, D+$14/D+$16 not put back (the original returns with them still on its stack).
+// Returns whether it filled.
+bool sprite_bar_put(uint16_t length, uint16_t at, uint16_t d32);
+
 #endif

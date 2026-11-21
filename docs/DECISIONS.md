@@ -1789,6 +1789,33 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A bar of sprite parts (roots-91, 2026-11-21)
+
+**`sprite_bar_put` ($81:8487, `RTL`):** a bar A pixels long centred on X (17,654 entries on
+the 60k movie).
+- **Length 0:** two 0 words, nothing else.
+- **Otherwise:**
+  - `D+$32` = Y, `D+$14` = A | 1, and `D+$16` = X - `D+$14` / 2, with the old `D+$14`/`D+$16`
+    saved on the stack;
+  - a 0 word;
+  - then `sprite_part_put` of the first part (`$20F6`), and of the middle ones (`$20F7`)
+    every 8 pixels while `D+$14`, 8 less each time, stays positive;
+  - then the mirrored end (`$60F6`), moved back by the rest;
+  - finally `D+$14`/`D+$16` put back, a 0 word, and `D+$84` = the OAM place.
+- **A flaw of the original's, never run.** The buffer filling up (`$81:8508`) drains the
+  chip's answers, writes a 0 word, sets `D+$84` and returns with `RTL`, without pulling
+  the two words it pushed. On the console that would return through them.
+  - It is static code but a hole in the row's extent.
+  - The fuzz never fills the buffer: no case could compare that path, since the bench's
+    sentinel return would be skipped.
+  - The C keeps the path's memory effects, `D+$14`/`D+$16` not put back, and documents it.
+- **Registers.** A, X, Y and every flag are compared:
+  - length 0: A = 0, Z set;
+  - otherwise: A = the old `D+$14` (from its `PLA`), X = `$60F6`, Y = the OAM place, C
+    clear, and V of the last part's `ADC`.
+- **Result:** live 4,000/4,000 (60k) and 192/192 (race1), fuzz 500/500 and 200/200, paths
+  65/65, first try.
+
 ## One sprite part (roots-90, 2026-11-21)
 
 **`sprite_part_put` ($81:8527):** one sprite part streamed (141,203 entries on the 60k movie).

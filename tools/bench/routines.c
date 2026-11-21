@@ -8183,6 +8183,43 @@ static void fuzz_sprite_part_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   dsp4_bridge_script(script, 40);
 }
 
+// ---- sprite_bar_put ($81:8487) ----  a DSP-4 tape row (RTL). Length 0: A = 0 (Z set, N
+// clear), C clear, X Y V as on entry. Else A = the old D+$14 (N Z of its PLA), X = $60F6, Y
+// = the OAM place, C clear (the end part's), V of that part's ADC (D+$32 - 8)
+static void call_sprite_bar_put(const Regs* in, Regs* out) {
+  const uint16_t old14 = rd16(DP + 0x14);
+  const bool full = sprite_bar_put(in->a, in->x, in->y);
+  out->c = full;
+  if(in->a == 0) {
+    out->a = 0;
+    out->n = false;
+    out->z = true;
+    return;
+  }
+  out->a = old14;
+  setNZ16(out, old14);
+  out->x = 0x60F6;
+  out->y = rd16(DP + 0x84);
+  const uint16_t sum = (uint16_t)(0xFFF8 + in->y);
+  out->v = (~(0xFFF8 ^ in->y) & (0xFFF8 ^ sum) & 0x8000) != 0;
+}
+// a length (0 now and then, up to $60), its centre, D+$32 in Y; the OAM place never on its
+// limit (the full buffer's path returns with two words left on the stack: never in a case);
+// the chip's answers scripted
+static void fuzz_sprite_bar_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (rnd() % 6 == 0) ? 0 : (uint16_t)(1 + rnd() % 0x60);
+  r->x = (uint16_t)rnd();
+  r->y = (uint16_t)rnd();
+  const uint16_t at = (uint16_t)(4 * (rnd() % 0x40));
+  wr16ram(ram, DP + 0x84, at);
+  wr16ram(ram, DP + 0x1A, (uint16_t)(at + 2));
+  wr16ram(ram, DP + 0x14, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x16, (uint16_t)rnd());
+  uint16_t script[60];
+  for(int i = 0; i < 60; i++) script[i] = (rnd() % 3 == 0) ? 0 : (uint16_t)rnd();
+  dsp4_bridge_script(script, 60);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9093,6 +9130,10 @@ const Routine routines[] = {
   {.name = "sprite_part_put", .entry = 0x818527, .end = 0x818564, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_part_put, .compareY = true,
    .fuzz = fuzz_sprite_part_put, .dsp4Tape = true},
+  {.name = "sprite_bar_put", .entry = 0x818487, .end = 0x818527, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_bar_put, ALL_OUTPUTS,
+   .fuzz = fuzz_sprite_bar_put, .dsp4Tape = true, .alsoIn = {{0x818527, 0x818564}},
+   .holes = {{0x818508, 0x818527}}},  // the full buffer's path: it would return with two words left on the stack
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

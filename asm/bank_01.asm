@@ -610,6 +610,7 @@ CODE_81847C:
     bne CODE_81847C             ; $818484
 CODE_818486:
     rts                         ; $818486
+sprite_bar_put:
     and.w #$FFFF                ; $818487
     bne CODE_818497             ; $81848A
     stz.w $8000                 ; $81848C
@@ -644,7 +645,7 @@ CODE_818497:
     bmi CODE_8184ED             ; $8184BE
     ldx.w #$20F6                ; $8184C0
     jsr.w sprite_part_put       ; $8184C3
-    db $B0,$40 ; bcs            ; $8184C6
+    bcs CODE_818508             ; $8184C6
     lda.b $16                   ; $8184C8
     clc                         ; $8184CA
     adc.w #$0008                ; $8184CB
@@ -656,7 +657,7 @@ CODE_818497:
     bmi CODE_8184ED             ; $8184D8
     ldx.w #$20F7                ; $8184DA
     jsr.w sprite_part_put       ; $8184DD
-    db $B0,$26 ; bcs            ; $8184E0
+    bcs CODE_818508             ; $8184E0
     lda.b $16                   ; $8184E2
     clc                         ; $8184E4
     adc.w #$0008                ; $8184E5
@@ -669,7 +670,7 @@ CODE_8184ED:
     sta.b $16                   ; $8184F2
     ldx.w #$60F6                ; $8184F4
     jsr.w sprite_part_put       ; $8184F7
-    db $B0,$0C ; bcs            ; $8184FA
+    bcs CODE_818508             ; $8184FA
     pla                         ; $8184FC
     sta.b $16                   ; $8184FD
     pla                         ; $8184FF
@@ -677,7 +678,25 @@ CODE_8184ED:
     stz.w $8000                 ; $818502
     sty.b $84                   ; $818505
     rtl                         ; $818507
-    incbin !baserom:$8508..$8527
+CODE_818508:
+    lda.w $C000                 ; $818508 static
+    bpl CODE_818508             ; $81850B static
+    lda.w $8000                 ; $81850D static
+    beq CODE_818520             ; $818510 static
+    lda.w $8000                 ; $818512 static
+    xba                         ; $818515 static
+    xba                         ; $818516 static
+    nop                         ; $818517 static
+    lda.w $8000                 ; $818518 static
+    xba                         ; $81851B static
+    xba                         ; $81851C static
+    nop                         ; $81851D static
+    bra CODE_818508             ; $81851E static
+CODE_818520:
+    stz.w $8000                 ; $818520 static
+    sty.b $84                   ; $818523 static
+    sec                         ; $818525 static
+    rtl                         ; $818526 static
 sprite_part_put:
     stx.w $8000                 ; $818527
     lda.w #$FFF8                ; $81852A

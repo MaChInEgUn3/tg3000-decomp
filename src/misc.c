@@ -4653,3 +4653,41 @@ bool sprite_part_put(uint16_t x, uint16_t* y) {
   }
   return false;
 }
+
+// TG3000_ROUTINE($81:8487) sprite_bar_put
+bool sprite_bar_put(uint16_t length, uint16_t at, uint16_t d32) {
+  if(length == 0) {
+    dsp4_port_write16(0);
+    dsp4_port_write16(0);
+    return false;
+  }
+  wr16(DP + 0x32, d32);
+  const uint16_t saved14 = rd16(DP + 0x14), saved16 = rd16(DP + 0x16);
+  wr16(DP + 0x14, (uint16_t)(length | 1));
+  wr16(DP + 0x16, (uint16_t)(at - (rd16(DP + 0x14) >> 1)));
+  uint16_t y = rd16(DP + 0x84);
+  dsp4_port_write16(0);
+  uint16_t part = 0x20F6;
+  for(;;) {
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 8));
+    if(rd16(DP + 0x14) & 0x8000) break;
+    if(sprite_part_put(part, &y)) goto full;
+    wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + 8));
+    part = 0x20F7;
+  }
+  wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x14) + rd16(DP + 0x16)));
+  if(sprite_part_put(0x60F6, &y)) goto full;
+  wr16(DP + 0x16, saved16);
+  wr16(DP + 0x14, saved14);
+  dsp4_port_write16(0);
+  wr16(DP + 0x84, y);
+  return false;
+full:  // never run
+  while(dsp4_port_read16() != 0) {
+    (void)dsp4_port_read16();
+    (void)dsp4_port_read16();
+  }
+  dsp4_port_write16(0);
+  wr16(DP + 0x84, y);
+  return true;
+}

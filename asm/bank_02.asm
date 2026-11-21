@@ -2923,7 +2923,7 @@ CODE_82CFA5:
     tay                         ; $82CFF9
     lda.l $86CC64,x             ; $82CFFA
     plx                         ; $82CFFE
-    jsl.l $818487               ; $82CFFF
+    jsl.l sprite_bar_put        ; $82CFFF
     lda.w $014C                 ; $82D003
     cmp.w #$0002                ; $82D006
     bne CODE_82D058             ; $82D009
