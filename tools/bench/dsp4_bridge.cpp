@@ -61,7 +61,26 @@ static int routed = -1;  // index into routes, or -1
 static uint8_t routedIn[16], routedOut[16];
 static int routedNIn, routedNOut = -1;
 
+// A taped row's fuzz case scripts the chip (dsp4_bridge_script): its status always reads
+// ready, data reads come from the script (low byte first, 0 past its end) and writes are
+// not fed to the chip. A reset clears it.
+static bool scripted;
+static uint8_t scriptBytes[512];
+static int scriptLen, scriptPos;
+
+extern "C" void dsp4_bridge_script(const uint16_t* words, int n) {
+	if(n > int(sizeof scriptBytes / 2)) n = int(sizeof scriptBytes / 2);
+	for(int i = 0; i < n; i++) {
+		scriptBytes[2 * i] = uint8_t(words[i]);
+		scriptBytes[2 * i + 1] = uint8_t(words[i] >> 8);
+	}
+	scriptLen = 2 * n;
+	scriptPos = 0;
+	scripted = true;
+}
+
 extern "C" void dsp4_bridge_reset(void) {
+	scripted = false;
 	chip.reset();
 	routed = -1;
 	routedNOut = -1;
@@ -69,6 +88,11 @@ extern "C" void dsp4_bridge_reset(void) {
 
 extern "C" uint8_t dsp4_bridge_read(uint8_t bank, uint16_t adr) {
 	const bool data = adr < 0xC000;
+	if(scripted) {
+		const uint8_t val = !data ? 0x80 : scriptPos < scriptLen ? scriptBytes[scriptPos++] : 0;
+		bench_log_dsp4(false, data, bank, adr, val);
+		return val;
+	}
 	uint8_t val = data ? chip.readData() : chip.readStatus();
 	if(data && routed >= 0 && routedNOut >= 0) {
 		val = routedOut[routedNOut++];
@@ -80,6 +104,10 @@ extern "C" uint8_t dsp4_bridge_read(uint8_t bank, uint16_t adr) {
 
 extern "C" void dsp4_bridge_write(uint8_t bank, uint16_t adr, uint8_t val) {
 	const bool data = adr < 0xC000;
+	if(scripted) {
+		bench_log_dsp4(true, data, bank, adr, val);
+		return;
+	}
 	if(data) {  // writes to the status register are ignored, as on the chip
 		const bool wasBusy = chip.m.busy != 0;
 		chip.writeData(val);

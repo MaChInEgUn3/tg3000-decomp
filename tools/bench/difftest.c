@@ -130,6 +130,10 @@ typedef struct {
   // where the routine is in a DSP-4 command (see dsp4Step): phase 0 idle, 1 half of the
   // command word, 2 parameters, 3 results; the command and the bytes of the phase so far
   uint8_t dsp4Phase, dsp4Cmd, dsp4Count;
+  // a taped row's DSP-4 data-port bytes, in order, in tapes[depth] (the C consumes them:
+  // difftest_dsp4_byte); kept out of the sample, which every entry clears
+  int nTape;
+  bool tapeOverflow;
   uint32_t hwAccessAdr, leftExtentPc;
   bool foreignStack;  // a handler it recorded switched to another stack (two-task screens)
   const char* hwWhy;
@@ -175,6 +179,8 @@ static Replay* replays;
 static bool replaying;
 
 static uint8_t sampleRam[MAX_DEPTH][TG3000_WRAM_SIZE];  // WRAM at each sample's entry
+#define MAX_TAPE 16384
+static struct { uint8_t val; bool read; } tapes[MAX_DEPTH][MAX_TAPE];  // DSP-4 tapes (dsp4Tape rows)
 static int depth;
 static bool fuzzing;
 static uint8_t afterRam[TG3000_WRAM_SIZE];
@@ -267,6 +273,10 @@ static bool isJoypadProtocolWrite(uint32_t adr) {
 }
 static bool collectingC;
 
+// The C's place on the sample's DSP-4 tape, and its first mismatch.
+static int cTapePos;
+static char cTapeWhy[160];
+
 static uint8_t inputFor(void* p, uint16_t reg) {
   Sample* smp = p;
   for(int i = 0; i < smp->nInputs; i++) {
@@ -289,6 +299,32 @@ int difftest_input_peek(uint16_t reg, int n) {
 uint8_t difftest_input(uint16_t reg) {
   if(!collectingC || cSample == NULL) return 0;
   return inputFor(cSample, reg);
+}
+
+uint8_t difftest_dsp4_byte(uint8_t value, bool write) {
+  if(!collectingC || cSample == NULL) return 0;
+  Sample* smp = cSample;
+  const int k = (int)(smp - samples);
+  const int pos = cTapePos++;
+  if(cTapeWhy[0] != '\0') return 0;
+  if(!table[smp->idx].dsp4Tape) {
+    snprintf(cTapeWhy, sizeof cTapeWhy, "the C used the DSP-4 port in a row without a tape");
+    return 0;
+  }
+  if(pos >= smp->nTape) {
+    snprintf(cTapeWhy, sizeof cTapeWhy, "the C %s DSP-4 byte %d, past the tape's %d", write ? "wrote" : "read", pos, smp->nTape);
+    return 0;
+  }
+  if(tapes[k][pos].read == write) {
+    snprintf(cTapeWhy, sizeof cTapeWhy, "DSP-4 tape byte %d: the original %s, the C %s", pos,
+      tapes[k][pos].read ? "read" : "wrote", write ? "wrote" : "read");
+    return 0;
+  }
+  if(write && tapes[k][pos].val != value) {
+    snprintf(cTapeWhy, sizeof cTapeWhy, "DSP-4 tape byte %d: the original wrote $%02X, the C $%02X", pos, tapes[k][pos].val, value);
+    return 0;
+  }
+  return tapes[k][pos].val;
 }
 
 void difftest_dma_claim(int slot, int reg, uint8_t value) {
@@ -713,6 +749,18 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   if(isDsp4(adr)) {  // before the ROM test: $30:8000 reads look like ROM reads to it
     for(int k = accessBase; k < depth; k++) {
       Sample* smp = &samples[k];
+      if(table[smp->idx].dsp4Tape) {  // its tape: the data bytes in order; status reads free
+        if((adr & 0xFFFF) >= 0xC000) {
+          if(!write) continue;
+        } else if(smp->nTape < MAX_TAPE) {
+          tapes[k][smp->nTape].val = val;
+          tapes[k][smp->nTape++].read = !write;
+          continue;
+        } else {
+          smp->tapeOverflow = true;
+          continue;
+        }
+      }
       if(smp->hwAccess || dsp4Step(smp, adr, val, write)) continue;
       smp->hwWhy = "DSP-4 traffic other than whole commands of src/dsp4.c";
       smp->hwAccess = true;
@@ -960,6 +1008,8 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   cSample = smp;
   memset(cInputUsed, 0, sizeof cInputUsed);
   cInputMissing = false;
+  cTapePos = 0;
+  cTapeWhy[0] = '\0';
   cPpuWritten = 0;
   collectingC = true;
   irqReplayed = 0;
@@ -974,6 +1024,18 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   while(irqReplayed < irqLimit) applyIrq(irqReplayed++);  // interrupts after the C's last wait
   if(cInputMissing) {
     snprintf(why, whyLen, "the C read $%04X more times than the original", cMissingReg);
+    return false;
+  }
+  if(cTapeWhy[0] != '\0') {
+    snprintf(why, whyLen, "%s", cTapeWhy);
+    return false;
+  }
+  if(r->dsp4Tape && smp->tapeOverflow) {
+    snprintf(why, whyLen, "the original's DSP-4 tape overflowed (%d bytes)", smp->nTape);
+    return false;
+  }
+  if(r->dsp4Tape && cTapePos != smp->nTape) {
+    snprintf(why, whyLen, "the C used %d of the DSP-4 tape's %d bytes", cTapePos, smp->nTape);
     return false;
   }
   if(cEffectOverflow) {

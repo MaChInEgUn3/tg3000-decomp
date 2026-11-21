@@ -68,6 +68,11 @@ typedef struct {
   // place). A routine whose callees write the game's words $1EEE-$1EFD needs the game's own
   // stack instead (measured from its live samples' entry SP).
   uint16_t fuzzStack;
+  // The routine streams DSP-4 commands src/dsp4.c does not have: its data-port bytes are
+  // recorded in order (its tape) instead of being checked as whole commands, and the C's
+  // port calls (dsp4_port_write16/read16) must reproduce the writes in place and take the
+  // reads exactly, the whole tape. Its fuzz scripts the chip's answers (dsp4_bridge_script).
+  bool dsp4Tape;
 } Routine;
 
 // Hardware effects, in canonical form: what the original did through DMA and what the C
@@ -82,6 +87,13 @@ void difftest_replay_interrupt(void);
 // to the C in order (the first unread value of that register). Returns 0 and fails the
 // sample if the original read no more of it.
 uint8_t difftest_input(uint16_t reg);
+// The C's DSP-4 data-port byte (platform_bench.c): a write is checked against the sample's
+// tape in place; a read returns the tape's byte. Outside a taped row any use fails.
+uint8_t difftest_dsp4_byte(uint8_t value, bool write);
+// The bench chip's scripted answers for a taped row's fuzz case (dsp4_bridge.cpp): status
+// always ready, data reads from `words` (low byte first), 0 past the end; writes are not
+// fed to the chip. Cleared by dsp4_bridge_reset.
+void dsp4_bridge_script(const uint16_t* words, int n);
 // The n-th value (from 0) the original read from `reg` in the sample being compared, for
 // adapters that model registers left by input reads (-1 if there is none).
 int difftest_input_peek(uint16_t reg, int n);

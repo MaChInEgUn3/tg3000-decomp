@@ -425,7 +425,7 @@ CODE_828933:
     jsr.w shake_step            ; $82893B
     jsr.w $CBD4                 ; $82893E
     jsr.w func_82A9B7           ; $828941
-    jmp.w $AE15                 ; $828944
+    jmp.w oam_high_load         ; $828944
     incbin !baserom:$10947..$10961
     lda.w #$7C57                ; $828961
     sta.w $2116                 ; $828964
@@ -1809,6 +1809,7 @@ track_block_triple:
     mvn $7E,$7E                 ; $82AE10
     plb                         ; $82AE13
     rts                         ; $82AE14
+oam_high_load:
     pea.w $8330                 ; $82AE15
     plb                         ; $82AE18
     lda.w #$0006                ; $82AE19

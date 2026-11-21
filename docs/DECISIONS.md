@@ -1789,6 +1789,59 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A DSP-4 tape for the streamed commands (harness-4, 2026-11-21; decided by the advisor, open to the owner's veto)
+
+- **Why.** The remaining DSP-4 roots stream commands `src/dsp4.c` does not have: the
+  sprite commands `$09` and `$06`, and the road commands `$01`/`$07`/`$08`. `$06` is
+  stateful: it returns the high table the earlier sprite commands built. So these cannot
+  be checked as pure functions, and their routines could not be verified at all.
+- **The port.** `src/platform.h` gains `dsp4_port_write16` and `dsp4_port_read16`: one word
+  written to or read from the data port, low byte first, in the original's order. A port
+  answers from its own chip, and waiting on the status register is the platform's job.
+- **The tape.** A row may set `.dsp4Tape`.
+  - The original side then records every data-port byte of the sample in order (read or
+    write, value), instead of checking it as whole known commands. Status reads stay free.
+  - The C's port calls are checked against the tape in place. A write must equal the
+    tape's write at that position. A read is served only where the tape has a read, and
+    returns the original's byte. The whole tape must be consumed.
+  - Over-reads, under-reads, and port use in a row without a tape all fail the sample,
+    with a message that names the tape byte.
+  - It does not rely on the shadow's command boundaries: one ordered stream, compared
+    byte by byte. The tapes live in a buffer per nesting depth (16 KB each), not in the
+    sample, which every entry clears.
+- **The fuzz scripts the chip.** In a taped row's fuzz case the bench chip is scripted
+  (`dsp4_bridge_script`):
+  - its status always reads ready;
+  - data reads come from a list of words the row's fuzz writes, and are 0 past its end;
+  - writes are recorded and not fed to the chip;
+  - a chip reset (each case) clears the script.
+
+  Each row keeps the answers inside its routine's domain, and the 0 past the end closes
+  read loops.
+- **What it checks.** A taped row's live samples check the routine against the bench
+  chip's answers. Its fuzz checks it against scripted answers. Neither checks the chip:
+  that stays refbench's job, command by command.
+- **Not in this unit:** native commands (`dsp4_multiply` and the others) inside a taped
+  sample. Their bytes would be left on the tape, and the whole-tape rule fails such a
+  sample. They come with the first row that needs them (`$82:CBD4`).
+- **The pilot, `oam_high_load` ($82:AE15).** It is the `JMP`'d tail of `$82:8923`.
+  - It sends `$0006` through the port and stores the chip's 16 words (the sprites' high
+    table) at `$1776` + `D+$8E`.
+  - Then it moves the sprites left unused off screen (`$E0E0` every 4 bytes from `$1576` +
+    `D+$86`). A count below 4 bytes is taken as 65536, as in the original's `DEX` loop.
+  - race1: live 186/186 against the bench chip, fuzz 200/200 against scripted answers,
+    paths 59/59. A, X, Y, DB and every flag are compared.
+- **Negative rows.**
+  - `oam_high_load_wrong_command` (command `$0007`) fails on tape byte 0 (`$06` against
+    `$07`): live 0/186, fuzz 0/50. It is the registry's negative row.
+  - A second one, one word too few read, failed when run on its own: "the C used 32 of the
+    DSP-4 tape's 34 bytes". It is not kept, because two rows cannot share an entry in one
+    run, and `verify_all.sh` runs every negative row together.
+- **Next:** `$82:D934`, `$82:D988` and `$82:DDBF` as rows-only incremental units. Keep
+  `D+$84` and `D+$1A` as the race has them, and cap the script's non-zero answers by the
+  room left. Then natives on the tape for `$82:CBD4`. The owner's question stands: native
+  `$09`/road commands in scope?
+
 ## The saved data checked at boot (roots-83, 2026-11-21)
 
 **`save_data_check` ($80:8119):** 1 entry, at boot. `$03E2` = 0, then three cases:

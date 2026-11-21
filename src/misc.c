@@ -4408,3 +4408,18 @@ bool save_data_check(void) {
   wr16(0x045A, (uint16_t)(rd16(0x045A) | 0x00FF));
   return true;
 }
+
+// TG3000_ROUTINE($82:AE15) oam_high_load
+void oam_high_load(void) {
+  dsp4_port_write16(0x0006);
+  const uint32_t y = rd16(DP + 0x8E);
+  for(uint32_t i = 0; i < 32; i += 2) wr16(0x1776 + y + i, dsp4_port_read16());
+  const uint16_t room = (uint16_t)(0x0200 - (uint16_t)(rd16(DP + 0x86) - rd16(DP + 0x8E)));
+  if(room == 0) return;
+  uint16_t n = (uint16_t)(room >> 2), at = rd16(DP + 0x86);
+  do {
+    wr16(0x1576 + (uint32_t)at, 0xE0E0);
+    at = (uint16_t)(at + 4);
+    n = (uint16_t)(n - 1);
+  } while(n != 0);
+}

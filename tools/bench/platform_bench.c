@@ -154,3 +154,15 @@ void input_multitap_pair(int pair, uint16_t* d0, uint16_t* d1, uint8_t* tail) {
 // The bench replays, in order, the WRAM changes each interrupt made while the original
 // routine was waiting (recorded by the differential test).
 void platform_wait_vblank(void) { difftest_replay_interrupt(); }
+
+// The DSP-4 port: the differential test checks the C's bytes against the original's in
+// place and serves the original's reads (its tape).
+void dsp4_port_write16(uint16_t value) {
+  difftest_dsp4_byte((uint8_t)value, true);
+  difftest_dsp4_byte((uint8_t)(value >> 8), true);
+}
+uint16_t dsp4_port_read16(void) {
+  const uint8_t lo = difftest_dsp4_byte(0, false);
+  return (uint16_t)(lo | difftest_dsp4_byte(0, false) << 8);
+}
+

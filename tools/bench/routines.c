@@ -7953,6 +7953,66 @@ static void fuzz_save_data_check(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x045A, (uint16_t)((rnd() & 1) ? rnd() & 0xFF00 : rnd()));
 }
 
+// ---- oam_high_load ($82:AE15) ----  a DSP-4 tape row. DB = $83 (its PLB); C V of the ADC
+// of the room, N clear, Z set (the ADC's 0, or the fill's last DEX); none left: A = 0, X as
+// on entry, Y = D+$86; else A = $E0E0, X = 0, Y past the last word filled
+static void oamHighOut(const Regs* in, Regs* out, uint16_t d86, uint16_t d8e) {
+  const uint16_t e = (uint16_t)~(uint16_t)(d86 - d8e);
+  const uint32_t sum = (uint32_t)e + 0x0200 + 1;
+  const uint16_t room = (uint16_t)sum;
+  out->c = sum > 0xFFFF;
+  out->v = (~(e ^ 0x0200) & (e ^ room) & 0x8000) != 0;
+  out->db = 0x83;
+  out->n = false;
+  out->z = true;
+  if(room == 0) {
+    out->a = 0;
+    out->x = in->x;
+    out->y = d86;
+  } else {
+    out->a = 0xE0E0;
+    out->x = 0;
+    out->y = (uint16_t)(d86 + 4 * (uint32_t)(uint16_t)(room >> 2));
+  }
+}
+static void call_oam_high_load(const Regs* in, Regs* out) {
+  const uint16_t d86 = rd16(DP + 0x86), d8e = rd16(DP + 0x8E);
+  oam_high_load();
+  oamHighOut(in, out, d86, d8e);
+}
+// the two sprite pointers (the high table's place, the sprites used: up to $200 bytes more,
+// in steps of 4), the chip's 16 answers scripted (now and then fewer: the rest read 0)
+static void fuzz_oam_high_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  const uint16_t d8e = (uint16_t)(4 * (rnd() % 0x80));
+  wr16ram(ram, DP + 0x8E, d8e);
+  wr16ram(ram, DP + 0x86, (uint16_t)(d8e + 4 * (rnd() % 0x81)));
+  uint16_t words[16];
+  for(int i = 0; i < 16; i++) words[i] = (uint16_t)rnd();
+  dsp4_bridge_script(words, (rnd() % 4 == 0) ? (int)(rnd() % 16) : 16);
+}
+// Negative row: the command word $0007 instead of $0006 (the tape's first write differs).
+// One word fewer read (oamHighWrong(false, 15): the tape left unconsumed) was run once as a
+// second negative row and failed as it must; two rows cannot share an entry in one run
+static void oamHighWrong(bool wrongCommand, int words) {
+  dsp4_port_write16(wrongCommand ? 0x0007 : 0x0006);
+  const uint32_t y = rd16(DP + 0x8E);
+  for(int i = 0; i < words; i++) wr16(0x1776 + y + 2u * (uint32_t)i, dsp4_port_read16());
+  const uint16_t room = (uint16_t)(0x0200 - (uint16_t)(rd16(DP + 0x86) - rd16(DP + 0x8E)));
+  if(room == 0) return;
+  uint16_t n = (uint16_t)(room >> 2), at = rd16(DP + 0x86);
+  do {
+    wr16(0x1576 + (uint32_t)at, 0xE0E0);
+    at = (uint16_t)(at + 4);
+    n = (uint16_t)(n - 1);
+  } while(n != 0);
+}
+static void call_oam_high_load_wrong_command(const Regs* in, Regs* out) {
+  const uint16_t d86 = rd16(DP + 0x86), d8e = rd16(DP + 0x8E);
+  oamHighWrong(true, 16);
+  oamHighOut(in, out, d86, d8e);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8832,6 +8892,9 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_results_text, .fuzz = fuzz_results_text},
   {.name = "save_data_check", .entry = 0x808119, .end = 0x808199, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x00, .call = call_save_data_check, ALL_OUTPUTS, .fuzz = fuzz_save_data_check},
+  {.name = "oam_high_load", .entry = 0x82AE15, .end = 0x82AEA4, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load, ALL_OUTPUTS, .fuzz = fuzz_oam_high_load,
+   .dsp4Tape = true},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
@@ -8922,6 +8985,9 @@ const Routine routines[] = {
 const int routineCount = sizeof routines / sizeof routines[0];
 
 const Routine negativeRoutines[] = {
+  {.name = "oam_high_load_wrong_command", .entry = 0x82AE15, .end = 0x82AEA4, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load_wrong_command, ALL_OUTPUTS,
+   .fuzz = fuzz_oam_high_load, .dsp4Tape = true},
   {.name = "minimap_car_wrong", .entry = 0x82D8C6, .end = 0x82D934, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_minimap_car_wrong, .fuzz = fuzz_minimap_car},
   {.name = "vram_planes_build_wrong", .entry = 0x8A8828, .end = 0x8A88DD, .source = "src/misc.c", .needM16 = true,

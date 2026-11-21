@@ -1238,4 +1238,11 @@ void results_text(void);
 // loaded (the original's carry).
 bool save_data_check(void);
 
+// $82:AE15: the sprites' high table from the DSP-4 (D = $0100): command $0006 through the
+// port (dsp4_port_write16), its 16 words (dsp4_port_read16; the chip's high bits of the
+// sprites the earlier commands placed) to $1776 + D+$8E; then the sprites left unused, from
+// D+$86 to D+$8E + $200, moved off screen ($E0E0 every 4 bytes from $1576 + D+$86; a
+// count below 4 bytes is taken as 65536).
+void oam_high_load(void);
+
 #endif

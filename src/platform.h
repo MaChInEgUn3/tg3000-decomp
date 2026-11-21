@@ -198,4 +198,11 @@ void input_multitap_pair(int pair, uint16_t* d0, uint16_t* d1, uint8_t* tail);
 // waits for "the next frame" calls this in a loop until its own frame counter has moved on.
 void platform_wait_vblank(void);
 
+// The DSP-4's data port ($30:8000), for the commands src/dsp4.c does not have as native
+// functions yet (the streamed sprite and road commands): one word written or read, low
+// byte first, in the order the original does it. A port answers from its own chip; the
+// status register ($30:C000, "ready") is the platform's to wait on.
+void dsp4_port_write16(uint16_t value);
+uint16_t dsp4_port_read16(void);
+
 #endif
