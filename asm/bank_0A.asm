@@ -62,7 +62,7 @@ CODE_8A803B:
     jsr.w rotation_from_angle   ; $8A8094
     jsr.w func_8A869A           ; $8A8097
     jsr.w scene_objects_place   ; $8A809A
-    jsr.w $898F                 ; $8A809D
+    jsr.w screen_objects_place  ; $8A809D
     jsl.l oam_from_objects      ; $8A80A0
     lda.w #$0004                ; $8A80A4
     sta.b $8A                   ; $8A80A7
@@ -108,7 +108,7 @@ CODE_8A8142:
     jsr.w title_sprites_place   ; $8A8157
     jsr.w rotation_from_angle   ; $8A815A
     jsr.w scene_objects_place   ; $8A815D
-    jsr.w $898F                 ; $8A8160
+    jsr.w screen_objects_place  ; $8A8160
     jsr.w func_8A869A           ; $8A8163
     jsl.l oam_from_objects      ; $8A8166
     lda.b $58                   ; $8A816A
@@ -311,7 +311,58 @@ func_8A8325:
     adc.w #$001B                ; $8A8335
     sta.w $0700                 ; $8A8338
     rts                         ; $8A833B
-    incbin !baserom:$5033C..$505AF
+    incbin !baserom:$5033C..$504B9
+objects_scatter_init:
+    ldy.w #$FE84                ; $8A84B9 static
+    ldx.w #$0000                ; $8A84BC static
+CODE_8A84BF:
+    lda.w #$FFFF                ; $8A84BF static
+    sta.w $0510,x               ; $8A84C2 static
+    sta.w $054C,x               ; $8A84C5 static
+    sta.w $0588,x               ; $8A84C8 static
+    lda.w #$0402                ; $8A84CB static
+    sta.w $0810,x               ; $8A84CE static
+    lda.w #$0403                ; $8A84D1 static
+    sta.w $084C,x               ; $8A84D4 static
+    sta.w $0888,x               ; $8A84D7 static
+    tya                         ; $8A84DA static
+    sta.w $0710,x               ; $8A84DB static
+    sta.w $074C,x               ; $8A84DE static
+    sta.w $0788,x               ; $8A84E1 static
+    jsr.w $8506                 ; $8A84E4 static
+    sta.w $0610,x               ; $8A84E7 static
+    jsr.w $8506                 ; $8A84EA static
+    sta.w $064C,x               ; $8A84ED static
+    jsr.w $8506                 ; $8A84F0 static
+    sta.w $0688,x               ; $8A84F3 static
+    sta.b $88                   ; $8A84F6 static
+    tya                         ; $8A84F8 static
+    clc                         ; $8A84F9 static
+    adc.w #$000F                ; $8A84FA static
+    tay                         ; $8A84FD static
+    inx                         ; $8A84FE static
+    inx                         ; $8A84FF static
+    cpx.w #$0020                ; $8A8500 static
+    bne CODE_8A84BF             ; $8A8503 static
+    rts                         ; $8A8505 static
+    lda.b $12                   ; $8A8506 static
+    bmi CODE_8A851D             ; $8A8508 static
+    lda.b $10                   ; $8A850A static
+    asl a                       ; $8A850C static
+    eor.w #$2B45                ; $8A850D static
+    sta.b $10                   ; $8A8510 static
+    lda.b $12                   ; $8A8512 static
+    rol a                       ; $8A8514 static
+    eor.w #$1D87                ; $8A8515 static
+    sta.b $12                   ; $8A8518 static
+    lda.b $10                   ; $8A851A static
+    rts                         ; $8A851C static
+CODE_8A851D:
+    asl.b $10                   ; $8A851D static
+    rol.b $12                   ; $8A851F static
+    lda.b $10                   ; $8A8521 static
+    rts                         ; $8A8523 static
+    incbin !baserom:$50524..$505AF
 tile_anim_step:
     lda.b $42                   ; $8A85AF
     beq CODE_8A85CB             ; $8A85B1
@@ -693,7 +744,7 @@ CODE_8A88BB:
     ldy.w #$0200                ; $8A895A
     stx.b $3C                   ; $8A895D
     sty.b $3E                   ; $8A895F
-    jsr.w $898F                 ; $8A8961
+    jsr.w screen_objects_place  ; $8A8961
     lda.w #$0003                ; $8A8964
     sta.b $36                   ; $8A8967
     lsr a                       ; $8A8969
@@ -713,9 +764,10 @@ CODE_8A88BB:
     lda.w #$0001                ; $8A8988
     sta.w $0500                 ; $8A898B
     rts                         ; $8A898E
+screen_objects_place:
     lda.b $5E                   ; $8A898F
     beq CODE_8A8994             ; $8A8991
-    incbin !baserom:$50993..$50994
+    rts                         ; $8A8993 static
 CODE_8A8994:
     lda.b $3C                   ; $8A8994
     pha                         ; $8A8996
@@ -726,7 +778,11 @@ CODE_8A8994:
     sta.b $3C                   ; $8A899D
     cmp.w #$0120                ; $8A899F
     bmi CODE_8A89AD             ; $8A89A2
-    incbin !baserom:$509A4..$509AD
+    pla                         ; $8A89A4 static
+    sta.b $3C                   ; $8A89A5 static
+    inc.b $5E                   ; $8A89A7 static
+    jsr.w objects_scatter_init  ; $8A89A9 static
+    rts                         ; $8A89AC static
 CODE_8A89AD:
     lda.b $3C                   ; $8A89AD
     clc                         ; $8A89AF

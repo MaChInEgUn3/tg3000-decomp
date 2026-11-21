@@ -487,3 +487,5 @@ func    85B3D7   road_rows_project   ; the road's rows projected by the DSP-4 (c
 func    85B828   road_rows_project2  ; road_rows_project for the second view (command $07; $1EF2, bands $7E:4D49; RTL; a tape row) -> src/misc.c
 func    85B36F   race_road_frame_alt ; the road for the frame (both projections, scroll tables, bands; the $1E4A/$016E/$01DE copies; RTL) -> src/misc.c
 func    85B3A9   race_road_frame     ; the race's road for the frame: both projections, scroll tables, bands merged (RTL) -> src/misc.c
+func    8A84B9   objects_scatter_init ; 16 objects in four tables, three random words each (never run) -> src/misc.c
+func    8A898F   screen_objects_place ; a screen's objects placed from D+$3C/D+$3E (corners, 6 rows, kinds, right column) -> src/misc.c

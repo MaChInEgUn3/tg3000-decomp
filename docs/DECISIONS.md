@@ -1819,6 +1819,41 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## A screen's objects placed; `$8A:898F` unparked (roots-102, 2026-11-21)
+
+- **Why it was parked:** a never-run path of `$8A:898F` calls `$8A:84B9`, inside 627 unknown
+  bytes.
+- **What `$8A:84B9` turned out to be:** short and self-contained.
+  - It loops over 16 objects, 2 bytes apart, filling `$0510`/`$054C`/`$0588` = `$FFFF`,
+    `$0810` = `$0402`, `$084C`/`$0888` = `$0403`, and `$0710`/`$074C`/`$0788` = `$FE84`
+    + 15 each.
+  - It also writes three `rng_next` words at `$0610`/`$064C`/`$0688`, the last kept in
+    D+$88.
+  - Its random step is `$8A:8506`, a fourth copy of `rng_next` (on D+$10, `RNG_STATE`).
+  - Both are now static code, with C as `objects_scatter_init` and the existing
+    `rng_next`.
+- **`screen_objects_place` ($8A:898F-$8A:8AE6)** has three ways out:
+  - **D+$5E set:** an RTS (never run).
+  - **D+$3C / 4 - $100 at `$120` or more:** D+$5E counts up, then `objects_scatter_init`
+    (never run).
+  - **Otherwise:** the four corners at `$0602`-`$0608`/`$0702`-`$0708`; six rows of 12 by
+    `table_062a_fill`; the 72 kinds from `$7E:8152` to `$082A`, skipping 4 and adding `$3000`
+    below the 23rd; then the right column (`$0612`-`$0628`, `$0712`-`$0728`).
+- **One ADC chain.** The right column is a single chain of ADCs with one `CLC` at the start,
+  so a carry passes from the `$072A` steps into the `$062A` steps. The C keeps the chain,
+  and the adapter rebuilds its last carry and V.
+- **One hole:** `$8A:89E1`-`$8A:8A42`, unknown bytes after the routine's `JMP` that it never
+  reaches.
+- **Result:** live 284/284 (60k), fuzz 500/500, paths 103/103.
+- **Parked instead: `$83:EAC6`** (the player's car frame, about 3,100 bytes).
+  - In three places (`$83:ED72`, `$83:F227`/`$F236`, `$83:F4EB`) it writes a value it has
+    just computed to the chip's port. That happens after reading only the first word of a
+    product, or right after a product's answer.
+  - The chip may take that value as a command word. That is chip state which the native
+    multiply in C does not model.
+  - Its C waits until the tape or the native chip can show what the chip does with those
+    words.
+
 ## The race's road for the frame (roots-101, 2026-11-21)
 
 - **`race_road_frame` ($85:B3A9) and `race_road_frame_alt` ($85:B36F)** are two short RTL

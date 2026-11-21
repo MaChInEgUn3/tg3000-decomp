@@ -153,3 +153,7 @@
 85:B9AD 85:B9B3 m16x16 ; road_rows_project2: never run
 85:B9D0 85:B9D7 m16x16 ; road_rows_project2: never run
 85:BBFC 85:BC09 m16x16 ; road_rows_project2: never run
+8A:84B9 8A:8506 m16x16 ; objects_scatter_init: 16 objects in four tables, three random words each (never run)
+8A:8506 8A:8524 m16x16 ; rng_next: a fourth copy, on D+$10 (never run)
+8A:8993 8A:8994 m16x16 ; screen_objects_place: D+$5E set, the RTS (never run)
+8A:89A4 8A:89AD m16x16 ; screen_objects_place: past the edge, objects_scatter_init (never run)

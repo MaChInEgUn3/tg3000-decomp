@@ -8753,6 +8753,60 @@ static void fuzz_race_road_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   dsp4_bridge_script(NULL, 0);
 }
 
+// ---- screen_objects_place ($8A:898F) ----  three ways out. D+$5E set: A = D+$5E (N Z of it),
+// the rest as on entry. Past the edge: objects_scatter_init's A = Y = $FF74, X = $20, Z C
+// set (its CPX), N V clear. Else A = the right column's last ADC (N Z C V of it), X = $90,
+// Y = 0
+static void call_screen_objects_place(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t e = rd16(DP + 0x5E), x0 = rd16(DP + 0x3C);
+  const bool edge = !((uint16_t)((uint16_t)((x0 >> 2) - 0x0100) - 0x0120) & 0x8000);
+  out->a = screen_objects_place();
+  if(e != 0) {
+    setNZ16(out, out->a);
+    return;
+  }
+  if(edge) {
+    out->x = 0x0020;
+    out->y = out->a;
+    out->n = out->v = false;
+    out->z = out->c = true;
+    return;
+  }
+  out->x = 0x0090;
+  out->y = 0;
+  uint32_t c = 0, s;
+  uint16_t v = rd16(0x072A);
+  for(int i = 0; i < 3; i++) {
+    s = (uint32_t)v + (i == 0 ? 0x10 : 0x08) + c;
+    c = s >> 16;
+    v = (uint16_t)s;
+  }
+  v = rd16(0x062A);
+  uint16_t before = 0, add = 0;
+  for(int i = 0; i < 4; i++) {
+    before = v;
+    add = i == 0 ? 0x50 : 0x08;
+    s = (uint32_t)v + add + c;
+    c = s >> 16;
+    v = (uint16_t)s;
+  }
+  setNZ16(out, v);
+  out->c = c != 0;
+  out->v = (~(before ^ add) & (before ^ v) & 0x8000) != 0;
+}
+// D+$5E set now and then; the place D+$3C/D+$3E anywhere (both sides of the edge); the
+// random state; the 72 kinds at $7E:8152 (4 now and then)
+static void fuzz_screen_objects_place(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x5E, rnd() % 6 == 0 ? (uint16_t)(1 + rnd() % 0x20) : 0);
+  wr16ram(ram, DP + 0x3C, (uint16_t)(rnd() % 3 == 0 ? rnd() : 0x0400 + rnd() % 0x0480));
+  wr16ram(ram, DP + 0x3E, (uint16_t)rnd());
+  wr16ram(ram, 0x0110, (uint16_t)rnd());
+  wr16ram(ram, 0x0112, (uint16_t)rnd());
+  for(uint32_t i = 0; i < 0x48; i++) wr16ram(ram, 0x8152 + 2 * i, rnd() % 4 == 0 ? 4 : (uint16_t)(rnd() % 0x0400));
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9212,6 +9266,9 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_hdma_table_0d00_init, ALL_OUTPUTS, .fuzz = fuzz_hdma_table_0d00_init},
   {.name = "string_space_fours", .entry = 0x8ABF2A, .end = 0x8ABF4E, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_string_space_fours, ALL_OUTPUTS, .fuzz = fuzz_string_space_fours},
+  {.name = "screen_objects_place", .entry = 0x8A898F, .end = 0x8A8AE7, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_screen_objects_place, ALL_OUTPUTS,
+   .fuzz = fuzz_screen_objects_place, .holes = {{0x8A89E1, 0x8A8A43}}},  // other code (unknown bytes), not reached from here
   {.name = "table_062a_fill", .entry = 0x8A8AE7, .end = 0x8A8B0A, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_table_062a_fill, ALL_OUTPUTS, .fuzz = fuzz_table_062a_fill},
   {.name = "shop_item_view_f", .entry = 0x80A333, .end = 0x80A39B, .source = "src/shop.c", .needM16 = true, .needX16 = true,

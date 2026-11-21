@@ -1425,4 +1425,20 @@ void road_rows_project2(void);
 uint16_t race_road_frame(void);
 uint16_t race_road_frame_alt(void);
 
+// $8A:84B9 (never run): 16 objects (2 bytes apart) in four tables: $0510/$054C/$0588 =
+// $FFFF, $0810 = $0402 and $084C/$0888 = $0403, $0710/$074C/$0788 = $FE84 + 15 each, and
+// three rng_next words ($8A:8506, a fourth copy, on D+$10) at $0610/$064C/$0688 (the
+// last also in D+$88).
+void objects_scatter_init(void);
+
+// $8A:898F: a screen's objects placed from D+$3C/D+$3E (D = $0100). Nothing when D+$5E is
+// set. D+$3C / 4 - $100 is the left edge: at $120 or more (never run), D+$5E counts up and
+// objects_scatter_init runs instead. Else four corners at $0602-$0608/$0702-$0708 (+$30 and
+// +$40 across, D+$3E / 4 + 8 and +$18 down), six rows of 12 by table_062a_fill ($10 apart),
+// the $7E:8152 kinds (4 skipped) to $082A (with $3000 below the 23rd) and $052A = 1, and the
+// right column ($0612-$0628, $0712-$0728) stepped from the first row by $50 and $10 across,
+// 8 apart, in one ADC chain. D+$3C/D+$3E as they were. Returns A (the chain's last value,
+// or D+$5E).
+uint16_t screen_objects_place(void);
+
 #endif

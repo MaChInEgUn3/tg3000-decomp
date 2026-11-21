@@ -5952,3 +5952,83 @@ uint16_t race_road_frame(void) {
   wr16(0x01DC, rd16(0x00E0));
   return race_bands_merge();
 }
+
+// TG3000_ROUTINE($8A:84B9) objects_scatter_init
+void objects_scatter_init(void) {
+  uint16_t y = 0xFE84;
+  for(uint32_t x = 0; x != 0x20; x += 2) {
+    wr16(0x0510 + x, 0xFFFF);
+    wr16(0x054C + x, 0xFFFF);
+    wr16(0x0588 + x, 0xFFFF);
+    wr16(0x0810 + x, 0x0402);
+    wr16(0x084C + x, 0x0403);
+    wr16(0x0888 + x, 0x0403);
+    wr16(0x0710 + x, y);
+    wr16(0x074C + x, y);
+    wr16(0x0788 + x, y);
+    wr16(0x0610 + x, rng_next(DP + 0x10, 0));
+    wr16(0x064C + x, rng_next(DP + 0x10, 0));
+    const uint16_t r = rng_next(DP + 0x10, 0);
+    wr16(0x0688 + x, r);
+    wr16(DP + 0x88, r);
+    y = (uint16_t)(y + 0x000F);
+  }
+}
+
+static uint16_t adc16(uint16_t a, uint16_t b, uint32_t* carry) {
+  const uint32_t s = (uint32_t)a + b + *carry;
+  *carry = s >> 16;
+  return (uint16_t)s;
+}
+
+// TG3000_ROUTINE($8A:898F) screen_objects_place
+uint16_t screen_objects_place(void) {
+  if(rd16(DP + 0x5E) != 0) return rd16(DP + 0x5E);  // never run
+  const uint16_t x0 = rd16(DP + 0x3C);
+  wr16(DP + 0x3C, (uint16_t)((x0 >> 2) - 0x0100));
+  if(!((uint16_t)(rd16(DP + 0x3C) - 0x0120) & 0x8000)) {  // never run
+    wr16(DP + 0x3C, x0);
+    wr16(DP + 0x5E, (uint16_t)(rd16(DP + 0x5E) + 1));
+    objects_scatter_init();
+    return (uint16_t)(0xFE84 + 16 * 0x000F);
+  }
+  uint16_t v = (uint16_t)(rd16(DP + 0x3C) + 0x0030);
+  wr16(0x0602, v);
+  wr16(0x0606, v);
+  v = (uint16_t)(v + 0x0010);
+  wr16(0x0604, v);
+  wr16(0x0608, v);
+  const uint16_t y0 = rd16(DP + 0x3E);
+  wr16(DP + 0x3E, (uint16_t)(y0 >> 2));
+  v = (uint16_t)(rd16(DP + 0x3E) + 0x0008);
+  wr16(0x0702, v);
+  wr16(0x0704, v);
+  v = (uint16_t)(v + 0x0010);
+  wr16(0x0706, v);
+  wr16(0x0708, v);
+  for(uint16_t x = 0, n = 6; n != 0; n--, x = (uint16_t)(x + 24)) {
+    table_062a_fill(x);
+    wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 0x0010));
+  }
+  for(uint32_t x = 0, y = 0x48; y != 0; x += 2, y--) {
+    uint16_t kind = rd16(0x8152 + x);  // bank $7E
+    if(kind == 4) continue;
+    if(y < 0x32) kind |= 0x3000;
+    wr16(0x082A + x, kind);
+    wr16(0x052A + x, 1);
+  }
+  wr16(DP + 0x3E, y0);
+  wr16(DP + 0x3C, x0);
+  uint32_t c = 0;
+  v = rd16(0x072A);
+  for(int col = 0; col < 3; col++) {
+    v = adc16(v, col == 0 ? 0x0010 : 0x0008, &c);
+    for(uint32_t k = 0; k < 8; k += 2) wr16(0x0712 + 8 * (uint32_t)col + k, v);
+  }
+  v = rd16(0x062A);
+  for(int row = 0; row < 4; row++) {
+    v = adc16(v, row == 0 ? 0x0050 : 0x0008, &c);
+    for(uint32_t k = 0; k < 0x18; k += 8) wr16(0x0612 + 2 * (uint32_t)row + k, v);
+  }
+  return v;
+}
