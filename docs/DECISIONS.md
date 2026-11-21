@@ -1789,6 +1789,25 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## Two track objects' sprites (roots-87, 2026-11-21)
+
+**`object_sprite_raised` ($82:DAFD) and `object_sprite_flat` ($82:DB4D):** handlers from the
+table of `$82:DB87`. Each sets up one track object's sprite, then jumps to
+`sprite_put_rows_a` or `_b`.
+- **The common setup:**
+  - `D+$24` = the graphics word at `$86:AF06` + X;
+  - `D+$20` = the object's place (its byte × 16, signed 12-bit);
+  - `D+$26` gains its bits 8-10, moved up one.
+- **The raised one:** `D+$22` = a height from `$84:A200` + ((`$0024` - its word at +3) &
+  `$3E`), less its +2 byte's high nibble × 8 and less `$20`.
+- **The flat one:** `D+$22` = 0, then `_b` when its +2 byte has bit 4, else `_a`.
+- **The rows** follow the jump through `.alsoIn` (`$82:D934`-`$82:D9DD`, `$82:DDBF`-`$82:DEA8`)
+  and carry a tape.
+- **The fuzz** picks an X whose graphics word leads into ROM (from `$8000`). It gives that
+  word to roots-84's parts-list fuzz, which writes the lists where the routine will look.
+- **Result** (60k; race1 does not reach them): live 1,342/1,342 and 2,166/2,166, fuzz
+  500/500 each, paths 35/35 and 24/24; only C live.
+
 ## A car's sprite head (roots-86, 2026-11-21)
 
 **`car_sprite_head` ($82:D267):** 43,690 entries on the 60k movie. It writes nine words

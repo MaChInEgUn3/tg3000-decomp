@@ -4559,3 +4559,35 @@ uint16_t car_sprite_head(uint16_t x, uint16_t y) {
   wr16(DP + 0x2A, answer);
   return answer;
 }
+
+// The object sprite's common setup: D+$24, D+$26's bits, D+$20 (see object_sprite_raised).
+static uint32_t object_sprite_setup(uint16_t x) {
+  wr16(DP + 0x24, bus_rd16(0x86AF06 + (uint32_t)x));
+  const uint32_t o = rd16(DP + 0x1C);
+  wr16(DP + 0x26, (uint16_t)(((rd16(0x8CB4 + o) & 0x0700) << 1) | rd16(DP + 0x26)));
+  uint16_t at = (uint16_t)(rd8(0x8CB3 + o) << 4);
+  if(at & 0x0800) at |= 0xF000;
+  wr16(DP + 0x20, at);
+  return o;
+}
+
+// TG3000_ROUTINE($82:DAFD) object_sprite_raised
+bool object_sprite_raised(uint16_t x) {
+  wr16(DP + 0x24, bus_rd16(0x86AF06 + (uint32_t)x));
+  const uint32_t o = rd16(DP + 0x1C);
+  uint16_t at = (uint16_t)(rd8(0x8CB3 + o) << 4);
+  if(at & 0x0800) at |= 0xF000;
+  wr16(DP + 0x20, at);
+  wr16(DP + 0x26, (uint16_t)(((rd16(0x8CB4 + o) & 0x0700) << 1) | rd16(DP + 0x26)));
+  const uint16_t lift = (uint16_t)((rd16(0x8CB5 + o) & 0x00F0) >> 1);
+  const uint32_t row = (uint16_t)(rd16(0x0024) - rd16(0x8CB6 + o)) & 0x003E;
+  wr16(DP + 0x22, (uint16_t)(bus_rd16(0x84A200 + row) - lift - 0x0020));
+  return sprite_put_rows_a();
+}
+
+// TG3000_ROUTINE($82:DB4D) object_sprite_flat
+bool object_sprite_flat(uint16_t x) {
+  const uint32_t o = object_sprite_setup(x);
+  wr16(DP + 0x22, 0);
+  return (rd16(0x8CB5 + o) & 0x0010) ? sprite_put_rows_b() : sprite_put_rows_a();
+}

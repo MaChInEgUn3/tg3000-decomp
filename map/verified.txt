@@ -442,3 +442,5 @@
 82D988 sprite_put_rows_b src/misc.c 36941138ef542cf3 706 500 33/33 verified live-flags:C replayed:0
 82DEA8 sprite_parts_stream_rom src/misc.c 74dc7360751e91eb 4000 500 109/109 verified live-flags:C replayed:0
 82D267 car_sprite_head src/misc.c ac303af64a1576a6 4000 500 42/42 verified live-flags:- replayed:0
+82DAFD object_sprite_raised src/misc.c e37bbe76cd6d7817 1342 500 35/35 verified live-flags:C replayed:0
+82DB4D object_sprite_flat src/misc.c e37bbe76cd6d7817 2166 500 24/24 verified live-flags:C replayed:0

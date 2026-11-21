@@ -3434,6 +3434,7 @@ CODE_82DACA:
     jmp.w sprite_put_rows_a     ; $82DAF7
 CODE_82DAFA:
     jmp.w sprite_put_rows_a     ; $82DAFA
+object_sprite_raised:
     lda.l $86AF06,x             ; $82DAFD
     sta.b $24                   ; $82DB01
     ldx.b $1C                   ; $82DB03
@@ -3470,6 +3471,7 @@ CODE_82DB18:
     adc.w #$FFE0                ; $82DB45
     sta.b $22                   ; $82DB48
     jmp.w sprite_put_rows_a     ; $82DB4A
+object_sprite_flat:
     lda.l $86AF06,x             ; $82DB4D
     sta.b $24                   ; $82DB51
     ldx.b $1C                   ; $82DB53

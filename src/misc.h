@@ -1268,4 +1268,13 @@ bool sprite_parts_stream_rom(uint16_t x);
 // D+$2A, which it returns.
 uint16_t car_sprite_head(uint16_t x, uint16_t y);
 
+// $82:DAFD / $82:DB4D: a track object's sprite (D = $0100): D+$24 = the graphics word at
+// $86:AF06 + `x`; for the object at $7E:8CB3 + D+$1C: D+$20 = its place (its byte * 16, a
+// signed 12-bit value), D+$26 gains its bits 8-10 (of the word at +1) moved up one. The
+// first: D+$22 = the height at $84:A200 + (($0024 - its word at +3) & $3E) less (its +2
+// byte's high nibble * 8) and $20; then sprite_put_rows_a. The second: D+$22 = 0, then
+// sprite_put_rows_b when its +2 byte has bit 4, else sprite_put_rows_a. Return their result.
+bool object_sprite_raised(uint16_t x);
+bool object_sprite_flat(uint16_t x);
+
 #endif

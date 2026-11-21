@@ -8111,6 +8111,27 @@ static void fuzz_car_sprite_head(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   dsp4_bridge_script(&answer, 1);
 }
 
+// ---- object_sprite_raised / _flat ($82:DAFD, $82:DB4D) ----  DSP-4 tape rows: as the
+// sprite_put_rows they jump to (C = the buffer filled; the other flags by liveness)
+static void call_object_sprite_raised(const Regs* in, Regs* out) { out->c = object_sprite_raised(in->x); }
+static void call_object_sprite_flat(const Regs* in, Regs* out) { out->c = object_sprite_flat(in->x); }
+// a graphics entry X whose word leads into ROM (from $8000), put in D+$24 for the parts
+// lists sprite_put_rows' fuzz writes; the object entry (its bytes random, $0024 random)
+static void fuzz_object_sprite(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint16_t x = 0;
+  for(int tries = 0; tries < 200; tries++) {
+    x = (uint16_t)(2 * (rnd() % 0x80));
+    if(rom16(0x86AF06 + (uint32_t)x) >= 0x8000) break;
+  }
+  wr16ram(ram, DP + 0x24, rom16(0x86AF06 + (uint32_t)x));
+  fuzz_sprite_put_rows(r, ram, rnd);
+  r->x = x;
+  const uint16_t o = (uint16_t)(4 * (rnd() % 0x100));
+  wr16ram(ram, DP + 0x1C, o);
+  for(int i = 0; i < 4; i++) ram[0x8CB3 + (uint32_t)o + i] = (uint8_t)rnd();
+  wr16ram(ram, 0x0024, (uint16_t)rnd());
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9005,6 +9026,12 @@ const Routine routines[] = {
   {.name = "car_sprite_head", .entry = 0x82D267, .end = 0x82D2CC, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_car_sprite_head, ALL_OUTPUTS, .fuzz = fuzz_car_sprite_head,
    .dsp4Tape = true},
+  {.name = "object_sprite_raised", .entry = 0x82DAFD, .end = 0x82DB4D, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
+   .call = call_object_sprite_raised, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
+  {.name = "object_sprite_flat", .entry = 0x82DB4D, .end = 0x82DB87, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
+   .call = call_object_sprite_flat, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
