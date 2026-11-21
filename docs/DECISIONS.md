@@ -1841,31 +1841,50 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - an object starts at a head's first word: `$82:D93A` (scenery), `$82:CEF4` (cars),
     `$82:D26B`, or a bar at `$81:84B3`. A car's head is split by a read at `$82:D14E`.
 - **The key:** the stream's preamble, every word the object wrote before this record, and
-  the record's own words.
+  the record's own words. A key counts as repeated only when it occurs after different
+  stream contents: an identical stream cannot give another answer.
 - **Measured over the first 20,000 TAS frames.**
   - The capture: 213 MB of tape, 42.7 million bytes, none unpaired. It holds 6,062
-    streams and 837,462 records.
-  - The records give 687,318 keys, 22,635 of them seen more than once.
-  - **230 of the repeated keys (1.02%) got more than one answer, and none of them within a
-    single stream.** In 229 of the 230, the object is shown in one stream and hidden
-    (`$0000` alone) in another.
-  - In 202 of those, every hidden answer came after more of its stream's sprites than every
-    shown one.
+    streams and 837,462 records, 414,126 of them hidden (`$0000` alone).
+  - The records give 687,318 keys, but only 12,980 repeat after different stream contents.
+  - **230 of those (1.77%) got more than one answer, and none within a single stream.** In
+    229 of the 230, the object is shown in one stream and hidden in another.
+  - In 202, every hidden answer came after more of its stream's sprites than every shown
+    one.
 - **A first draft of this section was wrong.** It said the answers depend on state carried
   from part to part. That came from a parser that knew only two heads: the cars' head
   (`$82:CEF4`-`$82:D160`) was read as part words. Keyed on the whole object, the conflicts
   inside a stream are gone.
-- **What is measured:** given its stream's preamble and its object's words, a record's
-  answer is the same in 98.98% of the repeated keys, and in all of them within one stream.
-- **What is hypothesis:** the residual depends on the stream's earlier sprites.
-  - Not a fixed count: in one case the object is shown after 64 pairs and hidden after 66.
-    So it could be a limit of sprites on a line, or a budget the earlier objects use up.
-  - Or it depends on the road commands before the stream.
-- **Next, the decisive test**, with chosen inputs to the idle chip (allowed by the decision
-  and noted there at first use). Replay a captured stream twice; replay it without the
-  road commands before it; and send one conflicting object alone and after its stream's
-  earlier objects. The answers settle what `$09` depends on before any formula is written,
-  and the numbers go to the owner.
+- **A per-line ceiling: a strong pile-up, not a hard limit.**
+  - Each shown sprite's size comes from the high OAM table the chip returns for the next
+    `$0006`: 16 words, two bits a sprite, in the stream's order. 5,823 of the 6,062 streams
+    line up with it.
+  - Over those streams, taking 8 lines for a small sprite and 16 for a large one, these are
+    the sprites accepted with k sprites already on one of their lines:
+
+    | k | 30 | 31 | 32 | 33 | 34 | 35 | 36 |
+    |---|---|---|---|---|---|---|---|
+    | sprites | 3,034 | 2,566 | 1,834 | 369 | 250 | 208 | 41 |
+
+  - The count falls off sharply past 32, and the most common peak load of a stream is 33.
+  - But 918 sprites, in 365 streams, were accepted with 33 or more already on a line. So it
+    is not a clean ceiling under this model.
+  - The model's guesses: the heights, which depend on OBSEL (`$2101`, written at four
+    places) and are not measured here; the line a sprite starts on; and the sprites'
+    order in the high table.
+- **What is measured:** within one stream, a record's answer is a function of its stream's
+  preamble and its object's words. Across streams it is, in 98.23% of the keys that repeat
+  after different contents.
+- **What is hypothesis:** the residual is a per-line sprite budget near 32 (the SNES's own
+  limit), and the heights or the counting rule above are what keeps it from being clean.
+  The road commands before the stream are not ruled out.
+- **Next, deferred:** the chosen-input experiment (replaying a stream, without the road
+  commands before it, or one object alone) waits behind the `$06` data above.
+  - First, settle the heights from the game's OBSEL during races and the parts' sizes.
+  - Then retest the ceiling.
+  - The chosen-input tool is built only if the tape cannot settle it.
+
+  `tools/dsp4_tape.py` prints every number above. Routines come back first.
 
 ## The road's rows (roots-94, 2026-11-21)
 

@@ -11,6 +11,12 @@ this record, and the record's own words. Reports the keys seen more than once th
 more than one answer, in one stream or across streams, and for those whether the hidden
 answers ($0000 alone) came after more of the stream's sprites than the shown ones.
 
+A key counts as repeated only when it occurs after different stream contents (an identical
+stream cannot give another answer). Then a ceiling test over every shown sprite: its size
+from the high OAM table the chip returns for `$0006` (16 words after `$82:AE1C`, two bits a
+sprite in the stream's order; 8 lines small, 16 large), and the most sprites already on
+one of its lines when it was accepted.
+
 Outputs only: the capture holds what the game wrote and read, never the chip's memory.
 
     build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom \\
@@ -45,14 +51,15 @@ def words_of(data):
 
 
 def streams_of(words):
-    """Each $09 stream: from its $0009 word up to the next command word $0006."""
+    """Each $09 stream (from its $0009 word up to the next command word $0006) with the 16
+    words the chip answers that $0006 with (the high OAM table)."""
     streams, cur = [], None
-    for pc, val, rd in words:
+    for i, (pc, val, rd) in enumerate(words):
         if not rd and pc == OPEN and val == 0x0009:
             cur = []
-            streams.append(cur)
             continue
         if cur is not None and not rd and pc == CLOSE:
+            streams.append((cur, [w[1] for w in words[i + 1:i + 17]]))
             cur = None
         if cur is not None:
             cur.append((pc, val, rd))
@@ -85,6 +92,20 @@ def records_of(stream):
     return out
 
 
+def sprites_of(stream, high):
+    """Each shown sprite of a stream: (y, large), large from the high table's size bit."""
+    bits = [(w >> (2 * k)) & 3 for w in high for k in range(8)]
+    out, n = [], 0
+    for _, answer, _ in records_of(stream):
+        i = 0
+        while i < len(answer) and answer[i] != 0:
+            if i + 2 < len(answer):
+                out.append((answer[i + 1] >> 8, n < len(bits) and bits[n] >> 1))
+            n += 1
+            i += 3
+    return out, max([i for i, b in enumerate(bits) if b] or [-1]) < n
+
+
 def main():
     data = open(sys.argv[1], 'rb').read()
     words = words_of(data)
@@ -92,20 +113,38 @@ def main():
     print(f"{nbytes} bytes, {2 * len(words) - nbytes} left unpaired")
     streams = streams_of(words)
     keys = collections.defaultdict(list)
-    for si, s in enumerate(streams):
+    for si, (s, _) in enumerate(streams):
+        prefix = hash(())
         for key, answer, sprites in records_of(s):
-            keys[key].append((answer, si, sprites))
+            keys[key].append((answer, si, prefix))
+            prefix = hash((prefix, key, answer))
     n = sum(len(v) for v in keys.values())
-    repeated = [v for v in keys.values() if len(v) > 1]
+    repeated = [v for v in keys.values() if len({p for _, _, p in v}) > 1]
     bad = [v for v in repeated if len({a for a, _, _ in v}) > 1]
     one_stream = sum(1 for v in bad if len({si for _, si, _ in v}) == 1)
-    later = sum(1 for v in bad
-                if [p for a, _, p in v if a == (0,)] and [p for a, _, p in v if a != (0,)]
-                and min(p for a, _, p in v if a == (0,)) > max(p for a, _, p in v if a != (0,)))
-    print(f"{len(streams)} streams, {n} records, {len(keys)} keys, {len(repeated)} seen more than once")
-    print(f"{len(bad)} of those ({100.0 * len(bad) / max(1, len(repeated)):.2f}%) got more than one answer; "
-          f"{one_stream} within one stream; in {later} every hidden answer came after more of the stream's "
-          "sprites than every shown one")
+    shown_hidden = sum(1 for v in bad if (0,) in {a for a, _, _ in v})
+    print(f"{len(streams)} streams, {n} records ({sum(1 for v in keys.values() for a, _, _ in v if a == (0,))} hidden), "
+          f"{len(keys)} keys, {len(repeated)} after different stream contents")
+    print(f"{len(bad)} of those ({100.0 * len(bad) / max(1, len(repeated)):.2f}%) got more than one answer, "
+          f"{one_stream} within one stream, {shown_hidden} shown in one and hidden in another")
+    hist, aligned, over, over_streams = collections.Counter(), 0, 0, 0
+    for s, high in streams:
+        sprites, lined_up = sprites_of(s, high)
+        if not lined_up:
+            continue
+        aligned += 1
+        load, o = [0] * 256, 0
+        for y, large in sprites:
+            lines = [(y + k) & 0xFF for k in range(16 if large else 8)]
+            m = max(load[line] for line in lines)
+            hist[m] += 1
+            o += m >= 33
+            for line in lines:
+                load[line] += 1
+        over += o
+        over_streams += o > 0
+    print(f"ceiling: {aligned} of {len(streams)} streams line up with their high table; sprites accepted with k "
+          f"already on a line, k = 30..36: {[hist[k] for k in range(30, 37)]}; with 33 or more: {over}, in {over_streams} streams")
 
 
 if __name__ == '__main__':
