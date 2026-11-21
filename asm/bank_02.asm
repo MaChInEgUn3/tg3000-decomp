@@ -271,7 +271,7 @@ CODE_82856D:
     lda.b #$85                  ; $8285FE
     sta.w $0007                 ; $828600
     rep.b #$20                  ; $828603
-    jsr.w $DFA9                 ; $828605
+    jsr.w road_rows_build_call  ; $828605
     jsl.l $85B36F               ; $828608
     lda.w #$0F00                ; $82860C
     sta.w $0148                 ; $82860F
@@ -303,7 +303,7 @@ CODE_828656:
     bit.w $00B8                 ; $828656
     bne CODE_828656             ; $828659
     jsr.w player_segment_step   ; $82865B
-    jsr.w $DFA9                 ; $82865E
+    jsr.w road_rows_build_call  ; $82865E
     jsr.w road_shift_frame_call ; $828661
     jsr.w race_positions_update ; $828664
     lda.w $00B8                 ; $828667
@@ -3862,6 +3862,7 @@ CODE_82DF8A:
     sec                         ; $82DF8F
     rts                         ; $82DF90
     incbin !baserom:$15F91..$15FA9
+road_rows_build_call:
     jsr.w road_rows_build       ; $82DFA9
     rts                         ; $82DFAC
 road_rows_build:

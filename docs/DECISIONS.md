@@ -1819,6 +1819,15 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The race frame's call to the road's rows (roots-95, 2026-11-21)
+
+- **`road_rows_build_call` ($82:DFA9):** `JSR road_rows_build; RTS`. The race frame
+  (`$82:8428`) calls it 18,564 times on the 60k movie.
+- **The row** reuses `road_rows_build`'s fuzz. Its stack is one call above that row's
+  (`.fuzzStack` `$1FF3`), so the game's words at `$1EE6`-`$1EFA` stay clear of it.
+- **The flags are not judged.** As for `road_rows_build`, the code it returns into loads
+  its own registers.
+
 ## DSP-4 command $09 measured (dsp4-09a, 2026-11-21)
 
 **The first step of the owner's decision: an instrument and one measurement.**

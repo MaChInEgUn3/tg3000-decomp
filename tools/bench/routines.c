@@ -8288,6 +8288,12 @@ static void call_road_rows_build(const Regs* in, Regs* out) {
   road_rows_build();
   out->db = 0x83;
 }
+// ---- road_rows_build_call ($82:DFA9) ----  JSR road_rows_build; RTS: its outputs
+static void call_road_rows_build_call(const Regs* in, Regs* out) {
+  (void)in;
+  road_rows_build_call();
+  out->db = 0x83;
+}
 // the race's road (its tables, cursors and object stream as the race left them); 0-3 rows
 // crossed (past the lap's end now and then), the multipliers' inputs, $1E66's bit 15, the
 // armed jump near the rows; the next rows' objects of every kind the event table handles
@@ -9327,6 +9333,9 @@ const Routine routines[] = {
   {.name = "race_state_reset", .entry = 0x82A28B, .end = 0x82A672, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_state_reset, ALL_OUTPUTS,
    .fuzz = fuzz_race_state_reset},
+  {.name = "road_rows_build_call", .entry = 0x82DFA9, .end = 0x82DFAD, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_build_call, .fuzz = fuzz_road_rows_build,
+   .fuzzStack = 0x1FF3},  // the game's stack, one call above road_rows_build's
   {.name = "road_rows_build", .entry = 0x82DFAD, .end = 0x82E503, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_build, .fuzz = fuzz_road_rows_build,
    .fuzzStack = 0x1FF1,  // the game's stack (entry SP $1FEF, as road_shift_frame): it writes $1EE6-$1EFA

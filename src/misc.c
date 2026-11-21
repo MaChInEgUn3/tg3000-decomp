@@ -5319,3 +5319,6 @@ void road_rows_build(void) {
   if(s & 0x0080) s |= 0xFF00;
   wr16(0x0237, (uint16_t)-(uint16_t)((uint16_t)(s + (uint16_t)(p >> 16)) + 9));
 }
+
+// TG3000_ROUTINE($82:DFA9) road_rows_build_call
+void road_rows_build_call(void) { road_rows_build(); }

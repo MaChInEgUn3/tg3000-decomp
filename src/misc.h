@@ -1205,6 +1205,9 @@ void track_event_none(void);
 void player_segment_step_long(void);
 void player2_segment_step_long(void);
 
+// $82:DFA9: JSR road_rows_build; RTS (the race frame's call).
+void road_rows_build_call(void);
+
 // $82:A7F9: the track's setup load (D = $0100), for track $047B (tables in bank $84):
 // its header unpacked to $7E:5391 (from bank $9B), its object table to $7E:8CB3, a block
 // from bank $8B copied to $7E:5B91; the scenery unpacked to $7F:0000 by the variant
