@@ -1789,6 +1789,37 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## The track's setup load (roots-81, 2026-11-20)
+
+**`track_setup_load` ($82:A7F9, D = `$0100`):** 5 entries on the 60k movie, all of them
+interrupted. It was parked as "a recipe" until the decompressor and the segment work were
+in C. For track `$047B`, through tables in bank `$84`, it:
+- unpacks the header to `$7E:5391` (from bank `$9B`) and the object table to `$7E:8CB3`;
+- copies a block from bank `$8B` to `$7E:5B91` (an `MVN`);
+- unpacks the scenery to `$7F:0000`, by the variant or `$01E4`:
+  - `$03DC & 3 = 2`: `$89:8512` (never run);
+  - `$01E4` negative: `$96:8020`; zero: `$96:8097`; positive: `$97:A24D`;
+- sets `$003A` and `$0038` from the bank-`$85` tables (`$85:A3CC` when `$039C`/`$03CB` is
+  set, `$85:A35E` otherwise; `$03CB`'s case never ran). A negative entry is replaced by
+  the word at `$90:8000` + the header's `$5395` - `$8007`;
+- unpacks each object kind's graphics once into `$7F`, from `D+$14` = `$D2` on (`$0612` for
+  variant 2, never run). Each kind's slot in the table at `$7E:6591`, set to `$FFFF` first,
+  takes its place.
+- **Never run, now static code:** three stretches, `$82:A84B`, `$82:A8C4` and `$82:A8F7`.
+- **Tracks:** 0-47 have consistent table entries. From 51 on, the block's source would
+  wrap inside bank `$8B`. The fuzz keeps the race's own track, because `$019A` (the object
+  table's length) must agree with it, and varies the variant, `$01E4` and the two
+  selectors.
+- **Flags.** Only 5 returns are watched, so every flag counts as live. The adapter models
+  them from the RAM after the call:
+  - N set and Z clear (the final `PLB` of `$83`);
+  - C from the last object kind walked: its `ASL` clears it, a free slot's `CMP #$FFFF`
+    sets it, and that slot's `ADC` (the graphics' length plus `D+$14`) then decides it. With
+    no kind at all, it is the variant's `CMP #2`;
+  - V from the last such `ADC`; else the `SBC #$8007` of a looked-up entry; else 0.
+- **Result:** replays 2/2 (60k) and 1/1 (race1), fuzz 500/500 and 200/200, paths 146/146,
+  flags 0 mismatches.
+
 ## The segment steps' long wrappers; the plan for the streamed DSP-4 commands (roots-80, 2026-11-20)
 
 - **`player_segment_step_long` ($82:A9AF) and `player2_segment_step_long` ($82:A9B3):**

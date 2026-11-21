@@ -112,3 +112,6 @@
 82:FB22 82:FB53 m16x16 ; player2_segment_step: kinds 6/10, the jump armed (never run)
 82:FB6C 82:FB70 m16x16 ; player2_segment_step: kind 8, $1E68 cleared (never run)
 82:ED27 82:EEB7 m16x16 ; road_shift_frame: the road-edge and edge-shift handlers (never run)
+82:A84B 82:A85A m16x16 ; track_setup_load: variant 2's scenery, from $89:8512 (never run)
+82:A8C4 82:A8CC m16x16 ; track_setup_load: $0038 from the $03CB table (never run)
+82:A8F7 82:A8FC m16x16 ; track_setup_load: variant 2's first graphics slot $0612 (never run)

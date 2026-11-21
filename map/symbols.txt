@@ -455,3 +455,4 @@ func    82EC32   road_shift_frame_call ; JSR road_shift_frame -> src/misc.c
 func    82EA80   track_event_none    ; the track-event table's empty handler (RTS) -> src/misc.c
 func    82A9AF   player_segment_step_long ; JSR player_segment_step; RTL -> src/misc.c
 func    82A9B3   player2_segment_step_long ; JSR player2_segment_step; RTL -> src/misc.c
+func    82A7F9   track_setup_load    ; the track's setup: header, objects, scenery unpacked; each kind's graphics once into $7F -> src/misc.c

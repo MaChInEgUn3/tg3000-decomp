@@ -250,7 +250,7 @@ CODE_82856D:
     stz.b $56                   ; $8285C1
     stz.b $58                   ; $8285C3
     jsl.l track_map_load        ; $8285C5
-    jsr.w $A7F9                 ; $8285C9
+    jsr.w track_setup_load      ; $8285C9
     jsl.l track_rows_build      ; $8285CC
     jsr.w track_objects_stream  ; $8285D0
     jsr.w $8961                 ; $8285D3
@@ -1175,6 +1175,7 @@ CODE_82A6EC:
 CODE_82A7F7:
     plb                         ; $82A7F7
     rts                         ; $82A7F8
+track_setup_load:
     lda.w $047B                 ; $82A7F9
     asl a                       ; $82A7FC
     tax                         ; $82A7FD
@@ -1210,7 +1211,11 @@ CODE_82A7F7:
     and.w #$0003                ; $82A843
     cmp.w #$0002                ; $82A846
     bne CODE_82A85A             ; $82A849
-    incbin !baserom:$1284B..$1285A
+    ldx.w #$8512                ; $82A84B static
+    ldy.w #$0000                ; $82A84E static
+    lda.w #$7F89                ; $82A851 static
+    jsl.l decompress            ; $82A854 static
+    bra CODE_82A88C             ; $82A858 static
 CODE_82A85A:
     lda.w $01E4                 ; $82A85A
     bmi CODE_82A87F             ; $82A85D
@@ -1258,10 +1263,13 @@ CODE_82A8B4:
     lda.w $03CB                 ; $82A8BC
     and.w #$00FF                ; $82A8BF
     beq CODE_82A8CC             ; $82A8C2
-    incbin !baserom:$128C4..$128CC
+    lda.l $85A3CC,x             ; $82A8C4 static
+    bpl CODE_82A8DF             ; $82A8C8 static
+    bra CODE_82A8D2             ; $82A8CA static
 CODE_82A8CC:
     lda.l $85A35E,x             ; $82A8CC
     bpl CODE_82A8DF             ; $82A8D0
+CODE_82A8D2:
     lda.l $7E5395               ; $82A8D2
     sec                         ; $82A8D6
     sbc.w #$8007                ; $82A8D7
@@ -1277,7 +1285,8 @@ CODE_82A8DF:
     and.w #$0003                ; $82A8EF
     cmp.w #$0002                ; $82A8F2
     bne CODE_82A8FC             ; $82A8F5
-    incbin !baserom:$128F7..$128FC
+    lda.w #$0612                ; $82A8F7 static
+    sta.b $14                   ; $82A8FA static
 CODE_82A8FC:
     ldy.w #$0200                ; $82A8FC
     lda.w #$FFFF                ; $82A8FF

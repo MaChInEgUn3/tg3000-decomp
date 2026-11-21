@@ -434,3 +434,4 @@
 82EA80 track_event_none src/misc.c acb67b7655939547 2805 500 1/1 verified live-flags:- replayed:0
 82A9AF player_segment_step_long src/misc.c 1b1fc6e6d647484f 4 500 2/2 verified live-flags:NVZC replayed:1
 82A9B3 player2_segment_step_long src/misc.c 1b1fc6e6d647484f 5 500 2/2 verified live-flags:NVZC replayed:0
+82A7F9 track_setup_load src/misc.c cabf9e39886468db 0 500 146/146 verified live-flags:NVZC replayed:2

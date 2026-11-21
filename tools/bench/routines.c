@@ -7798,6 +7798,66 @@ static void call_player2_segment_step_long(const Regs* in, Regs* out) {
   segmentStepFlags(out, 0x02D9, 0x1E64);
 }
 
+// ---- track_setup_load ($82:A7F9) ----  its caller goes on to track_rows_build, which loads
+// its own registers: no register outputs. With 5 watched returns every flag counts as live:
+// N set and Z clear (the final PLB of $83). C: the last object kind's walk (from the table
+// the routine unpacked): its ASL clears it, the slot test (CMP #$FFFF) sets it for a free
+// slot, whose ADC (the graphics' length plus D+$14) then sets it from the sum; with no kind,
+// the variant's CMP #2. V: the last such ADC; else the SBC #$8007 of a bank-$85 entry
+// looked up through the header; else 0 (decompress's, from a destination of 0).
+static void call_track_setup_load(const Regs* in, Regs* out) {
+  (void)in;
+  track_setup_load();
+  out->n = true;
+  out->z = false;
+  bool c = (rd16(0x03DC) & 0x0003) >= 2, v = false;
+  const uint32_t x2 = (uint16_t)(rd16(0x047B) << 1);
+  const bool lookup = (rom16((rd8(0x039C) ? 0x85A3CC : 0x85A35E) + x2) & 0x8000) ||
+                      (rom16((rd8(0x03CB) ? 0x85A3CC : 0x85A35E) + x2) & 0x8000);
+  if(lookup) {
+    const uint16_t w = rd16(0x5395), r = (uint16_t)(w - 0x8007);
+    v = ((w ^ 0x8007) & (w ^ r) & 0x8000) != 0;
+  }
+  // the walk again, over the slots as they ended: a slot is free when first met; the last
+  // free slot's ADC wrote the final D+$14 from its place (the slot's value)
+  static bool seen[0x10000];
+  memset(seen, 0, sizeof seen);
+  int32_t lastFree = -1;
+  bool lastWasFree = false, anyKind = false;
+  for(uint16_t y = (uint16_t)(rd16(0x019A) << 2); y != 0; y = (uint16_t)(y - 4)) {
+    const uint8_t kind = rd8(0x8CB0 + (uint32_t)y);
+    if(kind == 0) continue;
+    anyKind = true;
+    lastWasFree = false;
+    const uint16_t x = rom16(0x86AE36 + 2u * kind);
+    if(x == 0) continue;
+    const uint16_t s = rom16(0x860000 + (uint32_t)x);
+    if(seen[s]) continue;
+    seen[s] = true;
+    lastFree = s;
+    lastWasFree = true;
+  }
+  if(anyKind) c = false;
+  if(lastFree >= 0) {
+    const uint16_t old = rd16(0x6591 + (uint32_t)lastFree), now = rd16(DP + 0x14);
+    const uint16_t len = (uint16_t)(now - old);
+    v = (~(len ^ old) & (len ^ now) & 0x8000) != 0;
+    if(lastWasFree) c = now < old;
+  }
+  out->c = c;
+  out->v = v;
+}
+// the race's track (its object table and $019A agree), the variant and $01E4 on all sides,
+// the bank-$85 tables' selectors
+static void fuzz_track_setup_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  ram[0x03DC] = (uint8_t)((ram[0x03DC] & 0xFC) | (rnd() % 4));
+  static const uint16_t sides[] = {0x8000, 0x0000, 0x0001};
+  wr16ram(ram, 0x01E4, (uint16_t)(sides[rnd() % 3] | (rnd() & 0x00F0)));
+  ram[0x039C] = (uint8_t)((rnd() & 1) ? 0 : rnd());
+  ram[0x03CB] = (uint8_t)((rnd() & 1) ? 0 : rnd());
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8671,6 +8731,8 @@ const Routine routines[] = {
   {.name = "player2_segment_step_long", .entry = 0x82A9B3, .end = 0x82A9B7, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player2_segment_step_long,
    .fuzz = fuzz_player2_segment_step},
+  {.name = "track_setup_load", .entry = 0x82A7F9, .end = 0x82A954, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_setup_load, .fuzz = fuzz_track_setup_load},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},

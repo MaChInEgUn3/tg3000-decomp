@@ -4283,3 +4283,44 @@ void player_segment_step_long(void) { player_segment_step(); }
 
 // TG3000_ROUTINE($82:A9B3) player2_segment_step_long
 void player2_segment_step_long(void) { player2_segment_step(); }
+
+// A bank-$85 table entry for track $047B, or (negative) the word the track header names.
+static uint16_t track_setup_word(uint32_t table, uint32_t x) {
+  const uint16_t v = bus_rd16(table + x);
+  if(!(v & 0x8000)) return v;
+  return bus_rd16(0x908000 + (uint32_t)(uint16_t)(rd16(0x5395) - 0x8007));
+}
+
+// TG3000_ROUTINE($82:A7F9) track_setup_load
+void track_setup_load(void) {
+  uint16_t end;
+  const uint32_t x2 = (uint16_t)(rd16(0x047B) << 1);
+  decompress(DP, 0x9B, bus_rd16(0x84FD33 + x2), 0x7E, 0x5391, &end);
+  const uint16_t banks = bus_rd16(0x84FE0F + x2);
+  decompress(DP, (uint8_t)banks, bus_rd16(0x84FDA1 + x2), 0x7E, 0x8CB3, &end);
+  const uint32_t x4 = (uint16_t)(rd16(0x047B) << 2);
+  const uint16_t src = bus_rd16(0x84FE7D + x4), count = bus_rd16(0x84FE7F + x4);
+  for(uint32_t i = 0; i <= count; i++)  // MVN $7E,$8B: count + 1 bytes
+    wr8((uint16_t)(0x5B91 + i), bus_rd8(0x8B0000 + (uint32_t)(uint16_t)(src + i)));
+  const bool variant2 = (rd16(0x03DC) & 0x0003) == 0x0002;
+  if(variant2) decompress(DP, 0x89, 0x8512, 0x7F, 0x0000, &end);  // never run
+  else if(rd16(0x01E4) & 0x8000) decompress(DP, 0x96, 0x8020, 0x7F, 0x0000, &end);
+  else if(rd16(0x01E4) == 0) decompress(DP, 0x96, 0x8097, 0x7F, 0x0000, &end);
+  else decompress(DP, 0x97, 0xA24D, 0x7F, 0x0000, &end);
+  wr16(0x003A, track_setup_word((rd8(0x039C) ? 0x85A3CC : 0x85A35E), x2));
+  wr16(0x0038, track_setup_word((rd8(0x03CB) ? 0x85A3CC : 0x85A35E), x2));  // $85:A3CC: never run
+  wr16(DP + 0x14, variant2 ? 0x0612 : 0x00D2);
+  for(uint32_t y = 0x0200; y > 0; y -= 2) wr16(0x658F + y, 0xFFFF);
+  for(uint16_t y = (uint16_t)(rd16(0x019A) << 2); y != 0; y = (uint16_t)(y - 4)) {
+    const uint8_t kind = rd8(0x8CB0 + (uint32_t)y);
+    if(kind == 0) continue;
+    const uint16_t x = bus_rd16(0x86AE36 + 2u * kind);
+    if(x == 0) continue;
+    const uint32_t slot = 0x6591 + (uint32_t)bus_rd16(0x860000 + (uint32_t)x);
+    if(rd16(slot) != 0xFFFF) continue;
+    const uint16_t at = rd16(DP + 0x14);
+    wr16(slot, at);
+    const uint16_t len = decompress(DP, (uint8_t)bus_rd16(0x860002 + (uint32_t)x), bus_rd16(0x860004 + (uint32_t)x), 0x7F, at, &end);
+    wr16(DP + 0x14, (uint16_t)(len + at));
+  }
+}

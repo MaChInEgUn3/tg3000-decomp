@@ -1205,4 +1205,16 @@ void track_event_none(void);
 void player_segment_step_long(void);
 void player2_segment_step_long(void);
 
+// $82:A7F9: the track's setup load (D = $0100), for track $047B (tables in bank $84):
+// its header unpacked to $7E:5391 (from bank $9B), its object table to $7E:8CB3, a block
+// from bank $8B copied to $7E:5B91; the scenery unpacked to $7F:0000 by the variant
+// ($03DC & 3 = 2: $89:8512, never run) or $01E4 (negative $96:8020, zero $96:8097,
+// positive $97:A24D); $003A and $0038 from the bank-$85 tables ($85:A3CC with $039C /
+// $03CB set, the latter never run; else $85:A35E), a negative entry replaced by the word
+// at $90:8000 + the header's $5395 - $8007. Then each object kind on the track (from the
+// last entry down) unpacks its graphics once into $7F, from D+$14 = $D2 ($0612 for
+// variant 2, never run) on: its slot in the table at $7E:6591 ($FFFF, cleared first)
+// takes the place.
+void track_setup_load(void);
+
 #endif
