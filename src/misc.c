@@ -4638,3 +4638,18 @@ bool object_sprite_shadowed(uint16_t x) {
   wr16(DP + 0x24, 0xBC30);
   return second_b ? sprite_put_rows_b() : sprite_put_rows_a();
 }
+
+// TG3000_ROUTINE($81:8527) sprite_part_put
+bool sprite_part_put(uint16_t x, uint16_t* y) {
+  dsp4_port_write16(x);
+  dsp4_port_write16((uint16_t)(rd16(DP + 0x32) - 8));
+  dsp4_port_write16(rd16(DP + 0x16));
+  while(dsp4_port_read16() != 0) {
+    *y = (uint16_t)(*y + 2);
+    wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
+    *y = (uint16_t)(*y + 2);
+    wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
+    if(*y == rd16(DP + 0x1A)) return true;  // never run
+  }
+  return false;
+}

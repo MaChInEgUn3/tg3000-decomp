@@ -1292,4 +1292,10 @@ bool object_sprite_group(uint16_t x);
 // original tests the word at r, not at the object). Returns the last one's result.
 bool object_sprite_shadowed(uint16_t x);
 
+// $81:8527: one sprite part streamed to the DSP-4 (D = $0100; a sprite stream open): `x`,
+// D+$32 - 8 and D+$16 through the port; then, while the chip's flag is not 0, its OAM word
+// pairs to $1574 + *y (*y moving on by 4 a pair). *y reaching D+$1A ends it at once: the
+// result is true (the buffer filled; never run). Returns false otherwise.
+bool sprite_part_put(uint16_t x, uint16_t* y);
+
 #endif

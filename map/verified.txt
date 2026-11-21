@@ -446,3 +446,4 @@
 80F549 upload_slice_13 src/video_dma.c e9450f412ca86346 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c e9450f412ca86346 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c e9450f412ca86346 1 500 20/20 verified live-flags:NVZC replayed:0
+818527 sprite_part_put src/misc.c 8eb98d4a9c44d579 4000 500 29/29 verified live-flags:C replayed:0

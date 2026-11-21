@@ -124,3 +124,4 @@
 82:DF7A 82:DF8A m16x16 ; sprite_parts_stream_rom: the drain's pairs (never run)
 82:D289 82:D28C m16x16 ; car_sprite_head: a negative height byte sign-extended (never run)
 82:DC38 82:DC3B m16x16 ; object_sprite_group: kind 2's negative place sign-extended (never run)
+81:8562 81:8564 m16x16 ; sprite_part_put: the OAM buffer full (SEC; RTS; never run)

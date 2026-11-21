@@ -643,7 +643,7 @@ CODE_818497:
     sta.b $14                   ; $8184BC
     bmi CODE_8184ED             ; $8184BE
     ldx.w #$20F6                ; $8184C0
-    jsr.w $8527                 ; $8184C3
+    jsr.w sprite_part_put       ; $8184C3
     db $B0,$40 ; bcs            ; $8184C6
     lda.b $16                   ; $8184C8
     clc                         ; $8184CA
@@ -655,7 +655,7 @@ CODE_818497:
     sta.b $14                   ; $8184D6
     bmi CODE_8184ED             ; $8184D8
     ldx.w #$20F7                ; $8184DA
-    jsr.w $8527                 ; $8184DD
+    jsr.w sprite_part_put       ; $8184DD
     db $B0,$26 ; bcs            ; $8184E0
     lda.b $16                   ; $8184E2
     clc                         ; $8184E4
@@ -668,7 +668,7 @@ CODE_8184ED:
     adc.b $16                   ; $8184F0
     sta.b $16                   ; $8184F2
     ldx.w #$60F6                ; $8184F4
-    jsr.w $8527                 ; $8184F7
+    jsr.w sprite_part_put       ; $8184F7
     db $B0,$0C ; bcs            ; $8184FA
     pla                         ; $8184FC
     sta.b $16                   ; $8184FD
@@ -678,6 +678,7 @@ CODE_8184ED:
     sty.b $84                   ; $818505
     rtl                         ; $818507
     incbin !baserom:$8508..$8527
+sprite_part_put:
     stx.w $8000                 ; $818527
     lda.w #$FFF8                ; $81852A
     clc                         ; $81852D
@@ -700,7 +701,7 @@ CODE_818542:
     lda.w $8000                 ; $81854C
     sta.w $1574,y               ; $81854F
     cpy.b $1A                   ; $818552
-    db $F0,$0C ; beq            ; $818554
+    beq CODE_818562             ; $818554
 CODE_818556:
     bit.w $C000                 ; $818556
     bpl CODE_818556             ; $818559
@@ -709,7 +710,9 @@ CODE_818556:
 CODE_818560:
     clc                         ; $818560
     rts                         ; $818561
-    incbin !baserom:$8562..$8564
+CODE_818562:
+    sec                         ; $818562 static
+    rts                         ; $818563 static
     pea.w $8330                 ; $818564
     plb                         ; $818567
     ldx.w #$2E2C                ; $818568

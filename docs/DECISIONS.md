@@ -1789,6 +1789,19 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## One sprite part (roots-90, 2026-11-21)
+
+**`sprite_part_put` ($81:8527):** one sprite part streamed (141,203 entries on the 60k movie).
+- It writes X, `D+$32` - 8 and `D+$16`. Then, while the chip's flag is not 0, it reads OAM
+  word pairs to `$1574` + Y.
+- Y comes and goes in the register: the callers set it once from `D+$84` and chain the
+  calls. So the row compares Y.
+- **The buffer filling up.** Y reaching `D+$1A` ends the routine at once (`SEC; RTS` at
+  `$81:8562`, never run, now static code). Unlike `$82:DDBF`, it drains nothing.
+- **Flags:** C = the buffer filled; N clear and Z set; V of the `ADC` of `D+$32` and -8.
+- **Result:** live 4,000/4,000 (60k) and 1,389/1,389 (race1), fuzz 500/500 and 200/200,
+  paths 29/29, first try.
+
 ## A track object and its second sprite (roots-89, 2026-11-21)
 
 **`object_sprite_shadowed` ($82:DA48):** 75,701 entries on the 60k movie.

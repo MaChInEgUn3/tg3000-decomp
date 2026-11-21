@@ -8157,6 +8157,32 @@ static void fuzz_object_sprite_shadowed(Regs* r, uint8_t* ram, uint32_t (*rnd)(v
   for(uint32_t i = 0; i <= 0x40; i++) ram[0x8CB5 + i] = (uint8_t)rnd();
 }
 
+// ---- sprite_part_put ($81:8527) ----  a DSP-4 tape row: Y = past the last pair (the callers
+// go on from it), C = the buffer filled, N clear and Z set (the flag's 0, or the CPY's
+// equality), V of the ADC of D+$32 and -8
+static void call_sprite_part_put(const Regs* in, Regs* out) {
+  const uint16_t d32 = rd16(DP + 0x32);
+  uint16_t y = in->y;
+  out->c = sprite_part_put(in->x, &y);
+  out->y = y;
+  out->n = false;
+  out->z = true;
+  const uint16_t sum = (uint16_t)(0xFFF8 + d32);
+  out->v = (~(0xFFF8 ^ d32) & (0xFFF8 ^ sum) & 0x8000) != 0;
+}
+// the part word X, D+$32 and D+$16, the OAM place Y and its limit (on a pair now and then),
+// the chip's answers scripted (40 words, a third of them 0)
+static void fuzz_sprite_part_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)rnd();
+  r->y = (uint16_t)(4 * (rnd() % 0x40));
+  wr16ram(ram, DP + 0x1A, (rnd() & 1) ? (uint16_t)(r->y + 4 * (1 + rnd() % 6)) : (uint16_t)(r->y + 2));
+  wr16ram(ram, DP + 0x32, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x16, (uint16_t)rnd());
+  uint16_t script[40];
+  for(int i = 0; i < 40; i++) script[i] = (rnd() % 3 == 0) ? 0 : (uint16_t)rnd();
+  dsp4_bridge_script(script, 40);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9064,6 +9090,9 @@ const Routine routines[] = {
   {.name = "object_sprite_shadowed", .entry = 0x82DA48, .end = 0x82DAAF, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_object_sprite_shadowed, .fuzz = fuzz_object_sprite_shadowed, .dsp4Tape = true},
+  {.name = "sprite_part_put", .entry = 0x818527, .end = 0x818564, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_part_put, .compareY = true,
+   .fuzz = fuzz_sprite_part_put, .dsp4Tape = true},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
