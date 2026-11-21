@@ -1355,6 +1355,7 @@ CODE_81E7EF:
     sta.b $26                   ; $81E80D
     sta.b $2E                   ; $81E80F
     rts                         ; $81E811
+race_cars_frame:
     pea.w $837E                 ; $81E812
     plb                         ; $81E815
     lda.w $1E8E                 ; $81E816
@@ -1973,7 +1974,102 @@ CODE_81EDDD:
     lda.w $FAB6,x               ; $81EE20
     sbc.w $019A                 ; $81EE23
     bcc CODE_81EDDA             ; $81EE26
-    incbin !baserom:$EE28..$EF10
+    sta.w $FAB6,x               ; $81EE28 static
+    iny                         ; $81EE2B static
+    ldx.w $1E86                 ; $81EE2C static
+    lda.w $FAB6,x               ; $81EE2F static
+    sbc.w $019A                 ; $81EE32 static
+    bcc CODE_81EDDA             ; $81EE35 static
+    sta.w $FAB6,x               ; $81EE37 static
+    iny                         ; $81EE3A static
+    ldx.w $1E84                 ; $81EE3B static
+    lda.w $FAB6,x               ; $81EE3E static
+    sbc.w $019A                 ; $81EE41 static
+    bcc CODE_81EDDA             ; $81EE44 static
+    sta.w $FAB6,x               ; $81EE46 static
+    iny                         ; $81EE49 static
+    ldx.w $1E82                 ; $81EE4A static
+    lda.w $FAB6,x               ; $81EE4D static
+    sbc.w $019A                 ; $81EE50 static
+    bcc CODE_81EEB4             ; $81EE53 static
+    sta.w $FAB6,x               ; $81EE55 static
+    iny                         ; $81EE58 static
+    ldx.w $1E80                 ; $81EE59 static
+    lda.w $FAB6,x               ; $81EE5C static
+    sbc.w $019A                 ; $81EE5F static
+    bcc CODE_81EEB4             ; $81EE62 static
+    sta.w $FAB6,x               ; $81EE64 static
+    iny                         ; $81EE67 static
+    ldx.w $1E7E                 ; $81EE68 static
+    lda.w $FAB6,x               ; $81EE6B static
+    sbc.w $019A                 ; $81EE6E static
+    bcc CODE_81EEB4             ; $81EE71 static
+    sta.w $FAB6,x               ; $81EE73 static
+    iny                         ; $81EE76 static
+    ldx.w $1E7C                 ; $81EE77 static
+    lda.w $FAB6,x               ; $81EE7A static
+    sbc.w $019A                 ; $81EE7D static
+    bcc CODE_81EEB4             ; $81EE80 static
+    sta.w $FAB6,x               ; $81EE82 static
+    iny                         ; $81EE85 static
+    ldx.w $1E7A                 ; $81EE86 static
+    lda.w $FAB6,x               ; $81EE89 static
+    sbc.w $019A                 ; $81EE8C static
+    bcc CODE_81EEB4             ; $81EE8F static
+    sta.w $FAB6,x               ; $81EE91 static
+    iny                         ; $81EE94 static
+    ldx.w $1E78                 ; $81EE95 static
+    lda.w $FAB6,x               ; $81EE98 static
+    sbc.w $019A                 ; $81EE9B static
+    bcc CODE_81EEB4             ; $81EE9E static
+    sta.w $FAB6,x               ; $81EEA0 static
+    iny                         ; $81EEA3 static
+    ldx.w $1E76                 ; $81EEA4 static
+    lda.w $FAB6,x               ; $81EEA7 static
+    sbc.w $019A                 ; $81EEAA static
+    bcc CODE_81EF10             ; $81EEAD static
+    sta.w $FAB6,x               ; $81EEAF static
+    bra CODE_81EEE3             ; $81EEB2 static
+CODE_81EEB4:
+    bra CODE_81EF10             ; $81EEB4 static
+    iny                         ; $81EEB6 static
+    ldx.w $1E74                 ; $81EEB7 static
+    lda.w $FAB6,x               ; $81EEBA static
+    sbc.w $019A                 ; $81EEBD static
+    bcc CODE_81EF10             ; $81EEC0 static
+    sta.w $FAB6,x               ; $81EEC2 static
+    iny                         ; $81EEC5 static
+    ldx.w $1E72                 ; $81EEC6 static
+    lda.w $FAB6,x               ; $81EEC9 static
+    sbc.w $019A                 ; $81EECC static
+    bcc CODE_81EF10             ; $81EECF static
+    sta.w $FAB6,x               ; $81EED1 static
+    iny                         ; $81EED4 static
+    ldx.w $1E70                 ; $81EED5 static
+    lda.w $FAB6,x               ; $81EED8 static
+    sbc.w $019A                 ; $81EEDB static
+    bcc CODE_81EF10             ; $81EEDE static
+    sta.w $FAB6,x               ; $81EEE0 static
+CODE_81EEE3:
+    iny                         ; $81EEE3 static
+    ldx.w $1E6E                 ; $81EEE4 static
+    lda.w $FAB6,x               ; $81EEE7 static
+    sbc.w $019A                 ; $81EEEA static
+    bcc CODE_81EF10             ; $81EEED static
+    sta.w $FAB6,x               ; $81EEEF static
+    iny                         ; $81EEF2 static
+    ldx.w $1E6C                 ; $81EEF3 static
+    lda.w $FAB6,x               ; $81EEF6 static
+    sbc.w $019A                 ; $81EEF9 static
+    bcc CODE_81EF10             ; $81EEFC static
+    sta.w $FAB6,x               ; $81EEFE static
+    iny                         ; $81EF01 static
+    ldx.w $1E6A                 ; $81EF02 static
+    lda.w $FAB6,x               ; $81EF05 static
+    sbc.w $019A                 ; $81EF08 static
+    bcc CODE_81EF10             ; $81EF0B static
+    sta.w $FAB6,x               ; $81EF0D static
+CODE_81EF10:
     ldx.w $1E90                 ; $81EF10
     lda.w $1E8E                 ; $81EF13
     sta.w $1E90                 ; $81EF16
@@ -2032,7 +2128,196 @@ CODE_81EFA3:
     ldx.w $1E6A                 ; $81EFAC
     lda.w $FAB6,x               ; $81EFAF
     bpl CODE_81EFA3             ; $81EFB2
-    incbin !baserom:$EFB4..$F17D
+    clc                         ; $81EFB4 static
+    adc.w $019A                 ; $81EFB5 static
+    sta.w $FAB6,x               ; $81EFB8 static
+    iny                         ; $81EFBB static
+    ldx.w $1E6C                 ; $81EFBC static
+    lda.w $FAB6,x               ; $81EFBF static
+    db $10,$E2 ; bpl            ; $81EFC2 static
+    clc                         ; $81EFC4 static
+    adc.w $019A                 ; $81EFC5 static
+    sta.w $FAB6,x               ; $81EFC8 static
+    iny                         ; $81EFCB static
+    ldx.w $1E6E                 ; $81EFCC static
+    lda.w $FAB6,x               ; $81EFCF static
+    db $10,$D2 ; bpl            ; $81EFD2 static
+    clc                         ; $81EFD4 static
+    adc.w $019A                 ; $81EFD5 static
+    sta.w $FAB6,x               ; $81EFD8 static
+    iny                         ; $81EFDB static
+    ldx.w $1E70                 ; $81EFDC static
+    lda.w $FAB6,x               ; $81EFDF static
+    db $10,$C2 ; bpl            ; $81EFE2 static
+    clc                         ; $81EFE4 static
+    adc.w $019A                 ; $81EFE5 static
+    sta.w $FAB6,x               ; $81EFE8 static
+    iny                         ; $81EFEB static
+    ldx.w $1E72                 ; $81EFEC static
+    lda.w $FAB6,x               ; $81EFEF static
+    db $10,$B2 ; bpl            ; $81EFF2 static
+    clc                         ; $81EFF4 static
+    adc.w $019A                 ; $81EFF5 static
+    sta.w $FAB6,x               ; $81EFF8 static
+    iny                         ; $81EFFB static
+    ldx.w $1E74                 ; $81EFFC static
+    lda.w $FAB6,x               ; $81EFFF static
+    db $10,$A2 ; bpl            ; $81F002 static
+    clc                         ; $81F004 static
+    adc.w $019A                 ; $81F005 static
+    sta.w $FAB6,x               ; $81F008 static
+    iny                         ; $81F00B static
+    ldx.w $1E76                 ; $81F00C static
+    lda.w $FAB6,x               ; $81F00F static
+    db $10,$92 ; bpl            ; $81F012 static
+    clc                         ; $81F014 static
+    adc.w $019A                 ; $81F015 static
+    sta.w $FAB6,x               ; $81F018 static
+    iny                         ; $81F01B static
+    ldx.w $1E78                 ; $81F01C static
+    lda.w $FAB6,x               ; $81F01F static
+    bpl CODE_81F04D             ; $81F022 static
+    clc                         ; $81F024 static
+    adc.w $019A                 ; $81F025 static
+    sta.w $FAB6,x               ; $81F028 static
+    iny                         ; $81F02B static
+    ldx.w $1E7A                 ; $81F02C static
+    lda.w $FAB6,x               ; $81F02F static
+    bpl CODE_81F04D             ; $81F032 static
+    clc                         ; $81F034 static
+    adc.w $019A                 ; $81F035 static
+    sta.w $FAB6,x               ; $81F038 static
+    iny                         ; $81F03B static
+    ldx.w $1E7C                 ; $81F03C static
+    lda.w $FAB6,x               ; $81F03F static
+    bpl CODE_81F04D             ; $81F042 static
+    clc                         ; $81F044 static
+    adc.w $019A                 ; $81F045 static
+    sta.w $FAB6,x               ; $81F048 static
+    bra CODE_81F050             ; $81F04B static
+CODE_81F04D:
+    jmp.w $F0F0                 ; $81F04D static
+CODE_81F050:
+    iny                         ; $81F050 static
+    ldx.w $1E7E                 ; $81F051 static
+    lda.w $FAB6,x               ; $81F054 static
+    bpl CODE_81F04D             ; $81F057 static
+    clc                         ; $81F059 static
+    adc.w $019A                 ; $81F05A static
+    sta.w $FAB6,x               ; $81F05D static
+    iny                         ; $81F060 static
+    ldx.w $1E80                 ; $81F061 static
+    lda.w $FAB6,x               ; $81F064 static
+    bpl CODE_81F04D             ; $81F067 static
+    clc                         ; $81F069 static
+    adc.w $019A                 ; $81F06A static
+    sta.w $FAB6,x               ; $81F06D static
+    iny                         ; $81F070 static
+    ldx.w $1E82                 ; $81F071 static
+    lda.w $FAB6,x               ; $81F074 static
+    bpl CODE_81F04D             ; $81F077 static
+    clc                         ; $81F079 static
+    adc.w $019A                 ; $81F07A static
+    sta.w $FAB6,x               ; $81F07D static
+    iny                         ; $81F080 static
+    ldx.w $1E84                 ; $81F081 static
+    lda.w $FAB6,x               ; $81F084 static
+    bpl CODE_81F0F0             ; $81F087 static
+    clc                         ; $81F089 static
+    adc.w $019A                 ; $81F08A static
+    sta.w $FAB6,x               ; $81F08D static
+    iny                         ; $81F090 static
+    ldx.w $1E86                 ; $81F091 static
+    lda.w $FAB6,x               ; $81F094 static
+    bpl CODE_81F0F0             ; $81F097 static
+    clc                         ; $81F099 static
+    adc.w $019A                 ; $81F09A static
+    sta.w $FAB6,x               ; $81F09D static
+    iny                         ; $81F0A0 static
+    ldx.w $1E88                 ; $81F0A1 static
+    lda.w $FAB6,x               ; $81F0A4 static
+    bpl CODE_81F0F0             ; $81F0A7 static
+    clc                         ; $81F0A9 static
+    adc.w $019A                 ; $81F0AA static
+    sta.w $FAB6,x               ; $81F0AD static
+    iny                         ; $81F0B0 static
+    ldx.w $1E8A                 ; $81F0B1 static
+    lda.w $FAB6,x               ; $81F0B4 static
+    bpl CODE_81F0F0             ; $81F0B7 static
+    clc                         ; $81F0B9 static
+    adc.w $019A                 ; $81F0BA static
+    sta.w $FAB6,x               ; $81F0BD static
+    iny                         ; $81F0C0 static
+    ldx.w $1E8C                 ; $81F0C1 static
+    lda.w $FAB6,x               ; $81F0C4 static
+    bpl CODE_81F0F0             ; $81F0C7 static
+    clc                         ; $81F0C9 static
+    adc.w $019A                 ; $81F0CA static
+    sta.w $FAB6,x               ; $81F0CD static
+    iny                         ; $81F0D0 static
+    ldx.w $1E8E                 ; $81F0D1 static
+    lda.w $FAB6,x               ; $81F0D4 static
+    bpl CODE_81F0F0             ; $81F0D7 static
+    clc                         ; $81F0D9 static
+    adc.w $019A                 ; $81F0DA static
+    sta.w $FAB6,x               ; $81F0DD static
+    iny                         ; $81F0E0 static
+    ldx.w $1E90                 ; $81F0E1 static
+    lda.w $FAB6,x               ; $81F0E4 static
+    bpl CODE_81F0F0             ; $81F0E7 static
+    clc                         ; $81F0E9 static
+    adc.w $019A                 ; $81F0EA static
+    sta.w $FAB6,x               ; $81F0ED static
+CODE_81F0F0:
+    ldx.w $1E6A                 ; $81F0F0 static
+    lda.w $1E6C                 ; $81F0F3 static
+    sta.w $1E6A                 ; $81F0F6 static
+    lda.w $1E6E                 ; $81F0F9 static
+    sta.w $1E6C                 ; $81F0FC static
+    lda.w $1E70                 ; $81F0FF static
+    sta.w $1E6E                 ; $81F102 static
+    lda.w $1E72                 ; $81F105 static
+    sta.w $1E70                 ; $81F108 static
+    lda.w $1E74                 ; $81F10B static
+    sta.w $1E72                 ; $81F10E static
+    lda.w $1E76                 ; $81F111 static
+    sta.w $1E74                 ; $81F114 static
+    lda.w $1E78                 ; $81F117 static
+    sta.w $1E76                 ; $81F11A static
+    lda.w $1E7A                 ; $81F11D static
+    sta.w $1E78                 ; $81F120 static
+    lda.w $1E7C                 ; $81F123 static
+    sta.w $1E7A                 ; $81F126 static
+    lda.w $1E7E                 ; $81F129 static
+    sta.w $1E7C                 ; $81F12C static
+    lda.w $1E80                 ; $81F12F static
+    sta.w $1E7E                 ; $81F132 static
+    lda.w $1E82                 ; $81F135 static
+    sta.w $1E80                 ; $81F138 static
+    lda.w $1E84                 ; $81F13B static
+    sta.w $1E82                 ; $81F13E static
+    lda.w $1E86                 ; $81F141 static
+    sta.w $1E84                 ; $81F144 static
+    lda.w $1E88                 ; $81F147 static
+    sta.w $1E86                 ; $81F14A static
+    lda.w $1E8A                 ; $81F14D static
+    sta.w $1E88                 ; $81F150 static
+    lda.w $1E8C                 ; $81F153 static
+    sta.w $1E8A                 ; $81F156 static
+    lda.w $1E8E                 ; $81F159 static
+    sta.w $1E8C                 ; $81F15C static
+    lda.w $1E90                 ; $81F15F static
+    sta.w $1E8E                 ; $81F162 static
+    stx.w $1E90                 ; $81F165 static
+    dec.w $FAD3,x               ; $81F168 static
+    lda.w $FADE,x               ; $81F16B static
+    and.w #$FFFE                ; $81F16E static
+    sta.w $FADE,x               ; $81F171 static
+    dey                         ; $81F174 static
+    beq CODE_81F17A             ; $81F175 static
+    jmp.w $F0F0                 ; $81F177 static
+CODE_81F17A:
+    jmp.w $EAA2                 ; $81F17A static
     ldy.w #$0000                ; $81F17D
 CODE_81F180:
     lda.w $1E6A,y               ; $81F180
@@ -2720,7 +3005,59 @@ CODE_81FAE0:
     sta.w $FACB,y               ; $81FB19
     jsr.w func_81FBB1           ; $81FB1C
     rts                         ; $81FB1F
-    incbin !baserom:$FB20..$FBB1
+car_sync_player2:
+    lda.w $02F7                 ; $81FB20 static
+    bit.w #$0001                ; $81FB23 static
+    bne CODE_81FB71             ; $81FB26 static
+    lda.w $FAB5,y               ; $81FB28 static
+    clc                         ; $81FB2B static
+    adc.w $02E0                 ; $81FB2C static
+    sta.w $FAB5,y               ; $81FB2F static
+    lda.w $FAB7,y               ; $81FB32 static
+    adc.w $02E2                 ; $81FB35 static
+    sta.w $FAB7,y               ; $81FB38 static
+    lda.w $02C1                 ; $81FB3B static
+    sta.w $FAC9,y               ; $81FB3E static
+    lda.w $02C3                 ; $81FB41 static
+    sta.w $FACB,y               ; $81FB44 static
+    lda.w $02B7                 ; $81FB47 static
+    sta.w $FAB9,y               ; $81FB4A static
+    lda.w $02B9                 ; $81FB4D static
+    sta.w $FABB,y               ; $81FB50 static
+    lda.w #$FFFF                ; $81FB53 static
+    sta.w $FAC7,y               ; $81FB56 static
+    jsr.w func_81FBB1           ; $81FB59 static
+    lda.w $FADE,y               ; $81FB5C static
+    and.w #$FFDF                ; $81FB5F static
+    bit.w $1E68                 ; $81FB62 static
+    bpl CODE_81FB6A             ; $81FB65 static
+    ora.w #$0020                ; $81FB67 static
+CODE_81FB6A:
+    ora.w #$0010                ; $81FB6A static
+    sta.w $FADE,y               ; $81FB6D static
+    rts                         ; $81FB70 static
+CODE_81FB71:
+    lda.w #$0000                ; $81FB71 static
+    sta.l $308000               ; $81FB74 static
+    lda.w $1E9E                 ; $81FB78 static
+    sta.l $308000               ; $81FB7B static
+    lda.w $02C3                 ; $81FB7F static
+    sta.l $308000               ; $81FB82 static
+    lda.w $FAB5,y               ; $81FB86 static
+    clc                         ; $81FB89 static
+    adc.l $308000               ; $81FB8A static
+    sta.w $FAB5,y               ; $81FB8E static
+    lda.w $FAB7,y               ; $81FB91 static
+    adc.l $308000               ; $81FB94 static
+    sta.w $FAB7,y               ; $81FB98 static
+    lda.w #$FFFF                ; $81FB9B static
+    sta.w $FAC7,y               ; $81FB9E static
+    lda.w $02C1                 ; $81FBA1 static
+    sta.w $FAC9,y               ; $81FBA4 static
+    lda.w $02C3                 ; $81FBA7 static
+    sta.w $FACB,y               ; $81FBAA static
+    jsr.w func_81FBB1           ; $81FBAD static
+    rts                         ; $81FBB0 static
 func_81FBB1:
     lda.w $FADE,y               ; $81FBB1
     bit.w #$0040                ; $81FBB4
@@ -2805,4 +3142,141 @@ CODE_81FC59:
     lda.l $840012,x             ; $81FC68
     sta.w $FAE4,y               ; $81FC6C
     jmp.w $FBDE                 ; $81FC6F
-    incbin !baserom:$FC72..$10000
+car_sync_slot:
+    lda.w $0244                 ; $81FC72 static
+    bit.w #$0001                ; $81FC75 static
+    bne CODE_81FCA0             ; $81FC78 static
+    lda.w $FAB5,y               ; $81FC7A static
+    clc                         ; $81FC7D static
+    adc.w $022D                 ; $81FC7E static
+    sta.w $FAB5,y               ; $81FC81 static
+    lda.w $FAB7,y               ; $81FC84 static
+    adc.w $022F                 ; $81FC87 static
+    sta.w $FAB7,y               ; $81FC8A static
+    lda.w $0204                 ; $81FC8D static
+    sta.w $FAB9,y               ; $81FC90 static
+    lda.w $0206                 ; $81FC93 static
+    sta.w $FABB,y               ; $81FC96 static
+    lda.w #$FFFF                ; $81FC99 static
+    sta.w $FAC7,y               ; $81FC9C static
+    rts                         ; $81FC9F static
+CODE_81FCA0:
+    lda.w #$0000                ; $81FCA0 static
+    sta.l $308000               ; $81FCA3 static
+    lda.w $1E9E                 ; $81FCA7 static
+    sta.l $308000               ; $81FCAA static
+    lda.w $0210                 ; $81FCAE static
+    sta.l $308000               ; $81FCB1 static
+    lda.w $FAB5,y               ; $81FCB5 static
+    clc                         ; $81FCB8 static
+    adc.l $308000               ; $81FCB9 static
+    sta.w $FAB5,y               ; $81FCBD static
+    lda.w $FAB7,y               ; $81FCC0 static
+    adc.l $308000               ; $81FCC3 static
+    sta.w $FAB7,y               ; $81FCC7 static
+    lda.w #$FFFF                ; $81FCCA static
+    sta.w $FAC7,y               ; $81FCCD static
+    rts                         ; $81FCD0 static
+    lda.w $02F7                 ; $81FCD1 static
+    bit.w #$0001                ; $81FCD4 static
+    bne CODE_81FCFF             ; $81FCD7 static
+    lda.w $FAB5,y               ; $81FCD9 static
+    clc                         ; $81FCDC static
+    adc.w $02E0                 ; $81FCDD static
+    sta.w $FAB5,y               ; $81FCE0 static
+    lda.w $FAB7,y               ; $81FCE3 static
+    adc.w $02E2                 ; $81FCE6 static
+    sta.w $FAB7,y               ; $81FCE9 static
+    lda.w $02B7                 ; $81FCEC static
+    sta.w $FAB9,y               ; $81FCEF static
+    lda.w $02B9                 ; $81FCF2 static
+    sta.w $FABB,y               ; $81FCF5 static
+    lda.w #$FFFF                ; $81FCF8 static
+    sta.w $FAC7,y               ; $81FCFB static
+    rts                         ; $81FCFE static
+CODE_81FCFF:
+    lda.w #$0000                ; $81FCFF static
+    sta.l $308000               ; $81FD02 static
+    lda.w $1E9E                 ; $81FD06 static
+    sta.l $308000               ; $81FD09 static
+    lda.w $02C3                 ; $81FD0D static
+    sta.l $308000               ; $81FD10 static
+    lda.w $FAB5,y               ; $81FD14 static
+    clc                         ; $81FD17 static
+    adc.l $308000               ; $81FD18 static
+    sta.w $FAB5,y               ; $81FD1C static
+    lda.w $FAB7,y               ; $81FD1F static
+    adc.l $308000               ; $81FD22 static
+    sta.w $FAB7,y               ; $81FD26 static
+    lda.w #$FFFF                ; $81FD29 static
+    sta.w $FAC7,y               ; $81FD2C static
+    rts                         ; $81FD2F static
+    lda.w $02A6                 ; $81FD30 static
+    bit.w #$0001                ; $81FD33 static
+    bne CODE_81FD5E             ; $81FD36 static
+    lda.w $FAB5,y               ; $81FD38 static
+    clc                         ; $81FD3B static
+    adc.w $028F                 ; $81FD3C static
+    sta.w $FAB5,y               ; $81FD3F static
+    lda.w $FAB7,y               ; $81FD42 static
+    adc.w $0291                 ; $81FD45 static
+    sta.w $FAB7,y               ; $81FD48 static
+    lda.w $0266                 ; $81FD4B static
+    sta.w $FAB9,y               ; $81FD4E static
+    lda.w $0268                 ; $81FD51 static
+    sta.w $FABB,y               ; $81FD54 static
+    lda.w #$FFFF                ; $81FD57 static
+    sta.w $FAC7,y               ; $81FD5A static
+    rts                         ; $81FD5D static
+CODE_81FD5E:
+    lda.w #$0000                ; $81FD5E static
+    sta.l $308000               ; $81FD61 static
+    lda.w $1E9E                 ; $81FD65 static
+    sta.l $308000               ; $81FD68 static
+    lda.w $0272                 ; $81FD6C static
+    sta.l $308000               ; $81FD6F static
+    lda.w $FAB5,y               ; $81FD73 static
+    clc                         ; $81FD76 static
+    adc.l $308000               ; $81FD77 static
+    sta.w $FAB5,y               ; $81FD7B static
+    lda.w $FAB7,y               ; $81FD7E static
+    adc.l $308000               ; $81FD81 static
+    sta.w $FAB7,y               ; $81FD85 static
+    lda.w #$FFFF                ; $81FD88 static
+    sta.w $FAC7,y               ; $81FD8B static
+    rts                         ; $81FD8E static
+    lda.w $0359                 ; $81FD8F static
+    bit.w #$0001                ; $81FD92 static
+    bne CODE_81FDBD             ; $81FD95 static
+    lda.w $FAB5,y               ; $81FD97 static
+    clc                         ; $81FD9A static
+    adc.w $0342                 ; $81FD9B static
+    sta.w $FAB5,y               ; $81FD9E static
+    lda.w $FAB7,y               ; $81FDA1 static
+    adc.w $0344                 ; $81FDA4 static
+    sta.w $FAB7,y               ; $81FDA7 static
+    lda.w $0319                 ; $81FDAA static
+    sta.w $FAB9,y               ; $81FDAD static
+    lda.w $031B                 ; $81FDB0 static
+    sta.w $FABB,y               ; $81FDB3 static
+    lda.w #$FFFF                ; $81FDB6 static
+    sta.w $FAC7,y               ; $81FDB9 static
+    rts                         ; $81FDBC static
+CODE_81FDBD:
+    lda.w #$0000                ; $81FDBD static
+    sta.l $308000               ; $81FDC0 static
+    lda.w $1E9E                 ; $81FDC4 static
+    sta.l $308000               ; $81FDC7 static
+    lda.w $0325                 ; $81FDCB static
+    sta.l $308000               ; $81FDCE static
+    lda.w $FAB5,y               ; $81FDD2 static
+    clc                         ; $81FDD5 static
+    adc.l $308000               ; $81FDD6 static
+    sta.w $FAB5,y               ; $81FDDA static
+    lda.w $FAB7,y               ; $81FDDD static
+    adc.l $308000               ; $81FDE0 static
+    sta.w $FAB7,y               ; $81FDE4 static
+    lda.w #$FFFF                ; $81FDE7 static
+    sta.w $FAC7,y               ; $81FDEA static
+    rts                         ; $81FDED static
+    incbin !baserom:$FDEE..$10000

@@ -130,3 +130,8 @@
 82:E185 82:E19A m16x16 ; road_rows_build: a row's pair list past its first pair (never run)
 82:E265 82:E279 m16x16 ; road_rows_build: the flat road shape, the shape table's second entry (never run)
 82:EB45 82:EC09 m16x16 ; the second road's track events ($1F0C, $1F12/$1F14; never run)
+81:EE28 81:EF10 m16x16 ; car_frames_order: the lap wrap for the 6th to 20th places (never run)
+81:EFB4 81:F17D m16x16 ; car_frames_order: the leader behind the line, places put back by a lap (never run)
+81:FB20 81:FBB1 m16x16 ; car_sync_player2: the second player's car (handler 4; never run in a one-player race)
+81:FC72 81:FDEE m16x16 ; car_sync_slot: handlers 8-14, the cars synced from the records at $0244, $02F7, $03A6, $0359 (never run)
+81:EFA6 81:EFA9 m16x16 ; race_cars_frame: the jump back to the order's rotation (never run)

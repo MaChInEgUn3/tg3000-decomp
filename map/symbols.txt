@@ -478,3 +478,6 @@ func    82DFAD   road_rows_build     ; the road's rows built as the player cross
 func    82EA93   track_event_20c7    ; a track event: pattern $20C7 at the object's place (never run; through road_rows_build) -> src/misc.c
 func    82EAFE   track_event_place_only ; a track event's positions only (never run; through road_rows_build) -> src/misc.c
 func    82EB45   track_event2_set    ; the second road's track events $EB45-$EC08 (never run; through road_rows_build) -> src/misc.c
+func    81E812   race_cars_frame     ; the 20 cars' frame: handlers, the race order sorted, lap wraps, finishers (RTL) -> src/misc.c
+func    81FB20   car_sync_player2    ; car_sync_player for the second player (handler 4; never run) -> src/track.c
+func    81FC72   car_sync_slot       ; a car takes a record's motion ($0244+b; handlers 8-14 at $81:FC72/FCD1/FD30/FD8F; never run) -> src/track.c

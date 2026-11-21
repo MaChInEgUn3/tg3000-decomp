@@ -42,4 +42,13 @@ void player_road_limits(void);
 // bit 4. Returns func_81FBB1's result (the original's carry).
 bool car_sync_player(uint16_t car);
 
+// $81:FB20: car_sync_player for the second player (the record at $02F7; bit 15 of $1E68).
+// Handler 4 of $81:F876; never run in a one-player race.
+bool car_sync_player2(uint16_t car);
+
+// $81:FC72 / $81:FCD1 / $81:FD30 / $81:FD8F (b = 0, $B3, $62, $115): the car takes the record
+// at $0244 + b's distance moved (directly or the DSP-4 product) and, directly, its sides;
+// +$12 = $FFFF. Nothing else. Handlers 8-14 of $81:F876; never run.
+void car_sync_slot(uint16_t car, uint16_t b);
+
 #endif

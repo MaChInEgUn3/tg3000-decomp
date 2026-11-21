@@ -296,7 +296,7 @@ CODE_828642:
     sta.w $0233                 ; $828642
     jsr.w race_countdown        ; $828645
     jsl.l $83E241               ; $828648
-    jsl.l $81E812               ; $82864C
+    jsl.l race_cars_frame       ; $82864C
     jsr.w func_82AC52           ; $828650
     lda.w #$0001                ; $828653
 CODE_828656:

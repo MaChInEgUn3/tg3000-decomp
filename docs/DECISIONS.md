@@ -1819,6 +1819,80 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The 20 cars' frame (roots-96, 2026-11-21)
+
+**`race_cars_frame` ($81:E812-$81:F1FB):** 2,538 bytes, 18,560 entries on the 60k movie. It
+runs with D = `$0100` and DB = `$7E` (its `PEA $837E; PLB`), and returns with DB = `$83`.
+The original unrolls everything over the 20 cars; the C uses loops.
+- **The race order `$1E6A`** holds 20 car offsets, last place first. It is linked both
+  ways and round: +$1A is the car behind, +$18 the car ahead.
+- **Each car** (+$35 apart from `$7E:FAB5`) keeps its place (+$0C/+$0E) and side (+$20),
+  clears +$12, and runs its handler: +$10 indexes the table at `$81:F876`.
+  - The game uses `car_road_step` and `car_sync_player`.
+  - Entry 3 is an RTS.
+  - Entry 2, `$81:FB20`, is the second player's `car_sync_player` (the record `+$B3`, the
+    branch flag `$1E68`).
+  - Entries 4-7 (`$81:FC72`/`$FCD1`/`$FD30`/`$FD8F`) are one handler for four records
+    (`$0244` + 0, `$B3`, `$62`, `$115`): the record's motion only.
+  - None of these ran, and their bytes were undecoded. They are static code now, in C as
+    `car_sync_player2` and `car_sync_slot`. `car_sync_player` became the record-0 case of
+    one helper; its row passes as before.
+- **Then, until nothing wraps:**
+  - **An insertion sort by place.** A car moves up past each car whose 32-bit place's high
+    word is lower; each swap rebuilds the links (`func_81F1FC`).
+    - When the high words are equal, `car_contacts_chain` runs.
+    - A difference whose SBC leaves the carry set while N is set counts as in order. A
+      lone RTS (`func_81F251`) sits between the test and that carry.
+  - **The forward wrap.** The cars at or past the lap's end (`$019A`, on the place's middle
+    word +$01) are put back by a lap, from the leader down. Each goes to the end of the
+    order, and gets +$1E counted up, flag bit 0 and +$2B = `$019C`.
+  - **Or the backward wrap**, when the leader has not wrapped. The cars behind the line (+$01
+    negative) are put forward by a lap, from the last up. Each goes to the front, with +$1E
+    counted down and bit 0 cleared.
+- **Last, the finishers.** A car with bit 0 set, bit 1 clear and +$1E = `$1F06` gets bit 2,
+  and its number goes to `$0446` + `$1F08`. Bits 0 and 7 are cleared, and the links rebuilt.
+- **Original quirks kept in the C:**
+  - The forward wrap skips the 15th to 17th cars: a `BRA` at `$81:EEB2` jumps over their
+    code (`$81:EEB6`-`$EEE2`, unreachable).
+  - Neither wrap counts the last car it moves, so the rotations are one short when every car
+    checked wraps.
+- **Decoded as static code:**
+  - the forward wrap's cars 6-20 (`$81:EE28`-`$EF0F`);
+  - the backward wrap (`$81:EFA6`-`$EFA8` and `$81:EFB4`-`$F17C`);
+  - the five handlers (`$81:FB20`-`$FBB0` and `$81:FC72`-`$FDED`).
+- **Two holes in the extent:**
+  - the dead code above;
+  - the backward wrap's 20th car (`$81:F0E9`-`$F0EF`). To reach it the leader would be
+    behind the line too. But the forward check compares unsigned, so that leader wraps
+    forward first, unless a lap is `$8000` or more.
+- **Outputs:** A = `$1E6C`, X = `$1E6A`, Y = 0, N set and Z clear (the final `PLB` of `$83`),
+  C set (the finish loop's `CPY`), and V from the last wrap check's SBC. The leader's place
+  is not touched after that SBC, so the adapter recomputes it.
+- **The fuzz** starts from the race and applies one of five cases:
+  - the order shuffled a little;
+  - two neighbours on one high word;
+  - 1-20 cars from the leader past the lap's end;
+  - 1-19 cars from the last behind the line;
+  - finishers.
+
+  Cases that don't move cars also give some cars the other handlers, with the records
+  direct or by the DSP-4. Three limits keep the original under the harness's 4 million
+  instructions per case. A run that hits them is lost, which counts as failing.
+  - The moved cars get the empty handler, so the road step doesn't walk its segment table a
+    long way.
+  - The speed is small.
+  - Not all 20 cars go behind the line: with the leader there too, it wraps forward about
+    a hundred times.
+- **Result:** live 2,782/2,782 (60k), fuzz 500/500, paths 924/924.
+
+**Harness fix: `MAX_EXTENT`.** The differential test kept a row's instruction starts and
+visits in arrays of `$600` bytes.
+- `findStarts` stopped at `$600` without a word, so a longer row's paths were listed only
+  that far. The visits were written past the end, into the flag counters: the first run of
+  this row printed a watched count in the quadrillions.
+- No row was longer before this one, so no earlier result changes.
+- The arrays are `$1000` now, and a longer extent stops the bench with a message.
+
 ## The race frame's call to the road's rows (roots-95, 2026-11-21)
 
 - **`road_rows_build_call` ($82:DFA9):** `JSR road_rows_build; RTS`. The race frame

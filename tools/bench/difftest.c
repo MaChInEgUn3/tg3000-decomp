@@ -31,7 +31,7 @@ const uint8_t* g_rom;
 #define SAMPLE_STRIDE 3      // take one entry in N...
 #define SAMPLE_ALL_FIRST 32  // ...after the first entries, which are all taken: a routine the
                              // movies enter only a few times gets every entry compared
-#define MAX_EXTENT 0x600
+#define MAX_EXTENT 0x1000   // a row's extent in bytes (findStarts refuses a longer one)
 #define MAX_CONTRACTS 8
 #define MAX_INSNS 4000000    // a sample that runs longer is abandoned
 #define WATCH_CAP 400        // flag liveness: instructions watched after a return
@@ -959,8 +959,13 @@ static void mode7ProductRead(uint32_t adr) {
 static void findStarts(const Routine* r, Stats* s) {
   uint32_t off = (((r->entry >> 16) & 0x7F) << 15) | (r->entry & 0x7FFF);
   uint32_t n = r->end - r->entry;
+  if(n > MAX_EXTENT) {  // its paths and visits would not fit (they were cut off, and overran)
+    fprintf(stderr, "difftest: %s's extent ($%06X-$%06X) is longer than MAX_EXTENT ($%X)\n", r->name, r->entry,
+            r->end, MAX_EXTENT);
+    exit(2);
+  }
   bool m8 = !r->needM16, x8 = !r->needX16;
-  for(uint32_t i = 0; i < n && i < MAX_EXTENT;) {
+  for(uint32_t i = 0; i < n;) {
     bool skipped = false;
     for(int h = 0; h < 4; h++) {
       if(r->holes[h][1] && r->entry + i >= r->holes[h][0] && r->entry + i < r->holes[h][1]) {

@@ -5322,3 +5322,143 @@ void road_rows_build(void) {
 
 // TG3000_ROUTINE($82:DFA9) road_rows_build_call
 void road_rows_build_call(void) { road_rows_build(); }
+
+// the order list's i-th car (0: last place, 19: the leader)
+static uint16_t cars_order(int i) { return rd16(ORDER_LIST + 2 * (uint32_t)i); }
+static void cars_order_set(int i, uint16_t car) { wr16(ORDER_LIST + 2 * (uint32_t)i, car); }
+
+// +$1A the car behind, +$18 the car ahead (round)
+static void cars_order_link(void) {
+  for(int i = 0; i < 20; i++) {
+    const uint32_t x = cars_order(i);
+    wr16(0xFACF + x, cars_order((i + 19) % 20));
+    wr16(0xFACD + x, cars_order((i + 1) % 20));
+  }
+}
+
+static void cars_handler(uint16_t car) {
+  const uint16_t kind = rd16(0xFAC5 + (uint32_t)car);
+  switch(bus_rd16(0x81F876 + kind)) {
+    case 0xF887: car_road_step(car); break;
+    case 0xFA8F: (void)car_sync_player(car); break;
+    case 0xFB20: (void)car_sync_player2(car); break;  // never run
+    case 0xF886: break;  // an RTS
+    case 0xFC72: car_sync_slot(car, 0x0000); break;  // never run
+    case 0xFCD1: car_sync_slot(car, 0x00B3); break;  // never run
+    case 0xFD30: car_sync_slot(car, 0x0062); break;  // never run
+    case 0xFD8F: car_sync_slot(car, 0x0115); break;  // never run
+    default: break;  // not a handler (no kind the game sets)
+  }
+}
+
+// pair k (cars k and k+1, k+1 meant to be ahead) and on down: the original's unrolled
+// insertion sort
+static void cars_order_sort(void) {
+  wr16(DP + 0x3C, 0);
+  int k = 18;
+  uint16_t x = cars_order(18);
+  for(;;) {
+    const uint16_t y = cars_order(k + 1);
+    const uint32_t lo_y = rd16(0xFAB5 + (uint32_t)y), lo_x = rd16(0xFAB5 + (uint32_t)x);
+    const uint32_t hi_y = rd16(0xFAB7 + (uint32_t)y), hi_x = rd16(0xFAB7 + (uint32_t)x);
+    const uint32_t borrow = lo_y < lo_x ? 1 : 0;
+    const uint16_t hi = (uint16_t)(hi_y - hi_x - borrow);
+    bool swap = false;
+    if(hi == 0) (void)car_contacts_chain(x, y);
+    else {
+      wr16(DP + 0x3C, 0);
+      if(hi & 0x8000) {
+        func_81F251();
+        swap = hi_y < hi_x + borrow;  // the SBC's carry clear
+      }
+    }
+    if(swap) {
+      cars_order_set(k, y);
+      cars_order_set(k + 1, x);
+      (void)func_81F1FC();
+      if(k != 18) {
+        k++;  // the same car against the next one up
+        continue;
+      }
+    }
+    if(k == 0) return;
+    k--;
+    x = cars_order(k);
+  }
+}
+
+// the leader and the cars after it past the lap's end; returns whether the leader was
+static bool cars_wrap_forward(void) {
+  const uint16_t lap = rd16(0x019A);
+  static const int cars[] = {19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 2, 1, 0};
+  int n = 0;
+  for(unsigned i = 0; i < sizeof cars / sizeof cars[0]; i++) {
+    const uint32_t x = cars_order(cars[i]);
+    const uint16_t at = rd16(0xFAB6 + x);
+    if(at < lap) {
+      if(i == 0) return false;
+      break;
+    }
+    wr16(0xFAB6 + x, (uint16_t)(at - lap));
+    if(cars[i] != 0) n++;  // the last one is not counted
+  }
+  while(n-- > 0) {
+    const uint16_t x = cars_order(19);
+    for(int i = 19; i > 0; i--) cars_order_set(i, cars_order(i - 1));
+    cars_order_set(0, x);
+    wr16(0xFAD3 + (uint32_t)x, (uint16_t)(rd16(0xFAD3 + (uint32_t)x) + 1));
+    wr16(0xFADE + (uint32_t)x, (uint16_t)(rd16(0xFADE + (uint32_t)x) | 0x0001));
+    wr16(0xFAE0 + (uint32_t)x, rd16(0x019C));
+  }
+  return true;
+}
+
+// the last car and the cars after it behind the line; returns whether the last car was
+static bool cars_wrap_back(void) {
+  const uint16_t lap = rd16(0x019A);
+  int n = 0;
+  for(int i = 0; i < 20; i++) {
+    const uint32_t x = cars_order(i);
+    const uint16_t at = rd16(0xFAB6 + x);
+    if(!(at & 0x8000)) {
+      if(i == 0) return false;
+      break;
+    }
+    wr16(0xFAB6 + x, (uint16_t)(at + lap));
+    if(i != 19) n++;  // the last one is not counted
+  }
+  while(n-- > 0) {
+    const uint16_t x = cars_order(0);
+    for(int i = 0; i < 19; i++) cars_order_set(i, cars_order(i + 1));
+    cars_order_set(19, x);
+    wr16(0xFAD3 + (uint32_t)x, (uint16_t)(rd16(0xFAD3 + (uint32_t)x) - 1));
+    wr16(0xFADE + (uint32_t)x, (uint16_t)(rd16(0xFADE + (uint32_t)x) & 0xFFFE));
+  }
+  return true;
+}
+
+// TG3000_ROUTINE($81:E812) race_cars_frame
+void race_cars_frame(void) {
+  cars_order_link();
+  for(uint32_t o = 0; o < 20 * 0x35; o += 0x35) {
+    wr16(0xFAD5 + o, rd16(0xFABB + o));
+    wr16(0xFAC1 + o, rd16(0xFAB5 + o));
+    wr16(0xFAC3 + o, rd16(0xFAB7 + o));
+    wr16(0xFAC7 + o, 0);
+    cars_handler((uint16_t)o);
+  }
+  do cars_order_sort();
+  while(cars_wrap_forward() || cars_wrap_back());
+  for(int i = 0; i < 20; i++) {
+    const uint32_t x = cars_order(i);
+    const uint16_t f = rd16(0xFADE + x);
+    if((f & 0x0001) && !(f & 0x0002) && rd16(0xFAD3 + x) == rd16(0x1F06)) {
+      wr8(0xFADE + x, (uint8_t)(rd8(0xFADE + x) | 0x04));
+      const uint16_t j = rd16(0x1F08);
+      wr8(0x0446 + (uint32_t)j, rd8(0xFADD + x));
+      wr16(0x1F08, (uint16_t)(j + 1));
+    }
+    wr16(0xFADE + x, (uint16_t)(rd16(0xFADE + x) & 0xFF7E));
+  }
+  cars_order_link();
+}

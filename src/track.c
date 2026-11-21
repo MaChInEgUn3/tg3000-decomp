@@ -236,27 +236,42 @@ void player_road_limits(void) {
   else if(off) wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | 0x0008));
 }
 
-// TG3000_ROUTINE($81:FA8F) car_sync_player
-bool car_sync_player(uint16_t car) {
+// The car takes the motion of the player record at $0244 + b: its distance moved (+$022D
+// directly, or the DSP-4 product of $1E9E and +$0210 when bit 0 of +$0244 is set), and,
+// directly, its sides +$0204/+$0206. With `full` (the players' handlers) also +$020E/+$0210
+// to +$14/+$16, func_81FBB1, and the flags from bit 15 of `branch`.
+static bool car_sync_record(uint16_t car, uint16_t b, bool full, uint16_t branch) {
   const uint32_t o = car;
-  const bool direct = !(rd16(0x0244) & 0x0001);
+  const bool direct = !(rd16(0x0244 + b) & 0x0001);
   uint32_t pos = rd16(0xFAB5 + o) | (uint32_t)rd16(0xFAB7 + o) << 16;
-  if(direct) pos += rd16(0x022D) | (uint32_t)rd16(0x022F) << 16;
-  else pos += (uint32_t)dsp4_multiply((int16_t)rd16(0x1E9E), (int16_t)rd16(0x0210));
+  if(direct) pos += rd16(0x022D + b) | (uint32_t)rd16(0x022F + b) << 16;
+  else pos += (uint32_t)dsp4_multiply((int16_t)rd16(0x1E9E), (int16_t)rd16(0x0210 + b));
   wr16(0xFAB5 + o, (uint16_t)pos);
   wr16(0xFAB7 + o, (uint16_t)(pos >> 16));
-  wr16(0xFAC9 + o, rd16(0x020E));
-  wr16(0xFACB + o, rd16(0x0210));
+  if(full) {
+    wr16(0xFAC9 + o, rd16(0x020E + b));
+    wr16(0xFACB + o, rd16(0x0210 + b));
+  }
   if(direct) {
-    wr16(0xFAB9 + o, rd16(0x0204));
-    wr16(0xFABB + o, rd16(0x0206));
+    wr16(0xFAB9 + o, rd16(0x0204 + b));
+    wr16(0xFABB + o, rd16(0x0206 + b));
   }
   wr16(0xFAC7 + o, 0xFFFF);
+  if(!full) return false;
   const bool carry = func_81FBB1(car);
   if(direct) {
     uint16_t f = (uint16_t)(rd16(CAR_FLAGS + o) & ~0x0020);
-    if(rd16(0x1E66) & 0x8000) f |= 0x0020;
+    if(rd16(branch) & 0x8000) f |= 0x0020;
     wr16(CAR_FLAGS + o, (uint16_t)(f | 0x0010));
   }
   return carry;
 }
+
+// TG3000_ROUTINE($81:FA8F) car_sync_player
+bool car_sync_player(uint16_t car) { return car_sync_record(car, 0, true, 0x1E66); }
+
+// $81:FB20 (never run in a one-player race)
+bool car_sync_player2(uint16_t car) { return car_sync_record(car, 0x00B3, true, 0x1E68); }
+
+// $81:FC72, $81:FCD1, $81:FD30, $81:FD8F (never run)
+void car_sync_slot(uint16_t car, uint16_t b) { (void)car_sync_record(car, b, false, 0); }

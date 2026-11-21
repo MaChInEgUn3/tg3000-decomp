@@ -8413,6 +8413,96 @@ static void fuzz_road_rows_build(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   }
 }
 
+// ---- race_cars_frame ($81:E812) ----  RTL: A = the second car of the order ($1E6C), X =
+// the last car ($1E6A), Y = 0, DB = $83; N set and Z clear (the PLB of $83), C set (the
+// finish loop's CPY), V of the last wrap check's SBC (the leader's +$01 less $019A: its
+// place is not touched after it)
+static void call_race_cars_frame(const Regs* in, Regs* out) {
+  (void)in;
+  race_cars_frame();
+  out->a = rd16(0x1E6C);
+  out->x = rd16(0x1E6A);
+  out->y = 0;
+  out->c = true;
+  out->n = true;
+  out->z = false;
+  const uint16_t at = rd16(0xFAB6 + (uint32_t)rd16(0x1E90)), lap = rd16(0x019A), d = (uint16_t)(at - lap);
+  out->v = ((at ^ lap) & (at ^ d) & 0x8000) != 0;
+  out->db = 0x83;
+}
+// the race as the movie left it, then one of: the order shuffled a little (swaps in the
+// sort); two neighbours on one high word (contacts); 1-20 cars from the leader down past the
+// lap's end (the forward wrap, its skipped 15th-17th cars and its uncounted last one); 1-19
+// cars from the last up behind the line (the backward wrap); finishers (bit 0 without bit
+// 1, +$1E = $1F06). Some cars get another handler (each of the table's but the road's), and the
+// players' records direct or by the DSP-4. The cars a wrap case moves get the empty
+// handler (6): the road step would walk its segment table for millions of instructions
+static void fuzz_race_cars_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  const uint16_t lap = (uint16_t)(ram[0x019A] | ram[0x019B] << 8);
+  uint16_t order[20];
+  for(int i = 0; i < 20; i++) order[i] = (uint16_t)(ram[0x1E6A + 2 * i] | ram[0x1E6B + 2 * i] << 8);
+  const unsigned scenario = rnd() % 5;
+  switch(scenario) {
+    case 0:
+      for(int n = 1 + (int)(rnd() % 3); n > 0; n--) {
+        const int i = (int)(rnd() % 19);
+        const uint16_t t = order[i];
+        order[i] = order[i + 1];
+        order[i + 1] = t;
+      }
+      break;
+    case 1: {
+      const int i = (int)(rnd() % 19);
+      const uint32_t a = order[i], b = order[i + 1];
+      ram[0xFAB7 + b] = ram[0xFAB7 + a];
+      ram[0xFAB8 + b] = ram[0xFAB8 + a];
+      ram[0xFAB5 + b] = (uint8_t)rnd();
+      ram[0xFAB6 + b] = (uint8_t)rnd();
+      break;
+    }
+    case 2:
+      for(int n = rnd() % 3 == 0 ? 20 : 1 + (int)(rnd() % 20), i = 19; n > 0; n--, i--) {
+        const uint32_t x = order[i];
+        wr16ram(ram, 0xFAB6 + x, (uint16_t)(lap + (rnd() % 4 == 0 ? 0x30 : rnd() % 0x10)));
+        ram[0xFAB8 + x] = 0;
+        wr16ram(ram, 0xFAC5 + x, 6);  // the empty handler: the road step would walk its segment table a long way
+      }
+      break;
+    case 3:  // up to 19: with the leader behind the line too it wraps forward (unsigned) a hundred times
+      for(int n = rnd() % 3 == 0 ? 19 : 1 + (int)(rnd() % 19), i = 0; n > 0; n--, i++) {
+        const uint32_t x = order[i];
+        wr16ram(ram, 0xFAB6 + x, (uint16_t)(0xFFF0 - rnd() % 0x40));
+        ram[0xFAB8 + x] = 0xFF;
+        wr16ram(ram, 0xFAC5 + x, 6);
+      }
+      break;
+    default: {
+      const uint16_t last = (uint16_t)(rnd() % 4);
+      wr16ram(ram, 0x1F06, last);
+      wr16ram(ram, 0x1F08, (uint16_t)(rnd() % 4));
+      for(int i = 0; i < 20; i++) {
+        const uint32_t x = 0x35 * (uint32_t)i;
+        if(rnd() % 3 == 0) ram[0xFADE + x] = (uint8_t)((ram[0xFADE + x] & 0x78) | (rnd() & 0x87));  // the wrap and finish bits
+        if(rnd() % 2 == 0) wr16ram(ram, 0xFAD3 + x, last);
+      }
+      break;
+    }
+  }
+  for(int i = 0; i < 20; i++) wr16ram(ram, 0x1E6A + 2 * (uint32_t)i, order[i]);
+  if(scenario != 2 && scenario != 3 && rnd() % 3 == 0) {  // not with the moved cars: a player's handler walks
+    for(int n = 1 + (int)(rnd() % 4); n > 0; n--) wr16ram(ram, 0xFAC5 + 0x35 * (rnd() % 20), (uint16_t)(2 + 2 * (rnd() % 7)));
+    static const uint16_t records[] = {0x0000, 0x00B3, 0x0062, 0x0115};
+    for(unsigned k = 0; k < 4; k++) {
+      const uint32_t b = records[k];
+      ram[0x0244 + b] = (uint8_t)((ram[0x0244 + b] & 0xFE) | (rnd() & 1));
+      wr16ram(ram, 0x022D + b, (uint16_t)(rnd() % 0x400));
+      wr16ram(ram, 0x022F + b, 0);
+      wr16ram(ram, 0x0210 + b, (uint16_t)(rnd() % 0x80 - 0x40));  // the speed: a far jump would wrap the leader many times
+    }
+  }
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9227,6 +9317,12 @@ const Routine routines[] = {
   {.name = "scenery_build", .entry = 0x80DCBB, .end = 0x80E0C8, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_scenery_build, .fuzz = fuzz_scenery_build,
    .holes = {{0x80DD65, 0x80DD71}}},  // the kinds' handler table
+  {.name = "race_cars_frame", .entry = 0x81E812, .end = 0x81F1FC, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_cars_frame, ALL_OUTPUTS,
+   .fuzz = fuzz_race_cars_frame, .fuzzStack = 0x1FF1,  // the game's stack: the cars' handlers go deep
+   .holes = {{0x81EEB6, 0x81EEE3},    // the forward wrap's 15th-17th cars: a BRA jumps over them
+             {0x81F0E9, 0x81F0F0}}},  // the backward wrap's 20th car: the leader behind the line wraps
+                                      // forward first (an unsigned check), unless a lap is $8000 or more
   {.name = "car_contacts_chain", .entry = 0x81F21E, .end = 0x81F251, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_car_contacts_chain, ALL_OUTPUTS, .fuzz = fuzz_car_contacts_chain},
   {.name = "ticker_scene_step", .entry = 0x80E925, .end = 0x80EA77, .source = "src/misc.c", .needM16 = true,

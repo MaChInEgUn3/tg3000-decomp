@@ -1351,4 +1351,22 @@ void race_state_reset(void);
 // and three behind; DSP-4).
 void road_rows_build(void);
 
+// $81:E812: the 20 cars' frame (D = $0100; DB = $7E inside, $83 on return; RTL). The race
+// order $1E6A (20 car offsets, last place first) linked both ways (+$1A back, +$18 on,
+// round). Each car (+$35 apart from $7E:FAB5) keeps its place (+$0C/+$0E = +$00/+$02) and
+// side (+$20 = +$06), +$12 = 0, and runs its handler (+$10, the table at $81:F876: the road,
+// a player, the second player, nothing, or one of four records). Then, until nothing wraps:
+// the order sorted by place (a car moved up past each car whose place's high word is
+// lower, the links rebuilt at each swap; equal high words run car_contacts_chain; a
+// difference of $8000 or more counts as in order); the cars past the lap's end
+// ($019A, on the middle word +$01) from the leader down put back by a lap, rotated to the
+// end of the order, +$1E counted up, flag bit 0 set and +$2B = $019C; or, when the leader
+// has not wrapped, the cars behind the line (+$01 negative) from the last up put forward by
+// a lap and rotated to the front, +$1E counted down and bit 0 cleared. The original's
+// forward wrap skips the 15th to 17th cars (a branch over their code), and does not count
+// the last car it wraps. Last, each car that wrapped forward (bit 0 without bit 1) with +$1E
+// = $1F06 gets bit 2 and its number (+$28) at $0446 + $1F08 ($1F08 counted up); bits 0 and 7
+// cleared; the links rebuilt.
+void race_cars_frame(void);
+
 #endif
