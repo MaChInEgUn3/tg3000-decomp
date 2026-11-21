@@ -135,3 +135,10 @@
 81:FB20 81:FBB1 m16x16 ; car_sync_player2: the second player's car (handler 4; never run in a one-player race)
 81:FC72 81:FDEE m16x16 ; car_sync_slot: handlers 8-14, the cars synced from the records at $0244, $02F7, $03A6, $0359 (never run)
 81:EFA6 81:EFA9 m16x16 ; race_cars_frame: the jump back to the order's rotation (never run)
+81:8679 81:868A m16x16 ; road_rows_stream: never run
+81:869D 81:86B0 m16x16 ; road_rows_stream: never run
+81:86C1 81:86C7 m16x16 ; road_rows_stream: never run
+81:86D5 81:86DB m16x16 ; road_rows_stream: never run
+81:876A 81:8788 m16x16 ; road_rows_stream: never run
+81:88CB 81:891A m16x16 ; road_rows_stream: never run
+81:8920 81:89E1 m16x16 ; road_rows_stream: never run

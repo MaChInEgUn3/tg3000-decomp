@@ -8536,6 +8536,71 @@ static void fuzz_dsp4_answers_store(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   dsp4_bridge_script(script, n);
 }
 
+// ---- road_rows_stream ($81:8564) ----  a DSP-4 tape row (RTL). A = $00EA, X = the fill's
+// end (D+$14) or the scan's ($0194), Y = 0 (dsp4_answers_store's), DB = $83; N set and Z
+// clear (the PLB of $83), C of the CMP #$A422 and V of the ADC #$0011 on $00EA
+static void call_road_rows_stream(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t e = rd16(0x00EA), sum = (uint16_t)(e + 0x0011);
+  const bool split = road_rows_stream();
+  out->a = rd16(0x00EA);
+  out->x = split ? rd16(DP + 0x14) : rd16(0x0194);
+  out->y = 0;
+  out->n = true;
+  out->z = false;
+  out->c = sum >= 0xA422;
+  out->v = (~(e ^ 0x0011) & (e ^ sum) & 0x8000) != 0;
+  out->db = 0x83;
+}
+// the race's road, then: 1-16 rows ($0190), each row's bit 0 of $7E:3D6E (one or two
+// answer runs), the buffer ($00B4), $0242 / $1EF2 negative now and then (the buffer's ends
+// moved in, the first answer's fill), the last answer 0 or not, and (a third of the cases)
+// the heights $7E:386C above the widths $7E:37EC up to $0194, for the split fill. The chip is
+// scripted in the order the routine reads: two products, the fill word, each row's runs
+// (mostly empty; pairs from $6000 up, away from the tables), the last answer, two products
+static void fuzz_road_rows_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  const int rows = 1 + (int)(rnd() % 16);
+  wr16ram(ram, 0x0190, (uint16_t)(2 + 2 * rows));
+  wr16ram(ram, 0x00B4, (rnd() & 1) ? 0 : 1);
+  if(rnd() % 3 == 0) wr16ram(ram, 0x0242, (uint16_t)(0 - (1 + rnd() % 0xF0)));
+  else if(rnd() & 1) wr16ram(ram, 0x0242, (uint16_t)(rnd() % 0x40));
+  if(rnd() % 3 == 0) wr16ram(ram, 0x1EF2, (uint16_t)(0 - (1 + rnd() % 0xF0)));
+  else if(rnd() & 1) wr16ram(ram, 0x1EF2, (uint16_t)(rnd() % 0x40));
+  const uint32_t first = (uint32_t)((ram[0x0226] << 1) & 0x3E);
+  for(int i = 0; i < rows + 1; i++) {
+    const uint32_t a = 0x3D6E + first + 2 * (uint32_t)i;
+    ram[a] = (uint8_t)((ram[a] & 0xFE) | (rnd() & 1));
+  }
+  const bool split = rnd() % 3 == 0;
+  if(split) {
+    const uint16_t end = (uint16_t)(4 + 2 * (rnd() % 40));
+    wr16ram(ram, 0x0194, end);
+    for(uint32_t k = 2; k < end; k += 2) {
+      wr16ram(ram, 0x386C + k, (uint16_t)(0x40 + rnd() % 0x20));
+      wr16ram(ram, 0x37EC + k, (uint16_t)(0x10 + rnd() % 0x20));
+    }
+  }
+  uint16_t script[256];
+  int n = 0;
+  for(int i = 0; i < 5; i++) script[n++] = (uint16_t)rnd();
+  for(int i = 0; i < rows; i++) {
+    const bool own = (ram[0x3D6E + first + 2 * (uint32_t)i] & 1) != 0;
+    for(int call = 0; call < (own ? 2 : 1); call++)
+      for(int run = 0; run < 2; run++) {
+        const int pairs = (rnd() % 4 == 0 && n < 200) ? 1 + (int)(rnd() % 2) : 0;
+        script[n++] = (uint16_t)pairs;
+        for(int k = 0; k < pairs; k++) {
+          script[n++] = (uint16_t)(0x6000 + 2 * (rnd() % 0x4800));
+          script[n++] = (uint16_t)rnd();
+        }
+      }
+  }
+  script[n++] = (rnd() & 1) ? 0 : (uint16_t)(1 + rnd() % 0xFFFF);
+  for(int i = 0; i < 4; i++) script[n++] = (uint16_t)rnd();
+  dsp4_bridge_script(script, n);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9449,6 +9514,9 @@ const Routine routines[] = {
   {.name = "object_sprite_shadowed", .entry = 0x82DA48, .end = 0x82DAAF, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_object_sprite_shadowed, .fuzz = fuzz_object_sprite_shadowed, .dsp4Tape = true},
+  {.name = "road_rows_stream", .entry = 0x818564, .end = 0x8189F5, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_stream, ALL_OUTPUTS,
+   .fuzz = fuzz_road_rows_stream, .dsp4Tape = true, .fuzzStack = 0x1FF1},
   {.name = "dsp4_answers_store", .entry = 0x8189F5, .end = 0x818A4A, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x30, .call = call_dsp4_answers_store, .compareX = true, .compareY = true,
    .fuzz = fuzz_dsp4_answers_store, .dsp4Tape = true},

@@ -482,3 +482,4 @@ func    81E812   race_cars_frame     ; the 20 cars' frame: handlers, the race or
 func    81FB20   car_sync_player2    ; car_sync_player for the second player (handler 4; never run) -> src/track.c
 func    81FC72   car_sync_slot       ; a car takes a record's motion ($0244+b; handlers 8-14 at $81:FC72/FCD1/FD30/FD8F; never run) -> src/track.c
 func    8189F5   dsp4_answers_store  ; two runs of DSP-4 (address, value) answers stored in bank $7E (a tape row) -> src/misc.c
+func    818564   road_rows_stream    ; the road's rows streamed to the DSP-4 (command $08), its answers stored, the edges' scan (RTL; a tape row) -> src/misc.c

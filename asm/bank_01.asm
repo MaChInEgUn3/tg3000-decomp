@@ -732,6 +732,7 @@ CODE_818560:
 CODE_818562:
     sec                         ; $818562 static
     rts                         ; $818563 static
+road_rows_stream:
     pea.w $8330                 ; $818564
     plb                         ; $818567
     ldx.w #$2E2C                ; $818568
@@ -839,35 +840,63 @@ CODE_818588:
     sta.w $8000                 ; $818671
     lda.w $0242                 ; $818674
     bpl CODE_81868A             ; $818677
-    incbin !baserom:$8679..$868A
+    asl a                       ; $818679 static
+    asl a                       ; $81867A static
+    clc                         ; $81867B static
+    adc.b $16                   ; $81867C static
+    clc                         ; $81867E static
+    adc.w #$035C                ; $81867F static
+    cmp.b $16                   ; $818682 static
+    bcs CODE_818690             ; $818684 static
+    lda.b $16                   ; $818686 static
+    bra CODE_818690             ; $818688 static
 CODE_81868A:
     lda.b $16                   ; $81868A
     clc                         ; $81868C
     adc.w #$035C                ; $81868D
+CODE_818690:
     sta.w $8000                 ; $818690
     sta.w $8000                 ; $818693
     sta.b $18                   ; $818696
     lda.w $1EF2                 ; $818698
     bpl CODE_8186B0             ; $81869B
-    incbin !baserom:$869D..$86B0
+    asl a                       ; $81869D static
+    asl a                       ; $81869E static
+    clc                         ; $81869F static
+    adc.b $16                   ; $8186A0 static
+    clc                         ; $8186A2 static
+    adc.w #$035E                ; $8186A3 static
+    cmp.b $16                   ; $8186A6 static
+    bcs CODE_8186B6             ; $8186A8 static
+    lda.b $16                   ; $8186AA static
+    inc a                       ; $8186AC static
+    inc a                       ; $8186AD static
+    bra CODE_8186B6             ; $8186AE static
 CODE_8186B0:
     lda.b $16                   ; $8186B0
     clc                         ; $8186B2
     adc.w #$035E                ; $8186B3
+CODE_8186B6:
     sta.w $8000                 ; $8186B6
     sta.w $8000                 ; $8186B9
     lda.w $0242                 ; $8186BC
     bpl CODE_8186C7             ; $8186BF
-    incbin !baserom:$86C1..$86C7
+    clc                         ; $8186C1 static
+    adc.w #$0033                ; $8186C2 static
+    bra CODE_8186CA             ; $8186C5 static
 CODE_8186C7:
     lda.w #$0033                ; $8186C7
+CODE_8186CA:
     sta.w $8000                 ; $8186CA
     sta.w $8000                 ; $8186CD
     lda.w $1EF2                 ; $8186D0
     bpl CODE_8186DB             ; $8186D3
-    incbin !baserom:$86D5..$86DB
+    clc                         ; $8186D5 static
+    adc.w #$0033                ; $8186D6 static
+    bra CODE_8186DE             ; $8186D9 static
 CODE_8186DB:
     lda.w #$0033                ; $8186DB
+CODE_8186DE:
     sta.w $8000                 ; $8186DE
     sta.w $8000                 ; $8186E1
     lda.w #$FF5B                ; $8186E4
@@ -923,7 +952,24 @@ CODE_818746:
     sbc.w $0242                 ; $818763
     bmi CODE_818788             ; $818766
     beq CODE_818788             ; $818768
-    incbin !baserom:$876A..$8788
+    cmp.w #$00D8                ; $81876A static
+    bcc CODE_818772             ; $81876D static
+    lda.w #$00D8                ; $81876F static
+CODE_818772:
+    tay                         ; $818772 static
+CODE_818773:
+    bit.w $C000                 ; $818773 static
+    bpl CODE_818773             ; $818776 static
+    lda.w $8000                 ; $818778 static
+CODE_81877B:
+    inx                         ; $81877B static
+    inx                         ; $81877C static
+    inx                         ; $81877D static
+    inx                         ; $81877E static
+    sta.l $7E0000,x             ; $81877F static
+    dey                         ; $818783 static
+    bne CODE_81877B             ; $818784 static
+    bra CODE_818790             ; $818786 static
 CODE_818788:
     bit.w $C000                 ; $818788
     bpl CODE_818788             ; $81878B
@@ -1007,7 +1053,7 @@ CODE_818866:
     lda.w #$8000                ; $818866
     sta.w $8000                 ; $818869
     lda.w $8000                 ; $81886C
-    db $D0,$5A ; bne            ; $81886F
+    bne CODE_8188CB             ; $81886F
     stz.b $C8                   ; $818871
     sep.b #$20                  ; $818873
     lda.b #$C2                  ; $818875
@@ -1052,11 +1098,142 @@ CODE_8188BE:
     jmp.w $891A                 ; $8188C5
 CODE_8188C8:
     jmp.w $89E1                 ; $8188C8
-    incbin !baserom:$88CB..$891A
+CODE_8188CB:
+    lda.w #$0001                ; $8188CB static
+    sta.b $C8                   ; $8188CE static
+    sep.b #$20                  ; $8188D0 static
+    lda.b #$C8                  ; $8188D2 static
+    sta.b $B6                   ; $8188D4 static
+    lda.b #$B0                  ; $8188D6 static
+    sta.b $B7                   ; $8188D8 static
+    lda.b #$21                  ; $8188DA static
+    sta.b $B8                   ; $8188DC static
+    lda.b #$20                  ; $8188DE static
+    sta.b $B9                   ; $8188E0 static
+    lda.b #$42                  ; $8188E2 static
+    sta.b $BA                   ; $8188E4 static
+    lda.b #$82                  ; $8188E6 static
+    sta.b $BB                   ; $8188E8 static
+    rep.b #$20                  ; $8188EA static
+    lda.w #$3FFF                ; $8188EC static
+    sta.b $14                   ; $8188EF static
+    lda.w #$C001                ; $8188F1 static
+    sta.b $16                   ; $8188F4 static
+    ldx.w #$0002                ; $8188F6 static
+CODE_8188F9:
+    lda.l $7E386C,x             ; $8188F9 static
+    cmp.b $14                   ; $8188FD static
+    beq CODE_818903             ; $8188FF static
+    bpl CODE_818907             ; $818901 static
+CODE_818903:
+    sta.b $14                   ; $818903 static
+    stx.b $18                   ; $818905 static
+CODE_818907:
+    lda.l $7E37EC,x             ; $818907 static
+    cmp.b $16                   ; $81890B static
+    bmi CODE_818913             ; $81890D static
+    sta.b $16                   ; $81890F static
+    stx.b $1A                   ; $818911 static
+CODE_818913:
+    inx                         ; $818913 static
+    inx                         ; $818914 static
+    cpx.w $0194                 ; $818915 static
+    bne CODE_8188F9             ; $818918 static
     lda.b $16                   ; $81891A
     cmp.b $14                   ; $81891C
     bpl CODE_8188C8             ; $81891E
-    incbin !baserom:$8920..$89E1
+    ldx.b $1A                   ; $818920 static
+    lda.l $7E34EC,x             ; $818922 static
+    sta.b $18                   ; $818926 static
+    lda.l $7E38EC,x             ; $818928 static
+    sta.b $1C                   ; $81892C static
+    lda.w $0226                 ; $81892E static
+    asl a                       ; $818931 static
+    and.w #$003E                ; $818932 static
+    clc                         ; $818935 static
+    adc.b $1A                   ; $818936 static
+    tax                         ; $818938 static
+    lda.l $7E3F6C,x             ; $818939 static
+    clc                         ; $81893D static
+    adc.b $18                   ; $81893E static
+    eor.w #$FFFF                ; $818940 static
+    inc a                       ; $818943 static
+    sta.b $1A                   ; $818944 static
+    lda.l $7E3C6C,x             ; $818946 static
+    clc                         ; $81894A static
+    adc.b $18                   ; $81894B static
+    eor.w #$FFFF                ; $81894D static
+    inc a                       ; $818950 static
+    sta.b $18                   ; $818951 static
+    lda.w #$0000                ; $818953 static
+    sta.l $308000               ; $818956 static
+    lda.b $18                   ; $81895A static
+    asl a                       ; $81895C static
+    sta.l $308000               ; $81895D static
+    lda.b $1C                   ; $818961 static
+    sta.l $308000               ; $818963 static
+    nop                         ; $818967 static
+    nop                         ; $818968 static
+    lda.l $308000               ; $818969 static
+    lda.l $308000               ; $81896D static
+    clc                         ; $818971 static
+    adc.w #$0080                ; $818972 static
+    bpl CODE_81897A             ; $818975 static
+    lda.w #$0000                ; $818977 static
+CODE_81897A:
+    bit.w #$FF00                ; $81897A static
+    beq CODE_818982             ; $81897D static
+    lda.w #$00FF                ; $81897F static
+CODE_818982:
+    sta.b $18                   ; $818982 static
+    lda.w #$0000                ; $818984 static
+    sta.l $308000               ; $818987 static
+    lda.b $1A                   ; $81898B static
+    asl a                       ; $81898D static
+    sta.l $308000               ; $81898E static
+    lda.b $1C                   ; $818992 static
+    sta.l $308000               ; $818994 static
+    nop                         ; $818998 static
+    nop                         ; $818999 static
+    lda.l $308000               ; $81899A static
+    lda.l $308000               ; $81899E static
+    clc                         ; $8189A2 static
+    adc.w #$0080                ; $8189A3 static
+    bpl CODE_8189AB             ; $8189A6 static
+    lda.w #$0000                ; $8189A8 static
+CODE_8189AB:
+    bit.w #$FF00                ; $8189AB static
+    beq CODE_8189B3             ; $8189AE static
+    lda.w #$00FF                ; $8189B0 static
+CODE_8189B3:
+    xba                         ; $8189B3 static
+    ora.b $18                   ; $8189B4 static
+    sta.b $18                   ; $8189B6 static
+    lda.b $14                   ; $8189B8 static
+    clc                         ; $8189BA static
+    adc.w #$00A5                ; $8189BB static
+    asl a                       ; $8189BE static
+    asl a                       ; $8189BF static
+    clc                         ; $8189C0 static
+    adc.w $1E4E                 ; $8189C1 static
+    sta.b $14                   ; $8189C4 static
+    lda.b $16                   ; $8189C6 static
+    clc                         ; $8189C8 static
+    adc.w #$00A5                ; $8189C9 static
+    asl a                       ; $8189CC static
+    asl a                       ; $8189CD static
+    clc                         ; $8189CE static
+    adc.w $1E4E                 ; $8189CF static
+    tax                         ; $8189D2 static
+CODE_8189D3:
+    lda.b $18                   ; $8189D3 static
+    sta.l $7E0002,x             ; $8189D5 static
+    inx                         ; $8189D9 static
+    inx                         ; $8189DA static
+    inx                         ; $8189DB static
+    inx                         ; $8189DC static
+    cpx.b $14                   ; $8189DD static
+    bne CODE_8189D3             ; $8189DF static
     lda.w $00EA                 ; $8189E1
     clc                         ; $8189E4
     adc.w #$0011                ; $8189E5
@@ -2123,7 +2300,8 @@ CODE_81EFA0:
     jmp.w $EAA2                 ; $81EFA0
 CODE_81EFA3:
     jmp.w $F17D                 ; $81EFA3
-    incbin !baserom:$EFA6..$EFA9
+CODE_81EFA6:
+    jmp.w $F0F0                 ; $81EFA6 static
     ldy.w #$0000                ; $81EFA9
     ldx.w $1E6A                 ; $81EFAC
     lda.w $FAB6,x               ; $81EFAF
@@ -2134,42 +2312,42 @@ CODE_81EFA3:
     iny                         ; $81EFBB static
     ldx.w $1E6C                 ; $81EFBC static
     lda.w $FAB6,x               ; $81EFBF static
-    db $10,$E2 ; bpl            ; $81EFC2 static
+    bpl CODE_81EFA6             ; $81EFC2 static
     clc                         ; $81EFC4 static
     adc.w $019A                 ; $81EFC5 static
     sta.w $FAB6,x               ; $81EFC8 static
     iny                         ; $81EFCB static
     ldx.w $1E6E                 ; $81EFCC static
     lda.w $FAB6,x               ; $81EFCF static
-    db $10,$D2 ; bpl            ; $81EFD2 static
+    bpl CODE_81EFA6             ; $81EFD2 static
     clc                         ; $81EFD4 static
     adc.w $019A                 ; $81EFD5 static
     sta.w $FAB6,x               ; $81EFD8 static
     iny                         ; $81EFDB static
     ldx.w $1E70                 ; $81EFDC static
     lda.w $FAB6,x               ; $81EFDF static
-    db $10,$C2 ; bpl            ; $81EFE2 static
+    bpl CODE_81EFA6             ; $81EFE2 static
     clc                         ; $81EFE4 static
     adc.w $019A                 ; $81EFE5 static
     sta.w $FAB6,x               ; $81EFE8 static
     iny                         ; $81EFEB static
     ldx.w $1E72                 ; $81EFEC static
     lda.w $FAB6,x               ; $81EFEF static
-    db $10,$B2 ; bpl            ; $81EFF2 static
+    bpl CODE_81EFA6             ; $81EFF2 static
     clc                         ; $81EFF4 static
     adc.w $019A                 ; $81EFF5 static
     sta.w $FAB6,x               ; $81EFF8 static
     iny                         ; $81EFFB static
     ldx.w $1E74                 ; $81EFFC static
     lda.w $FAB6,x               ; $81EFFF static
-    db $10,$A2 ; bpl            ; $81F002 static
+    bpl CODE_81EFA6             ; $81F002 static
     clc                         ; $81F004 static
     adc.w $019A                 ; $81F005 static
     sta.w $FAB6,x               ; $81F008 static
     iny                         ; $81F00B static
     ldx.w $1E76                 ; $81F00C static
     lda.w $FAB6,x               ; $81F00F static
-    db $10,$92 ; bpl            ; $81F012 static
+    bpl CODE_81EFA6             ; $81F012 static
     clc                         ; $81F014 static
     adc.w $019A                 ; $81F015 static
     sta.w $FAB6,x               ; $81F018 static

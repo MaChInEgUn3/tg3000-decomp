@@ -1375,4 +1375,20 @@ void race_cars_frame(void);
 // *x and *a are the last pair's address and value (untouched when there is none).
 bool dsp4_answers_store(uint16_t* x, uint16_t* a);
 
+// $81:8564: the road's rows streamed to the DSP-4 (D = $0100; DB = $30 inside, $83 on return;
+// RTL). The row buffer at $7E:2E2C ($00B4 set) or $7E:318C (D+$16, $1E4E) is cleared to
+// $00FF/$FF00 pairs; two products (by the port) of the player's row pair's differences
+// ($7E:3C6E-$3C6C, $3F6E-$3F6C at ($0226 * 2) & $3E, D+$1A) by $0225's row give D+$1C/D+$1E;
+// command $08 gets its constants, the buffer's two ends (moved in by $0242 / $1EF2 when
+// negative), the players' values and the row pair; when $0242 is negative the first answer
+// fills -$0242 (at most $D8) entries of the buffer every 4 bytes. Then each row (D+$14 from
+// 2 to $0190) sends its heights and widths and the pair (the row's own pair when bit 0 of
+// $7E:3D6E is set, again with the next pair) and stores the chip's answers
+// (dsp4_answers_store). Last a $8000 word: its answer picks the HDMA bytes $01B6-$01BB and
+// D+$C8, and the lowest $7E:386C and the lowest (answer 0) or highest $7E:37EC up to
+// $0194; when that one lies below the other, two more products fill the rows between with
+// the edge bytes (never run). $00EA steps by $11 ($A422 back to $A411). Returns whether that
+// fill ran.
+bool road_rows_stream(void);
+
 #endif

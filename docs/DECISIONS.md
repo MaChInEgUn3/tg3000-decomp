@@ -1819,6 +1819,48 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The road's rows streamed to the DSP-4 (roots-98, 2026-11-21)
+
+**`road_rows_stream` ($81:8564-$81:89F4), a DSP-4 tape row:** 1,169 bytes. It runs with
+D = `$0100` and DB = `$30` (the chip's bank, whose `$0000`-`$1FFF` is low WRAM). It returns
+with DB = `$83`.
+- **The row buffer.** It sits at `$7E:2E2C` when `$00B4` is set, else at `$7E:318C`
+  (D+$16, `$1E4E`), and is cleared to `$00FF`/`$FF00` pairs.
+- **Two products by the port.** Command `$0000` is written inline, not through
+  `dsp4_multiply`, so the tape holds its bytes in place. The products are of the player's
+  row pair's differences (`$7E:3C6E-$3C6C` and `$3F6E-$3F6C` at (`$0226` × 2) & `$3E`) by
+  `$0225`'s row, and they give D+$1C/D+$1E.
+- **Command `$08` gets:** its constants; the buffer's two ends, moved in by `$0242`/`$1EF2`
+  when negative and kept from passing the buffer's start; the players' values; and the row
+  pair.
+  - When `$0242` is negative, its first answer fills -`$0242` entries (at most `$D8`) of
+    the buffer, every 4 bytes. Otherwise the answer is read and dropped.
+- **Each row** (D+$14 from 2 up to `$0190`) sends its heights and widths and a pair, then
+  stores the chip's answers (`dsp4_answers_store`, roots-97). The pair is the row's own when
+  bit 0 of `$7E:3D6E` is set, and in that case the row is sent a second time with the next
+  pair.
+  - That bit is read again after the answers are stored, as in the original: an answer can
+    land anywhere in bank `$7E`.
+- **Last, a `$8000` word.** Its answer, 0 or not, picks:
+  - the HDMA bytes `$01B6`-`$01BB` and D+$C8;
+  - whether the scan up to `$0194` takes the highest or the lowest of `$7E:37EC`. The
+    lowest of `$7E:386C` is taken either way.
+- **The split fill.** When that value lies below the other, two more products give the edge
+  bytes, which fill the buffer's entries in between.
+- **Then `$00EA`** steps by `$11`, going back from `$A422` to `$A411`.
+- **Decoded as static code** (seven ranges, `$81:8679`-`$89E0`): the `$0242`/`$1EF2`
+  negative branches, the first answer's fill, the nonzero last answer, and the split fill.
+  None of them ran, and the fuzz reaches all of them.
+- **Outputs:** A = `$00EA` and Y = 0. X is the fill's end, or `$0194` when there is no fill.
+  N is set and Z clear (the `PLB` of `$83`); C and V come from `$00EA`'s step.
+- **The fuzz** scripts the chip in the order the routine reads:
+  - two products, the fill word, each row's runs (mostly empty, with pairs from `$6000` up,
+    away from the tables), the last answer, and the two split products;
+  - it varies the row count (1-16), the rows' bit 0, the buffer, the two negative values,
+    and, in a third of the cases, tables that make the split happen.
+- **Result:** live 39/39 (race1; most entries are interrupted), fuzz 200/200, paths
+  474/474.
+
 ## The DSP-4's answers stored where it says (roots-97, 2026-11-21)
 
 - **`dsp4_answers_store` ($81:89F5-$81:8A49), a DSP-4 tape row.** On the 60k movie it runs

@@ -5479,3 +5479,168 @@ bool dsp4_answers_store(uint16_t* x, uint16_t* a) {
   (void)dsp4_answers_run(x, a);
   return dsp4_answers_run(x, a);
 }
+
+// N of a 16-bit CMP
+static bool cmp_n(uint16_t a, uint16_t b) { return ((uint16_t)(a - b) & 0x8000) != 0; }
+
+// the product's high word: command 0 by the port (the answer's low word read and dropped)
+static uint16_t road_port_product(uint16_t a, uint16_t b) {
+  dsp4_port_write16(0);
+  dsp4_port_write16(a);
+  dsp4_port_write16(b);
+  (void)dsp4_port_read16();
+  return dsp4_port_read16();
+}
+
+static void road_port_row(uint32_t row) {
+  dsp4_port_write16(rd16(0x38EC + row));
+  dsp4_port_write16(rd16(0x35EC + row));
+  dsp4_port_write16(rd16(0x37EC + row));
+  dsp4_port_write16(rd16(0x366C + row));
+  dsp4_port_write16(rd16(0x386C + row));
+}
+
+static void road_port_pair(uint32_t at) {
+  for(int i = 0; i < 2; i++) {
+    dsp4_port_write16(rd16(0x3C6C + at));
+    dsp4_port_write16(rd16(0x3F6C + at));
+  }
+}
+
+// a product's high byte, rounded and kept in 0-$FF
+static uint16_t road_edge_byte(uint16_t a, uint16_t b) {
+  uint16_t v = (uint16_t)(road_port_product(a, b) + 0x0080);
+  if(v & 0x8000) v = 0;
+  if(v & 0xFF00) v = 0x00FF;
+  return v;
+}
+
+// TG3000_ROUTINE($81:8564) road_rows_stream
+bool road_rows_stream(void) {
+  const uint16_t buffer = rd16(0x00B4) ? 0x2E2C : 0x318C;
+  wr16(DP + 0x16, buffer);
+  wr16(0x1E4E, buffer);
+  wr16(DP + 0x1A, (uint16_t)((rd16(0x0226) << 1) & 0x003E));
+  for(uint32_t x = buffer, n = 0; n < 0x1B; n++, x += 0x20)
+    for(uint32_t k = 0; k < 0x20; k += 4) {
+      wr16(x + k, 0x00FF);
+      wr16(x + k + 2, 0xFF00);
+    }
+  uint32_t x = rd16(DP + 0x1A);
+  const uint16_t row = (uint16_t)(((rd16(0x0225) >> 1) & 0x007F) << 8);
+  wr16(DP + 0x1E, row);
+  wr16(DP + 0x1C, (uint16_t)(road_port_product((uint16_t)((rd16(0x3C6E + x) - rd16(0x3C6C + x)) << 1), row) + rd16(0x3C6C + x)));
+  wr16(DP + 0x1E, (uint16_t)(road_port_product((uint16_t)((rd16(0x3F6E + x) - rd16(0x3F6C + x)) << 1), rd16(DP + 0x1E)) +
+                             rd16(0x3F6C + x)));
+  dsp4_port_write16(0x0008);
+  static const uint16_t head[] = {0x00FF, 0x00FF, 0x00FF, 0x00FF, 0, 0, 0, 0, 0x00A6, 0x00A6, 0x00A6, 0x00A6,
+                                  0x00A5, 0x00A5, 0x00A7, 0x00A7, 0x0081, 0x007F, 0x0081, 0x007F};
+  for(unsigned i = 0; i < sizeof head / sizeof head[0]; i++) dsp4_port_write16(head[i]);
+  const uint16_t base = rd16(DP + 0x16), p1 = rd16(0x0242), p2 = rd16(0x1EF2);
+  uint16_t a = (uint16_t)(base + 0x035C);
+  if(p1 & 0x8000) {
+    a = (uint16_t)((uint16_t)(p1 << 2) + base + 0x035C);
+    if(a < base) a = base;
+  }
+  dsp4_port_write16(a);
+  dsp4_port_write16(a);
+  wr16(DP + 0x18, a);
+  a = (uint16_t)(base + 0x035E);
+  if(p2 & 0x8000) {
+    a = (uint16_t)((uint16_t)(p2 << 2) + base + 0x035E);
+    if(a < base) a = (uint16_t)(base + 2);
+  }
+  dsp4_port_write16(a);
+  dsp4_port_write16(a);
+  a = (p1 & 0x8000) ? (uint16_t)(p1 + 0x0033) : 0x0033;
+  dsp4_port_write16(a);
+  dsp4_port_write16(a);
+  a = (p2 & 0x8000) ? (uint16_t)(p2 + 0x0033) : 0x0033;
+  dsp4_port_write16(a);
+  dsp4_port_write16(a);
+  static const uint16_t mid[] = {0xFF5B, 0xFF5B, 0xFF5B, 0xFF5B, 0x2FC8, 0x0034, 0xFF5C, 0x0035, 0x7FFF};
+  for(unsigned i = 0; i < sizeof mid / sizeof mid[0]; i++) dsp4_port_write16(mid[i]);
+  dsp4_port_write16(rd16(0x0202));
+  dsp4_port_write16((uint16_t)(p1 + 0x0033));
+  dsp4_port_write16(rd16(0x1EF6));
+  dsp4_port_write16((uint16_t)(p2 + 0x0033));
+  x = rd16(DP + 0x1A);
+  if(rd16(0x3D6E + x) & 1) {
+    wr16(DP + 0x1C, rd16(0x3C6C + x));
+    wr16(DP + 0x1E, rd16(0x3F6C + x));
+  }
+  for(int i = 0; i < 2; i++) {
+    dsp4_port_write16(rd16(DP + 0x1C));
+    dsp4_port_write16(rd16(DP + 0x1E));
+  }
+  const uint16_t fill = (uint16_t)(0 - p1);
+  if(!(fill & 0x8000) && fill != 0) {  // $0242 negative (never run)
+    const uint16_t w = dsp4_port_read16();
+    uint32_t at = rd16(DP + 0x18);
+    for(uint16_t n = fill < 0x00D8 ? fill : 0x00D8; n != 0; n--) {
+      at = (uint16_t)(at + 4);
+      wr16(at, w);
+    }
+  } else (void)dsp4_port_read16();
+  wr16(DP + 0x14, 2);
+  do {
+    road_port_row(rd16(DP + 0x14));
+    x = rd16(DP + 0x1A);
+    road_port_pair((rd16(0x3D6E + x) & 1) ? x : x + 2);
+    uint16_t ax = 0, aa = 0;
+    (void)dsp4_answers_store(&ax, &aa);
+    if(rd16(0x3D6E + (uint32_t)rd16(DP + 0x1A)) & 1) {  // read again: the answers may land anywhere
+      road_port_row(rd16(DP + 0x14));
+      road_port_pair(rd16(DP + 0x1A) + 2);
+      (void)dsp4_answers_store(&ax, &aa);
+    }
+    wr16(DP + 0x1A, (uint16_t)(rd16(DP + 0x1A) + 2));
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 2));
+  } while(rd16(DP + 0x14) != rd16(0x0190));
+  dsp4_port_write16(0x8000);
+  const bool far = dsp4_port_read16() != 0;
+  static const uint8_t hdma_near[] = {0xC2, 0xB0, 0xA1}, hdma_far[] = {0xC8, 0xB0, 0x21, 0x20, 0x42, 0x82};
+  wr16(DP + 0xC8, far ? 1 : 0);
+  for(int i = 0; i < 3; i++) wr8(DP + 0xB6 + (uint32_t)i, far ? hdma_far[i] : hdma_near[i]);
+  for(int i = 0; i < 3; i++) wr8(DP + 0xB9 + (uint32_t)i, far ? hdma_far[3 + i] : rd8(0x4E55 + 2 * (uint32_t)i));  // never run when far
+  wr16(DP + 0x14, 0x3FFF);
+  wr16(DP + 0x16, far ? 0xC001 : 0x3FFF);
+  for(uint32_t r = 2;; ) {
+    uint16_t v = rd16(0x386C + r);
+    if(v == rd16(DP + 0x14) || cmp_n(v, rd16(DP + 0x14))) {
+      wr16(DP + 0x14, v);
+      wr16(DP + 0x18, (uint16_t)r);
+    }
+    v = rd16(0x37EC + r);
+    const bool take = far ? !cmp_n(v, rd16(DP + 0x16)) : (v == rd16(DP + 0x16) || cmp_n(v, rd16(DP + 0x16)));
+    if(take) {
+      wr16(DP + 0x16, v);
+      wr16(DP + 0x1A, (uint16_t)r);
+    }
+    r = (uint16_t)(r + 2);
+    if(r == rd16(0x0194)) break;
+  }
+  bool split = false;
+  if(cmp_n(rd16(DP + 0x16), rd16(DP + 0x14))) {  // never run
+    split = true;
+    x = rd16(DP + 0x1A);
+    wr16(DP + 0x18, rd16(0x34EC + x));
+    wr16(DP + 0x1C, rd16(0x38EC + x));
+    x = (uint16_t)(((rd16(0x0226) << 1) & 0x003E) + rd16(DP + 0x1A));
+    wr16(DP + 0x1A, (uint16_t)-(rd16(0x3F6C + x) + rd16(DP + 0x18)));
+    wr16(DP + 0x18, (uint16_t)-(rd16(0x3C6C + x) + rd16(DP + 0x18)));
+    const uint16_t lo = road_edge_byte((uint16_t)(rd16(DP + 0x18) << 1), rd16(DP + 0x1C));
+    const uint16_t hi = road_edge_byte((uint16_t)(rd16(DP + 0x1A) << 1), rd16(DP + 0x1C));
+    wr16(DP + 0x18, (uint16_t)(hi << 8 | lo));
+    wr16(DP + 0x14, (uint16_t)(((uint16_t)(rd16(DP + 0x14) + 0x00A5) << 2) + rd16(0x1E4E)));
+    uint32_t at = (uint16_t)(((uint16_t)(rd16(DP + 0x16) + 0x00A5) << 2) + rd16(0x1E4E));
+    do {
+      wr16(0x0002 + at, rd16(DP + 0x18));
+      at = (uint16_t)(at + 4);
+    } while(at != rd16(DP + 0x14));
+  }
+  uint16_t e = (uint16_t)(rd16(0x00EA) + 0x0011);
+  if(e == 0xA422) e = 0xA411;
+  wr16(0x00EA, e);
+  return split;
+}

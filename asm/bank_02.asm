@@ -421,7 +421,7 @@ CODE_82877F:
     sta.b $8E                   ; $828931
 CODE_828933:
     jsl.l $85B3A9               ; $828933
-    jsl.l $818564               ; $828937
+    jsl.l road_rows_stream      ; $828937
     jsr.w shake_step            ; $82893B
     jsr.w $CBD4                 ; $82893E
     jsr.w func_82A9B7           ; $828941
