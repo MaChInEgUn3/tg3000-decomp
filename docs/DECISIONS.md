@@ -1789,6 +1789,28 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   - the fuzz starts with the queue already empty, as it has no interrupts to replay;
   - paths 22/22.
 
+## A car's sprite head (roots-86, 2026-11-21)
+
+**`car_sprite_head` ($82:D267):** 43,690 entries on the 60k movie. It writes nine words
+through the port:
+- the row `$7E:386A` + X;
+- `$9000`;
+- the car's word `$7E:FAB4` + Y;
+- twice its height: `$0243`'s byte, signed, + `$33` + `D+$34`;
+- 0;
+- `D+$32`;
+- its frame (the word at `$83:ACEC` + (`$FAB5` / 2 & `$7E`) + the row `$39EC` at `D+$14`);
+- 0.
+
+Then it reads the chip's answer into `D+$2A`.
+- **Never run:** the negative height (`ORA #$FF00` at `$82:D289`), now static code.
+- **Registers.** A = the answer, and X = Y (the caller reads `$FABF`,X next), with C and V
+  of the frame's `ADC`.
+- **The fuzz** keeps the race's `D+$14` and its row, so the frame table in bank `$83`
+  stays in ROM. The answer is scripted.
+- **Result:** live 4,000/4,000 (60k) and 364/364 (race1), fuzz 500/500 and 200/200, paths
+  42/42, first try.
+
 ## A sprite's parts from a ROM list (roots-85, 2026-11-21)
 
 - **`sprite_parts_stream_rom` ($82:DEA8)** is `sprite_parts_stream` for a parts list in

@@ -2838,7 +2838,7 @@ CODE_82CF1A:
     sta.b $32                   ; $82CF42
     lda.w $1F20                 ; $82CF44
     sta.b $34                   ; $82CF47
-    jsr.w $D267                 ; $82CF49
+    jsr.w car_sprite_head       ; $82CF49
     lda.l $7EFABF,x             ; $82CF4C
     sta.w $8000                 ; $82CF50
     lda.b $3C                   ; $82CF53
@@ -2863,7 +2863,7 @@ CODE_82CF74:
     phx                         ; $82CF7A
     stz.b $32                   ; $82CF7B
     stz.b $34                   ; $82CF7D
-    jsr.w $D267                 ; $82CF7F
+    jsr.w car_sprite_head       ; $82CF7F
     lda.l $7EFABF,x             ; $82CF82
     sta.w $8000                 ; $82CF86
     lda.b $3C                   ; $82CF89
@@ -2885,7 +2885,7 @@ CODE_82CFA5:
     phx                         ; $82CFA6
     stz.b $32                   ; $82CFA7
     stz.b $34                   ; $82CFA9
-    jsr.w $D267                 ; $82CFAB
+    jsr.w car_sprite_head       ; $82CFAB
     lda.l $7EFABF,x             ; $82CFAE
     sta.w $8000                 ; $82CFB2
     lda.b $3C                   ; $82CFB5
@@ -2904,7 +2904,7 @@ CODE_82CFA5:
     jsr.w sprite_parts_stream_rom; $82CFCE
     plx                         ; $82CFD1
     ply                         ; $82CFD2
-    jsr.w $D267                 ; $82CFD3
+    jsr.w car_sprite_head       ; $82CFD3
     lda.w #$0000                ; $82CFD6
     sta.w $8000                 ; $82CFD9
     lda.b $3C                   ; $82CFDC
@@ -3178,6 +3178,7 @@ CODE_82D23F:
     sta.w $1E56                 ; $82D262
     plb                         ; $82D265
     rts                         ; $82D266
+car_sprite_head:
     lda.l $7E386A,x             ; $82D267
     sta.w $8000                 ; $82D26B
     lda.w #$9000                ; $82D26E
@@ -3190,7 +3191,7 @@ CODE_82D23F:
     and.w #$00FF                ; $82D281
     bit.w #$0080                ; $82D284
     beq CODE_82D28C             ; $82D287
-    incbin !baserom:$15289..$1528C
+    ora.w #$FF00                ; $82D289 static
 CODE_82D28C:
     clc                         ; $82D28C
     adc.w #$0033                ; $82D28D

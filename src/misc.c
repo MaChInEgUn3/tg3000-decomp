@@ -4539,3 +4539,23 @@ bool sprite_parts_stream_rom(uint16_t x) {
   wr16(DP + 0x84, y);
   return full;
 }
+
+// TG3000_ROUTINE($82:D267) car_sprite_head
+uint16_t car_sprite_head(uint16_t x, uint16_t y) {
+  dsp4_port_write16(rd16(0x386A + (uint32_t)x));
+  dsp4_port_write16(0x9000);
+  dsp4_port_write16(rd16(0xFAB4 + (uint32_t)y));
+  uint16_t h = rd8(0x0243);
+  if(h & 0x0080) h |= 0xFF00;  // never run
+  const uint16_t height = (uint16_t)(h + 0x0033 + rd16(DP + 0x34));
+  dsp4_port_write16(height);
+  dsp4_port_write16(height);
+  dsp4_port_write16(0);
+  dsp4_port_write16(rd16(DP + 0x32));
+  const uint16_t frame = (uint16_t)(((rd16(0xFAB5 + (uint32_t)y) >> 1) & 0x007E) + rd16(0x39EC + (uint32_t)rd16(DP + 0x14)));
+  dsp4_port_write16(bus_rd16(0x83ACEC + (uint32_t)frame));
+  dsp4_port_write16(0);
+  const uint16_t answer = dsp4_port_read16();
+  wr16(DP + 0x2A, answer);
+  return answer;
+}

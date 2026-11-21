@@ -1261,4 +1261,11 @@ bool sprite_put_rows_b(void);
 // $09 sprite stream open). Returns whether the OAM buffer filled (the original's carry).
 bool sprite_parts_stream_rom(uint16_t x);
 
+// $82:D267: a car's sprite head streamed to the DSP-4 (D = $0100; a sprite stream open):
+// the row $7E:386A + `x`, $9000, the car's word $7E:FAB4 + `y`, twice its height ($0243's
+// byte, signed (never run when negative), + $33 + D+$34), 0, D+$32, its frame (the word at
+// $83:ACEC + (its $FAB5 / 2 & $7E) + the row $39EC at D+$14), 0; the chip's answer word to
+// D+$2A, which it returns.
+uint16_t car_sprite_head(uint16_t x, uint16_t y);
+
 #endif

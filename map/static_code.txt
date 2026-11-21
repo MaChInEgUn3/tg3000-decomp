@@ -122,3 +122,4 @@
 82:DE63 82:DE87 m16x16 ; sprite_parts_stream: the OAM buffer full in the first list (never run)
 82:DF4C 82:DF70 m16x16 ; sprite_parts_stream_rom: the OAM buffer full in the first list (never run)
 82:DF7A 82:DF8A m16x16 ; sprite_parts_stream_rom: the drain's pairs (never run)
+82:D289 82:D28C m16x16 ; car_sprite_head: a negative height byte sign-extended (never run)

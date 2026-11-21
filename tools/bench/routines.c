@@ -8082,6 +8082,35 @@ static void fuzz_sprite_parts_stream_rom(Regs* r, uint8_t* ram, uint32_t (*rnd)(
   dsp4_bridge_script(script, 40);
 }
 
+// ---- car_sprite_head ($82:D267) ----  a DSP-4 tape row: A = the answer (N Z of its LDA), X
+// = Y (its last TYX; the caller reads $FABF,x next), Y kept; C V of the frame's ADC
+static void call_car_sprite_head(const Regs* in, Regs* out) {
+  const uint16_t a = (uint16_t)((rd16(0xFAB5 + (uint32_t)in->y) >> 1) & 0x007E);
+  const uint16_t row = rd16(0x39EC + (uint32_t)rd16(DP + 0x14));
+  out->a = car_sprite_head(in->x, in->y);
+  out->x = in->y;
+  out->y = in->y;
+  setNZ16(out, out->a);
+  const uint32_t sum = (uint32_t)a + row;
+  out->c = sum > 0xFFFF;
+  out->v = (~(a ^ row) & (a ^ (uint16_t)sum) & 0x8000) != 0;
+}
+// the race's object (D+$14 and its row at $39EC: the frame table in bank $83 stays in ROM),
+// a row offset X, a car Y (its words random), the height byte either sign, D+$32/$34, one
+// scripted answer
+static void fuzz_car_sprite_head(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)(2 * (rnd() % 0x40));
+  r->y = (uint16_t)(0x35 * (rnd() % 20));
+  wr16ram(ram, 0xFAB4 + (uint32_t)r->y, (uint16_t)rnd());
+  wr16ram(ram, 0xFAB6 + (uint32_t)r->y, (uint16_t)rnd());
+  wr16ram(ram, 0x386A + (uint32_t)r->x, (uint16_t)rnd());
+  ram[0x0243] = (uint8_t)rnd();
+  wr16ram(ram, DP + 0x32, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x34, (uint16_t)rnd());
+  const uint16_t answer = (uint16_t)rnd();
+  dsp4_bridge_script(&answer, 1);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -8973,6 +9002,9 @@ const Routine routines[] = {
   {.name = "sprite_parts_stream_rom", .entry = 0x82DEA8, .end = 0x82DF91, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_parts_stream_rom,
    .fuzz = fuzz_sprite_parts_stream_rom, .dsp4Tape = true},
+  {.name = "car_sprite_head", .entry = 0x82D267, .end = 0x82D2CC, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_car_sprite_head, ALL_OUTPUTS, .fuzz = fuzz_car_sprite_head,
+   .dsp4Tape = true},
   {.name = "oam_finish_0b00", .entry = 0x8180D0, .end = 0x8180DA, .rtl = true, .source = "src/sprites.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_oam_finish_0b00, ALL_OUTPUTS,
    .fuzz = fuzz_oam_finish_0b00},
