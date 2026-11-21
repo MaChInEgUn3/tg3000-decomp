@@ -1848,7 +1848,7 @@ CODE_85B2B4:
     rep.b #$20                  ; $85B2B4
     rts                         ; $85B2B6
     incbin !baserom:$2B2B7..$2B36F
-    jsl.l $85B3D7               ; $85B36F
+    jsl.l road_rows_project     ; $85B36F
     jsl.l $85B828               ; $85B373
     lda.w $00D0                 ; $85B377
     sta.w $1E46                 ; $85B37A
@@ -1867,7 +1867,7 @@ CODE_85B2B4:
     sta.w $01DE                 ; $85B3A2
     jsr.w race_bands_merge      ; $85B3A5
     rtl                         ; $85B3A8
-    jsl.l $85B3D7               ; $85B3A9
+    jsl.l road_rows_project     ; $85B3A9
     jsl.l $85B828               ; $85B3AD
     jsl.l scroll_tables_build   ; $85B3B1
     lda.w $00D0                 ; $85B3B5
@@ -1882,6 +1882,7 @@ CODE_85B2B4:
     sta.w $01DC                 ; $85B3D0
     jsr.w race_bands_merge      ; $85B3D3
     rtl                         ; $85B3D6
+road_rows_project:
     pea.w $8330                 ; $85B3D7
     plb                         ; $85B3DA
     ldy.w #$0023                ; $85B3DB
@@ -2054,19 +2055,28 @@ CODE_85B53B:
     sta.w $8000                 ; $85B543
     lda.w $0242                 ; $85B546
     bpl CODE_85B558             ; $85B549
-    incbin !baserom:$2B54B..$2B558
+    clc                         ; $85B54B static
+    adc.w #$0033                ; $85B54C static
+    sta.w $8000                 ; $85B54F static
+    clc                         ; $85B552 static
+    adc.w #$00A9                ; $85B553 static
+    bra CODE_85B562             ; $85B556 static
 CODE_85B558:
     clc                         ; $85B558
     adc.w #$0033                ; $85B559
     sta.w $8000                 ; $85B55C
     lda.w #$00DC                ; $85B55F
+CODE_85B562:
     sta.l $7E4CFD,x             ; $85B562
     dex                         ; $85B566
     lda.w $0242                 ; $85B567
     bpl CODE_85B572             ; $85B56A
-    incbin !baserom:$2B56C..$2B572
+    clc                         ; $85B56C static
+    adc.w #$0033                ; $85B56D static
+    bra CODE_85B575             ; $85B570 static
 CODE_85B572:
     lda.w #$0033                ; $85B572
+CODE_85B575:
     sta.w $8000                 ; $85B575
     lda.w #$FF5B                ; $85B578
     sta.w $8000                 ; $85B57B
@@ -2074,9 +2084,12 @@ CODE_85B572:
     sta.w $8000                 ; $85B581
     lda.w $0242                 ; $85B584
     bpl CODE_85B58F             ; $85B587
-    incbin !baserom:$2B589..$2B58F
+    clc                         ; $85B589 static
+    adc.w #$00DC                ; $85B58A static
+    bra CODE_85B592             ; $85B58D static
 CODE_85B58F:
     lda.w #$00DC                ; $85B58F
+CODE_85B592:
     sta.w $8000                 ; $85B592
     lda.w $0200                 ; $85B595
     sta.w $8000                 ; $85B598
@@ -2092,9 +2105,14 @@ CODE_85B5A5:
     sta.w $8000                 ; $85B5AB
     lda.w $0242                 ; $85B5AE
     bpl CODE_85B5BA             ; $85B5B1
-    incbin !baserom:$2B5B3..$2B5BA
+    asl a                       ; $85B5B3 static
+    asl a                       ; $85B5B4 static
+    clc                         ; $85B5B5 static
+    adc.b $1A                   ; $85B5B6 static
+    bra CODE_85B5BC             ; $85B5B8 static
 CODE_85B5BA:
     lda.b $1A                   ; $85B5BA
+CODE_85B5BC:
     sta.w $8000                 ; $85B5BC
     lda.w #$00C0                ; $85B5BF
     sta.w $8000                 ; $85B5C2
@@ -2306,7 +2324,7 @@ CODE_85B7AA:
     and.w #$00FF                ; $85B7B7
     bit.w #$0080                ; $85B7BA
     beq CODE_85B7C2             ; $85B7BD
-    incbin !baserom:$2B7BF..$2B7C2
+    ora.w #$FF00                ; $85B7BF static
 CODE_85B7C2:
     sta.b $20                   ; $85B7C2
     lda.l $7E3DEC,x             ; $85B7C4
@@ -2338,7 +2356,13 @@ CODE_85B7FC:
     ldy.w #$0000                ; $85B7FC
     lda.w $0242                 ; $85B7FF
     bpl CODE_85B811             ; $85B802
-    incbin !baserom:$2B804..$2B811
+    clc                         ; $85B804 static
+    adc.w #$00DC                ; $85B805 static
+    cmp.w #$0004                ; $85B808 static
+    bpl CODE_85B810             ; $85B80B static
+    lda.w #$0004                ; $85B80D static
+CODE_85B810:
+    tay                         ; $85B810 static
 CODE_85B811:
     tya                         ; $85B811
     sta.l $7E4CFD,x             ; $85B812

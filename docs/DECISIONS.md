@@ -1819,6 +1819,47 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The road's rows projected by the DSP-4 (roots-99, 2026-11-21)
+
+**`road_rows_project` ($85:B3D7-$85:B827), a DSP-4 tape row:** 1,105 bytes. It runs with
+D = `$0100` and DB = `$30`, and returns with DB = `$83`. Its output is the row tables
+`$7E:34EC`-`$39EC`, which `road_rows_stream` (roots-98) sends on.
+- **Six products by the port** (command `$0000` inline) of the player's row pair
+  (`$7E:3AEC`/`$3B6E`/`$3AEE` at (`$0226` × 2) & `$3E`) and its sides (`$0208`,
+  `$020B`/`$020D`) by `$0225`'s place in its row. They give `$0174` (rounded on the low
+  word) and the view's offsets D+$1E, D+$20, D+$26/D+$28 and D+$2A/D+$2C.
+  - **Carries kept from the original:** one ADC takes the carry the second `ROL` of a
+    product's ×4 leaves (bit 14 of its high word); another adds a 24-bit side, sign-extended
+    from the byte at `$020D`.
+- **Command `$01`** (or `$0F` followed by D+$E4, when D+$E4 is not negative) gets:
+  - the screen constants, moved in by `$0242` when it is negative;
+  - `$0200`, and `$0202` stepped one toward 0;
+  - the buffer `$00B4` picks;
+  - the offsets as 8.8 values, written as unaligned words (D+$1D, D+$25, D+$29).
+- **Each row** (D+$14 from $80 - (`$0225` / 2 & $7E), stepping by $80, below `$0E00`):
+  - **What it sends:** its ROM height (`$83:ACEC`) and pair.
+  - **What it stores:** the chip's four answers at `$7E:34EC`-`$37EC`, plus its height and
+    place at `$38EC`/`$39EC`.
+  - **A nonzero fifth answer is an object.** Its band's byte at `$7E:4CFD` counts down. Its
+    8 bytes go below D+$18, either from the chip (four products with `$7E:6C33`) or copied
+    from bank `$90` with `MVP` (D+$E4 negative). Then come the chip's (index, word, word)
+    entries at `$0796`/`$0798`.
+  - **A row flagged at `$7E:3D6A`** (bit 15) sends `$8001` and its edges, from the pair at
+    +2 or at -2 by bit 1.
+- **Last, the bands' ends:** `$7E:4CFD`, `$0164`, `$015C` (D+$18 + 1) and `$1E3E`.
+- **Decoded as static code:** six ranges, the `$0242`-negative branches (`$85:B54B`-`$B810`).
+  They never ran, and the fuzz reaches them.
+- **Outputs:** A = D+$1A; X = the band (`$23` or `$45`); Y = `$015C`. N is set and Z clear (the
+  `PLB` of `$83`). C comes from the `CMP #4` (`$0242` negative) or the rows' `CMP #$0E00`;
+  V is clear.
+- **The fuzz** scripts the chip in read order: six products, then each row's four answers
+  and object count.
+  - Objects are mostly absent. When there is one, it has four answers (unless copied) and
+    1-2 entries in low WRAM; its bank-`$90` pointer points into ROM.
+  - It varies the buffer, the place, `$0242`, `$0202`, `$020D`, D+$E4's sign, and the rows'
+    edge flags and bytes.
+- **Result:** live 215/215 (race1), fuzz 200/200, paths 461/461.
+
 ## The road's rows streamed to the DSP-4 (roots-98, 2026-11-21)
 
 **`road_rows_stream` ($81:8564-$81:89F4), a DSP-4 tape row:** 1,169 bytes. It runs with

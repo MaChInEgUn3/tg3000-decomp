@@ -1391,4 +1391,18 @@ bool dsp4_answers_store(uint16_t* x, uint16_t* a);
 // fill ran.
 bool road_rows_stream(void);
 
+// $85:B3D7: the road's rows projected by the DSP-4 (D = $0100; DB = $30 inside, $83 on
+// return; RTL). Six products (by the port) of the player's row pair ($7E:3AEC/$3B6E/$3AEE at
+// ($0226 * 2) & $3E) and its sides ($0208, $020B/$020D) by $0225's place in its row give
+// $0174 and the view's offsets; command $01 (or $0F with D+$E4) gets them, the screen
+// constants (the buffer $00B4 picks, moved in by $0242 when negative) and $0200/$0202. Then
+// each row (D+$14 from $80 - ($0225 / 2 & $7E) by $80 to $0E00) sends its ROM height
+// ($83:ACEC) and pair and stores the chip's four answers at $7E:34EC-$37EC (+ the height
+// and place at $38EC/$39EC). A row with an object (a nonzero answer) counts down its band
+// at $7E:4CFD, gets the object's 8 bytes (from the chip, or copied from bank $90 when D+$E4
+// is negative) below D+$18, and stores the chip's (index, two words) pairs at $0796/$0798;
+// a row flagged at $7E:3D6A sends its edges. Last the bands' ends, $0164, $015C (D+$18 + 1)
+// and $1E3E (D+$1A).
+void road_rows_project(void);
+
 #endif

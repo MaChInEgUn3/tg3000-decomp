@@ -8601,6 +8601,71 @@ static void fuzz_road_rows_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   dsp4_bridge_script(script, n);
 }
 
+// ---- road_rows_project ($85:B3D7) ----  a DSP-4 tape row (RTL). A = D+$1A, X = the band
+// ($23 or $45), Y = $015C, DB = $83; N set and Z clear (the PLB of $83); C of the CMP #4
+// ($0242 negative) or of the rows' CMP #$0E00 (set); V of their ADCs (clear)
+static void call_road_rows_project(const Regs* in, Regs* out) {
+  (void)in;
+  road_rows_project();
+  out->a = rd16(DP + 0x1A);
+  out->x = rd16(0x00B4) ? 0x0023 : 0x0045;
+  out->y = rd16(0x015C);
+  out->n = true;
+  out->z = false;
+  const uint16_t p = rd16(0x0242);
+  out->c = (p & 0x8000) ? (uint16_t)(p + 0x00DC) >= 4 : true;
+  out->v = false;
+  out->db = 0x83;
+}
+// the race's road, then the buffer ($00B4), the place in the row ($0225's byte), $0242
+// negative now and then, $0202, D+$E4's sign (objects from the chip or copied from bank
+// $90), each row's edge flags ($7E:3D6A bits 15 and 1) and edge bytes, $020D. The chip is scripted in the order
+// the routine reads: six products, then each row's four answers and object count (mostly
+// 0; an object's four answers unless copied, and 1-2 (index, word, word) entries in low
+// WRAM); an object's bytes in bank $90 come from ROM
+static void fuzz_road_rows_project(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x00B4, (rnd() & 1) ? 0 : 1);
+  ram[0x0225] = (uint8_t)rnd();
+  if(rnd() % 3 == 0) wr16ram(ram, 0x0242, (uint16_t)(0 - (1 + rnd() % 0xE0)));
+  else if(rnd() & 1) wr16ram(ram, 0x0242, (uint16_t)(rnd() % 0x40));
+  if(rnd() & 1) wr16ram(ram, 0x0202, (rnd() % 4 == 0) ? 0 : (uint16_t)rnd());
+  if(rnd() & 1) ram[0x020D] = (uint8_t)rnd();  // the side's high byte, negative too
+  const bool copied = (rnd() & 1) != 0;
+  wr16ram(ram, DP + 0xE4, (uint16_t)(copied ? 0x8000 | rnd() : rnd() & 0x7FFF));
+  uint16_t at = (uint16_t)(0x0080 - ((ram[0x0225] >> 1) & 0x7E));
+  uint32_t k = (uint32_t)(((ram[0x0226] | ram[0x0227] << 8) << 1) & 0x3E);
+  uint16_t script[256];
+  int n = 0;
+  for(int i = 0; i < 12; i++) script[n++] = (uint16_t)rnd();
+  int objects = 0;
+  do {
+    k += 2;
+    if(rnd() % 3 == 0) {
+      ram[0x3D6B + k] = (uint8_t)((ram[0x3D6B + k] & 0x7F) | (rnd() & 0x80));
+      ram[0x3D6A + k] = (uint8_t)((ram[0x3D6A + k] & 0xFD) | (rnd() & 0x02));
+      ram[0x3AEB + k] = (uint8_t)rnd();  // the edges' bytes, negative too
+      ram[0x3AED + k] = (uint8_t)rnd();
+    }
+    for(int i = 0; i < 4; i++) script[n++] = (uint16_t)rnd();
+    const int pairs = (objects < 8 && rnd() % 5 == 0) ? 1 + (int)(rnd() % 2) : 0;
+    script[n++] = (uint16_t)pairs;
+    if(pairs) {
+      objects++;
+      wr16ram(ram, 0x3CEA + k, (uint16_t)(0x8100 + 2 * (rnd() % 0x3000)));
+      if(!copied)
+        for(int i = 0; i < 4; i++) script[n++] = (uint16_t)rnd();
+      for(int i = 0; i < pairs; i++) {
+        script[n++] = (uint16_t)(2 * (rnd() % 0x180));
+        script[n++] = (uint16_t)rnd();
+        script[n++] = (uint16_t)rnd();
+      }
+    }
+    at = (uint16_t)(at + 0x0080);
+  } while(at < 0x0E00);
+  dsp4_bridge_script(script, n);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9514,6 +9579,9 @@ const Routine routines[] = {
   {.name = "object_sprite_shadowed", .entry = 0x82DA48, .end = 0x82DAAF, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_object_sprite_shadowed, .fuzz = fuzz_object_sprite_shadowed, .dsp4Tape = true},
+  {.name = "road_rows_project", .entry = 0x85B3D7, .end = 0x85B828, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project, ALL_OUTPUTS,
+   .fuzz = fuzz_road_rows_project, .dsp4Tape = true, .fuzzStack = 0x1FF1},
   {.name = "road_rows_stream", .entry = 0x818564, .end = 0x8189F5, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_stream, ALL_OUTPUTS,
    .fuzz = fuzz_road_rows_stream, .dsp4Tape = true, .fuzzStack = 0x1FF1},
