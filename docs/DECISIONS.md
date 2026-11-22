@@ -1819,6 +1819,26 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## sprite_group's stores across the bank's end (fix-2, 2026-11-22)
+
+**The same class of defect as fix-1, found the same way.** Six shop icon rows failed fuzz
+cases started from the shop-buy movie's last state, a paused race. The C wrote sprites at
+`$7E:08BC` and `$7E:0ABC`, while the original wrote them at `$7F:08BC` and `$7F:0ABC`.
+- **The cause.** `sprite_group` ($80:B49E) stores each sprite at `$0900`/`$0902`/`$0B00`/
+  `$0B02` + the slot D+$74, as `STA $0900,X` with DB = the table's bank.
+  - The 65816 adds X in 24 bits, so a slot from `$F500` up stores into the next bank. The C
+    wrapped inside the bank.
+  - In a paused race, D+$74 is not the shop's slot (it held `$FFBC`). The icon rows' fuzz
+    does not set it, so that state reached them.
+  - The table reads already crossed the bank in the C (24-bit `bus_rd16`).
+- **The fuzz** (`fuzz_sprite_group`) now sets the slot from `$F500` up in one case in four.
+- **Check:**
+  - With the new fuzz, the old C fails: `sprite_group` 147/200.
+  - The new C passes 500/500 on both shop movies, and so do the icon rows' fuzz cases on the
+    shop-buy movie. `shop_item_icon_1` and `_3` still show FAIL there, but only by the flag
+    rule (24 and 22 returns watched); see the shop-buy movie's to-do.
+  - The full gate.
+
 ## The decompressor's reads across the bank's end (fix-1, 2026-11-22)
 
 **A defect in verified C, found by a new movie's end state.** `title_scene_load` failed

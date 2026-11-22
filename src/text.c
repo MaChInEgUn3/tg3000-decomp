@@ -195,20 +195,22 @@ uint16_t sprite_number(uint32_t value, uint16_t x) {
   return rd16(SPRITE_TEXT_X);
 }
 
-// Entries of one list (6 bytes each, until a zero word): tile, x, y offsets.
+// Entries of one list (6 bytes each, until a zero word): tile, x, y offsets. The sprites go
+// to $0900/$0B00 + the slot in the table's bank (STA $0900,X with DB = that bank): the
+// 65816 adds X in 24 bits, so a slot from $F700 up writes into the next bank.
 static uint16_t sprite_group_list(uint16_t dp, uint32_t* at, uint16_t slot, uint16_t flag) {
   uint32_t bank = *at & 0xFF0000;
   for(;;) {
     uint16_t tile = bus_rd16(*at);
     if(tile == 0) return slot;
-    bus_wr16(bank | (uint16_t)(0x0902 + slot), (uint16_t)(tile + rd16(dp + 0x18)));
+    bus_wr16(bank + 0x0902 + slot, (uint16_t)(tile + rd16(dp + 0x18)));
     uint16_t xpos = (uint16_t)((uint16_t)(bus_rd16(*at + 2) + rd16(dp + 0x16)) & 0xFF);
     wr16(dp + 0x1A, (uint16_t)(xpos << 8));
     uint16_t ypos = (uint16_t)(bus_rd16(*at + 4) + rd16(dp + 0x14));
     if(ypos & 0xFF00) ypos |= 0xFF00;  // keep only the sign
-    bus_wr16(bank | (uint16_t)(0x0B00 + slot), ypos);
-    bus_wr16(bank | (uint16_t)(0x0900 + slot), (uint16_t)((ypos & 0xFF) | (xpos << 8)));
-    bus_wr16(bank | (uint16_t)(0x0B02 + slot), flag);
+    bus_wr16(bank + 0x0B00 + slot, ypos);
+    bus_wr16(bank + 0x0900 + slot, (uint16_t)((ypos & 0xFF) | (xpos << 8)));
+    bus_wr16(bank + 0x0B02 + slot, flag);
     slot = (uint16_t)(slot + 4);
     *at = bank | (uint16_t)(*at + 6);
   }

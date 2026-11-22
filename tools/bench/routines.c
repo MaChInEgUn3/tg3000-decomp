@@ -5816,7 +5816,9 @@ static void fuzz_sprite_group(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->a = (uint16_t)((r->a & 0xFF00) | 0x7E);  // the table in bank $7E
   r->x = 0x1C00;
   for(int o = 0x14; o <= 0x18; o += 2) wr16ram(ram, (uint16_t)(r->d + o), (uint16_t)rnd());
-  wr16ram(ram, (uint16_t)(r->d + 0x74), (uint16_t)(4 * (rnd() % 32)));
+  // the slot: the game's (a few sprites in) or, one case in four, from $F500 up, where the
+  // stores at $0900/$0B00 + the slot run into the next bank (bank $7F here)
+  wr16ram(ram, (uint16_t)(r->d + 0x74), (rnd() % 4 == 0) ? (uint16_t)(0xF500 + 4 * (rnd() % 0x2C0)) : (uint16_t)(4 * (rnd() % 32)));
 }
 
 // ---- func_83EA9B ($83:EA9B) ----  X = entry offset; exits with A = the $1EA0 value.
