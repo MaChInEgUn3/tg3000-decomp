@@ -818,10 +818,10 @@ CODE_83EB31:
     jsr.w func_83FE9A           ; $83EB5A
     bra CODE_83EB6B             ; $83EB5D
 CODE_83EB5F:
-    lda.w #$FF1C                ; $83EB5F static
-    ldx.w $1EBE                 ; $83EB62 static
-    ldy.w #$0000                ; $83EB65 static
-    jsr.w func_83FE9A           ; $83EB68 static
+    lda.w #$FF1C                ; $83EB5F
+    ldx.w $1EBE                 ; $83EB62
+    ldy.w #$0000                ; $83EB65
+    jsr.w func_83FE9A           ; $83EB68
 CODE_83EB6B:
     lda.b $31                   ; $83EB6B
     sec                         ; $83EB6D
@@ -1467,8 +1467,8 @@ CODE_83F115:
     lda.b $18                   ; $83F12D
     sbc.w $8000                 ; $83F12F
     bpl CODE_83F139             ; $83F132
-    stz.b $16                   ; $83F134 static
-    lda.w #$0000                ; $83F136 static
+    stz.b $16                   ; $83F134
+    lda.w #$0000                ; $83F136
 CODE_83F139:
     sta.b $18                   ; $83F139
     ldx.w #$000C                ; $83F13B

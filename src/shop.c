@@ -2,6 +2,7 @@
 #include "shop.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "frame.h"
 #include "misc.h"
@@ -55,6 +56,8 @@ uint16_t shop_money_after_price(void) {
   return shop_money_after_price_flags(&f);
 }
 
+static uint16_t shop_money_settle(ShopMoneyFlags* f);
+
 uint16_t shop_money_after_price_flags(ShopMoneyFlags* f) {
   const uint16_t price = rom16(0x81A89B + (uint32_t)shop_item_entry(rd16(DP + 0x4A)));
   const uint32_t car = rd16(DP + 0x94);
@@ -62,6 +65,45 @@ uint16_t shop_money_after_price_flags(ShopMoneyFlags* f) {
   bool c = true;
   wr16(DP + 0x52, bcd_sub16(lo, rom16(0x81A890 + (uint32_t)price), &c));
   wr16(DP + 0x54, bcd_sub16(hi, rom16(0x81A88E + (uint32_t)price), &c));
+  return shop_money_settle(f);
+}
+
+// A 16-bit decimal-mode ADC of valid BCD words: a + b + carry, the carry out.
+static uint16_t bcd_add16(uint16_t a, uint16_t b, bool* carry) {
+  int c = *carry ? 1 : 0;
+  uint16_t r = 0;
+  for(int k = 0; k < 16; k += 4) {
+    int d = (int)((a >> k) & 0xF) + (int)((b >> k) & 0xF) + c;
+    c = d > 9;
+    if(c) d -= 10;
+    r = (uint16_t)(r | (uint16_t)(d << k));
+  }
+  *carry = c != 0;
+  return r;
+}
+
+// TG3000_ROUTINE($80:990D) shop_money_after_refund
+// The money plus the price of row `row` of the current list (the part owned, sold back), to
+// D+$52/D+$54; D+$76 bit 2 cleared; then the settled digits as shop_money_after_price's.
+// The buying handlers' path for a part already bought here (bit 7); the shop-buy movie runs
+// it once.
+uint16_t shop_money_after_refund(uint16_t row) {
+  wr16(DP + 0x7A, row);
+  const uint16_t price = rom16(0x81A89B + (uint32_t)shop_item_entry(row));
+  const uint32_t car = rd16(DP + 0x94);
+  bool c = false;
+  wr16(DP + 0x52, bcd_add16(rd16(0x038E + car), rom16(0x81A890 + (uint32_t)price), &c));
+  wr16(DP + 0x54, bcd_add16(rd16(0x0390 + car), rom16(0x81A88E + (uint32_t)price), &c));
+  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) & ~0x0004));
+  ShopMoneyFlags f;
+  return shop_money_settle(&f);
+}
+
+// $80:997E on: the digits that settle, from the money (D+$94's) and D+$52/D+$54.
+static uint16_t shop_money_settle(ShopMoneyFlags* f) {
+  const uint32_t car = rd16(DP + 0x94);
+  const uint16_t lo = rd16(0x038E + car), hi = rd16(0x0390 + car);
+  bool c = false;
   wr16(DP + 0x56, 0);
   wr16(DP + 0x58, 0);
   wr16(DP + 0x7A, (uint16_t)(lo | rd16(DP + 0x52)));
@@ -171,6 +213,85 @@ uint16_t shop_money_roll_flags(ShopMoneyFlags* f) {
     wr16(DP + 0x84, (uint16_t)(rd16(DP + 0x84) - 1));
     if(rd16(DP + 0x84) == 0) return a;
   }
+}
+
+// The buying of one part of the car, lists 1-5 (shop_buy_list1-5): the part's level byte at $0393 + `field` +
+// D+$94 (bit 7: bought here). Owned already: a sound, the icon shown and settled. Else the
+// money is taken; unless it covers the price (shop_item_affordable), shop_flag_fb and out.
+// Bought: a sound, the panel rises (D+$42 by 6 a frame up to `height`, the money rolling,
+// the screen redrawn), the level byte becomes the row | $80, the upload is queued, the money
+// after the price, the panel falls (down to 0), the money stored, the icon settled.
+// `settle`: false stops before the final shop_item_icon_settle (list 1's JMP to it, where its
+// row ends). `f` (or NULL): the flags shop_money_after_price leaves when the money is short
+// after a refund (the last call on that path for lists 2-5).
+ShopBuyEnd shop_buy_part(uint16_t field, uint16_t height, bool price_first, bool settle, ShopMoneyFlags* f) {
+  ShopMoneyFlags unused;
+  if(f == NULL) f = &unused;
+  const uint32_t at = 0x0393 + (uint32_t)field + rd16(DP + 0x94);
+  if((rd16(at) & 0x007F) == rd16(DP + 0x4A)) {
+    func_80E4C5();
+    func_80B58D(0x80, 0xB535);
+    shop_item_show_icon();
+    if(settle) shop_item_icon_settle();
+    return SHOP_BUY_OWNED;
+  }
+  shop_money_take();
+  if(rd16(at) & 0x0080) {  // a part bought here before is sold back first
+    shop_money_after_refund((uint16_t)(rd16(at) & 0x007F));
+    if(!shop_item_affordable()) {
+      if(price_first) {
+        (void)shop_money_after_price_flags(f);
+        shop_flag_fb();
+      } else {
+        shop_flag_fb();
+        (void)shop_money_after_price_flags(f);
+      }
+      return SHOP_BUY_REFUNDED_SHORT;
+    }
+  } else if(!shop_item_affordable()) {
+    shop_flag_fb();
+    return SHOP_BUY_SHORT;
+  }
+  func_80E4DB();
+  func_80B58D(0x80, 0xB535);
+  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) | 0x0002));
+  shop_item_show_icon();
+  do {
+    wait_frames(1);
+    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 6));
+    shop_money_roll();
+    shop_item_redraw();
+  } while(rd16(DP + 0x42) != height);
+  wr8(at, (uint8_t)(rd8(DP + 0x4A) | 0x80));
+  shop_item_dispatch_upload();
+  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) & ~0x0002));
+  shop_money_after_price();
+  do {
+    wait_frames(1);
+    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) - 6));
+    shop_money_roll();
+    shop_item_redraw();
+  } while(rd16(DP + 0x42) != 0);
+  shop_money_store();
+  if(settle) shop_item_icon_settle();
+  return SHOP_BUY_BOUGHT;
+}
+
+// TG3000_ROUTINE($80:9053) shop_buy_list1
+void shop_buy_list1(void) { (void)shop_buy_part(0, 0x0078, true, true, NULL); }
+// TG3000_ROUTINE($80:9100) shop_buy_list2
+void shop_buy_list2(void) { (void)shop_buy_part(1, 0x00B4, false, true, NULL); }
+// TG3000_ROUTINE($80:91AE) shop_buy_list3
+void shop_buy_list3(void) { (void)shop_buy_part(2, 0x00B4, false, true, NULL); }
+// TG3000_ROUTINE($80:925C) shop_buy_list4
+void shop_buy_list4(void) { (void)shop_buy_part(3, 0x00B4, false, true, NULL); }
+// TG3000_ROUTINE($80:95C0) shop_buy_list5
+void shop_buy_list5(void) { (void)shop_buy_part(4, 0x00B4, false, true, NULL); }
+
+// TG3000_ROUTINE($80:930A) shop_buy_colour
+void shop_buy_colour(void) {
+  wr8(0x0392 + (uint32_t)rd16(DP + 0x94), rd8(DP + 0x4A));
+  func_80E4DB();
 }
 
 // TG3000_ROUTINE($80:9ABB) shop_money_store

@@ -6220,6 +6220,44 @@ static void fuzz_shop_money_after_price(Regs* r, uint8_t* ram, uint32_t (*rnd)(v
   wr16ram(ram, DP + 0x4A, (uint16_t)(list == 0 || list >= 6 ? 0 : rnd() % 5));
 }
 
+// ---- the buying handlers ($80:9053 ... $80:95C0, $80:930A) ----  waiting routines (the panel
+// moves a frame at a time): no fuzz. Lists 2-5 end in shop_item_icon_settle (JSR, RTS): its
+// flags (N set by its LDA #$8000, Z clear: shop_item_show_icon set D+$76 bit 15, C set);
+// list 1 ends at its JMP to it (endAt). The money short: shop_flag_fb's PLA of the A
+// shop_item_affordable left, the redraw's last (oam_finish: the new D+$6C, $0900 or $0D00:
+// N and Z clear), C clear. Short after a refund: shop_money_after_price's exit.
+static void call_shop_buy(const Regs* in, Regs* out, uint16_t field, uint16_t height, bool price_first, bool settle) {
+  ShopMoneyFlags f = {in->c, in->v};
+  switch(shop_buy_part(field, height, price_first, settle, &f)) {
+    case SHOP_BUY_OWNED:
+    case SHOP_BUY_BOUGHT:
+      out->n = true;
+      out->z = false;
+      out->c = true;
+      break;
+    case SHOP_BUY_REFUNDED_SHORT:  // lists 2-5: shop_money_after_price last (A = 4); list 1:
+                                   // shop_flag_fb's PLA of that same A
+      out->n = out->z = false;
+      out->c = f.c;
+      out->v = f.v;
+      break;
+    default:
+      setNZ16(out, rd16(DP + 0x6C));
+      out->c = false;
+      break;
+  }
+}
+static void call_shop_buy_list1(const Regs* in, Regs* out) { call_shop_buy(in, out, 0, 0x0078, true, false); }
+static void call_shop_buy_list2(const Regs* in, Regs* out) { call_shop_buy(in, out, 1, 0x00B4, false, true); }
+static void call_shop_buy_list3(const Regs* in, Regs* out) { call_shop_buy(in, out, 2, 0x00B4, false, true); }
+static void call_shop_buy_list4(const Regs* in, Regs* out) { call_shop_buy(in, out, 3, 0x00B4, false, true); }
+// func_80E4DB's PLA: A as the handler left it, its high byte the entry's and its low byte
+// D+$4A's (an 8-bit LDA)
+static void call_shop_buy_colour(const Regs* in, Regs* out) {
+  shop_buy_colour();
+  setNZ16(out, (uint16_t)((in->a & 0xFF00) | rd8(DP + 0x4A)));
+}
+
 // A kept (PLA: N/Z from it)
 static void call_shop_flag_fb(const Regs* in, Regs* out) { shop_flag_fb(); setNZ16(out, in->a); }
 
@@ -9831,6 +9869,25 @@ const Routine routines[] = {
    .lowWramDb = true, .call = call_shop_part_level_7, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
   {.name = "shop_money_take", .entry = 0x80993E, .end = 0x809957, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_shop_money_take, ALL_OUTPUTS, .fuzz = fuzz_shop_money_take},
+  {.name = "shop_buy_list1", .entry = 0x809053, .end = 0x809100, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list1,
+   .endAt = 0x8090FD,  // its tail jump to shop_item_icon_settle
+   // lists 1-3: no movie buys from them (the owned and short paths run); their refund and
+   // buying paths are the bytes shop_buy_list4 verifies, but for the level byte, the height
+   // (list 1: $78) and list 1's order of two calls when short after a refund: holes here
+   .holes = {{0x80907D, 0x809090}, {0x80909A, 0x809100}}},
+  {.name = "shop_buy_list2", .entry = 0x809100, .end = 0x8091AE, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list2,
+   .holes = {{0x80912A, 0x80913D}, {0x809147, 0x8091AA}}},  // as list 1's
+  {.name = "shop_buy_list3", .entry = 0x8091AE, .end = 0x80925C, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list3,
+   .holes = {{0x8091D8, 0x8091EB}, {0x8091F5, 0x809258}}},  // as list 1's
+  {.name = "shop_buy_list4", .entry = 0x80925C, .end = 0x80930A, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list4,
+   .holes = {{0x80929E, 0x8092A3}}},  // the money short with no refund (JSL shop_flag_fb, RTS): no
+                                      // movie runs it and a waiting row has no fuzz: unchecked
+  {.name = "shop_buy_colour", .entry = 0x80930A, .end = 0x80931A, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_buy_colour, .fuzz = fuzz_shop_money},
   {.name = "shop_money_after_price", .entry = 0x809957, .end = 0x8099D1, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_money_after_price, ALL_OUTPUTS,
    .fuzz = fuzz_shop_money_after_price},

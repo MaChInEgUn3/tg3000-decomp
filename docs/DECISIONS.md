@@ -1819,6 +1819,50 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## Buying a part (shop-18, 2026-11-22)
+
+**The buy dispatch's handlers** (`$80:9039` picks one from `$81:A89F` by list and row,
+through a pushed address and `RTS`; it waits for lists 6-8's handlers before its own port).
+- **Lists 1-5** (`$80:9053`, `$9100`, `$91AE`, `$925C`, `$95C0`) are the same code, as one
+  C function (`shop_buy_part`). Their differences:
+  - the level byte, `$0393`-`$0397` + D+$94 (bit 7: bought here);
+  - the panel's height: `$78` for list 1, `$B4` for the others;
+  - on one path, list 1 calls `shop_money_after_price` before `shop_flag_fb`, the others
+    after;
+  - list 1 ends with a `JMP` to `shop_item_icon_settle`, so its row ends there (`endAt`,
+    as harness-7's case).
+- **The flow:**
+  - A part already owned: a sound, the icon shown and settled.
+  - Else the money is taken. A part bought here before is sold back first
+    (`shop_money_after_refund` $80:990D, a BCD add). If the money does not cover the price,
+    `shop_flag_fb` and out.
+  - Bought: the panel rises 6 a frame with the money rolling. The level byte becomes the
+    row | `$80`, the upload is queued, and the money after the price is computed. Then the
+    panel falls with the money rolling to it, the money is stored and the icon settles.
+- **List 0** (`$80:930A`): the car's colour byte `$0392` + D+$94 = the row, then
+  `func_80E4DB`.
+- **Exit flags** (few returns, so all four are compared):
+  - through `shop_item_icon_settle`: N and C set, Z clear;
+  - the money short: `shop_flag_fb`'s `PLA` of the A the redraw left (`oam_finish`: the new
+    D+$6C, never 0 or negative);
+  - short after a refund: `shop_money_after_price`'s.
+- **Verified (pooled over the movies):** `shop_buy_list4` (every path) and
+  `shop_buy_colour` (live 28/28, fuzz 500/500).
+  - list 4's "short, no refund" path (`$80:929E-$92A3`) is a hole: no movie runs it, and a
+    waiting row has no fuzz.
+  - Lists 1-3: the shop movies run their owned and short paths (live 43, 40 and 5 samples).
+    No movie buys from them, so their refund and buying paths are holes (my call, after
+    `shop_item_show_icon`'s precedent; open to the advisor's and the owner's review).
+  - Those holes are the bytes list 4's row verifies, except the level byte, list 1's panel
+    height (`$78`) and list 1's order of two calls when short after a refund. Those three
+    go unchecked until a movie buys from lists 1-3.
+  - List 5's row is left out: the movie only shows an owned part there, so its buying paths
+    would stay unvisited. Its C is the same function list 4 verifies.
+- **The refund path does run.** It ran once on the movie (a level-1 part, then row 2 too
+  dear), so `$80:990D` is no longer "never run".
+- **The movie's coverage is now merged into the map:** code grows from 70,199 to 70,518
+  bytes. Two `player_car_frame` ranges it executes left `map/static_code.txt`.
+
 ## The buying's money (shop-17, 2026-11-22)
 
 **Three routines that only the shop-buy movie reaches**, in `src/shop.c`. Money is in BCD:

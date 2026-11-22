@@ -225,6 +225,13 @@ func    809F0F   shop_part_level_4   ; part level $0394 + car, plus 1 -> src/sho
 func    809F14   shop_part_level_5   ; part level $0395 + car, plus 1 -> src/shop.c
 func    809F19   shop_part_level_6   ; part level $0396 + car, plus 1 -> src/shop.c
 func    809F1E   shop_part_level_7   ; part level $0397 + car, plus 1 -> src/shop.c
+func    809053   shop_buy_list1      ; buying a part, list 1 (level byte $0393): the panel, the money rolling -> src/shop.c
+func    809100   shop_buy_list2      ; buying a part, list 2 ($0394) -> src/shop.c
+func    8091AE   shop_buy_list3      ; buying a part, list 3 ($0395) -> src/shop.c
+func    80925C   shop_buy_list4      ; buying a part, list 4 ($0396) -> src/shop.c
+func    80930A   shop_buy_colour     ; list 0: the car's colour ($0392) -> src/shop.c
+func    8095C0   shop_buy_list5      ; buying a part, list 5 ($0397) -> src/shop.c
+func    80990D   shop_money_after_refund ; the money plus a part's price (sold back), then the settled digits -> src/shop.c
 func    80993E   shop_money_take     ; player's money to $52/$54, $56 = $FFFF, $76 bit 2 -> src/shop.c
 func    809957   shop_money_after_price ; the money less the item's price (BCD) to $52/$54; the settled leading digits -> src/shop.c
 func    8099D1   shop_money_roll     ; one step of the money rolling down to $52/$54 -> src/shop.c

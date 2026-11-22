@@ -324,7 +324,10 @@ CODE_8286AB:
     lda.w #$1000                ; $8286AB
     trb.w $000E                 ; $8286AE
     beq CODE_8286BE             ; $8286B1
-    incbin !baserom:$106B3..$106BE
+    lda.w $014A                 ; $8286B3
+    cmp.w #$0F00                ; $8286B6
+    bne CODE_8286BE             ; $8286B9
+    jsr.w $884B                 ; $8286BB
 CODE_8286BE:
     lda.w $03E2                 ; $8286BE
     bit.w #$0004                ; $8286C1
@@ -411,7 +414,83 @@ CODE_82877F:
     lda.w #$0001                ; $828783
     jsr.w wait_frames_82        ; $828786
     rts                         ; $828789
-    incbin !baserom:$1078A..$10923
+    incbin !baserom:$1078A..$1084B
+    phx                         ; $82884B
+    lda.w #$0010                ; $82884C
+    tsb.w $0026                 ; $82884F
+    lda.w #$FFFC                ; $828852
+    sta.w $03E0                 ; $828855
+    lda.w $03E2                 ; $828858
+    bit.w #$0004                ; $82885B
+    beq CODE_82886E             ; $82885E
+    incbin !baserom:$10860..$1086E
+CODE_82886E:
+    lda.l $7E4E4D               ; $82886E
+    pha                         ; $828872
+    lda.w #$0000                ; $828873
+    sta.l $7E4E4D               ; $828876
+CODE_82887A:
+    ldx.w #$0088                ; $82887A
+    lda.w #$4E61                ; $82887D
+    jsr.w $8911                 ; $828880
+    lda.w #$0004                ; $828883
+    tsb.w $00B8                 ; $828886
+    ldx.w #$0040                ; $828889
+CODE_82888C:
+    lda.w #$1000                ; $82888C
+    trb.w $000E                 ; $82888F
+    bne CODE_8288F2             ; $828892
+    lda.w #$0001                ; $828894
+    jsr.w wait_frames_82        ; $828897
+    lda.w #$0030                ; $82889A
+    and.w $000C                 ; $82889D
+    eor.w #$0030                ; $8288A0
+    db $F0,$33 ; beq            ; $8288A3
+    dex                         ; $8288A5
+    bne CODE_82888C             ; $8288A6
+    ldx.w #$008C                ; $8288A8
+    lda.w #$4E61                ; $8288AB
+    jsr.w $8911                 ; $8288AE
+    lda.w #$0004                ; $8288B1
+    tsb.w $00B8                 ; $8288B4
+    ldx.w #$0040                ; $8288B7
+CODE_8288BA:
+    lda.w #$1000                ; $8288BA
+    trb.w $000E                 ; $8288BD
+    bne CODE_8288F2             ; $8288C0
+    lda.w #$0030                ; $8288C2
+    and.w $000C                 ; $8288C5
+    eor.w #$0030                ; $8288C8
+    db $F0,$0B ; beq            ; $8288CB
+    lda.w #$0001                ; $8288CD
+    jsr.w wait_frames_82        ; $8288D0
+    dex                         ; $8288D3
+    bne CODE_8288BA             ; $8288D4
+    bra CODE_82887A             ; $8288D6
+    incbin !baserom:$108D8..$108F2
+CODE_8288F2:
+    lda.l $810233               ; $8288F2
+    asl a                       ; $8288F6
+    tax                         ; $8288F7
+    lda.w #$4E61                ; $8288F8
+    jsr.w $8911                 ; $8288FB
+    pla                         ; $8288FE
+    sta.l $7E4E4D               ; $8288FF
+    lda.w #$0004                ; $828903
+    sta.w $03E0                 ; $828906
+    lda.w #$0010                ; $828909
+    trb.w $0026                 ; $82890C
+    plx                         ; $82890F
+    rts                         ; $828910
+    pea.w $837E                 ; $828911
+    plb                         ; $828914
+    sta.b $18                   ; $828915
+    stx.b $3C                   ; $828917
+    lda.w #$0C00                ; $828919
+    sta.b $3A                   ; $82891C
+    jsr.w text_centred_line     ; $82891E
+    plb                         ; $828921
+    rts                         ; $828922
 race_frame_draw:
     stz.b $86                   ; $828923
     stz.b $8E                   ; $828925

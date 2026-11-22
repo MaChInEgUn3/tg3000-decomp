@@ -35,6 +35,27 @@ uint16_t shop_money_roll(void);
 uint16_t shop_money_roll_flags(ShopMoneyFlags* f);
 // $80:9ABB: D+$52/D+$54 become the player's money ($038E/$0390 + D+$94).
 void shop_money_store(void);
+// $80:990D: the money plus the price of row `row` of the current list (a part sold back) to
+// D+$52/D+$54, D+$76 bit 2 cleared, then the settled digits as shop_money_after_price's.
+// Returns Y at the exit.
+uint16_t shop_money_after_refund(uint16_t row);
+// $80:9053/$9100/$91AE/$925C/$95C0: buying a part of the car from lists 1-5 (the level bytes
+// $0393-$0397 + D+$94; bit 7: bought here). Already owned: a sound and the icon. Else the
+// money is taken and, if it covers the price, the panel rises with the money rolling, the
+// level byte becomes the row | $80, the upload is queued, and the panel falls with the money
+// rolling to its new value; else shop_flag_fb. A part bought here before is sold back first.
+// The panel rises to $78 for list 1, $B4 for the others.
+// Which way shop_buy_part went: the part already owned, the money short (a refund first: a
+// path the shop-buy movie runs once), or bought.
+typedef enum { SHOP_BUY_OWNED, SHOP_BUY_SHORT, SHOP_BUY_REFUNDED_SHORT, SHOP_BUY_BOUGHT } ShopBuyEnd;
+ShopBuyEnd shop_buy_part(uint16_t field, uint16_t height, bool price_first, bool settle, ShopMoneyFlags* f);
+void shop_buy_list1(void);
+void shop_buy_list2(void);
+void shop_buy_list3(void);
+void shop_buy_list4(void);
+void shop_buy_list5(void);
+// $80:930A: list 0, the car's colour: $0392 + D+$94 = the row (a byte), then func_80E4DB.
+void shop_buy_colour(void);
 
 // $01FB = $12. ($80:E4D0, long)
 void shop_flag_fb(void);
