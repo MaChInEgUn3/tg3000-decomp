@@ -39,10 +39,11 @@ shoppid=$!
 status=0
 for p in "$mainpid:main" "$shoppid:shop"; do
   s=0
-  wait "${p%%:*}" || s=$?   # the bench's own status (4 = a routine failed)
-  if [ $s -ne 0 ]; then
-    echo "verify_new: ${p#*:} movie failed (bench status $s):" >&2
-    grep -A6 "^difftest.*: FAIL" "$tmp/${p#*:}.log" >&2 || true
+  wait "${p%%:*}" || s=$?   # the bench's own status (4 = a routine failed on that movie)
+  # harness-8: a routine that fails on one movie by the flag or path rule alone may pass on
+  # the evidence pooled over the movies; the merge below decides (other statuses fail)
+  if [ $s -ne 0 ] && [ $s -ne 4 ]; then
+    echo "verify_new: ${p#*:} movie failed (bench status $s)" >&2
     status=$s
   fi
 done
@@ -56,5 +57,12 @@ for name in $(echo "$rows" | tr ',' ' '); do
 done
 if [ $status -ne 0 ]; then echo "verify_new: FAILED" >&2; exit $status; fi
 python3 -I tools/merge_verified.py "$tmp/new.txt" "$tmp/main.txt" "$tmp/shop.txt"
+# the verdict: a named row the merge failed (its per-movie lines show why)
+failed=$(awk '!/^#/ && $8 == "failed" {print $2}' "$tmp/new.txt")
+if [ -n "$failed" ]; then
+  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp/main.log" "$tmp/shop.log" >&2 || true; done
+  echo "verify_new: FAILED ($(echo $failed | tr ' ' ','))" >&2
+  exit 4
+fi
 python3 -I tools/merge_verified.py --update map/verified.txt "$tmp/new.txt"
 python3 -I tools/progress.py

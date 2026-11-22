@@ -37,3 +37,6 @@ jobs:
 
       - name: The rule that carries verified rows across additions
         run: tools/test_carry.sh
+
+      - name: The rule that pools the movies' evidence (harness-8)
+        run: python3 -I tools/test_merge.py

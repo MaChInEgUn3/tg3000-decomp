@@ -1819,6 +1819,49 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## Evidence pooled over the movies (harness-8, 2026-11-22)
+
+**The advisor's design, open to the owner's veto.** Every routine is verified over each
+movie. Until now, a movie that entered a routine only a few times failed it by rules meant
+for a whole run:
+- fewer than 100 returns watched made every flag live;
+- every path had to be visited on that movie;
+- a waiting row that a slice left unsampled had nothing compared.
+
+On the shop-buy movie, about 17 rows failed this way and nothing else.
+- **The bench is unchanged in its verdict.** The selftest and `--difftest-only` rely on it.
+  Each result line now also carries that movie's raw evidence:
+  - `watched:` the returns watched;
+  - `read:` the flags seen read, before the 100 rule;
+  - `mism:` the flags with a compared mismatch;
+  - `hard:` a failure other than the flag and path rules (a compared mismatch, a lost case,
+    a hardware access, a broken contract, a failed or lost replay);
+  - `compared:` the cases compared;
+  - `vis:` the paths visited, one bit per instruction start.
+- **`tools/merge_verified.py` judges on the pooled evidence:**
+  - a hard failure on any movie fails the routine;
+  - a movie that reached it but compared nothing gives no evidence;
+  - the 100 rule applies to the returns watched, summed over the movies;
+  - the live flags are the union of the flags seen read, and a mismatch on one of them, on
+    any movie, fails the routine;
+  - the paths are the union over the movies;
+  - verified needs at least one movie that compared something.
+
+  The committed columns stay as they were.
+- **`verify_all` and `verify_new`** take the verdict from the merge, not from the bench's
+  status 4. Any other status still fails the slice.
+- **Checks:**
+  - `tools/test_merge.py` (no ROM, in CI): nine cases, among them a hard failure on one
+    movie failing the merge.
+  - A full run against the last commit's `map/verified.txt`: every status and count is the
+    same (469 rows).
+  - No row's live flags grew. 13 shrank, because their summed returns now pass 100:
+    - all four flags dropped for `func_80B58D`, `star_random_y`, `tilemap_offset_c2cc`,
+      `char_to_tile_index`, `window_curve_build` and `palette_fade_60`;
+    - only V left for `func_80E4C5` and `text_put_tile_char`;
+    - only C left for the five title rows.
+  - The 22 negative rows all fail.
+
 ## The shop-buy movie's fuzz bases (fuzz-pin-1, 2026-11-22)
 
 **`tools/bench/movies/explore_buy.txt`** (not wired in yet) runs the 60k movie up to step

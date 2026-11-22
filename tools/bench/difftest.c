@@ -1696,6 +1696,8 @@ static uint64_t verificationHash(const char* source) {
   return h;
 }
 
+static unsigned long fuzzLostOf(const Stats* s) { return s->fuzzRequested - (s->fuzzPass + s->fuzzFail); }
+
 bool difftest_report(const char* resultsPath) {
   bool allOk = true;
   // keep earlier rows for routines this run did not reach
@@ -1786,9 +1788,34 @@ bool difftest_report(const char* resultsPath) {
       }
     }
     if(out != NULL && !keptRow) {
-      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s replayed:%lu\n", r->entry, r->name, r->source,
-        (unsigned long long)verificationHash(r->source), s->pass, s->fuzzPass, seen, need, status, liveFlags,
-        s->replayPass);
+      // harness-8: this movie's raw evidence, for tools/merge_verified.py to pool over the
+      // movies: the returns watched, the flags seen read (before the MIN_WATCHED rule), the
+      // flags with a compared mismatch, a hard failure (anything but the flag and path
+      // rules), the cases compared, and the paths visited (one bit per instruction start,
+      // in order, as hex)
+      char readSet[5] = "", mismSet[5] = "", vis[MAX_EXTENT / 4 + 2] = "";
+      for(int f = 0, nr = 0, nm = 0; f < 4; f++) {
+        if(s->live[f] > 0) readSet[nr++] = flagNames[f];
+        if(s->flagMismatch[f] > 0) mismSet[nm++] = flagNames[f];
+      }
+      if(readSet[0] == '\0') strcpy(readSet, "-");
+      if(mismSet[0] == '\0') strcpy(mismSet, "-");
+      {
+        int bit = 0, nib = 0, at = 0;
+        for(int k = 0; k < MAX_EXTENT; k++) {
+          if(!s->starts[k]) continue;
+          if(s->visited[k]) nib |= 8 >> bit;
+          if(++bit == 4) { vis[at++] = "0123456789abcdef"[nib]; bit = nib = 0; }
+        }
+        if(bit) vis[at++] = "0123456789abcdef"[nib];
+        if(at == 0) vis[at++] = '-';
+        vis[at] = '\0';
+      }
+      const bool hard = s->fail > 0 || s->fuzzFail > 0 || fuzzLostOf(s) > 0 || s->replayFail > 0 ||
+                        (s->replayRequested - (s->replayPass + s->replayFail)) > 0 || s->contractBroken;
+      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s replayed:%lu watched:%lu read:%s mism:%s hard:%d compared:%lu vis:%s\n",
+        r->entry, r->name, r->source, (unsigned long long)verificationHash(r->source), s->pass, s->fuzzPass, seen, need,
+        status, liveFlags, s->replayPass, s->watched, readSet, mismSet, hard ? 1 : 0, s->pass + s->fuzzPass + s->replayPass, vis);
     }
   }
   if(out != NULL) fclose(out);

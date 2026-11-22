@@ -45,10 +45,11 @@ for p in $pids; do
   pid=${p%%:*}
   name=${p#*:}
   s=0
-  wait "$pid" || s=$?   # the bench's own status (4 = a routine failed)
-  if [ $s -ne 0 ]; then
-    echo "verify_all: slice $name failed (bench status $s):" >&2
-    grep -A6 "^difftest.*: FAIL" "$tmp/$name.log" >&2 || true
+  wait "$pid" || s=$?   # the bench's own status (4 = a routine failed on that movie)
+  # harness-8: a routine that fails on one movie by the flag or path rule alone may pass on
+  # the evidence pooled over the movies; the merge below decides (other statuses fail)
+  if [ $s -ne 0 ] && [ $s -ne 4 ]; then
+    echo "verify_all: slice $name failed (bench status $s)" >&2
     status=$s
   fi
 done
@@ -63,6 +64,13 @@ head -n 1 "$tmp/shop0.txt" > "$tmp/shop.txt"
 k=0
 while [ $k -lt $shopshards ]; do tail -n +2 "$tmp/shop$k.txt" >> "$tmp/shop.txt"; k=$((k + 1)); done
 python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt"
+# the verdict: a routine the merge failed (its per-movie lines show why)
+failed=$(awk '!/^#/ && $8 == "failed" {print $2}' map/verified.txt)
+if [ -n "$failed" ]; then
+  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp"/main*.log "$tmp"/shop*.log >&2 || true; done
+  echo "verify_all: failed after pooling the movies: $(echo $failed | tr ' ' ',')" >&2
+  status=4
+fi
 k=0
 while [ $k -lt "$shards" ]; do grep -A6 "^difftest" "$tmp/main$k.log" || true; k=$((k + 1)); done
 if grep -q "^difftest.*: \(PASS\|UNREACHED\)" "$tmp/neg" || ! grep -q "^difftest.*: FAIL" "$tmp/neg"; then
