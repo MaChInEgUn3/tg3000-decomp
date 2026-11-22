@@ -1767,7 +1767,7 @@ CODE_8090AF:
     clc                         ; $8090B7
     adc.w #$0006                ; $8090B8
     sta.b $42                   ; $8090BB
-    jsr.w $99D1                 ; $8090BD
+    jsr.w shop_money_roll       ; $8090BD
     jsr.w shop_item_redraw      ; $8090C0
     lda.b $42                   ; $8090C3
     cmp.w #$0078                ; $8090C5
@@ -1781,7 +1781,7 @@ CODE_8090AF:
     jsr.w shop_item_dispatch_upload; $8090D7
     lda.w #$0002                ; $8090DA
     trb.b $76                   ; $8090DD
-    jsr.w $9957                 ; $8090DF
+    jsr.w shop_money_after_price; $8090DF
 CODE_8090E2:
     lda.w #$0001                ; $8090E2
     jsr.w wait_frames           ; $8090E5
@@ -1789,11 +1789,11 @@ CODE_8090E2:
     sec                         ; $8090EA
     sbc.w #$0006                ; $8090EB
     sta.b $42                   ; $8090EE
-    jsr.w $99D1                 ; $8090F0
+    jsr.w shop_money_roll       ; $8090F0
     jsr.w shop_item_redraw      ; $8090F3
     lda.b $42                   ; $8090F6
     bne CODE_8090E2             ; $8090F8
-    jsr.w $9ABB                 ; $8090FA
+    jsr.w shop_money_store      ; $8090FA
     jmp.w shop_item_icon_settle ; $8090FD
     ldx.b $94                   ; $809100
     lda.w $0394,x               ; $809102
@@ -1832,7 +1832,7 @@ CODE_80915C:
     clc                         ; $809164
     adc.w #$0006                ; $809165
     sta.b $42                   ; $809168
-    jsr.w $99D1                 ; $80916A
+    jsr.w shop_money_roll       ; $80916A
     jsr.w shop_item_redraw      ; $80916D
     lda.b $42                   ; $809170
     cmp.w #$00B4                ; $809172
@@ -1846,7 +1846,7 @@ CODE_80915C:
     jsr.w shop_item_dispatch_upload; $809184
     lda.w #$0002                ; $809187
     trb.b $76                   ; $80918A
-    jsr.w $9957                 ; $80918C
+    jsr.w shop_money_after_price; $80918C
 CODE_80918F:
     lda.w #$0001                ; $80918F
     jsr.w wait_frames           ; $809192
@@ -1854,11 +1854,11 @@ CODE_80918F:
     sec                         ; $809197
     sbc.w #$0006                ; $809198
     sta.b $42                   ; $80919B
-    jsr.w $99D1                 ; $80919D
+    jsr.w shop_money_roll       ; $80919D
     jsr.w shop_item_redraw      ; $8091A0
     lda.b $42                   ; $8091A3
     bne CODE_80918F             ; $8091A5
-    jsr.w $9ABB                 ; $8091A7
+    jsr.w shop_money_store      ; $8091A7
     jsr.w shop_item_icon_settle ; $8091AA
     rts                         ; $8091AD
     ldx.b $94                   ; $8091AE
@@ -1898,7 +1898,7 @@ CODE_80920A:
     clc                         ; $809212
     adc.w #$0006                ; $809213
     sta.b $42                   ; $809216
-    jsr.w $99D1                 ; $809218
+    jsr.w shop_money_roll       ; $809218
     jsr.w shop_item_redraw      ; $80921B
     lda.b $42                   ; $80921E
     cmp.w #$00B4                ; $809220
@@ -1912,7 +1912,7 @@ CODE_80920A:
     jsr.w shop_item_dispatch_upload; $809232
     lda.w #$0002                ; $809235
     trb.b $76                   ; $809238
-    jsr.w $9957                 ; $80923A
+    jsr.w shop_money_after_price; $80923A
 CODE_80923D:
     lda.w #$0001                ; $80923D
     jsr.w wait_frames           ; $809240
@@ -1920,11 +1920,11 @@ CODE_80923D:
     sec                         ; $809245
     sbc.w #$0006                ; $809246
     sta.b $42                   ; $809249
-    jsr.w $99D1                 ; $80924B
+    jsr.w shop_money_roll       ; $80924B
     jsr.w shop_item_redraw      ; $80924E
     lda.b $42                   ; $809251
     bne CODE_80923D             ; $809253
-    jsr.w $9ABB                 ; $809255
+    jsr.w shop_money_store      ; $809255
     jsr.w shop_item_icon_settle ; $809258
     rts                         ; $80925B
     ldx.b $94                   ; $80925C
@@ -1964,7 +1964,7 @@ CODE_8092B8:
     clc                         ; $8092C0
     adc.w #$0006                ; $8092C1
     sta.b $42                   ; $8092C4
-    jsr.w $99D1                 ; $8092C6
+    jsr.w shop_money_roll       ; $8092C6
     jsr.w shop_item_redraw      ; $8092C9
     lda.b $42                   ; $8092CC
     cmp.w #$00B4                ; $8092CE
@@ -1978,7 +1978,7 @@ CODE_8092B8:
     jsr.w shop_item_dispatch_upload; $8092E0
     lda.w #$0002                ; $8092E3
     trb.b $76                   ; $8092E6
-    jsr.w $9957                 ; $8092E8
+    jsr.w shop_money_after_price; $8092E8
 CODE_8092EB:
     lda.w #$0001                ; $8092EB
     jsr.w wait_frames           ; $8092EE
@@ -1986,11 +1986,11 @@ CODE_8092EB:
     sec                         ; $8092F3
     sbc.w #$0006                ; $8092F4
     sta.b $42                   ; $8092F7
-    jsr.w $99D1                 ; $8092F9
+    jsr.w shop_money_roll       ; $8092F9
     jsr.w shop_item_redraw      ; $8092FC
     lda.b $42                   ; $8092FF
     bne CODE_8092EB             ; $809301
-    jsr.w $9ABB                 ; $809303
+    jsr.w shop_money_store      ; $809303
     jsr.w shop_item_icon_settle ; $809306
     rts                         ; $809309
     ldx.b $94                   ; $80930A
@@ -2046,7 +2046,7 @@ CODE_8093AE:
     jsr.w shop_item_dispatch_upload; $8093D2
     lda.w #$0002                ; $8093D5
     trb.b $76                   ; $8093D8
-    jsr.w $9957                 ; $8093DA
+    jsr.w shop_money_after_price; $8093DA
 CODE_8093DD:
     lda.w #$0001                ; $8093DD
     jsr.w wait_frames           ; $8093E0
@@ -2054,11 +2054,11 @@ CODE_8093DD:
     sec                         ; $8093E5
     sbc.w #$0006                ; $8093E6
     sta.b $42                   ; $8093E9
-    jsr.w $99D1                 ; $8093EB
+    jsr.w shop_money_roll       ; $8093EB
     jsr.w shop_item_redraw      ; $8093EE
     lda.b $42                   ; $8093F1
     bne CODE_8093DD             ; $8093F3
-    jsr.w $9ABB                 ; $8093F5
+    jsr.w shop_money_store      ; $8093F5
     jsr.w shop_item_icon_settle ; $8093F8
     rts                         ; $8093FB
     ldx.b $94                   ; $8093FC
@@ -2102,7 +2102,7 @@ CODE_809490:
     jsr.w shop_item_dispatch_upload; $8094B4
     lda.w #$0002                ; $8094B7
     trb.b $76                   ; $8094BA
-    jsr.w $9957                 ; $8094BC
+    jsr.w shop_money_after_price; $8094BC
 CODE_8094BF:
     lda.w #$0001                ; $8094BF
     jsr.w wait_frames           ; $8094C2
@@ -2110,11 +2110,11 @@ CODE_8094BF:
     sec                         ; $8094C7
     sbc.w #$0006                ; $8094C8
     sta.b $42                   ; $8094CB
-    jsr.w $99D1                 ; $8094CD
+    jsr.w shop_money_roll       ; $8094CD
     jsr.w shop_item_redraw      ; $8094D0
     lda.b $42                   ; $8094D3
     bne CODE_8094BF             ; $8094D5
-    jsr.w $9ABB                 ; $8094D7
+    jsr.w shop_money_store      ; $8094D7
     jsr.w shop_item_icon_settle ; $8094DA
     rts                         ; $8094DD
     ldx.b $94                   ; $8094DE
@@ -2158,7 +2158,7 @@ CODE_809572:
     jsr.w shop_item_dispatch_upload; $809596
     lda.w #$0002                ; $809599
     trb.b $76                   ; $80959C
-    jsr.w $9957                 ; $80959E
+    jsr.w shop_money_after_price; $80959E
 CODE_8095A1:
     lda.w #$0001                ; $8095A1
     jsr.w wait_frames           ; $8095A4
@@ -2166,11 +2166,11 @@ CODE_8095A1:
     sec                         ; $8095A9
     sbc.w #$0006                ; $8095AA
     sta.b $42                   ; $8095AD
-    jsr.w $99D1                 ; $8095AF
+    jsr.w shop_money_roll       ; $8095AF
     jsr.w shop_item_redraw      ; $8095B2
     lda.b $42                   ; $8095B5
     bne CODE_8095A1             ; $8095B7
-    jsr.w $9ABB                 ; $8095B9
+    jsr.w shop_money_store      ; $8095B9
     jsr.w shop_item_icon_settle ; $8095BC
     rts                         ; $8095BF
     ldx.b $94                   ; $8095C0
@@ -2210,7 +2210,7 @@ CODE_80961C:
     clc                         ; $809624
     adc.w #$0006                ; $809625
     sta.b $42                   ; $809628
-    jsr.w $99D1                 ; $80962A
+    jsr.w shop_money_roll       ; $80962A
     jsr.w shop_item_redraw      ; $80962D
     lda.b $42                   ; $809630
     cmp.w #$00B4                ; $809632
@@ -2224,7 +2224,7 @@ CODE_80961C:
     jsr.w shop_item_dispatch_upload; $809644
     lda.w #$0002                ; $809647
     trb.b $76                   ; $80964A
-    jsr.w $9957                 ; $80964C
+    jsr.w shop_money_after_price; $80964C
 CODE_80964F:
     lda.w #$0001                ; $80964F
     jsr.w wait_frames           ; $809652
@@ -2232,11 +2232,11 @@ CODE_80964F:
     sec                         ; $809657
     sbc.w #$0006                ; $809658
     sta.b $42                   ; $80965B
-    jsr.w $99D1                 ; $80965D
+    jsr.w shop_money_roll       ; $80965D
     jsr.w shop_item_redraw      ; $809660
     lda.b $42                   ; $809663
     bne CODE_80964F             ; $809665
-    jsr.w $9ABB                 ; $809667
+    jsr.w shop_money_store      ; $809667
     jsr.w shop_item_icon_settle ; $80966A
     rts                         ; $80966D
     ldx.b $94                   ; $80966E
@@ -2280,7 +2280,7 @@ CODE_809702:
     jsr.w shop_item_dispatch_upload; $809726
     lda.w #$0002                ; $809729
     trb.b $76                   ; $80972C
-    jsr.w $9957                 ; $80972E
+    jsr.w shop_money_after_price; $80972E
 CODE_809731:
     lda.w #$0001                ; $809731
     jsr.w wait_frames           ; $809734
@@ -2288,11 +2288,11 @@ CODE_809731:
     sec                         ; $809739
     sbc.w #$0006                ; $80973A
     sta.b $42                   ; $80973D
-    jsr.w $99D1                 ; $80973F
+    jsr.w shop_money_roll       ; $80973F
     jsr.w shop_item_redraw      ; $809742
     lda.b $42                   ; $809745
     bne CODE_809731             ; $809747
-    jsr.w $9ABB                 ; $809749
+    jsr.w shop_money_store      ; $809749
     jsr.w shop_item_icon_settle ; $80974C
     rts                         ; $80974F
     incbin !baserom:$1750..$1832
@@ -2413,6 +2413,7 @@ shop_money_take:
     lda.w #$0004                ; $809951
     tsb.b $76                   ; $809954
     rts                         ; $809956
+shop_money_after_price:
     lda.b $48                   ; $809957
     asl a                       ; $809959
     tax                         ; $80995A
@@ -2465,11 +2466,24 @@ CODE_8099AB:
     lsr a                       ; $8099B2
     dey                         ; $8099B3
     bne CODE_809996             ; $8099B4
-    incbin !baserom:$19B6..$19CB
+    ldy.w #$0004                ; $8099B6 static
+    lda.w #$F000                ; $8099B9 static
+CODE_8099BC:
+    bit.b $7A                   ; $8099BC static
+    bne CODE_8099CB             ; $8099BE static
+    ora.b $56                   ; $8099C0 static
+    sta.b $56                   ; $8099C2 static
+    lsr a                       ; $8099C4 static
+    lsr a                       ; $8099C5 static
+    lsr a                       ; $8099C6 static
+    lsr a                       ; $8099C7 static
+    dey                         ; $8099C8 static
+    bne CODE_8099BC             ; $8099C9 static
 CODE_8099CB:
     lda.w #$0004                ; $8099CB
     sta.b $5A                   ; $8099CE
     rts                         ; $8099D0
+shop_money_roll:
     lda.w #$0000                ; $8099D1
     sta.b $7A                   ; $8099D4
     lda.w #$F000                ; $8099D6
@@ -2581,6 +2595,7 @@ CODE_809AA6:
     dec.b $84                   ; $809AB6
     bne CODE_809A56             ; $809AB8
     rts                         ; $809ABA
+shop_money_store:
     ldx.b $94                   ; $809ABB
     lda.b $52                   ; $809ABD
     sta.w $038E,x               ; $809ABF

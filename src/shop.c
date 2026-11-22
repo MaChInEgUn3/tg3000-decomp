@@ -32,6 +32,154 @@ void shop_money_take(void) {
   wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) | 0x0004));
 }
 
+static uint16_t shop_item_entry(uint16_t row);
+
+// A 16-bit decimal-mode SBC of valid BCD words (the money and the prices always are):
+// a - b - !carry, the borrow out as !carry.
+static uint16_t bcd_sub16(uint16_t a, uint16_t b, bool* carry) {
+  int borrow = *carry ? 0 : 1;
+  uint16_t r = 0;
+  for(int k = 0; k < 16; k += 4) {
+    int d = (int)((a >> k) & 0xF) - (int)((b >> k) & 0xF) - borrow;
+    borrow = d < 0;
+    if(borrow) d += 10;
+    r = (uint16_t)(r | (uint16_t)(d << k));
+  }
+  *carry = !borrow;
+  return r;
+}
+
+// TG3000_ROUTINE($80:9957) shop_money_after_price
+uint16_t shop_money_after_price(void) {
+  ShopMoneyFlags f;
+  return shop_money_after_price_flags(&f);
+}
+
+uint16_t shop_money_after_price_flags(ShopMoneyFlags* f) {
+  const uint16_t price = rom16(0x81A89B + (uint32_t)shop_item_entry(rd16(DP + 0x4A)));
+  const uint32_t car = rd16(DP + 0x94);
+  const uint16_t lo = rd16(0x038E + car), hi = rd16(0x0390 + car);
+  bool c = true;
+  wr16(DP + 0x52, bcd_sub16(lo, rom16(0x81A890 + (uint32_t)price), &c));
+  wr16(DP + 0x54, bcd_sub16(hi, rom16(0x81A88E + (uint32_t)price), &c));
+  wr16(DP + 0x56, 0);
+  wr16(DP + 0x58, 0);
+  wr16(DP + 0x7A, (uint16_t)(lo | rd16(DP + 0x52)));
+  wr16(DP + 0x7C, (uint16_t)(hi | rd16(DP + 0x54)));
+  // From the top, the digits that neither number has, or that stay the same, settle (D+$58).
+  // The mask tested each time is every digit from the top down to the current one (ORA of
+  // what settled before the shift).
+  uint16_t y = 4, a = 0xF000;
+  f->v = (rd16(DP + 0x7C) >> 14) & 1;  // BIT $7C's V
+  for(; y != 0; y--) {
+    if(a & rd16(DP + 0x7C)) {
+      wr16(DP + 0x7E, a);
+      wr16(DP + 0x80, (uint16_t)(a & hi));
+      const uint16_t mine = (uint16_t)(a & rd16(DP + 0x54));
+      c = mine >= rd16(DP + 0x80);  // CMP
+      if(mine != rd16(DP + 0x80)) goto done;
+    }
+    a = (uint16_t)(a | rd16(DP + 0x58));
+    wr16(DP + 0x58, a);
+    c = (a >> 3) & 1;  // the last of four LSRs
+    a = (uint16_t)(a >> 4);
+  }
+  // all four high digits settled: the low word's leading zeros the same way (D+$56); no
+  // run takes this path
+  f->v = (rd16(DP + 0x7A) >> 14) & 1;  // BIT $7A's V
+  for(y = 4, a = 0xF000; y != 0; y--) {
+    if(a & rd16(DP + 0x7A)) goto done;
+    a = (uint16_t)(a | rd16(DP + 0x56));
+    wr16(DP + 0x56, a);
+    c = (a >> 3) & 1;
+    a = (uint16_t)(a >> 4);
+  }
+done:
+  wr16(DP + 0x5A, 4);
+  f->c = c;
+  return y;
+}
+
+// The digit mask D+$7C:D+$7A one digit lower (LSR $7C / ROR $7A, four times); the carry
+// the last ROR leaves.
+static bool shop_money_mask_down(void) {
+  const uint32_t m = (uint32_t)rd16(DP + 0x7A) | (uint32_t)rd16(DP + 0x7C) << 16;
+  wr16(DP + 0x7A, (uint16_t)(m >> 4));
+  wr16(DP + 0x7C, (uint16_t)(m >> 20));
+  return (m >> 3) & 1;
+}
+
+// TG3000_ROUTINE($80:99D1) shop_money_roll
+uint16_t shop_money_roll(void) {
+  ShopMoneyFlags f = {false, false};
+  return shop_money_roll_flags(&f);
+}
+
+uint16_t shop_money_roll_flags(ShopMoneyFlags* f) {
+  wr16(DP + 0x7A, 0);
+  wr16(DP + 0x7C, 0xF000);
+  wr16(DP + 0x84, 8);
+  const uint32_t car = rd16(DP + 0x94);
+  uint16_t a;
+  // the digits already settled (D+$56/D+$58), from the top, are passed over
+  for(;;) {
+    wr16(DP + 0x7E, (uint16_t)((rd16(DP + 0x56) & rd16(DP + 0x7A)) | (rd16(DP + 0x58) & rd16(DP + 0x7C))));
+    a = (uint16_t)(rd16(DP + 0x7A) | rd16(DP + 0x7C));
+    if(a != rd16(DP + 0x7E)) break;
+    f->c = shop_money_mask_down();
+    wr16(DP + 0x84, (uint16_t)(rd16(DP + 0x84) - 1));
+    if(rd16(DP + 0x84) == 0) return a;
+  }
+  wr16(DP + 0x5A, (uint16_t)(rd16(DP + 0x5A) - 1));
+  if(rd16(DP + 0x5A) == 0) {  // the first unsettled digit takes its new value and settles
+    wr16(0x038E + car, (uint16_t)((rd16(0x038E + car) & ~rd16(DP + 0x7A)) | (rd16(DP + 0x52) & rd16(DP + 0x7A))));
+    wr16(0x0390 + car, (uint16_t)((rd16(0x0390 + car) & ~rd16(DP + 0x7C)) | (rd16(DP + 0x54) & rd16(DP + 0x7C))));
+    wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x52) & rd16(DP + 0x7A)));
+    wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x54) & rd16(DP + 0x7C)));
+    wr16(DP + 0x56, (uint16_t)(rd16(DP + 0x56) | rd16(DP + 0x7A)));
+    wr16(DP + 0x58, (uint16_t)(rd16(DP + 0x58) | rd16(DP + 0x7C)));
+    wr16(DP + 0x5A, 4);
+    a = 4;
+    goto next;
+  }
+  for(;;) {  // this digit and every one below it roll down by one (0 to 9)
+    {
+      const uint16_t m1 = rd16(DP + 0x7A), m2 = rd16(DP + 0x7C);
+      const uint16_t one1 = (uint16_t)(0x1111 & m1), one2 = (uint16_t)(0x1111 & m2);
+      const uint16_t now1 = (uint16_t)(rd16(0x038E + car) & m1), now2 = (uint16_t)(rd16(0x0390 + car) & m2);
+      const uint32_t d1 = (uint32_t)now1 - one1;
+      const uint16_t lo0 = (uint16_t)d1, borrow1 = (d1 >> 16) & 1;
+      const uint32_t d2 = (uint32_t)now2 - one2 - borrow1;
+      const uint16_t hi0 = (uint16_t)d2;
+      f->v = ((now2 ^ one2) & (now2 ^ hi0) & 0x8000) != 0;  // SBC's V
+      uint16_t lo = lo0, hi = hi0;
+      if(d2 >> 16) {  // a borrow out: the digit was 0 and wraps to 9
+        const uint32_t s1 = (uint32_t)lo0 + 0xAAAA;
+        const uint32_t s2 = (uint32_t)hi0 + 0xAAAA + (s1 >> 16);
+        f->v = (~(hi0 ^ 0xAAAA) & (hi0 ^ (uint16_t)s2) & 0x8000) != 0;  // ADC's V
+        lo = (uint16_t)(s1 & m1);
+        hi = (uint16_t)(s2 & m2);
+      }
+      wr16(DP + 0x7E, lo);
+      wr16(DP + 0x80, hi);
+      wr16(0x038E + car, (uint16_t)((rd16(0x038E + car) & ~m1) | lo));
+      a = (uint16_t)((rd16(0x0390 + car) & ~m2) | hi);
+      wr16(0x0390 + car, a);
+    }
+  next:
+    f->c = shop_money_mask_down();
+    wr16(DP + 0x84, (uint16_t)(rd16(DP + 0x84) - 1));
+    if(rd16(DP + 0x84) == 0) return a;
+  }
+}
+
+// TG3000_ROUTINE($80:9ABB) shop_money_store
+void shop_money_store(void) {
+  const uint32_t car = rd16(DP + 0x94);
+  wr16(0x038E + car, rd16(DP + 0x52));
+  wr16(0x0390 + car, rd16(DP + 0x54));
+}
+
 // TG3000_ROUTINE($80:E4D0) shop_flag_fb (long)
 void shop_flag_fb(void) { wr8(DP + 0xFB, 0x12); }
 

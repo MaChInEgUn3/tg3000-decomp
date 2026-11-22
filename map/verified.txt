@@ -469,3 +469,6 @@
 80F549 upload_slice_13 src/video_dma.c d003f8cb1ac5b921 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c d003f8cb1ac5b921 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c d003f8cb1ac5b921 1 500 20/20 verified live-flags:NVZC replayed:0
+809957 shop_money_after_price src/shop.c 16563357d92479f1 3 500 65/65 verified live-flags:NVZC replayed:0
+8099D1 shop_money_roll src/shop.c 16563357d92479f1 61 500 106/106 verified live-flags:NVZC replayed:0
+809ABB shop_money_store src/shop.c 16563357d92479f1 2 500 6/6 verified live-flags:NVZC replayed:0

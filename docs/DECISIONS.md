@@ -1819,6 +1819,34 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The buying's money (shop-17, 2026-11-22)
+
+**Three routines that only the shop-buy movie reaches**, in `src/shop.c`. Money is in BCD:
+the player's at `$038E/$0390` + D+$94, the target at D+$52/D+$54.
+- **`shop_money_after_price` ($80:9957):** the money less the current item's price, a
+  decimal-mode `SBC` (the price at `$81:A890`/`$A88E` + the item's word at `$81:A89B`), to
+  D+$52/D+$54. Then it marks the digits that are settled.
+  - From the top, the digits that neither number has, or that stay the same, go in D+$58.
+    The mask tested each time is every digit from the top down to the current one: the
+    original does `ORA $58` before the four `LSR`s.
+  - If all four high digits settle, the low word's leading zeros go in D+$56 the same way.
+    No run takes that path; `map/static_code.txt` declares it, and the fuzz runs it.
+  - Then D+$5A = 4.
+  - **Its exit flags are modelled** (only 3 returns watched):
+    - V is bit 14 of the last word `BIT` tested (D+$7C, or D+$7A in the second loop);
+    - C is the last `CMP`'s or the last `LSR`'s.
+- **`shop_money_roll` ($80:99D1):** one step of the money rolling down to its target.
+  - The settled digits from the top are passed over.
+  - At the first other digit, D+$5A counts down. At 0 that digit takes its new value and
+    settles (D+$5A = 4). Otherwise it and every digit below roll down by one, 0 wrapping to
+    9 (a 32-bit `SBC` of `$1111` under the mask, then `ADC #$AAAA` on a borrow).
+  - C is the last `ROR`'s. V is the last `SBC`'s or `ADC`'s, or as on entry when none ran.
+- **`shop_money_store` ($80:9ABB):** D+$52/D+$54 become the money.
+- **The C's decimal `SBC`** (`bcd_sub16`) is exact for valid BCD only. The game's money and
+  prices always are, and so is the fuzz's.
+- **Result on the shop-buy movie:** live 3/3, 61/61 and 2/2; fuzz 500/500 each; paths
+  65/65, 106/106 and 6/6; every flag compared.
+
 ## The shop-buy movie wired in (explore-2, 2026-11-22)
 
 **`tools/bench/movies/explore_buy.txt` is now the third movie** of `verify_all` (two slices)

@@ -17,6 +17,24 @@ uint16_t shop_part_level_7(uint16_t car);  // $80:9F1E ($0397)
 // Copy the player's money ($038E/$0390 + $0194) to $52/$54, mark $56 = $FFFF and set
 // $76 bit 2. ($80:993E)
 void shop_money_take(void);
+// $80:9957: the money after the current item's price (decimal SBC, the item's price at
+// $81:A890/$81:A88E + its word at $81:A89B) to D+$52/D+$54. The leading digits that neither
+// the money nor that result has, or that stay the same, are marked settled (D+$58, then the
+// low word's zeros in D+$56, a path no run takes); D+$5A = 4. D+$7A/$7C: money | result;
+// D+$7E/$80 the last digit compared. Returns Y at the exit (the digits left unchecked).
+uint16_t shop_money_after_price(void);
+// The original's carry and overflow at the exits of the two below (for the bench; the game's
+// callers reload the flags). shop_money_roll_flags leaves `v` as given when no SBC/ADC ran.
+typedef struct { bool c, v; } ShopMoneyFlags;
+uint16_t shop_money_after_price_flags(ShopMoneyFlags* f);
+// $80:99D1: one step of the money rolling down to D+$52/D+$54. The settled digits from the
+// top are passed over; at the first other one, D+$5A counts down: at 0 that digit takes its
+// new value and settles (D+$5A = 4), else it and every digit below roll down by one (0 to
+// 9). D+$7A/$7C the digit mask, D+$84 the digits left. Returns the original's A at its RTS.
+uint16_t shop_money_roll(void);
+uint16_t shop_money_roll_flags(ShopMoneyFlags* f);
+// $80:9ABB: D+$52/D+$54 become the player's money ($038E/$0390 + D+$94).
+void shop_money_store(void);
 
 // $01FB = $12. ($80:E4D0, long)
 void shop_flag_fb(void);

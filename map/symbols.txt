@@ -226,6 +226,9 @@ func    809F14   shop_part_level_5   ; part level $0395 + car, plus 1 -> src/sho
 func    809F19   shop_part_level_6   ; part level $0396 + car, plus 1 -> src/shop.c
 func    809F1E   shop_part_level_7   ; part level $0397 + car, plus 1 -> src/shop.c
 func    80993E   shop_money_take     ; player's money to $52/$54, $56 = $FFFF, $76 bit 2 -> src/shop.c
+func    809957   shop_money_after_price ; the money less the item's price (BCD) to $52/$54; the settled leading digits -> src/shop.c
+func    8099D1   shop_money_roll     ; one step of the money rolling down to $52/$54 -> src/shop.c
+func    809ABB   shop_money_store    ; $52/$54 become the player's money -> src/shop.c
 func    80E4D0   shop_flag_fb        ; $01FB = $12 (long) -> src/shop.c
 func    809DBC   shop_panel_upload   ; queue the shop panel's VRAM upload (func_80B537) -> src/shop.c
 func    809BF2   shop_item_picture   ; current item's picture (func_80B58D) -> src/shop.c

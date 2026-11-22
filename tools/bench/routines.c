@@ -6158,6 +6158,68 @@ static void fuzz_shop_money_take(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x76, (uint16_t)rnd());
 }
 
+// ---- shop_money_after_price / shop_money_roll / shop_money_store ($80:9957, $80:99D1,
+// $80:9ABB) ----  the buying's money (BCD: the game's money always is, and so is the fuzz's).
+// X = D+$94 on every exit. after_price: A = 4 (LDA #4), Y = the digits left unchecked.
+// roll: A as the original's last load, Z set and N clear (the final DEC of D+$84 to 0).
+// store: A = D+$54 (its LDA: N/Z).
+static uint16_t bcd16_random(uint32_t (*rnd)(void)) {
+  uint16_t v = 0;
+  for(int k = 0; k < 16; k += 4) v = (uint16_t)(v | (uint16_t)((rnd() % 10) << k));
+  return v;
+}
+static void call_shop_money_after_price(const Regs* in, Regs* out) {
+  (void)in;
+  ShopMoneyFlags f;
+  out->y = shop_money_after_price_flags(&f);
+  out->c = f.c;
+  out->v = f.v;
+  out->a = 4;
+  out->x = rd16(DP + 0x94);
+  out->n = out->z = false;
+}
+static void call_shop_money_roll(const Regs* in, Regs* out) {
+  ShopMoneyFlags f = {in->c, in->v};
+  out->a = shop_money_roll_flags(&f);
+  out->c = f.c;
+  out->v = f.v;
+  out->x = rd16(DP + 0x94);
+  out->y = in->y;
+  out->n = false;
+  out->z = true;
+}
+static void call_shop_money_store(const Regs* in, Regs* out) {
+  shop_money_store();
+  out->a = rd16(DP + 0x54);
+  out->x = rd16(DP + 0x94);
+  out->y = in->y;
+  setNZ16(out, out->a);
+}
+// the car's money ($038E/$0390 + D+$94) and the target D+$52/$54 in BCD; for the roll the
+// settled digits (D+$56/$58: each digit all or nothing, mostly from the top) and D+$5A 1-4
+static void fuzz_shop_money(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  const uint16_t car = (uint16_t)(rnd() % 0x40);
+  wr16ram(ram, DP + 0x94, car);
+  wr16ram(ram, (uint16_t)(0x038E + car), bcd16_random(rnd));
+  wr16ram(ram, (uint16_t)(0x0390 + car), (rnd() & 1) ? bcd16_random(rnd) : (uint16_t)(rnd() % 10));
+  wr16ram(ram, DP + 0x52, bcd16_random(rnd));
+  wr16ram(ram, DP + 0x54, (rnd() & 1) ? bcd16_random(rnd) : (uint16_t)(rnd() % 10));
+  uint32_t settled = 0;
+  const int top = (int)(rnd() % 9);
+  for(int k = 0; k < 8; k++) if(k < top || (rnd() % 6) == 0) settled |= 0xF0000000u >> (4 * k);
+  wr16ram(ram, DP + 0x56, (uint16_t)settled);
+  wr16ram(ram, DP + 0x58, (uint16_t)(settled >> 16));
+  wr16ram(ram, DP + 0x5A, (uint16_t)(1 + rnd() % 4));
+}
+// the current item: lists 0-8 (0 and 6-8 one row each), the car's money in BCD
+static void fuzz_shop_money_after_price(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_shop_money(r, ram, rnd);
+  const uint16_t list = (uint16_t)(rnd() % 9);
+  wr16ram(ram, DP + 0x48, list);
+  wr16ram(ram, DP + 0x4A, (uint16_t)(list == 0 || list >= 6 ? 0 : rnd() % 5));
+}
+
 // A kept (PLA: N/Z from it)
 static void call_shop_flag_fb(const Regs* in, Regs* out) { shop_flag_fb(); setNZ16(out, in->a); }
 
@@ -9769,6 +9831,15 @@ const Routine routines[] = {
    .lowWramDb = true, .call = call_shop_part_level_7, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
   {.name = "shop_money_take", .entry = 0x80993E, .end = 0x809957, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_shop_money_take, ALL_OUTPUTS, .fuzz = fuzz_shop_money_take},
+  {.name = "shop_money_after_price", .entry = 0x809957, .end = 0x8099D1, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_money_after_price, ALL_OUTPUTS,
+   .fuzz = fuzz_shop_money_after_price},
+  {.name = "shop_money_roll", .entry = 0x8099D1, .end = 0x809ABB, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_shop_money_roll, ALL_OUTPUTS,
+   .fuzz = fuzz_shop_money},
+  {.name = "shop_money_store", .entry = 0x809ABB, .end = 0x809AC8, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_shop_money_store, ALL_OUTPUTS,
+   .fuzz = fuzz_shop_money},
   {.name = "shop_flag_fb", .entry = 0x80E4D0, .end = 0x80E4DB, .rtl = true, .source = "src/shop.c", .needM16 = true,
    .fixedD = true, .call = call_shop_flag_fb, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "shop_panel_upload", .entry = 0x809DBC, .end = 0x809DD0, .source = "src/shop.c", .needM16 = true, .needX16 = true,
