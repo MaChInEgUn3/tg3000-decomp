@@ -6872,3 +6872,291 @@ void player1_frame(void) {
   player_car_frame(0x0200);
   car_track_step(0x0200);
 }
+
+
+// $82:DAAF (ran in the TAS only): a track object's sprite, its height from the table less
+// $40; sprite_put_rows_a either way (the original branches on bit 4 of the +2 byte to the
+// same JMP)
+// TG3000_ROUTINE($82:DAAF) object_sprite_hover
+bool object_sprite_hover(uint16_t x) {
+  wr16(DP + 0x24, bus_rd16(0x86AF06 + (uint32_t)x));
+  const uint32_t o = rd16(DP + 0x1C);
+  uint16_t place = (uint16_t)((rd16(0x8CB3 + o) & 0x00FF) << 4);
+  if(place & 0x0800) place |= 0xF000;
+  wr16(DP + 0x20, place);
+  wr16(DP + 0x26, (uint16_t)(((rd16(0x8CB4 + o) & 0x0700) << 1) | rd16(DP + 0x26)));
+  const uint32_t h = (uint16_t)((rd16(0x0024) - rd16(0x8CB6 + o)) & 0x003E);
+  wr16(DP + 0x22, (uint16_t)(bus_rd16(0x84A200 + h) + 0xFFC0));
+  return sprite_put_rows_a();
+}
+
+// the object table's handler by kind ($82:80CE + kind * 2); carry_in: the original's carry
+// at its JSR, which the empty handler ($82:EA80, an RTS) hands back
+static bool object_handler(uint16_t kind2, bool carry_in) {
+  switch(bus_rd16(0x8280CE + kind2)) {
+    case 0xDA48: return object_sprite_shadowed(kind2);
+    case 0xDB87: return object_sprite_group(kind2);
+    case 0xDB4D: return object_sprite_flat(kind2);
+    case 0xDAFD: return object_sprite_raised(kind2);
+    case 0xDAAF: return object_sprite_hover(kind2);
+    case 0xDA46: clc_82DA46(); return false;
+    case 0xEA80: track_event_none(); return carry_in;
+    default:  // kind 0 ($82:DCEC, into unknown code at $82:CAE5) and kind 9 (a 0 entry): never
+              // run in any movie or the TAS; not ported
+      return carry_in;
+  }
+}
+
+
+// CF30-D05F: the player's car (offset 0) on row `xrow`: its shadow car (when $021A is 0 and
+// $1F18 is not negative), its marker ($021D negative), its body, its bar (sprite_bar_put)
+// and the item ($014C = 2). The parts' results are not looked at; never fills.
+static bool player_car_sprites(uint16_t xrow) {
+  const uint16_t k8 = (uint16_t)(((rd16(0x023A) >> 8) & 0x00FF));
+  if(rd16(0x021A) == 0) {
+    wr16(0x1F24, rd16(0x1F18));
+    if(!(rd16(0x1F18) & 0x8000)) {
+      wr16(DP + 0x32, rd16(0x1F1C));
+      wr16(DP + 0x34, rd16(0x1F20));
+      (void)car_sprite_head(xrow, 0);
+      dsp4_port_write16(rd16(0xFABF));
+      dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) + rd16(0x1F34) + 0x0138));
+      wr16(0x1F24, (uint16_t)(rd16(0x1F18) & 0xFFF8));
+      (void)sprite_parts_stream_rom(bus_rd16(0x86C8B2 + (uint32_t)rd16(0x1F24)));
+    }
+  }
+  if(rd16(0x021D) & 0x8000) {
+    wr16(DP + 0x32, 0);
+    wr16(DP + 0x34, 0);
+    (void)car_sprite_head(xrow, 0);
+    dsp4_port_write16(rd16(0xFABF));
+    dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) + 0x0F00));
+    (void)sprite_parts_stream_rom(bus_rd16(0x86CBEC + 2 * (uint32_t)k8));
+  }
+  wr16(DP + 0x32, 0);
+  wr16(DP + 0x34, 0);
+  (void)car_sprite_head(xrow, 0);
+  dsp4_port_write16(rd16(0xFABF));
+  dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) + 0x0F00));
+  (void)sprite_parts_stream_rom(bus_rd16(0x86C97A + 8 * (uint32_t)k8));
+  (void)car_sprite_head(xrow, 0);
+  dsp4_port_write16(0);
+  dsp4_port_write16(rd16(DP + 0x3C));
+  {
+    const uint32_t t = 8 * (uint32_t)k8;
+    (void)sprite_bar_put(bus_rd16(0x86CC64 + t), bus_rd16(0x86CC66 + t), bus_rd16(0x86CC68 + t));
+  }
+  if(rd16(0x014C) == 0x0002) {  // the item
+    dsp4_port_write16(rd16(0x386A + (uint32_t)rd16(DP + 0x14)));
+    static const uint16_t w[] = {0x9000, 0, 0x0033, 0x0033, 0, 0, 0x7FFF};
+    for(unsigned i = 0; i < sizeof w / sizeof w[0]; i++) dsp4_port_write16(w[i]);
+    dsp4_port_write16(rd16(0x028B));
+    (void)dsp4_port_read16();
+    dsp4_port_write16(rd16(0x028D));
+    dsp4_port_write16(rd16(DP + 0x3C));
+    (void)sprite_parts_stream_rom(0xAD4A);
+  }
+  wr16(0x0281, 0xFFFF);
+  return false;
+}
+
+// D062-D1B2: a rival car `car` on row `xrow`; returns whether the buffer filled
+static bool rival_car_sprites(uint16_t xrow, uint16_t car) {
+  const uint32_t c = car;
+  uint16_t x = xrow;
+  if(rd16(0x0281) & 0x8000) {  // the first rival drawn: its frame for later
+    wr16(0x0281, car);
+    wr16(0x0283, x);
+    const uint32_t v = (uint16_t)(((rd16(0xFAB5 + c) >> 1) & 0x007E) + rd16(0x39EC + (uint32_t)rd16(DP + 0x14)));
+    wr16(0x0293, bus_rd16(0x83ACEC + v));
+    x = rd16(0x0283);
+  }
+  dsp4_port_write16(rd16(0x386A + (uint32_t)x));
+  dsp4_port_write16(0x9000);
+  dsp4_port_write16(rd16(0xFAB4 + c));
+  const uint32_t r = rd16(DP + 0x14);
+  const uint32_t frame = (uint16_t)(((rd16(0xFAB5 + c) >> 1) & 0x007E) + rd16(0x39EC + r));
+  uint16_t d;
+  if((rd16(0xFADE + c) & 0x0022) == 0x0020) {  // on the branch road
+    dsp4_port_write16(rd16(0x376E + r));
+    dsp4_port_write16(rd16(0x376C + r));
+    dsp4_port_write16(rd16(0x356E + r));
+    dsp4_port_write16(rd16(0x356C + r));
+    dsp4_port_write16(bus_rd16(0x83ACEC + frame));
+    dsp4_port_write16(rd16(0xFABB + c));
+    wr16(DP + 0x2A, dsp4_port_read16());
+    dsp4_port_write16(rd16(0xFABF + c));
+    dsp4_port_write16((uint16_t)(0x1000 | rd16(0xFAD1 + c)));
+    d = (uint16_t)(rd16(0x356C + r) - rd16(0x356E + r));
+  } else {
+    dsp4_port_write16(rd16(0x36EE + r));
+    dsp4_port_write16(rd16(0x36EC + r));
+    dsp4_port_write16(rd16(0x34EE + r));
+    dsp4_port_write16(rd16(0x34EC + r));
+    dsp4_port_write16(bus_rd16(0x83ACEC + frame));
+    dsp4_port_write16(rd16(0xFABB + c));
+    wr16(DP + 0x2A, dsp4_port_read16());
+    dsp4_port_write16(rd16(0xFABF + c));
+    dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) | rd16(0xFAD1 + c)));
+    d = (uint16_t)(rd16(0x34EC + r) - rd16(0x34EE + r));
+  }
+  // D16E: the car's turn against the road's: its band (0-12, by the steps of $82:F48E's kind)
+  const uint16_t a = (uint16_t)(rd16(DP + 0x2A) - (uint16_t)(d << 1));
+  static const uint16_t steps[] = {0xFFA0, 0xFFC0, 0xFFE8, 0x0018, 0x0040, 0x0060};
+  uint32_t band = 0;
+  for(unsigned i = 0; i < 6; i++, band += 2)
+    if((uint16_t)(a - steps[i]) & 0x8000) break;
+  const uint32_t parts = (uint16_t)(rd16(0x10000 + band) + bus_rd16(0x849180 + frame));  // bank $7F
+  return sprite_parts_stream_rom(rd16(0x10000 + parts));
+}
+
+// TG3000_ROUTINE($82:CBD4) object_sprites_stream
+void object_sprites_stream(void) {
+  wr16(0x0184, rd16(0x0186));
+  // (command $03, then $0005: native, judged as whole commands)
+  wr16(DP + 0x1A, (uint16_t)(rd16(DP + 0x8E) + 0x0200));
+  wr16(DP + 0x3C, rd16(DP + 0xC8) ? 0 : 0x1000);
+  {  // the player's place in the race order: D+$28
+    uint16_t y = 0x0028;
+    const uint32_t me = rd16(0x0225) | (uint32_t)rd16(0x0227) << 16;
+    uint32_t x = rd16(0x1E90);
+    if(me < (rd16(0xFAB5 + x) | (uint32_t)rd16(0xFAB7 + x) << 16)) {
+      for(y = 0x0026; y != 0; y = (uint16_t)(y - 2)) {
+        x = rd16(0x1E68 + (uint32_t)y);
+        if(me >= (rd16(0xFAB5 + x) | (uint32_t)rd16(0xFAB7 + x) << 16)) break;
+      }
+    }
+    wr16(DP + 0x28, y);
+  }
+  wr16(DP + 0x2C, rd16(0x0226));
+  {  // the two players' dots on the mini-map
+    uint16_t at = (uint16_t)((rd16(0x0226) >> 2) & 0xFFFC);
+    if(rd16(0x1E66) & 0x8000) at = (uint16_t)(at + 2);
+    wr16(DP + 0x14, rd16(0x0235));
+    minimap_car(0x001E, at, (uint16_t)(rd16(0xFAD1) | 0x30FD));
+    at = (uint16_t)((rd16(0x02D9) >> 2) & 0xFFFC);
+    if(rd16(0x1E68) & 0x8000) at = (uint16_t)(at + 2);
+    wr16(DP + 0x14, rd16(0x02E8));
+    minimap_car(0x001E, at, (uint16_t)(rd16(0xFAD1 + 0x35) | 0x30FD));
+  }
+  // the $09 stream
+  static const uint16_t head[] = {0x0009, 0x0080, 0x00A9, 0, 0, 0x0100, 0x0004};
+  for(unsigned i = 0; i < sizeof head / sizeof head[0]; i++) dsp4_port_write16(head[i]);
+  dsp4_port_write16((rd16(0x1EF2) & 0x8000) ? (uint16_t)(rd16(0x1EF2) + 0x00DC) : 0x00DC);
+  // CDB7
+  wr16(DP + 0x14, 0);
+  wr16(DP + 0x16, (uint16_t)(rd16(0x0226) << 2));
+  wr16(DP + 0x18, (uint16_t)(rd16(0x019A) << 2));
+  wr16(DP + 0x30, (uint16_t)(rd16(0x1EDE) << 2));
+  {
+    const uint32_t seg = (uint16_t)(rd16(0x019C) + rd16(0x1E5E));
+    wr16(DP + 0x2E, (uint16_t)((uint16_t)(bus_rd16(0x840000 + seg) + 0x003F) << 2));
+    uint16_t a = (uint16_t)(bus_rd16(0x840010 + seg) << 2);
+    if(rd16(0x1E66) & 0x8000) a = 0;
+    wr16(DP + 0x36, a);
+  }
+  wr16(0x1DF6, 0);
+  wr16(0x1DF8, 0);
+  wr16(0x34EC, (uint16_t)(rd16(0x34EE) - rd16(0x020C)));
+  wr16(0x36EC, (uint16_t)(rd16(0x36EE) - sext8(rd8(0x0209))));
+  wr16(0x356C, (uint16_t)(rd16(0x356C) + rd16(0x34EC)));
+  wr16(0x376C, (uint16_t)(rd16(0x376C) + rd16(0x36EC)));
+  wr16(0x386C, 0x0033);
+  wr16(0x39EC, (uint16_t)(rd16(0x39EE) - 0x0080));
+  goto cars;           // the first row's cars (the original jumps to CEFD)
+objects:               // CE4E: the row D+$14's object, if any
+  {
+    const uint16_t x = rd16(DP + 0x16);
+    uint16_t a = (uint16_t)(x + 4);
+    if(a >= rd16(DP + 0x18)) a = (uint16_t)(a - rd16(DP + 0x18));
+    if(a == rd16(DP + 0x30)) {  // the armed jump
+      wr16(DP + 0x16, a);
+      wr16(DP + 0x2C, (uint16_t)(rd16(0x1EE0) + rd16(DP + 0x2C)));
+      const uint16_t j = rd16(0x1EE0);
+      a = (uint16_t)((uint16_t)(j << 2) + rd16(DP + 0x16) + ((j >> 14) & 1));  // the second ASL's carry
+    }
+    if(a == rd16(DP + 0x2E)) {  // the segment's end: its length
+      a = (uint16_t)(a + rd16(DP + 0x36));
+      wr16(DP + 0x2C, (uint16_t)((rd16(DP + 0x36) >> 2) + rd16(DP + 0x2C)));
+    }
+    wr16(DP + 0x16, a);
+    const uint16_t w = rd16(0x8CB3 + (uint32_t)x);
+    if(w == 0) {  // CEEE: an empty entry
+      dsp4_port_write16(rd16(0x386C + (uint32_t)rd16(DP + 0x14)));
+      dsp4_port_write16(0);
+    } else {
+      wr16(DP + 0x1C, x);
+      const uint16_t kind2 = (uint16_t)(((w >> 8) & 0x007F) << 1);
+      wr16(DP + 0x1E, kind2);
+      wr16(DP + 0x3A, rd16(DP + 0x3C));
+      const uint16_t row = rd16(0x39EC + (uint32_t)rd16(DP + 0x14));
+      bool c;
+      if(row < 0x0082) {  // CEDA: near (the original's TAX of the row is dropped)
+        wr16(DP + 0x26, rd16(0x45EC));
+        wr16(0x1DF6, kind2);
+        c = object_handler(kind2, false);
+      } else if(row >= 0x0442) {  // CEC1: far
+        wr16(DP + 0x26, rd16(0x495C + (uint32_t)bus_rd16(0x86AD66 + kind2)));
+        c = object_handler(kind2, true);
+      } else {
+        wr16(DP + 0x26, rd16(0x45EC + (uint32_t)bus_rd16(0x86AD66 + kind2)));
+        c = object_handler(kind2, false);
+      }
+      if(c) goto done;  // the OAM buffer filled: the stream ends early (D1E7)
+    }
+  }
+cars:  // CEFD: the race order from D+$28 on, to the cars on this row (D+$2C)
+  for(;;) {
+    const uint16_t car = rd16(0x1E6A + (uint32_t)rd16(DP + 0x28));
+    const uint16_t at = rd16(0xFAB6 + (uint32_t)car);
+    if(at == rd16(DP + 0x2C)) {
+      uint16_t c2 = car;
+      for(;;) {  // CF1A: car c2 on this row
+        const uint16_t xrow = (uint16_t)(rd16(DP + 0x14) + 2);
+        if(xrow == rd16(DP + 0x90)) goto next_row;
+        bool c;
+        if(c2 == 0 && !(rd16(0x0244) & 0x0001)) c = player_car_sprites(xrow);
+        else c = rival_car_sprites(xrow, c2);
+        if(c) goto done;
+        wr16(DP + 0x28, (uint16_t)(rd16(DP + 0x28) + 2));  // D1B7
+        c2 = rd16(0x1E6A + (uint32_t)rd16(DP + 0x28));
+        if(rd16(0xFAB6 + (uint32_t)c2) != rd16(DP + 0x2C)) goto next_row;
+      }
+    }
+    if(!((uint16_t)(at - rd16(DP + 0x2C)) & 0x8000)) goto next_row;  // past this row
+    wr16(DP + 0x28, (uint16_t)(rd16(DP + 0x28) + 2));
+  }
+next_row:  // D1CD
+  wr16(DP + 0x2C, (uint16_t)(rd16(DP + 0x2C) + 1));
+  if(rd16(DP + 0x2C) == rd16(0x019A)) {
+    wr16(DP + 0x2C, 0);
+    wr16(DP + 0x28, 0);
+  }
+  wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 2));
+  if(rd16(DP + 0x14) != rd16(DP + 0x90)) goto objects;
+done:  // D1E7
+  dsp4_port_write16(0);
+  dsp4_port_write16(0x8000);
+  wr16(0x1E02, 0);
+  {  // the near object's highlight
+    const uint32_t k = rd16(0x1DF6);
+    const uint16_t v = k ? bus_rd16(0x86AE36 + k) : 0;
+    if(v != 0) {
+      wr16(DP + 0x14, v);
+      wr16(0x1E04, 0x007F);
+      const uint16_t t = bus_rd16(0x848000 + (uint32_t)rd16(0x39EE));
+      const uint32_t idx = (uint16_t)((uint16_t)(t << 1) + v + (t >> 15));  // the ASL's carry
+      wr16(0x1DFE, bus_rd16(0x860006 + idx));
+      wr16(0x1E02, bus_rd16(0x860008 + idx));
+      wr16(0x1DFE, (uint16_t)(rd16(0x6591 + (uint32_t)bus_rd16(0x860000 + (uint32_t)v)) + rd16(0x1DFE)));
+      wr16(0x1E00, (uint16_t)(rd16(0x45EC) << 4));
+    }
+  }
+  wr16(0x0186, rd16(0x0184));
+  {
+    const uint32_t t = (uint32_t)(((rd16(0x023A) >> 8) & 0x00FF) << 3);
+    wr16(0x1E52, bus_rd16(0x86C974 + t));
+    wr16(0x1E54, bus_rd16(0x86C976 + t));
+    wr16(0x1E56, bus_rd16(0x86C978 + t));
+  }
+}

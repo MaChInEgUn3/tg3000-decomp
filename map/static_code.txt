@@ -172,3 +172,8 @@
 83:F3E2 83:F3E6 m16x16 ; player_car_frame: never run
 83:F3EC 83:F3F0 m16x16 ; player_car_frame: never run
 83:F3F9 83:F3FD m16x16 ; player_car_frame: never run
+82:CC7F 82:CC81 m16x16 ; object_sprites_stream: never run
+82:CCB8 82:CCBE m16x16 ; object_sprites_stream: never run
+82:CCC7 82:CDB7 m16x16 ; object_sprites_stream: a second entry (never run), on into $CDB7
+82:CE0F 82:CE12 m16x16 ; object_sprites_stream: never run
+82:CED7 82:CEDA m16x16 ; object_sprites_stream: never run

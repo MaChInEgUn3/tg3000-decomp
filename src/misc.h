@@ -1498,4 +1498,23 @@ void player_car_frame(uint16_t dp);
 // player_car_frame and car_track_step.
 void player1_frame(void);
 
+// $82:DAAF: a track object's sprite (D = $0100), as object_sprite_raised but its height the
+// table's less $40; sprite_put_rows_a on either side of its +2 byte's bit 4 (the original's
+// two JMPs go to the same place). Ran in the TAS only.
+bool object_sprite_hover(uint16_t x);
+
+// $82:CBD4: the race's sprites streamed to the DSP-4 (D = $0100; DB = $30 inside, $83 on
+// return; a tape row). Natively first: command $03 and the two players' mini-map dots
+// (minimap_car); the player's place in the race order (D+$28). Then command $09 and, row by
+// row (D+$14 by 2 up to D+$90): the row's track object ($7E:8CB3 at D+$16, moved on by the
+// armed jump and the segment's end; drawn by its kind's handler at $82:80CE, or an empty
+// entry), then each car whose place ($FAB6) is this row (D+$2C, from the race order): the
+// player's car (its shadow car, marker, body, bar and item) or a rival (its head, the road's
+// edges, a band by its turn against the road's, its parts). It ends when the OAM buffer
+// fills or the rows run out: a 0 word and $8000, the near object's highlight
+// ($1DFE-$1E04), $0186 = $0184, and $1E52-$1E56 from $023A. Kinds 0 ($82:DCEC, into
+// unknown code) and 9 (a 0 entry) are not ported: never run in any movie or the TAS (a kind-0
+// object in a live sample would fail the row: the original streams bytes the C does not).
+void object_sprites_stream(void);
+
 #endif

@@ -1819,6 +1819,73 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The race's object and car sprites (roots-110, 2026-11-22)
+
+**`object_sprites_stream` ($82:CBD4-$82:D267):** the race frame's sprite stream to the DSP-4.
+It runs once per race frame (18,559 entries on the 60k movie).
+- **A taped row with a native prologue (harness-5).** Commands `$03` (the mini-map's dots)
+  and `$0B` (`minimap_car` ×2) run before the `$0009` word at `$82:CC8F`. From there on,
+  everything is on the tape: the `$09` stream's head, then each drawn row.
+- **The rows.** From D+$14 = 0 to D+$90, each row's object comes from `$7E:8CB3` (4 bytes
+  per track row, from `$0226` × 4, wrapped at `$019A` × 4).
+  - The armed jump (`$1EDE`, by `$1EE0`) and the segment's end (start + `$3F`, by its length
+    at +`$10`; 0 with `$1E66` negative) move the index.
+  - Then come the race order's cars on that row (`$1E6A` from D+$28, rows at `$FAB6`): the
+    player (`player_car_sprites`: shadow car, marker, body, bar, item) or a rival
+    (`rival_car_sprites`, the branch road by `$FADE`).
+  - When the OAM buffer fills, the stream ends early.
+- **The objects' handlers** (`$82:80CE` by kind): shadowed, group, flat, raised, hover (a new
+  routine, `object_sprite_hover` $82:DAAF), the CLC stub and `track_event_none`.
+  - The near/mid/far rows (`$7E:39EC` < `$82`, < `$442`, otherwise) choose `$26` and the
+    carry the handler gets.
+- **The end** (`$82:D1E7`): words 0 and `$8000`, the highlight `$1DFE-$1E04`, `$0186` =
+  `$0184`, and `$1E52-$1E56` from `$023A`.
+- **Not ported (my call; the advisor accepted it, open to the owner's veto):** kinds 0
+  (`$82:DCEC`, which goes on into code at `$82:CAE5` the map doesn't know) and 9 (a 0
+  entry).
+  - They never run in any movie or the TAS.
+  - A kind-0 object in a live sample would fail the row: the original streams bytes the C
+    does not.
+  - A second entry at `$82:CCC7` (never run) and a dead `JMP $D1E7` at `$82:CED7` are holes.
+- **Flags.** On return: N set and Z clear (the caller's `PLB`), and C clear (three ASLs of a
+  byte). With harness-6, V is no longer live: 216 watched returns on race1, 6,208 on the
+  60k movie.
+- **The fuzz** flips the player's flags, scatters object kinds in turn (never 0 or 9), and
+  sets the row places as `road_rows_project` writes them (from `$80` - (`$0225` >> 1 &
+  `$7E`), by `$80`, up to `$E00`). It also rotates six scenes, so the selftest's 200 cases
+  reach all 603 paths:
+  - the second road;
+  - the armed jump, by 1-16 rows landing before the lap's end (`$1EE0`; the game loads it
+    only in a case never run and zeroes it otherwise). Measured: every scene-1 case jumps
+    by a non-zero amount (34 on race1, 84 on the 60k movie). The second ASL's carry (bit 14
+    set, an odd table index) is not reached;
+  - a segment's end. It uses an entry of the race's segment table whose start (+`$3F`) and
+    jump (its +`$10` word) both stay inside the lap. On race1's track, every entry's +`$10`
+    word (`$F8EF` and the like) sends the index out of the object table, so it uses a 0
+    jump through `$1E66` there. No track of the 60k movie has such an entry either.
+    **The add and the `>> 2` are compared only with a 0 length:** 32 fuzz cases on race1,
+    83 on the 60k movie, and its 3 live entries, all at 0 too;
+  - a rival brought into view on the branch road;
+  - two cars on one row;
+  - none.
+
+  On race1 the player leads and no rival is in view, so a car is moved between its
+  neighbours in the race order onto the rows drawn (not row 0, whose place is often
+  negative). The fuzz also clears kind 0/9 entries
+  anywhere a row can reach.
+  - **The player drawn the rival's way** (`$0244` bit 0) is flipped only when its part lists
+    stay in the ROM. That means every turn band and every row, row 0's place being the one
+    the routine writes (`$39EE - $80`, often negative).
+  - **Every fuzz failure on the way was the fuzz leaving the game's states:** rows past the
+    table, a segment whose own +`$10` word sends the index out of the object table
+    (`$1E5E` = `$28` on race1's track: `$F8EF` × 4 = `$E3BC`), and that player-as-rival case
+    (`$86:5286`). Each
+    one reached kind 0 or a non-ROM read in the original; none was the C.
+- **Result:**
+  - race1: live 58/58, fuzz 200/200, paths 603/603.
+  - 60k movie: live 1,831/1,831, fuzz 500/500, paths 603/603.
+  - The shop movie doesn't reach it.
+
 ## Flags watched after interrupted returns (harness-6, 2026-11-22)
 
 **The advisor's call, open to the owner's veto.**

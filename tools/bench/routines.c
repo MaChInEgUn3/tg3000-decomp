@@ -9147,6 +9147,171 @@ static void fuzz_player1_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_player_car_frame(&inner, ram, rnd);
 }
 
+// ---- object_sprites_stream ($82:CBD4) ----  a DSP-4 tape row with a native prologue
+// (commands $03 and $0B, harness-5). Its caller (the race frame) loads its own registers:
+// DB = $83, N set and Z clear (its PLB), C clear (three ASLs of a byte, nothing after)
+static void call_object_sprites_stream(const Regs* in, Regs* out) {
+  (void)in;
+  object_sprites_stream();
+  out->db = 0x83;
+  out->n = true;
+  out->z = false;
+  out->c = false;
+}
+// the race as the movie left it; the player car's flags ($0244 bit 0, $021A, $1F18, $021D,
+// the item $014C), $0281's sign, $1EF2's, D+$C8; the chip scripted with many 0 answers (the
+// parts' lists end early, and some fill the buffer)
+// Whether car `c` drawn the rival's way (rival_car_sprites) finds a ROM part list at every
+// turn band and every row drawn: its list is $7F:($7F:band + $84:9180[frame]). Row 0's place
+// is the one the routine writes ($7E:39EE - $80), often negative.
+static bool rival_parts_in_rom(const uint8_t* ram, uint32_t c) {
+  const uint32_t rows = (uint32_t)(ram[0x0190] | ram[0x0191] << 8);
+  for(uint32_t r = 0; r < rows && r < 0x80; r += 2) {
+    const uint16_t place = r == 0 ? (uint16_t)((ram[0x39EE] | ram[0x39EF] << 8) - 0x0080) : (uint16_t)(ram[0x39EC + r] | ram[0x39ED + r] << 8);
+    const uint32_t frame = (uint16_t)((((ram[0xFAB5 + c] | ram[0xFAB6 + c] << 8) >> 1) & 0x007E) + place);
+    for(uint32_t band = 0; band <= 12; band += 2) {
+      const uint16_t parts = (uint16_t)((ram[0x10000 + band] | ram[0x10001 + band] << 8) + rom16(0x849180 + frame));
+      if((uint16_t)(ram[0x10000 + parts] | ram[0x10000 + (uint16_t)(parts + 1)] << 8) < 0x8000) return false;
+    }
+  }
+  return true;
+}
+
+// A car of the race order ($1E6A, sorted by row $FAB6) brought onto the rows drawn ($0226 + 1
+// on, $1B of them: not row 0, whose place is often negative): the one before a car already
+// there, moved between its neighbours (onto that car's row when `same`). Returns its offset,
+// or $FFFF when no car is in view.
+static uint16_t car_into_view(uint8_t* ram, uint32_t (*rnd)(void), bool same) {
+  const uint16_t at = (uint16_t)(ram[0x0226] | ram[0x0227] << 8);
+  uint16_t car[20], row[20];
+  for(int i = 0; i < 20; i++) {
+    car[i] = (uint16_t)(ram[0x1E6A + 2 * i] | ram[0x1E6B + 2 * i] << 8);
+    if(car[i] >= 0x800) return 0xFFFF;
+    row[i] = (uint16_t)(ram[0xFAB6 + car[i]] | ram[0xFAB7 + car[i]] << 8);
+  }
+  int cand[19], n = 0;
+  for(int i = 0; i + 1 < 20; i++)
+    if((uint16_t)(row[i + 1] - at - 1) < 0x1B && row[i] <= row[i + 1]) cand[n++] = i;
+  if(n == 0) return 0xFFFF;
+  const int i = cand[rnd() % (uint32_t)n];
+  uint16_t lo = i > 0 ? row[i - 1] : 0;
+  if(lo < at + 1) lo = (uint16_t)(at + 1);
+  if(lo > row[i + 1]) lo = row[i + 1];
+  const uint16_t to = same ? row[i + 1] : (uint16_t)(lo + rnd() % (uint32_t)(row[i + 1] - lo + 1));
+  wr16ram(ram, 0xFAB6 + car[i], to);
+  return car[i];
+}
+
+static void fuzz_object_sprites_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  if(rnd() & 1) wr16ram(ram, 0x021A, (uint16_t)(rnd() & 1 ? 0 : 1));
+  if(rnd() & 1) wr16ram(ram, 0x1F18, (uint16_t)(rnd() & 1 ? 0x8000 : rnd() % 0x40));
+  if(rnd() & 1) wr16ram(ram, 0x021D, (uint16_t)(rnd() & 1 ? 0x8000 : 0));
+  if(rnd() & 1) wr16ram(ram, 0x014C, (uint16_t)(rnd() % 4));
+  if(rnd() & 1) wr16ram(ram, 0x0281, (uint16_t)(rnd() & 1 ? 0xFFFF : 0));
+  if(rnd() & 1) wr16ram(ram, 0x1EF2, (uint16_t)(rnd() % 0x200 - 0x100));
+  if(rnd() & 1) wr16ram(ram, DP + 0xC8, (uint16_t)(rnd() & 1));
+  // the rows' objects ($7E:8CB3, 4 bytes each): kinds in turn over every handler but kinds 0
+  // and 9 (not ported), at random places; the rows' places ($7E:39EC) as road_rows_project
+  // writes them (from below $80 by $80 up to $E00: far rows from $442), from a random start
+  static unsigned turn;
+  for(uint32_t o = 0; o < 0x400; o += 4) {
+    if(rnd() % 4 != 0) continue;
+    uint16_t kind;
+    do kind = (uint16_t)(turn++ % 128); while(kind == 0 || kind == 9);
+    ram[0x8CB3 + o] = (uint8_t)rnd();
+    ram[0x8CB4 + o] = (uint8_t)(kind | (rnd() & 0x80));
+    ram[0x8CB5 + o] = (uint8_t)rnd();
+  }
+  if(rnd() % 3 == 0) {
+    uint16_t at = (uint16_t)(0x0002 + 2 * (rnd() % 0x40) + 0x80 * (rnd() % 12));
+    for(uint32_t k = 2; k < 0x40 && at < 0x0E00; k += 2, at = (uint16_t)(at + 0x0080)) wr16ram(ram, 0x39EC + k, at);
+  }
+  // the rarer cases, taken in turn (the selftest's 200 cases must reach each)
+  static unsigned scene;
+  const uint32_t first = (uint32_t)(ram[0x1E6A] | ram[0x1E6B] << 8);
+  switch(scene++ % 6) {
+    case 0:  // the second road (the mini-map's dots, no segment length), a negative side byte
+      wr16ram(ram, 0x1E66, (uint16_t)(rnd() & 1 ? 0x8000 : 0));
+      wr16ram(ram, 0x1E68, (uint16_t)(rnd() & 1 ? 0x8000 : 0));
+      ram[0x0209] = (uint8_t)(0x80 | rnd());
+      break;
+    case 1: {  // a row on the armed jump ($1EDE), by 1-16 rows ($1EE0; the game loads it only
+               // in a case never run, and zeroes it otherwise), landing before the lap's end
+               // (the rows then wrap with the lap as usual). The second ASL's carry (bit 14
+               // set: an odd table index) is not reached
+      const uint16_t at = (uint16_t)(ram[0x0226] | ram[0x0227] << 8);
+      const uint16_t arm = (uint16_t)(at + 1 + rnd() % 8);
+      wr16ram(ram, 0x1EDE, arm);
+      const int32_t room = (int32_t)(ram[0x019A] | ram[0x019B] << 8) - arm - 2;
+      if(room >= 1) wr16ram(ram, 0x1EE0, (uint16_t)(1 + rnd() % (uint32_t)(room < 16 ? room : 16)));
+      break;
+    }
+    case 2: {  // a row at the segment's end (its start + $3F): a segment of the race's table
+               // (its starts rise, $14 bytes each, inside the lap) whose end and jump (its
+               // length, +$10) both land inside the lap, so the rows stay in the objects' table
+      const uint16_t laps = (uint16_t)(ram[0x019A] | ram[0x019B] << 8), base = (uint16_t)(ram[0x019C] | ram[0x019D] << 8);
+      uint16_t offs[32], any[32];
+      int n = 0, nAny = 0;
+      int32_t prev = -1;
+      bool ended = false;  // the table's end: its first start that does not rise
+      for(uint16_t off = 0; off < 0x14 * 32; off = (uint16_t)(off + 0x14)) {
+        const int32_t start = rom16(0x840000 + (uint16_t)(base + off));
+        // any start will do for the zero jump below (race1's table opens with $7000)
+        if(off < 0x14 * 16 && start >= 0x10 && start + 0x3F < laps) any[nAny++] = off;
+        if(ended || start <= prev || start >= laps) {
+          ended = true;
+          continue;
+        }
+        prev = start;
+        const int32_t to = start + 0x3F + (int16_t)rom16(0x840010 + (uint16_t)(base + off));
+        if(start >= 0x10 && start + 0x3F < laps && to >= 0 && to < laps) offs[n++] = off;
+      }
+      if(n > 0) {
+        const uint16_t off = offs[rnd() % (uint32_t)n];
+        wr16ram(ram, 0x1E5E, off);
+        wr16ram(ram, 0x0226, (uint16_t)(rom16(0x840000 + (uint16_t)(base + off)) + 0x3F - 1 - rnd() % 8));
+        wr16ram(ram, 0x1E66, 0);
+      } else if(nAny > 0) {  // no jump lands in the lap (race1's track): the second road's
+                             // flag ($1E66 negative) makes the jump 0, the path still runs
+        const uint16_t off = any[rnd() % (uint32_t)nAny];
+        wr16ram(ram, 0x1E5E, off);
+        wr16ram(ram, 0x0226, (uint16_t)(rom16(0x840000 + (uint16_t)(base + off)) + 0x3F - 1 - rnd() % 8));
+        wr16ram(ram, 0x1E66, 0x8000);
+      }
+      break;
+    }
+    case 3: {  // a rival in view on the branch road ($FADE bit 5 without bit 1)
+      const uint16_t c = car_into_view(ram, rnd, false);
+      if(c != 0xFFFF) ram[0xFADE + c] = (uint8_t)((ram[0xFADE + c] & ~0x22) | 0x20);
+      break;
+    }
+    case 4:  // two cars on one row in view: the next in the order drawn on the same row
+      (void)car_into_view(ram, rnd, true);
+      break;
+    default: break;
+  }
+  (void)first;
+  // the player's car drawn the rival's way ($0244 bit 0), when its lists are in the ROM at the
+  // rows' places as set above
+  if(rnd() % 3 == 0 && ((ram[0x0244] & 1) || rival_parts_in_rom(ram, 0))) ram[0x0244] = (uint8_t)(ram[0x0244] ^ 1);
+  // no kind 0 or 9 object anywhere a row can reach (the lap's table, $7E:8CB3 + 4 per row,
+  // plus a margin for the jumps): the C does not port them, and stale entries there do
+  // occur once the scenarios move the rows (the original then runs $82:DCEC)
+  {
+    uint32_t span = 4u * (uint32_t)(ram[0x019A] | ram[0x019B] << 8) + 0x400;
+    if(span > 0x6000) span = 0x6000;
+    for(uint32_t o = 0; o + 1 < span; o += 4) {
+      const uint8_t kind = ram[0x8CB4 + o] & 0x7F;
+      if((kind == 0 || kind == 9) && (ram[0x8CB3 + o] | ram[0x8CB4 + o]) != 0) ram[0x8CB3 + o] = ram[0x8CB4 + o] = 0;
+    }
+  }
+  static uint16_t script[4096];
+  const int n = 200 + (int)(rnd() % 1500);
+  for(int i = 0; i < n; i++) script[i] = (rnd() % 3 != 0) ? 0 : (uint16_t)rnd();
+  dsp4_bridge_script(script, n);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -10072,6 +10237,11 @@ const Routine routines[] = {
   {.name = "sprite_parts_stream_rom", .entry = 0x82DEA8, .end = 0x82DF91, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_parts_stream_rom,
    .fuzz = fuzz_sprite_parts_stream_rom, .dsp4Tape = true},
+  {.name = "object_sprites_stream", .entry = 0x82CBD4, .end = 0x82D267, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_object_sprites_stream, .fuzz = fuzz_object_sprites_stream,
+   .dsp4Tape = true, .dsp4Native = {{0x82CBD4, 0x82CC8F}},  // command $03's prologue (the mini-map's dots)
+   .holes = {{0x82CCC7, 0x82CDB7},    // a second entry (never run) that joins at $82:CDB7
+             {0x82CED7, 0x82CEDA}}},  // a JMP $D1E7 after a BRA (dead)
   {.name = "car_sprite_head", .entry = 0x82D267, .end = 0x82D2CC, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_car_sprite_head, ALL_OUTPUTS, .fuzz = fuzz_car_sprite_head,
    .dsp4Tape = true},

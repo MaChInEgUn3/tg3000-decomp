@@ -423,7 +423,7 @@ CODE_828933:
     jsl.l race_road_frame       ; $828933
     jsl.l road_rows_stream      ; $828937
     jsr.w shake_step            ; $82893B
-    jsr.w $CBD4                 ; $82893E
+    jsr.w object_sprites_stream ; $82893E
     jsr.w func_82A9B7           ; $828941
     jmp.w oam_high_load         ; $828944
     incbin !baserom:$10947..$10961
@@ -2546,6 +2546,7 @@ func_82B838:
     plb                         ; $82B878
     rts                         ; $82B879
     incbin !baserom:$1387A..$14BD4
+object_sprites_stream:
     pea.w $8330                 ; $82CBD4
     plb                         ; $82CBD7
     lda.w $0186                 ; $82CBD8
@@ -2622,7 +2623,8 @@ CODE_82CC5B:
     tax                         ; $82CC79
     lda.w $1E68                 ; $82CC7A
     bpl CODE_82CC81             ; $82CC7D
-    incbin !baserom:$14C7F..$14C81
+    inx                         ; $82CC7F static
+    inx                         ; $82CC80 static
 CODE_82CC81:
     lda.w $02E8                 ; $82CC81
     sta.b $14                   ; $82CC84
@@ -2643,12 +2645,119 @@ CODE_82CC81:
     sta.w $8000                 ; $82CCB0
     lda.w $1EF2                 ; $82CCB3
     bpl CODE_82CCBE             ; $82CCB6
-    incbin !baserom:$14CB8..$14CBE
+    clc                         ; $82CCB8 static
+    adc.w #$00DC                ; $82CCB9 static
+    bra CODE_82CCC1             ; $82CCBC static
 CODE_82CCBE:
     lda.w #$00DC                ; $82CCBE
+CODE_82CCC1:
     sta.w $8000                 ; $82CCC1
     jmp.w $CDB7                 ; $82CCC4
-    incbin !baserom:$14CC7..$14DB7
+    pea.w $8330                 ; $82CCC7 static
+    plb                         ; $82CCCA static
+    lda.w $0186                 ; $82CCCB static
+    sta.w $0184                 ; $82CCCE static
+    lda.w #$0003                ; $82CCD1 static
+    sta.w $8000                 ; $82CCD4 static
+    lda.b $8E                   ; $82CCD7 static
+    clc                         ; $82CCD9 static
+    adc.w #$0200                ; $82CCDA static
+    sta.b $1A                   ; $82CCDD static
+    stz.b $3C                   ; $82CCDF static
+    lda.b $C8                   ; $82CCE1 static
+    bne CODE_82CCEA             ; $82CCE3 static
+    lda.w #$1000                ; $82CCE5 static
+    sta.b $3C                   ; $82CCE8 static
+CODE_82CCEA:
+    lda.w $C000                 ; $82CCEA static
+    bpl CODE_82CCEA             ; $82CCED static
+    lda.w #$0005                ; $82CCEF static
+    sta.w $8000                 ; $82CCF2 static
+    ldy.w #$0028                ; $82CCF5 static
+    lda.l $811E90               ; $82CCF8 static
+    tax                         ; $82CCFC static
+    lda.w $0225                 ; $82CCFD static
+    cmp.l $7EFAB5,x             ; $82CD00 static
+    lda.w $0227                 ; $82CD04 static
+    sbc.l $7EFAB7,x             ; $82CD07 static
+    bcs CODE_82CD2A             ; $82CD0B static
+    ldy.w #$0026                ; $82CD0D static
+CODE_82CD10:
+    tyx                         ; $82CD10 static
+    lda.l $811E68,x             ; $82CD11 static
+    tax                         ; $82CD15 static
+    lda.w $0225                 ; $82CD16 static
+    cmp.l $7EFAB5,x             ; $82CD19 static
+    lda.w $0227                 ; $82CD1D static
+    sbc.l $7EFAB7,x             ; $82CD20 static
+    bcs CODE_82CD2A             ; $82CD24 static
+    dey                         ; $82CD26 static
+    dey                         ; $82CD27 static
+    bne CODE_82CD10             ; $82CD28 static
+CODE_82CD2A:
+    sty.b $28                   ; $82CD2A static
+    lda.w $0226                 ; $82CD2C static
+    sta.b $2C                   ; $82CD2F static
+CODE_82CD31:
+    lda.w $C000                 ; $82CD31 static
+    bpl CODE_82CD31             ; $82CD34 static
+    lda.l $7EFAD1               ; $82CD36 static
+    ora.w #$30FD                ; $82CD3A static
+    tay                         ; $82CD3D static
+    lda.w $0226                 ; $82CD3E static
+    lsr a                       ; $82CD41 static
+    lsr a                       ; $82CD42 static
+    and.w #$FFFC                ; $82CD43 static
+    tax                         ; $82CD46 static
+    lda.w $1E66                 ; $82CD47 static
+    bpl CODE_82CD4E             ; $82CD4A static
+    inx                         ; $82CD4C static
+    inx                         ; $82CD4D static
+CODE_82CD4E:
+    lda.w $0235                 ; $82CD4E static
+    sta.b $14                   ; $82CD51 static
+    lda.w #$001E                ; $82CD53 static
+    jsr.w minimap_car           ; $82CD56 static
+    ldx.w #$0035                ; $82CD59 static
+    lda.l $7EFAD1,x             ; $82CD5C static
+    ora.w #$30FD                ; $82CD60 static
+    tay                         ; $82CD63 static
+    lda.w $02D9                 ; $82CD64 static
+    lsr a                       ; $82CD67 static
+    lsr a                       ; $82CD68 static
+    and.w #$FFFC                ; $82CD69 static
+    tax                         ; $82CD6C static
+    lda.w $1E68                 ; $82CD6D static
+    bpl CODE_82CD74             ; $82CD70 static
+    inx                         ; $82CD72 static
+    inx                         ; $82CD73 static
+CODE_82CD74:
+    lda.w $02E8                 ; $82CD74 static
+    sta.b $14                   ; $82CD77 static
+    lda.w #$001E                ; $82CD79 static
+    jsr.w minimap_car           ; $82CD7C static
+    lda.w #$0009                ; $82CD7F static
+    sta.w $8000                 ; $82CD82 static
+    lda.w #$0080                ; $82CD85 static
+    sta.w $8000                 ; $82CD88 static
+    lda.w #$0039                ; $82CD8B static
+    sta.w $8000                 ; $82CD8E static
+    stz.w $8000                 ; $82CD91 static
+    lda.w #$0000                ; $82CD94 static
+    sta.w $8000                 ; $82CD97 static
+    lda.w #$0100                ; $82CD9A static
+    sta.w $8000                 ; $82CD9D static
+    lda.w #$0004                ; $82CDA0 static
+    sta.w $8000                 ; $82CDA3 static
+    lda.w $1EF2                 ; $82CDA6 static
+    bpl CODE_82CDB1             ; $82CDA9 static
+    clc                         ; $82CDAB static
+    adc.w #$006C                ; $82CDAC static
+    bra CODE_82CDB4             ; $82CDAF static
+CODE_82CDB1:
+    lda.w #$006C                ; $82CDB1 static
+CODE_82CDB4:
+    sta.w $8000                 ; $82CDB4 static
     stz.b $14                   ; $82CDB7
     lda.w $0226                 ; $82CDB9
     asl a                       ; $82CDBC
@@ -2690,7 +2799,7 @@ CODE_82CDF0:
     and.w #$00FF                ; $82CE07
     bit.w #$0080                ; $82CE0A
     beq CODE_82CE12             ; $82CE0D
-    incbin !baserom:$14E0F..$14E12
+    ora.w #$FF00                ; $82CE0F static
 CODE_82CE12:
     eor.w #$FFFF                ; $82CE12
     sec                         ; $82CE15
@@ -2782,7 +2891,7 @@ CODE_82CEC1:
     jsr.w ($80CE,x)             ; $82CED0
     bcs CODE_82CEBE             ; $82CED3
     bra CODE_82CEFD             ; $82CED5
-    incbin !baserom:$14ED7..$14EDA
+    jmp.w $D1E7                 ; $82CED7 static
 CODE_82CEDA:
     tax                         ; $82CEDA
     lda.l $7E45EC               ; $82CEDB
@@ -3403,6 +3512,7 @@ CODE_82DAA0:
     lda.w #$BC30                ; $82DAA7
     sta.b $24                   ; $82DAAA
     jmp.w sprite_put_rows_a     ; $82DAAC
+object_sprite_hover:
     lda.l $86AF06,x             ; $82DAAF
     sta.b $24                   ; $82DAB3
     ldx.b $1C                   ; $82DAB5

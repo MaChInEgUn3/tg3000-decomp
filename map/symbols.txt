@@ -496,3 +496,5 @@ func    8A8768   track_preview_maybe ; the track $1536's preview tiles when its 
 func    828961   hud_markers_write   ; the HUD's four markers and its badge in VRAM, then race_hud_digits -> src/misc.c
 func    83EAC6   player_car_frame    ; the player's car for the frame: speed, drag, engine, side, items, counters (D = record) -> src/misc.c
 func    83E241   player1_frame       ; player 1's car for the race frame: setup, player_car_frame, car_track_step (D = $0200; RTL) -> src/misc.c
+func    82CBD4   object_sprites_stream ; the race's sprites streamed to the DSP-4: mini-map, track objects and cars row by row (a tape row) -> src/misc.c
+func    82DAAF   object_sprite_hover ; a track object's sprite, its height less $40 (ran in the TAS only) -> src/misc.c
