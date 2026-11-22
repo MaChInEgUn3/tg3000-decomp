@@ -465,3 +465,4 @@
 8A891C title_scene_load src/misc.c 6effeaa38d991438 0 500 43/43 verified live-flags:NVZC replayed:2
 8A8768 track_preview_maybe src/misc.c eb57e9c23c8fb3bf 0 500 17/17 verified live-flags:NVZC replayed:2
 828961 hud_markers_write src/misc.c 7872bcf7762e20e5 5 500 24/24 verified live-flags:NVZC replayed:0
+83EAC6 player_car_frame src/misc.c dd6d873ce0a59493 4000 500 1259/1259 verified live-flags:- replayed:0

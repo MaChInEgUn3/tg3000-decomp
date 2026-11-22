@@ -1481,4 +1481,16 @@ bool track_preview_maybe(void);
 void hud_markers_put(void);
 void hud_markers_write(void);
 
+// $83:EAC6: the player's car for the frame (D = `dp`, the player's record: $0200; DB = $30
+// inside, $83 on return). All its DSP-4 use is command 0 (products); a write that skips an
+// unread answer word is the original's idiom. With $1ECE set (the car follows another,
+// follow_car_step) only the view's distance D+$12/D+$14 moves. Else: the race's warnings
+// (func_83FE9A), the speed D+$16/D+$18 stepped $1E9E times (the throttle $1EA6/$1EA8, the
+// drag by its square), the view's distance, the engine's pitch and gear (D+$1F, D+$3A by the
+// tables at $86:DAD9 and $86:DCF7-$DD1B), the drags into $013A/$013C, the road's slope
+// D+$9E, the side speed D+$21 (eased back, the steering), the side D+$04/D+$06 (kept within
+// $280), the items under the car (D+$53, by the table at $83:F54B), the counters D+$48/D+$4C/
+// D+$97, and D+$1E's byte. $83:F6E1 (car_step_product, never run) is a 32 x 16 product.
+void player_car_frame(uint16_t dp);
+
 #endif

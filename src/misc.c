@@ -6304,3 +6304,562 @@ void hud_markers_write(void) {
   hud_markers_put();
   race_hud_digits();
 }
+
+// D = dp ($0200); DB = $30 inside (chip at $8000), $83 on return; all DSP-4 use is command 0
+
+static uint16_t xba16b(uint16_t v) { return (uint16_t)(v << 8 | v >> 8); }
+static void mul32(uint16_t a, uint16_t b, uint16_t* lo, uint16_t* hi) {
+  const uint32_t p = (uint32_t)dsp4_multiply((int16_t)a, (int16_t)b);
+  *lo = (uint16_t)p;
+  *hi = (uint16_t)(p >> 16);
+}
+// (hi:lo at dp+o) += (h:l), 32-bit
+static void add32(uint32_t lo_at, uint32_t hi_at, uint16_t l, uint16_t h) {
+  const uint32_t s = (uint32_t)rd16(lo_at) + l;
+  wr16(lo_at, (uint16_t)s);
+  wr16(hi_at, (uint16_t)(rd16(hi_at) + h + (s >> 16)));
+}
+
+// $83:F6E1 (never run): ($011E:$011C) * $1E9E -> $0114/$0116/$0118
+static void car_step_product(void) {
+  uint16_t lo, hi;
+  mul32(rd16(0x011C), rd16(0x1E9E), &lo, &hi);
+  wr16(0x0118, 0);
+  wr16(0x0114, lo);
+  wr16(0x0116, hi);
+  if(hi & 0x8000) wr16(0x0118, 0xFFFF);
+  uint16_t a = rd16(0x011E);
+  if(rd16(0x011C) & 0x8000) a++;
+  mul32(a, rd16(0x1E9E), &lo, &hi);
+  const uint32_t s = (uint32_t)rd16(0x0116) + lo;
+  wr16(0x0116, (uint16_t)s);
+  wr16(0x0118, (uint16_t)(rd16(0x0118) + hi + (s >> 16)));
+}
+
+// $83:F590 / $83:F5EA: D+$4C counts the frames down; at 0, with no sound request queued
+// ($0463), D+$4C = $10 and func_83FE9A(message)
+static void scene_timer_ping(uint16_t dp, uint16_t message) {
+  const uint32_t at = (uint32_t)dp + 0x4C;
+  const uint16_t t = (uint16_t)(rd16(at) - rd16(0x1E9E));
+  wr16(at, t);
+  if(!(t & 0x8000)) return;
+  wr16(at, 0);
+  if(rd16(0x0463) & 0x00FF) return;
+  wr16(at, 0x0010);
+  (void)func_83FE9A(dp, message, rd16(0x1EBE), 0);
+}
+
+// TG3000_ROUTINE($83:EAC6) player_car_frame
+void player_car_frame(uint16_t dp) {
+  #define P(o) ((uint32_t)dp + (o))
+  uint16_t lo, hi;
+  const uint16_t steps = rd16(0x1E9E);
+  if(rd16(0x1ECE) != 0) {  // following: only the view's distance
+    if(rd16(0x1ECE) & 0x8000) follow_car_step(dp);
+    if(rd16(0x1E9C) & 0x0001) {
+      mul32(0x0060, xba16b(steps), &lo, &hi);
+      add32(P(0x12), P(0x14), lo, hi);
+      if(rd16(P(0x14)) >= 0x0009) {
+        wr16(P(0x14), 0x0009);
+        wr16(P(0x12), 0xFFFF);
+      }
+    }
+    mul32(0xFFE0, xba16b(steps), &lo, &hi);
+    add32(P(0x12), P(0x14), lo, hi);
+    if(rd16(P(0x14)) & 0x8000) {
+      wr16(P(0x12), 0);
+      wr16(P(0x14), 0);
+    }
+    return;
+  }
+  wr16(0x013A, 0);
+  wr16(0x013C, 0);
+  if((rd16(0x1E9C) & 0x0010) && rd16(P(0x31)) == 0) {
+    if(rd8(P(0x4E)) != 0) {
+      wr16(P(0x4E), (uint16_t)(rd16(P(0x4E)) - 1));
+      wr16(P(0x31), rd16(0x1EB6));
+      (void)func_83FE9A(dp, 0xFF1B, rd16(0x1EBE), 0x003C);
+    } else (void)func_83FE9A(dp, 0xFF1C, rd16(0x1EBE), 0);
+  }
+  {
+    const uint16_t a = (uint16_t)(rd16(P(0x31)) - rd16(0x1E9E));
+    wr16(P(0x31), (a & 0x8000) ? 0 : a);
+  }
+  if(rd16(0x1E9C) & 0x0080) {
+    wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) & ~0x0080));
+    if(rd16(P(0x1A)) == 0 && rd8(P(0x51)) != 0) {
+      wr16(P(0x51), (uint16_t)(rd16(P(0x51)) - 1));
+      if(!(rd16(P(0x44)) & 0x0020)) {
+        wr16(P(0x44), (uint16_t)(rd16(P(0x44)) | 0x0120));
+        wr16(P(0x1A), 5);
+        (void)func_83FE9A(dp, 0xFF29, rd16(0x1EBE), 0);
+        const uint32_t car = rd16(0x1EBA);
+        wr16(0xFADE + car, (uint16_t)(rd16(0xFADE + car) | 0x0008));
+        wr16(P(0x5E), 0x0020);
+        wr16(P(0x70), rd16(P(0x10)));
+        wr16(P(0x72), rd16(P(0x10)));
+      }
+    }
+  }
+  if(rd16(0x1E9C) & 0x0020) {
+    wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) & ~0x0020));
+    if(rd16(P(0x1A)) == 0) {  // (its AND #$7FFF / DEC / CMP #5 tests see A = 0)
+      wr16(P(0x7E), 0);
+      wr16(P(0x1A), 1);
+      (void)func_83FE9A(dp, 0xFF1D, rd16(0x1EBE), 0);
+    }
+  }
+  if(!(rd16(0x1F31) & 0x8000) && !(rd16(P(0x7E)) & 0x8000)) {
+    const uint16_t x = rd16(P(0x7E)), a = (uint16_t)(x + rd16(0x1E9E));
+    wr16(P(0x7E), a);
+    if((x < 0x0054 && a >= 0x0054) || (x >= 0x0054 && x < 0x0058 && a >= 0x0058))
+      (void)func_83FE9A(dp, 0x7F21, rd16(0x1EBE), 0);
+  }
+  if((rd16(0x1E9C) & 0x0040) && (rd16(P(0x50)) & 0x007F) && !(rd16(P(0x81)) & 0x8000)) {  // (EC33)
+    const uint8_t s = (uint8_t)(rd8(0x1E9E) << 3);
+    const uint16_t t = (uint16_t)(rd8(P(0x80)) + (uint8_t)~s + 1);
+    wr8(P(0x80), (uint8_t)t);
+    wr8(P(0x50), (uint8_t)(rd8(P(0x50)) - ((t >> 8) ? 0 : 1)));
+    uint16_t x = rd16(P(0x81));
+    bool record = x == 0;  // the player's record (ECAA) with X = 0
+    if(!record && (rd16(0x03DC) & 0x000F) && x == 0x0035) {  // never run
+      x = 0x00B3;
+      record = true;
+    }
+    if(!record) {  // a car's (EC68)
+      const uint32_t c = x;
+      wr16(0x011C, rd16(0xFAC9 + c));
+      wr16(0x011E, rd16(0xFACB + c));
+      car_step_product();
+      const uint32_t s1 = (uint32_t)rd16(0xFAC9 + c) - rd16(0x0115);
+      wr16(0xFAC9 + c, (uint16_t)s1);
+      const uint16_t h = (uint16_t)(rd16(0xFACB + c) - rd16(0x0117) - ((s1 >> 16) ? 1 : 0));
+      wr16(0xFACB + c, h);
+      if(h & 0x8000) {
+        wr16(0xFAC9 + c, 0);
+        wr16(0xFACB + c, 0);
+      }
+      wr16(0x013C, (uint16_t)(rd16(0x013C) - rd16(0x0116)));
+    } else {  // never run (ECAA)
+      const uint32_t r = x;
+      wr16(0x011C, rd16(0x020E + r));
+      wr16(0x011E, rd16(0x0210 + r));
+      car_step_product();
+      mul32(rd16(0x0116), rd16(0x0295 + r), &lo, &hi);
+      const uint32_t s1 = (uint32_t)rd16(0x0216 + r) - lo;
+      wr16(0x0216 + r, (uint16_t)s1);
+      uint16_t h = (uint16_t)(rd16(0x0218 + r) - hi - ((s1 >> 16) ? 1 : 0));
+      if(h & 0x8000) {
+        wr16(0x0216, 0);  // the original's STZ is not indexed
+        h = 0;
+      }
+      wr16(0x0218 + r, h);
+      wr16(0x013C, (uint16_t)(rd16(0x013C) - rd16(0x0117)));
+    }
+  }
+  // ECF6
+  mul32(rd16(P(0x16)), rd16(0x1E9E), &lo, &hi);
+  wr16(0x0136, lo);
+  wr16(0x0138, hi);
+  {
+    uint16_t a = rd16(P(0x18));
+    if(rd16(P(0x16)) & 0x8000) a++;
+    mul32(a, rd16(0x1E9E), &lo, &hi);
+    wr16(0x0138, (uint16_t)(rd16(0x0138) + lo));
+  }
+  if(!(rd16(0x1F31) & 0x8000) && rd16(P(0x58)) != 0) {
+    mul32(rd16(P(0x17)), 0x3000, &lo, &hi);
+    mul32(rd16(0x1E9E), hi, &lo, &hi);  // the answer's second word is skipped by a write
+    const uint32_t s1 = (uint32_t)rd16(P(0x56)) - lo;
+    wr16(P(0x56), (uint16_t)s1);
+    const uint16_t h = (uint16_t)(rd16(P(0x58)) - ((s1 >> 16) ? 1 : 0));
+    wr16(P(0x58), (h & 0x8000) ? 0 : h);
+  }
+  wr16(0x0134, rd16(0x1E9E));
+  do {  // ED8A: one step per frame counted in $1E9E
+    if(rd16(0x1E9C) & 0x0001) {
+      uint16_t a = rd16(P(0x48)) ? 0x2400 : 0;
+      if(rd16(P(0x31))) a = (uint16_t)(a + rd16(0x1EB4));
+      a = (uint16_t)(a + rd16(0x1EA8));
+      if(!(rd16(P(0x44)) & 0x0010)) a = (uint16_t)(a >> 1);
+      mul32(a, rd16(0x1EA6), &lo, &hi);
+      wr16(0x0114, (uint16_t)((lo >> 8) & 0x00FF));
+      uint16_t h = hi;
+      if(h & 0xFF80) h = 0x007F;
+      const uint16_t v = (uint16_t)(((h << 8) & 0xFF00) | rd16(0x0114));
+      mul32(v, 1, &lo, &hi);
+      add32(P(0x16), P(0x18), lo, hi);
+    }
+    // EDF9
+    const uint16_t d = (uint16_t)(rd16(0x1EA4) - rd16(0x1EC0));
+    mul32(rd16(P(0x17)), rd16(P(0x17)), &lo, &hi);
+    const uint16_t sq_lo = lo;
+    uint16_t sq_hi = hi;
+    if(sq_lo & 0x8000) sq_hi++;
+    mul32(sq_lo, d, &lo, &hi);
+    wr16(0x0114, lo);
+    wr16(0x0116, hi);
+    wr16(0x0118, (hi & 0x8000) ? 0xFFFF : 0);
+    mul32(sq_hi, d, &lo, &hi);
+    add32(0x0116, 0x0118, lo, hi);
+    wr16(0x011A, 0);
+    {
+      const uint32_t s1 = (uint32_t)rd16(P(0x16)) - rd16(0x0117);
+      wr16(P(0x16), (uint16_t)s1);
+      wr16(P(0x18), (uint16_t)(rd16(P(0x18)) - rd16(0x0119) - ((s1 >> 16) ? 1 : 0)));
+    }
+    mul32(d, 1, &lo, &hi);
+    {
+      const uint32_t s1 = (uint32_t)rd16(P(0x16)) - lo;
+      wr16(P(0x16), (uint16_t)s1);
+      const uint16_t h = (uint16_t)(rd16(P(0x18)) - hi - ((s1 >> 16) ? 1 : 0));
+      wr16(P(0x18), h);
+      if(h & 0x8000) {
+        wr16(P(0x16), 0);
+        wr16(P(0x18), 0);
+      }
+    }
+    wr16(0x0134, (uint16_t)(rd16(0x0134) - 1));
+  } while(rd16(0x0134) != 0);
+  // EEA0
+  if(!(rd16(P(0x44)) & 0x0010)) {
+    const uint16_t x = (rd16(0x1E9C) & 0x0001) ? 0xFFF0 : 0xFFC0;
+    mul32(x, xba16b(rd16(0x1E9E)), &lo, &hi);
+    add32(P(0x12), P(0x14), lo, hi);
+    uint16_t a = rd16(P(0x14));
+    if(a & 0x8000) {
+      wr16(P(0x14), 0);
+      wr16(P(0x12), 0);
+      a = 0;
+    }
+    if(a <= rd16(P(0x18))) {
+      wr16(P(0x44), (uint16_t)(rd16(P(0x44)) | 0x0010));
+      wr16(P(0x12), rd16(P(0x16)));
+      wr16(P(0x14), rd16(P(0x18)));
+    }
+  } else {
+    wr16(P(0x12), rd16(P(0x16)));
+    wr16(P(0x14), rd16(P(0x18)));
+  }
+  // EEEF
+  mul32(rd16(P(0x17)), (uint16_t)(rd16(0x1EA0) >> 1), &lo, &hi);
+  wr16(P(0x0E), (uint16_t)(lo << 1));
+  wr16(P(0x10), (uint16_t)(hi << 1 | lo >> 15));
+  {
+    const uint16_t a = rd16(P(0x17));
+    bool step = true;
+    if(a >= rd16(0x1EAA)) wr16(P(0x1F), (uint16_t)(rd16(P(0x1F)) + 1));
+    else if(a >= rd16(0x1EAC)) step = false;  // -> EF6E
+    else wr16(P(0x1F), (uint16_t)(rd16(P(0x1F)) - 1));
+    if(step) {
+      const uint32_t x = (uint32_t)((rd16(0x1EB2) & 0x007F) << 1);
+      wr16(P(0x2B), func_83EA9B((uint16_t)((uint16_t)(rd16(P(0x1F)) << 1) + bus_rd16(0x86DAD9 + x))));
+      if(!(rd16(0x1F31) & 0x8000)) wr16(P(0x95), rd16(0x1EA2));
+      // EF3F: (D+$10:D+$0E) * 2 divided by $1EA0, bit by bit (40 steps) -> D+$16/D+$18
+      uint16_t q0 = (uint16_t)(rd16(P(0x0E)) << 1), q1 = (uint16_t)(rd16(P(0x10)) << 1 | rd16(P(0x0E)) >> 15);
+      uint16_t rem = (uint16_t)(rd16(P(0x10)) >> 15);
+      const uint16_t div = rd16(0x1EA0);
+      for(int n = 0; n < 0x28; n++) {
+        bool c = rem >= div;
+        if(c) rem = (uint16_t)(rem - div);
+        const bool c0 = (q0 >> 15) != 0;
+        q0 = (uint16_t)(q0 << 1 | (c ? 1 : 0));
+        const bool c1 = (q1 >> 15) != 0;
+        q1 = (uint16_t)(q1 << 1 | (c0 ? 1 : 0));
+        rem = (uint16_t)(rem << 1 | (c1 ? 1 : 0));
+      }
+      wr16(0x0114, q0);
+      wr16(0x0116, q1);
+      wr16(P(0x16), q0);
+      wr16(P(0x18), q1);
+    }
+  }
+  // EF6E
+  {
+    mul32(rd16(P(0x10)), rd16(P(0x10)), &lo, &hi);
+    wr16(0x0114, (uint16_t)(lo >> 8));
+    uint16_t x = 0x7FFF;
+    if(hi < 0x0100) x = (uint16_t)(((hi & 0x00FF) << 8) | rd16(0x0114));
+    mul32(0, x, &lo, &hi);  // (the original multiplies by 0 here)
+    add32(0x013A, 0x013C, lo, hi);
+  }
+  if(rd16(P(0x10)) >= 0x0010) {
+    mul32(rd16(P(0x37)), rd16(0x1E9E), &lo, &hi);
+    wr16(0x013C, (uint16_t)(rd16(0x013C) + lo));
+  }
+  if(!(rd16(0x1F31) & 0x8000) && rd16(P(0x58)) == 0 && rd16(P(0x10)) >= 0x0010) {
+    mul32(rd16(0x1E9E), 0x0080, &lo, &hi);
+    wr16(0x013C, (uint16_t)(rd16(0x013C) + lo));
+  }
+  if(!(rd16(0x1F31) & 0x8000)) {  // F004: the road's slope at the player's row
+    const uint32_t x = rd16(0x1EBC);
+    uint16_t a = 0;
+    if(!(rd16(0x3D6E + x) & 0x0008)) {
+      mul32((uint16_t)((rd16(0x3DEE + x) - rd16(0x3DEC + x)) << 1), (uint16_t)((rd16(0x0224) & 0xFF00) >> 1), &lo, &hi);
+      a = (uint16_t)-(uint16_t)(rd16(0x3DEC + x) + hi);  // a write takes the answer's first word
+    }
+    wr16(P(0x9E), a);
+    wr16(P(0x9C), 0);
+    if(rd16(0x1F2C) & 0x8001) wr16(P(0x9C), rd16(P(0x9E)));
+  }
+  {  // F05B
+    const uint32_t x = rd16(0x1EBC);
+    const uint32_t y = rd16(0x3BEC + x) ? 2 : 0;
+    uint16_t a = rd16(P(0x06));
+    if(a & 0x8000) a = (uint16_t)-a;
+    bool skip = a < rd16(0x1F28 + y);
+    if(!skip && !(rd16(0x1F31) & 0x8000)) {
+      uint16_t b = (uint16_t)(rd16(P(0x06)) - rd16(P(0x9E)));
+      if(b & 0x8000) b = (uint16_t)-b;
+      if(b < rd16(0x1F28 + y)) skip = true;
+      else wr16(P(0x7C), (uint16_t)(rd16(P(0x7C)) & ~0x0010));
+    }
+    if(!skip && rd16(P(0x10)) >= 0x0010) {
+      mul32(rd16(0x1E9E), 0x0080, &lo, &hi);
+      wr16(0x013C, (uint16_t)(rd16(0x013C) + lo));
+    }
+  }
+  if(!(rd16(0x1F31) & 0x8000) && rd16(P(0x10)) >= 0x0010) {  // F0C5
+    mul32(rd16(0x1E9E), (uint16_t)(rd8(P(0x5B)) >> 2), &lo, &hi);
+    wr16(0x013C, (uint16_t)(rd16(0x013C) + lo));
+  }
+  if(rd16(0x1E9C) & 0x0002) {  // F0F1
+    mul32(rd16(0x1E9E), 0x0100, &lo, &hi);
+    wr16(0x013C, (uint16_t)(rd16(0x013C) + lo));
+  }
+  {  // F115: the drag
+    mul32(rd16(0x013C), rd16(0x1EA2), &lo, &hi);
+    const uint32_t s1 = (uint32_t)rd16(P(0x16)) - lo;
+    wr16(P(0x16), (uint16_t)s1);
+    const uint16_t h = (uint16_t)(rd16(P(0x18)) - hi - ((s1 >> 16) ? 1 : 0));
+    if(h & 0x8000) {
+      wr16(P(0x16), 0);
+      wr16(P(0x18), 0);
+    } else wr16(P(0x18), h);
+  }
+  // the second operand of the side steps: D+$0F, or $7FFF from $80 on
+  const uint16_t side = rd16(P(0x10)) >= 0x0080 ? 0x7FFF : rd16(P(0x0F));
+  if(rd16(P(0x21)) != 0) {  // F13B: the side speed D+$21 eases back to 0
+    const uint16_t was = rd16(P(0x21));
+    wr16(0x0114, was);
+    mul32(rd16(0x1E9E), (was & 0x8000) ? 0x000C : 0xFFF4, &lo, &hi);
+    mul32(side, lo, &lo, &hi);
+    const uint16_t a = (uint16_t)(rd16(P(0x21)) + hi);
+    wr16(P(0x21), a);
+    if((a ^ rd16(0x0114)) & 0x8000) wr16(P(0x21), 0);
+  }
+  wr16(0x013C, 0);  // F186
+  if(rd16(0x1E9C) & 0x000C) {  // steering: $18 right ($1E9C bit 3) or $FFE8 left (bit 2)
+    const uint16_t by = (rd16(0x1E9C) & 0x0008) ? 0x0018 : 0xFFE8;
+    mul32(rd16(0x1E9E), by, &lo, &hi);
+    mul32(side, lo, &lo, &hi);
+    uint16_t a = (uint16_t)(rd16(P(0x21)) + hi);
+    if(!((uint16_t)(a - 0x0080) & 0x8000)) {
+      a = 0x0080;
+      wr16(0x013C, a);
+    }
+    if((uint16_t)(a - 0xFF80) & 0x8000) {
+      a = 0xFF80;
+      wr16(0x013C, a);
+    }
+    wr16(P(0x21), a);
+  }
+  if(rd16(P(0x1C)) != 0) {  // F1EC: a push across D+$1C, slowing by $A0 a frame
+    mul32(rd16(P(0x1C)), xba16b(rd16(0x1E9E)), &lo, &hi);
+    add32(P(0x04), P(0x06), lo, hi);
+    mul32(0x00A0, rd16(0x1E9E), &lo, &hi);  // its second word is skipped by a write
+    if(rd16(P(0x1C)) & 0x8000) {
+      const uint16_t a = (uint16_t)(rd16(P(0x1C)) + lo);
+      wr16(P(0x1C), (a & 0x8000) ? a : 0);
+    } else {
+      const uint16_t a = (uint16_t)(rd16(P(0x1C)) - lo);
+      wr16(P(0x1C), (a & 0x8000) ? 0 : a);
+    }
+  }
+  if(!(rd16(P(0x44)) & 0x0021)) {  // F250 (bit 5 or bit 0 set: F35C)
+    mul32(rd16(P(0x0E)), rd16(0x1EB8), &lo, &hi);
+    wr16(0x0114, lo);
+    wr16(0x0116, hi);
+    wr16(0x0118, (hi & 0x8000) ? 0xFFFF : 0);
+    uint16_t a = rd16(P(0x10));
+    if(rd16(P(0x0E)) & 0x8000) a++;
+    mul32(a, rd16(0x1EB8), &lo, &hi);
+    add32(0x0116, 0x0118, lo, hi);
+    a = rd16(P(0x21));
+    if(a & 0x8000) {
+      a = (uint16_t)(a + rd16(0x0117));
+      if(!(a & 0x8000)) a = 0;
+    } else {
+      a = (uint16_t)(a - rd16(0x0117));
+      if(a & 0x8000) a = 0;
+    }
+    mul32(a, rd16(0x1E9E), &lo, &hi);
+    const uint16_t xs = lo;  // F2C0 (its second word read by a BIT)
+    mul32((uint16_t)(rd16(P(0x0F)) >> 2), xs, &lo, &hi);
+    wr16(0x0114, lo);
+    wr16(0x0116, hi);
+    add32(P(0x04), P(0x06), rd16(0x0114), rd16(0x0116));
+    if(rd16(P(0x1C)) == 0) {  // F2EF: the side's drift
+      wr16(0x0118, (uint16_t)(rd16(P(0x28)) & 0xFF00));
+      wr16(0x011A, sext8(rd8(P(0x2A))));
+      add32(P(0x04), P(0x06), rd16(0x0118), rd16(0x011A));
+    }
+    bool clear = false;  // F314
+    if(rd16(P(0x44)) & 0x0010) {
+      if(rd16(P(0x29)) == 0 || !((rd16(0x013C) ^ rd16(P(0x29))) & 0x8000) ||
+         ((uint16_t)(rd16(0x0115) + rd16(0x0119)) & 0x8000))
+        clear = true;
+    }
+    if(!clear) {  // F32F
+      const uint16_t k = (uint16_t)((rd16(P(0x1A)) & 0x7FFF) - 1);
+      if(k == 0 || k == 5) clear = true;
+      else {
+        const uint16_t t = (uint16_t)(rd16(P(0x46)) - rd16(0x1E9E));
+        wr16(P(0x46), t);
+        if(t & 0x8000) {
+          wr16(P(0x46), (uint16_t)(t + 4));
+          (void)func_83FE9A(dp, 0x4F21, rd16(0x1EBE), 0);
+        }
+      }
+    }
+    if(clear) wr16(P(0x46), 0);
+  }
+  // F35C: the side kept within $280 of the road's middle (or of D+$9E)
+  if(rd16(0x1F31) & 0x8000) {  // F407 (decoded by hand: $83:F403-$F422 holds data the bench read)
+    uint16_t a = rd16(P(0x06));
+    if(a & 0x8000) a = (uint16_t)-a;
+    if(a >= 0x0280) wr16(P(0x06), (rd16(P(0x06)) & 0x8000) ? 0xFD80 : 0x0280);
+  } else {
+    uint16_t a = rd16(P(0x06));
+    if(a & 0x8000) a = (uint16_t)-a;
+    if(a >= 0x0280) {
+      uint16_t b = (uint16_t)(rd16(P(0x06)) - rd16(P(0x9E)));
+      if(b & 0x8000) b = (uint16_t)-b;
+      if(b >= 0x0280) {
+        if(!(rd16(0x1F2C) & 0x8001)) wr16(P(0x06), (rd16(P(0x06)) & 0x8000) ? 0xFD80 : 0x0280);
+        else if((uint16_t)(rd16(P(0x06)) - rd16(P(0x9E))) & 0x8000) wr16(P(0x06), (uint16_t)(rd16(P(0x9E)) + 0xFD80));
+        else wr16(P(0x06), (uint16_t)(rd16(P(0x9E)) + 0x0280));
+      }
+    }
+    // F3B0: by D+$60's byte, the table at $83:F3B9: 6 runs F3C5, 0/2/4/8/10 go on
+    if(rd8(P(0x60)) == 6) {
+      const uint16_t t = (uint16_t)(rd16(P(0x26)) & 0x003F);
+      if(t < 0x0038 && t >= 0x0018) {
+        uint16_t h = rd16(P(0x9E));
+        const bool neg = (h & 0x8000) != 0;
+        h = neg ? (uint16_t)(h >> 1 | 0x8000) : (uint16_t)(h >> 1);
+        const bool below = ((uint16_t)(h - rd16(P(0x06))) & 0x8000) != 0;
+        // $1F2C negative: kept to the right of half D+$9E's side; else to the left
+        const bool take = (rd16(0x1F2C) & 0x8000) ? (neg ? below : !below) : (neg ? !below : below);
+        if(take) wr16(P(0x06), h);
+      }
+    }
+  }
+  // F423: the engine's state D+$1A (its gear table at $86:DCF7/DD03/DD0F/DD1B) or the side
+  // speed's band
+  bool band = (rd16(0x03DC) & 0x0003) == 2 || rd16(P(0x1A)) == 0;
+  if(!band) {
+    if(!(rd16(P(0x1A)) & 0x8000)) {
+      wr16(P(0x1A), (uint16_t)(rd16(P(0x1A)) | 0x8000));
+      const uint32_t x = (uint16_t)(rd16(P(0x1A)) << 1);
+      wr16(P(0x44), (uint16_t)(rd16(P(0x44)) & ~0x0040));
+      wr16(P(0x3A), bus_rd16(0x86DCF7 + x));
+    } else {
+      const uint32_t x = (uint16_t)(rd16(P(0x1A)) << 1);
+      if(!(rd16(P(0x44)) & 0x0040)) {
+        mul32(rd16(0x1E9E), bus_rd16(0x86DD1B + x), &lo, &hi);
+        const uint16_t a = (uint16_t)(rd16(P(0x3A)) + lo);
+        wr16(P(0x3A), a);
+        if(a >= bus_rd16(0x86DD03 + x)) {
+          if(bus_rd16(0x86DD0F + x) & 1) {
+            wr16(P(0x44), (uint16_t)(rd16(P(0x44)) | 0x0040));
+            wr16(P(0x3A), bus_rd16(0x86DD03 + x));
+          } else {
+            wr16(P(0x1A), 0);
+            band = true;
+          }
+        }
+      }
+    }
+  }
+  if(band) {  // F48E
+    const uint16_t a = rd16(P(0x21));
+    static const uint16_t steps[] = {0xFFA0, 0xFFC0, 0xFFE8, 0x0018, 0x0040, 0x0060};
+    uint16_t x = 6;
+    for(unsigned i = 0; i < 6; i++, x--)
+      if((uint16_t)(a - steps[i]) & 0x8000) break;
+    wr16(P(0x3A), (uint16_t)(x << 8));
+  }
+  {  // F4BB
+    const uint32_t x = (uint32_t)(rd8(P(0x3B)) << 1);
+    wr16(0xFABF + (uint32_t)rd16(0x1EBA), bus_rd16(0x86CB54 + x));
+    mul32(rd16(0x1E9E), 0x001E, &lo, &hi);  // its second word is skipped by a write
+    const uint16_t a = (uint16_t)(rd16(P(0x48)) - lo);
+    wr16(P(0x48), (a & 0x8000) ? 0 : a);
+  }
+  bool items = !(rd16(0x1F31) & 0x8000);  // F4F6: the road items under the car (D+$53, by $83:F54B)
+  if(items) {
+    const uint16_t k = (uint16_t)((rd16(P(0x1A)) & 0x7FFF) - 1);
+    if(k == 0 || k == 5 || rd8(P(0x53)) == 0) items = false;
+  }
+  if(items) {
+    uint16_t a = (uint16_t)(rd8(P(0xB1)) << 4);
+    if(a & 0x0800) a |= 0xF000;
+    wr16(0x0114, a);
+    wr16(0x0116, (uint16_t)(rd8(P(0xB2)) + 0x0020));
+    uint16_t d = (uint16_t)(rd16(P(0x06)) - rd16(0x0114));
+    if(d & 0x8000) d = (uint16_t)-d;
+    if(!((uint16_t)(d - rd16(0x0116)) & 0x8000)) items = false;
+  }
+  if(!items) wr16(P(0x4C), 0);  // F645
+  else switch(rd8(P(0x53))) {
+    case 1:  // F555
+      car_message_request(dp, 0x003A);
+      mul32(0x2000, rd16(0x1E9E), &lo, &hi);
+      add32(P(0x56), P(0x58), lo, hi);
+      if(rd16(P(0x58)) >= 0x0028) {
+        wr16(P(0x58), 0x0028);
+        wr16(P(0x56), 0xFFFF);
+      }
+      scene_timer_ping(dp, 0xFF20);
+      break;
+    case 2:  // F5B8
+      car_message_request(dp, 0x003B);
+      if(!(rd16(0x1F31) & 0x8000)) {
+        mul32(0x0200, rd16(0x1E9E), &lo, &hi);
+        wr16(P(0x5A), rd16(P(0x5A)) >= lo ? (uint16_t)(rd16(P(0x5A)) - lo) : 0);
+      }
+      scene_timer_ping(dp, 0xFF14);
+      break;
+    case 3:  // F611
+      wr16(P(0x48), 0x0258);
+      break;
+    case 4:  // F618
+      if(!(rd16(P(0x44)) & 0x0020)) {
+        wr16(P(0x44), (uint16_t)(rd16(P(0x44)) | 0x0020));
+        wr16(P(0x1A), 5);
+        const uint32_t car = rd16(0x1EBA);
+        wr16(0xFADE + car, (uint16_t)(rd16(0xFADE + car) | 0x0008));
+        (void)func_83FE9A(dp, 0xFF29, rd16(0x1EBE), 0);
+      }
+      break;
+    default:  // no item the game places
+      break;
+  }
+  if(!(rd16(0x1F31) & 0x8000)) {  // F647: D+$97 counts up by $800 a frame; its carry plays a sound
+    mul32(rd16(0x1E9E), 0x0800, &lo, &hi);
+    const uint32_t t = (uint32_t)rd16(P(0x97)) + lo;
+    wr16(P(0x97), (uint16_t)t);
+    if((t >> 16) && rd16(P(0x58)) != 0 && rd16(P(0x58)) < 0x0009 && !(rd16(P(0x44)) & 0x0004))
+      (void)func_83FE9A(dp, 0xFF26, rd16(0x1EBE), 0);
+  }
+  {  // F68D: D+$1E's byte moves on by the speed, at most $80
+    mul32(rd16(P(0x10)), 0x0100, &lo, &hi);
+    wr16(0x0114, lo);
+    wr16(0x0116, hi);
+    mul32(rd16(0x0115), rd16(0x1E9E), &lo, &hi);
+    const uint16_t a = lo >= 0x0080 ? 0x0080 : lo;
+    wr8(P(0x1E), (uint8_t)(rd8(P(0x1E)) + (uint8_t)a));
+  }
+  #undef P
+}

@@ -337,7 +337,7 @@ func_838989_long:
     phd                         ; $83E252
     lda.w #$0200                ; $83E253
     tcd                         ; $83E256
-    jsr.w $EAC6                 ; $83E257
+    jsr.w player_car_frame      ; $83E257
     jsr.w car_track_step        ; $83E25A
     pld                         ; $83E25D
     rtl                         ; $83E25E
@@ -747,6 +747,7 @@ func_83EA9B:
     lda.l $86DAF5,x             ; $83EABE
     sta.w $1EA0                 ; $83EAC2
     rts                         ; $83EAC5
+player_car_frame:
     pea.w $8330                 ; $83EAC6
     plb                         ; $83EAC9
     lda.w $1ECE                 ; $83EACA
@@ -806,7 +807,7 @@ CODE_83EB31:
     bne CODE_83EB6B             ; $83EB41
     lda.b $4E                   ; $83EB43
     and.w #$00FF                ; $83EB45
-    db $F0,$15 ; beq            ; $83EB48
+    beq CODE_83EB5F             ; $83EB48
     dec.b $4E                   ; $83EB4A
     lda.w $1EB6                 ; $83EB4C
     sta.b $31                   ; $83EB4F
@@ -815,7 +816,11 @@ CODE_83EB31:
     ldy.w #$003C                ; $83EB57
     jsr.w func_83FE9A           ; $83EB5A
     bra CODE_83EB6B             ; $83EB5D
-    incbin !baserom:$1EB5F..$1EB6B
+CODE_83EB5F:
+    lda.w #$FF1C                ; $83EB5F static
+    ldx.w $1EBE                 ; $83EB62 static
+    ldy.w #$0000                ; $83EB65 static
+    jsr.w func_83FE9A           ; $83EB68 static
 CODE_83EB6B:
     lda.b $31                   ; $83EB6B
     sec                         ; $83EB6D
@@ -920,11 +925,17 @@ CODE_83EC33:
     sta.b $50                   ; $83EC46
     rep.b #$20                  ; $83EC48
     ldx.b $81                   ; $83EC4A
-    db $F0,$14 ; beq            ; $83EC4C
+    beq CODE_83EC62             ; $83EC4C
     lda.l $8103DC               ; $83EC4E
     and.w #$000F                ; $83EC52
     beq CODE_83EC68             ; $83EC55
-    incbin !baserom:$1EC57..$1EC68
+    cpx.w #$0035                ; $83EC57 static
+    bne CODE_83EC68             ; $83EC5A static
+    ldx.w #$00B3                ; $83EC5C static
+    jmp.w $ECAA                 ; $83EC5F static
+CODE_83EC62:
+    ldx.w #$0000                ; $83EC62 static
+    jmp.w $ECAA                 ; $83EC65 static
 CODE_83EC68:
     lda.l $7EFAC9,x             ; $83EC68
     sta.w $011C                 ; $83EC6C
@@ -939,14 +950,42 @@ CODE_83EC68:
     sbc.w $0117                 ; $83EC89
     sta.l $7EFACB,x             ; $83EC8C
     bpl CODE_83EC9D             ; $83EC90
-    incbin !baserom:$1EC92..$1EC9D
+    lda.w #$0000                ; $83EC92 static
+    sta.l $7EFAC9,x             ; $83EC95 static
+    sta.l $7EFACB,x             ; $83EC99 static
 CODE_83EC9D:
     lda.w $013C                 ; $83EC9D
     sec                         ; $83ECA0
     sbc.w $0116                 ; $83ECA1
     sta.w $013C                 ; $83ECA4
     jmp.w $ECF6                 ; $83ECA7
-    incbin !baserom:$1ECAA..$1ECF6
+    lda.w $020E,x               ; $83ECAA static
+    sta.w $011C                 ; $83ECAD static
+    lda.w $0210,x               ; $83ECB0 static
+    sta.w $011E                 ; $83ECB3 static
+    jsr.w $F6E1                 ; $83ECB6 static
+    lda.w #$0000                ; $83ECB9 static
+    sta.l $308000               ; $83ECBC static
+    lda.w $0116                 ; $83ECC0 static
+    sta.l $308000               ; $83ECC3 static
+    lda.w $0295,x               ; $83ECC7 static
+    sta.l $308000               ; $83ECCA static
+    nop                         ; $83ECCE static
+    lda.w $0216,x               ; $83ECCF static
+    sec                         ; $83ECD2 static
+    sbc.l $308000               ; $83ECD3 static
+    sta.w $0216,x               ; $83ECD7 static
+    lda.w $0218,x               ; $83ECDA static
+    sbc.l $308000               ; $83ECDD static
+    bpl CODE_83ECE9             ; $83ECE1 static
+    stz.w $0216                 ; $83ECE3 static
+    lda.w #$0000                ; $83ECE6 static
+CODE_83ECE9:
+    sta.w $0218,x               ; $83ECE9 static
+    lda.w $013C                 ; $83ECEC static
+    sec                         ; $83ECEF static
+    sbc.w $0117                 ; $83ECF0 static
+    sta.w $013C                 ; $83ECF3 static
     stz.w $8000                 ; $83ECF6
     lda.b $16                   ; $83ECF9
     sta.w $8000                 ; $83ECFB
@@ -999,7 +1038,7 @@ CODE_83ED1B:
     lda.b $58                   ; $83ED78
     sbc.w #$0000                ; $83ED7A
     bpl CODE_83ED82             ; $83ED7D
-    incbin !baserom:$1ED7F..$1ED82
+    lda.w #$0000                ; $83ED7F static
 CODE_83ED82:
     sta.b $58                   ; $83ED82
 CODE_83ED84:
@@ -1041,7 +1080,7 @@ CODE_83EDB7:
     lda.w $8000                 ; $83EDCB
     bit.w #$FF80                ; $83EDCE
     beq CODE_83EDD6             ; $83EDD1
-    incbin !baserom:$1EDD3..$1EDD6
+    lda.w #$007F                ; $83EDD3 static
 CODE_83EDD6:
     xba                         ; $83EDD6
     and.w #$FF00                ; $83EDD7
@@ -1427,7 +1466,8 @@ CODE_83F115:
     lda.b $18                   ; $83F12D
     sbc.w $8000                 ; $83F12F
     bpl CODE_83F139             ; $83F132
-    incbin !baserom:$1F134..$1F139
+    stz.b $16                   ; $83F134 static
+    lda.w #$0000                ; $83F136 static
 CODE_83F139:
     sta.b $18                   ; $83F139
     ldx.w #$000C                ; $83F13B
@@ -1682,7 +1722,7 @@ CODE_83F35A:
 CODE_83F35C:
     bit.w $1F31                 ; $83F35C
     bpl CODE_83F364             ; $83F35F
-    incbin !baserom:$1F361..$1F364
+    jmp.w $F407                 ; $83F361 static
 CODE_83F364:
     lda.b $06                   ; $83F364
     bpl CODE_83F36C             ; $83F366
@@ -1746,20 +1786,23 @@ CODE_83F3B0:
     lsr a                       ; $83F3DD
     cmp.b $06                   ; $83F3DE
     bmi CODE_83F423             ; $83F3E0
-    incbin !baserom:$1F3E2..$1F3E6
+    sta.b $06                   ; $83F3E2 static
+    bra CODE_83F423             ; $83F3E4 static
 CODE_83F3E6:
     sec                         ; $83F3E6
     ror a                       ; $83F3E7
     cmp.b $06                   ; $83F3E8
     bpl CODE_83F423             ; $83F3EA
-    incbin !baserom:$1F3EC..$1F3F0
+    sta.b $06                   ; $83F3EC static
+    bra CODE_83F423             ; $83F3EE static
 CODE_83F3F0:
     lda.b $9E                   ; $83F3F0
     bmi CODE_83F3FD             ; $83F3F2
     lsr a                       ; $83F3F4
     cmp.b $06                   ; $83F3F5
     bpl CODE_83F423             ; $83F3F7
-    incbin !baserom:$1F3F9..$1F3FD
+    sta.b $06                   ; $83F3F9 static
+    bra CODE_83F423             ; $83F3FB static
 CODE_83F3FD:
     sec                         ; $83F3FD
     ror a                       ; $83F3FE

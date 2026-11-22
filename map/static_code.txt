@@ -161,3 +161,14 @@
 8A:833C 8A:84B9 m16x16 ; attract_state: the states after $82EC (never run)
 8A:8524 8A:85AF m16x16 ; attract_state: the last states (never run)
 80:B828 80:B830 m16x16 ; split_screen_setup: $03DC's low nibble set, the $30 test (never run)
+83:EB5F 83:EB6B m16x16 ; player_car_frame: never run
+83:EC57 83:EC68 m16x16 ; player_car_frame: never run
+83:EC92 83:EC9D m16x16 ; player_car_frame: never run
+83:ECAA 83:ECF6 m16x16 ; player_car_frame: never run
+83:ED7F 83:ED82 m16x16 ; player_car_frame: never run
+83:EDD3 83:EDD6 m16x16 ; player_car_frame: never run
+83:F134 83:F139 m16x16 ; player_car_frame: never run
+83:F361 83:F364 m16x16 ; player_car_frame: never run
+83:F3E2 83:F3E6 m16x16 ; player_car_frame: never run
+83:F3EC 83:F3F0 m16x16 ; player_car_frame: never run
+83:F3F9 83:F3FD m16x16 ; player_car_frame: never run

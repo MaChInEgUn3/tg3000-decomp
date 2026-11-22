@@ -8949,6 +8949,189 @@ static void fuzz_hud_markers_write(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
   ram[0x03A7] = (rnd() & 1) ? 0 : (uint8_t)(1 + rnd() % 0xFF);
 }
 
+// ---- player_car_frame ($83:EAC6) ----  its caller loads its own registers: DB = $83 (the
+// last PLB) is the output; the bench judges the flags
+static void call_player_car_frame(const Regs* in, Regs* out) {
+  player_car_frame(in->d);
+  out->db = 0x83;
+}
+// the race as the movie left it, then a few of its inputs moved: the steps $1E9E (1-4, never
+// 0: the step loop counts it), the pads' bits $1E9C, $1F31/$1F2C's signs, the side D+$06
+// and the road's D+$9E near the $280 limits, the side speed D+$21, the engine's state D+$1A
+// (its tables' range), the item D+$53 (0-4), D+$60's byte (the $83:F3B9 table's six), the
+// counters
+static void fuzz_player_car_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  const uint32_t d = r->d;
+  wr16ram(ram, 0x1E9E, (uint16_t)(1 + rnd() % 4));
+  if(rnd() & 1) wr16ram(ram, 0x1E9C, (uint16_t)(rnd() & 0x00FF));
+  if(rnd() % 4 == 0) wr16ram(ram, 0x1F31, (uint16_t)(rnd() & 1 ? 0x8000 : 0));
+  if(rnd() % 4 == 0) wr16ram(ram, 0x1F2C, (uint16_t)(rnd() & 0x8001));
+  if(rnd() % 4 == 0) wr16ram(ram, d + 0x06, (uint16_t)(rnd() & 1 ? 0x0270 + rnd() % 0x20 : 0xFD70 + rnd() % 0x20));
+  if(rnd() % 4 == 0) wr16ram(ram, d + 0x9E, (uint16_t)(rnd() % 0x200 - 0x100));
+  if(rnd() % 4 == 0) wr16ram(ram, d + 0x21, (uint16_t)(rnd() % 0x100 - 0x80));
+  if(rnd() % 4 == 0) wr16ram(ram, d + 0x1A, (uint16_t)((rnd() % 6) | (rnd() & 1 ? 0x8000 : 0)));
+  if(rnd() % 4 == 0) ram[d + 0x53] = (uint8_t)(rnd() % 5);
+  if(rnd() % 4 == 0) ram[d + 0x60] = (uint8_t)(2 * (rnd() % 6));
+  if(rnd() % 4 == 0) wr16ram(ram, d + 0x1C, (uint16_t)(rnd() % 0x200 - 0x100));
+  // the rarer states, two to five a case (the selftest's 200 cases must reach them all)
+  for(int n = 2 + (int)(rnd() % 4); n > 0; n--) switch(rnd() % 16) {
+    case 0:  // following (not the follow step), the view's distance near its cap of 9
+      wr16ram(ram, 0x1ECE, (uint16_t)(1 + rnd() % 0x10));
+      wr16ram(ram, d + 0x14, (uint16_t)(rnd() % 12));
+      if(rnd() & 1) {  // and near 0 (the drift takes it below)
+        wr16ram(ram, d + 0x14, 0);
+        wr16ram(ram, d + 0x12, (uint16_t)(rnd() % 0x100));
+      }
+      break;
+    case 1: ram[d + 0x4E] = 0; wr16ram(ram, d + 0x31, 0); break;
+    case 2: wr16ram(ram, d + 0x7E, (uint16_t)(0x0050 + rnd() % 8)); break;
+    case 3: {  // the drag on a car or a record (EC33)
+      static const uint16_t who[] = {0x0000, 0x0035, 0x006A, 0x009F};
+      wr16ram(ram, d + 0x81, who[rnd() % 4]);
+      ram[d + 0x50] = (uint8_t)(1 + rnd() % 0x7F);
+      wr16ram(ram, 0x1E9C, (uint16_t)(ram[0x1E9C] | 0x40));
+      ram[0x03DC] = (uint8_t)rnd();
+      if(rnd() & 1) {  // a drag that ends below 0 (from a value already negative)
+        const uint32_t c = (uint32_t)(ram[d + 0x81] | ram[d + 0x82] << 8);
+        wr16ram(ram, 0xFAC9 + c, (uint16_t)rnd());
+        wr16ram(ram, 0xFACB + c, 0xFFFF);
+        wr16ram(ram, 0x0216, (uint16_t)rnd());
+        wr16ram(ram, 0x0218, 0xFFFF);
+        wr16ram(ram, 0x0216 + 0xB3, (uint16_t)rnd());
+        wr16ram(ram, 0x0218 + 0xB3, 0xFFFF);
+      }
+      break;
+    }
+    case 4: wr16ram(ram, d + 0x18, (uint16_t)(rnd() % 0x40)); wr16ram(ram, d + 0x16, (uint16_t)rnd()); break;  // speeds
+    case 5: wr16ram(ram, d + 0x58, (uint16_t)(rnd() & 1 ? rnd() % 3 : 0xFFFF - rnd() % 3)); wr16ram(ram, d + 0x56, (uint16_t)rnd()); break;
+    case 6:  // the throttle: its delay, a big pedal (its product's high byte past $7F)
+      wr16ram(ram, d + 0x48, (uint16_t)(rnd() & 1 ? 0 : rnd() % 0x300));
+      wr16ram(ram, d + 0x44, (uint16_t)rnd());
+      if(rnd() & 1) {
+        wr16ram(ram, 0x1EA6, (uint16_t)(0x4000 + rnd() % 0x3FFF));
+        wr16ram(ram, 0x1EA8, (uint16_t)(0x4000 + rnd() % 0x3FFF));
+        wr16ram(ram, 0x1E9C, (uint16_t)(ram[0x1E9C] | 0x01));
+      }
+      break;
+    case 7: wr16ram(ram, 0x1EAA, (uint16_t)rnd()); wr16ram(ram, 0x1EAC, (uint16_t)rnd()); break;
+    case 8: {
+      const uint32_t x = (uint32_t)(ram[0x1EBC] | ram[0x1EBD] << 8);
+      ram[0x3D6E + x] ^= 0x08;
+      wr16ram(ram, 0x3BEC + x, rnd() & 1 ? 0 : (uint16_t)rnd());
+      break;
+    }
+    case 9: {  // the side speed near its limits, or near 0 (its easing crosses 0)
+      static const uint16_t near[] = {1, 2, 0xFFFF, 0xFFFE};
+      wr16ram(ram, d + 0x21, rnd() & 1 ? near[rnd() % 4] : (uint16_t)(rnd() & 1 ? 0x0078 + rnd() % 0x10 : 0xFF78 + rnd() % 0x10));
+      if(rnd() & 1) {  // the top speed: D+$10 of $80 and over
+        wr16ram(ram, 0x1EA0, (uint16_t)(0x4000 + rnd() % 0x3FFF));
+        wr16ram(ram, d + 0x18, (uint16_t)(0x20 + rnd() % 0x20));
+      }
+      break;
+    }
+    case 10: ram[d + 0x2A] = (uint8_t)rnd(); wr16ram(ram, d + 0x29, (uint16_t)rnd()); wr16ram(ram, d + 0x46, (uint16_t)(rnd() % 4)); break;
+    case 11: {  // the $83:F3C5 limit: D+$9E (the slope, recomputed from the road's row) of either sign
+      ram[d + 0x60] = 6;
+      ram[d + 0x26] = (uint8_t)(0x18 + rnd() % 0x20);
+      wr16ram(ram, 0x1F2C, (uint16_t)(rnd() & 0x8001));
+      wr16ram(ram, 0x1F31, 0);
+      const uint32_t x = (uint32_t)(ram[0x1EBC] | ram[0x1EBD] << 8);
+      ram[0x3D6E + x] &= (uint8_t)~0x08;
+      wr16ram(ram, 0x3DEC + x, (uint16_t)(rnd() % 0x200 - 0x100));
+      break;
+    }
+    case 12:
+      wr16ram(ram, d + 0x1A, (uint16_t)((rnd() % 6) | (rnd() & 1 ? 0x8000 : 0)));
+      wr16ram(ram, d + 0x3A, (uint16_t)rnd());
+      wr16ram(ram, d + 0x44, (uint16_t)(ram[d + 0x44] & ~(rnd() & 1 ? 0x31 : 0x21)));
+      wr16ram(ram, d + 0x46, (uint16_t)(rnd() % 4));
+      break;
+    case 13: {  // an item under the car
+      ram[d + 0x53] = (uint8_t)(1 + rnd() % 4);
+      ram[d + 0xB1] = (uint8_t)rnd();
+      ram[d + 0xB2] = (uint8_t)rnd();
+      wr16ram(ram, d + 0x06, (uint16_t)((int16_t)(int8_t)ram[d + 0xB1] * 16 + (int)(rnd() % 0x20) - 0x10));
+      wr16ram(ram, d + 0x1A, (uint16_t)(rnd() % 3));
+      wr16ram(ram, 0x1F31, 0);
+      wr16ram(ram, d + 0x4C, (uint16_t)(rnd() % 3));
+      if(rnd() & 1) ram[0x0463] = 0;
+      break;
+    }
+    case 14: wr16ram(ram, d + 0x97, (uint16_t)(0xF000 + rnd() % 0x1000)); wr16ram(ram, d + 0x58, (uint16_t)(1 + rnd() % 8)); break;
+    case 15:
+      if(rnd() % 3 == 0) {  // $1F31 negative: the plain $280 limit, either side
+        wr16ram(ram, 0x1F31, 0x8000);
+        wr16ram(ram, d + 0x06, (uint16_t)(rnd() & 1 ? 0xFD00 + rnd() % 0x60 : 0x02A0 + rnd() % 0x60));
+      } else if(rnd() & 1) wr16ram(ram, 0x1EA0, (uint16_t)(1 + rnd() % 0x200));
+      else {  // the view's distance near 0 with D+$44 bit 4 clear (EEA0)
+        wr16ram(ram, d + 0x44, (uint16_t)(ram[d + 0x44] & ~0x10));
+        wr16ram(ram, d + 0x14, 0);
+        wr16ram(ram, d + 0x12, (uint16_t)(rnd() % 0x100));
+      }
+      break;
+    default: break;
+  }
+  // the rarer scenarios, set last (the draws above can undo them) and taken in turn, so that
+  // even the selftest's 200 cases reach each: the four items (D+$4C at its end, no sound
+  // queued), the side speed's band ($83:F32F), the gear at its table's end, both sides of
+  // the $83:F3C5 limit, the steering at its $80 clamps (at the top speed, where the side
+  // step is big), the plain $280 limit of $1F31 negative, and none
+  static unsigned turn;
+  const unsigned scenario = turn++ % 13;
+  const uint32_t row = (uint32_t)(ram[0x1EBC] | ram[0x1EBD] << 8);
+  if(scenario < 4) {
+    ram[d + 0x53] = (uint8_t)(1 + scenario);
+    ram[d + 0xB1] = (uint8_t)rnd();
+    ram[d + 0xB2] = (uint8_t)rnd();
+    wr16ram(ram, d + 0x06, (uint16_t)((int16_t)(int8_t)ram[d + 0xB1] * 16 + (int)(rnd() % 0x20) - 0x10));
+    wr16ram(ram, d + 0x1A, (uint16_t)(rnd() % 3 == 0 ? 0 : 2 + rnd() % 3));
+    wr16ram(ram, 0x1F31, 0);
+    wr16ram(ram, d + 0x4C, (uint16_t)(rnd() % 2));
+    if(rnd() % 4 != 0) ram[0x0463] = 0;
+    if(rnd() & 1) wr16ram(ram, d + 0x44, (uint16_t)(ram[d + 0x44] & ~0x20));
+  } else if(scenario == 4) {  // (bits $20/$80 of $1E9C would set D+$1A; a view far ahead keeps bit 4 off at EEA0)
+    wr16ram(ram, d + 0x44, (uint16_t)(ram[d + 0x44] & ~0x31));
+    wr16ram(ram, d + 0x1A, (uint16_t)(2 + rnd() % 4));
+    wr16ram(ram, d + 0x46, (uint16_t)(rnd() % 3));
+    wr16ram(ram, 0x1E9C, (uint16_t)(ram[0x1E9C] & ~0xA0));
+    wr16ram(ram, d + 0x14, (uint16_t)(0x4000 + rnd() % 0x1000));
+    wr16ram(ram, d + 0x18, (uint16_t)(rnd() % 0x10));
+  } else if(scenario == 5) {  // the gear at its table's end, held (DD0F bit 0)
+    for(int tries = 0; tries < 8; tries++) {
+      const uint16_t k = (uint16_t)(1 + rnd() % 5);
+      if(rom16(0x86DD0F + 2 * (uint32_t)k) & 1) {
+        wr16ram(ram, d + 0x1A, (uint16_t)(0x8000 | k));
+        wr16ram(ram, d + 0x3A, (uint16_t)(rom16(0x86DD03 + 2 * (uint32_t)k) - rnd() % 4));
+        wr16ram(ram, d + 0x44, (uint16_t)(ram[d + 0x44] & ~0x40));
+        ram[0x03DC] = (uint8_t)(ram[0x03DC] & ~0x03);
+        break;
+      }
+    }
+  } else if(scenario < 8) {  // $83:F3C5 taking the side to half the slope D+$9E: $1F2C negative
+                             // with D+$9E positive, or $1F2C clear with D+$9E negative
+    const bool right = scenario == 6;
+    ram[d + 0x60] = 6;
+    ram[d + 0x26] = (uint8_t)(0x18 + rnd() % 0x20);
+    wr16ram(ram, 0x1F31, 0);
+    wr16ram(ram, 0x1F2C, right ? 0x8000 : 0);
+    ram[0x3D6E + row] &= (uint8_t)~0x08;
+    const uint16_t slope = (uint16_t)(0x0100 + rnd() % 0xF0);
+    const uint16_t w = right ? (uint16_t)(0 - slope) : slope;
+    wr16ram(ram, 0x3DEC + row, w);
+    wr16ram(ram, 0x3DEE + row, w);  // a flat row: the product is 0, D+$9E = -$3DEC
+    wr16ram(ram, d + 0x06, right ? (uint16_t)(rnd() % 0x40) : (uint16_t)(0 - (0x0100 + rnd() % 0x80)));
+  } else if(scenario < 10) {  // steering right or left from near its clamp
+    const bool right = scenario == 8;
+    wr16ram(ram, 0x1EA0, (uint16_t)(0x6000 + rnd() % 0x1FFF));
+    wr16ram(ram, d + 0x18, (uint16_t)(0x30 + rnd() % 0x10));
+    wr16ram(ram, d + 0x21, right ? (uint16_t)(0x0070 + rnd() % 0x10) : (uint16_t)(0xFF80 + rnd() % 0x10));
+    wr16ram(ram, 0x1E9C, (uint16_t)((ram[0x1E9C] & ~0x0C) | (right ? 0x08 : 0x04)));
+  } else if(scenario < 12) {  // $1F31 negative: the plain $280 limit, either side
+    wr16ram(ram, 0x1F31, 0x8000);
+    wr16ram(ram, d + 0x06, scenario == 10 ? (uint16_t)(0xFD00 + rnd() % 0x60) : (uint16_t)(0x02A0 + rnd() % 0x60));
+  }
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9783,6 +9966,10 @@ const Routine routines[] = {
    .holes = {{0x81EEB6, 0x81EEE3},    // the forward wrap's 15th-17th cars: a BRA jumps over them
              {0x81F0E9, 0x81F0F0}}},  // the backward wrap's 20th car: the leader behind the line wraps
                                       // forward first (an unsigned check), unless a lap is $8000 or more
+  {.name = "player_car_frame", .entry = 0x83EAC6, .end = 0x83F6E1, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .db = 0x83, .call = call_player_car_frame, .fuzz = fuzz_player_car_frame,
+   .holes = {{0x83F3B9, 0x83F3C5},    // the jump table by D+$60
+             {0x83F54D, 0x83F555}}},  // the jump table by D+$53 (it starts in its JMP's operand)
   {.name = "car_contacts_chain", .entry = 0x81F21E, .end = 0x81F251, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_car_contacts_chain, ALL_OUTPUTS, .fuzz = fuzz_car_contacts_chain},
   {.name = "ticker_scene_step", .entry = 0x80E925, .end = 0x80EA77, .source = "src/misc.c", .needM16 = true,

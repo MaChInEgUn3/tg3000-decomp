@@ -1819,6 +1819,60 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The player's car frame (roots-108, 2026-11-22)
+
+**`player_car_frame` ($83:EAC6-$83:F6E0):** about 3,100 bytes. It runs once per race frame
+(18,560 entries on the 60k movie) with D = `$0200` (the player's record) and DB = `$30`, and
+returns with DB = `$83`.
+- **A plain row.** All of its DSP-4 use is command 0, which the C does with
+  `dsp4_multiply`.
+- **Its writes into a pending answer** (`$83:ED72`, `$F227`/`$F236`, `$F4EB`, `$F03F`) only
+  stand in for an answer word the game doesn't read (roots-107). At `$F03F` the write comes
+  before the read, so it takes the first word and the read gets the high one.
+  - The tape could not confirm `$F03F`: over 20,000 frames that product is always 0, on a
+    flat road.
+  - The bench's chip agrees on every fuzz case, which sets the road's slope.
+- **With `$1ECE` set** (the car follows another), only the view's distance D+$12/D+$14
+  moves, and `follow_car_step` runs when it is negative.
+- **Otherwise, in order:**
+  - the race's warnings (`func_83FE9A`), the counters D+$31/D+$4E/D+$51/D+$7E, and the pads'
+    bits in `$1E9C`;
+  - the drag on a car or a record (`$83:EC33`, by D+$81). The record's case never ran; its
+    unindexed `STZ $0216` is kept;
+  - the speed D+$16/D+$18, stepped `$1E9E` times (the throttle `$1EA6`/`$1EA8`, the drag by
+    its square);
+  - the view's distance;
+  - the engine's pitch D+$1F (`$86:DAD9`, `func_83EA9B`) and a 40-step division by `$1EA0`;
+  - the drags in `$013A`/`$013C`;
+  - the road's slope D+$9E, then the side speed D+$21 (eased back to 0 without changing sign,
+    and the steering clamped to ±`$80`);
+  - the side D+$04/D+$06, kept within `$280` of the middle or of D+$9E, with the limit at
+    `$83:F3C5` chosen by D+$60 through the table at `$83:F3B9`;
+  - the gear D+$3A, from the tables at `$86:DCF7`-`$DD1B`, or the side speed's band;
+  - the items under the car (D+$53 1-4, through the table at `$83:F54B`, which starts inside
+    its own `JMP`'s operand);
+  - D+$48, D+$4C and D+$97, then D+$1E's byte.
+- **One multiply by 0 is kept** (`$83:EF97`): it adds nothing to `$013A`/`$013C`.
+- **Decoded as static code:** eleven never-run ranges. `$83:F403`-`$F422` is decoded by hand
+  in the C, because the map has a data read at `$F403`. `$83:F6E1`, a never-run 32 × 16
+  product, is the C's `car_step_product`.
+- **The fuzz** starts from the race, moves a few inputs, and draws two to five rarer states
+  per case: following, the drags (from a negative value), the speeds up to D+$10 ≥ `$80`,
+  the throttle past its clamp, the slope of either sign, and the counters' ends.
+  - **Thirteen scenarios set last, in turn.** The draws can undo one another, and so can
+    the frame itself: it sets D+$1A and bit 4 of D+$44 before `$83:F32F` reads them. The
+    turns are the four items, the side speed's band, the gear at its table's end, both
+    sides of the `$83:F3C5` limit, both steering clamps at the top speed, both sides of the
+    plain `$280` limit, and none.
+  - Taking them in turn lets the selftest's 200 cases reach every path. The first gate
+    failed there, at 1,189 of 1,259.
+  - `$1E9E` stays at 1-4: at 0 the step loop would run 65,536 times.
+  - The C passed every live and fuzz case from the first run. The rounds were all the
+    fuzz's.
+- **The holes are the two jump tables.**
+- **Result:** live 4,000/4,000 (60k) and 152/152 (race1), fuzz 500/500 and 200/200, paths
+  1,259/1,259.
+
 ## The HUD's markers (roots-107, 2026-11-21)
 
 **`hud_markers_write` ($82:8961):** it runs once per race setup, 5 entries on the 60k
