@@ -70,13 +70,17 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
    Before committing, verify one of two ways:
    - `tools/verify_new.sh name1,name2` when the unit only adds lines to `src/` and
      `tools/bench/` (new routines, rows and adapters) and does not touch `difftest.c` or
-     `platform_bench.c`. It verifies the new rows over the 60k and shop movies (about 10
+     `platform_bench.c`. It verifies the new rows over the 60k, shop and shop-buy movies (about 10
      minutes) and merges them into `map/verified.txt`; the other rows keep their last
      result. `tools/bench/selftest.sh` still runs every routine the short movie reaches.
    - `tools/verify_all.sh` otherwise. It re-verifies every routine from the full autopilot
-     movie (in parallel slices: `TG3000_SHARDS`, default 5, plus two for the shop movie;
+     movie (in parallel slices: `TG3000_SHARDS`, default 5, plus two each for the shop movies;
      about 14 minutes on 8 cores), and checks that every negative row (deliberately wrong
      C) fails over that movie too.
+
+   Both scripts judge each routine on the evidence pooled over the movies
+   (`tools/merge_verified.py`, harness-8). A hard failure on any movie fails it, while the
+   100-return flag rule, the live flags and the paths count over all movies together.
 
    `progress.py --check` (and CI) accepts an older row only while the code changed by
    additions alone since its run, and only for 5 commits. It also refuses when the last

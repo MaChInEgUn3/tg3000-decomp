@@ -1819,6 +1819,18 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The shop-buy movie wired in (explore-2, 2026-11-22)
+
+**`tools/bench/movies/explore_buy.txt` is now the third movie** of `verify_all` (two slices)
+and `verify_new`, judged with the other two under harness-8.
+- **Its header** says how it was made and that it ends in a paused race, the fuzz base of
+  every row it enters. The unmeasured "8,888 credits plus the bonus" is gone.
+- **What it brought before being wired in:** fix-1 and fix-2 (two defects in verified C),
+  kind 0, fuzz-pin-1 and fuzz-pin-2.
+- **It reaches the buying code** (`$80:9039`, `$80:99D1`, `$80:9957`, `$80:9ABB`). Those
+  routines are next to port.
+- **The check:** the full gate, now over three movies.
+
 ## Evidence pooled over the movies (harness-8, 2026-11-22)
 
 **The advisor's design, open to the owner's veto.** Every routine is verified over each

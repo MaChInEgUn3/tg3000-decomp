@@ -1,5 +1,5 @@
 # entry name source fnv1a64(source+routines.c+difftest.c+platform_bench.c) live fuzz paths status live-flags  -- written by the bench (--difftest)
-# full run: 2026-11-22T20:20:29Z (tools/verify_all.sh)
+# full run: 2026-11-22T21:03:50Z (tools/verify_all.sh)
 8087E9 rng_next src/rng.c 185ef515be7c53c4 4000 500 16/16 verified live-flags:- replayed:0
 8A988C rng_next_8a src/rng.c 185ef515be7c53c4 2091 500 16/16 verified live-flags:- replayed:0
 8083FC vram_queue_push src/vram_queue.c bd3c5c8125c8cfa7 11 500 15/15 verified live-flags:NVZC replayed:0
@@ -85,24 +85,24 @@
 8AA022 func_8AA022 src/misc.c 1b066a3e5014af6d 1068 500 15/15 verified live-flags:- replayed:0
 80B7BB func_80B7BB src/misc.c 1b066a3e5014af6d 293 500 10/10 verified live-flags:- replayed:0
 8A9A81 byte_buffer_decimal2 src/misc.c 1b066a3e5014af6d 48 500 12/12 verified live-flags:NVZC replayed:0
-82841E wait_frames_82 src/frame.c 3d19e71e065ba0f5 19 0 5/5 verified live-flags:NVZC replayed:0
-8A99B4 byte_buffer_pad src/misc.c 1b066a3e5014af6d 79 500 5/5 verified live-flags:NVZC replayed:0
+82841E wait_frames_82 src/frame.c 3d19e71e065ba0f5 19 0 5/5 verified live-flags:VC replayed:0
+8A99B4 byte_buffer_pad src/misc.c 1b066a3e5014af6d 79 500 5/5 verified live-flags:- replayed:0
 8A99D6 byte_buffer_end src/misc.c 1b066a3e5014af6d 48 500 6/6 verified live-flags:NVZC replayed:0
-8A9A33 byte_buffer_decimal src/misc.c 1b066a3e5014af6d 75 500 43/43 verified live-flags:NVZC replayed:0
+8A9A33 byte_buffer_decimal src/misc.c 1b066a3e5014af6d 75 500 43/43 verified live-flags:V replayed:0
 80E4C5 func_80E4C5 src/misc.c 1b066a3e5014af6d 29 500 7/7 verified live-flags:V replayed:0
-80E4DB func_80E4DB src/misc.c 1b066a3e5014af6d 7 500 7/7 verified live-flags:NVZC replayed:0
+80E4DB func_80E4DB src/misc.c 1b066a3e5014af6d 7 500 7/7 verified live-flags:V replayed:0
 80B58D func_80B58D src/misc.c 1b066a3e5014af6d 5 500 8/8 verified live-flags:- replayed:0
 8ABFBC func_8ABFBC src/misc.c 1b066a3e5014af6d 10 500 11/11 verified live-flags:NVZC replayed:0
 80B95D queue_unpacked_upload src/decompress.c bb61d30d8bc1cac9 33 500 16/16 verified live-flags:NVZC replayed:0
 80B537 func_80B537 src/misc.c 1b066a3e5014af6d 991 500 17/17 verified live-flags:VC replayed:0
-8A9A99 byte_buffer_space src/misc.c 1b066a3e5014af6d 509 500 7/7 verified live-flags:NVZC replayed:0
+8A9A99 byte_buffer_space src/misc.c 1b066a3e5014af6d 509 500 7/7 verified live-flags:V replayed:0
 808698 sprite_number_right src/text.c c7c5a20c5979980b 686 500 28/28 verified live-flags:- replayed:0
 80EB66 func_80EB66 src/text.c c7c5a20c5979980b 854 500 39/39 verified live-flags:- replayed:0
 8089D1 oam_finish_0b00_near src/sprites.c 159a8c680803e51b 812 500 2/2 verified live-flags:- replayed:0
 8089D6 oam_finish_near src/sprites.c 159a8c680803e51b 2770 500 2/2 verified live-flags:V replayed:0
 8083AD upload_vram_now src/video_dma.c d003f8cb1ac5b921 325 500 12/12 verified live-flags:V replayed:0
 8083CB upload_cgram_now src/video_dma.c d003f8cb1ac5b921 38 500 12/12 verified live-flags:NVZC replayed:0
-8087DF rng_next_long src/rng.c 185ef515be7c53c4 94 500 6/6 verified live-flags:NVZC replayed:0
+8087DF rng_next_long src/rng.c 185ef515be7c53c4 94 500 6/6 verified live-flags:V replayed:0
 80FA3F star_spawn src/stars.c b5df6841ddd03bc9 2092 500 12/12 verified live-flags:- replayed:0
 8A9863 star_spawn_8a src/stars.c b5df6841ddd03bc9 886 500 12/12 verified live-flags:- replayed:0
 80E166 star_random_y src/stars.c b5df6841ddd03bc9 137 500 6/6 verified live-flags:- replayed:0
@@ -117,7 +117,7 @@
 81F1FC func_81F1FC src/misc.c 1b066a3e5014af6d 669 500 17/17 verified live-flags:- replayed:0
 8AA216 func_8AA216 src/misc.c 1b066a3e5014af6d 984 500 27/27 verified live-flags:- replayed:0
 8AA0F9 sprite_frame src/misc.c 1b066a3e5014af6d 109 500 114/114 verified live-flags:- replayed:0
-8A9FA1 func_8A9FA1 src/misc.c 1b066a3e5014af6d 49 500 42/42 verified live-flags:NVZC replayed:0
+8A9FA1 func_8A9FA1 src/misc.c 1b066a3e5014af6d 49 500 42/42 verified live-flags:VC replayed:0
 8AB981 clear_tilemap_7f src/misc.c 1b066a3e5014af6d 1 500 9/9 verified live-flags:NVZC replayed:2
 8ABC32 func_8ABC32 src/misc.c 1b066a3e5014af6d 49 500 7/7 verified live-flags:NVZC replayed:0
 8ABC7F func_8ABC7F src/misc.c 1b066a3e5014af6d 1 500 6/6 verified live-flags:NVZC replayed:0
@@ -145,7 +145,7 @@
 8AC278 text_put_tile_char src/text.c c7c5a20c5979980b 749 500 21/21 verified live-flags:V replayed:0
 8A9C19 byte_buffer_push src/misc.c 1b066a3e5014af6d 747 500 8/8 verified live-flags:V replayed:0
 8AA37A text_cursor_down3 src/text.c c7c5a20c5979980b 307 500 4/4 verified live-flags:- replayed:0
-8AB942 func_8AB942 src/misc.c 1b066a3e5014af6d 43 500 32/32 verified live-flags:NVZC replayed:0
+8AB942 func_8AB942 src/misc.c 1b066a3e5014af6d 43 500 32/32 verified live-flags:- replayed:0
 82FB70 decompress src/decompress.c bb61d30d8bc1cac9 98 500 435/435 verified live-flags:VC replayed:0
 80FBA0 decompress_near src/decompress.c bb61d30d8bc1cac9 91 500 2/2 verified live-flags:VC replayed:1
 8AA47E clear_object_slots src/misc.c 1b066a3e5014af6d 109 500 9/9 verified live-flags:- replayed:0
@@ -252,7 +252,7 @@
 8A9F64 flag_03dc_from_52 src/misc.c 1b066a3e5014af6d 1 500 8/8 verified live-flags:NVZC replayed:0
 8A9F76 timer_0d7e_tick src/misc.c 1b066a3e5014af6d 109 500 17/17 verified live-flags:- replayed:0
 8A9B85 text_line_put src/misc.c 1b066a3e5014af6d 4 500 20/20 verified live-flags:NVZC replayed:0
-82B18B text_centred_line src/text.c c7c5a20c5979980b 93 500 77/77 verified live-flags:NVZC replayed:0
+82B18B text_centred_line src/text.c c7c5a20c5979980b 93 500 77/77 verified live-flags:- replayed:0
 80B2F2 shop_list_label src/shop.c fd31ef6b322ff74d 4000 500 34/34 verified live-flags:- replayed:0
 82ECEA race_clear_0242_0208 src/misc.c 1b066a3e5014af6d 4000 500 3/3 verified live-flags:- replayed:0
 82AB9D race_countdown src/misc.c 1b066a3e5014af6d 4000 500 74/74 verified live-flags:- replayed:0
@@ -346,7 +346,7 @@
 80F6FD title_scroll_start src/misc.c 1b066a3e5014af6d 1 500 5/5 verified live-flags:NVZC replayed:0
 808199 save_data_seal src/misc.c 1b066a3e5014af6d 3 500 19/19 verified live-flags:NVZC replayed:0
 8AC2DD track_snap src/misc.c 1b066a3e5014af6d 1 500 46/46 verified live-flags:NVZC replayed:0
-81F48B effect_request_p1 src/misc.c 1b066a3e5014af6d 65 500 15/15 verified live-flags:NVZC replayed:0
+81F48B effect_request_p1 src/misc.c 1b066a3e5014af6d 65 500 15/15 verified live-flags:- replayed:0
 8A85AF tile_anim_step src/misc.c 1b066a3e5014af6d 283 500 73/73 verified live-flags:- replayed:0
 81E631 track_rows_build src/misc.c 1b066a3e5014af6d 0 500 189/189 verified live-flags:NVZC replayed:2
 82ADC2 track_block_triple src/misc.c 1b066a3e5014af6d 0 500 29/29 verified live-flags:NVZC replayed:2

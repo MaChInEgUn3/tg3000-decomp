@@ -30,14 +30,18 @@ rom="${TG3000_ROM:-TG3000.sfc}"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 shopframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_shop.txt)
+buyframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_buy.txt)
 build/bench/bench "$rom" 60000 --movie tools/bench/movies/autopilot_60k.txt --difftest "$tmp/main.txt" \
   --difftest-only "$rows" --fuzz 500 > "$tmp/main.log" 2>&1 &
 mainpid=$!
 build/bench/bench "$rom" "$shopframes" --movie tools/bench/movies/explore_shop.txt --difftest "$tmp/shop.txt" \
   --difftest-only "$rows" --fuzz 500 > "$tmp/shop.log" 2>&1 &
 shoppid=$!
+build/bench/bench "$rom" "$buyframes" --movie tools/bench/movies/explore_buy.txt --difftest "$tmp/buy.txt" \
+  --difftest-only "$rows" --fuzz 500 > "$tmp/buy.log" 2>&1 &
+buypid=$!
 status=0
-for p in "$mainpid:main" "$shoppid:shop"; do
+for p in "$mainpid:main" "$shoppid:shop" "$buypid:buy"; do
   s=0
   wait "${p%%:*}" || s=$?   # the bench's own status (4 = a routine failed on that movie)
   # harness-8: a routine that fails on one movie by the flag or path rule alone may pass on
@@ -56,11 +60,11 @@ for name in $(echo "$rows" | tr ',' ' '); do
   fi
 done
 if [ $status -ne 0 ]; then echo "verify_new: FAILED" >&2; exit $status; fi
-python3 -I tools/merge_verified.py "$tmp/new.txt" "$tmp/main.txt" "$tmp/shop.txt"
+python3 -I tools/merge_verified.py "$tmp/new.txt" "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt"
 # the verdict: a named row the merge failed (its per-movie lines show why)
 failed=$(awk '!/^#/ && $8 == "failed" {print $2}' "$tmp/new.txt")
 if [ -n "$failed" ]; then
-  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp/main.log" "$tmp/shop.log" >&2 || true; done
+  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp/main.log" "$tmp/shop.log" "$tmp/buy.log" >&2 || true; done
   echo "verify_new: FAILED ($(echo $failed | tr ' ' ','))" >&2
   exit 4
 fi
