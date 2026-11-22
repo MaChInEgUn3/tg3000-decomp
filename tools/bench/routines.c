@@ -1131,6 +1131,10 @@ static void fuzz_text_line_push(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(uint32_t i = 0; i < n; i++) ram[at + i] = (uint8_t)(1 + rnd() % 255);
   ram[at + n] = 0;
   wr16ram(ram, DP + 0x60, (uint16_t)(rnd() % 0x20));
+  // the text buffer's index (byte_buffer_push: STA $7F7D00,X) as the game keeps it ($0003 to
+  // $020B at every live entry, the 60k and shop-buy movies): from $8300 up the long store
+  // runs into bank $80, low WRAM and the stack (a paused race leaves such a word there)
+  wr16ram(ram, DP + 0x58, (uint16_t)(rnd() % 0x210));
 }
 
 // ---- track_object_test / _bump / _money ($83:FA34, $83:FA6A, $83:FAD7) ----  called
@@ -6631,6 +6635,19 @@ static void fuzz_shop_item_redraw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   wr16ram(ram, DP + 0x8C, q);
   wr16ram(ram, DP + 0x8E, (rnd() & 1) ? q : (uint16_t)(q + 2));
   wr16ram(ram, DP + 0x8A, (uint16_t)(rnd() & 0xC0));
+  // the sprite buffers as the shop keeps them (measured at every live entry, both shop
+  // movies): D+$6C/D+$6E the two OAM tables, $0900 and $0D00, swapped every frame by
+  // oam_finish; the slot D+$74 = D+$6C - $0900 (0 or $400); the last frames' ends
+  // D+$70/D+$72 from $00DC to $05A8. A fuzz base outside the shop (a paused race: $27B4 and
+  // $FFBC there) is not a state the shop's screen runs in: oam_high_table's direct page
+  // would land on the hardware registers, and its clearing loop (from D+$74 up to D+$72)
+  // would run over the whole bank and the stack
+  const bool first = rnd() & 1;
+  wr16ram(ram, DP + 0x6C, first ? 0x0900 : 0x0D00);
+  wr16ram(ram, DP + 0x6E, first ? 0x0D00 : 0x0900);
+  wr16ram(ram, DP + 0x74, first ? 0x0000 : 0x0400);
+  wr16ram(ram, DP + 0x70, (uint16_t)(0x00DC + 4 * (rnd() % 0x134)));
+  wr16ram(ram, DP + 0x72, (uint16_t)(0x00DC + 4 * (rnd() % 0x134)));
 }
 // list 0's view: its one row
 static void fuzz_shop_item_view_g(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {

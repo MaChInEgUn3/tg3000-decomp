@@ -226,7 +226,7 @@
 80A6DB shop_ring_piece_back src/shop.c 83d048804601376e 0 0 0/29 unreached live-flags:NVZC replayed:0
 80A251 shop_item_dispatch_view src/shop.c 83d048804601376e 4000 500 19/19 verified live-flags:- replayed:0
 809C28 shop_item_dispatch_panel src/shop.c 83d048804601376e 124 500 21/21 verified live-flags:- replayed:0
-809847 shop_item_redraw src/shop.c 83d048804601376e 985 500 16/16 verified live-flags:- replayed:0
+809847 shop_item_redraw src/shop.c cba877d709a04b22 985 500 16/16 verified live-flags:- replayed:0
 809AC8 shop_item_slide_row src/shop.c 83d048804601376e 28 0 61/61 verified live-flags:NVZC replayed:0
 809B5D shop_item_slide_list src/shop.c 83d048804601376e 27 0 24/24 verified live-flags:NVZC replayed:0
 809B99 shop_item_slide_list_in src/shop.c 83d048804601376e 40 0 37/37 verified live-flags:NVZC replayed:0
@@ -289,7 +289,7 @@
 80EA77 spark_step src/misc.c 8ba22a37b2b2cc39 229 500 107/107 verified live-flags:- replayed:0
 83FD3C car_clear_53 src/misc.c 8ba22a37b2b2cc39 40 0 5/5 verified live-flags:NVZC replayed:0
 80E8B5 block_copy_7f2000 src/misc.c 8ba22a37b2b2cc39 16 500 13/13 verified live-flags:NVZC replayed:0
-8A99E2 text_line_push src/misc.c 8ba22a37b2b2cc39 48 500 17/17 verified live-flags:NVZC replayed:0
+8A99E2 text_line_push src/misc.c 76dce78068aacdf5 48 500 17/17 verified live-flags:NVZC replayed:0
 83FA34 track_object_test src/misc.c 8ba22a37b2b2cc39 102 500 19/19 verified live-flags:- replayed:0
 83FA6A track_object_bump src/misc.c 8ba22a37b2b2cc39 12 500 45/45 verified live-flags:NVZC replayed:0
 83FAD7 track_object_money src/misc.c 8ba22a37b2b2cc39 64 500 24/24 verified live-flags:NVZC replayed:0

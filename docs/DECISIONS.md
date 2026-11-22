@@ -1819,6 +1819,35 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The shop-buy movie's fuzz bases (fuzz-pin-1, 2026-11-22)
+
+**`tools/bench/movies/explore_buy.txt`** (not wired in yet) runs the 60k movie up to step
+16,720, the shop after the first race. From there the explorer, aimed at the buying code,
+reaches `$80:9039`, `$80:99D1`, `$80:9957` and `$80:9ABB`. Its last state is a **paused
+race** (lap 1 of 5). Every row it enters is fuzzed from that state, which no movie had given
+before. It exposed fix-1 and fix-2, plus two rows whose fuzz relied on the old bases:
+- **`shop_item_redraw`.** The paused race leaves D+$6C = `$27B4` and D+$74 = `$FFBC`.
+  - `oam_high_table` sets its direct page to D+$6C + `$200`, which lands on the hardware
+    registers.
+  - Its clearing loop (from D+$74 up to D+$72) ran over the whole bank and the stack; the
+    original crashed.
+  - The fuzz now pins the shop's values, measured at every live entry of both shop movies:
+    D+$6C/D+$6E are `$0900`/`$0D00` (swapped every frame), D+$74 = D+$6C - `$0900`, and
+    D+$70/D+$72 run from `$00DC` to `$05A8`.
+- **`text_line_push`.** The index D+$58 of `byte_buffer_push`'s `STA $7F7D00,X` came in at
+  `$8300` or more. The long store ran into bank `$80`, low WRAM, and overwrote the return
+  address on the stack. The fuzz pins it to `$0000-$020F`; live entries on the 60k and
+  shop-buy movies show `$0003-$020B`.
+- **Both fuzzers are used only by their own rows.** On both shop movies both rows pass
+  500/500.
+- **Still open on that movie** (see the work state):
+  - `object_sprites_stream`'s lost cases: the player's bar overflowing
+    (`sprite_bar_put`'s full path at `$81:8508` returns with `RTL` without pulling its two
+    pushes, and the original crashes). Whether a live state can reach it is still being
+    measured.
+  - The rows that fail only by the per-movie flag and path rules, and the waiting rows a
+    slice leaves unsampled: a harness unit that pools the movies' evidence.
+
 ## Object kind 0 (roots-112, 2026-11-22)
 
 **The owner's decision:** "Porque sem portar? Assim nunca vamos chegar no 100% né não?"
@@ -1888,8 +1917,10 @@ while the C did not.
   - Measured on a fuzz case: the original read `$80:0001-$80:0002` at `$82:FEDD` with
     X = `$FFFF`.
 - **Writes stay in the bank** (`put16`). No output the game unpacks runs across `$FFFF`.
-  A fuzz scene that did showed a difference after the wrap that is not understood. That
-  scene was dropped, and the case is recorded as not modelled.
+  Measured over the three movies' live entries: 18 distinct unpackings, starting at
+  `$7F:0000`, `$4000` or `$8000`, the furthest ending at `$7F:A7E0`. A fuzz scene that did
+  run across showed a difference after the wrap that is not understood. That scene was
+  dropped, and the case is recorded as not modelled.
 - **The fuzz** (`fuzz_decompress`, shared by `decompress_near` and
   `queue_unpacked_upload`) now alternates two scenes:
   - the output at `$7F:2100`, as before;
