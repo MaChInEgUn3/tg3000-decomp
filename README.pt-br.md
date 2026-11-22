@@ -34,7 +34,7 @@ a matemática do DSP-4, o vídeo e o driver de som viram código nativo.
 | Bytes de código | 70,199 (`0x11237`) |
 | Bytes de dados | 770,615 (`0xBC237`) |
 | Pontos de entrada de rotinas em C, aprovados no teste diferencial | **455** |
-| Última reverificação completa de todas as rotinas | 2026-11-22T03:44:44Z |
+| Última reverificação completa de todas as rotinas | 2026-11-22T04:47:51Z |
 | Destes, aprovados num commit anterior, com o código só acrescido desde então | 0 (todos contra este código) |
 | Bytes de código dentro de rotinas em C aprovadas | **50,072 / 70,199 (71.33%)** |
 

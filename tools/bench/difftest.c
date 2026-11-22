@@ -1191,6 +1191,12 @@ static void finishSample(int k, const Cpu* cpu) {
   } else if(cpu_interruptCount != smp->interruptsAtEntry) {
     s->interrupted++;
     if(smp->replaySlot >= 0) replays[smp->replaySlot].kept = true;  // run it again later
+    // not compared, but its caller's use of the flags is the same (harness-6): watch it
+    Watch* w = &watches[idx];
+    if(!fuzzing && !w->active) {
+      *w = (Watch){true, FN | FV | FZ | FC, 0, cpu_interruptCount, -1};
+      s->watched++;
+    }
     return;
   }
   char why[320] = "";

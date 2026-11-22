@@ -1819,6 +1819,25 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## Flags watched after interrupted returns (harness-6, 2026-11-22)
+
+**The advisor's call, open to the owner's veto.**
+- **The rule it relaxes.** A row's flags count as outputs only when its caller reads
+  them. Until now the watch was armed only after a compared return, and with fewer than
+  100 watched returns every flag counted as live.
+- **The cost.** Many race rows are interrupted in most entries: their returns were never
+  watched, and on race1 their flags counted as live. `$82:CBD4` showed it: 58 compared and
+  158 interrupted returns, with V depending on whichever routine last did arithmetic.
+- **The change.** An interrupted live return still isn't compared, but the watch now
+  follows its caller. The interrupt landed inside the routine and does not change what
+  the caller does with the flags after it, and the watch already pauses across handlers.
+- **Not a declared override,** which the advisor ruled out for `hud_markers_write`.
+  Nothing is declared: more returns are measured.
+- **On race1** every per-frame row now has 216 watched returns: compared plus interrupted.
+- **The check:** the full gate, and the `live-flags` column of `map/verified.txt` before and
+  after. A set that shrinks is only the rule relaxing. A set that grows would be an
+  unmodelled output to fix in this unit.
+
 ## Native commands beside a tape (harness-5, 2026-11-22)
 
 **The advisor's call, open to the owner's veto.** `$82:CBD4` opens its `$09` stream after a
