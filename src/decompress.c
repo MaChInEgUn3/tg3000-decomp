@@ -11,26 +11,47 @@ typedef struct {
 
 static uint8_t in8(const Stream* s, uint16_t at) { return bus_rd8(s->in | at); }
 static uint16_t in16(const Stream* s, uint16_t at) { return (uint16_t)(in8(s, at) | (in8(s, (uint16_t)(at + 1)) << 8)); }
+// The output is read as words through DB = its bank and an index (LDA $0000,X): the 65816
+// adds the index in 24 bits, so a word read at offset $FFFF takes its high byte from the
+// next bank's $0000 (bank $7F + 1 = $80: low WRAM). A copy from before the output's start
+// does this (title_scene_load's pictures). Writes stay in the bank: no output the game
+// unpacks runs across $FFFF, and that case is not modelled.
 static uint8_t out8(const Stream* s, uint16_t at) { return bus_rd8(s->out | at); }
-static uint16_t out16(const Stream* s, uint16_t at) { return (uint16_t)(out8(s, at) | (out8(s, (uint16_t)(at + 1)) << 8)); }
+static uint16_t out16(const Stream* s, uint16_t at) {
+  return (uint16_t)(out8(s, at) | (bus_rd8((s->out | at) + 1) << 8));
+}
 static void put8(const Stream* s, uint16_t at, uint8_t v) { bus_wr8(s->out | at, v); }
 static void put16(const Stream* s, uint16_t at, uint16_t v) {
   put8(s, at, (uint8_t)v);
   put8(s, (uint16_t)(at + 1), (uint8_t)(v >> 8));
 }
 
+// A word of the output read as LDA disp,X with X = `at` - disp: the 24-bit sum crosses into
+// the next bank (low WRAM) when `at` wrapped past $FFFF but X did not.
+static uint16_t out16_disp(const Stream* s, uint16_t at, uint16_t disp) {
+  const uint32_t a = (s->out | (uint16_t)(at - disp)) + disp;
+  return (uint16_t)(bus_rd8(a) | (bus_rd8(a + 1) << 8));
+}
+
 // Copy `len` (4-260) bytes inside the output from `from` to the current position, moving
 // words: at offsets 0, 2, 4, ... and, for an odd length, the last two words overlap by a
-// byte (... L-5, L-3, L-2). This is the order the original's unrolled code uses.
-static void copy_back(Stream* s, uint16_t from, uint16_t len) {
+// byte (... L-5, L-3, L-2). This is the order the original's unrolled code uses. The short
+// copies ($C0-$DF, `disp`) read their last word as LDA $0002,X (an odd length: the last two
+// as $0002,X and $0003,X), X stepping by INX up to there; the long one's loop steps X to
+// every word.
+static void copy_back_words(Stream* s, uint16_t from, uint16_t len, bool disp) {
+  const uint16_t body = (uint16_t)(len - (len & 1 ? 3 : 2));
   uint16_t i = 0;
-  for(; i + 2 <= len - (len & 1 ? 3 : 0); i += 2) put16(s, (uint16_t)(s->y + i), out16(s, (uint16_t)(from + i)));
+  for(; i < body; i += 2) put16(s, (uint16_t)(s->y + i), out16(s, (uint16_t)(from + i)));
   if(len & 1) {
-    put16(s, (uint16_t)(s->y + len - 3), out16(s, (uint16_t)(from + len - 3)));
-    put16(s, (uint16_t)(s->y + len - 2), out16(s, (uint16_t)(from + len - 2)));
+    put16(s, (uint16_t)(s->y + len - 3), disp ? out16_disp(s, (uint16_t)(from + len - 3), 2) : out16(s, (uint16_t)(from + len - 3)));
+    put16(s, (uint16_t)(s->y + len - 2), disp ? out16_disp(s, (uint16_t)(from + len - 2), 3) : out16(s, (uint16_t)(from + len - 2)));
+  } else {
+    put16(s, (uint16_t)(s->y + len - 2), disp ? out16_disp(s, (uint16_t)(from + len - 2), 2) : out16(s, (uint16_t)(from + len - 2)));
   }
   s->y = (uint16_t)(s->y + len);
 }
+static void copy_back(Stream* s, uint16_t from, uint16_t len) { copy_back_words(s, from, len, false); }
 
 // The long copy ($E0-$FF) orders an odd length differently: 5 bytes are words at 0 and 2
 // plus a byte at 4; longer odd lengths are a word at 0 advancing one byte, then words at
@@ -129,7 +150,7 @@ uint16_t decompress(uint16_t dp, uint8_t src_bank, uint16_t src, uint8_t dst_ban
       wr16(dp + 0x0A, from);
       s.x += 2;
       wr16(dp + 0x04, s.x);
-      copy_back(&s, from, (uint16_t)(4 + ((cmd >> 2) & 7)));
+      copy_back_words(&s, from, (uint16_t)(4 + ((cmd >> 2) & 7)), true);
     } else {  // 5-260 bytes from up to ~8 KB behind
       uint16_t from = (uint16_t)(s.y - ((((cmd & 0x1F) << 8) | in8(&s, (uint16_t)(s.x + 1))) + 3));
       wr16(dp + 0x0A, from);

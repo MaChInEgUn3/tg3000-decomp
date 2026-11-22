@@ -1819,6 +1819,38 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The decompressor's reads across the bank's end (fix-1, 2026-11-22)
+
+**A defect in verified C, found by a new movie's end state.** `title_scene_load` failed
+every fuzz case started from the shop-buy movie's last state (see below; that movie is not
+wired in yet): `$7F:2002` and `$7F:4004` held 0 on entry, and the original wrote `$5C` there
+while the C did not.
+- **The cause.** `decompress` reads the output it has written as words through DB = the
+  output's bank and an index, `LDA $0000,X`. The 65816 adds the index in 24 bits.
+  - A copy from before the output's start reads at `$FFFF`, and that word takes its high
+    byte from `$80:0000` (low WRAM). The C wrapped inside the bank, to `$7F:0000`.
+  - On the other movies' end states, those bytes already held what the C wrote. So the
+    difference was never compared.
+- **The short copies** (`$C0-$DF`) read their last word as `LDA $0002,X`. An odd length
+  reads its last two as `$0002,X` and `$0003,X`, with X stepped by `INX` up to there. So a
+  copy that passes `$FFFF` takes those words from bank `$80` as well.
+  - The long copies' loop steps X to every word (`$0000,X` only).
+  - Measured on a fuzz case: the original read `$80:0001-$80:0002` at `$82:FEDD` with
+    X = `$FFFF`.
+- **Writes stay in the bank** (`put16`). No output the game unpacks runs across `$FFFF`.
+  A fuzz scene that did showed a difference after the wrap that is not understood. That
+  scene was dropped, and the case is recorded as not modelled.
+- **The fuzz** (`fuzz_decompress`, shared by `decompress_near` and
+  `queue_unpacked_upload`) now alternates two scenes:
+  - the output at `$7F:2100`, as before;
+  - the output at `$7F:0000`-`$001F`, with back references reaching before it. The end of
+    bank `$7F` and WRAM `$0000-$0001` are random.
+- **Check:**
+  - With the new fuzz, the old C fails: `decompress` 171/200, `decompress_near` 168/200.
+  - The new C passes 500/500 on race1 and on the shop-buy movie, and
+    `title_scene_load` passes there 500/500.
+  - The full gate.
+
 ## The race frame's drawing (roots-111, 2026-11-22), and an endAt after a return (harness-7)
 
 **`race_frame_draw` ($82:8923-$82:8944):** a root once `object_sprites_stream` was ported.

@@ -5481,12 +5481,21 @@ static void fuzz_decompress_stream(uint8_t* ram, uint32_t (*rnd)(void), uint32_t
   ram[p] = 0;
 }
 
+// In turn: the output at $7F:2100 after 8 KB of random bytes; the output near $7F:0000 with
+// back references reaching before it (a word read at $FFFF takes its high byte from
+// $80:0000, low WRAM: the end of bank $7F and WRAM $0000-$0001 random). An output running
+// across $FFFF is not fuzzed (the game has none; the C does not model its writes there)
 static void fuzz_decompress(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  static unsigned turn;
+  const uint16_t y = (turn++ % 2) ? (uint16_t)(rnd() % 0x20) : 0x2100;
   for(int i = 0; i < 0x2100; i++) ram[0x10000 + i] = (uint8_t)rnd();
-  fuzz_decompress_stream(ram, rnd, 0x2100, true);
+  for(int i = 0xC000; i < 0x10000; i++) ram[0x10000 + i] = (uint8_t)rnd();
+  ram[0x0000] = (uint8_t)rnd();
+  ram[0x0001] = (uint8_t)rnd();
+  fuzz_decompress_stream(ram, rnd, y, true);
   r->a = 0x7F7E;
   r->x = 0x4000;
-  r->y = 0x2100;
+  r->y = y;
 }
 
 // ---- decompress_near ($80:FBA0) ----  JSL decompress / RTS: same registers and flags.
