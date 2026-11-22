@@ -327,6 +327,7 @@ func_838989_long:
     jsr.w func_838989           ; $8396D5
     rtl                         ; $8396D8
     incbin !baserom:$196D9..$1E241
+player1_frame:
     lda.w $1E9E                 ; $83E241
     asl a                       ; $83E244
     tax                         ; $83E245

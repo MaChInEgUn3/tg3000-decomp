@@ -9132,6 +9132,21 @@ static void fuzz_player_car_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   }
 }
 
+// ---- player1_frame ($83:E241) ----  RTL after PLD (D back to $0100: N and Z clear); DB = $83
+// (car_track_step's); its caller loads its own registers
+static void call_player1_frame(const Regs* in, Regs* out) {
+  (void)in;
+  player1_frame();
+  out->db = 0x83;
+  out->n = out->z = false;
+}
+// the player's car as player_car_frame's fuzz moves it (with D = $0200, its record)
+static void fuzz_player1_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  Regs inner = *r;
+  inner.d = 0x0200;
+  fuzz_player_car_frame(&inner, ram, rnd);
+}
+
 const Routine routines[] = {
   {.name = "rng_next", .entry = 0x8087E9, .end = 0x808807, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
@@ -9966,6 +9981,9 @@ const Routine routines[] = {
    .holes = {{0x81EEB6, 0x81EEE3},    // the forward wrap's 15th-17th cars: a BRA jumps over them
              {0x81F0E9, 0x81F0F0}}},  // the backward wrap's 20th car: the leader behind the line wraps
                                       // forward first (an unsigned check), unless a lap is $8000 or more
+  {.name = "player1_frame", .entry = 0x83E241, .end = 0x83E25F, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player1_frame,
+   .fuzz = fuzz_player1_frame},
   {.name = "player_car_frame", .entry = 0x83EAC6, .end = 0x83F6E1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x83, .call = call_player_car_frame, .fuzz = fuzz_player_car_frame,
    .holes = {{0x83F3B9, 0x83F3C5},    // the jump table by D+$60

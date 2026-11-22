@@ -1819,6 +1819,17 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## Player 1's race frame (roots-109, 2026-11-22)
+
+**`player1_frame` ($83:E241, RTL):** a root once `player_car_frame` was ported, with 18,498
+entries on the 60k movie.
+- It counts the frame at `$7E:4CDD` + `$1E9E` × 2, a histogram of the steps per frame.
+- Then it runs `player_frame_setup`, and, with D = `$0200` (player 1's record),
+  `player_car_frame` and `car_track_step`.
+- It returns after `PLD` (N and Z clear) with DB = `$83`.
+- **The fuzz** is player_car_frame's, applied with D = `$0200`.
+- **Result:** live 140/140 (race1), fuzz 200/200, paths 14/14.
+
 ## The player's car frame (roots-108, 2026-11-22)
 
 **`player_car_frame` ($83:EAC6-$83:F6E0):** about 3,100 bytes. It runs once per race frame

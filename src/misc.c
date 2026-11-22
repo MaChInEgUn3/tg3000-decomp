@@ -6863,3 +6863,12 @@ void player_car_frame(uint16_t dp) {
   }
   #undef P
 }
+
+// TG3000_ROUTINE($83:E241) player1_frame
+void player1_frame(void) {
+  const uint32_t at = 0x4CDD + (uint32_t)(uint16_t)(rd16(0x1E9E) << 1);  // bank $7E
+  wr16(at, (uint16_t)(rd16(at) + 1));
+  player_frame_setup();
+  player_car_frame(0x0200);
+  car_track_step(0x0200);
+}

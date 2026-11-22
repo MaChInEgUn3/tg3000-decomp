@@ -495,3 +495,4 @@ func    8A891C   title_scene_load    ; the title scene's tiles (three unpacked, 
 func    8A8768   track_preview_maybe ; the track $1536's preview tiles when its $8A:9351 entry has bit 1 -> src/misc.c
 func    828961   hud_markers_write   ; the HUD's four markers and its badge in VRAM, then race_hud_digits -> src/misc.c
 func    83EAC6   player_car_frame    ; the player's car for the frame: speed, drag, engine, side, items, counters (D = record) -> src/misc.c
+func    83E241   player1_frame       ; player 1's car for the race frame: setup, player_car_frame, car_track_step (D = $0200; RTL) -> src/misc.c

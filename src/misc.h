@@ -1493,4 +1493,9 @@ void hud_markers_write(void);
 // D+$97, and D+$1E's byte. $83:F6E1 (car_step_product, never run) is a 32 x 16 product.
 void player_car_frame(uint16_t dp);
 
+// $83:E241: player 1's car for the race frame (RTL): the frame counted at $7E:4CDD + $1E9E * 2
+// (by how many steps it took), player_frame_setup, then with D = $0200 (player 1's record)
+// player_car_frame and car_track_step.
+void player1_frame(void);
+
 #endif
