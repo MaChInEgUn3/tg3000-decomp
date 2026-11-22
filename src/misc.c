@@ -6965,6 +6965,9 @@ static bool player_car_sprites(uint16_t xrow) {
   dsp4_port_write16(0);
   dsp4_port_write16(rd16(DP + 0x3C));
   {
+    // If the sprite buffer filled inside the bar, the original's full exit ($81:8508) would
+    // return with two words left on the stack and crash; the C goes on. No live frame comes
+    // near it: at least $168 bytes free when the bar starts, at most $20 used (measured).
     const uint32_t t = 8 * (uint32_t)k8;
     (void)sprite_bar_put(bus_rd16(0x86CC64 + t), bus_rd16(0x86CC66 + t), bus_rd16(0x86CC68 + t));
   }

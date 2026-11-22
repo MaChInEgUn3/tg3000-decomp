@@ -9351,6 +9351,9 @@ static void fuzz_object_sprites_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(vo
         ram[0x8CB5 + o] = (uint8_t)rnd();
         ram[0x8CB6 + o] = (uint8_t)rnd();
       }
+      // the player's car drawn the rival's way (no bar), so the script below is dense and the
+      // buffer fills inside kind 0's handler too
+      if(rival_parts_in_rom(ram, 0)) ram[0x0244] |= 1;
       break;
     }
     default: break;
@@ -9370,9 +9373,27 @@ static void fuzz_object_sprites_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(vo
       if(kind == 9 && (ram[0x8CB3 + o] | ram[0x8CB4 + o]) != 0) ram[0x8CB3 + o] = ram[0x8CB4 + o] = 0;
     }
   }
+  // the sprite buffer as race_frame_draw leaves it: D+$86 = D+$8E, 0 or $220 (equal at every
+  // live entry; a paused race leaves the last frame's end there instead)
+  {
+    const uint16_t base = (rnd() & 1) ? 0x0220 : 0x0000;
+    wr16ram(ram, DP + 0x86, base);
+    wr16ram(ram, DP + 0x8E, base);
+  }
+  // The chip's answers. Every sprite stored follows a non-zero flag word, so a script with
+  // fewer than 128 of them cannot fill the $200 bytes. That is how it stays whenever the
+  // player's car is drawn its own way ($0244 bit 0 clear): the buffer filling inside its bar
+  // (sprite_bar_put's full path) makes the original return with two words left on the stack
+  // and crash, which no live frame comes near (at least $168 bytes free when the bar starts,
+  // at most $20 used). Otherwise the script is dense, and the buffer does fill.
   static uint16_t script[4096];
   const int n = 200 + (int)(rnd() % 1500);
-  for(int i = 0; i < n; i++) script[i] = (rnd() % 3 != 0) ? 0 : (uint16_t)rnd();
+  const bool sparse = !(ram[0x0244] & 1);
+  int nonzero = 0;
+  for(int i = 0; i < n; i++) {
+    script[i] = (rnd() % 3 != 0 || (sparse && nonzero >= 120)) ? 0 : (uint16_t)rnd();
+    if(script[i] != 0) nonzero++;
+  }
   dsp4_bridge_script(script, n);
 }
 

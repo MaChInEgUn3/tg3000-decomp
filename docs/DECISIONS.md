@@ -1840,13 +1840,29 @@ before. It exposed fix-1 and fix-2, plus two rows whose fuzz relied on the old b
   shop-buy movies show `$0003-$020B`.
 - **Both fuzzers are used only by their own rows.** On both shop movies both rows pass
   500/500.
-- **Still open on that movie** (see the work state):
-  - `object_sprites_stream`'s lost cases: the player's bar overflowing
-    (`sprite_bar_put`'s full path at `$81:8508` returns with `RTL` without pulling its two
-    pushes, and the original crashes). Whether a live state can reach it is still being
-    measured.
-  - The rows that fail only by the per-movie flag and path rules, and the waiting rows a
-    slice leaves unsampled: a harness unit that pools the movies' evidence.
+- **`object_sprites_stream`'s lost cases** (fuzz-pin-2). The original crashed inside the
+  player's bar.
+  - `sprite_bar_put`'s full path (`$81:8508`, a hole of its own row) returns with `RTL`
+    without pulling its two pushes.
+  - The paused race left D+$86 = `$00E4` and D+$8E = 0, so the stream started with `$11C`
+    bytes free instead of `$200`. At every live entry the two are equal, 0 or `$220`, as
+    `race_frame_draw` sets them. The fuzz now pins them so.
+  - That only lowers the odds, so the chip's script is bounded as well. Every sprite stored
+    follows a non-zero flag word, so fewer than 128 of them cannot fill the `$200` bytes.
+    The script keeps at most 120 whenever the player's car is drawn its own way (`$0244`
+    bit 0 clear, the only way its bar is drawn), and stays dense otherwise.
+  - The kind-0 scene draws the player the rival's way, so the buffer still fills inside kind
+    0's handler. Counted: its first call filled 2-3 times on race1, 8-15 on the 60k movie
+    and 4-7 on the shop-buy movie.
+  - All three movies: 0 lost, paths 603/603.
+  - **The evidence is measured, not proven:** at least `$168` bytes free when the bar
+    starts, at most `$20` used, over 5,763 + 1,591 live bars (the two movies share their
+    first 16,720 frames).
+  - **The C goes on where the original would crash.** This is noted at the bar's call in
+    `player_car_sprites`, and it is the owner's to veto.
+- **Still open on that movie:** the rows that fail only by the per-movie flag and path
+  rules, and the waiting rows a slice leaves unsampled. A harness unit will pool the movies'
+  evidence.
 
 ## Object kind 0 (roots-112, 2026-11-22)
 
