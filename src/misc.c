@@ -7160,3 +7160,23 @@ done:  // D1E7
     wr16(0x1E56, bus_rd16(0x86C978 + t));
   }
 }
+
+void race_frame_draw_body(void) {
+  wr16(DP + 0x86, 0);
+  wr16(DP + 0x8E, 0);
+  if(rd16(0x00B4) != 0) {
+    wr16(DP + 0x86, 0x0220);
+    wr16(DP + 0x8E, 0x0220);
+  }
+  (void)race_road_frame();
+  (void)road_rows_stream();
+  shake_step();
+  object_sprites_stream();
+  (void)func_82A9B7();
+}
+
+// TG3000_ROUTINE($82:8923) race_frame_draw
+void race_frame_draw(void) {
+  race_frame_draw_body();
+  oam_high_load();
+}

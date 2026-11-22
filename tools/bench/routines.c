@@ -7953,9 +7953,10 @@ static void fuzz_save_data_check(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x045A, (uint16_t)((rnd() & 1) ? rnd() & 0xFF00 : rnd()));
 }
 
-// ---- oam_high_load ($82:AE15) ----  a DSP-4 tape row. DB = $83 (its PLB); C V of the ADC
-// of the room, N clear, Z set (the ADC's 0, or the fill's last DEX); none left: A = 0, X as
-// on entry, Y = D+$86; else A = $E0E0, X = 0, Y past the last word filled
+// ---- oam_high_load ($82:AE15) ----  a DSP-4 tape row. DB = $83 (its PLB); V of the ADC of
+// the room, N clear, Z set (the ADC's 0, or the fill's last DEX); none left: C of the ADC,
+// A = 0, X as on entry, Y = D+$86; else C = the room's bit 1 (its second LSR), A = $E0E0,
+// X = 0, Y past the last word filled
 static void oamHighOut(const Regs* in, Regs* out, uint16_t d86, uint16_t d8e) {
   const uint16_t e = (uint16_t)~(uint16_t)(d86 - d8e);
   const uint32_t sum = (uint32_t)e + 0x0200 + 1;
@@ -7970,6 +7971,7 @@ static void oamHighOut(const Regs* in, Regs* out, uint16_t d86, uint16_t d8e) {
     out->x = in->x;
     out->y = d86;
   } else {
+    out->c = (room >> 1) & 1;
     out->a = 0xE0E0;
     out->x = 0;
     out->y = (uint16_t)(d86 + 4 * (uint32_t)(uint16_t)(room >> 2));
@@ -8011,6 +8013,27 @@ static void call_oam_high_load_wrong_command(const Regs* in, Regs* out) {
   const uint16_t d86 = rd16(DP + 0x86), d8e = rd16(DP + 0x8E);
   oamHighWrong(true, 16);
   oamHighOut(in, out, d86, d8e);
+}
+
+// ---- race_frame_draw ($82:8923) ----  a DSP-4 tape row over its first five callees (their
+// native commands are judged as whole commands, harness-5). It ends at its tail jump to
+// oam_high_load (endAt, as hud_markers_write: oam_high_load keeps its own row and samples),
+// with func_82A9B7's DB = $83, N set and Z clear (its PLB); oam_high_load reloads the flags
+// before reading any, and A X Y are not read. Every live entry is interrupted (it takes most
+// of a frame): its cases are the two replays and the fuzz, where the stand-in chip answers
+static void call_race_frame_draw(const Regs* in, Regs* out) {
+  (void)in;
+  race_frame_draw_body();
+  out->db = 0x83;
+  out->n = true;
+  out->z = false;
+}
+// the buffer ($00B4) either way, the shake's and the view targets' inputs as their rows fuzz
+// them; the race as the movie left it otherwise
+static void fuzz_race_frame_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  wr16ram(ram, 0x00B4, (uint16_t)(rnd() & 1 ? 0x0001 : 0));
+  if(rnd() & 1) fuzz_shake_step(r, ram, rnd);
+  if(rnd() & 1) fuzz_func_82A9B7(r, ram, rnd);
 }
 
 // ---- sprite_put_rows_a / _b ($82:D934, $82:D988) ----  DSP-4 tape rows. C = the buffer
@@ -10237,6 +10260,10 @@ const Routine routines[] = {
   {.name = "sprite_parts_stream_rom", .entry = 0x82DEA8, .end = 0x82DF91, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_parts_stream_rom,
    .fuzz = fuzz_sprite_parts_stream_rom, .dsp4Tape = true},
+  {.name = "race_frame_draw", .entry = 0x828923, .end = 0x828944, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_frame_draw, .fuzz = fuzz_race_frame_draw,
+   .dsp4Tape = true, .endAt = 0x828944,  // its tail jump to oam_high_load
+   .fuzzStack = 0x1FF1},                // the race's stack, as its road callees' rows
   {.name = "object_sprites_stream", .entry = 0x82CBD4, .end = 0x82D267, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_object_sprites_stream, .fuzz = fuzz_object_sprites_stream,
    .dsp4Tape = true, .dsp4Native = {{0x82CBD4, 0x82CC8F}},  // command $03's prologue (the mini-map's dots)

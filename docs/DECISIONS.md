@@ -1819,6 +1819,53 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## The race frame's drawing (roots-111, 2026-11-22), and an endAt after a return (harness-7)
+
+**`race_frame_draw` ($82:8923-$82:8944):** a root once `object_sprites_stream` was ported.
+- **What it does.** It sets the sprite pointers D+$86/D+$8E to 0, or to `$220` with the
+  second buffer (`$00B4`). Then it calls the road (`race_road_frame`), its rows
+  (`road_rows_stream`), `shake_step`, `object_sprites_stream` and `func_82A9B7`, and jumps
+  to `oam_high_load`.
+  - All six were ported and verified before.
+  - **A DSP-4 tape row,** whose callees' native commands are judged as whole commands
+    (harness-5).
+- **Its tail.** The row ends at its tail jump (`endAt $82:8944`), as `hud_markers_write`
+  does, so `oam_high_load` keeps its own row and live samples.
+  - The C is `race_frame_draw_body` plus `oam_high_load`.
+  - The row's outputs are `func_82A9B7`'s: DB = `$83`, N set and Z clear (its `PLB`).
+    `oam_high_load` reloads the flags before reading any. A, X and Y are not compared.
+- **No live sample.** It takes most of a frame, so every sampled entry is interrupted: 216 on
+  race1, 6,208 on the 60k movie. The flag watch still covers those returns (harness-6): no
+  flag is live.
+  - Its cases are the two replays and the fuzz. The replays are the first two sampled
+    entries, rerun from their real entry state with the interrupts off.
+  - Every fuzz case starts from the movie's last state, which is inside a race on both
+    movies: race1, and lap 2 of 6 at the end of the 60k movie.
+  - In the fuzz, the stand-in chip answers, with no script. The fuzz sets the buffer either
+    way and applies the shake's and the view targets' fuzz now and then.
+  - Many of the roots left show entries = interrupted in `roots.py`. If two replays become
+    their only real-state evidence, a stronger replay rule is a harness unit of its own.
+- **The race's stack** (`fuzzStack $1FF1`, as its road callees' rows). With the default
+  fuzz stack every case diverged at `road_rows_project`'s `$0200` word; with `$1FF1` none do.
+  `road_shift_frame`'s row records why: the default fuzz stack lies over the game's words
+  `$1EEE-$1EFD`, which the road's handlers write.
+- **Harness-7 (the advisor's call, open to the owner's veto).** `func_82A9B7`'s `RTS` lands
+  on `$82:8944`, which is also the outer row's `endAt`.
+  - The loop that ends samples stopped after the inner one, so the outer sample ran on into
+    `oam_high_load`. The harness does not start a sample in a frame already sampled, so
+    `oam_high_load` lost all its live samples (186 to 0 on race1).
+  - Now, after ending a sample, the loop also ends the next one out when its `endAt` is this
+    very instruction. Nothing else changes.
+  - **Check:** the six callees on race1 with and without the new row are identical (live,
+    interrupted, abandoned, watched returns, live flags, fuzz). `oam_high_load` is 186/186
+    again.
+- **Fixed on the way: `oam_high_load`'s C flag model** (`oamHighOut`). When room is left, C is
+  the room's bit 1 (its second `LSR`), not the `ADC`'s carry. It went unseen because C is not
+  live.
+- **Gate:** the full one (`difftest.c` and `oamHighOut` changed).
+- **Result:** race1 fuzz 200/200, replays 2/2, paths 12/12; the 60k movie is in the gate's
+  table.
+
 ## The race's object and car sprites (roots-110, 2026-11-22)
 
 **`object_sprites_stream` ($82:CBD4-$82:D267):** the race frame's sprite stream to the DSP-4.

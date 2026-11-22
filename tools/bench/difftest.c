@@ -1462,7 +1462,9 @@ void difftest_on_insn(Cpu* cpu) {
     for(int f = 0; smp->ppuPending && f < PF_COUNT; f++)
       if(smp->ppuPending & (1u << f)) { smp->ppuEnd[f] = ppuFieldValue(f); smp->ppuPending &= ~(1u << f); }
   }
-  // the innermost sample that has returned (normally the innermost one)
+  // the innermost sample that has returned (normally the innermost one); then the next one
+  // out may end on the same instruction too: an endAt that an inner sample returns to
+  // (harness-7: race_frame_draw's tail jump comes right after func_82A9B7's RTS)
   for(int k = depth - 1; k >= base; k--) {
     Sample* smp = &samples[k];
     bool ended = table[smp->idx].endAt != 0 && pc == table[smp->idx].endAt && k == depth - 1;
@@ -1473,7 +1475,7 @@ void difftest_on_insn(Cpu* cpu) {
       for(int j = depth - 1; j > k; j--) stats[samples[j].idx].abandoned++;  // left without returning
       depth = k + 1;
       finishSample(k, cpu);
-      break;
+      if(k == 0 || table[samples[k - 1].idx].endAt != pc) break;
     }
   }
   for(int k = base; k < depth; k++) {

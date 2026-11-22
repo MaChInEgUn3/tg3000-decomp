@@ -313,7 +313,7 @@ CODE_828656:
     lda.w #$0004                ; $828672
     tsb.w $00B8                 ; $828675
 CODE_828678:
-    jsr.w $8923                 ; $828678
+    jsr.w race_frame_draw       ; $828678
     lda.w #$0001                ; $82867B
     tsb.w $00B8                 ; $82867E
     ldx.w $00BA                 ; $828681
@@ -412,6 +412,7 @@ CODE_82877F:
     jsr.w wait_frames_82        ; $828786
     rts                         ; $828789
     incbin !baserom:$1078A..$10923
+race_frame_draw:
     stz.b $86                   ; $828923
     stz.b $8E                   ; $828925
     lda.w $00B4                 ; $828927

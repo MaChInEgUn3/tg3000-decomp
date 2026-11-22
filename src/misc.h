@@ -1517,4 +1517,12 @@ bool object_sprite_hover(uint16_t x);
 // object in a live sample would fail the row: the original streams bytes the C does not).
 void object_sprites_stream(void);
 
+// $82:8923: the race frame's drawing (D = $0100). The sprite pointers D+$86 and D+$8E start
+// at 0, or at $220 with the second buffer ($00B4 set); then the road (race_road_frame), its
+// rows (road_rows_stream), the shake (shake_step), the objects' and cars' sprites
+// (object_sprites_stream), the view's targets (func_82A9B7), and the sprites' high table
+// (oam_high_load, its JMP). race_frame_draw_body is that part alone (up to the tail jump).
+void race_frame_draw(void);
+void race_frame_draw_body(void);
+
 #endif
