@@ -301,6 +301,36 @@ uint8_t difftest_input(uint16_t reg) {
   return inputFor(cSample, reg);
 }
 
+// The native sites (harness-5): code whose DSP-4 bytes are whole commands of src/dsp4.c, not
+// any tape's. Every untaped row's extent (with its tail ranges) and the ranges a taped row
+// declares (dsp4Native), from the whole registry (not the rows this run tests), by the PC of
+// the accessing instruction. A bitmap over the LoROM halves of banks $00-$7F.
+static uint8_t nativeSite[0x80][0x8000 / 8];
+static uint32_t insnPc;  // the instruction running (set by difftest_on_insn)
+static void markNative(uint32_t from, uint32_t to) {
+  for(uint32_t a = from; a < to; a++) {
+    const uint32_t bank = (a >> 16) & 0x7F, adr = a & 0xFFFF;
+    if(adr >= 0x8000) nativeSite[bank][(adr - 0x8000) >> 3] |= (uint8_t)(1u << (adr & 7));
+  }
+}
+static void buildNativeSites(void) {
+  memset(nativeSite, 0, sizeof nativeSite);
+  for(int i = 0; i < routineCount; i++) {
+    const Routine* r = &routines[i];
+    if(!r->dsp4Tape) {
+      markNative(r->entry, r->end);
+      for(int t = 0; t < 2; t++) if(r->alsoIn[t][1]) markNative(r->alsoIn[t][0], r->alsoIn[t][1]);
+    }
+    for(int t = 0; t < 2; t++) if(r->dsp4Native[t][1]) markNative(r->dsp4Native[t][0], r->dsp4Native[t][1]);
+  }
+}
+static bool nativeAt(uint32_t pc) {
+  const uint32_t bank = (pc >> 16) & 0x7F, adr = pc & 0xFFFF;
+  return adr >= 0x8000 && (nativeSite[bank][(adr - 0x8000) >> 3] >> (adr & 7) & 1);
+}
+// For the bridge: in a fuzz case, a native site's bytes go to the real stand-in, not the script
+bool difftest_dsp4_native_now(void) { return fuzzing && nativeAt(insnPc); }
+
 uint8_t difftest_dsp4_byte(uint8_t value, bool write) {
   if(!collectingC || cSample == NULL) return 0;
   Sample* smp = cSample;
@@ -749,7 +779,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   if(isDsp4(adr)) {  // before the ROM test: $30:8000 reads look like ROM reads to it
     for(int k = accessBase; k < depth; k++) {
       Sample* smp = &samples[k];
-      if(table[smp->idx].dsp4Tape) {  // its tape: the data bytes in order; status reads free
+      if(table[smp->idx].dsp4Tape && !nativeAt(insnPc)) {  // its tape: the data bytes in order; status reads free
         if((adr & 0xFFFF) >= 0xC000) {
           if(!write) continue;
         } else if(smp->nTape < MAX_TAPE) {
@@ -1389,6 +1419,7 @@ static void checkEntries(Cpu* cpu, uint32_t pc, bool inHandler) {
 
 void difftest_on_insn(Cpu* cpu) {
   uint32_t pc = norm(((uint32_t)cpu->k << 16) | cpu->pc);
+  insnPc = pc;
   checkCgPtrAfterKick();
   if(irqOwner >= 0) {
     if(irqActive && cpu->sp == irqReturnSp) {  // the handler has returned (RTI)
@@ -1517,6 +1548,7 @@ void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
   }
   stats = calloc(tableCount, sizeof *stats);
   watches = calloc(tableCount, sizeof *watches);
+  buildNativeSites();
   for(int i = 0; i < tableCount; i++) findStarts(&table[i], &stats[i]);
 }
 

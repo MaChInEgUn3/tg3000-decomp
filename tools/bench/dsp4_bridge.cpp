@@ -65,7 +65,9 @@ static int routedNIn, routedNOut = -1;
 // ready, data reads come from the script (low byte first, 0 past its end) and writes are
 // not fed to the chip. A reset clears it.
 static bool scripted;
-static uint8_t scriptBytes[512];
+static uint8_t scriptBytes[8192];
+// harness-5: a native site's bytes (src/dsp4.c's whole commands) go to the real stand-in
+extern "C" bool difftest_dsp4_native_now(void);
 static int scriptLen, scriptPos;
 
 extern "C" void dsp4_bridge_script(const uint16_t* words, int n) {
@@ -77,6 +79,9 @@ extern "C" void dsp4_bridge_script(const uint16_t* words, int n) {
 	scriptLen = 2 * n;
 	scriptPos = 0;
 	scripted = true;
+	chip.reset();  // the native sites' commands (harness-5) start on an idle chip
+	routed = -1;
+	routedNOut = -1;
 }
 
 extern "C" void dsp4_bridge_reset(void) {
@@ -88,7 +93,7 @@ extern "C" void dsp4_bridge_reset(void) {
 
 extern "C" uint8_t dsp4_bridge_read(uint8_t bank, uint16_t adr) {
 	const bool data = adr < 0xC000;
-	if(scripted) {
+	if(scripted && !difftest_dsp4_native_now()) {
 		const uint8_t val = !data ? 0x80 : scriptPos < scriptLen ? scriptBytes[scriptPos++] : 0;
 		bench_log_dsp4(false, data, bank, adr, val);
 		return val;
@@ -104,7 +109,7 @@ extern "C" uint8_t dsp4_bridge_read(uint8_t bank, uint16_t adr) {
 
 extern "C" void dsp4_bridge_write(uint8_t bank, uint16_t adr, uint8_t val) {
 	const bool data = adr < 0xC000;
-	if(scripted) {
+	if(scripted && !difftest_dsp4_native_now()) {
 		bench_log_dsp4(true, data, bank, adr, val);
 		return;
 	}

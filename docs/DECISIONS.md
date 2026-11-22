@@ -1819,6 +1819,48 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## Native commands beside a tape (harness-5, 2026-11-22)
+
+**The advisor's call, open to the owner's veto.** `$82:CBD4` opens its `$09` stream after a
+native prologue: commands `$03` (`$82:CBE4`/`$CC02`) and `$0B` (`minimap_car`, from
+`$82:CC63`/`$CC89`). Both come before the `$0009` word at `$82:CC8F` (the race1 DSP-4
+report).
+- **The problem.** Until now a taped row took every data-port byte into its tape. The C of
+  a native command computes its answer and leaves no port traffic, so the tape and the C
+  fell out of step.
+- **The rule.** A data-port byte stays off every tape when the instruction that makes it
+  is in a native site, and is judged as an untaped row's byte would be (whole commands of
+  `src/dsp4.c`).
+  - **Native sites:** the extent and tail ranges of every untaped row, plus the ranges a
+    taped row declares (`.dsp4Native`).
+  - **From the whole registry,** not from the rows a run tests, so the rule holds whichever
+    row is active. `$82:8923` will wrap CBD4, and CBD4's prologue must stay off its tape
+    too.
+  - **Keyed on the game's PC**, by a bitmap over the LoROM halves of banks `$00`-`$7F`.
+- **Why the PC, and not another key** (the advisor's reasoning):
+  - a hook in the natives would put a bench concern into portable C, and `src/dsp4.c` stays
+    as it is;
+  - the chip's state fails in fuzz, where the scripted chip cannot tell when a stream
+    closes;
+  - the sample's depth misses natives written inline, like CBD4's own `$03`.
+- **In fuzz:**
+  - a native site's bytes go to the real stand-in chip, not the script;
+  - the stand-in is reset when a case starts scripting, so those commands start on an idle
+    chip. The first try failed every fuzz case: the live state left the chip mid-command;
+  - the script holds 4,096 words now, up from 256, since a `$09` stream reads up to 978
+    bytes (race1).
+- **The check.**
+  - Every existing row is unchanged (the full gate). The taped rows were rerun on race1
+    first, all as before.
+  - In a scratch build, `road_rows_project`'s six products were declared a native site.
+    The unchanged C, which writes them through the port, failed at tape byte 0, as it
+    should.
+  - With `dsp4_multiply` in their place, and the products dropped from its script, the
+    row passed live 215/215 and fuzz 100/100.
+  - The scratch build was reverted.
+- **Next: `$82:CBD4` itself** (about 1,500 bytes, a handler table at `$82:80CE`, undecoded
+  ranges), with its prologue declared native.
+
 ## Player 1's race frame (roots-109, 2026-11-22)
 
 **`player1_frame` ($83:E241, RTL):** a root once `player_car_frame` was ported, with 18,498

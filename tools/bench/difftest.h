@@ -73,6 +73,10 @@ typedef struct {
   // port calls (dsp4_port_write16/read16) must reproduce the writes in place and take the
   // reads exactly, the whole tape. Its fuzz scripts the chip's answers (dsp4_bridge_script).
   bool dsp4Tape;
+  // [start, end) code ranges of a taped row whose DSP-4 bytes are whole commands of
+  // src/dsp4.c (its native ones: a prologue before its stream). They stay off every tape,
+  // as do the bytes of any untaped row's extent, and are judged as an untaped row's.
+  uint32_t dsp4Native[2][2];
 } Routine;
 
 // Hardware effects, in canonical form: what the original did through DMA and what the C
