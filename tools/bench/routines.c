@@ -9245,14 +9245,14 @@ static void fuzz_object_sprites_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(vo
   if(rnd() & 1) wr16ram(ram, 0x0281, (uint16_t)(rnd() & 1 ? 0xFFFF : 0));
   if(rnd() & 1) wr16ram(ram, 0x1EF2, (uint16_t)(rnd() % 0x200 - 0x100));
   if(rnd() & 1) wr16ram(ram, DP + 0xC8, (uint16_t)(rnd() & 1));
-  // the rows' objects ($7E:8CB3, 4 bytes each): kinds in turn over every handler but kinds 0
-  // and 9 (not ported), at random places; the rows' places ($7E:39EC) as road_rows_project
+  // the rows' objects ($7E:8CB3, 4 bytes each): kinds in turn over every handler but kind 9
+  // (an empty entry), at random places; the rows' places ($7E:39EC) as road_rows_project
   // writes them (from below $80 by $80 up to $E00: far rows from $442), from a random start
   static unsigned turn;
   for(uint32_t o = 0; o < 0x400; o += 4) {
     if(rnd() % 4 != 0) continue;
     uint16_t kind;
-    do kind = (uint16_t)(turn++ % 128); while(kind == 0 || kind == 9);
+    do kind = (uint16_t)(turn++ % 128); while(kind == 9);
     ram[0x8CB3 + o] = (uint8_t)rnd();
     ram[0x8CB4 + o] = (uint8_t)(kind | (rnd() & 0x80));
     ram[0x8CB5 + o] = (uint8_t)rnd();
@@ -9264,7 +9264,7 @@ static void fuzz_object_sprites_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(vo
   // the rarer cases, taken in turn (the selftest's 200 cases must reach each)
   static unsigned scene;
   const uint32_t first = (uint32_t)(ram[0x1E6A] | ram[0x1E6B] << 8);
-  switch(scene++ % 6) {
+  switch(scene++ % 7) {
     case 0:  // the second road (the mini-map's dots, no segment length), a negative side byte
       wr16ram(ram, 0x1E66, (uint16_t)(rnd() & 1 ? 0x8000 : 0));
       wr16ram(ram, 0x1E68, (uint16_t)(rnd() & 1 ? 0x8000 : 0));
@@ -9323,21 +9323,34 @@ static void fuzz_object_sprites_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(vo
     case 4:  // two cars on one row in view: the next in the order drawn on the same row
       (void)car_into_view(ram, rnd, true);
       break;
+    case 5: {  // kind 0 objects (object_sprite_kind0: no movie runs them) on rows in view
+      const uint32_t laps = (uint32_t)(ram[0x019A] | ram[0x019B] << 8);
+      const uint32_t at = (uint32_t)(ram[0x0226] | ram[0x0227] << 8);
+      for(uint32_t k = 0; k < 0x1C && laps != 0; k++) {
+        if(rnd() % 3 != 0) continue;
+        const uint32_t o = 4 * ((at + k) % laps);
+        ram[0x8CB3 + o] = (uint8_t)(1 + rnd() % 255);  // not an empty entry
+        ram[0x8CB4 + o] = (uint8_t)(rnd() & 0x80);     // kind 0, either flip
+        ram[0x8CB5 + o] = (uint8_t)rnd();
+        ram[0x8CB6 + o] = (uint8_t)rnd();
+      }
+      break;
+    }
     default: break;
   }
   (void)first;
   // the player's car drawn the rival's way ($0244 bit 0), when its lists are in the ROM at the
   // rows' places as set above
   if(rnd() % 3 == 0 && ((ram[0x0244] & 1) || rival_parts_in_rom(ram, 0))) ram[0x0244] = (uint8_t)(ram[0x0244] ^ 1);
-  // no kind 0 or 9 object anywhere a row can reach (the lap's table, $7E:8CB3 + 4 per row,
-  // plus a margin for the jumps): the C does not port them, and stale entries there do
-  // occur once the scenarios move the rows (the original then runs $82:DCEC)
+  // no kind 9 object anywhere a row can reach (the lap's table, $7E:8CB3 + 4 per row, plus a
+  // margin for the jumps): its handler entry is $0000 (the original would run WRAM as code),
+  // and stale entries there do occur once the scenarios move the rows
   {
     uint32_t span = 4u * (uint32_t)(ram[0x019A] | ram[0x019B] << 8) + 0x400;
     if(span > 0x6000) span = 0x6000;
     for(uint32_t o = 0; o + 1 < span; o += 4) {
       const uint8_t kind = ram[0x8CB4 + o] & 0x7F;
-      if((kind == 0 || kind == 9) && (ram[0x8CB3 + o] | ram[0x8CB4 + o]) != 0) ram[0x8CB3 + o] = ram[0x8CB4 + o] = 0;
+      if(kind == 9 && (ram[0x8CB3 + o] | ram[0x8CB4 + o]) != 0) ram[0x8CB3 + o] = ram[0x8CB4 + o] = 0;
     }
   }
   static uint16_t script[4096];

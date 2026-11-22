@@ -4475,31 +4475,52 @@ static bool sprite_parts_stream(uint16_t x) {
   return full;
 }
 
-// The object's graphics place: its slot's place plus its part set's offset.
-static uint16_t sprite_parts_at(void) {
+// The object's graphics place: its slot's place plus its part set's offset (the row's place
+// looked up in `sets`: $84:8000, or $84:8080 for sprite_put_rows_c).
+static uint16_t sprite_parts_at(uint32_t sets) {
   const uint16_t d24 = rd16(DP + 0x24);
   const uint16_t place = rd16(0x6591 + (uint32_t)bus_rd16(0x860000 + (uint32_t)d24));
-  const uint16_t set = (uint16_t)(bus_rd16(0x848000 + (uint32_t)rd16(0x39EC + (uint32_t)rd16(DP + 0x14))) + d24);
+  const uint16_t set = (uint16_t)(bus_rd16(sets + (uint32_t)rd16(0x39EC + (uint32_t)rd16(DP + 0x14))) + d24);
   return (uint16_t)(place + bus_rd16(0x860002 + (uint32_t)set));
 }
 
-static bool sprite_put_rows(uint32_t third, uint32_t fourth, uint16_t flags) {
+static bool sprite_put_rows(uint32_t first, uint32_t second, uint32_t third, uint32_t fourth, uint16_t flags,
+                            uint32_t sets) {
   const uint32_t x = rd16(DP + 0x14);
-  dsp4_port_write16(rd16(0x386C + x));
-  dsp4_port_write16(rd16(0x38EC + x));
+  dsp4_port_write16(rd16(first + x));
+  dsp4_port_write16(rd16(second + x));
   dsp4_port_write16(rd16(third + x));
   dsp4_port_write16(rd16(fourth + x));
   dsp4_port_write16(rd16(DP + 0x20));
   dsp4_port_write16(rd16(DP + 0x22));
   dsp4_port_write16((uint16_t)(rd16(DP + 0x26) | flags));
-  return sprite_parts_stream(sprite_parts_at());
+  return sprite_parts_stream(sprite_parts_at(sets));
 }
 
 // TG3000_ROUTINE($82:D934) sprite_put_rows_a
-bool sprite_put_rows_a(void) { return sprite_put_rows(0x35EC, 0x37EC, rd16(DP + 0x3A)); }
+bool sprite_put_rows_a(void) { return sprite_put_rows(0x386C, 0x38EC, 0x35EC, 0x37EC, rd16(DP + 0x3A), 0x848000); }
 
 // TG3000_ROUTINE($82:D988) sprite_put_rows_b
-bool sprite_put_rows_b(void) { return sprite_put_rows(0x366C, 0x386C, 0x1000); }
+bool sprite_put_rows_b(void) { return sprite_put_rows(0x386C, 0x38EC, 0x366C, 0x386C, 0x1000, 0x848000); }
+
+// TG3000_ROUTINE($82:CAE5) sprite_put_rows_c
+bool sprite_put_rows_c(void) { return sprite_put_rows(0x37EC, 0x38EC, 0x35EC, 0x37EC, rd16(DP + 0x3A), 0x848080); }
+
+// TG3000_ROUTINE($82:DCEC) object_sprite_kind0
+bool object_sprite_kind0(uint16_t x) {
+  wr16(DP + 0x24, bus_rd16(0x86AF06 + (uint32_t)x));
+  const uint32_t o = rd16(DP + 0x1C);
+  uint16_t at = (uint16_t)(rd8(0x8CB3 + o) << 4);
+  if(at & 0x0800) at |= 0xF000;
+  wr16(DP + 0x20, at);
+  wr16(DP + 0x26, (uint16_t)(((rd16(0x8CB4 + o) & 0x0700) << 1) | rd16(DP + 0x26)));
+  const uint32_t r = (uint16_t)(rd16(0x0024) - rd16(0x8CB6 + o)) & 0x003E;
+  wr16(DP + 0x22, (uint16_t)(bus_rd16(0x84A200 + r) - 0x0040));
+  if(sprite_put_rows_c()) return true;
+  wr16(DP + 0x22, 0);
+  wr16(DP + 0x24, 0xBC30);
+  return sprite_put_rows_c();
+}
 
 // One list of parts from `base` + *x (bus addresses: $7F:0000 or $86:0000), as
 // sprite_parts_list.
@@ -6901,8 +6922,9 @@ static bool object_handler(uint16_t kind2, bool carry_in) {
     case 0xDAAF: return object_sprite_hover(kind2);
     case 0xDA46: clc_82DA46(); return false;
     case 0xEA80: track_event_none(); return carry_in;
-    default:  // kind 0 ($82:DCEC, into unknown code at $82:CAE5) and kind 9 (a 0 entry): never
-              // run in any movie or the TAS; not ported
+    case 0xDCEC: return object_sprite_kind0(kind2);  // kind 0: no movie or the TAS runs it
+    default:  // kind 9: its entry is $0000. The original's JSR ($80CE,X) would run low WRAM
+              // ($82:0000) as code; no track places kind 9, and there is no routine to port
       return carry_in;
   }
 }

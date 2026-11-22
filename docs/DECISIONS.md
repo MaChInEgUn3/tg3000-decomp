@@ -1819,6 +1819,36 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## Object kind 0 (roots-112, 2026-11-22)
+
+**The owner's decision:** "Porque sem portar? Assim nunca vamos chegar no 100% né não?"
+roots-110 had left kind 0 out because nothing runs it. That was wrong: it is code the game
+can run, and code that can be reached is to be ported and verified.
+- **`object_sprite_kind0` ($82:DCEC-$82:DD3A):** kind 0's handler (the table at
+  `$82:80CE`).
+  - It is `object_sprite_shadowed` up to D+$22, without its `$8CB5` bit test.
+  - Then it calls `sprite_put_rows_c`. Unless that fills the buffer, it sets D+$22 = 0 and
+    D+$24 = `$BC30`, and runs `sprite_put_rows_c` again.
+- **`sprite_put_rows_c` ($82:CAE5-$82:CB38):** a third variant of the object's seven words.
+  - Its rows are `$37EC`, `$38EC`, `$35EC` and `$37EC`.
+  - Its part set is looked up at `$84:8080`, not `$84:8000`.
+  - `sprite_put_rows` now takes the four rows and the table, so `_a`, `_b` and `_c` are one
+    line each.
+- **The map:** both ranges were unknown bytes. `map/static_code.txt` declares them now,
+  since object_sprites_stream's fuzz executes them, and the listing labels them.
+- **Kind 9 has no routine.** Its handler entry is `$0000`, so the original's
+  `JSR ($80CE,X)` would run low WRAM (`$82:0000`) as code. No track places it. The C's
+  switch says so, and the fuzz clears kind 9 entries.
+- **Verified inside `object_sprites_stream`.** Neither routine has a live entry, so neither
+  gets a contract or a row of its own.
+  - The fuzz now places kind 0 among the rotated kinds, plus a seventh scene with kind 0
+    objects on the rows in view.
+  - Counted with a temporary print: the handler ran 128-255 times on race1 and 256-511 on
+    the 60k movie. Its first call filled the buffer 8-15 and 32-63 times.
+  - race1: live 58/58, fuzz 200/200, paths 603/603. 60k movie: live 1,831/1,831, fuzz
+    500/500, paths 603/603.
+- **Gate:** the full one (`sprite_put_rows` changed).
+
 ## sprite_group's stores across the bank's end (fix-2, 2026-11-22)
 
 **The same class of defect as fix-1, found the same way.** Six shop icon rows failed fuzz
@@ -1939,13 +1969,9 @@ It runs once per race frame (18,559 entries on the 60k movie).
     carry the handler gets.
 - **The end** (`$82:D1E7`): words 0 and `$8000`, the highlight `$1DFE-$1E04`, `$0186` =
   `$0184`, and `$1E52-$1E56` from `$023A`.
-- **Not ported (my call; the advisor accepted it, open to the owner's veto):** kinds 0
-  (`$82:DCEC`, which goes on into code at `$82:CAE5` the map doesn't know) and 9 (a 0
-  entry).
-  - They never run in any movie or the TAS.
-  - A kind-0 object in a live sample would fail the row: the original streams bytes the C
-    does not.
-  - A second entry at `$82:CCC7` (never run) and a dead `JMP $D1E7` at `$82:CED7` are holes.
+- **Kinds 0 and 9:** at first left out (my call). The owner overruled it for kind 0 (see
+  roots-112), and kind 9 has no routine.
+- A second entry at `$82:CCC7` (never run) and a dead `JMP $D1E7` at `$82:CED7` are holes.
 - **Flags.** On return: N set and Z clear (the caller's `PLB`), and C clear (three ASLs of a
   byte). With harness-6, V is no longer live: 216 watched returns on race1, 6,208 on the
   60k movie.

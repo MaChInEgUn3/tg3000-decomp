@@ -1259,6 +1259,13 @@ void oam_high_load(void);
 // lists ended (a 0 word each) and the result is true. D+$84 = Y.
 bool sprite_put_rows_a(void);
 bool sprite_put_rows_b(void);
+// $82:CAE5: as sprite_put_rows_a with the rows $37EC, $38EC, $35EC, $37EC, and the part set
+// looked up at $84:8080 (not $84:8000).
+bool sprite_put_rows_c(void);
+// $82:DCEC: object kind 0's handler: as object_sprite_shadowed up to D+$22, then
+// sprite_put_rows_c, and, unless that filled the buffer, D+$22 = 0, D+$24 = $BC30 and
+// sprite_put_rows_c again. No movie or the TAS runs it.
+bool object_sprite_kind0(uint16_t x);
 
 // $82:DEA8: sprite_parts_stream for a parts list in ROM, at $86:0000 + `x` (D = $0100; a
 // $09 sprite stream open). Returns whether the OAM buffer filled (the original's carry).
@@ -1512,9 +1519,9 @@ bool object_sprite_hover(uint16_t x);
 // player's car (its shadow car, marker, body, bar and item) or a rival (its head, the road's
 // edges, a band by its turn against the road's, its parts). It ends when the OAM buffer
 // fills or the rows run out: a 0 word and $8000, the near object's highlight
-// ($1DFE-$1E04), $0186 = $0184, and $1E52-$1E56 from $023A. Kinds 0 ($82:DCEC, into
-// unknown code) and 9 (a 0 entry) are not ported: never run in any movie or the TAS (a kind-0
-// object in a live sample would fail the row: the original streams bytes the C does not).
+// ($1DFE-$1E04), $0186 = $0184, and $1E52-$1E56 from $023A. Kind 0 (object_sprite_kind0)
+// runs in no movie or the TAS; kind 9's handler entry is $0000 (no routine: the original
+// would run WRAM as code), and no track places it.
 void object_sprites_stream(void);
 
 // $82:8923: the race frame's drawing (D = $0100). The sprite pointers D+$86 and D+$8E start

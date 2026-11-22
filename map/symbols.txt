@@ -498,4 +498,6 @@ func    828961   hud_markers_write   ; the HUD's four markers and its badge in V
 func    83EAC6   player_car_frame    ; the player's car for the frame: speed, drag, engine, side, items, counters (D = record) -> src/misc.c
 func    83E241   player1_frame       ; player 1's car for the race frame: setup, player_car_frame, car_track_step (D = $0200; RTL) -> src/misc.c
 func    82CBD4   object_sprites_stream ; the race's sprites streamed to the DSP-4: mini-map, track objects and cars row by row (a tape row) -> src/misc.c
+func    82CAE5   sprite_put_rows_c   ; an object's sprite streamed, rows $37EC/$38EC/$35EC/$37EC, part set at $84:8080 (kind 0) -> src/misc.c
+func    82DCEC   object_sprite_kind0 ; object kind 0's sprite, then its shadow (in no movie or the TAS) -> src/misc.c
 func    82DAAF   object_sprite_hover ; a track object's sprite, its height less $40 (ran in the TAS only) -> src/misc.c

@@ -2546,7 +2546,42 @@ func_82B838:
     sta.w $2364,x               ; $82B875
     plb                         ; $82B878
     rts                         ; $82B879
-    incbin !baserom:$1387A..$14BD4
+    incbin !baserom:$1387A..$14AE5
+sprite_put_rows_c:
+    ldx.b $14                   ; $82CAE5 static
+    lda.l $7E37EC,x             ; $82CAE7 static
+    sta.w $8000                 ; $82CAEB static
+    lda.l $7E38EC,x             ; $82CAEE static
+    sta.w $8000                 ; $82CAF2 static
+    lda.l $7E35EC,x             ; $82CAF5 static
+    sta.w $8000                 ; $82CAF9 static
+    lda.l $7E37EC,x             ; $82CAFC static
+    sta.w $8000                 ; $82CB00 static
+    lda.b $20                   ; $82CB03 static
+    sta.w $8000                 ; $82CB05 static
+    lda.b $22                   ; $82CB08 static
+    sta.w $8000                 ; $82CB0A static
+    lda.b $26                   ; $82CB0D static
+    ora.b $3A                   ; $82CB0F static
+    sta.w $8000                 ; $82CB11 static
+    ldx.b $24                   ; $82CB14 static
+    lda.l $860000,x             ; $82CB16 static
+    tax                         ; $82CB1A static
+    lda.l $7E6591,x             ; $82CB1B static
+    pha                         ; $82CB1F static
+    ldx.b $14                   ; $82CB20 static
+    lda.l $7E39EC,x             ; $82CB22 static
+    tax                         ; $82CB26 static
+    lda.l $848080,x             ; $82CB27 static
+    clc                         ; $82CB2B static
+    adc.b $24                   ; $82CB2C static
+    tax                         ; $82CB2E static
+    pla                         ; $82CB2F static
+    clc                         ; $82CB30 static
+    adc.l $860002,x             ; $82CB31 static
+    tax                         ; $82CB35 static
+    jmp.w sprite_parts_stream   ; $82CB36 static
+    incbin !baserom:$14B39..$14BD4
 object_sprites_stream:
     pea.w $8330                 ; $82CBD4
     plb                         ; $82CBD7
@@ -3720,7 +3755,45 @@ CODE_82DC3B:
     inc a                       ; $82DC63
     sta.b $20                   ; $82DC64
     jmp.w sprite_put_rows_b     ; $82DC66
-    incbin !baserom:$15C69..$15DBF
+    incbin !baserom:$15C69..$15CEC
+object_sprite_kind0:
+    lda.l $86AF06,x             ; $82DCEC static
+    sta.b $24                   ; $82DCF0 static
+    ldx.b $1C                   ; $82DCF2 static
+    lda.l $7E8CB3,x             ; $82DCF4 static
+    and.w #$00FF                ; $82DCF8 static
+    asl a                       ; $82DCFB static
+    asl a                       ; $82DCFC static
+    asl a                       ; $82DCFD static
+    asl a                       ; $82DCFE static
+    bit.w #$0800                ; $82DCFF static
+    beq CODE_82DD07             ; $82DD02 static
+    ora.w #$F000                ; $82DD04 static
+CODE_82DD07:
+    sta.b $20                   ; $82DD07 static
+    lda.l $7E8CB4,x             ; $82DD09 static
+    and.w #$0700                ; $82DD0D static
+    asl a                       ; $82DD10 static
+    ora.b $26                   ; $82DD11 static
+    sta.b $26                   ; $82DD13 static
+    lda.w $0024                 ; $82DD15 static
+    sec                         ; $82DD18 static
+    sbc.l $7E8CB6,x             ; $82DD19 static
+    and.w #$003E                ; $82DD1D static
+    tax                         ; $82DD20 static
+    lda.l $84A200,x             ; $82DD21 static
+    clc                         ; $82DD25 static
+    adc.w #$FFC0                ; $82DD26 static
+    sta.b $22                   ; $82DD29 static
+    jsr.w sprite_put_rows_c     ; $82DD2B static
+    bcs CODE_82DD3A             ; $82DD2E static
+    stz.b $22                   ; $82DD30 static
+    lda.w #$BC30                ; $82DD32 static
+    sta.b $24                   ; $82DD35 static
+    jmp.w sprite_put_rows_c     ; $82DD37 static
+CODE_82DD3A:
+    rts                         ; $82DD3A static
+    incbin !baserom:$15D3B..$15DBF
 sprite_parts_stream:
     ldy.b $84                   ; $82DDBF
     lda.l $7F0000,x             ; $82DDC1
