@@ -75,6 +75,21 @@ void password_screen_open(void);
 // $0D7C = 0.
 void password_screen_close(void);
 
+// The codes checked when a password does not decode: 17 entries at $8A:CDAB, each a handler
+// word and a string stored with XOR $9A (a 0 word ends the table).
+// $8A:B35B: the handler of the code typed at $0D40, or 0. D+$82 keeps the last handler word
+// tried. (The ROM then jumps to it: JMP ($0182).)
+uint16_t password_code_find(void);
+// The handlers. The 13 star names set the track $0444 (0-$2A) and count D+$52 ($8A:BDEC-
+// BE2D); DISPLAY CREDITS sets $03DC bit 15 and D+$6C = $FFFF ($8A:C004); MICK4CLAUDIA,
+// MICKSMELANIE and INFODATA set $03E2 bit 0, 1 or 2 ($8A:C01D, C018, C013). Only INFODATA's
+// runs in a movie. (RELAX, $8A:BD9D, a screen of its own, is not ported.)
+void password_code_track(uint16_t track);
+void password_code_credits(void);
+void password_code_mick4claudia(void);
+void password_code_micksmelanie(void);
+void password_code_infodata(void);
+
 // $8A:B612: the screen's four lines of text ($8A:C4F6, C515, C534, C553), centred on rows $0D,
 // $10, $13, $16 (D+$68 = 0 first).
 void password_lines_print(void);

@@ -15,6 +15,7 @@ func    8AB1A5   password_screen_open ; the password screen faded in (tiles, map
 func    8AB1E2   password_screen_close ; back to the menu's tiles, faded in -> src/password.c
 func    8AB2BC   password_caret_blink ; the caret shown while D+$66 is odd ($0578) -> src/password.c
 func    8AB339   password_press_a    ; A/B/X/Y on the grid: a letter typed, or the last column
+func    8AB35B   password_code_find  ; the typed text against the 17 codes at $8A:CDAB (XOR $9A): the handler -> src/password.c
 func    8AB403   password_type_char  ; a character typed into the password ($0D40, D+$80) -> src/password.c
 func    8AB420   password_delete     ; the last typed character taken off -> src/password.c
 func    8AB43D   password_text_draw  ; the typed text, in groups of four, and the caret -> src/password.c
@@ -455,6 +456,11 @@ func    8A9CB0   player_in_top5      ; the slots' order, then is the player in t
 func    80F6FD   title_scroll_start  ; $0198 = 0, $0196 = $FF80, D+$3E + 1 -> src/misc.c
 func    808199   save_data_seal      ; the saved data's checksum at $0366, copied to $7E:FA3B -> src/misc.c
 func    8AC2DD   track_snap          ; $0444 to the first track of the variant's list at or above it -> src/misc.c
+func    8AC004   password_code_credits ; DISPLAY CREDITS: $03DC bit 15, D+$6C = $FFFF (never run) -> src/password.c
+func    8AC013   password_code_infodata ; INFODATA: $03E2 bit 2 -> src/password.c
+func    8AC018   password_code_micksmelanie ; MICKSMELANIE: $03E2 bit 1 (never run) -> src/password.c
+func    8AC01D   password_code_mick4claudia ; MICK4CLAUDIA: $03E2 bit 0 (never run) -> src/password.c
+func    8ABE28   password_code_track ; the star names' tail: $0444 = the track, D+$52 counts (never run) -> src/password.c
 func    8AC355   money_skip_bonus    ; + 75,000 to both players' money with $03DC bit 12 (never run) -> src/misc.c
 func    81F48B   effect_request_p1   ; func_83FE9A for player 1's car (cooldown $0223) -> src/misc.c
 func    8A85AF   tile_anim_step      ; a tile animation by D+$42 (only 0 in the movies) -> src/misc.c

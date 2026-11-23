@@ -278,6 +278,50 @@ void password_screen_close(void) {
   wr16(TEXT_FONT_SEL, 0);
 }
 
+#define PASSWORD_CODES 0x8ACDAB
+
+// $8A:B37B: whether the code string at `x` in the table equals the typed text.
+static bool password_code_matches(uint16_t x) {
+  for(uint16_t y = 0;; x++, y++) {
+    uint8_t c = rom8(PASSWORD_CODES + x);
+    if(c != 0) c ^= 0x9A;
+    if(c != rd8(TYPED + (uint32_t)y)) return false;
+    if(c == 0) return true;
+  }
+}
+
+// TG3000_ROUTINE($8A:B35B) password_code_find
+uint16_t password_code_find(void) {
+  uint16_t x = 0;
+  for(;;) {
+    const uint16_t handler = rom16(PASSWORD_CODES + x);
+    if(handler == 0) return 0;
+    wr16(DP + 0x82, handler);
+    x = (uint16_t)(x + 2);
+    if(password_code_matches(x)) return handler;
+    while(rom8(PASSWORD_CODES + x) != 0) x++;
+    x++;
+  }
+}
+
+// TG3000_ROUTINE($8A:BE28) password_code_track (the star names' tail; never run)
+void password_code_track(uint16_t track) {
+  wr16(0x0444, track);
+  wr16(DP + 0x52, (uint16_t)(rd16(DP + 0x52) + 1));
+}
+// TG3000_ROUTINE($8A:C004) password_code_credits (never run)
+void password_code_credits(void) {
+  wr16(DP + 0x6C, 0xFFFF);
+  wr16(0x03DC, (uint16_t)(rd16(0x03DC) | 0x8000));
+}
+static void password_code_flag(uint16_t bit) { wr16(0x03E2, (uint16_t)(rd16(0x03E2) | bit)); }
+// TG3000_ROUTINE($8A:C01D) password_code_mick4claudia (never run)
+void password_code_mick4claudia(void) { password_code_flag(0x0001); }
+// TG3000_ROUTINE($8A:C018) password_code_micksmelanie (never run)
+void password_code_micksmelanie(void) { password_code_flag(0x0002); }
+// TG3000_ROUTINE($8A:C013) password_code_infodata
+void password_code_infodata(void) { password_code_flag(0x0004); }
+
 // TG3000_ROUTINE($8A:B612) password_lines_print
 void password_lines_print(void) {
   static const uint16_t lines[4] = {0xC4F6, 0xC515, 0xC534, 0xC553};

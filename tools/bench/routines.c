@@ -6710,6 +6710,62 @@ static void call_password_screen_close(const Regs* in, Regs* out) {
   out->v = pwWaitV();
 }
 
+// ---- the password codes ($8A:B35B, $8A:C013) ----
+// password_code_find, up to its JMP ($0182) (endAt $8A:B3A4, after the JSR that pushed its
+// return $8A:B3A1): a match leaves C set and N/Z of the PLX of the entry's index; no match
+// returns by the LDY of the table's 0 (Z), CLC
+static void call_password_code_find(const Regs* in, Regs* out) {
+  const uint16_t handler = password_code_find();
+  if(handler) {
+    uint16_t x = 0;  // the index after the matching entry's handler word
+    for(;;) {
+      const uint16_t h = rom16(0x8ACDAB + (uint32_t)x);
+      x = (uint16_t)(x + 2);
+      if(h == handler) break;
+      while(rom8(0x8ACDAB + (uint32_t)x)) x++;
+      x++;
+    }
+    setNZ16(out, x);
+    out->c = true;
+    wr16((uint16_t)(in->sp - 1), 0xB3A1);
+    return;
+  }
+  out->n = false;
+  out->z = true;
+  out->c = false;
+}
+// a typed text: a code (one time in two, any of them but RELAX's screen), a near miss, or the
+// password alphabet
+static void fuzz_password_code_find(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_password_typing(r, ram, rnd);
+  if(rnd() & 1) {
+    uint16_t x = 0, n = (uint16_t)(1 + rnd() % 16);
+    for(uint16_t k = 0; k < n; k++) {  // the n-th entry
+      x = (uint16_t)(x + 2);
+      while(rom8(0x8ACDAB + (uint32_t)x)) x++;
+      x++;
+    }
+    x = (uint16_t)(x + 2);
+    uint16_t y = 0;
+    for(; rom8(0x8ACDAB + (uint32_t)x + y); y++) ram[0x0D40 + y] = (uint8_t)(rom8(0x8ACDAB + (uint32_t)x + y) ^ 0x9A);
+    ram[0x0D40 + y] = 0;
+    if((rnd() & 3) == 0 && y > 0) ram[0x0D40 + rnd() % y] ^= 1;  // a near miss
+  }
+}
+// INFODATA's handler: A = 4 (its LDA), Z of the TSB (bit 2 of $03E2 before)
+static void call_password_code_infodata(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t before = rd16(0x03E2);
+  password_code_infodata();
+  out->a = 0x0004;
+  out->n = false;
+  out->z = (before & 0x0004) == 0;
+}
+static void fuzz_password_code_infodata(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x03E2, (uint16_t)rnd());
+}
+
 // the typing's state, with a button (A, B, X or Y one time in two) on one of the pads
 static void fuzz_password_press_a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_password_typing(r, ram, rnd);
@@ -10295,6 +10351,13 @@ const Routine routines[] = {
   {.name = "password_screen_close", .entry = 0x8AB1E2, .end = 0x8AB212, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .waitsForInterrupts = true, .maxInsns = 40000000,
    .call = call_password_screen_close, .compareA = true},
+  // (its SEC; RTS at $8A:B3A2, after the handler returns, lies past the sample: not in the extent)
+  {.name = "password_code_find", .entry = 0x8AB35B, .end = 0x8AB3A2, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_code_find, .fuzz = fuzz_password_code_find,
+   .endAt = 0x8AB3A4},  // its JMP ($0182) into the handler
+  {.name = "password_code_infodata", .entry = 0x8AC013, .end = 0x8AC018, .source = "src/password.c", .needM16 = true,
+   .lowWramDb = true, .call = call_password_code_infodata, .alsoIn = {{0x8AC020, 0x8AC024}},
+   .fuzz = fuzz_password_code_infodata},
   {.name = "password_lines_print", .entry = 0x8AB612, .end = 0x8AB644, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_lines_print, ALL_OUTPUTS,
    .fuzz = fuzz_password_lines_print},

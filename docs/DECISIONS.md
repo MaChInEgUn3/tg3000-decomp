@@ -2312,6 +2312,26 @@ password screen, a skipped track's bonus.
   path once its row exists.
 - **Gate:** the full one.
 
+## The password codes (password-7, 2026-11-23)
+
+- **`password_code_find` ($8A:B35B)** returns the handler of the code typed at `$0D40`, or
+  0. D+$82 keeps the last handler word tried. Its string compare (`$8A:B37B`) is part of it.
+  - Its row ends at the `JMP ($0182)` into the handler (`endAt` `$8A:B3A4`, as shop-21's
+    dispatch), after the `JSR` that pushed `$8A:B3A1`; the adapter writes that push.
+  - The `SEC; RTS` at `$8A:B3A2`, after the handler returns, is outside the sample and
+    outside the extent.
+  - A fuzzer types a code (any but RELAX) one time in two, sometimes one bit off, else the
+    password alphabet.
+- **The handlers:**
+  - `password_code_infodata` ($8A:C013, `$03E2` |= 4) has a row; the INFODATA movie runs it;
+  - in C without a row, since no movie runs them: the star names' tail
+    `password_code_track` ($8A:BE28), `password_code_credits` ($8A:C004), and
+    `password_code_mick4claudia`/`micksmelanie` ($8A:C01D, C018).
+  - Not ported: RELAX ($8A:BD9D) calls `$8A:BF23` and `$8A:BF0D`, which have no C, and so
+    no C dispatch of the handlers yet.
+- **Check:** both rows pass on the INFODATA movie (one live sample each, 500 fuzz cases).
+  Incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

@@ -4141,7 +4141,7 @@ CODE_8AB2CE:
     jsr.w password_decode       ; $8AB2E0
     jsr.w password_checksum_ok  ; $8AB2E3
     bcc CODE_8AB31B             ; $8AB2E6
-    jsr.w $B35B                 ; $8AB2E8
+    jsr.w password_code_find    ; $8AB2E8
     bcs CODE_8AB2FD             ; $8AB2EB
     incbin !baserom:$532ED..$532FD
 CODE_8AB2FD:
@@ -4176,6 +4176,7 @@ password_press_a:
     bne CODE_8AB3A7             ; $8AB357
     clc                         ; $8AB359
     rts                         ; $8AB35A
+password_code_find:
     sep.b #$20                  ; $8AB35B
     ldx.w #$0000                ; $8AB35D
 CODE_8AB360:
@@ -5442,6 +5443,7 @@ CODE_8ABFFC:
     bne CODE_8ABFFC             ; $8AC001
     rts                         ; $8AC003
     incbin !baserom:$54004..$54013
+password_code_infodata:
     lda.w #$0004                ; $8AC013
     bra CODE_8AC020             ; $8AC016
     incbin !baserom:$54018..$54020
