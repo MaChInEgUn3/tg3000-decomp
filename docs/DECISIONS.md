@@ -1906,6 +1906,27 @@ password screen, a skipped track's bonus.
 - **To get rid of the holes:** a movie that buys a second part in lists 6-8 would run the
   refund and the rise.
 - **Gate:** incremental (`verify_new.sh`): new lines in `src/` and `tools/bench/` only.
+
+## The buying dispatch, lists 9 and 10 (shop-20, 2026-11-23)
+
+- **`shop_buy_dispatch` ($80:9039) is ported.** It runs the word at `$81:A89F` in the item's
+  entry (list D+$48, row D+$4A). The ROM pushes its own `RTS` ($80:9052) as the return,
+  then the handler's address - 1, and `RTS`es into it. The C is a `switch` over the eleven
+  words the table holds and returns the handler's `ShopBuyEnd`.
+  - Its row is a waiting row around the handlers' waiting rows. Nesting needed no harness
+    change: it passes on the shop, buy and password movies (134, 35 and 46 samples, every
+    path). 3 entries were abandoned there, as with lists 2 and 3's rows.
+  - Exit: the handler's. After the colour (list 0) C and V are the dispatch's `ADC` of the
+    entry, and N/Z are the `PLA` in `func_80E4DB`: the handler's address - 1 as the high
+    byte, D+$4A as the low.
+- **The table has two more lists:**
+  - list 9 ($80:966E, level byte `$039C`);
+  - list 10 ($80:9750, level byte `$039B`), whose one pointer is the word at `$81:AE20`.
+  - Both use `shop_buy_upgrade`. List 9's row (the holes of lists 6-8, plus its owned path)
+    is unreached: only the TAS runs it. List 10's code runs nowhere. It is now a
+    `map/static_code.txt` range, so the listing decodes it; it has no row.
+- **Holes are not counted.** `tools/progress.py` counts code bytes in verified extents
+  minus their holes, so a hole never adds to the verified percentage.
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

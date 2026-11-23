@@ -170,3 +170,4 @@
 82:DCEC 82:DD3B m16x16 ; object kind 0's handler (object_sprite_kind0, the table at $82:80CE): executed by object_sprites_stream's difftest fuzz, matched by src/misc.c
 82:CAE5 82:CB39 m16x16 ; sprite_put_rows_c, called by kind 0's handler: same
 80:99B6 80:99CB m16x16 ; shop_money_after_price's second loop (all four high digits settled): executed by its difftest fuzz, matched by src/shop.c
+80:9750 80:9832 m16x16 ; shop_buy_list10, list 10's buying handler: its one pointer is the table word at $81:AE20 (list 10, row 0); in no run. The same code as lists 6-9's (src/shop.c shop_buy_upgrade)

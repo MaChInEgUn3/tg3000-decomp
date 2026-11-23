@@ -1635,7 +1635,7 @@ CODE_808F84:
     lda.w #$C0C0                ; $808F84
     trb.b $0E                   ; $808F87
     beq CODE_808F8E             ; $808F89
-    jsr.w $9039                 ; $808F8B
+    jsr.w shop_buy_dispatch     ; $808F8B
 CODE_808F8E:
     lda.w #$0001                ; $808F8E
     jsr.w wait_frames           ; $808F91
@@ -1722,6 +1722,7 @@ CODE_809004:
     adc.w #$0008                ; $809033
     sta.b $74                   ; $809036
     rts                         ; $809038
+shop_buy_dispatch:
     lda.b $48                   ; $809039
     asl a                       ; $80903B
     tax                         ; $80903C
@@ -2281,6 +2282,7 @@ CODE_80964F:
     jsr.w shop_money_store      ; $809667
     jsr.w shop_item_icon_settle ; $80966A
     rts                         ; $80966D
+shop_buy_list9:
     ldx.b $94                   ; $80966E
     lda.w $039C,x               ; $809670
     and.w #$007F                ; $809673
@@ -2337,7 +2339,104 @@ CODE_809731:
     jsr.w shop_money_store      ; $809749
     jsr.w shop_item_icon_settle ; $80974C
     rts                         ; $80974F
-    incbin !baserom:$1750..$1832
+shop_buy_list10:
+    ldx.b $94                   ; $809750 static
+    lda.w $039B,x               ; $809752 static
+    and.w #$007F                ; $809755 static
+    dec a                       ; $809758 static
+    cmp.b $4A                   ; $809759 static
+    bne CODE_809770             ; $80975B static
+    jsl.l func_80E4C5           ; $80975D static
+    ldx.w #$B535                ; $809761 static
+    lda.w #$0080                ; $809764 static
+    jsr.w func_80B58D           ; $809767 static
+    jsr.w shop_item_show_icon   ; $80976A static
+    jmp.w $982E                 ; $80976D static
+CODE_809770:
+    jsr.w shop_money_take       ; $809770 static
+    lda.w $039B,x               ; $809773 static
+    and.w #$00FF                ; $809776 static
+    beq CODE_809794             ; $809779 static
+    dec a                       ; $80977B static
+    bit.w #$0080                ; $80977C static
+    beq CODE_8097A8             ; $80977F static
+    and.w #$007F                ; $809781 static
+    jsr.w shop_money_after_refund; $809784 static
+    jsr.w shop_item_affordable  ; $809787 static
+    bcs CODE_8097B2             ; $80978A static
+    jsl.l shop_flag_fb          ; $80978C static
+    jsr.w shop_money_after_price; $809790 static
+    rts                         ; $809793 static
+CODE_809794:
+    jsr.w shop_item_affordable  ; $809794 static
+    bcc CODE_8097AD             ; $809797 static
+    jsl.l func_80E4DB           ; $809799 static
+    ldx.w #$B535                ; $80979D static
+    lda.w #$0080                ; $8097A0 static
+    jsr.w func_80B58D           ; $8097A3 static
+    bra CODE_8097E4             ; $8097A6 static
+CODE_8097A8:
+    jsr.w shop_item_affordable  ; $8097A8 static
+    bcs CODE_8097B2             ; $8097AB static
+CODE_8097AD:
+    jsl.l shop_flag_fb          ; $8097AD static
+    rts                         ; $8097B1 static
+CODE_8097B2:
+    jsl.l func_80E4DB           ; $8097B2 static
+    ldx.w #$B535                ; $8097B6 static
+    lda.w #$0080                ; $8097B9 static
+    jsr.w func_80B58D           ; $8097BC static
+    lda.w #$0002                ; $8097BF static
+    tsb.b $76                   ; $8097C2 static
+    jsr.w shop_item_show_icon   ; $8097C4 static
+CODE_8097C7:
+    lda.w #$0001                ; $8097C7 static
+    jsr.w wait_frames           ; $8097CA static
+    lda.b $42                   ; $8097CD static
+    clc                         ; $8097CF static
+    adc.w #$0006                ; $8097D0 static
+    sta.b $42                   ; $8097D3 static
+    jsr.w shop_money_roll       ; $8097D5 static
+    jsr.w shop_item_redraw      ; $8097D8 static
+    lda.b $42                   ; $8097DB static
+    cmp.w #$00B4                ; $8097DD static
+    bne CODE_8097C7             ; $8097E0 static
+    bra CODE_8097FA             ; $8097E2 static
+CODE_8097E4:
+    lda.w #$00B4                ; $8097E4 static
+    sta.b $42                   ; $8097E7 static
+    lda.w #$000F                ; $8097E9 static
+    sta.b $44                   ; $8097EC static
+    ldx.w #$B535                ; $8097EE static
+    lda.w #$0080                ; $8097F1 static
+    jsr.w func_80B58D           ; $8097F4 static
+    jsr.w shop_item_show_icon   ; $8097F7 static
+CODE_8097FA:
+    sep.b #$20                  ; $8097FA static
+    ldx.b $94                   ; $8097FC static
+    lda.b $4A                   ; $8097FE static
+    inc a                       ; $809800 static
+    ora.b #$80                  ; $809801 static
+    sta.w $039B,x               ; $809803 static
+    rep.b #$20                  ; $809806 static
+    jsr.w shop_item_dispatch_upload; $809808 static
+    lda.w #$0002                ; $80980B static
+    trb.b $76                   ; $80980E static
+    jsr.w shop_money_after_price; $809810 static
+CODE_809813:
+    lda.w #$0001                ; $809813 static
+    jsr.w wait_frames           ; $809816 static
+    lda.b $42                   ; $809819 static
+    sec                         ; $80981B static
+    sbc.w #$0006                ; $80981C static
+    sta.b $42                   ; $80981F static
+    jsr.w shop_money_roll       ; $809821 static
+    jsr.w shop_item_redraw      ; $809824 static
+    lda.b $42                   ; $809827 static
+    bne CODE_809813             ; $809829 static
+    jsr.w shop_money_store      ; $80982B static
+    jsr.w shop_item_icon_settle ; $80982E static
+    rts                         ; $809831 static
 shop_item_show_icon:
     lda.w #$8000                ; $809832
     tsb.b $76                   ; $809835

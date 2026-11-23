@@ -62,6 +62,14 @@ ShopBuyEnd shop_buy_upgrade(uint16_t field, ShopMoneyFlags* f);
 void shop_buy_list6(void);
 void shop_buy_list7(void);
 void shop_buy_list8(void);
+// Lists 9 and 10 ($80:966E, $80:9750): the same, with $039C and $039B. No run reaches list
+// 10's (its one entry is at $81:AE20).
+void shop_buy_list9(void);
+void shop_buy_list10(void);
+// $80:9039: the current item's buying handler (the word at $81:A89F in the item's entry, list
+// D+$48, row D+$4A) is run. Returns how it went (the colour, list 0: SHOP_BUY_BOUGHT); `f` as
+// shop_buy_part's.
+ShopBuyEnd shop_buy_dispatch(ShopMoneyFlags* f);
 // $80:930A: list 0, the car's colour: $0392 + D+$94 = the row (a byte), then func_80E4DB.
 void shop_buy_colour(void);
 

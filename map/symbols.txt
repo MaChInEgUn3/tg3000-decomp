@@ -233,6 +233,9 @@ func    80930A   shop_buy_colour     ; list 0: the car's colour ($0392) -> src/s
 func    80931A   shop_buy_list8      ; buying a part, list 8 ($039A: row + 1) -> src/shop.c
 func    8093FC   shop_buy_list7      ; buying a part, list 7 ($0399: row + 1) -> src/shop.c
 func    8094DE   shop_buy_list6      ; buying a part, list 6 ($0398: row + 1) -> src/shop.c
+func    80966E   shop_buy_list9      ; buying a part, list 9 ($039C: row + 1) -> src/shop.c
+func    809750   shop_buy_list10     ; buying a part, list 10 ($039B: row + 1; never run) -> src/shop.c
+func    809039   shop_buy_dispatch   ; the item's buying handler ($81:A89F in its entry) -> src/shop.c
 func    8095C0   shop_buy_list5      ; buying a part, list 5 ($0397) -> src/shop.c
 func    80990D   shop_money_after_refund ; the money plus a part's price (sold back), then the settled digits -> src/shop.c
 func    80993E   shop_money_take     ; player's money to $52/$54, $56 = $FFFF, $76 bit 2 -> src/shop.c

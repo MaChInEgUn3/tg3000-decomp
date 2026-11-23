@@ -6271,6 +6271,41 @@ static void call_shop_buy_upgrade(const Regs* in, Regs* out, uint16_t field) {
 static void call_shop_buy_list6(const Regs* in, Regs* out) { call_shop_buy_upgrade(in, out, 5); }
 static void call_shop_buy_list7(const Regs* in, Regs* out) { call_shop_buy_upgrade(in, out, 6); }
 static void call_shop_buy_list8(const Regs* in, Regs* out) { call_shop_buy_upgrade(in, out, 7); }
+static void call_shop_buy_list9(const Regs* in, Regs* out) { call_shop_buy_upgrade(in, out, 9); }
+// the dispatch: its handler's exit (each runs to its settle, as lists 2-5). The colour keeps
+// C and V from the dispatch's ADC of the entry, and its PLA gives N/Z of the A it entered
+// with (the handler's address - 1: high byte $93) with D+$4A as the low byte
+static void call_shop_buy_dispatch(const Regs* in, Regs* out) {
+  const uint16_t base = rom16(0x81A892 + (uint32_t)(uint16_t)(rd16(DP + 0x48) << 1));
+  const uint16_t rows = (uint16_t)(rd16(DP + 0x4A) << 4);
+  const uint32_t sum = (uint32_t)rows + base;
+  const uint16_t handler = rom16(0x81A89F + (uint32_t)(uint16_t)sum);
+  ShopMoneyFlags f = {in->c, in->v};
+  const ShopBuyEnd end = shop_buy_dispatch(&f);
+  if(handler == 0x930A) {
+    setNZ16(out, (uint16_t)(((uint16_t)(handler - 1) & 0xFF00) | rd8(DP + 0x4A)));
+    out->c = sum > 0xFFFF;
+    out->v = (~(rows ^ base) & (rows ^ (uint16_t)sum) & 0x8000) != 0;
+    return;
+  }
+  switch(end) {
+    case SHOP_BUY_OWNED:
+    case SHOP_BUY_BOUGHT:
+      out->n = true;
+      out->z = false;
+      out->c = true;
+      break;
+    case SHOP_BUY_REFUNDED_SHORT:
+      out->n = out->z = false;
+      out->c = f.c;
+      out->v = f.v;
+      break;
+    default:
+      setNZ16(out, rd16(DP + 0x6C));
+      out->c = false;
+      break;
+  }
+}
 // list 1's row ends at its JMP to the settle: owned, shop_item_show_icon's N/Z (D+$44);
 // bought, shop_money_store's (its LDA of D+$54); C set and V clear either way (the redraw's
 // last SBC #$0900 in oam_finish); short, as the others
@@ -10028,6 +10063,13 @@ const Routine routines[] = {
   // Never run on a movie, and a waiting row has no fuzz: a part bought here sold back
   // (first hole), a level held from elsewhere, the money short, and the panel's rise (the
   // second); list 7's part owned (the third). The rise is shop_buy_part's, run on lists 1-5
+  // the dispatch: a waiting row around the handlers' waiting rows
+  {.name = "shop_buy_dispatch", .entry = 0x809039, .end = 0x809053, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_dispatch},
+  // list 9: as lists 6-8 (its owned path a hole too, as list 7's)
+  {.name = "shop_buy_list9", .entry = 0x80966E, .end = 0x809750, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list9,
+   .holes = {{0x809699, 0x8096B2}, {0x8096C6, 0x809702}, {0x80967B, 0x80968E}}},
   {.name = "shop_buy_list8", .entry = 0x80931A, .end = 0x8093FC, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list8,
    .holes = {{0x809345, 0x80935E}, {0x809372, 0x8093AE}}},
