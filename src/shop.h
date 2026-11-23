@@ -45,6 +45,8 @@ void shop_money_store(void);
 // D+$52/D+$54, D+$76 bit 2 cleared, then the settled digits as shop_money_after_price's.
 // Returns Y at the exit.
 uint16_t shop_money_after_refund(uint16_t row);
+// The same, with the flags its shared tail leaves (as shop_money_after_price_flags).
+uint16_t shop_money_after_refund_flags(uint16_t row, ShopMoneyFlags* f);
 // $80:9053/$9100/$91AE/$925C/$95C0: buying a part of the car from lists 1-5 (the level bytes
 // $0393-$0397 + D+$94; bit 7: bought here). Already owned: a sound and the icon. Else the
 // money is taken and, if it covers the price, the panel rises with the money rolling, the

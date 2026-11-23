@@ -2353,6 +2353,28 @@ password screen, a skipped track's bonus.
 - **Check:** all seven pass on the pooled shop, buy and password movies (3-32 samples
   each, 500 fuzz cases, every path). Full gate, since the dispatch changed.
 
+## The refund's row (shop-27, 2026-11-23)
+
+- **`shop_money_after_refund` ($80:990D) had C since shop-17 but no row.** The buy and
+  password movies run it (6 entries).
+  - It ends with a `JMP` into `shop_money_after_price`'s tail (`$80:997E`), declared in
+    its row as `alsoIn`. Its exit is that tail's.
+  - The C gets `shop_money_after_refund_flags` (as `shop_money_after_price_flags`), which
+    the old entry now calls.
+  - A fuzzer from `shop_money_after_price`'s, with A a row of the list.
+- **The inventory, corrected.** It had ignored rows' `alsoIn` ranges, so code reached by
+  tail jumps counted as without C: the typewriter's control-code handlers (`$80:B6F2` on)
+  are `text_type_step`'s. Counted again, B is 11,297 bytes.
+  - `progress.py` likewise counts only `[entry, end)` minus holes. `alsoIn` code is
+    compared in its rows' samples but not path-checked there, so it is not counted as
+    verified. That stays.
+- **Not ported:**
+  - `$8A:A419`: a menu item chosen with A/B/X/Y jumps to the menu's callback (`JMP
+    ($015C)`, an open set);
+  - `$8A:A2AF`, which calls it.
+  - Both wait for a design of indirect callbacks, as RELAX's codes do.
+- **Check:** both rows pass on the buy and password movies. Full gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

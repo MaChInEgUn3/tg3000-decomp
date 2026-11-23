@@ -6278,6 +6278,23 @@ static void call_shop_money_after_price(const Regs* in, Regs* out) {
   out->x = rd16(DP + 0x94);
   out->n = out->z = false;
 }
+// the refund (A = the row): its JMP into shop_money_after_price's tail ($80:997E), so that
+// tail's exit (shop-27)
+static void call_shop_money_after_refund(const Regs* in, Regs* out) {
+  ShopMoneyFlags f;
+  out->y = shop_money_after_refund_flags(in->a, &f);
+  out->c = f.c;
+  out->v = f.v;
+  out->a = 4;
+  out->x = rd16(DP + 0x94);
+  out->n = out->z = false;
+}
+static void fuzz_shop_money_after_price(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_shop_money_after_refund(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_shop_money_after_price(r, ram, rnd);
+  const uint16_t list = (uint16_t)(ram[DP + 0x48] | ram[DP + 0x49] << 8);
+  r->a = (uint16_t)(list == 0 || list >= 6 ? 0 : rnd() % 5);  // a row of the list
+}
 static void call_shop_money_roll(const Regs* in, Regs* out) {
   ShopMoneyFlags f = {in->c, in->v};
   out->a = shop_money_roll_flags(&f);
@@ -10807,6 +10824,9 @@ const Routine routines[] = {
                                       // movie runs it and a waiting row has no fuzz: unchecked
   {.name = "shop_buy_colour", .entry = 0x80930A, .end = 0x80931A, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .call = call_shop_buy_colour, .fuzz = fuzz_shop_money},
+  {.name = "shop_money_after_refund", .entry = 0x80990D, .end = 0x80993E, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_money_after_refund, ALL_OUTPUTS,
+   .alsoIn = {{0x80997E, 0x8099D1}}, .fuzz = fuzz_shop_money_after_refund},
   {.name = "shop_money_after_price", .entry = 0x809957, .end = 0x8099D1, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_money_after_price, ALL_OUTPUTS,
    .fuzz = fuzz_shop_money_after_price},

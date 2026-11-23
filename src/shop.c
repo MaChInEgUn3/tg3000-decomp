@@ -100,6 +100,10 @@ static uint16_t bcd_add16(uint16_t a, uint16_t b, bool* carry) {
 // The buying handlers' path for a part already bought here (bit 7); the shop-buy movie runs
 // it once.
 uint16_t shop_money_after_refund(uint16_t row) {
+  ShopMoneyFlags f;
+  return shop_money_after_refund_flags(row, &f);
+}
+uint16_t shop_money_after_refund_flags(uint16_t row, ShopMoneyFlags* f) {
   wr16(DP + 0x7A, row);
   const uint16_t price = rom16(0x81A89B + (uint32_t)shop_item_entry(row));
   const uint32_t car = rd16(DP + 0x94);
@@ -107,8 +111,7 @@ uint16_t shop_money_after_refund(uint16_t row) {
   wr16(DP + 0x52, bcd_add16(rd16(0x038E + car), rom16(0x81A890 + (uint32_t)price), &c));
   wr16(DP + 0x54, bcd_add16(rd16(0x0390 + car), rom16(0x81A88E + (uint32_t)price), &c));
   wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) & ~0x0004));
-  ShopMoneyFlags f;
-  return shop_money_settle(&f);
+  return shop_money_settle(f);
 }
 
 // $80:997E on: the digits that settle, from the money (D+$94's) and D+$52/D+$54.
