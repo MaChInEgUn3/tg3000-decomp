@@ -2406,6 +2406,20 @@ static void call_race_pause(const Regs* in, Regs* out) {
   setNZ16(out, in->x);
 }
 
+// ---- shop_panel_frame ($80:B149) ----  no register outputs (an indirect callback). Text still
+// typing: the CMP of D+$8C with D+$8E; typed: N/Z of the INC of D+$4E
+static void call_shop_panel_frame(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t a = rd16(DP + 0x8C), b = rd16(DP + 0x8E);
+  shop_panel_frame();
+  if(a != b) {
+    setNZ16(out, (uint16_t)(a - b));
+    out->c = a >= b;
+  } else {
+    setNZ16(out, rd16(DP + 0x4E));
+  }
+}
+
 // ---- money_skip_bonus ($8A:C355) ----  $03DC bit 12 clear: its LDA's N, the BIT's Z; set:
 // the decimal adds (N/Z of the new $0390, their carry, V of the last), A that word
 static uint16_t bcdValue(uint16_t v) {
@@ -10853,6 +10867,8 @@ const Routine routines[] = {
   {.name = "race_pause", .entry = 0x82884B, .end = 0x828911, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .waitsForInterrupts = true, .maxInsns = 40000000, .call = call_race_pause,
    .compareA = true, .holes = {{0x828860, 0x82886E}, {0x8288D8, 0x8288F2}}},
+  {.name = "shop_panel_frame", .entry = 0x80B149, .end = 0x80B2D2, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_panel_frame},
   {.name = "text_centred_line_at", .entry = 0x828911, .end = 0x828923, .source = "src/text.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_text_centred_line_at, .fuzz = fuzz_text_centred_line_at},
   {.name = "money_skip_bonus", .entry = 0x8AC355, .end = 0x8AC379, .source = "src/misc.c", .needM16 = true,

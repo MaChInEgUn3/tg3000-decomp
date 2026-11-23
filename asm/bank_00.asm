@@ -5576,6 +5576,7 @@ CODE_80B11F:
     dey                         ; $80B145
     bne CODE_80B11F             ; $80B146
     rts                         ; $80B148
+shop_panel_frame:
     lda.b $44                   ; $80B149
     bpl CODE_80B198             ; $80B14B
     asl a                       ; $80B14D

@@ -2162,6 +2162,23 @@ password screen, a skipped track's bonus.
   fuzz). `_c` runs only in the TAS and `_b` nowhere: their rows are unreached.
   `shop_level_marks` passes. The gate is the full one.
 
+## The shop panel's frame (shop-24, 2026-11-23)
+
+- **`shop_panel_frame` ($80:B149) is ported.** It is the shop panel's per-frame callback,
+  which `shop_panel_blank` puts at D+$EC; the explored movies' census found it (456 entries on
+  the password movie).
+  - While the icon animates (D+$44 negative, counting down to `$8000`), it copies the
+    frame's six words from `$7E:4EDA` on. While the text is still typing, it also redraws
+    the icon, the level marks and the labels.
+  - Once the text is typed, it runs a typewriter step and draws the panel's static: random
+    tiles in the panel map at `$7F:00C4` and random words at `$7F:0710`. Both are uploaded
+    (`func_80B537`), and D+$4E counts the frames.
+- **Check:** it passes on the password and shop movies (173 and 578 samples, every one of
+  its 159 paths). No flag is live after it (an indirect callback): the C differs on C
+  there, which is not compared. It has no fuzzer yet, since its callees need the shop's
+  pinned states.
+- **Gate:** incremental.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

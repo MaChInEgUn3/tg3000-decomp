@@ -193,6 +193,13 @@ void shop_level_marks(void);
 //   set to 0.
 void shop_panel_blank(void);
 void shop_panel_clear(void);
+// $80:B149: the shop panel's frame (the callback at D+$EC, set by shop_panel_blank). While
+// the icon animates (D+$44 negative, counting down to $8000) its frame's six words ($7E:4EDA
+// on, by D+$44 * 2) go to $01EE/$01F0/$0182/$0186/$0188/$018E + D+$C4, and, while the text
+// types, the icon, the level marks and the labels are redrawn. Once the text is typed (D+$8C
+// = D+$8E): a typewriter step, the panel's static (random tiles in its map at $7F:00C4 and
+// random words at $7F:0710, + D+$5E), both uploaded (func_80B537), D+$4E counts.
+void shop_panel_frame(void);
 
 // The list cursor's range check ($80:B359): (D+$48 * 8) in the high byte, swapped with
 // its low byte, plus D+$4A; true (carry set) above $1800 or negative.

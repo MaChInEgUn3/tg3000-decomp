@@ -515,3 +515,4 @@
 80F549 upload_slice_13 src/video_dma.c 1acfa0591f4a2481 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 1acfa0591f4a2481 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 1acfa0591f4a2481 1 500 20/20 verified live-flags:NVZC replayed:0
+80B149 shop_panel_frame src/shop.c 88339b7502bdf764 578 0 159/159 verified live-flags:- replayed:0

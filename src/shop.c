@@ -7,6 +7,7 @@
 #include "frame.h"
 #include "misc.h"
 #include "platform.h"
+#include "rng.h"
 #include "sprites.h"
 #include "text.h"
 #include "tg3000.h"
@@ -915,6 +916,45 @@ void shop_panel_blank(void) {
     for(uint32_t row = 0; row < 16; row++) wr16(SHOP_PANEL_MAP + (uint16_t)(0x0700 + row * 0x20 + x + col), 0xFFFF);
   wr16(DP + 0x4E, 0);
   wr16(DP + 0xEC, 0xB149);
+}
+
+// TG3000_ROUTINE($80:B149) shop_panel_frame
+void shop_panel_frame(void) {
+  static const uint16_t icon_from[6] = {0x4EDA, 0x4EFA, 0x4F1A, 0x4F2A, 0x4F3A, 0x4F4A};  // $7E
+  static const uint16_t icon_to[6] = {0x01EE, 0x01F0, 0x0182, 0x0186, 0x0188, 0x018E};
+  const bool typed = rd16(DP + 0x8C) == rd16(DP + 0x8E);
+  uint16_t frame = rd16(DP + 0x44);
+  if(frame & 0x8000) {  // the icon's frames: one a call, counting down to $8000
+    const uint16_t x = (uint16_t)(frame << 1), y = rd16(DP + 0xC4);
+    for(int i = 0; i < 6; i++) wr16((uint16_t)(icon_to[i] + y), rd16(icon_from[i] + (uint32_t)x));
+    if(frame != 0x8000) frame--;
+    wr16(DP + 0x44, frame);
+    if(!typed) {
+      shop_item_dispatch_icon();
+      shop_level_marks();
+      func_809DD0();
+      oam_finish_near(DP);
+    }
+  }
+  if(!typed) return;
+  text_type_step();
+  // the panel's static: 9 x 9 random tiles (palette bits and tile $1000 + 0-15, D+$62 on)
+  // and 16 x 8 random words below them, in the panel's map at $7F:0000 + D+$5E
+  const uint16_t at = rd16(DP + 0x5E);
+  for(uint16_t col = 0; col < 18; col += 2)
+    for(uint16_t row = 0; row < 9; row++) {
+      const uint16_t r = rng_next(RNG_STATE, NULL);
+      wr16(SHOP_PANEL_MAP + (uint16_t)(0x00C4 + row * 0x40 + at + col),
+           (uint16_t)((r & 0xC00F) + 0x1000 + rd16(DP + 0x62)));
+    }
+  for(uint16_t col = 0; col < 16; col += 2)
+    for(uint16_t row = 0; row < 16; row++)
+      wr16(SHOP_PANEL_MAP + (uint16_t)(0x0710 + row * 0x20 + at + col), rng_next(RNG_STATE, NULL));
+  wr16(DP + 0x14, 0x007F);
+  func_80B537(DP, 0x0200, (uint16_t)(at + 0x0700), rd16(DP + 0x60));
+  wr16(DP + 0x14, 0x007F);
+  func_80B537(DP, 0x03C0, at, (uint16_t)(rd16(DP + 0x5C) + 0x0400));
+  wr16(DP + 0x4E, (uint16_t)(rd16(DP + 0x4E) + 1));
 }
 
 // TG3000_ROUTINE($80:B10C) shop_panel_clear
