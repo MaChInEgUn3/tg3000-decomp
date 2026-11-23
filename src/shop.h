@@ -170,6 +170,15 @@ void shop_item_icon_2(bool upload);
 void shop_item_icon_3(bool upload);
 void shop_item_icon_4(bool upload);
 void shop_item_icon_5(bool upload);
+// Lists 6-10 the same, with their level bytes ($0398, $0399, $039A, $039C, $039B: the row + 1)
+// and level 0 queueing nothing ($80:A121 list 6, $80:A0E0 list 7, $80:A09F list 8, $80:A162
+// list 9, $80:A1A3 list 10); list 0 ($80:A096) a fixed icon ($7E:4F6A) and no upload.
+void shop_item_icon_0(bool upload);
+void shop_item_icon_6(bool upload);
+void shop_item_icon_7(bool upload);
+void shop_item_icon_8(bool upload);
+void shop_item_icon_9(bool upload);
+void shop_item_icon_10(bool upload);
 
 // The second item dispatch: the current item's handler (by the table at $81:A8A3, list
 // D+$48, row D+$4A), with the carry clear ($80:9F40: its icon) or set ($80:9C0B: queue its

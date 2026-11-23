@@ -2265,6 +2265,25 @@ password screen, a skipped track's bonus.
   - The menu task `$80:C5E0` waits: it is entered with D = `$0200` as well as `$0100`, and
     most of its handlers are C bytes.
 
+## Lists 0 and 6-10's icon handlers (shop-25, 2026-11-23)
+
+- **Ported as functions with rows:** `shop_item_icon_0` ($80:A096; a fixed icon, no
+  upload), `_6`, `_7`, `_8` ($80:A121, A0E0, A09F), `_9` ($80:A162) and `_10` ($80:A1A3).
+  - Lists 6-8 were inline in `shop_item_dispatch` before.
+  - **A fix:** lists 9 and 10 fell into its `default` and did nothing, while the ROM
+    draws their icon. The dispatch's fuzzer and adapter now cover lists 0-10 (list 9's level
+    byte is `$039C`, list 10's `$039B`).
+  - List 10's handler runs only in the dispatches' fuzz: a static range.
+- **Flags:** these rows have under 100 returns each, so every flag counts. The draw path's
+  exit is modelled from `shop_item_icon_draw`:
+  - C and V of the group's last `ADC #6`, else C of the `CMP #$10` of the step * 2;
+  - a negative step leaves by its `BMI` (N set);
+  - else N/Z of the new step, C of its `CMP #$F` / `#7`, and V of `BIT D+$76` at step 7.
+  - Lists 1-5's rows keep their older model; only V is live there.
+- **Check:** `_0`, `_6`, `_7` and `_8` pass on the password movie (594, 73, 34 and 58
+  samples, all paths, 500 fuzz cases each). `_9` (TAS only) and `_10` (no run) are
+  unreached. Both dispatches pass on the three shop movies. Full gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

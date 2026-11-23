@@ -292,6 +292,12 @@ func    80A831   shop_item_view_b    ; item view: double bar, long segments, two
 func    80AA15   shop_item_view_c    ; item view: a group, the gauge, a group; stage + 1 -> src/shop.c
 func    80A717   shop_item_view_d    ; item view: a group, a bar of 2x2 blocks, two groups; stage + 1 -> src/shop.c
 func    80AB54   shop_item_view_e    ; item view: three groups, six wave words; stage + 1 -> src/shop.c
+func    80A096   shop_item_icon_0    ; list 0's icon handler: a fixed icon, no upload -> src/shop.c
+func    80A09F   shop_item_icon_8    ; list 8's icon handler ($039A) -> src/shop.c
+func    80A0E0   shop_item_icon_7    ; list 7's icon handler ($0399) -> src/shop.c
+func    80A121   shop_item_icon_6    ; list 6's icon handler ($0398) -> src/shop.c
+func    80A162   shop_item_icon_9    ; list 9's icon handler ($039C) -> src/shop.c
+func    80A1A3   shop_item_icon_10   ; list 10's icon handler ($039B; never run) -> src/shop.c
 func    80A1E4   shop_item_icon_draw ; the item's icon: a sprite group and its colour steps -> src/shop.c
 func    809F5B   shop_item_icon_1    ; list 1's icon (carry clear) or panel upload (carry set) -> src/shop.c
 func    809F9A   shop_item_icon_2    ; list 2's icon (carry clear) or panel upload (carry set) -> src/shop.c

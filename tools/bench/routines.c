@@ -7255,17 +7255,53 @@ static void shopItemIconOut(const Regs* in, Regs* out, void (*fn)(bool), uint16_
   if(step == 0x0007) out->v = (rd16(DP + 0x76) & 0x4000) != 0;
 }
 static void call_shop_item_icon_1(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_1, 0, 0xBC2E); }
+// lists 0 and 6-10 (shop-25): as lists 1-5, but list 0 queues nothing (its RTS: flags as on
+// entry) and lists 6-10 queue nothing at level 0 (PHY ... PLY: N/Z of Y)
+static void shopItemIconOutB(const Regs* in, Regs* out, void (*fn)(bool), int field, uint16_t icons) {
+  const uint16_t i = rd16(DP + 0x8C), base = rd16(DP + 0x8A), step = rd16(DP + 0x44);
+  const uint16_t level = field < 0 ? 0 : (uint16_t)(rd16(0x0393 + (uint32_t)field + rd16(DP + 0x94)) & 0x007F);
+  const uint16_t group = field < 0 ? 0x4F6A : rom16(0x810000 + (uint32_t)icons + (uint32_t)(uint16_t)(level << 1));
+  GroupWalk w = sprite_group_walk(0x7E0000 | group);
+  fn(in->c);
+  if(in->c) {
+    if(field < 0) return;
+    if(level != 0) setAdc16(out, (uint16_t)((i + 2) & 0x3F), base);
+    setNZ16(out, in->y);
+    return;
+  }
+  // the draw (shop_item_icon_draw), all four flags (these rows have few samples): C and V of
+  // the group's last ADC #6, else C of the CMP #$10 of the step * 2; a negative step leaves
+  // by its BMI (N set); else N/Z of the new step, C of its CMP #$F / #7, V of BIT D+$76 at 7
+  if(w.any) setAdc16(out, w.lastY, 6);
+  else out->c = (uint16_t)(step << 1) >= 0x0010;
+  if(step & 0x8000) {
+    out->n = true;
+    out->z = false;
+    return;
+  }
+  setNZ16(out, rd16(DP + 0x44));
+  out->c = step == 0x000F || step >= 0x0007;
+  if(step == 0x0007) out->v = (rd16(DP + 0x76) & 0x4000) != 0;
+}
+static void call_shop_item_icon_0(const Regs* in, Regs* out) { shopItemIconOutB(in, out, shop_item_icon_0, -1, 0); }
+static void call_shop_item_icon_6(const Regs* in, Regs* out) { shopItemIconOutB(in, out, shop_item_icon_6, 5, 0xBCFA); }
+static void call_shop_item_icon_7(const Regs* in, Regs* out) { shopItemIconOutB(in, out, shop_item_icon_7, 6, 0xBCF6); }
+static void call_shop_item_icon_8(const Regs* in, Regs* out) { shopItemIconOutB(in, out, shop_item_icon_8, 7, 0xBCF2); }
+static void call_shop_item_icon_9(const Regs* in, Regs* out) { shopItemIconOutB(in, out, shop_item_icon_9, 9, 0xBCFE); }
+static void call_shop_item_icon_10(const Regs* in, Regs* out) { shopItemIconOutB(in, out, shop_item_icon_10, 8, 0xBD02); }
 // the dispatches: lists 1-5's handlers as their rows; lists 6-8 likewise on fields 5-7; list 0
 // a fixed icon. No upload (list 0, or a level-0 part of lists 6-8): C set by the SEC, V of
 // the entry's ADC. The upload dispatch ends with PLX of the entry (X, N, Z).
 static void shopItemDispatchOut(const Regs* in, Regs* out, bool upload) {
-  static const uint16_t icons[8] = {0xBC2E, 0xBC52, 0xBC76, 0xBCBE, 0xBC9A, 0xBCFA, 0xBCF6, 0xBCF2};
+  // lists 1-10: their icon tables and level fields (list 9's is $039C, list 10's $039B)
+  static const uint16_t icons[10] = {0xBC2E, 0xBC52, 0xBC76, 0xBCBE, 0xBC9A, 0xBCFA, 0xBCF6, 0xBCF2, 0xBCFE, 0xBD02};
+  static const uint16_t fields[10] = {0, 1, 2, 3, 4, 5, 6, 7, 9, 8};
   uint16_t list = rd16(DP + 0x48);
   uint16_t entry = (uint16_t)((rd16(DP + 0x4A) << 4) + rom16(0x81A892 + (uint32_t)(uint16_t)(list << 1)));
   uint16_t i = rd16(DP + 0x8C), base = rd16(DP + 0x8A), step = rd16(DP + 0x44);
-  uint16_t field = (uint16_t)(list - 1);
+  uint16_t field = list ? fields[list - 1] : 0;
   uint16_t level = list ? (uint16_t)(rd16(0x0393 + (uint32_t)field + rd16(DP + 0x94)) & 0x007F) : 0;
-  uint16_t group = list ? rom16(0x810000 + (uint32_t)icons[field] + (uint32_t)(uint16_t)(level << 1)) : 0x4F6A;
+  uint16_t group = list ? rom16(0x810000 + (uint32_t)icons[list - 1] + (uint32_t)(uint16_t)(level << 1)) : 0x4F6A;
   GroupWalk w = sprite_group_walk(0x7E0000 | group);
   if(upload) shop_item_dispatch_upload();
   else shop_item_dispatch_icon();
@@ -7452,15 +7488,21 @@ static void fuzz_shop_item_icon(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x94, p);
   for(uint32_t f = 0; f < 5; f++) ram[0x0393 + p + f] = (uint8_t)((rnd() % 6) | (rnd() & 0x80));
 }
-// a dispatch: lists 0-8 (0 and 6-8 one row each), as fuzz_shop_item_icon; lists 6-8's
+// a dispatch: lists 0-10 (0 and 6-10 one row each), as fuzz_shop_item_icon; lists 6-10's
 // levels 0-3
 static void fuzz_shop_item_dispatch(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_shop_item_icon(r, ram, rnd);
-  uint16_t list = (uint16_t)(rnd() % 9);
+  uint16_t list = (uint16_t)(rnd() % 11);
   wr16ram(ram, DP + 0x48, list);
   wr16ram(ram, DP + 0x4A, (uint16_t)(list == 0 || list >= 6 ? 0 : rnd() % 5));
   uint16_t car = (uint16_t)(ram[DP + 0x94] | ram[DP + 0x95] << 8);
-  for(uint32_t f = 0; f < 3; f++) ram[0x0398 + car + f] = (uint8_t)((rnd() % 4) | (rnd() & 0x80));
+  for(uint32_t f = 0; f < 5; f++) ram[0x0398 + car + f] = (uint8_t)((rnd() % 4) | (rnd() & 0x80));
+}
+// one of lists 0 and 6-10's handlers: their levels 0-3
+static void fuzz_shop_item_icon_b(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_shop_item_icon(r, ram, rnd);
+  uint16_t car = (uint16_t)(ram[DP + 0x94] | ram[DP + 0x95] << 8);
+  for(uint32_t f = 0; f < 5; f++) ram[0x0398 + car + f] = (uint8_t)((rnd() % 4) | (rnd() & 0x80));
 }
 // the icon alone: X = a list's icon for a level 0-5
 static void fuzz_shop_item_icon_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -10733,6 +10775,18 @@ const Routine routines[] = {
    .fixedD = true, .db = 0x81, .call = call_shop_item_icon_4, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon},
   {.name = "shop_item_icon_5", .entry = 0x80A018, .end = 0x80A057, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .call = call_shop_item_icon_5, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon},
+  {.name = "shop_item_icon_0", .entry = 0x80A096, .end = 0x80A09F, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_0, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon_b},
+  {.name = "shop_item_icon_8", .entry = 0x80A09F, .end = 0x80A0E0, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_8, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon_b},
+  {.name = "shop_item_icon_7", .entry = 0x80A0E0, .end = 0x80A121, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_7, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon_b},
+  {.name = "shop_item_icon_6", .entry = 0x80A121, .end = 0x80A162, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_6, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon_b},
+  {.name = "shop_item_icon_9", .entry = 0x80A162, .end = 0x80A1A3, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_9, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon_b},
+  {.name = "shop_item_icon_10", .entry = 0x80A1A3, .end = 0x80A1E4, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .call = call_shop_item_icon_10, .alsoIn = {{0x80A1E4, 0x80A251}}, .fuzz = fuzz_shop_item_icon_b},
   {.name = "shop_item_dispatch_icon", .entry = 0x809F40, .end = 0x809F5B, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_item_dispatch_icon, .fuzz = fuzz_shop_item_dispatch},
   {.name = "shop_item_dispatch_upload", .entry = 0x809C0B, .end = 0x809C28, .source = "src/shop.c", .needM16 = true,

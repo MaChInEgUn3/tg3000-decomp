@@ -3543,11 +3543,13 @@ CODE_80A06A:
     jsr.w func_80B537           ; $80A091
     ply                         ; $80A094
     rts                         ; $80A095
+shop_item_icon_0:
     bcs CODE_80A09E             ; $80A096
     ldx.w #$4F6A                ; $80A098
     jmp.w shop_item_icon_draw   ; $80A09B
 CODE_80A09E:
     rts                         ; $80A09E
+shop_item_icon_8:
     bcs CODE_80A0B2             ; $80A09F
     ldx.b $94                   ; $80A0A1
     lda.w $039A,x               ; $80A0A3
@@ -3584,6 +3586,7 @@ CODE_80A0B2:
 CODE_80A0DE:
     ply                         ; $80A0DE
     rts                         ; $80A0DF
+shop_item_icon_7:
     bcs CODE_80A0F3             ; $80A0E0
     ldx.b $94                   ; $80A0E2
     lda.w $0399,x               ; $80A0E4
@@ -3620,6 +3623,7 @@ CODE_80A0F3:
 CODE_80A11F:
     ply                         ; $80A11F
     rts                         ; $80A120
+shop_item_icon_6:
     bcs CODE_80A134             ; $80A121
     ldx.b $94                   ; $80A123
     lda.w $0398,x               ; $80A125
@@ -3656,6 +3660,7 @@ CODE_80A134:
 CODE_80A160:
     ply                         ; $80A160
     rts                         ; $80A161
+shop_item_icon_9:
     bcs CODE_80A175             ; $80A162
     ldx.b $94                   ; $80A164
     lda.w $039C,x               ; $80A166
@@ -3692,7 +3697,43 @@ CODE_80A175:
 CODE_80A1A1:
     ply                         ; $80A1A1
     rts                         ; $80A1A2
-    incbin !baserom:$21A3..$21E4
+shop_item_icon_10:
+    bcs CODE_80A1B6             ; $80A1A3 static
+    ldx.b $94                   ; $80A1A5 static
+    lda.w $039B,x               ; $80A1A7 static
+    and.w #$007F                ; $80A1AA static
+    asl a                       ; $80A1AD static
+    tax                         ; $80A1AE static
+    lda.w $BD02,x               ; $80A1AF static
+    tax                         ; $80A1B2 static
+    jmp.w shop_item_icon_draw   ; $80A1B3 static
+CODE_80A1B6:
+    phy                         ; $80A1B6 static
+    ldx.b $94                   ; $80A1B7 static
+    lda.w $039B,x               ; $80A1B9 static
+    and.w #$007F                ; $80A1BC static
+    beq CODE_80A1E2             ; $80A1BF static
+    asl a                       ; $80A1C1 static
+    asl a                       ; $80A1C2 static
+    tay                         ; $80A1C3 static
+    lda.w #$007F                ; $80A1C4 static
+    sta.b $14                   ; $80A1C7 static
+    lda.b $5C                   ; $80A1C9 static
+    clc                         ; $80A1CB static
+    adc.w #$1000                ; $80A1CC static
+    pha                         ; $80A1CF static
+    lda.w $BCE6,y               ; $80A1D0 static
+    clc                         ; $80A1D3 static
+    adc.b $5E                   ; $80A1D4 static
+    clc                         ; $80A1D6 static
+    adc.w #$0900                ; $80A1D7 static
+    tax                         ; $80A1DA static
+    lda.w $BCE8,y               ; $80A1DB static
+    ply                         ; $80A1DE static
+    jsr.w func_80B537           ; $80A1DF static
+CODE_80A1E2:
+    ply                         ; $80A1E2 static
+    rts                         ; $80A1E3 static
 shop_item_icon_draw:
     ldy.w #$0E00                ; $80A1E4
     lda.b $44                   ; $80A1E7

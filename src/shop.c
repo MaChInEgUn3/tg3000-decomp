@@ -851,6 +851,21 @@ void shop_item_icon_4(bool upload) { shop_item_icon(upload, 3, 0xBCBE, 0xBCA6); 
 // TG3000_ROUTINE($80:A018) shop_item_icon_5
 void shop_item_icon_5(bool upload) { shop_item_icon(upload, 4, 0xBC9A, 0xBC82); }
 
+// TG3000_ROUTINE($80:A096) shop_item_icon_0
+void shop_item_icon_0(bool upload) {
+  if(!upload) shop_item_icon_draw(0x4F6A);
+}
+// TG3000_ROUTINE($80:A121) shop_item_icon_6
+void shop_item_icon_6(bool upload) { shop_item_icon_from(upload, 5, 0xBCFA, 0xBCD6, 0xBCD8, true); }
+// TG3000_ROUTINE($80:A0E0) shop_item_icon_7
+void shop_item_icon_7(bool upload) { shop_item_icon_from(upload, 6, 0xBCF6, 0xBCCE, 0xBCC8, true); }
+// TG3000_ROUTINE($80:A09F) shop_item_icon_8
+void shop_item_icon_8(bool upload) { shop_item_icon_from(upload, 7, 0xBCF2, 0xBCC6, 0xBCC8, true); }
+// TG3000_ROUTINE($80:A162) shop_item_icon_9
+void shop_item_icon_9(bool upload) { shop_item_icon_from(upload, 9, 0xBCFE, 0xBCDE, 0xBCE0, true); }
+// TG3000_ROUTINE($80:A1A3) shop_item_icon_10 (never run)
+void shop_item_icon_10(bool upload) { shop_item_icon_from(upload, 8, 0xBD02, 0xBCE6, 0xBCE8, true); }
+
 // The list's level getter ($80:9EEA table): lists 0-5 the part levels plus 1; lists 6-10
 // the bytes at $0398, $0399, $039A, $039C, $039B as they are. (The table's entries past list
 // 10 point at a getter that sets Y = 0 and returns A as it was: no list uses them.)
@@ -1006,14 +1021,13 @@ static void shop_item_dispatch(bool upload) {
   case 0x9FD9: shop_item_icon_3(upload); break;
   case 0xA057: shop_item_icon_4(upload); break;
   case 0xA018: shop_item_icon_5(upload); break;
-  // lists 6-8 ($80:A121, $80:A0E0, $80:A09F): as the others, but level 0 queues nothing
-  case 0xA121: shop_item_icon_from(upload, 5, 0xBCFA, 0xBCD6, 0xBCD8, true); break;
-  case 0xA0E0: shop_item_icon_from(upload, 6, 0xBCF6, 0xBCCE, 0xBCC8, true); break;
-  case 0xA09F: shop_item_icon_from(upload, 7, 0xBCF2, 0xBCC6, 0xBCC8, true); break;
-  case 0xA096:  // list 0 ($80:A096): a fixed icon, no upload
-    if(!upload) shop_item_icon_draw(0x4F6A);
-    break;
-  default: break;  // the table holds no other handler for lists 0-8
+  case 0xA121: shop_item_icon_6(upload); break;
+  case 0xA0E0: shop_item_icon_7(upload); break;
+  case 0xA09F: shop_item_icon_8(upload); break;
+  case 0xA162: shop_item_icon_9(upload); break;
+  case 0xA1A3: shop_item_icon_10(upload); break;  // (shop-25: lists 9 and 10 did nothing here)
+  case 0xA096: shop_item_icon_0(upload); break;
+  default: break;  // the table holds no other handler for lists 0-10
   }
 }
 
