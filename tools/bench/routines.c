@@ -5241,6 +5241,59 @@ static void fuzz_func_838989(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 static void call_nmi_prologue(const Regs* in, Regs* out) { (void)in; nmi_prologue(); out->d = 0; out->db = 0x81; }
 static void call_nmi_race_prologue(const Regs* in, Regs* out) { (void)in; nmi_race_prologue(); out->d = 0; out->db = 0x85; }
 
+// the menus' NMI frame, up to its stack switch (endAt $80:BC54): D = $0100 (its TCD), DB as
+// the prologue left it ($81); N/Z of the brightness byte it wrote ($80 when $019B is 0)
+static void call_nmi_menu_frame(const Regs* in, Regs* out) {
+  (void)in;
+  nmi_menu_frame();
+  const uint8_t b = rd8(0x019B) ? rd8(0x019B) : 0x80;
+  out->n = (b & 0x80) != 0;
+  out->z = false;
+  out->d = 0x0100;
+  out->db = 0x81;
+}
+// both tasks' rings (tail, head and up to 4 entries; one time in 32 an entry over the
+// budget), the fade, the pads, the counter's parity, the shadowed registers, the large
+// upload (one time in four; over $1C00 now and then), the brightness. The transfers stay
+// small enough for a fuzz case, which starts anywhere in a frame, to end before the next
+// NMI (a case the NMI interrupts is lost)
+static void fuzz_nmi_menu_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint16_t ring = 0; ring <= 0x0100; ring = (uint16_t)(ring + 0x0100)) {
+    const uint16_t tail = (uint16_t)((rnd() & 0x3E) + ring), n = (uint16_t)(rnd() % 5);
+    wr16ram(ram, ring ? 0x028E : 0x018E, tail);
+    wr16ram(ram, ring ? 0x028C : 0x018C, (uint16_t)(((tail + 2 * n) & 0x3F) + ring));
+    for(uint16_t i = 0; i < n; i++) {
+      const uint16_t x = (uint16_t)(((tail + 2 * i) & 0x3F) + ring);
+      wr16ram(ram, (uint32_t)(0x1900 + x), (uint16_t)((rnd() & 31) == 0 ? 0x0D00 : 2 + (rnd() % 0x100) * 2));
+      wr16ram(ram, (uint32_t)(0x1940 + x), (uint16_t)rnd());
+      wr16ram(ram, (uint32_t)(0x1980 + x), (uint16_t)(0x7E + (rnd() & 1)));
+      wr16ram(ram, (uint32_t)(0x19C0 + x), (uint16_t)(rnd() & 0x7FFF));
+    }
+  }
+  const uint16_t target = (uint16_t)(rnd() & 0x0F00);
+  const uint16_t step = (rnd() & 3) == 0 ? 0 : (uint16_t)((rnd() & 1) ? (rnd() & 0x1FF) : -(int)(rnd() & 0x1FF));
+  wr16ram(ram, 0x0296, step);
+  wr16ram(ram, 0x0298, target);
+  wr16ram(ram, 0x029A, (rnd() & 3) ? (uint16_t)(rnd() & 0x0FFF) : (uint16_t)(target - step));
+  for(uint32_t a = 0x000C; a < 0x0012; a++) ram[a] = (uint8_t)rnd();
+  for(uint32_t a = 0x010C; a < 0x0110; a++) ram[a] = (uint8_t)rnd();
+  for(uint32_t a = 0x020C; a < 0x0210; a++) ram[a] = (uint8_t)rnd();
+  wr16ram(ram, 0x0024, (uint16_t)rnd());
+  for(uint32_t a = 0x019C; a < 0x01C6; a++) ram[a] = (uint8_t)rnd();
+  ram[0x01A8] &= 0x0F;  // a BG mode the PPU model takes
+  wr16ram(ram, 0x016E, (uint16_t)(0x0900 + (rnd() % 4) * 0x220));
+  if((rnd() & 3) == 0) {
+    wr16ram(ram, 0x0164, (uint16_t)((rnd() & 1) ? 0x1C00 + (rnd() % 0x100) * 2 : (rnd() % 0x400) * 2));
+    wr16ram(ram, 0x0166, (uint16_t)rnd());
+    wr16ram(ram, 0x0168, (uint16_t)(0x7E + (rnd() & 1)));
+    wr16ram(ram, 0x016A, (uint16_t)(rnd() & 0x7FFF));
+  } else {
+    wr16ram(ram, 0x0164, 0);
+  }
+  ram[0x019B] = (rnd() & 3) ? (uint8_t)(rnd() & 0x0F) : 0;
+}
+
 // Negative test: the sprite table sent a second time, one word further into OAM
 static void call_nmi_prologue_wrong(const Regs* in, Regs* out) {
   (void)in;
@@ -10493,6 +10546,8 @@ const Routine routines[] = {
   {.name = "nmi_target_80E175", .entry = 0x80E175, .end = 0x80E28C, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80E175, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
    .fuzz = fuzz_nmi_target_80E175},
+  {.name = "nmi_menu_frame", .entry = 0x80B97B, .end = 0x80BC54, .rti = true, .endAt = 0x80BC54, .source = "src/frame.c",
+   .call = call_nmi_menu_frame, .fuzz = fuzz_nmi_menu_frame},  // up to the two tasks' stack switch
   {.name = "nmi_prologue", .entry = 0x808807, .end = 0x808931, .rti = true, .endAt = 0x808931, .source = "src/frame.c",
    .call = call_nmi_prologue, .fuzz = fuzz_nmi_prologue},
   {.name = "nmi_race_prologue", .entry = 0x858377, .end = 0x858387, .rti = true, .endAt = 0x858387, .source = "src/frame.c",

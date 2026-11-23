@@ -1451,6 +1451,13 @@ static void checkEntries(Cpu* cpu, uint32_t pc, bool inHandler) {
 void difftest_on_insn(Cpu* cpu) {
   uint32_t pc = norm(((uint32_t)cpu->k << 16) | cpu->pc);
   insnPc = pc;
+  // fuzz and replay cases run with interrupts off, even after the routine itself writes
+  // $4200 (harness-13: an NMI the routine enabled lost a case; the write itself is still
+  // compared, as a byte register)
+  if(fuzzing || replaying) {
+    snes->nmiEnabled = snes->hIrqEnabled = snes->vIrqEnabled = false;
+    cpu->nmiWanted = cpu->irqWanted = cpu->intWanted = false;  // (a $4200 write in vblank raises one at once)
+  }
   checkCgPtrAfterKick();
   if(irqOwner >= 0) {
     if(irqActive && cpu->sp == irqReturnSp) {  // the handler has returned (RTI)

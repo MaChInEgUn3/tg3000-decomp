@@ -55,6 +55,15 @@ void nmi_target_80E28C(void);
 // for a band that opens by 4 lines a frame ($0114, up to $3A, then $0116 = 1); then the
 // tail.
 void nmi_target_80E175(void);
+// $80:B97B: the menus' NMI frame (the two-task kernel's, up to its stack switch at $80:BC54).
+// Forced blank; the fade at $0296-$029A as nmi_prologue's; both pads' new presses ($000C to
+// $010C/$010E, $0010 to $020C/$020E); the frame's task ($0190/$0290 by the counter's bit 0);
+// that task's upload ring drained against a $0C00 budget (task 1 $018E-$018C, task 2
+// $028E-$028C, a part sent when it does not fit); the shadowed screen registers ($019C-
+// $01C1, the vertical scrolls less $01C2/$01C4); the palette ($81:0500) and sprites ($81:
+// $016E); the raster IRQ (line $6C, dot $10, $80:BC9B through the trampoline); the large
+// upload at $0164-$016A in $1C00-byte parts; the brightness $019B (0: forced blank).
+void nmi_menu_frame(void);
 // $80:D784: copy the 7-byte table at $81:C207 to $1B00, upload 4 KB from $7F:0000 to VRAM
 // $0000, set the screen up (mode $09, maps $51/$03/$59, tiles $03 for BG3/4, sprites $03,
 // main screen BG2, BG3 scrolled to (0, $3FF), $2130 = $02, colour 2 black); then the tail.

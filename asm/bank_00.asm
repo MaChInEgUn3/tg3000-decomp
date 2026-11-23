@@ -6457,6 +6457,7 @@ CODE_80B95E:
     sty.b $68                   ; $80B976
     sta.b $64                   ; $80B978
     rts                         ; $80B97A
+nmi_menu_frame:
     sep.b #$20                  ; $80B97B
     lda.b #$80                  ; $80B97D
     sta.w $2100                 ; $80B97F

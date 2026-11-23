@@ -231,6 +231,115 @@ void nmi_target_80E28C(void) {
 #define BAND_DP 0x0100  // D while $80:E175 runs
 #define BAND_TABLE 0x1B00
 
+// One task's upload ring ($1900 size, $1940 source, $1980 bank, $19C0 VRAM word) from its
+// tail to its head; `ring` is the index's base ($0000 or $0100). Returns the budget left.
+static uint16_t menu_ring_drain(uint32_t tail_at, uint32_t head_at, uint16_t ring, uint16_t budget) {
+  uint16_t x = rd16(tail_at);
+  while(x != rd16(head_at)) {
+    const uint16_t size = rd16(0x1900 + (uint32_t)x), vram = rd16(0x19C0 + (uint32_t)x), src = rd16(0x1940 + (uint32_t)x);
+    const uint32_t bank = (uint32_t)rd8(0x1980 + (uint32_t)x) << 16;
+    if(size > budget) {  // only part of it: the entry keeps the rest
+      wr16(0x1900 + (uint32_t)x, (uint16_t)(size - budget));
+      wr16(0x1940 + (uint32_t)x, (uint16_t)(src + budget));
+      wr16(0x19C0 + (uint32_t)x, (uint16_t)(vram + (budget >> 1)));
+      video_upload_vram(vram, bank | src, budget ? budget : 0x10000);
+      return 0;
+    }
+    video_upload_vram(vram, bank | src, size ? size : 0x10000);
+    budget = (uint16_t)(budget - size);
+    x = (uint16_t)(((x + 2) & 0x003F) + ring);
+    wr16(tail_at, x);
+  }
+  return budget;
+}
+
+// A vertical scroll less the screen's offset, in the original's byte order: the low byte
+// less $01C2's, the high byte less $01C4's with that borrow.
+static uint16_t menu_vofs(uint32_t at) {
+  const uint8_t lo = rd8(at), sub_lo = rd8(0x01C2);
+  const uint8_t hi = (uint8_t)(rd8(at + 1) - rd8(0x01C4) - (lo < sub_lo));
+  return (uint16_t)((uint16_t)(hi << 8) | (uint8_t)(lo - sub_lo));
+}
+
+// TG3000_ROUTINE($80:B97B) nmi_menu_frame
+void nmi_menu_frame(void) {
+  video_set_display(0x80);
+  uint16_t budget = 0x0C00;
+  const uint16_t step = rd16(0x0296);
+  if(step) {  // as nmi_prologue's fade
+    const uint16_t level = (uint16_t)(rd16(0x029A) + step);
+    wr16(0x029A, level);
+    const uint16_t past = (uint16_t)(level - rd16(0x0298));
+    if(past == 0 || !((past ^ step) & 0x8000)) {
+      wr16(0x029A, rd16(0x0298));
+      wr16(0x0296, 0);
+    }
+  }
+  for(uint32_t p = 0; p < 2; p++) {  // each pad's new presses
+    const uint16_t now = rd16(p ? 0x0010 : 0x000C), was = rd16(p ? 0x020C : 0x010C);
+    wr16(p ? 0x020C : 0x010C, now);
+    wr16(p ? 0x020E : 0x010E, (uint16_t)(((now ^ was) | rd16(p ? 0x020E : 0x010E)) & now));
+  }
+  const uint16_t odd = (uint16_t)(rd16(FRAME_COUNTER) & 1);
+  wr16(0x0290, odd);
+  wr16(0x0190, (uint16_t)(odd ^ 1));
+  if(odd) budget = menu_ring_drain(0x028E, 0x028C, 0x0100, budget);
+  else budget = menu_ring_drain(0x018E, 0x018C, 0x0000, budget);
+  wr16(0x002C, budget);
+  video_set_bg1_hofs(rd16(0x019C));
+  video_set_bg1_vofs(menu_vofs(0x019E));
+  video_set_bg2_hofs(rd16(0x01A0));
+  video_set_bg2_vofs(menu_vofs(0x01A2));
+  video_set_bg3_hofs(rd16(0x01A4));
+  video_set_bg3_vofs(menu_vofs(0x01A6));
+  video_set_bg_mode(rd8(0x01A8));
+  video_set_window_obj(rd8(0x01A9));
+  video_set_fixed_color((uint8_t)(rd8(0x01AA) | 0x20));
+  video_set_fixed_color((uint8_t)(rd8(0x01AB) | 0x40));
+  video_set_fixed_color((uint8_t)(rd8(0x01AC) | 0x80));
+  video_set_obj_select(rd8(0x01AD));
+  for(int edge = 0; edge < 4; edge++) video_set_window_position(edge, rd8(0x01AE + (uint32_t)edge));
+  video_set_window_logic_bg(rd8(0x01B2));
+  video_set_window_logic_obj(rd8(0x01B3));
+  for(int bg = 1; bg <= 4; bg++) video_set_bg_map(bg, rd8(0x01B3 + (uint32_t)bg));
+  video_set_bg_tiles(0, rd8(0x01B8));
+  video_set_bg_tiles(1, rd8(0x01B9));
+  video_set_window_bg12(rd8(0x01BA));
+  video_set_window_bg34(rd8(0x01BB));
+  video_set_main_screen(rd8(0x01BC));
+  video_set_sub_screen(rd8(0x01BD));
+  video_set_main_window_mask(rd8(0x01BE));
+  video_set_sub_window_mask(rd8(0x01BF));
+  video_set_color_math_control(rd8(0x01C0));
+  video_set_color_math(rd8(0x01C1));
+  video_upload_cgram(0, 0x810500, 0x0200);
+  video_set_oam_address(0x0000);
+  video_upload_oam(0x0000, 0x810000 | rd16(0x016E), 0x0220);
+  video_set_oam_address(0x0000);
+  platform_set_irq_v(0x006C);
+  platform_set_irq_h(0x0010);
+  platform_set_interrupts(0xB1);
+  wr16(0x0005, 0xBC9B);  // the IRQ trampoline's target: $80:BC9B, the second task's frame
+  const uint16_t left = rd16(0x0164);
+  if(left) {  // the large upload, $1C00 bytes a frame
+    const uint16_t vram = rd16(0x016A), src = rd16(0x0166);
+    uint16_t size = left;
+    if(left >= 0x1C00) {
+      wr16(0x0164, (uint16_t)(left - 0x1C00));
+      const uint32_t moved = (uint32_t)src + 0x1C00;
+      wr16(0x0166, (uint16_t)moved);
+      wr16(0x0168, (uint16_t)(rd16(0x0168) + (moved > 0xFFFF)));
+      wr16(0x016A, (uint16_t)(vram + 0x0E00));
+      size = 0x1C00;
+    } else {
+      wr16(0x0164, 0);
+    }
+    video_upload_vram(vram, (uint32_t)rd8(0x0168) << 16 | src, size);  // the bank as it is now
+  }
+  const uint8_t brightness = rd8(0x019B);
+  video_set_display(brightness ? brightness : 0x80);
+}
+
 // TG3000_ROUTINE($80:E175) nmi_target_80E175
 //
 // As in $80:E28C, the table is written as overlapping words in the original's order.

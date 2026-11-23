@@ -2375,6 +2375,40 @@ password screen, a skipped track's bonus.
   - Both wait for a design of indirect callbacks, as RELAX's codes do.
 - **Check:** both rows pass on the buy and password movies. Full gate.
 
+## The menus' NMI frame (nmi-1, 2026-11-23)
+
+- **`nmi_menu_frame` ($80:B97B) is ported**, up to the two tasks' stack switch at
+  `$80:BC54` (`TSC`/`TCS`; with the advisor). That is 729 of its 800 bytes.
+  - Its row is an interrupt row (`.rti`) with `endAt` `$80:BC54`, as `nmi_prologue`'s.
+  - The tail (the stack switch, the frame callback `jsr ($01EC)`, `nmi_tail`) has no row.
+- **What it does:**
+  - forced blank, and the fade at `$0296-$029A` (as `nmi_prologue`'s);
+  - both pads' new presses (`$000C` to `$010C`/`$010E`, `$0010` to `$020C`/`$020E`), and
+    the frame's task (`$0190`/`$0290` by the counter's bit 0);
+  - that task's upload ring drained against a `$0C00` budget (task 1 at `$018E-$018C`,
+    task 2 at `$028E-$028C`, whose index keeps its `+ $0100`), sending part of an entry
+    that does not fit;
+  - the shadowed screen registers `$019C-$01C1`. The vertical scrolls are less
+    `$01C2`/`$01C4`, byte by byte as the ROM does;
+  - the palette (`$81:0500`) and sprites (`$81:` + `$016E`), and the raster IRQ (line
+    `$6C`, dot `$10`, `$80:BC9B` through the trampoline);
+  - the large upload at `$0164-$016A` in `$1C00`-byte parts. The bank is read after its
+    carry is added, as the ROM does;
+  - the brightness `$019B` (0: forced blank).
+- **Check:** the password movie gives 2,661 live samples with every path (302), and 500
+  fuzz cases. No flag is live after it. Full gate.
+
+## Fuzz and replay keep interrupts off (harness-13, 2026-11-23)
+
+- `nmi_menu_frame` writes `$4200 = $B1` itself, enabling the NMI and the IRQs. A fuzz case
+  that crossed the start of vblank after that write was interrupted and lost, 37-84 of 500.
+  - The fuzz already starts with interrupts off ("run on the interpreter from the entry,
+    interrupts disabled"). It now keeps them off at every instruction, in fuzz and
+    replay: the PPU's NMI and IRQ enables, and the CPU's pending requests.
+  - The pending requests matter because a `$4200` write in vblank raises an NMI at once.
+- The write itself is still compared, as a byte register.
+- My call, open to the owner's veto. Full gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
