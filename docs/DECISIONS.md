@@ -2221,6 +2221,26 @@ password screen, a skipped track's bonus.
     time). So the difference is not harness-11's.
 - **The full gate took 684 s** (it was 2,510-2,680 s): 3.8 times faster.
 
+## `verify_new` skips movies that never reach the rows (harness-12, 2026-11-23)
+
+- **What.** A movie that never executes any named row's entry gives the merge no evidence:
+  it is skipped.
+  - Each movie's coverage (`bench --coverage`, one plain run) is cached in `build/cache/`.
+    The cache key is the movie, the emulator patch and `bench.c`; a stale or missing file
+    is made again, side by side with the others.
+  - The row's entry comes from `tools/bench/routines.c`. The names are checked there too,
+    since the main movie may now be skipped.
+  - When no movie reaches the rows, the main movie still runs once to record them as
+    unreached.
+- **Why it is safe:** the merge (harness-8) takes evidence only from movies that compared
+  something. A movie whose coverage never hits the entry starts no sample for the row; a
+  fuzz phase needs live entries.
+- **Measured:** `verify_new password_unpack` (a password-only row) took 103 s with the
+  caches built (three movies skipped), and 290 s building them. Before, it ran all four
+  movies.
+- **Check:** that run left `map/verified.txt` unchanged; `sh -n`. This is the advisor's
+  idea and my call, open to veto.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
