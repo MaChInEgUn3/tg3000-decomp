@@ -179,3 +179,5 @@
 8A:B4A0 8A:B4A4 m8x16 ; password_no_vowel finding one ($8A:B487-B497 BEQs): executed by its difftest fuzz, matched by src/password.c
 8A:B4B4 8A:B4BE m16x16 ; password_press_last_column on DEL or SPACE: executed by its difftest fuzz, matched by src/password.c
 8A:B4C0 8A:B4CD m16x16 ; the same: SPACE typed, DEL
+8A:B3DE 8A:B3DF m16x16 ; password_press_a past the grid (its CLC before the RTS): executed by its difftest fuzz, matched by src/password.c
+8A:B3E0 8A:B3E3 m16x16 ; password_press_a off a letter's column: the same

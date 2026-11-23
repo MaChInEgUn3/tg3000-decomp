@@ -6431,23 +6431,64 @@ static void call_password_no_vowel(const Regs* in, Regs* out) {
 }
 // not on the last column: the CMP #$64 of x; EXIT: func_8AA49E keeps A (y), SEC; DEL and
 // SPACE: their exits, CLC; any other row: the CMP #$64 of y
-static void call_password_press_last_column(const Regs* in, Regs* out) {
-  const uint16_t x = rd16(0x0D80), y = rd16(0x0D68), count = rd16(DP + 0x80);
-  const bool exit = password_press_last_column();
-  if(x != 0x0064) {
-    pwCmpExit(out, x, 0x0064);
-  } else if(y == 0x0094) {
-    out->a = y;
-    setNZ16(out, y);
-  } else if(y == 0x007C) {
-    pwDeleteExit(out, count);
-  } else if(y == 0x0064) {
-    pwTypeExit(out, count);
+typedef struct { uint16_t x, y, count; } PwLastColumn;  // the state it reads, before the call
+static PwLastColumn pwLastColumnBefore(void) {
+  return (PwLastColumn){rd16(0x0D80), rd16(0x0D68), rd16(DP + 0x80)};
+}
+static void pwLastColumnExit(Regs* out, PwLastColumn s, bool exit) {
+  if(s.x != 0x0064) {
+    pwCmpExit(out, s.x, 0x0064);
+  } else if(s.y == 0x0094) {
+    out->a = s.y;
+    setNZ16(out, s.y);
+  } else if(s.y == 0x007C) {
+    pwDeleteExit(out, s.count);
+  } else if(s.y == 0x0064) {
+    pwTypeExit(out, s.count);
   } else {
-    pwCmpExit(out, y, 0x0064);
+    pwCmpExit(out, s.y, 0x0064);
   }
   out->c = exit;
+}
+static void call_password_press_last_column(const Regs* in, Regs* out) {
   (void)in;
+  const PwLastColumn s = pwLastColumnBefore();
+  pwLastColumnExit(out, s, password_press_last_column());
+}
+// no press: the last TRB (Z) after LDA #$C0C0 (N), CLC. A press: password_press_last_column's
+// exit, and past it the ADC #$74 of x (V) and the path's last load or compare, CLC; on a letter
+// password_type_char's exit
+static void call_password_press_a(const Regs* in, Regs* out) {
+  (void)in;
+  const bool pressed = ((rd16(0x000E) | rd16(0x0012) | rd16(0x0016) | rd16(0x001A)) & 0xC0C0) != 0;
+  const PwLastColumn s = pwLastColumnBefore();
+  const uint16_t row = rd16(0x0D90);
+  const bool exit = password_press_a();
+  if(!pressed) {
+    out->a = 0xC0C0;
+    out->n = out->z = true;
+    out->c = false;
+    return;
+  }
+  pwLastColumnExit(out, s, exit);
+  if(exit) return;
+  const uint16_t at = (uint16_t)(s.x + 0x74);
+  setAdc16(out, s.x, 0x74);
+  out->c = false;
+  if(at & 0x000F) {
+    out->a = at;
+    setNZ16(out, at);
+    return;
+  }
+  out->y = (uint16_t)(at >> 4);
+  if(pwNotBelow(s.x, 0x003D)) {
+    pwCmpExit(out, s.x, 0x003D);
+  } else if(row == 0x0064 || row == 0x007C || row == 0x0094 || row == 0x00AC) {
+    pwTypeExit(out, s.count);
+  } else {
+    pwCmpExit(out, row, 0x00AC);
+  }
+  out->c = false;
 }
 // the typed text (the password alphabet, a vowel now and then), its count (full or empty one
 // time in four), the text cell's row, the font
@@ -6474,6 +6515,17 @@ static uint16_t pwGridX(uint32_t (*rnd)(void)) {
 static uint16_t pwGridY(uint32_t (*rnd)(void)) {
   const uint32_t k = rnd() % 6;
   return k < 4 ? (uint16_t)(0x0064 + 0x18 * k) : (uint16_t)rnd();
+}
+// the typing's state, with a button (A, B, X or Y one time in two) on one of the pads
+static void fuzz_password_press_a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_password_typing(r, ram, rnd);
+  const uint16_t x = pwGridX(rnd), y = pwGridY(rnd);
+  wr16ram(ram, 0x0D80, x);
+  wr16ram(ram, 0x0D88, x);
+  wr16ram(ram, 0x0D90, y);
+  wr16ram(ram, 0x0D68, (rnd() & 3) ? y : (uint16_t)rnd());
+  for(uint32_t a = 0x000E; a <= 0x001A; a += 4) wr16ram(ram, a, (uint16_t)(rnd() & 0x3F3F));
+  if(rnd() & 1) wr16ram(ram, 0x000E + 4 * (rnd() % 4), (uint16_t)(rnd() | (0x40 << (rnd() % 2)) << (8 * (rnd() % 2))));
 }
 static void fuzz_password_cursor(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
@@ -9986,6 +10038,10 @@ const Routine routines[] = {
   {.name = "password_press_last_column", .entry = 0x8AB4A4, .end = 0x8AB4D2, .source = "src/password.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_password_press_last_column,
    ALL_OUTPUTS, .fuzz = fuzz_password_typing},
+  {.name = "password_press_a", .entry = 0x8AB339, .end = 0x8AB403, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_press_a, ALL_OUTPUTS,
+   .fuzz = fuzz_password_press_a,
+   .holes = {{0x8AB35B, 0x8AB3A7}}},  // another routine (the codes' check, $8A:B35B) sits inside
   {.name = "password_lines_print", .entry = 0x8AB612, .end = 0x8AB644, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_lines_print, ALL_OUTPUTS,
    .fuzz = fuzz_password_lines_print},

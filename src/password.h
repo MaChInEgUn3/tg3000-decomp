@@ -41,6 +41,11 @@ bool password_no_vowel(void);
 // (func_8AA49E). Returns whether it was EXIT.
 bool password_press_last_column(void);
 
+// $8A:B339: A, B, X or Y newly pressed on a pad (the press taken off it): on the last column
+// password_press_last_column; on a letter, the grid's character ($8A:C572, 12 a row) typed.
+// Returns whether it was EXIT.
+bool password_press_a(void);
+
 // $8A:B612: the screen's four lines of text ($8A:C4F6, C515, C534, C553), centred on rows $0D,
 // $10, $13, $16 (D+$68 = 0 first).
 void password_lines_print(void);

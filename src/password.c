@@ -147,6 +147,25 @@ bool password_press_last_column(void) {
   }
 }
 
+// TG3000_ROUTINE($8A:B339) password_press_a
+bool password_press_a(void) {
+  bool pressed = false;
+  for(uint32_t pad = 0x000E; pad <= 0x001A && !pressed; pad += 4) {  // TRB: the bits written off
+    const uint16_t v = rd16(pad);
+    wr16(pad, (uint16_t)(v & ~0xC0C0));
+    pressed = (v & 0xC0C0) != 0;
+  }
+  if(!pressed) return false;
+  if(password_press_last_column()) return true;
+  const uint16_t at = (uint16_t)(rd16(CURSOR_AT_X) + 0x74);  // the column, from x $FF8C
+  if(at & 0x000F) return false;                               // not on a letter's column
+  if(not_below(rd16(CURSOR_AT_X), 0x003D)) return false;
+  static const uint16_t rows[4] = {0x0064, 0x007C, 0x0094, 0x00AC};
+  for(uint32_t row = 0; row < 4; row++)
+    if(rd16(CURSOR_Y) == rows[row]) password_type_char(rom8(0x8AC572 + 12 * row + (uint32_t)(at >> 4)));
+  return false;
+}
+
 // TG3000_ROUTINE($8A:B612) password_lines_print
 void password_lines_print(void) {
   static const uint16_t lines[4] = {0xC4F6, 0xC515, 0xC534, 0xC553};

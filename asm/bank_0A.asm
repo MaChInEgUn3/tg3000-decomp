@@ -4108,7 +4108,7 @@ CODE_8AB28C:
     jsr.w clear_object_slots    ; $8AB29C
     ldx.w #$0000                ; $8AB29F
     jsr.w sprite_frame          ; $8AB2A2
-    jsr.w $B339                 ; $8AB2A5
+    jsr.w password_press_a      ; $8AB2A5
     bcs CODE_8AB2CE             ; $8AB2A8
     jsr.w password_pad_right    ; $8AB2AA
     jsr.w password_pad_left     ; $8AB2AD
@@ -4150,6 +4150,7 @@ CODE_8AB31B:
     ora.w #$4000                ; $8AB332
     sta.w $03DC                 ; $8AB335
     rts                         ; $8AB338
+password_press_a:
     lda.w #$C0C0                ; $8AB339
     trb.w $000E                 ; $8AB33C
     bne CODE_8AB3A7             ; $8AB33F
@@ -4173,7 +4174,7 @@ CODE_8AB3A7:
     adc.w #$0074                ; $8AB3B0
     pha                         ; $8AB3B3
     and.w #$000F                ; $8AB3B4
-    db $D0,$27 ; bne            ; $8AB3B7
+    bne CODE_8AB3E0             ; $8AB3B7
     pla                         ; $8AB3B9
     lsr a                       ; $8AB3BA
     lsr a                       ; $8AB3BB
@@ -4182,7 +4183,7 @@ CODE_8AB3A7:
     tay                         ; $8AB3BE
     lda.w $0D80                 ; $8AB3BF
     cmp.w #$003D                ; $8AB3C2
-    db $10,$17 ; bpl            ; $8AB3C5
+    bpl CODE_8AB3DE             ; $8AB3C5
     lda.w $0D90                 ; $8AB3C7
     cmp.w #$0064                ; $8AB3CA
     beq CODE_8AB3E3             ; $8AB3CD
@@ -4192,10 +4193,14 @@ CODE_8AB3A7:
     beq CODE_8AB3F3             ; $8AB3D7
     cmp.w #$00AC                ; $8AB3D9
     beq CODE_8AB3FB             ; $8AB3DC
-    incbin !baserom:$533DE..$533DF
+CODE_8AB3DE:
+    clc                         ; $8AB3DE static
 CODE_8AB3DF:
     rts                         ; $8AB3DF
-    incbin !baserom:$533E0..$533E3
+CODE_8AB3E0:
+    pla                         ; $8AB3E0 static
+    clc                         ; $8AB3E1 static
+    rts                         ; $8AB3E2 static
 CODE_8AB3E3:
     lda.w $C572,y               ; $8AB3E3
     jsr.w password_type_char    ; $8AB3E6

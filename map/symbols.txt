@@ -10,6 +10,7 @@ func    8AA25D   take_slot           ; Y = word at D+$8C, then += 2 -> src/util.
 func    8AB15E   lsr_n               ; A >>= Y, one bit at a time -> src/util.c
 func    8AB152   asl_n               ; A <<= Y, one bit at a time (Y kept) -> src/util.c
 func    8AB2BC   password_caret_blink ; the caret shown while D+$66 is odd ($0578) -> src/password.c
+func    8AB339   password_press_a    ; A/B/X/Y on the grid: a letter typed, or the last column
 func    8AB403   password_type_char  ; a character typed into the password ($0D40, D+$80) -> src/password.c
 func    8AB420   password_delete     ; the last typed character taken off -> src/password.c
 func    8AB43D   password_text_draw  ; the typed text, in groups of four, and the caret -> src/password.c

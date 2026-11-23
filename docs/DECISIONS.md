@@ -1992,6 +1992,24 @@ password screen, a skipped track's bonus.
   - `password_delete`'s row is unreached, because no movie presses DEL. Its C is still
     compared, through `password_press_last_column`'s fuzz on DEL.
   - The paths only the fuzz runs are `map/static_code.txt` ranges.
+
+## A on the password grid (password-3, 2026-11-23)
+
+- **`password_press_a` ($8A:B339) is ported.** A, B, X or Y newly pressed on a pad (`TRB`
+  takes the press off the pad) goes first to `password_press_last_column`. On a letter's
+  column it types that cell of the grid's table at `$8A:C572` (12 bytes a row: `A-L`,
+  `M-X`, `Y Z 0-9`, `. ? !`).
+  - The column comes from where the cursor is (`$0D80`), the row from where it goes
+    (`$0D90`), as in the ROM.
+  - Its row has one hole: `$8A:B35B-B3A6` is another routine placed inside it.
+- **That routine checks the typed text against a table of codes.** When a password does not
+  decode, `$8A:B2E8` calls `$8A:B35B`. It compares the text with the strings at `$8A:CDAB`
+  (stored with `XOR $9A`, each after its handler's address) and jumps to the handler of the
+  one that matches (`JMP ($0182)`). No movie types one, so this is left for a movie that
+  does.
+- **Harness:** `call_password_press_last_column`'s model is split into a before-state and an
+  exit (`pwLastColumnBefore`/`pwLastColumnExit`), so `password_press_a` reuses it. That
+  changes existing lines in `tools/bench/routines.c`, so the gate is the full one.
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
