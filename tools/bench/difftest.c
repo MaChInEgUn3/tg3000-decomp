@@ -100,7 +100,8 @@ static const uint16_t byteRegs[] = {0x212C, 0x212D, 0x2123, 0x2124, 0x2125, 0x21
                                     0x2101, 0x2105, 0x2107, 0x2108, 0x2109, 0x210A, 0x210B, 0x210C,
                                     0x2100, 0x2102, 0x2103, 0x2115, 0x420C,
                                     0x2106, 0x211A, 0x2126, 0x2127, 0x2128, 0x2129, 0x212A, 0x212B,
-                                    0x212E, 0x212F, 0x2133, 0x420D};
+                                    0x212E, 0x212F, 0x2133, 0x420D,
+                                    0x2181, 0x2182, 0x2183};  // (harness-14: the WRAM port's address)
 #define N_BYTE_REGS ((int)(sizeof byteRegs / sizeof byteRegs[0]))
 static int byteRegIndex(uint32_t adr) {
   if(((adr >> 16) & 0x7F) >= 0x40) return -1;
@@ -889,6 +890,9 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
     if(smp->hwAccess) continue;
     uint16_t lo16 = adr & 0xFFFF;
     if(!write && table[smp->idx].rti && ((adr >> 16) & 0x7F) < 0x40 && lo16 >= 0x4210 && lo16 <= 0x4212) continue;
+    // harness-14: a read of the WRAM port ($2180) is a WRAM read at its address ($2181-$2183,
+    // compared as byte registers), which the C reads directly
+    if(!write && ((adr >> 16) & 0x7F) < 0x40 && lo16 == 0x2180) continue;
     if(isMathReg(adr, write)) {
       if(write) { smp->mathWritten = true; continue; }
       if(smp->mathWritten) continue;

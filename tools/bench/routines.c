@@ -5294,6 +5294,18 @@ static void fuzz_nmi_menu_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   ram[0x019B] = (rnd() & 3) ? (uint8_t)(rnd() & 0x0F) : 0;
 }
 
+// the second task's frame, up to its stack switch (endAt $80:BDC1): D = $4300 (its last TCD),
+// DB = $80 (PHK, PLB); N/Z of its LDA #$B1. No fuzz: it waits (WAI) for the line interrupt,
+// and the fuzz keeps interrupts off
+static void call_irq_menu_frame(const Regs* in, Regs* out) {
+  (void)in;
+  irq_menu_frame();
+  out->n = true;
+  out->z = false;
+  out->d = 0x4300;
+  out->db = 0x80;
+}
+
 // Negative test: the sprite table sent a second time, one word further into OAM
 static void call_nmi_prologue_wrong(const Regs* in, Regs* out) {
   (void)in;
@@ -10548,6 +10560,8 @@ const Routine routines[] = {
    .fuzz = fuzz_nmi_target_80E175},
   {.name = "nmi_menu_frame", .entry = 0x80B97B, .end = 0x80BC54, .rti = true, .endAt = 0x80BC54, .source = "src/frame.c",
    .call = call_nmi_menu_frame, .fuzz = fuzz_nmi_menu_frame},  // up to the two tasks' stack switch
+  {.name = "irq_menu_frame", .entry = 0x80BC9B, .end = 0x80BDC1, .rti = true, .endAt = 0x80BDC1, .source = "src/frame.c",
+   .call = call_irq_menu_frame},  // up to the two tasks' stack switch
   {.name = "nmi_prologue", .entry = 0x808807, .end = 0x808931, .rti = true, .endAt = 0x808931, .source = "src/frame.c",
    .call = call_nmi_prologue, .fuzz = fuzz_nmi_prologue},
   {.name = "nmi_race_prologue", .entry = 0x858377, .end = 0x858387, .rti = true, .endAt = 0x858387, .source = "src/frame.c",

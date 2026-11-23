@@ -88,6 +88,12 @@ void dma_stream_kick(uint8_t slots) { difftest_stream_kick(slots); }
 void video_set_cgram_address(uint8_t index) { difftest_cgram_address(index); }
 void platform_set_irq_h_low(uint8_t dot) { difftest_reg(0x4207, dot); }
 void platform_set_irq_v_low(uint8_t line) { difftest_reg(0x4209, line); }
+void platform_set_irq_v_high(uint8_t line) { difftest_reg(0x420A, line); }
+void platform_set_wram_address(uint32_t address) {
+  difftest_reg(0x2181, (uint8_t)address);
+  difftest_reg(0x2182, (uint8_t)(address >> 8));
+  difftest_reg(0x2183, (uint8_t)(address >> 16));
+}
 void video_set_oam_address(uint16_t value) {
   difftest_reg(0x2102, (uint8_t)value);
   difftest_reg(0x2103, (uint8_t)(value >> 8));

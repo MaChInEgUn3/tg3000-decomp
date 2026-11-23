@@ -375,6 +375,7 @@ func    82ECF1   race_scroll_commit  ; $0204/$0206 to $0200/$0202, added into $1
 func    83F9D1   car_lap_check       ; a car's lap count and its finish -> src/misc.c
 func    82B11F   race_message_update ; the race's message line: priorities, time, blanking -> src/text.c
 func    82B769   func_82B769         ; A by the car's table and Y, then func_82B78D and func_82B7B0 -> src/misc.c
+func    80BC9B   irq_menu_frame      ; the second task's raster-IRQ frame: its registers, sprites, palette (to the task switch) -> src/frame.c
 func    80B97B   nmi_menu_frame      ; the menus' NMI frame: rings, registers, palette, sprites, IRQ (to the task switch) -> src/frame.c
 func    80B94F   empty_80B94F        ; a lone RTS (the shop's idle frame hook) -> src/misc.c
 func    80855A   sprite_number_point ; a 4-digit value as sprites, a point before the last two -> src/text.c

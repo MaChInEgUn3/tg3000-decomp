@@ -158,6 +158,13 @@ void platform_set_irq_h(uint16_t dot);
 // The low bytes alone ($4207 / $4209: the original writes 8 bits, the high bit stays).
 void platform_set_irq_h_low(uint8_t dot);
 void platform_set_irq_v_low(uint8_t line);
+// The high byte of the line alone ($420A).
+void platform_set_irq_v_high(uint8_t line);
+
+// The WRAM port's address ($2181-$2183, 17 bits). The game reads WRAM through the port
+// ($2180) only as a stream of bytes from there, which a port reads directly; the address is
+// set as the original sets it.
+void platform_set_wram_address(uint32_t address);
 
 // Sound (docs/DECISIONS.md, "The APU ports, measured"). The game talks to its sound
 // driver through a 16-byte message per frame; a port gives it to its own driver.

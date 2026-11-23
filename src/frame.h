@@ -64,6 +64,13 @@ void nmi_target_80E175(void);
 // $016E); the raster IRQ (line $6C, dot $10, $80:BC9B through the trampoline); the large
 // upload at $0164-$016A in $1C00-byte parts; the brightness $019B (0: forced blank).
 void nmi_menu_frame(void);
+// $80:BC9B: the second task's frame, the raster IRQ nmi_menu_frame sets (up to its stack
+// switch at $80:BDC1). At dot $10A of its line (it waits for it twice) the screen is blanked
+// and the second task's shadowed registers ($029C-$02C1, read through the WRAM port; the
+// vertical scrolls less $74; the window logic, though, is the first task's $01B2) take
+// effect; its sprites ($81: + $026E) and palette ($81:0700) are sent; then its brightness
+// $029B (0: forced blank) and the interrupts ($B1).
+void irq_menu_frame(void);
 // $80:D784: copy the 7-byte table at $81:C207 to $1B00, upload 4 KB from $7F:0000 to VRAM
 // $0000, set the screen up (mode $09, maps $51/$03/$59, tiles $03 for BG3/4, sprites $03,
 // main screen BG2, BG3 scrolled to (0, $3FF), $2130 = $02, colour 2 black); then the tail.

@@ -6788,6 +6788,7 @@ CODE_80BC80:
     plb                         ; $80BC96
     pld                         ; $80BC97
     jmp.w nmi_tail              ; $80BC98
+irq_menu_frame:
     rep.b #$30                  ; $80BC9B
     phb                         ; $80BC9D
     pha                         ; $80BC9E

@@ -340,6 +340,52 @@ void nmi_menu_frame(void) {
   video_set_display(brightness ? brightness : 0x80);
 }
 
+// TG3000_ROUTINE($80:BC9B) irq_menu_frame
+//
+// The original waits (WAI) for the line interrupt twice before its writes; a port applies
+// them from the next line (as irq_split_bottom).
+void irq_menu_frame(void) {
+  const uint8_t brightness = rd8(0x029B) ? rd8(0x029B) : 0x80;
+  platform_set_wram_address(0x00029C);
+  platform_set_irq_h(0x010A);
+  platform_set_interrupts(0x91);
+  video_set_display(0x80);
+  video_set_bg1_hofs(rd16(0x029C));
+  video_set_bg1_vofs((uint16_t)(rd16(0x029E) - 0x74));
+  video_set_bg2_hofs(rd16(0x02A0));
+  video_set_bg2_vofs((uint16_t)(rd16(0x02A2) - 0x74));
+  video_set_bg3_hofs(rd16(0x02A4));
+  video_set_bg3_vofs((uint16_t)(rd16(0x02A6) - 0x74));
+  video_set_bg_mode(rd8(0x02A8));
+  video_set_window_obj(rd8(0x02A9));
+  video_set_fixed_color((uint8_t)(rd8(0x02AA) | 0x20));
+  video_set_fixed_color((uint8_t)(rd8(0x02AB) | 0x40));
+  video_set_fixed_color((uint8_t)(rd8(0x02AC) | 0x80));
+  video_set_obj_select(rd8(0x02AD));
+  video_set_cgram_address(0x00);
+  for(int edge = 0; edge < 4; edge++) video_set_window_position(edge, rd8(0x02AE + (uint32_t)edge));
+  video_set_window_logic_bg(rd8(0x01B2));  // the first task's (the ROM reads $01B2 here)
+  video_set_window_logic_obj(rd8(0x01B3));
+  for(int bg = 1; bg <= 4; bg++) video_set_bg_map(bg, rd8(0x02B3 + (uint32_t)bg));
+  video_set_bg_tiles(0, rd8(0x02B8));
+  video_set_bg_tiles(1, rd8(0x02B9));
+  video_set_window_bg12(rd8(0x02BA));
+  video_set_window_bg34(rd8(0x02BB));
+  video_set_main_screen(rd8(0x02BC));
+  video_set_sub_screen(rd8(0x02BD));
+  video_set_main_window_mask(rd8(0x02BE));
+  video_set_sub_window_mask(rd8(0x02BF));
+  video_set_color_math_control(rd8(0x02C0));
+  video_set_color_math(rd8(0x02C1));
+  video_set_oam_address(0x0000);
+  platform_set_irq_v_high(0x00);  // a 16-bit store at $420A: its high byte kicks the sprites
+  video_upload_oam(0x0000, 0x810000 | rd16(0x026E), 0x0220);
+  video_upload_cgram(0, 0x810700, 0x0200);
+  platform_set_irq_h(0x010A);
+  video_set_display(brightness);
+  platform_set_interrupts(0xB1);
+}
+
 // TG3000_ROUTINE($80:E175) nmi_target_80E175
 //
 // As in $80:E28C, the table is written as overlapping words in the original's order.

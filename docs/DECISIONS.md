@@ -2435,6 +2435,33 @@ password screen, a skipped track's bonus.
   reaches its shop with 2,325,000 credits, running about 500 new bytes. The explorer, even
   aimed at the race setup, did not leave the shop in 40 segments.
 
+## The second task's frame, and the WRAM port (nmi-2, harness-14, 2026-11-23)
+
+- **`irq_menu_frame` ($80:BC9B) is ported**, up to its stack switch at `$80:BDC1`. It is
+  the raster IRQ that `nmi_menu_frame` sets up (`$80:BC9B` through the trampoline at
+  `$0005`), and it gives the second task its half of the screen.
+  - It sets the line interrupt at dot `$10A` (`$4200 = $91`) and waits for it twice
+    (`WAI`).
+  - The screen is blanked. The second task's shadowed registers (`$029C-$02C1`) take
+    effect: the vertical scrolls less `$74`, but the window logic from the first task's
+    `$01B2` (the ROM reads `$01B2` here).
+  - Its sprites (`$81:` + `$026E`) and palette (`$81:0700`) are sent; then its brightness
+    `$029B` (0: forced blank) and `$4200 = $B1`.
+  - The sprites' DMA is kicked by the high byte of a 16-bit store at `$420A` (VTIMEH, then
+    MDMAEN).
+  - The C skips the two `WAI`s, as `irq_split_bottom` does.
+- **Its row** is an interrupt row with `endAt` `$80:BDC1`, without a fuzzer: the fuzz keeps
+  interrupts off (harness-13), so a `WAI` would never wake. The password movie gives 2,661
+  live samples, every path (135).
+- **harness-14, the WRAM port** (my call, open to veto). The frame reads its registers
+  through `$2180` from the address it sets at `$2181-$2183`.
+  - `$2181-$2183` are now byte registers, compared by their last value; the C sets them
+    with the new `platform_set_wram_address`.
+  - A read of `$2180` is not a hardware access. It is a WRAM read at that address, which
+    the C makes directly. The port's auto-incremented address is not compared.
+  - `platform_set_irq_v_high` sets `$420A` alone.
+- **Full gate:** the harness changed.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
