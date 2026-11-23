@@ -2241,6 +2241,30 @@ password screen, a skipped track's bonus.
 - **Check:** that run left `map/verified.txt` unchanged; `sh -n`. This is the advisor's
   idea and my call, open to veto.
 
+## What is left, split three ways (2026-11-23)
+
+- **16,362 code bytes are outside verified rows** (of 71,889). `rom_map`'s code includes
+  the TAS's coverage, while difftest runs only on bench movies. Each byte is tagged with
+  the four movies' coverage (`build/cache/*.cov`):
+  - **A, 601 bytes:** C exists, but its row is unreached or missing. These need only a
+    movie: `shop_ring`, `shop_item_view_f`, lists 5, 7 and 9.
+  - **B, 12,393 bytes:** no C, and a bench movie runs them. They can be ported now.
+    - The largest runs: `$80:BC77` (1,645; the NMI handlers around `$80:B97B`) and
+      `$80:D168` (880, parked: a stack-dropping exit).
+    - Then `$80:EE56` (871, the ticker), `$80:E4E6` (551), `$80:BA6C` (520), `$8A:94C3`
+      (402), `$80:8BC5` (379), `$82:84C8` (375), `$80:9C47` (373).
+  - **C, 3,368 bytes:** no C, and only the TAS runs them. They need a movie first. Most
+    are the menu task's handlers (`$80:C5E0`: `$80:C6D4`, `$80:CEE2`, `$80:CA35`, ...).
+- **Order (with the advisor):**
+  - A first, picking the state from the tables (`$036E` via `$85:D590`), not by blind
+    exploring;
+  - then B, leaf first;
+  - the hardware screen roots batched into one full gate;
+  - C movie by movie: one short movie per family of the password screen's codes. INFODATA's
+    `$03E2` bit also opens `race_pause`'s hole.
+  - The menu task `$80:C5E0` waits: it is entered with D = `$0200` as well as `$0100`, and
+    most of its handlers are C bytes.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

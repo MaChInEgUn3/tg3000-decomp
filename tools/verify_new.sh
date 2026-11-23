@@ -71,7 +71,7 @@ for m in "autopilot_60k:60000" "explore_shop:$shopframes" "explore_buy:$buyframe
   if [ ! -f "$cov" ]; then  # made again, side by side
     rm -f build/cache/"$movie"-*.cov
     ( build/bench/bench "$rom" "${m#*:}" --movie "tools/bench/movies/$movie.txt" --coverage "$cov.tmp" > /dev/null 2>&1 \
-      && mv "$cov.tmp" "$cov" || rm -f "$cov.tmp" ) &
+      && mv "$cov.tmp" "$cov" || rm -f "$cov.tmp"; rm -f "$cov.tmp.ram" ) &  # (the RAM-executed list: unused)
     covpids="$covpids $!"
   fi
 done
