@@ -2212,8 +2212,14 @@ password screen, a skipped track's bonus.
       runs every row with fuzz 500, and the negative rows. All 287 rows race1 reaches are
       verified over the four movies.
     - The full gate runs the selftest beside `verify_all`, not after it.
-- **Check:** the full gate. Its `map/verified.txt` must equal the last one's in every field
-  but the hash and the full-run line. Its wall time is recorded below.
+- **Check:** the full gate. Its `map/verified.txt` equals the last one's in every field
+  but the hash and the full-run line, for every row but one.
+  - That row is `shop_panel_frame`: 578 compared samples in shop-24's incremental run,
+    467 now, and still verified on all 159 paths.
+  - Shop-24 verified it alone. A full run shares each slice with other rows, and a
+    waiting row that encloses it hides some of its samples (one interrupt recorder at a
+    time). So the difference is not harness-11's.
+- **The full gate took 684 s** (it was 2,510-2,680 s): 3.8 times faster.
 
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
