@@ -252,16 +252,16 @@ func    809F0F   shop_part_level_4   ; part level $0394 + car, plus 1 -> src/sho
 func    809F14   shop_part_level_5   ; part level $0395 + car, plus 1 -> src/shop.c
 func    809F19   shop_part_level_6   ; part level $0396 + car, plus 1 -> src/shop.c
 func    809F1E   shop_part_level_7   ; part level $0397 + car, plus 1 -> src/shop.c
-func    809F28   shop_part_level_a   ; list 8's level $039A + car -> src/shop.c
-func    809F2C   shop_part_level_9   ; list 7's level $0399 + car -> src/shop.c
-func    809F30   shop_part_level_8   ; list 6's level $0398 + car -> src/shop.c
-func    809F34   shop_part_level_c   ; list 9's level $039C + car -> src/shop.c
-func    809F38   shop_part_level_b   ; list 10's level $039B + car (never run) -> src/shop.c
+func    809F28   shop_part_level_a   ; list 8 (Warp)'s level $039A + car -> src/shop.c
+func    809F2C   shop_part_level_9   ; list 7 (Attractor)'s level $0399 + car -> src/shop.c
+func    809F30   shop_part_level_8   ; list 6 (Jump)'s level $0398 + car -> src/shop.c
+func    809F34   shop_part_level_c   ; list 9 (Infra-Red)'s level $039C + car -> src/shop.c
+func    809F38   shop_part_level_b   ; list 10 ('P')'s level $039B + car (never run) -> src/shop.c
 func    809053   shop_buy_list1      ; buying a part, list 1 (level byte $0393): the panel, the money rolling -> src/shop.c
 func    809100   shop_buy_list2      ; buying a part, list 2 ($0394) -> src/shop.c
 func    8091AE   shop_buy_list3      ; buying a part, list 3 ($0395) -> src/shop.c
 func    80925C   shop_buy_list4      ; buying a part, list 4 ($0396) -> src/shop.c
-func    80930A   shop_buy_colour     ; list 0: the car's colour ($0392) -> src/shop.c
+func    80930A   shop_buy_colour     ; list 0 (Paintshop): the car's colour ($0392) -> src/shop.c
 func    80931A   shop_buy_list8      ; buying a part, list 8 ($039A: row + 1) -> src/shop.c
 func    8093FC   shop_buy_list7      ; buying a part, list 7 ($0399: row + 1) -> src/shop.c
 func    8094DE   shop_buy_list6      ; buying a part, list 6 ($0398: row + 1) -> src/shop.c
@@ -275,12 +275,12 @@ func    809957   shop_money_after_price ; the money less the item's price (BCD) 
 func    8099D1   shop_money_roll     ; one step of the money rolling down to $52/$54 -> src/shop.c
 func    809ABB   shop_money_store    ; $52/$54 become the player's money -> src/shop.c
 func    80E4D0   shop_flag_fb        ; $01FB = $12 (long) -> src/shop.c
-func    809C47   shop_item_panel_1   ; the panel's pictures, list 1 -> src/shop.c
-func    809C85   shop_item_panel_2   ; the panel's pictures, list 2 -> src/shop.c
-func    809CC3   shop_item_panel_3   ; the panel's pictures, list 3 -> src/shop.c
-func    809D02   shop_item_panel_5   ; the panel's pictures, list 5 -> src/shop.c
-func    809D41   shop_item_panel_4   ; the panel's pictures, list 4 -> src/shop.c
-func    809D80   shop_item_panel_0   ; the panel's pictures, list 0 -> src/shop.c
+func    809C47   shop_item_panel_1   ; the panel's pictures, list 1 (Engine) -> src/shop.c
+func    809C85   shop_item_panel_2   ; the panel's pictures, list 2 (Tires) -> src/shop.c
+func    809CC3   shop_item_panel_3   ; the panel's pictures, list 3 (Gearbox) -> src/shop.c
+func    809D02   shop_item_panel_5   ; the panel's pictures, list 5 (Boost) -> src/shop.c
+func    809D41   shop_item_panel_4   ; the panel's pictures, list 4 (Armor) -> src/shop.c
+func    809D80   shop_item_panel_0   ; the panel's pictures, list 0 (Paintshop) -> src/shop.c
 func    809D9E   shop_item_panel_6   ; the panel's pictures, lists 6-10 -> src/shop.c
 func    809DBC   shop_panel_upload   ; queue the shop panel's VRAM upload (func_80B537) -> src/shop.c
 func    809BF2   shop_item_picture   ; current item's picture (func_80B58D) -> src/shop.c
@@ -300,18 +300,18 @@ func    80A831   shop_item_view_b    ; item view: double bar, long segments, two
 func    80AA15   shop_item_view_c    ; item view: a group, the gauge, a group; stage + 1 -> src/shop.c
 func    80A717   shop_item_view_d    ; item view: a group, a bar of 2x2 blocks, two groups; stage + 1 -> src/shop.c
 func    80AB54   shop_item_view_e    ; item view: three groups, six wave words; stage + 1 -> src/shop.c
-func    80A096   shop_item_icon_0    ; list 0's icon handler: a fixed icon, no upload -> src/shop.c
-func    80A09F   shop_item_icon_8    ; list 8's icon handler ($039A) -> src/shop.c
-func    80A0E0   shop_item_icon_7    ; list 7's icon handler ($0399) -> src/shop.c
-func    80A121   shop_item_icon_6    ; list 6's icon handler ($0398) -> src/shop.c
-func    80A162   shop_item_icon_9    ; list 9's icon handler ($039C) -> src/shop.c
-func    80A1A3   shop_item_icon_10   ; list 10's icon handler ($039B; never run) -> src/shop.c
+func    80A096   shop_item_icon_0    ; list 0 (Paintshop)'s icon handler: a fixed icon, no upload -> src/shop.c
+func    80A09F   shop_item_icon_8    ; list 8 (Warp)'s icon handler ($039A) -> src/shop.c
+func    80A0E0   shop_item_icon_7    ; list 7 (Attractor)'s icon handler ($0399) -> src/shop.c
+func    80A121   shop_item_icon_6    ; list 6 (Jump)'s icon handler ($0398) -> src/shop.c
+func    80A162   shop_item_icon_9    ; list 9 (Infra-Red)'s icon handler ($039C) -> src/shop.c
+func    80A1A3   shop_item_icon_10   ; list 10 ('P')'s icon handler ($039B; never run) -> src/shop.c
 func    80A1E4   shop_item_icon_draw ; the item's icon: a sprite group and its colour steps -> src/shop.c
-func    809F5B   shop_item_icon_1    ; list 1's icon (carry clear) or panel upload (carry set) -> src/shop.c
-func    809F9A   shop_item_icon_2    ; list 2's icon (carry clear) or panel upload (carry set) -> src/shop.c
-func    809FD9   shop_item_icon_3    ; list 3's icon (carry clear) or panel upload (carry set) -> src/shop.c
-func    80A057   shop_item_icon_4    ; list 4's icon (carry clear) or panel upload (carry set) -> src/shop.c
-func    80A018   shop_item_icon_5    ; list 5's icon (carry clear) or panel upload (carry set) -> src/shop.c
+func    809F5B   shop_item_icon_1    ; list 1 (Engine)'s icon (carry clear) or panel upload (carry set) -> src/shop.c
+func    809F9A   shop_item_icon_2    ; list 2 (Tires)'s icon (carry clear) or panel upload (carry set) -> src/shop.c
+func    809FD9   shop_item_icon_3    ; list 3 (Gearbox)'s icon (carry clear) or panel upload (carry set) -> src/shop.c
+func    80A057   shop_item_icon_4    ; list 4 (Armor)'s icon (carry clear) or panel upload (carry set) -> src/shop.c
+func    80A018   shop_item_icon_5    ; list 5 (Boost)'s icon (carry clear) or panel upload (carry set) -> src/shop.c
 func    809E49   shop_level_marks    ; the shop cursor and the list's level marks -> src/shop.c
 func    80B0C0   shop_panel_blank    ; the shop panel's map rows to $FFFF; frame hook $B149 -> src/shop.c
 func    80B10C   shop_panel_clear    ; wait for the upload queue, then the panel's map rows to 0 -> src/shop.c
@@ -326,7 +326,7 @@ func    8A99D0   func_8A99D0         ; D+$66 = $28 -> src/misc.c
 func    8A96C2   func_8A96C2         ; D+$40 + 1 -> src/misc.c
 func    809F40   shop_item_dispatch_icon ; the item's list handler, carry clear (its icon) -> src/shop.c
 func    809C0B   shop_item_dispatch_upload ; the item's list handler, carry set (its panel upload) -> src/shop.c
-func    80ABF6   shop_item_view_g    ; item view of list 0: two groups -> src/shop.c
+func    80ABF6   shop_item_view_g    ; item view of list 0 (Paintshop): two groups -> src/shop.c
 func    8080E4   interrupt_vectors_init ; JML vectors at $0000/$0004, NMI target $0008 -> src/frame.c
 func    8A9C86   hdma_table_0d00_init ; HDMA table at $0D00 -> src/misc.c
 func    8ABF2A   string_space_fours  ; copy $0D40 to $0D60 with a space every 4 bytes -> src/misc.c
@@ -336,9 +336,9 @@ func    80A579   shop_ring           ; the spinning ring: two pieces around a ce
 func    80A69F   shop_ring_piece_front ; a ring piece from $7E:4D0A -> src/shop.c
 func    80A6DB   shop_ring_piece_back ; a ring piece from $7E:4D6A -> src/shop.c
 func    80A251   shop_item_dispatch_view ; the item's view by list and row (table $81:A897) -> src/shop.c
-func    80AEBE   shop_item_view_h    ; item view of list 6: group, level blocks, two frames -> src/shop.c
-func    80AE4E   shop_item_view_i    ; item view of list 7: group, two frames -> src/shop.c
-func    80AC37   shop_item_view_j    ; item view of list 8: group, frame, gauge, palette -> src/shop.c
+func    80AEBE   shop_item_view_h    ; item view of list 6 (Jump): group, level blocks, two frames -> src/shop.c
+func    80AE4E   shop_item_view_i    ; item view of list 7 (Attractor): group, two frames -> src/shop.c
+func    80AC37   shop_item_view_j    ; item view of list 8 (Warp): group, frame, gauge, palette -> src/shop.c
 func    80AF36   shop_level_blocks   ; a row of 2x2 blocks filling with the stage -> src/shop.c
 func    80ACB6   shop_gauge_lines    ; the gauge: four sprites and twelve lines -> src/shop.c
 func    80ADD9   shop_gauge_line     ; one gauge line, its column from the PPU product -> src/shop.c

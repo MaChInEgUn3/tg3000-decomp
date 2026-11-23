@@ -2409,6 +2409,32 @@ password screen, a skipped track's bonus.
 - The write itself is still compared, as a byte register.
 - My call, open to the owner's veto. Full gate.
 
+## Names from public cheat lists (docs-1, 2026-11-23)
+
+- **The owner's idea:** look for public documentation. There is no public RAM map, ROM map
+  or disassembly of Top Gear 3000. Public cheat lists, though, give RAM addresses with
+  their meaning (Pro Action Replay codes are an address and a value). They are facts about
+  the game; nothing is copied from them, and they agree with what the ROM showed:
+  - `$0393-$0397`: Engine, Tires, Gearbox, Armor, Boost, which are lists 1-5's level
+    bytes. Their "Max" value `$85` is level 5 with bit 7 ("bought here") set;
+  - `$0398` Jump, `$0399` Attractor, `$039A` Warp, `$039B` 'P', `$039C` Infra-Red: lists
+    6, 7, 8, 10 and 9. List 0 is the shop's Paintshop (`$0392`, the colour);
+  - player 2's copies at `+ $2F` (money `$03BF`/`$03C0`): the car offset D+$94;
+  - in a race: fuel `$0258`, boosts `$025C`, the boost flag `$0232`, attractors `$0250`,
+    warps `$0251`, the bonus `$027C`, points `$041C`.
+- **The codes:**
+  - INFODATA is the cheat mode: in a race, Select shows the circuit number or a sound-test
+    index on the speedometer. Those are the `$03E2` bit 2 paths explore-4 opened;
+  - MICK4CLAUDIA unlocks every power-up, and DISPLAY CREDITS shows the credits.
+- **Used for:** the shop's list names, now in `src/shop.h` and `map/symbols.txt`'s
+  comments. This is a comment and documentation change only, so no row changes.
+- **Sources:** almarsguides.com's Top Gear 3000 Pro Action Replay and Game Genie pages;
+  GameSpot's and Critical Hits' cheat pages; The Cutting Room Floor's (a stub: a hidden
+  sound test, the cheat mode).
+- **The KRAZ code**, tried as a movie (not wired): it jumps to a later championship and
+  reaches its shop with 2,325,000 credits, running about 500 new bytes. The explorer, even
+  aimed at the race setup, did not leave the shop in 40 segments.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

@@ -6,6 +6,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// The shop's lists and the car's bytes they set (+ the car's offset D+$94: 0, or $2F for
+// player 2). The names are the shop's own (its menu) and those of public cheat lists
+// (docs/DECISIONS.md "Names from public cheat lists"):
+//   list 0 Paintshop ($0392, the colour), 1 Engine ($0393), 2 Tires ($0394), 3 Gearbox
+//   ($0395), 4 Armor ($0396), 5 Boost ($0397); then the specials, whose byte is the row + 1:
+//   6 Jump ($0398), 7 Attractor ($0399), 8 Warp ($039A), 10 'P' ($039B), 9 Infra-Red ($039C).
 // One of the car's six part levels ($0392-$0397 + the car's offset), plus 1.
 uint16_t shop_part_level_2(uint16_t car);  // $80:9F23 ($0392)
 uint16_t shop_part_level_3(uint16_t car);  // $80:9F0A ($0393)
