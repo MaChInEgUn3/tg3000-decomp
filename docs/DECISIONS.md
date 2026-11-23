@@ -2118,6 +2118,17 @@ password screen, a skipped track's bonus.
     screen routines'.
 - **Gate:** the full one (new waiting rows).
 
+## The buying's shared steps (shop-22, 2026-11-23)
+
+- **Deduplication, no change in behaviour.** `shop_buy_part` (lists 1-5) and
+  `shop_buy_upgrade` (lists 6-10) now share two static steps in `src/shop.c`:
+  - `shop_panel_rise(height)`;
+  - `shop_buy_finish(at, level, settle)`: the level byte, the upload, the money after the
+    price, the panel's fall, the money stored and the settle.
+  - This was owed since shop-19, which wrote the rise apart to keep that unit additive.
+- **Check:** every buying row passes on the buy and password movies as before. The gate is
+  the full one, because existing lines of `src/` changed.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

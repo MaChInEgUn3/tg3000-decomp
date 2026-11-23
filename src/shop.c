@@ -215,6 +215,35 @@ uint16_t shop_money_roll_flags(ShopMoneyFlags* f) {
   }
 }
 
+// The buying's shared steps (the ROM repeats them in each list's handler). The panel rises:
+// D+$42 up by 6 a frame to `height`, the money rolling, the screen redrawn.
+static void shop_panel_rise(uint16_t height) {
+  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) | 0x0002));
+  shop_item_show_icon();
+  do {
+    wait_frames(1);
+    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 6));
+    shop_money_roll();
+    shop_item_redraw();
+  } while(rd16(DP + 0x42) != height);
+}
+// The purchase made: the level byte at `at` = `level`, the upload queued, the money after the
+// price, the panel falls (down to 0), the money stored, then (`settle`) the icon settled.
+static void shop_buy_finish(uint32_t at, uint8_t level, bool settle) {
+  wr8(at, level);
+  shop_item_dispatch_upload();
+  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) & ~0x0002));
+  shop_money_after_price();
+  do {
+    wait_frames(1);
+    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) - 6));
+    shop_money_roll();
+    shop_item_redraw();
+  } while(rd16(DP + 0x42) != 0);
+  shop_money_store();
+  if(settle) shop_item_icon_settle();
+}
+
 // The buying of one part of the car, lists 1-5 (shop_buy_list1-5): the part's level byte at $0393 + `field` +
 // D+$94 (bit 7: bought here). Owned already: a sound, the icon shown and settled. Else the
 // money is taken; unless it covers the price (shop_item_affordable), shop_flag_fb and out.
@@ -254,26 +283,8 @@ ShopBuyEnd shop_buy_part(uint16_t field, uint16_t height, bool price_first, bool
   }
   func_80E4DB();
   func_80B58D(0x80, 0xB535);
-  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) | 0x0002));
-  shop_item_show_icon();
-  do {
-    wait_frames(1);
-    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 6));
-    shop_money_roll();
-    shop_item_redraw();
-  } while(rd16(DP + 0x42) != height);
-  wr8(at, (uint8_t)(rd8(DP + 0x4A) | 0x80));
-  shop_item_dispatch_upload();
-  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) & ~0x0002));
-  shop_money_after_price();
-  do {
-    wait_frames(1);
-    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) - 6));
-    shop_money_roll();
-    shop_item_redraw();
-  } while(rd16(DP + 0x42) != 0);
-  shop_money_store();
-  if(settle) shop_item_icon_settle();
+  shop_panel_rise(height);
+  shop_buy_finish(at, (uint8_t)(rd8(DP + 0x4A) | 0x80), settle);
   return SHOP_BUY_BOUGHT;
 }
 
@@ -288,19 +299,8 @@ void shop_buy_list4(void) { (void)shop_buy_part(3, 0x00B4, false, true, NULL); }
 // TG3000_ROUTINE($80:95C0) shop_buy_list5
 void shop_buy_list5(void) { (void)shop_buy_part(4, 0x00B4, false, true, NULL); }
 
-// Lists 6-8's buying (shop_buy_upgrade): as shop_buy_part's, with `field` 5-7 and the level byte
-// the row + 1. Their panel moves are written apart from shop_buy_part's for now (the same
-// code in the ROM, which repeats it per list).
-static void shop_panel_rise(uint16_t height) {
-  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) | 0x0002));
-  shop_item_show_icon();
-  do {
-    wait_frames(1);
-    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 6));
-    shop_money_roll();
-    shop_item_redraw();
-  } while(rd16(DP + 0x42) != height);
-}
+// Lists 6-10's buying (shop_buy_upgrade): as shop_buy_part's, with `field` 5-9 and the level
+// byte the row + 1.
 ShopBuyEnd shop_buy_upgrade(uint16_t field, ShopMoneyFlags* f) {
   ShopMoneyFlags unused;
   if(f == NULL) f = &unused;
@@ -342,18 +342,7 @@ ShopBuyEnd shop_buy_upgrade(uint16_t field, ShopMoneyFlags* f) {
     func_80B58D(0x80, 0xB535);
     shop_panel_rise(0x00B4);
   }
-  wr8(at, (uint8_t)((uint8_t)(rd8(DP + 0x4A) + 1) | 0x80));
-  shop_item_dispatch_upload();
-  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) & ~0x0002));
-  shop_money_after_price();
-  do {
-    wait_frames(1);
-    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) - 6));
-    shop_money_roll();
-    shop_item_redraw();
-  } while(rd16(DP + 0x42) != 0);
-  shop_money_store();
-  shop_item_icon_settle();
+  shop_buy_finish(at, (uint8_t)((uint8_t)(rd8(DP + 0x4A) + 1) | 0x80), true);
   return SHOP_BUY_BOUGHT;
 }
 // TG3000_ROUTINE($80:94DE) shop_buy_list6
