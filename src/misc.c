@@ -10,6 +10,7 @@
 #include "platform.h"
 #include "scroll_tables.h"
 #include "sprites.h"
+#include "stars.h"
 #include "text.h"
 #include "video_dma.h"
 #include "tg3000.h"
@@ -2380,6 +2381,83 @@ void result_tally_at(uint16_t track) {
   if(!bus_rd8(t + (uint32_t)track)) return;
   const uint16_t x = bus_rd16(0x85D590 + (uint32_t)(uint16_t)(off + rd16(0x036C)));
   wr16(0x036E + (uint32_t)x, (uint16_t)(rd16(0x036E + (uint32_t)x) + 1));
+}
+
+// TG3000_ROUTINE($8A:94C3) results_screen (long)
+void results_screen(void) {
+  results_screen_load();
+  results_screen_show();
+}
+
+// (the part up to the first wait: no TG3000_ROUTINE of its own, its row is results_screen's
+// entry with endAt $8A:95EB)
+void results_screen_load(void) {
+  wr16(0x1B38, (uint16_t)(rd16(0x1B38) & ~0x00FF));
+  text_map_clear();
+  variant_offsets_add();
+  results_text();
+  clear_vram();
+  wr16(0x0196, 0);
+  wr16(0x0198, 0);
+  wr16(0x019A, 0);
+  video_load_screen_long(0x8A9D31);
+  wr16(0x0008, 0x8934);  // the NMI hook: nmi_tail
+  decompress_to_vram(DP, 0x88, 0x8601, 0x1000);
+  upload_cgram_now(0x60, 0x86, 0xF40B, 0x0040);
+  upload_cgram_now(0x10, 0x8A, 0x9D2D, 0x0020);
+  decompress_to_vram(DP, 0x91, 0xAADF, 0x7400);
+  for(uint32_t x = 0; x < 0x7000; x += 2) wr16(0x10800 + x, 0);  // $7F:0800
+  for(uint16_t i = 0; i < 0x10; i++) video_write_vram_word((uint16_t)(0x5000 + i), 0);
+  oam_clear_long();
+  upload_cgram_now(0x80, 0x8C, 0x95C3, 0x0020);
+  upload_cgram_now(0x00, 0x86, 0xF44B, 0x0020);
+  decompress_to_vram(DP, 0x87, 0xF861, 0x0800);
+  clear_tilemap_7f();
+  wr16(DP + 0x6A, (uint16_t)(rd16(DP + 0x6A) + 1));
+  stars_scatter_8a();
+  stars_draw_8a(0x0000, 0x0040);
+  oam_finish_0b00(DP);
+  video_set_bg2_vofs(0x0008);
+  wr16(DP + 0x7A, 0x27FF);
+  wr16(DP + 0x7C, 0);
+  wr16(DP + 0x80, 0);
+  wr16(DP + 0x82, 0);
+  wr16(DP + 0x86, 0x4000);
+  hdma_coldata_setup();
+  wr16(0x000E, 0);
+  wr16(0x0012, 0);
+  wr16(DP + 0x40, 0);
+  wr16(DP + 0x7C, 0x0100);
+  wr16(DP + 0x86, 0);
+  wr16(0x0008, 0xFC14);  // the NMI hook: $80:FC14
+  wr16(DP + 0x90, 0xFFFF);
+  wr16(DP + 0x2C, 0x0001);
+  wr16(DP + 0x3A, 0x0002);
+  wr16(DP + 0x3C, 0x0007);
+  text_buffer_screen();
+  upload_7f_to_3000();
+}
+
+// TG3000_ROUTINE($8A:95EB) results_screen_show
+void results_screen_show(void) {
+  wait_frames(1);
+  video_hdma_enable(0x04);
+  platform_set_rom_speed(0x00);  // (a 16-bit store at $420C)
+  wr16(0x0198, 0x0F00);
+  wr16(0x0196, 0x0080);
+  wr16(DP + 0x6E, 0);
+  for(;;) {
+    wait_frames(1);
+    video_upload_vram(0x4000, 0x7F0800, 0x0800);
+    func_8A96C2();
+    stars_draw_8a(rd16(DP + 0x7C), (uint16_t)(rd16(DP + 0x86) >> 8));
+    oam_finish_0b00(DP);
+    wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
+    if(!(rd16(0x1B37) & 0x8000) || rd16(0x019A) == 0x0F00) fade_out_on_confirm();
+    wr16(DP + 0xF8, (uint16_t)(rd16(DP + 0xF8) & ~0x0001));
+    if(rd16(0x019A) == 0) return;
+    hdma_table_0d00_settle();
+  }
 }
 
 // TG3000_ROUTINE($8A:9D1E) clear_041c

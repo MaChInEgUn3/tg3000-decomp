@@ -13699,7 +13699,7 @@ oam_clear_long:
     plb                         ; $80FBE3
     lda.w #$0100                ; $80FBE4
     tcd                         ; $80FBE7
-    jsl.l $8A94C3               ; $80FBE8
+    jsl.l results_screen        ; $80FBE8
     plb                         ; $80FBEC
     sep.b #$20                  ; $80FBED
     stz.w $420C                 ; $80FBEF

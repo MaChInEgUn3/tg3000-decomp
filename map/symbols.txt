@@ -320,6 +320,8 @@ func    80B333   shop_list_prev      ; list cursor down, sound $11 -> src/shop.c
 func    80B345   shop_list_next      ; list cursor up to D+$F0, sound $11 -> src/shop.c
 func    80DACF   star_layers_move    ; every star's position minus its speed, wrapping -> src/stars.c
 func    8ABAE3   fade_out_wait       ; fade to black and wait for it -> src/misc.c
+func    8A94C3   results_screen      ; the results screen: loads, then a frame at a time until the fade out ends (long) -> src/misc.c
+func    8A95EB   results_screen_show ; the results screen from its first wait: a frame at a time until the fade out ends -> src/misc.c
 func    8A9675   fade_out_on_confirm ; A/B/X/Y on pad 1 or the first multitap pad: fade to black -> src/misc.c
 func    8A8181   fade_out_on_confirm_once ; as fade_out_on_confirm while D+$8C is 0 -> src/misc.c
 func    8A99D0   func_8A99D0         ; D+$66 = $28 -> src/misc.c

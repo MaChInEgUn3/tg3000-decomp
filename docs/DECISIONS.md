@@ -2462,6 +2462,29 @@ password screen, a skipped track's bonus.
   - `platform_set_irq_v_high` sets `$420A` alone.
 - **Full gate:** the harness changed.
 
+## The results screen (screen-1, 2026-11-23)
+
+- **`results_screen` ($8A:94C3, long) is ported in two parts** (in `src/misc.c`):
+  - the load: text, image, NMI hook, graphics, palettes, the cleared `$7F` map, the stars,
+    the colour HDMA, the typed text uploaded;
+  - the show (`results_screen_show`, $8A:95EB): a frame at a time, the map to VRAM `$4000`,
+    the stars and the sprites. A or Start begins the fade out, and it returns at 0.
+- **Why two parts (with the advisor):** the load runs for many frames with no wait (three
+  decompressions, a `$3800`-word clear, `clear_vram`), and about 14 NMIs land in it. The C
+  replays recorded interrupts by position, at its waits, so one waiting row over the whole
+  screen fed the loop the load's NMIs. It saw no fade and left after one frame. This was
+  not a harness limit.
+  - The load's row ends at the first wait (`endAt` `$8A:95EB`) and is not a waiting row.
+    Its four live entries are interrupted, so it is verified by replays from their entry
+    state, on all 107 paths. It compares nothing the NMIs do during the load.
+- **The show has no row yet.** On the 60k movie 3 of its 4 samples pass. In the fourth the
+  C takes one frame more (157 uploads against 156).
+  - The likely cause: an interrupt recorded outside a wait (an IRQ after the NMI, say),
+    which the replay hands to the C a frame late.
+  - Its C is written; the row waits for a harness look at where each recorded interrupt
+    landed (the return PC of each).
+- **Check:** incremental gate (`verify_new results_screen`).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

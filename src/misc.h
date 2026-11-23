@@ -1249,6 +1249,17 @@ void text_line_centered(uint16_t x);
 // D+$66 = 8, the first four cleared), one taken and its name centred between two pairs of
 // line ends, and the string at $8A:9DD5. Last the string at $8A:9DBD (to $FF).
 void results_text(void);
+// $8A:94C3 (long): the results screen. Its text (text_map_clear, variant_offsets_add,
+// results_text), the screen image $8A:9D31, the NMI hook $80:8934, its graphics and
+// palettes, the $7F:0800 tilemap cleared, 16 words of 0 at VRAM $5000, the stars, BG2's
+// vertical scroll 8, the colour HDMA; then the text typed into the $7F tilemap and uploaded,
+// a fade in (HDMA channel 2). Then a frame at a time: the tilemap to VRAM $4000, the stars,
+// the sprites; A or Start begins the fade out (fade_out_on_confirm, unless $1B37 bit 15 is
+// set and the fade is not at full: never run); it returns when the fade reaches 0.
+void results_screen(void);
+// Its two parts: the load (up to the first wait), and the frames from that wait on ($8A:95EB).
+void results_screen_load(void);
+void results_screen_show(void);
 
 // $80:8119: the saved data checked at boot ($03E2 = 0). The $78 bytes at $7E:FA3D summed
 // (8-bit bytes into a word) ^ $7645 equal to $7E:FA3B: that copy is restored to $0368 ($7A

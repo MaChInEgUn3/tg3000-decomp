@@ -2073,6 +2073,7 @@ func_8A92CF:
     sta.b $7C                   ; $8A9304
     rts                         ; $8A9306
     incbin !baserom:$51307..$514C3
+results_screen:
     lda.w #$00FF                ; $8A94C3
     trb.w $1B38                 ; $8A94C6
     jsl.l text_map_clear        ; $8A94C9
@@ -2182,6 +2183,7 @@ CODE_8A954E:
     sta.b $3C                   ; $8A95E3
     jsr.w text_buffer_screen    ; $8A95E5
     jsr.w upload_7f_to_3000     ; $8A95E8
+results_screen_show:
     lda.w #$0001                ; $8A95EB
     jsl.l wait_frames_8a9880    ; $8A95EE
     lda.w #$0004                ; $8A95F2
