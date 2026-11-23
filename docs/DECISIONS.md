@@ -2010,6 +2010,30 @@ password screen, a skipped track's bonus.
 - **Harness:** `call_password_press_last_column`'s model is split into a before-state and an
   exit (`pwLastColumnBefore`/`pwLastColumnExit`), so `password_press_a` reuses it. That
   changes existing lines in `tools/bench/routines.c`, so the gate is the full one.
+
+## The password read back (password-4, 2026-11-23)
+
+- **Ported in `src/password.c`:**
+  - `password_decode` ($8A:BCEA): the 256-bit number is cleared, then every character
+    but the last two is pushed in from the end, five bits each: its index in the alphabet
+    at `$8A:BC5F` (`BCDFGHJKLN?PQRSTVWXYZ0123456789M`). `func_8ABBF4` sums the checksum
+    D+$92 on the way;
+  - `password_checksum_ok` ($8A:BD25): the last two characters (index + index * 32) against
+    D+$92 masked to 10 bits.
+  - The ROM searches the alphabet until a byte matches. For a character outside it, the
+    search runs on through the bank: the farthest any grid character goes is 1,498 bytes
+    (`I`), still in bank `$8A`. The C searches the same way.
+  - A text shorter than three makes the index negative: the ROM reads below `$0D40`
+    through the bank's WRAM mirror, and the C does too.
+- **Check:** each has one live sample on the password movie and a fuzzer. The fuzzer types
+  0-21 characters, mostly from the alphabet with the grid's others now and then, and makes
+  the checksum match half the time. The mismatch (`SEC`, `$8A:BD6A`) runs only in the fuzz:
+  it is a static range now.
+- **shop-21's open question, answered:** `difftest.c`'s `checkEntries` starts no sample for
+  a waiting row while another one records the interrupts ("one interrupt recorder at a
+  time"). That rule is by design, so a waiting row must not enclose other waiting rows.
+  For the password screen's loop (`$8A:B295`), that means a row would hide the samples of
+  the waiting rows it calls. It gets no row, as shop-21's dispatch no longer encloses any.
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

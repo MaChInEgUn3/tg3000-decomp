@@ -4134,8 +4134,8 @@ CODE_8AB2CE:
     sta.b $7E                   ; $8AB2D8
     stz.w $0D88                 ; $8AB2DA
     stz.w $0578                 ; $8AB2DD
-    jsr.w $BCEA                 ; $8AB2E0
-    jsr.w $BD25                 ; $8AB2E3
+    jsr.w password_decode       ; $8AB2E0
+    jsr.w password_checksum_ok  ; $8AB2E3
     bcc CODE_8AB31B             ; $8AB2E6
     incbin !baserom:$532E8..$5331B
 CODE_8AB31B:
@@ -5097,6 +5097,7 @@ CODE_8ABC9B:
     inx                         ; $8ABCE5
     stz.w $0D40,x               ; $8ABCE6
     rts                         ; $8ABCE9
+password_decode:
     lda.w #$0000                ; $8ABCEA
     sta.b $48                   ; $8ABCED
     stz.b $92                   ; $8ABCEF
@@ -5131,6 +5132,7 @@ CODE_8ABD16:
     bpl CODE_8ABD06             ; $8ABD20
     rep.b #$20                  ; $8ABD22
     rts                         ; $8ABD24
+password_checksum_ok:
     lda.b $92                   ; $8ABD25
     and.w #$03FF                ; $8ABD27
     sta.b $92                   ; $8ABD2A
@@ -5171,7 +5173,8 @@ CODE_8ABD5A:
     sta.b $42                   ; $8ABD64
     cmp.b $92                   ; $8ABD66
     beq CODE_8ABD6C             ; $8ABD68
-    incbin !baserom:$53D6A..$53D6C
+    sec                         ; $8ABD6A static
+    rts                         ; $8ABD6B static
 CODE_8ABD6C:
     clc                         ; $8ABD6C
     rts                         ; $8ABD6D

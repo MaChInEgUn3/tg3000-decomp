@@ -166,6 +166,43 @@ bool password_press_a(void) {
   return false;
 }
 
+// A character's index in the password alphabet ($8A:BC5F, 32 letters). The ROM searches on
+// until a byte matches, through whatever follows the table, and so does this.
+static uint16_t alphabet_index(uint8_t ch) {
+  uint16_t y = 0;
+  while(bus_rd8(0x8ABC5F + (uint32_t)y) != ch) y++;
+  return y;
+}
+
+// The typed text's byte at `x` (an index the ROM keeps in 16 bits: below 0 it reads below
+// $0D40, through the bank's WRAM mirror).
+static uint8_t typed_at(uint16_t x) { return rd8((uint16_t)(TYPED + x)); }
+
+// TG3000_ROUTINE($8A:BCEA) password_decode
+void password_decode(void) {
+  wr16(DP + 0x48, 0);
+  wr16(DP + 0x92, 0);
+  func_8ABC7F();
+  wr16(DP + 0x84, 0);
+  uint16_t x = 0;
+  while(typed_at(x) != 0) x++;
+  x = (uint16_t)(x - 3);  // the last character before the two of the checksum
+  do {
+    func_8ABBF4(alphabet_index(typed_at(x)), 5);
+    x--;
+  } while(!(x & 0x8000));
+}
+
+// TG3000_ROUTINE($8A:BD25) password_checksum_ok
+bool password_checksum_ok(void) {
+  wr16(DP + 0x92, (uint16_t)(rd16(DP + 0x92) & 0x03FF));
+  uint16_t x = 0;
+  while(typed_at((uint16_t)(x + 2)) != 0) x++;
+  wr16(DP + 0x42, alphabet_index(typed_at(x)));
+  wr16(DP + 0x42, (uint16_t)((uint16_t)(alphabet_index(typed_at((uint16_t)(x + 1))) << 5) | rd16(DP + 0x42)));
+  return rd16(DP + 0x42) == rd16(DP + 0x92);
+}
+
 // TG3000_ROUTINE($8A:B612) password_lines_print
 void password_lines_print(void) {
   static const uint16_t lines[4] = {0xC4F6, 0xC515, 0xC534, 0xC553};

@@ -500,3 +500,5 @@
 80F549 upload_slice_13 src/video_dma.c 1ef28ecb0925d9ef 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 1ef28ecb0925d9ef 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 1ef28ecb0925d9ef 1 500 20/20 verified live-flags:NVZC replayed:0
+8ABCEA password_decode src/password.c 46215ea9c672adf7 1 500 29/29 verified live-flags:NVZC replayed:0
+8ABD25 password_checksum_ok src/password.c 46215ea9c672adf7 1 500 38/38 verified live-flags:NVZC replayed:0

@@ -181,3 +181,4 @@
 8A:B4C0 8A:B4CD m16x16 ; the same: SPACE typed, DEL
 8A:B3DE 8A:B3DF m16x16 ; password_press_a past the grid (its CLC before the RTS): executed by its difftest fuzz, matched by src/password.c
 8A:B3E0 8A:B3E3 m16x16 ; password_press_a off a letter's column: the same
+8A:BD6A 8A:BD6C m16x16 ; password_checksum_ok on a mismatch (SEC): executed by its difftest fuzz, matched by src/password.c

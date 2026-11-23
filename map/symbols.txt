@@ -24,6 +24,8 @@ func    8AB586   password_cursor_right ; the grid cursor one place right ($0D88)
 func    8AB5BF   password_cursor_left ; the grid cursor one place left -> src/password.c
 func    8AB5E2   password_cursor_up  ; the grid cursor one row up ($0D90) -> src/password.c
 func    8AB5F2   password_cursor_down ; the grid cursor one row down -> src/password.c
+func    8ABCEA   password_decode     ; the typed password's characters into the 256-bit number, 5 bits each -> src/password.c
+func    8ABD25   password_checksum_ok ; the last two characters against the checksum D+$92 -> src/password.c
 func    8AB612   password_lines_print ; the password screen's four lines of text -> src/password.c
 func    8AB644   password_caret_place ; the caret under text cell D+$3A, D+$3C -> src/password.c
 ram     7E0028   vram_queue_head     ; byte offset, even, $00-$3E

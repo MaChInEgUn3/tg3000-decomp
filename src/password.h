@@ -46,6 +46,15 @@ bool password_press_last_column(void);
 // Returns whether it was EXIT.
 bool password_press_a(void);
 
+// The typed password read back. $8A:BCEA: the 256-bit number ($0DAC) is cleared
+// (func_8ABC7F) and every character but the last two is pushed in, five bits each (its index
+// in the alphabet at $8A:BC5F), from the end to the first (func_8ABBF4, which also sums the
+// checksum D+$92); D+$48, D+$92 and the bit count D+$84 start at 0.
+void password_decode(void);
+// $8A:BD25: whether the last two characters (index + index * 32) match the checksum D+$92,
+// masked to 10 bits there.
+bool password_checksum_ok(void);
+
 // $8A:B612: the screen's four lines of text ($8A:C4F6, C515, C534, C553), centred on rows $0D,
 // $10, $13, $16 (D+$68 = 0 first).
 void password_lines_print(void);

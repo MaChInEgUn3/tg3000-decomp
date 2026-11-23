@@ -6516,6 +6516,65 @@ static uint16_t pwGridY(uint32_t (*rnd)(void)) {
   const uint32_t k = rnd() % 6;
   return k < 4 ? (uint16_t)(0x0064 + 0x18 * k) : (uint16_t)rnd();
 }
+// ---- the password read back ($8A:BCEA, $8A:BD25) ----
+static uint16_t pwAlphabetIndex(uint8_t ch) {
+  uint16_t y = 0;
+  while(bus_rd8(0x8ABC5F + (uint32_t)y) != ch) y++;
+  return y;
+}
+static uint16_t pwTypedLength(void) {
+  uint16_t n = 0;
+  while(rd8((uint16_t)(0x0D40 + n)) != 0) n++;
+  return n;
+}
+// the last DEX (X below 0: N), A the index of the last character pushed (at 0, or below the
+// text when it is shorter than three), Y 5; C/V of func_8ABBF4's last checksum ADC (as its
+// adapter models it)
+static void call_password_decode(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t start = (uint16_t)(pwTypedLength() - 3);
+  const uint16_t last = (start & 0x8000) ? start : 0;
+  const uint16_t index = pwAlphabetIndex(rd8((uint16_t)(0x0D40 + last)));
+  password_decode();
+  out->a = index;
+  out->x = (uint16_t)(last - 1);
+  out->y = 5;
+  setNZ16(out, out->x);
+  const uint16_t low = rd16(0x0DCA);
+  setAdc16(out, (uint16_t)(rd16(DP + 0x92) - low), low);
+}
+// A the two characters' value, X where they are, Y the second's index; N/Z of the CMP with
+// the checksum, C clear when it matched (CLC), else set (SEC)
+static void call_password_checksum_ok(const Regs* in, Regs* out) {
+  (void)in;
+  const bool ok = password_checksum_ok();
+  uint16_t x = 0;
+  while(rd8((uint16_t)(0x0D42 + x)) != 0) x++;
+  out->a = rd16(DP + 0x42);
+  out->x = x;
+  out->y = pwAlphabetIndex(rd8((uint16_t)(0x0D41 + x)));
+  setNZ16(out, (uint16_t)(out->a - rd16(DP + 0x92)));
+  out->c = !ok;
+}
+// a typed text (the alphabet, the grid's other characters now and then, 0-21 long), the
+// checksum D+$92 matching its last two one time in two
+static void fuzz_password_read(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const char grid[] = "BCDFGHJKLN?PQRSTVWXYZ0123456789MAEIOU.! ";
+  const uint16_t len = (uint16_t)(rnd() % 22);
+  for(uint32_t i = 0; i < 0x18; i++)
+    ram[0x0D40 + i] = i < len ? (uint8_t)grid[rnd() % ((rnd() & 7) ? 32 : (sizeof grid - 1))] : 0;
+  for(int i = 0; i < 32; i++) ram[0x0DAC + i] = (uint8_t)rnd();
+  wr16ram(ram, DP + 0x84, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x48, (uint16_t)rnd());
+  uint16_t sum = (uint16_t)rnd();
+  if(rnd() & 1) {
+    const uint16_t at = len >= 2 ? (uint16_t)(len - 2) : 0;
+    sum = (uint16_t)((sum & 0xFC00) | pwAlphabetIndex(ram[0x0D40 + at]) | (uint16_t)(pwAlphabetIndex(ram[0x0D41 + at]) << 5));
+  }
+  wr16ram(ram, DP + 0x92, sum);
+}
+
 // the typing's state, with a button (A, B, X or Y one time in two) on one of the pads
 static void fuzz_password_press_a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_password_typing(r, ram, rnd);
@@ -10042,6 +10101,11 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_press_a, ALL_OUTPUTS,
    .fuzz = fuzz_password_press_a,
    .holes = {{0x8AB35B, 0x8AB3A7}}},  // another routine (the codes' check, $8A:B35B) sits inside
+  {.name = "password_decode", .entry = 0x8ABCEA, .end = 0x8ABD25, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_decode, ALL_OUTPUTS, .fuzz = fuzz_password_read},
+  {.name = "password_checksum_ok", .entry = 0x8ABD25, .end = 0x8ABD6E, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_checksum_ok, ALL_OUTPUTS,
+   .fuzz = fuzz_password_read},
   {.name = "password_lines_print", .entry = 0x8AB612, .end = 0x8AB644, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_lines_print, ALL_OUTPUTS,
    .fuzz = fuzz_password_lines_print},
