@@ -1819,6 +1819,36 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
+
+**The advisor's call, open to the owner's veto.** A password movie (next unit) runs
+`hud_markers_write` with a marker set. That path was a hole: the original steps over a set
+marker's word with `LDA $2139`, a 16-bit read of VMDATA, and the harness took any such read
+as a hardware access.
+- **A row now names the PC of a dead VMDATA read** (`vramReadAt`). At that PC, for every
+  row, a read of `$2139`/`$213A` is not a hardware access.
+  - The value is dead by the listing: A is reloaded before any use.
+  - Its effect is the step of the VRAM address. The PPU's own pointer takes it, and the
+    harness records VRAM word writes at that pointer, so the next words land where the
+    original's do.
+  - No platform call: the platform's word writes name their addresses, so a port has
+    nothing to do for a skipped word.
+- **Measured at the read:** VMAIN = `$80`, one word after the high byte, so the 16-bit read
+  moves the pointer from `$7C57` to `$7C58`. `$7C57 + i` holds.
+- **`hud_markers_write`:**
+  - Its hole is gone, and the fuzz sets the markers (`$0398-$039B`, 0 or a part's byte).
+  - With all four set and no badge, the original sets `$2116` and writes nothing, so the
+    address stays set for the next routine. The C now says so then
+    (`video_set_vram_address($7C57)`), and only then.
+  - A negative row (`hud_markers_write_wrong`: the cleared markers at consecutive addresses)
+    fails on the 60k movie, live 5/5 but fuzz 17/50: a wrong address no longer passes.
+  - Result: live 1/1 (with a marker set, on the password movie), fuzz 500/500, paths 26/26
+    on race1 and on the password movie.
+- **The effect cap** (`MAX_EFFECTS`) goes from 128 to 512. On the password movie (a later
+  track) `track_objects_stream`'s replay makes 158 effects, all of one kind, and it failed
+  on the cap. It passes now: fuzz 500/500, paths 108/108.
+- **Gate:** the full one.
+
 ## Buying a part (shop-18, 2026-11-22)
 
 **The buy dispatch's handlers** (`$80:9039` picks one from `$81:A89F` by list and row,

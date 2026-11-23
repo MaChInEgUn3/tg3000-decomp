@@ -80,7 +80,7 @@ static Stats* stats;
 // one's sample gets its own sample too (it would otherwise never be sampled once its
 // callers are registered).
 #define MAX_DEPTH 8
-#define MAX_EFFECTS 128
+#define MAX_EFFECTS 512  // track_objects_stream's replay on the password movie makes 158
 // `vram`: for a raw DMA to VMDATA ($2118/$2119), the VRAM state it wrote with (vramPack:
 // the word pointer and VMAIN's fields), 0 otherwise.
 typedef struct { int kind; uint32_t target, src, size, vram; } Effect;
@@ -323,6 +323,11 @@ static void buildNativeSites(void) {
     }
     for(int t = 0; t < 2; t++) if(r->dsp4Native[t][1]) markNative(r->dsp4Native[t][0], r->dsp4Native[t][1]);
   }
+}
+// harness-9: the PCs of the registry's declared dead VMDATA reads (vramReadAt)
+static bool vramReadSite(uint32_t pc) {
+  for(int i = 0; i < routineCount; i++) if(routines[i].vramReadAt && routines[i].vramReadAt == pc) return true;
+  return false;
 }
 static bool nativeAt(uint32_t pc) {
   const uint32_t bank = (pc >> 16) & 0x7F, adr = pc & 0xFFFF;
@@ -898,6 +903,8 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
       }
       else smp->setupPending = true;
       continue;
+    } else if(!write && (lo16 == 0x2139 || lo16 == 0x213A) && vramReadSite(insnPc)) {
+      continue;  // harness-9: a declared dead VMDATA read; the PPU's pointer takes its step
     } else {
       smp->hwWhy = "hardware access (not supported by this routine's C)";
     }

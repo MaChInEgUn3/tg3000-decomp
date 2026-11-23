@@ -9092,12 +9092,28 @@ static void call_hud_markers_write(const Regs* in, Regs* out) {
   out->a = rd8(0x03A7) ? bus_rd16(0x83A502) : 0;
   setNZ16(out, out->a);
 }
-// the badge's byte ($03A7) either way; the markers' bytes ($0398-$039B) kept at 0, since the
-// step over a set one (a read of $2139) is a hole
+// the badge's byte ($03A7) either way; the markers' bytes ($0398-$039B: the level bytes of
+// lists 6-8 and the next, 0 or a part bought, $81) either way: a set one's word is stepped
+// over by a dead read of $2139 (harness-9)
 static void fuzz_hud_markers_write(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
-  for(uint32_t i = 0; i < 4; i++) ram[0x0398 + i] = 0;
+  for(uint32_t i = 0; i < 4; i++) ram[0x0398 + i] = (rnd() & 1) ? 0 : (uint8_t)(rnd() & 1 ? 0x81 : 0x01);
   ram[0x03A7] = (rnd() & 1) ? 0 : (uint8_t)(1 + rnd() % 0xFF);
+}
+// deliberately wrong: the cleared markers written one after another, ignoring the step over
+// a set one (the words land one address early)
+static void call_hud_markers_write_wrong(const Regs* in, Regs* out) {
+  uint16_t at = 0x7C57;
+  for(uint16_t i = 0; i < 4; i++)
+    if(rd8(0x0398 + i) == 0) video_write_vram_word(at++, 0x0157);
+  if(rd8(0x03A7) != 0)
+    for(uint16_t i = 0; i < 4; i++) video_write_vram_word((uint16_t)(0x7F45 + i), bus_rd16(0x83A4FC + 2 * (uint32_t)i));
+  (void)in;
+  out->x = 4;
+  out->y = 0x0157;
+  out->c = true;
+  out->a = rd8(0x03A7) ? bus_rd16(0x83A502) : 0;
+  setNZ16(out, out->a);
 }
 
 // ---- player_car_frame ($83:EAC6) ----  its caller loads its own registers: DB = $83 (the
@@ -10405,7 +10421,7 @@ const Routine routines[] = {
   {.name = "hud_markers_write", .entry = 0x828961, .end = 0x8289B2, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_hud_markers_write, ALL_OUTPUTS,
    .fuzz = fuzz_hud_markers_write, .endAt = 0x8289B2,  // its tail jump to race_hud_digits
-   .holes = {{0x828976, 0x82897B}}},  // a set marker's step over (LDA $2139): no movie, no VRAM read in the harness
+   .vramReadAt = 0x828976},  // a set marker's step over: LDA $2139, the value dead (harness-9)
   {.name = "race_hud_digits", .entry = 0x82B4ED, .end = 0x82B769, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_hud_digits, .fuzz = fuzz_race_hud_digits},
   {.name = "car_track_step", .entry = 0x83F7F9, .end = 0x83F9D1, .source = "src/misc.c", .needM16 = true,
@@ -10604,6 +10620,9 @@ const Routine routines[] = {
 const int routineCount = sizeof routines / sizeof routines[0];
 
 const Routine negativeRoutines[] = {
+  {.name = "hud_markers_write_wrong", .entry = 0x828961, .end = 0x8289B2, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_hud_markers_write_wrong, ALL_OUTPUTS,
+   .fuzz = fuzz_hud_markers_write, .endAt = 0x8289B2, .vramReadAt = 0x828976},
   {.name = "oam_high_load_wrong_command", .entry = 0x82AE15, .end = 0x82AEA4, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load_wrong_command, ALL_OUTPUTS,
    .fuzz = fuzz_oam_high_load, .dsp4Tape = true},

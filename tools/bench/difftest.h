@@ -31,6 +31,10 @@ typedef struct {
                            // interrupt frame (D, Y, X, A, DB = 9 for the common NMI prologue)
   uint32_t alsoIn[2][2];   // [start, end) ranges the routine may continue into at its own
                            // stack depth: a tail jump into another (verified) routine
+  uint32_t vramReadAt;     // harness-9: the PC of a dead read of VMDATA ($2139/$213A, 16-bit):
+                           // only its step of the VRAM address matters, which the PPU's
+                           // pointer (the one VRAM word writes are recorded at) takes; at
+                           // that PC, for every row, the read is not a hardware access
   uint32_t endAt;          // a handler's prologue: the sample ends when it reaches this
                            // instruction (its dispatch, an indirect jump to the target, which
                            // has its own row); D and DB are compared there

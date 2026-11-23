@@ -6314,10 +6314,18 @@ bool track_preview_maybe(void) {
 }
 
 void hud_markers_put(void) {
+  bool written = false;
+  // a set marker's word is stepped over (the original reads VMDATA, the value unused)
   for(uint16_t i = 0; i < 4; i++)
-    if(rd8(0x0398 + i) == 0) video_write_vram_word((uint16_t)(0x7C57 + i), 0x0157);
-  if(rd8(0x03A7) != 0)
+    if(rd8(0x0398 + i) == 0) {
+      video_write_vram_word((uint16_t)(0x7C57 + i), 0x0157);
+      written = true;
+    }
+  if(rd8(0x03A7) != 0) {
     for(uint16_t i = 0; i < 4; i++) video_write_vram_word((uint16_t)(0x7F45 + i), bus_rd16(0x83A4FC + 2 * (uint32_t)i));
+    written = true;
+  }
+  if(!written) video_set_vram_address(0x7C57);  // all four set, no badge: the address stays set
 }
 
 // TG3000_ROUTINE($82:8961) hud_markers_write
