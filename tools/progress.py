@@ -176,10 +176,14 @@ def row_status(parts):
     want = int(parts[3], 16)
     if verification_hash(parts[2]) == want:
         return "current", None
-    # the oldest of the recent commits with that code: the run was there or before
+    # a recent commit with that code, src/ and tools/bench/ only added to since (the oldest such:
+    # the row's code there is the code its run compared, wherever in the window the run was).
+    # Not just the oldest match: a row whose own files did not change can match commits from
+    # before a full run that changed other files, and the additions rule would fail there.
     matches = [c for c in recent_commits() if hash_at(c, parts[2]) == want]
-    if matches and only_additions(matches[-1]):
-        return "carried", matches[-1]
+    for c in reversed(matches):
+        if only_additions(c):
+            return "carried", c
     return "stale", None
 
 

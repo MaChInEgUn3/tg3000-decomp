@@ -2129,6 +2129,22 @@ password screen, a skipped track's bonus.
 - **Check:** every buying row passes on the buy and password movies as before. The gate is
   the full one, because existing lines of `src/` changed.
 
+## A carried row may match older commits (harness-10, 2026-11-23)
+
+- **The bug:** shop-22's commit failed CI in `tools/test_carry.sh` ("additions (rows
+  carried)").
+  - `progress.py`'s `row_status` took the oldest recent commit whose hash matched the row,
+    and required only additions since it.
+  - After a full run that changed other files, shop-22's `src/shop.c` here, a row whose own
+    files did not change also matches commits from before that run. The oldest of them sees
+    the deletion, so every such row turned stale at the next additive change: the next
+    `verify_new` unit would have been refused.
+- **The fix (the advisor's domain, my call, open to veto):** take the oldest matching commit
+  that has only additions since. The row's code there equals the code its run compared.
+  `test_carry.sh` passes.
+- **Check:** `tools/test_carry.sh`, `tools/test_merge.py` and `progress.py --check`. No
+  routine's code or row changed, so no verification run.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
