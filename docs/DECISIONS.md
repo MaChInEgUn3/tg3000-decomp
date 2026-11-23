@@ -2145,6 +2145,23 @@ password screen, a skipped track's bonus.
 - **Check:** `tools/test_carry.sh`, `tools/test_merge.py` and `progress.py --check`. No
   routine's code or row changed, so no verification run.
 
+## Lists 6-10's level getters, and list 10's level (shop-23, 2026-11-23)
+
+- **Ported:** the five getters of the `$80:9EEA` table for lists 6-10. Each is
+  `LDA $039x,Y; RTS`, the level byte as it is (the row + 1), with no `+ 1` as lists 0-5's
+  have:
+  - `shop_part_level_8` ($80:9F30, `$0398`, list 6), `_9` ($80:9F2C, `$0399`, list 7);
+  - `_a` ($80:9F28, `$039A`, list 8), `_c` ($80:9F34, `$039C`, list 9);
+  - `_b` ($80:9F38, `$039B`, list 10).
+- **A fix:** `shop_list_level` in the C read `$039C` for list 10. The table's entry 10 is
+  `$80:9F38`, so it reads `$039B`. It now calls the getters.
+  - `shop_level_marks`' fuzzer covers list 10 too: that runs `$80:9F38`, now a static range.
+  - The table's entries past 10 point at `$80:9F3C` (`LDY #0; RTS`, A unchanged); no list
+    uses them.
+- **Check:** `_8`, `_9` and `_a` pass on the password movie (72, 34 and 57 samples, and
+  fuzz). `_c` runs only in the TAS and `_b` nowhere: their rows are unreached.
+  `shop_level_marks` passes. The gate is the full one.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

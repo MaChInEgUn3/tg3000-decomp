@@ -24,6 +24,17 @@ uint16_t shop_part_level_6(uint16_t car) { return (uint16_t)(rd16((uint32_t)(0x0
 // TG3000_ROUTINE($80:9F1E) shop_part_level_7
 uint16_t shop_part_level_7(uint16_t car) { return (uint16_t)(rd16((uint32_t)(0x0397 + car)) + 1); }
 
+// TG3000_ROUTINE($80:9F30) shop_part_level_8
+uint16_t shop_part_level_8(uint16_t car) { return rd16((uint32_t)(0x0398 + car)); }
+// TG3000_ROUTINE($80:9F2C) shop_part_level_9
+uint16_t shop_part_level_9(uint16_t car) { return rd16((uint32_t)(0x0399 + car)); }
+// TG3000_ROUTINE($80:9F28) shop_part_level_a
+uint16_t shop_part_level_a(uint16_t car) { return rd16((uint32_t)(0x039A + car)); }
+// TG3000_ROUTINE($80:9F38) shop_part_level_b
+uint16_t shop_part_level_b(uint16_t car) { return rd16((uint32_t)(0x039B + car)); }
+// TG3000_ROUTINE($80:9F34) shop_part_level_c
+uint16_t shop_part_level_c(uint16_t car) { return rd16((uint32_t)(0x039C + car)); }
+
 // TG3000_ROUTINE($80:993E) shop_money_take
 void shop_money_take(void) {
   uint16_t car = rd16(DP + 0x94);
@@ -839,8 +850,9 @@ void shop_item_icon_4(bool upload) { shop_item_icon(upload, 3, 0xBCBE, 0xBCA6); 
 // TG3000_ROUTINE($80:A018) shop_item_icon_5
 void shop_item_icon_5(bool upload) { shop_item_icon(upload, 4, 0xBC9A, 0xBC82); }
 
-// The list's level getter ($80:9EEA table): lists 0-5 the part levels plus 1; lists 6, 7, 8
-// the bytes at $0398, $0399, $039A as they are (9: $039C).
+// The list's level getter ($80:9EEA table): lists 0-5 the part levels plus 1; lists 6-10
+// the bytes at $0398, $0399, $039A, $039C, $039B as they are. (The table's entries past list
+// 10 point at a getter that sets Y = 0 and returns A as it was: no list uses them.)
 static uint16_t shop_list_level(uint16_t list, uint16_t car) {
   switch(list) {
   case 0: return shop_part_level_2(car);
@@ -849,10 +861,11 @@ static uint16_t shop_list_level(uint16_t list, uint16_t car) {
   case 3: return shop_part_level_5(car);
   case 4: return shop_part_level_6(car);
   case 5: return shop_part_level_7(car);
-  case 6: return rd16(0x0398 + (uint32_t)car);
-  case 7: return rd16(0x0399 + (uint32_t)car);
-  case 8: return rd16(0x039A + (uint32_t)car);
-  default: return rd16(0x039C + (uint32_t)car);
+  case 6: return shop_part_level_8(car);
+  case 7: return shop_part_level_9(car);
+  case 8: return shop_part_level_a(car);
+  case 9: return shop_part_level_c(car);
+  default: return shop_part_level_b(car);  // list 10 (shop-23: was $039C before)
   }
 }
 

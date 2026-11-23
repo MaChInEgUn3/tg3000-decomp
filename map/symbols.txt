@@ -251,6 +251,11 @@ func    809F0F   shop_part_level_4   ; part level $0394 + car, plus 1 -> src/sho
 func    809F14   shop_part_level_5   ; part level $0395 + car, plus 1 -> src/shop.c
 func    809F19   shop_part_level_6   ; part level $0396 + car, plus 1 -> src/shop.c
 func    809F1E   shop_part_level_7   ; part level $0397 + car, plus 1 -> src/shop.c
+func    809F28   shop_part_level_a   ; list 8's level $039A + car -> src/shop.c
+func    809F2C   shop_part_level_9   ; list 7's level $0399 + car -> src/shop.c
+func    809F30   shop_part_level_8   ; list 6's level $0398 + car -> src/shop.c
+func    809F34   shop_part_level_c   ; list 9's level $039C + car -> src/shop.c
+func    809F38   shop_part_level_b   ; list 10's level $039B + car (never run) -> src/shop.c
 func    809053   shop_buy_list1      ; buying a part, list 1 (level byte $0393): the panel, the money rolling -> src/shop.c
 func    809100   shop_buy_list2      ; buying a part, list 2 ($0394) -> src/shop.c
 func    8091AE   shop_buy_list3      ; buying a part, list 3 ($0395) -> src/shop.c

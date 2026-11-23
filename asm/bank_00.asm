@@ -3332,15 +3332,22 @@ shop_part_level_2:
     lda.w $0392,y               ; $809F23
     inc a                       ; $809F26
     rts                         ; $809F27
+shop_part_level_a:
     lda.w $039A,y               ; $809F28
     rts                         ; $809F2B
+shop_part_level_9:
     lda.w $0399,y               ; $809F2C
     rts                         ; $809F2F
+shop_part_level_8:
     lda.w $0398,y               ; $809F30
     rts                         ; $809F33
+shop_part_level_c:
     lda.w $039C,y               ; $809F34
     rts                         ; $809F37
-    incbin !baserom:$1F38..$1F40
+shop_part_level_b:
+    lda.w $039B,y               ; $809F38 static
+    rts                         ; $809F3B static
+    incbin !baserom:$1F3C..$1F40
 shop_item_dispatch_icon:
     lda.b $48                   ; $809F40
     asl a                       ; $809F42

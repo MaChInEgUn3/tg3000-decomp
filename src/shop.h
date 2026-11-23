@@ -13,6 +13,12 @@ uint16_t shop_part_level_4(uint16_t car);  // $80:9F0F ($0394)
 uint16_t shop_part_level_5(uint16_t car);  // $80:9F14 ($0395)
 uint16_t shop_part_level_6(uint16_t car);  // $80:9F19 ($0396)
 uint16_t shop_part_level_7(uint16_t car);  // $80:9F1E ($0397)
+// Lists 6-10's levels as they are (the row + 1): $0398-$039C + the car's offset.
+uint16_t shop_part_level_8(uint16_t car);  // $80:9F30 ($0398, list 6)
+uint16_t shop_part_level_9(uint16_t car);  // $80:9F2C ($0399, list 7)
+uint16_t shop_part_level_a(uint16_t car);  // $80:9F28 ($039A, list 8)
+uint16_t shop_part_level_b(uint16_t car);  // $80:9F38 ($039B, list 10; never run)
+uint16_t shop_part_level_c(uint16_t car);  // $80:9F34 ($039C, list 9)
 
 // Copy the player's money ($038E/$0390 + $0194) to $52/$54, mark $56 = $FFFF and set
 // $76 bit 2. ($80:993E)

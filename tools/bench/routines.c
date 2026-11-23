@@ -6215,6 +6215,11 @@ SHOP_LEVEL(shop_part_level_4)
 SHOP_LEVEL(shop_part_level_5)
 SHOP_LEVEL(shop_part_level_6)
 SHOP_LEVEL(shop_part_level_7)
+SHOP_LEVEL(shop_part_level_8)  // lists 6-10's: no +1, the LDA's N/Z
+SHOP_LEVEL(shop_part_level_9)
+SHOP_LEVEL(shop_part_level_a)
+SHOP_LEVEL(shop_part_level_b)
+SHOP_LEVEL(shop_part_level_c)
 static void fuzz_shop_part_level(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->y = (uint16_t)(rnd() % 0x40);
   for(int i = 0; i < 2; i++) wr16ram(ram, (uint32_t)(0x0392 + r->y + 2 * i), (uint16_t)rnd());
@@ -7209,7 +7214,7 @@ static void call_shop_level_marks(const Regs* in, Regs* out) { (void)in; (void)o
 // buffer
 static void fuzz_shop_level_marks(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
-  uint16_t list = (uint16_t)(rnd() % 10), car = (uint16_t)(rnd() & 0x1F);
+  uint16_t list = (uint16_t)(rnd() % 11), car = (uint16_t)(rnd() & 0x1F);  // lists 0-10 (shop-23: with 10)
   wr16ram(ram, DP + 0x48, list);
   wr16ram(ram, DP + 0x94, car);
   ram[0x036E + list] = (uint8_t)(1 + rnd() % 8);
@@ -10589,6 +10594,16 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_car_road_step, .fuzz = fuzz_car_road_step},
   {.name = "player_road_limits", .entry = 0x83E8AB, .end = 0x83EA9B, .source = "src/track.c", .needM16 = true,
    .needX16 = true, .call = call_player_road_limits, .fuzz = fuzz_player_road_limits},
+  {.name = "shop_part_level_8", .entry = 0x809F30, .end = 0x809F34, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .call = call_shop_part_level_8, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
+  {.name = "shop_part_level_9", .entry = 0x809F2C, .end = 0x809F30, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .call = call_shop_part_level_9, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
+  {.name = "shop_part_level_a", .entry = 0x809F28, .end = 0x809F2C, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .call = call_shop_part_level_a, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
+  {.name = "shop_part_level_b", .entry = 0x809F38, .end = 0x809F3C, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .call = call_shop_part_level_b, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
+  {.name = "shop_part_level_c", .entry = 0x809F34, .end = 0x809F38, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .lowWramDb = true, .call = call_shop_part_level_c, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
   {.name = "shop_part_level_2", .entry = 0x809F23, .end = 0x809F28, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .lowWramDb = true, .call = call_shop_part_level_2, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
   {.name = "shop_part_level_3", .entry = 0x809F0A, .end = 0x809F0F, .source = "src/shop.c", .needM16 = true, .needX16 = true,
