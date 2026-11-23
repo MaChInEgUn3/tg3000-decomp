@@ -697,17 +697,21 @@ static void fuzz_text_line_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // ---- text_centred_line ($82:B18B) ----  no register outputs (its caller reloads them); the
 // final LDA of the zero (N clear, Z set); C clear after any character or palette byte (an
 // ASL), else of the start's ADC; V of the last SBC (a digit or letter), else of that ADC
-static void call_text_centred_line(const Regs* in, Regs* out) {
-  (void)in;
-  const uint16_t start = rom16(0x83A006 + (uint32_t)rd16(DP + 0x3C));
+// (C and V from the string D+$3C and palette D+$18, before the call: textCentredLineCV)
+static void textCentredLineCV(Regs* out, uint16_t string, uint16_t palette) {
+  const uint16_t start = rom16(0x83A006 + (uint32_t)string);
   uint16_t free = 13;
   for(uint16_t s = start; bus_rd8(0x830000 | s); s++) if(!(bus_rd8(0x830000 | s) & 0x80)) free--;
-  setAdc16(out, (uint16_t)(free & 0xFFFE), rd16(DP + 0x18));
+  setAdc16(out, (uint16_t)(free & 0xFFFE), palette);
   for(uint16_t s = start; bus_rd8(0x830000 | s); s++) {
     uint8_t c = bus_rd8(0x830000 | s);
     out->c = false;
     if(!(c & 0x80) && c != 0x20 && c != 0x21 && c != 0x2E && c != 0x2B) out->v = false;  // a small SBC
   }
+}
+static void call_text_centred_line(const Regs* in, Regs* out) {
+  (void)in;
+  textCentredLineCV(out, rd16(DP + 0x3C), rd16(DP + 0x18));
   text_centred_line();
   out->n = false;
   out->z = true;
@@ -2380,15 +2384,7 @@ static void fuzz_save_data_seal(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // ---- text_centred_line_at ($82:8911) ----  C and V as text_centred_line's adapter models them
 // (from the string X and palette A); N/Z of the final PLB ($83)
 static void call_text_centred_line_at(const Regs* in, Regs* out) {
-  const uint16_t start = rom16(0x83A006 + (uint32_t)in->x);
-  uint16_t free = 13;
-  for(uint16_t s = start; bus_rd8(0x830000 | s); s++) if(!(bus_rd8(0x830000 | s) & 0x80)) free--;
-  setAdc16(out, (uint16_t)(free & 0xFFFE), in->a);
-  for(uint16_t s = start; bus_rd8(0x830000 | s); s++) {
-    const uint8_t c = bus_rd8(0x830000 | s);
-    out->c = false;
-    if(!(c & 0x80) && c != 0x20 && c != 0x21 && c != 0x2E && c != 0x2B) out->v = false;
-  }
+  textCentredLineCV(out, in->x, in->a);
   text_centred_line_at(in->a, in->x);
   out->n = true;  // its last PLB: the $83 left on the stack
   out->z = false;
@@ -2397,6 +2393,17 @@ static void fuzz_text_centred_line_at(Regs* r, uint8_t* ram, uint32_t (*rnd)(voi
   fuzz_text_centred_line(r, ram, rnd);
   r->x = (uint16_t)(ram[DP + 0x3C] | ram[DP + 0x3D] << 8);
   r->a = (uint16_t)rnd();
+}
+
+// ---- race_pause ($82:884B) ----  a waiting row. Resumed: the last PLX (N/Z of the entry X),
+// C/V of the last text_centred_line_at (the line string $0233 * 2, palette $4E61), A $10 (its
+// LDA before the TRB of $0026). Quitting is never run (a hole: it leaves the caller)
+static void call_race_pause(const Regs* in, Regs* out) {
+  const bool quit = race_pause();
+  (void)quit;
+  textCentredLineCV(out, (uint16_t)(rd16(0x0233) << 1), 0x4E61);
+  out->a = 0x0010;
+  setNZ16(out, in->x);
 }
 
 // ---- money_skip_bonus ($8A:C355) ----  $03DC bit 12 clear: its LDA's N, the BIT's Z; set:
@@ -10796,6 +10803,11 @@ const Routine routines[] = {
    .lowWramDb = true, .fixedD = true, .call = call_timer_0d7e_tick, ALL_OUTPUTS, .fuzz = fuzz_timer_0d7e_tick},
   {.name = "text_line_put", .entry = 0x8A9B85, .end = 0x8A9BAA, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_text_line_put, ALL_OUTPUTS, .fuzz = fuzz_text_line_put},
+  // the race paused: a waiting row (it encloses wait_frames_82's samples while it waits). Two
+  // paths no movie runs: $03E2 bit 2, and quitting (L and R held: it leaves its caller)
+  {.name = "race_pause", .entry = 0x82884B, .end = 0x828911, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .waitsForInterrupts = true, .maxInsns = 40000000, .call = call_race_pause,
+   .compareA = true, .holes = {{0x828860, 0x82886E}, {0x8288D8, 0x8288F2}}},
   {.name = "text_centred_line_at", .entry = 0x828911, .end = 0x828923, .source = "src/text.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_text_centred_line_at, .fuzz = fuzz_text_centred_line_at},
   {.name = "money_skip_bonus", .entry = 0x8AC355, .end = 0x8AC379, .source = "src/misc.c", .needM16 = true,

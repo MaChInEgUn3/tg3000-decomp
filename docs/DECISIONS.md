@@ -2084,6 +2084,25 @@ password screen, a skipped track's bonus.
     for the second entries.
   - Both pass on the password movie (32 samples each and a fuzzer). The old rows still pass.
 - **Gate:** the full one: the old functions and their adapter changed.
+
+## The race paused (roots-115, 2026-11-23)
+
+- **`race_pause` ($82:884B) is ported.** Start in a race (`$82:86BB`) calls it.
+  - While it lasts, `$0026` bit 4 is set and `$03E0` = -4. The line word at `$7E:4E4D` is
+    saved and cleared.
+  - "PAUSE" (string `$88`) and a blank (string `$8C`) take turns every `$40` frames
+    (`text_centred_line_at`, palette `$4E61`) until Start is pressed again. Then the race's
+    line (string `$0233` * 2) is put back.
+  - L and R held together quit the race. The ROM leaves its caller for `$82:877F` there.
+    The C returns true instead, for its caller to do the same. No movie runs it.
+- **Its row** is a waiting row with a budget (`maxInsns` 40M, as `title_card_show`'s). On
+  the password movie it has 31 entries: 5 compared and passed on every path, 26 abandoned
+  as longer pauses. It has two holes, never run: `$03E2` bit 2 and the quit.
+- **It encloses `wait_frames_82`'s samples** while it waits (one interrupt recorder at a
+  time). On the password movie that row drops from 92 compared samples to 3 and still passes
+  on every path. The full gate pools the four movies' evidence.
+- **The harness model** of `text_centred_line`'s C/V is now one function,
+  `textCentredLineCV`, used by its row, `text_centred_line_at`'s and this one.
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

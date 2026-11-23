@@ -2335,6 +2335,41 @@ void result_slot_step_at(uint16_t track) {
   if(bus_rd8(t + (uint32_t)track)) wr16(0x036C, (uint16_t)(rd16(0x036C) + 4));
 }
 
+// TG3000_ROUTINE($82:884B) race_pause
+bool race_pause(void) {
+  wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0010));
+  wr16(0x03E0, 0xFFFC);
+  if(rd16(0x03E2) & 0x0004) wr16(0x1E94, (rd16(0x1E94) & 0x8000) ? rd16(0x047B) : 0x8000);
+  const uint16_t saved = rd16(0x4E4D);  // $7E:4E4D
+  wr16(0x4E4D, 0);
+  for(;;) {
+    for(int shown = 1; shown >= 0; shown--) {  // "PAUSE", then a blank
+      text_centred_line_at(0x4E61, shown ? 0x0088 : 0x008C);
+      wr16(0x00B8, (uint16_t)(rd16(0x00B8) | 0x0004));
+      for(uint16_t x = 0x0040; x != 0; x--) {
+        const uint16_t pad = rd16(0x000E);
+        wr16(0x000E, (uint16_t)(pad & ~0x1000));  // TRB: Start taken off
+        if(pad & 0x1000) {
+          text_centred_line_at(0x4E61, (uint16_t)(rd16(0x0233) << 1));
+          wr16(0x4E4D, saved);
+          wr16(0x03E0, 0x0004);
+          wr16(0x0026, (uint16_t)(rd16(0x0026) & ~0x0010));
+          return false;
+        }
+        if(shown) wait_frames(1);
+        if((rd16(0x000C) & 0x0030) == 0x0030) {  // L and R held: quit
+          wr16(0x0148, 0);
+          wr16(0x0146, 0xFF00);
+          while(rd16(0x0146) != 0) {}
+          wr16(0x0446, 0xFFFF);
+          return true;
+        }
+        if(!shown) wait_frames(1);
+      }
+    }
+  }
+}
+
 // TG3000_ROUTINE($84:A34B) result_tally
 void result_tally(void) { result_tally_at(rd16(0x0444)); }
 

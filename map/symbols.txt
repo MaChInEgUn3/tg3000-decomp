@@ -341,6 +341,7 @@ func    8A9F64   flag_03dc_from_52   ; $03DC bit 12 = (D+$52 != 0) -> src/misc.c
 func    8A9F76   timer_0d7e_tick     ; $0D7E counts down; at 0 a random $03DC mode and D+$6C + 1 -> src/misc.c
 func    8AAE9B   rng_next_8a_2       ; a third copy of rng_next (never run; through timer_0d7e_tick) -> src/rng.c
 func    8A9B85   text_line_put       ; a zero-ended string into the $7F:7918 map, then the next line -> src/misc.c
+func    82884B   race_pause          ; the race paused: PAUSE blinks until Start (L+R quits) -> src/misc.c
 func    828911   text_centred_line_at ; text_centred_line for string X, palette A (returns with DB = $83) -> src/text.c
 func    82B18B   text_centred_line   ; a centred line of two-row characters at $7E:D+$18 -> src/text.c
 func    80B2F2   shop_list_label     ; a list's name at its row, the next list or the end -> src/shop.c

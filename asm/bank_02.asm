@@ -327,7 +327,7 @@ CODE_8286AB:
     lda.w $014A                 ; $8286B3
     cmp.w #$0F00                ; $8286B6
     bne CODE_8286BE             ; $8286B9
-    jsr.w $884B                 ; $8286BB
+    jsr.w race_pause            ; $8286BB
 CODE_8286BE:
     lda.w $03E2                 ; $8286BE
     bit.w #$0004                ; $8286C1
@@ -415,6 +415,7 @@ CODE_82877F:
     jsr.w wait_frames_82        ; $828786
     rts                         ; $828789
     incbin !baserom:$1078A..$1084B
+race_pause:
     phx                         ; $82884B
     lda.w #$0010                ; $82884C
     tsb.w $0026                 ; $82884F

@@ -758,6 +758,17 @@ void result_tally(void);
 void result_slot_step_at(uint16_t track);
 void result_tally_at(uint16_t track);
 
+// $82:884B: the race paused (Start, from $82:86BB). $0026 bit 4 is set and $03E0 = -4 while
+// it lasts; the line word at $7E:4E4D is saved and cleared. "PAUSE" (string $88) and a blank
+// (string $8C) take turns every $40 frames in the window (text_centred_line_at, palette
+// $4E61; D+$B8 bit 2 asks for the upload) until Start is pressed again (the press taken off
+// the pad); then the line string $0233 * 2 is put back and the rest restored ($03E0 = 4).
+// L and R held together quit the race instead: returns true there (never run in a movie;
+// the ROM waits for $0146 to clear, sets $0446 = $FFFF and leaves its caller for $82:877F).
+// With $03E2 bit 2 (never run) it first sets $1E94 to $8000, or to $047B while $1E94 is
+// negative.
+bool race_pause(void);
+
 // $8A:9D1E: the 20 words at $041C = 0.
 void clear_041c(void);
 
