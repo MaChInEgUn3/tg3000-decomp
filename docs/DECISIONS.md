@@ -1927,6 +1927,25 @@ password screen, a skipped track's bonus.
     `map/static_code.txt` range, so the listing decodes it; it has no row.
 - **Holes are not counted.** `tools/progress.py` counts code bytes in verified extents
   minus their holes, so a hole never adds to the verified percentage.
+
+## The password screen's grid cursor (password-1, 2026-11-23)
+
+- **Picked from `tools/portable.py`:** after the password movie, most of its list is the
+  password screen (`$8A:B1xx-B6xx`). This unit ports its leaves, in a new `src/password.c`:
+  - the four pad handlers (`password_pad_right`/`left`/`up`/`down`, $8A:B4D2-B585). A new
+    press on any of the four pads (`$000E`, `$0012`, `$0016`, `$001A`) moves the cursor
+    once it has stopped gliding;
+  - the four steps (`password_cursor_*`, $8A:B586-B611) over the grid's coordinates
+    (`$0D88`/`$0D90`, held at its edges; the last column `$28` on);
+  - `password_lines_print` ($8A:B612): the four lines of text;
+  - the caret: `password_caret_place` ($8A:B644) and `password_caret_blink` ($8A:B2BC);
+  - `asl_n` ($8A:B152), `lsr_n`'s mirror, with Y kept.
+- **Check:** all twelve pass on the password movie with a fuzzer each, comparing A, X, Y and
+  the flags (each exit is modelled from the state before the call). The fuzz runs two
+  branches no movie takes, now `map/static_code.txt` ranges: right on the row of three and
+  left off the last column.
+- **Not yet:** `$8A:B4A4` (A on SPACE, DEL or EXIT) calls the typing routines `$8A:B403`
+  and `$8A:B420`, which are not ported.
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

@@ -171,3 +171,5 @@
 82:CAE5 82:CB39 m16x16 ; sprite_put_rows_c, called by kind 0's handler: same
 80:99B6 80:99CB m16x16 ; shop_money_after_price's second loop (all four high digits settled): executed by its difftest fuzz, matched by src/shop.c
 80:9750 80:9832 m16x16 ; shop_buy_list10, list 10's buying handler: its one pointer is the table word at $81:AE20 (list 10, row 0); in no run. The same code as lists 6-9's (src/shop.c shop_buy_upgrade)
+8A:B58E 8A:B596 m16x16 ; password_cursor_right on the row of three ($8A:B58C BNE): executed by its difftest fuzz, matched by src/password.c
+8A:B5D4 8A:B5E2 m16x16 ; password_cursor_left off the last column ($8A:B5C5 BEQ): executed by its difftest fuzz, matched by src/password.c

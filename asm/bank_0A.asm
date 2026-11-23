@@ -3955,7 +3955,7 @@ variant_flags_apply:
     lsr a                       ; $8AB129
     and.w #$0001                ; $8AB12A
     ldy.w #$000A                ; $8AB12D
-    jsr.w $B152                 ; $8AB130
+    jsr.w asl_n                 ; $8AB130
     ora.l $8103DC               ; $8AB133
     sta.l $8103DC               ; $8AB137
     lda.w $1526                 ; $8AB13B
@@ -3963,10 +3963,11 @@ variant_flags_apply:
     lsr a                       ; $8AB13F
     and.w #$0003                ; $8AB140
     ldy.w #$0008                ; $8AB143
-    jsr.w $B152                 ; $8AB146
+    jsr.w asl_n                 ; $8AB146
     ora.l $8103DC               ; $8AB149
     sta.l $8103DC               ; $8AB14D
     rts                         ; $8AB151
+asl_n:
     phy                         ; $8AB152
     cpy.w #$0000                ; $8AB153
     beq CODE_8AB15C             ; $8AB156
@@ -4057,7 +4058,7 @@ wait_one_frame:
     incbin !baserom:$5322E..$53232
     stz.b $52                   ; $8AB232
     jsr.w hdma_window_tables_init; $8AB234
-    jsr.w $B612                 ; $8AB237
+    jsr.w password_lines_print  ; $8AB237
     ldx.w #$0017                ; $8AB23A
 CODE_8AB23D:
     stz.w $0D40,x               ; $8AB23D
@@ -4087,8 +4088,8 @@ CODE_8AB26C:
     lda.w $0D88                 ; $8AB27C
     cmp.w $0D80                 ; $8AB27F
     beq CODE_8AB28C             ; $8AB282
-    jsr.w $B644                 ; $8AB284
-    jsr.w $B2BC                 ; $8AB287
+    jsr.w password_caret_place  ; $8AB284
+    jsr.w password_caret_blink  ; $8AB287
     bra CODE_8AB26C             ; $8AB28A
 CODE_8AB28C:
     lda.w #$0002                ; $8AB28C
@@ -4102,12 +4103,13 @@ CODE_8AB28C:
     jsr.w sprite_frame          ; $8AB2A2
     jsr.w $B339                 ; $8AB2A5
     bcs CODE_8AB2CE             ; $8AB2A8
-    jsr.w $B4D2                 ; $8AB2AA
-    jsr.w $B4FF                 ; $8AB2AD
-    jsr.w $B52C                 ; $8AB2B0
-    jsr.w $B559                 ; $8AB2B3
-    jsr.w $B2BC                 ; $8AB2B6
+    jsr.w password_pad_right    ; $8AB2AA
+    jsr.w password_pad_left     ; $8AB2AD
+    jsr.w password_pad_up       ; $8AB2B0
+    jsr.w password_pad_down     ; $8AB2B3
+    jsr.w password_caret_blink  ; $8AB2B6
     jmp.w $B295                 ; $8AB2B9
+password_caret_blink:
     lda.b $66                   ; $8AB2BC
     and.w #$0001                ; $8AB2BE
     bne CODE_8AB2CA             ; $8AB2C1
@@ -4246,7 +4248,7 @@ CODE_8AB470:
     lda.w #$0020                ; $8AB470
     jsr.w text_put_char         ; $8AB473
     dec.b $3A                   ; $8AB476
-    jsr.w $B644                 ; $8AB478
+    jsr.w password_caret_place  ; $8AB478
     rts                         ; $8AB47B
     sep.b #$20                  ; $8AB47C
     ldx.w #$0003                ; $8AB47E
@@ -4283,6 +4285,7 @@ CODE_8AB4CD:
     jsr.w func_8AA49E           ; $8AB4CD
     sec                         ; $8AB4D0
     rts                         ; $8AB4D1
+password_pad_right:
     lda.w #$0100                ; $8AB4D2
     and.w $000E                 ; $8AB4D5
     bne CODE_8AB4F3             ; $8AB4D8
@@ -4300,9 +4303,10 @@ CODE_8AB4F3:
     lda.w $0D88                 ; $8AB4F3
     cmp.w $0D80                 ; $8AB4F6
     bne CODE_8AB4FE             ; $8AB4F9
-    jsr.w $B586                 ; $8AB4FB
+    jsr.w password_cursor_right ; $8AB4FB
 CODE_8AB4FE:
     rts                         ; $8AB4FE
+password_pad_left:
     lda.w #$0200                ; $8AB4FF
     and.w $000E                 ; $8AB502
     bne CODE_8AB520             ; $8AB505
@@ -4320,9 +4324,10 @@ CODE_8AB520:
     lda.w $0D88                 ; $8AB520
     cmp.w $0D80                 ; $8AB523
     bne CODE_8AB52B             ; $8AB526
-    jsr.w $B5BF                 ; $8AB528
+    jsr.w password_cursor_left  ; $8AB528
 CODE_8AB52B:
     rts                         ; $8AB52B
+password_pad_up:
     lda.w #$0800                ; $8AB52C
     and.w $000E                 ; $8AB52F
     bne CODE_8AB54D             ; $8AB532
@@ -4340,9 +4345,10 @@ CODE_8AB54D:
     lda.w $0D90                 ; $8AB54D
     cmp.w $0D68                 ; $8AB550
     bne CODE_8AB558             ; $8AB553
-    jsr.w $B5E2                 ; $8AB555
+    jsr.w password_cursor_up    ; $8AB555
 CODE_8AB558:
     rts                         ; $8AB558
+password_pad_down:
     lda.w #$0400                ; $8AB559
     and.w $000E                 ; $8AB55C
     bne CODE_8AB57A             ; $8AB55F
@@ -4360,13 +4366,16 @@ CODE_8AB57A:
     lda.w $0D90                 ; $8AB57A
     cmp.w $0D68                 ; $8AB57D
     bne CODE_8AB585             ; $8AB580
-    jsr.w $B5F2                 ; $8AB582
+    jsr.w password_cursor_down  ; $8AB582
 CODE_8AB585:
     rts                         ; $8AB585
+password_cursor_right:
     lda.w $0D90                 ; $8AB586
     cmp.w #$00AC                ; $8AB589
     bne CODE_8AB596             ; $8AB58C
-    incbin !baserom:$5358E..$53596
+    lda.w $0D88                 ; $8AB58E static
+    cmp.w #$FFA4                ; $8AB591 static
+    bpl CODE_8AB5BE             ; $8AB594 static
 CODE_8AB596:
     lda.w $0D88                 ; $8AB596
     cmp.w #$003C                ; $8AB599
@@ -4387,9 +4396,10 @@ CODE_8AB5AC:
     sta.w $0D78                 ; $8AB5BB
 CODE_8AB5BE:
     rts                         ; $8AB5BE
+password_cursor_left:
     lda.w $0D88                 ; $8AB5BF
     cmp.w #$0064                ; $8AB5C2
-    db $F0,$0D ; beq            ; $8AB5C5
+    beq CODE_8AB5D4             ; $8AB5C5
     cmp.w #$FF8C                ; $8AB5C7
     beq CODE_8AB5D3             ; $8AB5CA
     sec                         ; $8AB5CC
@@ -4397,7 +4407,14 @@ CODE_8AB5BE:
     sta.w $0D88                 ; $8AB5D0
 CODE_8AB5D3:
     rts                         ; $8AB5D3
-    incbin !baserom:$535D4..$535E2
+CODE_8AB5D4:
+    sec                         ; $8AB5D4 static
+    sbc.w #$0028                ; $8AB5D5 static
+    sta.w $0D88                 ; $8AB5D8 static
+    lda.w #$0006                ; $8AB5DB static
+    sta.w $0D78                 ; $8AB5DE static
+    rts                         ; $8AB5E1 static
+password_cursor_up:
     lda.w $0D90                 ; $8AB5E2
     cmp.w #$0064                ; $8AB5E5
     beq CODE_8AB5F1             ; $8AB5E8
@@ -4406,6 +4423,7 @@ CODE_8AB5D3:
     sta.w $0D90                 ; $8AB5EE
 CODE_8AB5F1:
     rts                         ; $8AB5F1
+password_cursor_down:
     lda.w $0D90                 ; $8AB5F2
     cmp.w #$0094                ; $8AB5F5
     bne CODE_8AB602             ; $8AB5F8
@@ -4421,6 +4439,7 @@ CODE_8AB602:
     sta.w $0D90                 ; $8AB60E
 CODE_8AB611:
     rts                         ; $8AB611
+password_lines_print:
     stz.b $68                   ; $8AB612
     lda.w #$000D                ; $8AB614
     sta.b $3C                   ; $8AB617
@@ -4442,6 +4461,7 @@ CODE_8AB611:
     lda.w #$C553                ; $8AB63D
     jsr.w text_print_centered   ; $8AB640
     rts                         ; $8AB643
+password_caret_place:
     lda.b $3A                   ; $8AB644
     asl a                       ; $8AB646
     asl a                       ; $8AB647
@@ -4854,10 +4874,10 @@ CODE_8ABB15:
     and.w #$00FF                ; $8ABB36
     tay                         ; $8ABB39
     lda.b $48                   ; $8ABB3A
-    jsr.w $B152                 ; $8ABB3C
+    jsr.w asl_n                 ; $8ABB3C
     sta.b $48                   ; $8ABB3F
     lda.b $46                   ; $8ABB41
-    jsr.w $B152                 ; $8ABB43
+    jsr.w asl_n                 ; $8ABB43
     eor.w #$FFFF                ; $8ABB46
     sta.b $46                   ; $8ABB49
     lda.b [$42]                 ; $8ABB4B

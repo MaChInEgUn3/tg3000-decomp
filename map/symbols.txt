@@ -8,6 +8,18 @@ func    8083FC   vram_queue_push     ; queue a VRAM DMA transfer -> src/vram_que
 func    8088B9   vram_queue_drain    ; NMI part that sends queued transfers within the budget $2C (in nmi_prologue's row) -> src/vram_queue.c
 func    8AA25D   take_slot           ; Y = word at D+$8C, then += 2 -> src/util.c
 func    8AB15E   lsr_n               ; A >>= Y, one bit at a time -> src/util.c
+func    8AB152   asl_n               ; A <<= Y, one bit at a time (Y kept) -> src/util.c
+func    8AB2BC   password_caret_blink ; the caret shown while D+$66 is odd ($0578) -> src/password.c
+func    8AB4D2   password_pad_right  ; right on any pad: the grid cursor one place right -> src/password.c
+func    8AB4FF   password_pad_left   ; left on any pad: one place left -> src/password.c
+func    8AB52C   password_pad_up     ; up on any pad: one place up -> src/password.c
+func    8AB559   password_pad_down   ; down on any pad: one place down -> src/password.c
+func    8AB586   password_cursor_right ; the grid cursor one place right ($0D88) -> src/password.c
+func    8AB5BF   password_cursor_left ; the grid cursor one place left -> src/password.c
+func    8AB5E2   password_cursor_up  ; the grid cursor one row up ($0D90) -> src/password.c
+func    8AB5F2   password_cursor_down ; the grid cursor one row down -> src/password.c
+func    8AB612   password_lines_print ; the password screen's four lines of text -> src/password.c
+func    8AB644   password_caret_place ; the caret under text cell D+$3A, D+$3C -> src/password.c
 ram     7E0028   vram_queue_head     ; byte offset, even, $00-$3E
 ram     7E002A   vram_queue_tail
 ram     7E1900   vram_queue_size     ; 32 words each: size, src, bank, dest

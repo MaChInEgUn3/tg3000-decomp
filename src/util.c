@@ -14,6 +14,17 @@ uint16_t lsr_n(uint16_t value, uint16_t count, bool* carry) {
   return value;
 }
 
+// TG3000_ROUTINE($8A:B152) asl_n
+uint16_t asl_n(uint16_t value, uint16_t count, bool* carry) {
+  bool out = true;
+  for(; count != 0; count--) {
+    out = (value & 0x8000) != 0;
+    value = (uint16_t)(value << 1);
+  }
+  *carry = out;
+  return value;
+}
+
 // TG3000_ROUTINE($8A:A25D) take_slot
 //
 // The original's counter is at D+$8C; its callers then fill per-object tables at

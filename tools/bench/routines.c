@@ -27,6 +27,7 @@
 #include "track.h"
 #include "stars.h"
 #include "text.h"
+#include "password.h"
 #include "tg3000.h"
 #include "util.h"
 #include "video_dma.h"
@@ -95,6 +96,16 @@ static void call_lsr_n(const Regs* in, Regs* out) {
 static void fuzz_lsr_n(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)ram;
   r->y = rnd() % 20;  // includes 0 and counts beyond 16
+}
+
+// ---- asl_n ($8A:B152) ----  Y kept (its PLY: N/Z of Y), C the last bit out (or set by the
+// CPY #0 with no shift), V kept
+static void call_asl_n(const Regs* in, Regs* out) {
+  bool carry;
+  out->a = asl_n(in->a, in->y, &carry);
+  out->y = in->y;
+  out->c = carry;
+  setNZ16(out, in->y);
 }
 
 // ---- inverse_scale ($80:F709) ----
@@ -6247,6 +6258,175 @@ static void call_shop_buy(const Regs* in, Regs* out, uint16_t field, uint16_t he
       break;
   }
 }
+// ---- the password screen's grid cursor ($8A:B4D2-B611), caret and lines ----  each exit is
+// modelled from the state before the call: A and the flags of the path's last LDA/CMP/ADC/SBC
+// (V kept where none of them ran)
+static bool pwNotBelow(uint16_t a, uint16_t b) { return !((uint16_t)(a - b) & 0x8000); }
+static void pwCmpExit(Regs* out, uint16_t a, uint16_t b) {  // a CMP that ended the path
+  out->a = a;
+  setNZ16(out, (uint16_t)(a - b));
+  out->c = a >= b;
+}
+static void pwRightExit(Regs* out, uint16_t x, uint16_t y) {
+  if(y == 0x00AC && pwNotBelow(x, 0xFFA4)) { pwCmpExit(out, x, 0xFFA4); return; }
+  if(!pwNotBelow(x, 0x003C)) { out->a = 6; setNZ16(out, 6); setAdc16(out, x, 0x10); return; }
+  if(x == 0x0064) { pwCmpExit(out, x, 0x0064); return; }
+  out->a = 0x26;
+  setNZ16(out, 0x26);
+  setAdc16(out, x, 0x28);
+}
+static void pwLeftExit(Regs* out, uint16_t x) {
+  if(x == 0x0064) { out->a = 6; setNZ16(out, 6); setSbc16(out, x, 0x28); return; }
+  if(x == 0xFF8C) { pwCmpExit(out, x, 0xFF8C); return; }
+  out->a = (uint16_t)(x - 0x10);
+  setNZ16(out, out->a);
+  setSbc16(out, x, 0x10);
+}
+static void pwUpExit(Regs* out, uint16_t y) {
+  if(y == 0x0064) { pwCmpExit(out, y, 0x0064); return; }
+  out->a = (uint16_t)(y - 0x18);
+  setNZ16(out, out->a);
+  setSbc16(out, y, 0x18);
+}
+static void pwDownExit(Regs* out, uint16_t x, uint16_t y) {
+  if(y == 0x0094 && pwNotBelow(x, 0xFFB4)) { pwCmpExit(out, x, 0xFFB4); return; }
+  if(y == 0x00AC) { pwCmpExit(out, y, 0x00AC); return; }
+  out->a = (uint16_t)(y + 0x18);
+  setNZ16(out, out->a);
+  setAdc16(out, y, 0x18);
+}
+static void call_password_cursor_right(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t x = rd16(0x0D88), y = rd16(0x0D90);
+  password_cursor_right();
+  pwRightExit(out, x, y);
+}
+static void call_password_cursor_left(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t x = rd16(0x0D88);
+  password_cursor_left();
+  pwLeftExit(out, x);
+}
+static void call_password_cursor_up(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t y = rd16(0x0D90);
+  password_cursor_up();
+  pwUpExit(out, y);
+}
+static void call_password_cursor_down(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t x = rd16(0x0D88), y = rd16(0x0D90);
+  password_cursor_down();
+  pwDownExit(out, x, y);
+}
+// a pad handler: no press, the last AND (A = 0: Z); the cursor moving, the CMP of where it
+// goes against where it is; else the step's exit
+static int pwPadState(uint16_t button, uint16_t to, uint16_t at) {
+  if(!(rd16(0x000E) & button) && !(rd16(0x0012) & button) && !(rd16(0x0016) & button) && !(rd16(0x001A) & button))
+    return 0;
+  return rd16(to) == rd16(at) ? 2 : 1;
+}
+static void pwPadExit(Regs* out, int state, uint16_t to, uint16_t at) {
+  if(state == 0) {
+    out->a = 0;
+    setNZ16(out, 0);
+  } else {
+    pwCmpExit(out, to, at);
+  }
+}
+static void call_password_pad_right(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t x = rd16(0x0D88), y = rd16(0x0D90), at = rd16(0x0D80);
+  const int s = pwPadState(0x0100, 0x0D88, 0x0D80);
+  password_pad_right();
+  if(s == 2) pwRightExit(out, x, y);
+  else pwPadExit(out, s, x, at);
+}
+static void call_password_pad_left(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t x = rd16(0x0D88), at = rd16(0x0D80);
+  const int s = pwPadState(0x0200, 0x0D88, 0x0D80);
+  password_pad_left();
+  if(s == 2) pwLeftExit(out, x);
+  else pwPadExit(out, s, x, at);
+}
+static void call_password_pad_up(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t y = rd16(0x0D90), at = rd16(0x0D68);
+  const int s = pwPadState(0x0800, 0x0D90, 0x0D68);
+  password_pad_up();
+  if(s == 2) pwUpExit(out, y);
+  else pwPadExit(out, s, y, at);
+}
+static void call_password_pad_down(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t x = rd16(0x0D88), y = rd16(0x0D90), at = rd16(0x0D68);
+  const int s = pwPadState(0x0400, 0x0D90, 0x0D68);
+  password_pad_down();
+  if(s == 2) pwDownExit(out, x, y);
+  else pwPadExit(out, s, y, at);
+}
+// the cursor on the grid (three in four) or anywhere; where it is: where it goes, or not
+static uint16_t pwGridX(uint32_t (*rnd)(void)) {
+  const uint32_t k = rnd() % 16;
+  return k < 12 ? (uint16_t)(0xFF8C + 0x10 * k) : k < 14 ? 0x0064 : (uint16_t)rnd();
+}
+static uint16_t pwGridY(uint32_t (*rnd)(void)) {
+  const uint32_t k = rnd() % 6;
+  return k < 4 ? (uint16_t)(0x0064 + 0x18 * k) : (uint16_t)rnd();
+}
+static void fuzz_password_cursor(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  const uint16_t x = pwGridX(rnd), y = pwGridY(rnd);
+  wr16ram(ram, 0x0D88, x);
+  wr16ram(ram, 0x0D90, y);
+  wr16ram(ram, 0x0D80, (rnd() & 3) ? x : (uint16_t)rnd());
+  wr16ram(ram, 0x0D68, (rnd() & 3) ? y : (uint16_t)rnd());
+  wr16ram(ram, 0x0D78, (uint16_t)rnd());
+  for(uint32_t a = 0x000E; a <= 0x001A; a += 4)  // the four pads' new presses: a direction one time in four
+    wr16ram(ram, a, (rnd() & 3) == 0 ? (uint16_t)(0x0100 << (rnd() % 4)) : (uint16_t)(rnd() & 0xF0FF));
+}
+static void call_password_caret_place(const Regs* in, Regs* out) {
+  (void)in;
+  password_caret_place();
+  const uint16_t row = (uint16_t)(rd16(DP + 0x3C) << 3);
+  out->a = (uint16_t)(row + 0x0F);
+  setNZ16(out, out->a);
+  setAdc16(out, row, 0x0F);
+}
+static void fuzz_password_caret_place(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x3A, (rnd() & 3) ? (uint16_t)(rnd() % 32) : (uint16_t)rnd());
+  wr16ram(ram, DP + 0x3C, (rnd() & 3) ? (uint16_t)(rnd() % 32) : (uint16_t)rnd());
+}
+// odd: the AND #1 (A = 1); even: LDA #$FFFF
+static void call_password_caret_blink(const Regs* in, Regs* out) {
+  (void)in;
+  password_caret_blink();
+  out->a = (rd16(DP + 0x66) & 1) ? 1 : 0xFFFF;
+  setNZ16(out, out->a);
+}
+static void fuzz_password_caret_blink(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x66, (uint16_t)rnd());
+}
+// the last text_print_centered's exit (as its adapter models it), X kept
+static void call_password_lines_print(const Regs* in, Regs* out) {
+  password_lines_print();
+  out->y = rd16(DP + 0x5A);
+  const uint16_t f = rd16(DP + 0x86);
+  out->a = f ? f : ((rd16(DP + 0x5A) & 1) ? 4 : 0);
+  setNZ16(out, in->x);
+  const uint16_t half = (uint16_t)((rd16(DP + 0x40) - rd16(DP + 0x3E)) >> 1);
+  if(f) setAdc16(out, (uint16_t)(half - rd16(DP + 0x46)), rd16(DP + 0x3E));
+  else setSbc16(out, rd16(DP + 0x3C), 10);
+}
+static void fuzz_password_lines_print(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  const uint16_t a = r->a;
+  fuzz_text_print_centered(r, ram, rnd);
+  r->a = a;  // the strings are the ROM's
+}
+
 // lists 6-8: as lists 2-5
 static void call_shop_buy_upgrade(const Regs* in, Regs* out, uint16_t field) {
   ShopMoneyFlags f = {in->c, in->v};
@@ -9686,6 +9866,31 @@ const Routine routines[] = {
    .fuzz = fuzz_vram_queue_push},
   {.name = "take_slot", .entry = 0x8AA25D, .end = 0x8AA264, .source = "src/util.c",
    .needM16 = true, .needX16 = true, .call = call_take_slot, ALL_OUTPUTS, .fuzz = fuzz_take_slot},
+  {.name = "asl_n", .entry = 0x8AB152, .end = 0x8AB15E, .source = "src/util.c",
+   .needM16 = true, .needX16 = true, .call = call_asl_n, ALL_OUTPUTS, .fuzz = fuzz_lsr_n},
+  {.name = "password_pad_right", .entry = 0x8AB4D2, .end = 0x8AB4FF, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_password_pad_right, ALL_OUTPUTS, .fuzz = fuzz_password_cursor},
+  {.name = "password_pad_left", .entry = 0x8AB4FF, .end = 0x8AB52C, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_password_pad_left, ALL_OUTPUTS, .fuzz = fuzz_password_cursor},
+  {.name = "password_pad_up", .entry = 0x8AB52C, .end = 0x8AB559, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_password_pad_up, ALL_OUTPUTS, .fuzz = fuzz_password_cursor},
+  {.name = "password_pad_down", .entry = 0x8AB559, .end = 0x8AB586, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_password_pad_down, ALL_OUTPUTS, .fuzz = fuzz_password_cursor},
+  {.name = "password_cursor_right", .entry = 0x8AB586, .end = 0x8AB5BF, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_password_cursor_right, ALL_OUTPUTS, .fuzz = fuzz_password_cursor},
+  {.name = "password_cursor_left", .entry = 0x8AB5BF, .end = 0x8AB5E2, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_password_cursor_left, ALL_OUTPUTS, .fuzz = fuzz_password_cursor},
+  {.name = "password_cursor_up", .entry = 0x8AB5E2, .end = 0x8AB5F2, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_password_cursor_up, ALL_OUTPUTS, .fuzz = fuzz_password_cursor},
+  {.name = "password_cursor_down", .entry = 0x8AB5F2, .end = 0x8AB612, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_password_cursor_down, ALL_OUTPUTS, .fuzz = fuzz_password_cursor},
+  {.name = "password_lines_print", .entry = 0x8AB612, .end = 0x8AB644, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_lines_print, ALL_OUTPUTS,
+   .fuzz = fuzz_password_lines_print},
+  {.name = "password_caret_place", .entry = 0x8AB644, .end = 0x8AB659, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_password_caret_place, ALL_OUTPUTS, .fuzz = fuzz_password_caret_place},
+  {.name = "password_caret_blink", .entry = 0x8AB2BC, .end = 0x8AB2CE, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_password_caret_blink, ALL_OUTPUTS, .fuzz = fuzz_password_caret_blink},
   {.name = "lsr_n", .entry = 0x8AB15E, .end = 0x8AB168, .source = "src/util.c",
    .needM16 = true, .needX16 = true, .call = call_lsr_n, ALL_OUTPUTS, .fuzz = fuzz_lsr_n},
   {.name = "inverse_scale", .entry = 0x80F709, .end = 0x80F745, .source = "src/scale.c",
