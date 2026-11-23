@@ -1,13 +1,14 @@
 #!/bin/sh
 # Re-run the differential test for every registered routine over the full autopilot movie
-# (which starts with race1.txt) and over the three explored movies, and rewrite
-# map/verified.txt from scratch (tools/merge_verified.py joins them). Needs the ROM.
+# (which starts with race1.txt), over the three explored movies and the INFODATA movie, and
+# rewrite map/verified.txt from scratch (tools/merge_verified.py joins them). Needs the ROM.
 # Run it whenever src/, tools/bench/routines.c or tools/bench/difftest.c changes; CI
 # (progress.py --check) rejects verified rows whose inputs changed.
 #
 # Each movie's rows run as parallel slices (bench --difftest-shard K/N, contiguous, so
 # the joined results keep the registry's order): TG3000_SHARDS slices of the 60k movie
-# (default 5) and two each of the shop, shop-buy and password movies, beside the negative rows. A slice still runs its
+# (default 5), two each of the shop, shop-buy and password movies and one of the INFODATA
+# movie, beside the negative rows. A slice still runs its
 # whole movie; a waiting row nested in another one's sample is sampled when the outer row
 # is in another slice, so live counts can differ from a single run.
 set -eu
@@ -25,6 +26,7 @@ status=0
 shopframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_shop.txt)
 buyframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_buy.txt)
 pwframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_pw.txt)
+infoframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/code_infodata.txt)
 # every deliberately wrong C must fail over the same movie (in parallel): the selftest's
 # short movie does not reach them all
 build/bench/bench "$rom" 60000 --movie tools/bench/movies/autopilot_60k.txt \
@@ -59,6 +61,10 @@ while [ $k -lt $pwshards ]; do
   pids="$pids $!:pw$k"
   k=$((k + 1))
 done
+# the INFODATA movie (explore-4): short, one slice
+build/bench/bench "$rom" "$infoframes" --movie tools/bench/movies/code_infodata.txt \
+  --difftest "$tmp/info.txt" --fuzz 500 > "$tmp/info.log" 2>&1 &
+pids="$pids $!:info"
 for p in $pids; do
   pid=${p%%:*}
   name=${p#*:}
@@ -87,11 +93,11 @@ while [ $k -lt $buyshards ]; do tail -n +2 "$tmp/buy$k.txt" >> "$tmp/buy.txt"; k
 head -n 1 "$tmp/pw0.txt" > "$tmp/pw.txt"
 k=0
 while [ $k -lt $pwshards ]; do tail -n +2 "$tmp/pw$k.txt" >> "$tmp/pw.txt"; k=$((k + 1)); done
-python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt"
+python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt"
 # the verdict: a routine the merge failed (its per-movie lines show why)
 failed=$(awk '!/^#/ && $8 == "failed" {print $2}' map/verified.txt)
 if [ -n "$failed" ]; then
-  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp"/main*.log "$tmp"/shop*.log "$tmp"/buy*.log "$tmp"/pw*.log >&2 || true; done
+  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp"/main*.log "$tmp"/shop*.log "$tmp"/buy*.log "$tmp"/pw*.log "$tmp"/info.log >&2 || true; done
   echo "verify_all: failed after pooling the movies: $(echo $failed | tr ' ' ',')" >&2
   status=4
 fi

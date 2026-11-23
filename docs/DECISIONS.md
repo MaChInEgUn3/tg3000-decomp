@@ -2284,6 +2284,34 @@ password screen, a skipped track's bonus.
   samples, all paths, 500 fuzz cases each). `_9` (TAS only) and `_10` (no run) are
   unreached. Both dispatches pass on the three shop movies. Full gate.
 
+## The INFODATA movie (explore-4, 2026-11-23)
+
+- **The password screen checks codes.** When a password does not decode, `$8A:B35B`
+  compares the text with 17 strings at `$8A:CDAB`, stored with `XOR $9A`, and jumps to the
+  matching code's handler:
+  - 13 star names (`MERAK` ... `KRAZ`) set the track `$0444` (0 ... `$2A`);
+  - `DISPLAY CREDITS` sets `$03DC` bit 15;
+  - `MICK4CLAUDIA`, `MICKSMELANIE` and `INFODATA` set `$03E2` bits 0, 1 and 2;
+  - `RELAX` runs a mosaic and another screen.
+  - No run reached any of them, not even the TAS.
+- **`tools/bench/movies/code_infodata.txt`** (11,500 steps) is the fifth movie of
+  `verify_all` (one slice) and `verify_new`. It is built from parts that already work:
+  - `explore_pw.txt`'s way to the password screen;
+  - `INFODATA` typed with `tools/password_movie.py`, then EXIT. The game sets `$03E2`
+    bit 2 and goes back to the menu, cursor on PASSWORD;
+  - Up x3 to 1 PLAYER FULL, A, then `race1.txt`'s way into a race, shifted;
+  - Start (`S`; `s` is Select) to pause, and Start again.
+- **It runs what nothing did:**
+  - the codes' check and INFODATA's handler (`$8A:AC013`);
+  - the race loop's `$03E2` bit 2 path (`$82:86C6`);
+  - `race_pause`'s `$03E2` bit 2 path (`$82:8860-886D`). That hole is gone; the quit stays
+    a hole.
+- **Its coverage is in the map:** code grows from 71,889 to 72,062 bytes. Five static
+  ranges it executes left `map/static_code.txt`.
+- **Next:** port the codes' check, the handlers' simple cases, and the race loop's new
+  path once its row exists.
+- **Gate:** the full one.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

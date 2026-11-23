@@ -332,7 +332,10 @@ CODE_8286BE:
     lda.w $03E2                 ; $8286BE
     bit.w #$0004                ; $8286C1
     beq CODE_8286D1             ; $8286C4
-    incbin !baserom:$106C6..$106D1
+    lda.w #$2000                ; $8286C6
+    trb.w $000E                 ; $8286C9
+    beq CODE_8286D1             ; $8286CC
+    incbin !baserom:$106CE..$106D1
 CODE_8286D1:
     stz.w $00BA                 ; $8286D1
     stx.w $1E9E                 ; $8286D4
@@ -424,7 +427,12 @@ race_pause:
     lda.w $03E2                 ; $828858
     bit.w #$0004                ; $82885B
     beq CODE_82886E             ; $82885E
-    incbin !baserom:$10860..$1086E
+    ldx.w #$8000                ; $828860
+    lda.w $1E94                 ; $828863
+    bpl CODE_82886B             ; $828866
+    ldx.w $047B                 ; $828868
+CODE_82886B:
+    stx.w $1E94                 ; $82886B
 CODE_82886E:
     lda.l $7E4E4D               ; $82886E
     pha                         ; $828872
@@ -2278,8 +2286,8 @@ CODE_82B561:
     lda.l $308000               ; $82B56B
     bit.w $1E94                 ; $82B56F
     bmi CODE_82B578             ; $82B572
-    lda.w $1E94                 ; $82B574 static
-    inc a                       ; $82B577 static
+    lda.w $1E94                 ; $82B574
+    inc a                       ; $82B577
 CODE_82B578:
     ldx.w #$0000                ; $82B578
     cmp.w #$03E8                ; $82B57B

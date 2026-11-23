@@ -3708,30 +3708,30 @@ func_8AA381:
     bne CODE_8AA3F4             ; $8AA3BF
     rts                         ; $8AA3C1
 CODE_8AA3C2:
-    lda.b $4A                   ; $8AA3C2 static
-    pha                         ; $8AA3C4 static
-    phy                         ; $8AA3C5 static
-    ldy.w #$0000                ; $8AA3C6 static
-    dec.b $4A                   ; $8AA3C9 static
-    dec.b $4A                   ; $8AA3CB static
-    lda.b ($4A),y               ; $8AA3CD static
-    cmp.w #$FFFF                ; $8AA3CF static
-    beq CODE_8AA3EF             ; $8AA3D2 static
-    lda.w $1516,x               ; $8AA3D4 static
-    and.w #$FFBE                ; $8AA3D7 static
-    sta.w $1516,x               ; $8AA3DA static
-    lda.w $1514,x               ; $8AA3DD static
-    ora.w #$0041                ; $8AA3E0 static
-    sta.w $1514,x               ; $8AA3E3 static
-    stz.b $64                   ; $8AA3E6 static
-    stz.b $66                   ; $8AA3E8 static
-    stz.b $6E                   ; $8AA3EA static
-    jsr.w func_8AA48D           ; $8AA3EC static
+    lda.b $4A                   ; $8AA3C2
+    pha                         ; $8AA3C4
+    phy                         ; $8AA3C5
+    ldy.w #$0000                ; $8AA3C6
+    dec.b $4A                   ; $8AA3C9
+    dec.b $4A                   ; $8AA3CB
+    lda.b ($4A),y               ; $8AA3CD
+    cmp.w #$FFFF                ; $8AA3CF
+    beq CODE_8AA3EF             ; $8AA3D2
+    lda.w $1516,x               ; $8AA3D4
+    and.w #$FFBE                ; $8AA3D7
+    sta.w $1516,x               ; $8AA3DA
+    lda.w $1514,x               ; $8AA3DD
+    ora.w #$0041                ; $8AA3E0
+    sta.w $1514,x               ; $8AA3E3
+    stz.b $64                   ; $8AA3E6
+    stz.b $66                   ; $8AA3E8
+    stz.b $6E                   ; $8AA3EA
+    jsr.w func_8AA48D           ; $8AA3EC
 CODE_8AA3EF:
-    ply                         ; $8AA3EF static
-    pla                         ; $8AA3F0 static
-    sta.b $4A                   ; $8AA3F1 static
-    rts                         ; $8AA3F3 static
+    ply                         ; $8AA3EF
+    pla                         ; $8AA3F0
+    sta.b $4A                   ; $8AA3F1
+    rts                         ; $8AA3F3
 CODE_8AA3F4:
     phy                         ; $8AA3F4
     ldy.w #$0008                ; $8AA3F5
@@ -4141,7 +4141,14 @@ CODE_8AB2CE:
     jsr.w password_decode       ; $8AB2E0
     jsr.w password_checksum_ok  ; $8AB2E3
     bcc CODE_8AB31B             ; $8AB2E6
-    incbin !baserom:$532E8..$5331B
+    jsr.w $B35B                 ; $8AB2E8
+    bcs CODE_8AB2FD             ; $8AB2EB
+    incbin !baserom:$532ED..$532FD
+CODE_8AB2FD:
+    lda.b $52                   ; $8AB2FD
+    db $D0,$01 ; bne            ; $8AB2FF
+    rts                         ; $8AB301
+    incbin !baserom:$53302..$5331B
 CODE_8AB31B:
     lda.w #$79FF                ; $8AB31B
     trb.w $03DC                 ; $8AB31E
@@ -4169,7 +4176,54 @@ password_press_a:
     bne CODE_8AB3A7             ; $8AB357
     clc                         ; $8AB359
     rts                         ; $8AB35A
-    incbin !baserom:$5335B..$533A7
+    sep.b #$20                  ; $8AB35B
+    ldx.w #$0000                ; $8AB35D
+CODE_8AB360:
+    ldy.w $CDAB,x               ; $8AB360
+    db $F0,$34 ; beq            ; $8AB363
+    sty.b $82                   ; $8AB365
+    inx                         ; $8AB367
+    inx                         ; $8AB368
+    jsr.w $B37B                 ; $8AB369
+    bcs CODE_8AB39D             ; $8AB36C
+CODE_8AB36E:
+    lda.w $CDAB,x               ; $8AB36E
+    cmp.b #$00                  ; $8AB371
+    beq CODE_8AB378             ; $8AB373
+    inx                         ; $8AB375
+    bra CODE_8AB36E             ; $8AB376
+CODE_8AB378:
+    inx                         ; $8AB378
+    bra CODE_8AB360             ; $8AB379
+    phx                         ; $8AB37B
+    ldy.w #$0000                ; $8AB37C
+CODE_8AB37F:
+    lda.w $CDAB,x               ; $8AB37F
+    beq CODE_8AB386             ; $8AB382
+    eor.b #$9A                  ; $8AB384
+CODE_8AB386:
+    cmp.w $0D40,y               ; $8AB386
+    bne CODE_8AB396             ; $8AB389
+    cmp.b #$00                  ; $8AB38B
+    beq CODE_8AB393             ; $8AB38D
+    inx                         ; $8AB38F
+    iny                         ; $8AB390
+    bra CODE_8AB37F             ; $8AB391
+CODE_8AB393:
+    plx                         ; $8AB393
+    sec                         ; $8AB394
+    rts                         ; $8AB395
+CODE_8AB396:
+    plx                         ; $8AB396
+    clc                         ; $8AB397
+    rts                         ; $8AB398
+    incbin !baserom:$53399..$5339D
+CODE_8AB39D:
+    rep.b #$20                  ; $8AB39D
+    jsr.w $B3A4                 ; $8AB39F
+    sec                         ; $8AB3A2
+    rts                         ; $8AB3A3
+    jmp.w ($0182)               ; $8AB3A4
 CODE_8AB3A7:
     jsr.w password_press_last_column; $8AB3A7
     bcs CODE_8AB3DF             ; $8AB3AA
@@ -4308,9 +4362,9 @@ CODE_8AB481:
     sec                         ; $8AB49E
     rts                         ; $8AB49F
 CODE_8AB4A0:
-    rep.b #$20                  ; $8AB4A0 static
-    clc                         ; $8AB4A2 static
-    rts                         ; $8AB4A3 static
+    rep.b #$20                  ; $8AB4A0
+    clc                         ; $8AB4A2
+    rts                         ; $8AB4A3
 password_press_last_column:
     lda.w $0D80                 ; $8AB4A4
     cmp.w #$0064                ; $8AB4A7
@@ -5178,8 +5232,8 @@ CODE_8ABD5A:
     sta.b $42                   ; $8ABD64
     cmp.b $92                   ; $8ABD66
     beq CODE_8ABD6C             ; $8ABD68
-    sec                         ; $8ABD6A static
-    rts                         ; $8ABD6B static
+    sec                         ; $8ABD6A
+    rts                         ; $8ABD6B
 CODE_8ABD6C:
     clc                         ; $8ABD6C
     rts                         ; $8ABD6D
@@ -5387,7 +5441,13 @@ CODE_8ABFFC:
     dey                         ; $8AC000
     bne CODE_8ABFFC             ; $8AC001
     rts                         ; $8AC003
-    incbin !baserom:$54004..$54024
+    incbin !baserom:$54004..$54013
+    lda.w #$0004                ; $8AC013
+    bra CODE_8AC020             ; $8AC016
+    incbin !baserom:$54018..$54020
+CODE_8AC020:
+    tsb.w $03E2                 ; $8AC020
+    rts                         ; $8AC023
 func_8AC024:
     ldy.w #$000C                ; $8AC024
 CODE_8AC027:
@@ -5538,7 +5598,7 @@ CODE_8AC174:
     ldx.w #$C224                ; $8AC174
     bit.w $1B37                 ; $8AC177
     bpl CODE_8AC17F             ; $8AC17A
-    ldx.w #$C238                ; $8AC17C static
+    incbin !baserom:$5417C..$5417F
 CODE_8AC17F:
     jsr.w text_screen_init      ; $8AC17F
     rts                         ; $8AC182

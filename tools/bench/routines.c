@@ -10916,11 +10916,11 @@ const Routine routines[] = {
    .lowWramDb = true, .fixedD = true, .call = call_timer_0d7e_tick, ALL_OUTPUTS, .fuzz = fuzz_timer_0d7e_tick},
   {.name = "text_line_put", .entry = 0x8A9B85, .end = 0x8A9BAA, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_text_line_put, ALL_OUTPUTS, .fuzz = fuzz_text_line_put},
-  // the race paused: a waiting row (it encloses wait_frames_82's samples while it waits). Two
-  // paths no movie runs: $03E2 bit 2, and quitting (L and R held: it leaves its caller)
+  // the race paused: a waiting row (it encloses wait_frames_82's samples while it waits). One
+  // path no movie runs: quitting (L and R held: it leaves its caller)
   {.name = "race_pause", .entry = 0x82884B, .end = 0x828911, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .waitsForInterrupts = true, .maxInsns = 40000000, .call = call_race_pause,
-   .compareA = true, .holes = {{0x828860, 0x82886E}, {0x8288D8, 0x8288F2}}},
+   .compareA = true, .holes = {{0x8288D8, 0x8288F2}}},  // the quit; $03E2 bit 2 runs on code_infodata.txt
   {.name = "shop_panel_frame", .entry = 0x80B149, .end = 0x80B2D2, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_panel_frame},
   {.name = "text_centred_line_at", .entry = 0x828911, .end = 0x828923, .source = "src/text.c", .needM16 = true,

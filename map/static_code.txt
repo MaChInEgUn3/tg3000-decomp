@@ -4,7 +4,6 @@
 # "static" in rom_map.txt; the listing disassembles it. CPU addresses ($80-$FF mirror).
 8A:8B9D 8A:8BB6 m16x16 ; the set-bit path of mode7_view ($8A:8B82 BNE +$19): executed by its difftest fuzz, matched by src/scale.c
 8A:A345 8A:A34C m8x16 ; func_8AA32B's bit-7 path ($8A:A343 BEQ falls into it): executed by its difftest fuzz, matched by src/misc.c
-8A:A3C2 8A:A3F4 m16x16 ; func_8AA381's bit-11 path (four BNEs at $8A:A387-$8A:A39F): executed by its difftest fuzz, matched by src/misc.c
 8A:8295 8A:82B4 m16x16 ; func_8A8290 past its first test ($8A:8292 BNE +1): executed by its difftest fuzz, matched by src/misc.c ($8A:82B4 on is its 6-word table)
 85:BC6C 85:BCAB m16x16 ; scroll_tables_build: the band for a negative $0242 ($85:BC6A BPL skips it): executed by its difftest fuzz, matched by src/scroll_tables.c
 85:BCBB 85:BCBE m16x16 ; scroll_tables_build: a zero height byte counts as $DC: same
@@ -83,7 +82,6 @@
 80:EE0D 80:EE45 m16x16 ; ticker_draw: control codes 2 (a counted repeat) and 3 (stop flag) (never run)
 80:D946 80:D94B m16x16 ; race_hud_draw: the shown speed falls by $10 at most (never run)
 80:D9A3 80:D9BC m16x16 ; race_hud_draw: the first $0700 entry's sprites when it is on screen (never run)
-8A:C17C 8A:C17F m16x16 ; text_buffer_screen: the other title string when $1B37 bit 15 is set (never run)
 80:DD7A 80:DD7F m16x16 ; scenery_build: a 6x6 block's map row for a column below $20 (never run)
 80:E929 80:E936 m16x16 ; ticker_scene_step: a negative D+$82 decays up to 0 (never run)
 80:E9A0 80:E9A3 m16x16 ; ticker_scene_step: the 9-bit row sign-extended (never run)
@@ -94,7 +92,6 @@
 83:F745 83:F748 m16x16 ; follow_car_step: nothing to follow (JMP to the RTS; never run)
 82:B518 82:B51C m16x16 ; race_hud_digits: a negative gear product made positive (never run)
 82:B548 82:B54C m16x16 ; race_hud_digits: a negative speed made positive (never run)
-82:B574 82:B578 m16x16 ; race_hud_digits: the shown speed overridden by $1E94 + 1 (never run)
 82:B580 82:B59E m16x16 ; race_hud_digits: a thousands digit (never run)
 82:B6FB 82:B71D m16x16 ; race_hud_digits: two players' blocks (never run)
 83:FB96 83:FBE2 m16x16 ; track_object_random: four of its prizes and the money add (never run)
@@ -176,12 +173,10 @@
 8A:A4AF 8A:A4BE m16x16 ; func_8AA4AF ($01FB = $12): called only on paths no movie takes (the password full, or empty on DEL): executed by the password typing rows' difftest fuzz, matched by src/misc.c
 8A:B41A 8A:B420 m8x16 ; password_type_char with the text full ($8A:B40A BEQ): executed by its difftest fuzz, matched by src/password.c
 8A:B420 8A:B43D m16x16 ; password_delete (DEL; no movie presses it): executed by password_press_last_column's difftest fuzz (its own row is unreached, so it has none), matched by src/password.c
-8A:B4A0 8A:B4A4 m8x16 ; password_no_vowel finding one ($8A:B487-B497 BEQs): executed by its difftest fuzz, matched by src/password.c
 8A:B4B4 8A:B4BE m16x16 ; password_press_last_column on DEL or SPACE: executed by its difftest fuzz, matched by src/password.c
 8A:B4C0 8A:B4CD m16x16 ; the same: SPACE typed, DEL
 8A:B3DE 8A:B3DF m16x16 ; password_press_a past the grid (its CLC before the RTS): executed by its difftest fuzz, matched by src/password.c
 8A:B3E0 8A:B3E3 m16x16 ; password_press_a off a letter's column: the same
-8A:BD6A 8A:BD6C m16x16 ; password_checksum_ok on a mismatch (SEC): executed by its difftest fuzz, matched by src/password.c
 8A:C35D 8A:C378 m16x16 ; money_skip_bonus with $03DC bit 12 (the skip bonus): executed by its difftest fuzz, matched by src/misc.c
 80:9F38 80:9F3C m16x16 ; shop_part_level_b, list 10's level getter (the $80:9EEA table's entry 10): executed by shop_level_marks' difftest fuzz (list 10), matched by src/shop.c
 80:A1A3 80:A1E4 m16x16 ; shop_item_icon_10, list 10's icon handler: executed by the dispatches' difftest fuzz (list 10), matched by src/shop.c

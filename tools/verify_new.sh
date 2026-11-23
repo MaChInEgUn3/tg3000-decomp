@@ -52,6 +52,7 @@ trap 'rm -rf "$tmp"' EXIT
 shopframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_shop.txt)
 buyframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_buy.txt)
 pwframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_pw.txt)
+infoframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/code_infodata.txt)
 # harness-12: a movie that never executes any named row's entry gives the merge no evidence;
 # it is skipped. Each movie's coverage is cached in build/cache/, keyed by the movie, the
 # emulator patch and bench.c (a stale or missing file is made again: one plain run).
@@ -66,7 +67,7 @@ PY
 mkdir -p build/cache
 covfile() { echo "build/cache/$1-$(cat "tools/bench/movies/$1.txt" tools/bench/patches/*.patch tools/bench/bench.c | sha1sum | cut -c1-16).cov"; }
 covpids=""
-for m in "autopilot_60k:60000" "explore_shop:$shopframes" "explore_buy:$buyframes" "explore_pw:$pwframes"; do
+for m in "autopilot_60k:60000" "explore_shop:$shopframes" "explore_buy:$buyframes" "explore_pw:$pwframes" "code_infodata:$infoframes"; do
   movie=${m%%:*}; cov=$(covfile "$movie")
   if [ ! -f "$cov" ]; then  # made again, side by side
     rm -f build/cache/"$movie"-*.cov
@@ -90,7 +91,7 @@ sys.exit(1)
 PY
 }
 runs=""
-for m in "main:autopilot_60k:60000" "shop:explore_shop:$shopframes" "buy:explore_buy:$buyframes" "pw:explore_pw:$pwframes"; do
+for m in "main:autopilot_60k:60000" "shop:explore_shop:$shopframes" "buy:explore_buy:$buyframes" "pw:explore_pw:$pwframes" "info:code_infodata:$infoframes"; do
   k=${m%%:*}; rest=${m#*:}; movie=${rest%%:*}; frames=${rest#*:}
   if reaches "$movie"; then runs="$runs $k:$movie:$frames"; else echo "verify_new: $movie skipped (no named row's entry runs there)"; fi
 done
