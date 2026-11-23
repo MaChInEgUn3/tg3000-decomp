@@ -184,6 +184,30 @@ index 0000000..65fae29
 +#endif
 +
 +#endif
+diff --git a/snes/ppu.c b/snes/ppu.c
+index 1ca0ec5..e981043 100644
+--- a/snes/ppu.c
++++ b/snes/ppu.c
+@@ -294,6 +294,7 @@ void ppu_runLine(Ppu* ppu, int line) {
+   memset(ppu->objPixelBuffer, 0, sizeof(ppu->objPixelBuffer));
+   if(!ppu->forcedBlank) ppu_evaluateSprites(ppu, line - 1);
+   // NOTE: if frameskipping, return here. (ppu_evaluateSprites() must run regardless)
++  if(ppu->skipRender) return;  // TG3000 bench: no picture wanted (no --dump)
+   // actual line
+   if(ppu->mode == 7) ppu_calculateMode7Starts(ppu, line);
+   layerCache[0] = layerCache[1] = layerCache[2] = layerCache[3] = -1;
+diff --git a/snes/ppu.h b/snes/ppu.h
+index 072795b..b252284 100644
+--- a/snes/ppu.h
++++ b/snes/ppu.h
+@@ -127,6 +127,7 @@ struct Ppu {
+   // pixel buffer (xbgr)
+   // times 2 for even and odd frame
+   uint8_t pixelBuffer[512 * 4 * 239 * 2];
++  bool skipRender;  // TG3000 bench: skip drawing the lines (not part of the state)
+ };
+ 
+ Ppu* ppu_init(Snes* snes);
 diff --git a/snes/snes.c b/snes/snes.c
 index 7af76fe..c52a795 100644
 --- a/snes/snes.c

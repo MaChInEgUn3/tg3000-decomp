@@ -2179,6 +2179,42 @@ password screen, a skipped track's bonus.
   pinned states.
 - **Gate:** incremental.
 
+## The gate made faster (harness-11, 2026-11-23)
+
+- **Why.** About nine hours of 2026-11-23 were gate wall time: full gates took 2,500-2,700
+  s and incremental ones about 1,000 s, even for one row. The owner asked for a faster
+  pace ("a gente diminuiu o ritmo ao extremo só fazer testes"). They also said the gate
+  rules were mine to set ("as regras foram você mesmo quem definiu"); these choices are
+  mine, made with the advisor.
+- **Measured first** (race1 movie, 9,450 frames, one process):
+  - plain emulation took 84 s. The profile (`gprof`) put about 67% in the PPU drawing
+    pixels (`ppu_getPixel`, `ppu_handlePixel`, `ppu_getWindowState`);
+  - the selftest's all-rows difftest (fuzz 200) took 621 s and its negative rows 103 s:
+    with four serial emulations, that is the ~16-minute floor of every gate.
+- **What changed (no verification rule changed):**
+  - **The bench draws only for `--dump`** (or the new `--render`). LakeSnes' `ppu_runLine`
+    returns after sprite evaluation (the range and time-over flags still run), at the
+    point its own comment marks for frameskipping. `skipRender` is a new `Ppu` field, not
+    part of the state; the patch is in `tools/bench/patches/`.
+    - Emulation is 84 s → 29 s.
+    - The per-frame WRAM hashes are identical with and without drawing on race1 (9,450
+      frames) and on the password movie (29,000).
+  - **Two per-instruction scans of the whole row table** in `difftest.c` now look only
+    where needed:
+    - `checkEntries` first tests a bitmap of the rows' entry PCs;
+    - `watchAll` steps a list of the active flag watches. A watch is only deactivated
+      inside its own step there, so it leaves the list at once and cannot be listed twice.
+    - With the drawing change, race1's all-rows difftest is 621 s → 199 s, and its result
+      file is identical but for the hash column.
+  - **`selftest.sh`:** steps 1-3 run side by side, and the all-rows difftest runs in
+    `SELFTEST_SHARDS` slices (default 6). The selftest went from ~1,000 s to 149 s.
+    - `SELFTEST_DIFFTEST=0` skips the rows (34 s). The full gate uses it: `verify_all`
+      runs every row with fuzz 500, and the negative rows. All 287 rows race1 reaches are
+      verified over the four movies.
+    - The full gate runs the selftest beside `verify_all`, not after it.
+- **Check:** the full gate. Its `map/verified.txt` must equal the last one's in every field
+  but the hash and the full-run line. Its wall time is recorded below.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

@@ -389,11 +389,12 @@ static void dumpFrame(const char* dir) {
 
 int main(int argc, char** argv) {
   if(argc < 2) {
-    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--dsp4-log FILE] [--hashes FILE] [--coverage FILE] [--load-state FILE] [--save-state FILE] [--wram-dump FILE] [--autopilot STEP] [--record FILE] [--difftest RESULTS] [--difftest-negative] [--fuzz N] [--census FILE] [--hdma-report FILE] [--apu-report FILE] [--state-test N]\n", argv[0]);
+    fprintf(stderr, "usage: %s ROM [frames] [--movie FILE] [--dump DIR] [--every N] [--render] [--dsp4-log FILE] [--hashes FILE] [--coverage FILE] [--load-state FILE] [--save-state FILE] [--wram-dump FILE] [--autopilot STEP] [--record FILE] [--difftest RESULTS] [--difftest-negative] [--fuzz N] [--census FILE] [--hdma-report FILE] [--apu-report FILE] [--state-test N]\n", argv[0]);
     return 2;
   }
   const char* romPath = argv[1];
   const char* dumpDir = NULL;
+  bool render = false;
   FILE* hashes = NULL;
   int stateTest = 0;
   const char* coveragePath = NULL;
@@ -479,6 +480,8 @@ int main(int argc, char** argv) {
       stateTest = atoi(argv[++i]);
     } else if(strcmp(argv[i], "--movie") == 0 && i + 1 < argc) {
       if(!loadMovie(argv[++i])) return 1;
+    } else if(strcmp(argv[i], "--render") == 0) {
+      render = true;
     } else if(strcmp(argv[i], "--dump") == 0 && i + 1 < argc) {
       dumpDir = argv[++i];
     } else if(strcmp(argv[i], "--every") == 0 && i + 1 < argc) {
@@ -493,6 +496,9 @@ int main(int argc, char** argv) {
   if(rom == NULL) { perror(romPath); return 1; }
 
   snes = snes_init();
+  // the picture is drawn only when it is dumped (or --render): nothing else reads it, and
+  // drawing is most of the emulation's time (bench-5)
+  snes->ppu->skipRender = dumpDir == NULL && !render;
   if(!snes_loadRom(snes, rom, size)) { fprintf(stderr, "ROM did not load\n"); return 1; }
   if(snes->cart->type != 5) { fprintf(stderr, "ROM was not detected as DSP-4 (type %d)\n", snes->cart->type); return 1; }
   if(snes->cart->romSize != 0x100000) { fprintf(stderr, "expected a 1 MB ROM\n"); return 1; }

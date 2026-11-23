@@ -685,6 +685,7 @@ typedef struct {
   struct { uint16_t sp; uint8_t shadow; } php[4];
 } Watch;
 static Watch* watches;
+static void watchStart(int idx);  // (below, with the active-watch list)
 
 static uint32_t norm(uint32_t adr) {  // ROM banks $00-$3F/$40-$7D -> $80+ mirror
   uint8_t bank = adr >> 16;
@@ -1201,7 +1202,7 @@ static void finishSample(int k, const Cpu* cpu) {
     // not compared, but its caller's use of the flags is the same (harness-6): watch it
     Watch* w = &watches[idx];
     if(!fuzzing && !w->active) {
-      *w = (Watch){true, FN | FV | FZ | FC, 0, cpu_interruptCount, -1};
+      watchStart(idx);
       s->watched++;
     }
     return;
@@ -1261,7 +1262,7 @@ static void finishSample(int k, const Cpu* cpu) {
   }
   Watch* w = &watches[idx];
   if(!fuzzing && !w->active) {  // watch which flags the caller goes on to read
-    *w = (Watch){true, FN | FV | FZ | FC, 0, cpu_interruptCount, -1};
+    watchStart(idx);
     s->watched++;
   }
   if(replaying) { if(ok) s->replayPass++; else s->replayFail++; }
@@ -1350,6 +1351,15 @@ static uint8_t peekByte(uint32_t adr) {
   return 0xEA;  // unknown: treat as NOP (reads and writes no flag)
 }
 
+// The rows whose watch is active (harness-11: watchAll steps these, not the whole table). A
+// row is added when its watch starts; it leaves the list when watchAll finds it inactive.
+static int* activeWatches;
+static int activeWatchCount;
+static void watchStart(int idx) {
+  watches[idx] = (Watch){true, FN | FV | FZ | FC, 0, cpu_interruptCount, -1};
+  activeWatches[activeWatchCount++] = idx;
+}
+
 static void resolveFlags(int idx, uint8_t mask, bool live) {
   Watch* w = &watches[idx];
   Stats* s = &stats[idx];
@@ -1399,15 +1409,23 @@ static void watchAll(const Cpu* cpu, bool inHandler) {
     uint8_t p = peekByte((pc & 0xFF0000) | (uint16_t)(pc + 1));
     writes = (p & 0x80 ? FN : 0) | (p & 0x40 ? FV : 0) | (p & 0x02 ? FZ : 0) | (p & 0x01 ? FC : 0);
   }
-  for(int i = 0; i < tableCount; i++) {
+  for(int j = 0; j < activeWatchCount;) {
+    const int i = activeWatches[j];
     if(watches[i].active && (!inHandler || table[i].endAt)) watchStep(i, cpu, op, reads, writes);
+    if(!watches[i].active) activeWatches[j] = activeWatches[--activeWatchCount];  // done: off the list
+    else j++;
   }
 }
 
 // Every entry of a registered routine counts and is checked against its contract; the first
 // SAMPLE_ALL_FIRST and then one in SAMPLE_STRIDE become compared samples, nested inside
 // other samples if need be.
+// One bit per 24-bit PC: set where some row has its entry (harness-11: checkEntries scans the
+// table only there).
+static uint8_t* entryBits;
+
 static void checkEntries(Cpu* cpu, uint32_t pc, bool inHandler) {
+  if(!(entryBits[(pc & 0xFFFFFF) >> 3] & (1u << (pc & 7)))) return;
   for(int i = 0; i < tableCount; i++) {
     if(table[i].entry != pc) continue;
     if(inHandler && !table[i].rti) {  // inside a recorded handler: only handler rows
@@ -1563,6 +1581,10 @@ void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
   }
   stats = calloc(tableCount, sizeof *stats);
   watches = calloc(tableCount, sizeof *watches);
+  activeWatches = calloc((size_t)tableCount + 1, sizeof *activeWatches);
+  activeWatchCount = 0;
+  entryBits = calloc(1u << 21, 1);
+  for(int i = 0; i < tableCount; i++) entryBits[(table[i].entry & 0xFFFFFF) >> 3] |= (uint8_t)(1u << (table[i].entry & 7));
   buildNativeSites();
   for(int i = 0; i < tableCount; i++) findStarts(&table[i], &stats[i]);
 }
