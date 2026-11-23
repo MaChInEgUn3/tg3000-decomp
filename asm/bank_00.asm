@@ -2033,6 +2033,7 @@ shop_buy_colour:
     rep.b #$20                  ; $809313
     jsl.l func_80E4DB           ; $809315
     rts                         ; $809319
+shop_buy_list8:
     ldx.b $94                   ; $80931A
     lda.w $039A,x               ; $80931C
     and.w #$007F                ; $80931F
@@ -2094,6 +2095,7 @@ CODE_8093DD:
     jsr.w shop_money_store      ; $8093F5
     jsr.w shop_item_icon_settle ; $8093F8
     rts                         ; $8093FB
+shop_buy_list7:
     ldx.b $94                   ; $8093FC
     lda.w $0399,x               ; $8093FE
     and.w #$007F                ; $809401
@@ -2150,6 +2152,7 @@ CODE_8094BF:
     jsr.w shop_money_store      ; $8094D7
     jsr.w shop_item_icon_settle ; $8094DA
     rts                         ; $8094DD
+shop_buy_list6:
     ldx.b $94                   ; $8094DE
     lda.w $0398,x               ; $8094E0
     and.w #$007F                ; $8094E3

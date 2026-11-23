@@ -1884,8 +1884,28 @@ password screen, a skipped track's bonus.
   `map/static_code.txt` ranges it executes left that file (`func_80D6F3`'s negations,
   `shop_item_view_h`'s wrap, `shop_level_blocks`' full row, `track_snap`'s skip,
   `money_skip_bonus`).
-- **Gate:** the full one, over four movies; `verify_all`'s wall time is recorded below.
+- **Gate:** the full one, over four movies. It took 2,510 s (about 42 minutes) with the
+  selftest, on 8 cores.
 
+## Lists 6-8's buying (shop-19, 2026-11-23)
+
+- **Ported:** `shop_buy_list6`/`7`/`8` ($80:94DE, $80:93FC, $80:931A), one function
+  `shop_buy_upgrade` with the field 5-7. They are lists 1-5's buying, with three changes:
+  - the level byte (`$0398`/`$0399`/`$039A` + D+$94) holds the row + 1, so 0 means nothing
+    bought yet, and the part is owned when `(level & $7F) - 1` is the row;
+  - the first purchase skips the panel's rise: D+$42 = `$B4` and D+$44 = `$0F` at once
+    (no `TSB` of D+$76 bit 1), a second `func_80B58D`, then `shop_item_show_icon`;
+  - a level held from elsewhere (bit 7 of the level - 1 clear) is not sold back.
+- **Rows:** lists 6 and 8 pass on the password movie (2 and 3 samples, every path outside
+  the holes). List 7's row is unreached: only the TAS runs it. Its C is the same function.
+- **Holes, per list:** the part bought here sold back, a level held from elsewhere, the
+  money short and the panel's rise. No movie runs them, and a waiting row has no fuzz. List
+  7 also has its owned path as a hole. The rise is the same code as `shop_buy_part`'s, which
+  lists 1-5 verify; it is written apart for now (`shop_panel_rise`), so the change stays
+  additive. Making `shop_buy_part` share it waits for a unit that runs the full gate.
+- **To get rid of the holes:** a movie that buys a second part in lists 6-8 would run the
+  refund and the rise.
+- **Gate:** incremental (`verify_new.sh`): new lines in `src/` and `tools/bench/` only.
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

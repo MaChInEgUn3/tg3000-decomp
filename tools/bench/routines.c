@@ -6247,6 +6247,30 @@ static void call_shop_buy(const Regs* in, Regs* out, uint16_t field, uint16_t he
       break;
   }
 }
+// lists 6-8: as lists 2-5
+static void call_shop_buy_upgrade(const Regs* in, Regs* out, uint16_t field) {
+  ShopMoneyFlags f = {in->c, in->v};
+  switch(shop_buy_upgrade(field, &f)) {
+    case SHOP_BUY_OWNED:
+    case SHOP_BUY_BOUGHT:
+      out->n = true;
+      out->z = false;
+      out->c = true;
+      break;
+    case SHOP_BUY_REFUNDED_SHORT:
+      out->n = out->z = false;
+      out->c = f.c;
+      out->v = f.v;
+      break;
+    default:
+      setNZ16(out, rd16(DP + 0x6C));
+      out->c = false;
+      break;
+  }
+}
+static void call_shop_buy_list6(const Regs* in, Regs* out) { call_shop_buy_upgrade(in, out, 5); }
+static void call_shop_buy_list7(const Regs* in, Regs* out) { call_shop_buy_upgrade(in, out, 6); }
+static void call_shop_buy_list8(const Regs* in, Regs* out) { call_shop_buy_upgrade(in, out, 7); }
 // list 1's row ends at its JMP to the settle: owned, shop_item_show_icon's N/Z (D+$44);
 // bought, shop_money_store's (its LDA of D+$54); C set and V clear either way (the redraw's
 // last SBC #$0900 in oam_finish); short, as the others
@@ -10000,6 +10024,19 @@ const Routine routines[] = {
   {.name = "shop_buy_list3", .entry = 0x8091AE, .end = 0x80925C, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list3,
    .holes = {{0x8091E3, 0x8091EB}, {0x8091F0, 0x8091F5}}},  // as list 1's
+  // lists 6-8: the password movie buys a first part from each (and owns one in lists 6 and 8).
+  // Never run on a movie, and a waiting row has no fuzz: a part bought here sold back
+  // (first hole), a level held from elsewhere, the money short, and the panel's rise (the
+  // second); list 7's part owned (the third). The rise is shop_buy_part's, run on lists 1-5
+  {.name = "shop_buy_list8", .entry = 0x80931A, .end = 0x8093FC, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list8,
+   .holes = {{0x809345, 0x80935E}, {0x809372, 0x8093AE}}},
+  {.name = "shop_buy_list7", .entry = 0x8093FC, .end = 0x8094DE, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list7,
+   .holes = {{0x809427, 0x809440}, {0x809454, 0x809490}, {0x809409, 0x80941C}}},
+  {.name = "shop_buy_list6", .entry = 0x8094DE, .end = 0x8095C0, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list6,
+   .holes = {{0x809509, 0x809522}, {0x809536, 0x809572}}},
   {.name = "shop_buy_list4", .entry = 0x80925C, .end = 0x80930A, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list4,
    .holes = {{0x80929E, 0x8092A3}}},  // the money short with no refund (JSL shop_flag_fb, RTS): no

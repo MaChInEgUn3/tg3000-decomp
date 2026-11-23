@@ -477,3 +477,6 @@
 80F549 upload_slice_13 src/video_dma.c 066a770c26a75adc 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 066a770c26a75adc 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 066a770c26a75adc 1 500 20/20 verified live-flags:NVZC replayed:0
+80931A shop_buy_list8 src/shop.c fe09874af966303b 2 0 55/55 verified live-flags:NVZC replayed:0
+8093FC shop_buy_list7 src/shop.c fe09874af966303b 0 0 0/49 unreached live-flags:NVZC replayed:0
+8094DE shop_buy_list6 src/shop.c fe09874af966303b 3 0 55/55 verified live-flags:NVZC replayed:0

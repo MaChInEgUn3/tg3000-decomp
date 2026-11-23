@@ -288,6 +288,81 @@ void shop_buy_list4(void) { (void)shop_buy_part(3, 0x00B4, false, true, NULL); }
 // TG3000_ROUTINE($80:95C0) shop_buy_list5
 void shop_buy_list5(void) { (void)shop_buy_part(4, 0x00B4, false, true, NULL); }
 
+// Lists 6-8's buying (shop_buy_upgrade): as shop_buy_part's, with `field` 5-7 and the level byte
+// the row + 1. Their panel moves are written apart from shop_buy_part's for now (the same
+// code in the ROM, which repeats it per list).
+static void shop_panel_rise(uint16_t height) {
+  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) | 0x0002));
+  shop_item_show_icon();
+  do {
+    wait_frames(1);
+    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 6));
+    shop_money_roll();
+    shop_item_redraw();
+  } while(rd16(DP + 0x42) != height);
+}
+ShopBuyEnd shop_buy_upgrade(uint16_t field, ShopMoneyFlags* f) {
+  ShopMoneyFlags unused;
+  if(f == NULL) f = &unused;
+  const uint32_t at = 0x0393 + (uint32_t)field + rd16(DP + 0x94);
+  if((uint16_t)((rd16(at) & 0x007F) - 1) == rd16(DP + 0x4A)) {
+    func_80E4C5();
+    func_80B58D(0x80, 0xB535);
+    shop_item_show_icon();
+    shop_item_icon_settle();
+    return SHOP_BUY_OWNED;
+  }
+  shop_money_take();
+  const uint16_t level = (uint16_t)(rd16(at) & 0x00FF);
+  if(level == 0) {  // the first purchase: the panel is up at once
+    if(!shop_item_affordable()) {
+      shop_flag_fb();
+      return SHOP_BUY_SHORT;
+    }
+    func_80E4DB();
+    func_80B58D(0x80, 0xB535);
+    wr16(DP + 0x42, 0x00B4);
+    wr16(DP + 0x44, 0x000F);
+    func_80B58D(0x80, 0xB535);
+    shop_item_show_icon();
+  } else {
+    const uint16_t before = (uint16_t)(level - 1);
+    if(before & 0x0080) {  // bought here before: sold back first
+      shop_money_after_refund((uint16_t)(before & 0x007F));
+      if(!shop_item_affordable()) {
+        shop_flag_fb();
+        (void)shop_money_after_price_flags(f);
+        return SHOP_BUY_REFUNDED_SHORT;
+      }
+    } else if(!shop_item_affordable()) {
+      shop_flag_fb();
+      return SHOP_BUY_SHORT;
+    }
+    func_80E4DB();
+    func_80B58D(0x80, 0xB535);
+    shop_panel_rise(0x00B4);
+  }
+  wr8(at, (uint8_t)((uint8_t)(rd8(DP + 0x4A) + 1) | 0x80));
+  shop_item_dispatch_upload();
+  wr16(DP + 0x76, (uint16_t)(rd16(DP + 0x76) & ~0x0002));
+  shop_money_after_price();
+  do {
+    wait_frames(1);
+    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) - 6));
+    shop_money_roll();
+    shop_item_redraw();
+  } while(rd16(DP + 0x42) != 0);
+  shop_money_store();
+  shop_item_icon_settle();
+  return SHOP_BUY_BOUGHT;
+}
+// TG3000_ROUTINE($80:94DE) shop_buy_list6
+void shop_buy_list6(void) { (void)shop_buy_upgrade(5, NULL); }
+// TG3000_ROUTINE($80:93FC) shop_buy_list7
+void shop_buy_list7(void) { (void)shop_buy_upgrade(6, NULL); }
+// TG3000_ROUTINE($80:931A) shop_buy_list8
+void shop_buy_list8(void) { (void)shop_buy_upgrade(7, NULL); }
+
 // TG3000_ROUTINE($80:930A) shop_buy_colour
 void shop_buy_colour(void) {
   wr8(0x0392 + (uint32_t)rd16(DP + 0x94), rd8(DP + 0x4A));

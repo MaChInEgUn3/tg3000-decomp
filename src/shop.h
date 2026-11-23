@@ -54,6 +54,14 @@ void shop_buy_list2(void);
 void shop_buy_list3(void);
 void shop_buy_list4(void);
 void shop_buy_list5(void);
+// Lists 6-8 (shop_buy_list6-8, $80:94DE, $80:93FC, $80:931A): the same buying, with the level
+// byte at $0398/$0399/$039A + D+$94 holding the row + 1 (0: nothing bought yet; bit 7: bought
+// here). The first purchase skips the panel's rise: it is set at $B4 at once. A level held
+// from elsewhere (bit 7 clear) is not sold back.
+ShopBuyEnd shop_buy_upgrade(uint16_t field, ShopMoneyFlags* f);
+void shop_buy_list6(void);
+void shop_buy_list7(void);
+void shop_buy_list8(void);
 // $80:930A: list 0, the car's colour: $0392 + D+$94 = the row (a byte), then func_80E4DB.
 void shop_buy_colour(void);
 
