@@ -9,6 +9,10 @@ func    8088B9   vram_queue_drain    ; NMI part that sends queued transfers with
 func    8AA25D   take_slot           ; Y = word at D+$8C, then += 2 -> src/util.c
 func    8AB15E   lsr_n               ; A >>= Y, one bit at a time -> src/util.c
 func    8AB152   asl_n               ; A <<= Y, one bit at a time (Y kept) -> src/util.c
+func    8AB18C   password_hdma_off   ; a frame, then HDMA off ($420C/$420D = 0) -> src/password.c
+func    8AB197   password_hdma_on    ; a frame, then HDMA channels 1 and 7 on -> src/password.c
+func    8AB1A5   password_screen_open ; the password screen faded in (tiles, map, palettes) -> src/password.c
+func    8AB1E2   password_screen_close ; back to the menu's tiles, faded in -> src/password.c
 func    8AB2BC   password_caret_blink ; the caret shown while D+$66 is odd ($0578) -> src/password.c
 func    8AB339   password_press_a    ; A/B/X/Y on the grid: a letter typed, or the last column
 func    8AB403   password_type_char  ; a character typed into the password ($0D40, D+$80) -> src/password.c

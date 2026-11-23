@@ -2062,14 +2062,8 @@ password screen, a skipped track's bonus.
 - **`money_skip_bonus` ($8A:C355)** had C but no row. The password movie runs its entry 25
   times, with `$03DC` bit 12 clear. A fuzzer runs the bonus, the decimal adds of 75,000;
   that path is now a static range.
-- **Not ported, a harness limit:** the password screen's way in and out (`$8A:B1A5`,
-  `$8A:B1E2`) and their HDMA steps (`$8A:B18C`, `$8A:B197`).
-  - While they wait for a frame, the game's other code writes the register shadows,
-    `$420D` among them (`$80:836C`). The harness puts that write on the waiting sample, and
-    the C does not make it, so the rows fail on "byte registers written".
-  - Waiting rows elsewhere pass only because nothing writes `$420D` while they wait.
-  - Fixing it means attributing writes made on the other task's stack: a harness change,
-    left for a unit of its own.
+- **Not ported then:** the password screen's way in and out. The reason given here, a
+  harness limit with another task's `$420D` write, was wrong: see password-6.
 
 ## Second entries of the results routines (roots-114, 2026-11-23)
 
@@ -2103,6 +2097,27 @@ password screen, a skipped track's bonus.
   on every path. The full gate pools the four movies' evidence.
 - **The harness model** of `text_centred_line`'s C/V is now one function,
   `textCentredLineCV`, used by its row, `text_centred_line_at`'s and this one.
+## The password screen's way in and out (password-6, 2026-11-23)
+
+- **Ported:** `password_screen_open` ($8A:B1A5) and `password_screen_close` ($8A:B1E2),
+  with their HDMA steps `password_hdma_off`/`on` ($8A:B18C, $8A:B197).
+  - Open: fade out; the password screen's tiles (`$88:8601` to VRAM `$1000`), map and
+    palettes (`func_8ABA55`, then `$85:FA37` into colours `$60-$7F`); fade in. D+$8E is 0
+    while it loads, and `$0D7C` (the font select) counts up.
+  - Close: the same back to the menu's tiles (`$96:EE52` to VRAM `$4000`,
+    `func_8AB994`), with `$0D7C` = 0.
+- **roots-113 was wrong about them.** The extra `$420D` write is theirs, not another task's:
+  `STZ $420C` and `STA $420C` with a 16-bit A also write `$420D` (0). The C now writes it
+  too (`platform_set_rom_speed(0)`). A print in `difftest.c`, not committed, showed no
+  `$420D` write landing on the other waiting rows of that screen.
+- **Rows:** the two screen routines are waiting rows. The close has a budget (`maxInsns`
+  40M); without it, its one sample was abandoned. Each passes its one sample on the password
+  movie on every path.
+  - The HDMA steps are only called inside them, where one interrupt recorder at a time
+    hides their samples. They have no rows: their effects are compared as part of the
+    screen routines'.
+- **Gate:** the full one (new waiting rows).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

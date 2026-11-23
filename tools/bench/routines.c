@@ -6670,6 +6670,27 @@ static void fuzz_password_unpack(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->c = rnd() & 1;
 }
 
+// the screen's way in and out: waiting rows. C and V as the last wait leaves them (the ADC of
+// 1 and the frame counter: V when the count reaches $8000); N/Z of the last LDA or INC; A
+// fade_in_start's $80, kept by wait_one_frame
+static bool pwWaitV(void) { return rd16(FRAME_COUNTER) == 0x8000; }
+static void call_password_screen_open(const Regs* in, Regs* out) {
+  (void)in;
+  password_screen_open();
+  out->a = 0x0080;
+  setNZ16(out, rd16(TEXT_FONT_SEL));
+  out->c = true;
+  out->v = pwWaitV();
+}
+static void call_password_screen_close(const Regs* in, Regs* out) {
+  (void)in;
+  password_screen_close();
+  out->a = 0x0080;
+  setNZ16(out, rd16(DP + 0x8E));
+  out->c = true;
+  out->v = pwWaitV();
+}
+
 // the typing's state, with a button (A, B, X or Y one time in two) on one of the pads
 static void fuzz_password_press_a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_password_typing(r, ram, rnd);
@@ -10204,6 +10225,15 @@ const Routine routines[] = {
   {.name = "password_unpack", .entry = 0x8ABAFF, .end = 0x8ABB5C, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .db = 0x8A, .call = call_password_unpack, ALL_OUTPUTS,
    .fuzz = fuzz_password_unpack},
+  // the screen's way in and out (waiting rows). Their HDMA steps ($8A:B18C, $8A:B197) are
+  // only called inside them, where one interrupt recorder at a time hides their samples: they
+  // have no rows and are compared as part of these
+  {.name = "password_screen_open", .entry = 0x8AB1A5, .end = 0x8AB1E2, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .waitsForInterrupts = true, .call = call_password_screen_open,
+   .compareA = true},
+  {.name = "password_screen_close", .entry = 0x8AB1E2, .end = 0x8AB212, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .waitsForInterrupts = true, .maxInsns = 40000000,
+   .call = call_password_screen_close, .compareA = true},
   {.name = "password_lines_print", .entry = 0x8AB612, .end = 0x8AB644, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_lines_print, ALL_OUTPUTS,
    .fuzz = fuzz_password_lines_print},

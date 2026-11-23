@@ -3,7 +3,10 @@
 
 #include <stdbool.h>
 
+#include "frame.h"
 #include "misc.h"
+#include "platform.h"
+#include "video_dma.h"
 #include "util.h"
 #include "text.h"
 #include "tg3000.h"
@@ -225,6 +228,54 @@ void password_unpack(bool carry) {
     bus_wr16(field, (uint16_t)((bus_rd16(field) & rd16(DP + 0x46)) | rd16(DP + 0x48)));
     x = (uint16_t)(x - 6);
   } while(!(x & 0x8000));
+}
+
+// TG3000_ROUTINE($8A:B18C) password_hdma_off
+void password_hdma_off(void) {
+  wait_frames(1);
+  video_hdma_enable(0x00);
+  platform_set_rom_speed(0x00);  // the high byte of its 16-bit STZ
+}
+// TG3000_ROUTINE($8A:B197) password_hdma_on
+void password_hdma_on(void) {
+  wait_frames(1);
+  video_hdma_enable(0x82);
+  platform_set_rom_speed(0x00);  // the high byte of its 16-bit STA of $0082
+}
+
+// TG3000_ROUTINE($8A:B1A5) password_screen_open
+void password_screen_open(void) {
+  fade_out_wait();
+  password_hdma_off();
+  wipe_columns();
+  wr16(DP + 0x8E, 0);
+  wait_one_frame();
+  decompress_to_vram(DP, 0x88, 0x8601, 0x1000);
+  func_8ABA55(DP);
+  upload_cgram_now(0x60, 0x85, 0xFA37, 0x0040);
+  wipe_columns();
+  password_hdma_on();
+  fade_in_start();
+  wait_one_frame();
+  wr16(DP + 0x8E, (uint16_t)(rd16(DP + 0x8E) + 1));
+  wr16(TEXT_FONT_SEL, (uint16_t)(rd16(TEXT_FONT_SEL) + 1));
+}
+
+// TG3000_ROUTINE($8A:B1E2) password_screen_close
+void password_screen_close(void) {
+  fade_out_wait();
+  password_hdma_off();
+  wipe_columns();
+  wr16(DP + 0x8E, 0);
+  decompress_to_vram(DP, 0x96, 0xEE52, 0x4000);
+  func_8ABA55(DP);
+  func_8AB994(DP);
+  wipe_columns();
+  password_hdma_on();
+  fade_in_start();
+  wait_one_frame();
+  wr16(DP + 0x8E, (uint16_t)(rd16(DP + 0x8E) + 1));
+  wr16(TEXT_FONT_SEL, 0);
 }
 
 // TG3000_ROUTINE($8A:B612) password_lines_print

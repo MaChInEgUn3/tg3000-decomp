@@ -62,6 +62,19 @@ bool password_checksum_ok(void);
 // top (the caller's carry: clear, after password_checksum_ok).
 void password_unpack(bool carry);
 
+// The screen's way in and out ($8A:B21C runs them around its loop).
+// $8A:B18C / $8A:B197: a frame waited, then HDMA off / on (channels 1 and 7). The ROM stores a
+// 16-bit word at $420C, so $420D (the ROM speed) gets 0 too.
+void password_hdma_off(void);
+void password_hdma_on(void);
+// $8A:B1A5: the screen faded out, the password screen's tiles ($88:8601 to VRAM $1000), its
+// map and palettes (func_8ABA55, $85:FA37 into colours $60-$7F) loaded, faded in. D+$8E is
+// 0 while it loads; $0D7C (the font select) counts up.
+void password_screen_open(void);
+// $8A:B1E2: the same back to the menu's tiles ($96:EE52 to VRAM $4000, func_8AB994);
+// $0D7C = 0.
+void password_screen_close(void);
+
 // $8A:B612: the screen's four lines of text ($8A:C4F6, C515, C534, C553), centred on rows $0D,
 // $10, $13, $16 (D+$68 = 0 first).
 void password_lines_print(void);

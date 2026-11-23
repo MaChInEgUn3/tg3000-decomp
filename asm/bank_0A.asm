@@ -4002,17 +4002,20 @@ CODE_8AB167:
     inc.b $6C                   ; $8AB17D
     rts                         ; $8AB17F
     incbin !baserom:$53180..$5318C
+password_hdma_off:
     lda.w #$0001                ; $8AB18C
     jsl.l wait_frames_long      ; $8AB18F
     stz.w $420C                 ; $8AB193
     rts                         ; $8AB196
+password_hdma_on:
     lda.w #$0001                ; $8AB197
     jsl.l wait_frames_long      ; $8AB19A
     lda.w #$0082                ; $8AB19E
     sta.w $420C                 ; $8AB1A1
     rts                         ; $8AB1A4
+password_screen_open:
     jsr.w fade_out_wait         ; $8AB1A5
-    jsr.w $B18C                 ; $8AB1A8
+    jsr.w password_hdma_off     ; $8AB1A8
     jsr.w wipe_columns          ; $8AB1AB
     stz.b $8E                   ; $8AB1AE
     jsr.w wait_one_frame        ; $8AB1B0
@@ -4026,14 +4029,15 @@ CODE_8AB167:
     ldy.w #$0040                ; $8AB1C9
     jsl.l upload_cgram_now      ; $8AB1CC
     jsr.w wipe_columns          ; $8AB1D0
-    jsr.w $B197                 ; $8AB1D3
+    jsr.w password_hdma_on      ; $8AB1D3
     jsr.w fade_in_start         ; $8AB1D6
     jsr.w wait_one_frame        ; $8AB1D9
     inc.b $8E                   ; $8AB1DC
     inc.w $0D7C                 ; $8AB1DE
     rts                         ; $8AB1E1
+password_screen_close:
     jsr.w fade_out_wait         ; $8AB1E2
-    jsr.w $B18C                 ; $8AB1E5
+    jsr.w password_hdma_off     ; $8AB1E5
     jsr.w wipe_columns          ; $8AB1E8
     stz.b $8E                   ; $8AB1EB
     ldx.w #$EE52                ; $8AB1ED
@@ -4043,7 +4047,7 @@ CODE_8AB167:
     jsr.w func_8ABA55           ; $8AB1FA
     jsr.w func_8AB994           ; $8AB1FD
     jsr.w wipe_columns          ; $8AB200
-    jsr.w $B197                 ; $8AB203
+    jsr.w password_hdma_on      ; $8AB203
     jsr.w fade_in_start         ; $8AB206
     jsr.w wait_one_frame        ; $8AB209
     inc.b $8E                   ; $8AB20C
@@ -4056,11 +4060,11 @@ wait_one_frame:
     pla                         ; $8AB21A
     rts                         ; $8AB21B
     jsr.w wipe_columns          ; $8AB21C
-    jsr.w $B1A5                 ; $8AB21F
+    jsr.w password_screen_open  ; $8AB21F
     jsr.w $B232                 ; $8AB222
     lda.w $0D7C                 ; $8AB225
     db $F0,$04 ; beq            ; $8AB228
-    jsr.w $B1E2                 ; $8AB22A
+    jsr.w password_screen_close ; $8AB22A
     rts                         ; $8AB22D
     incbin !baserom:$5322E..$53232
     stz.b $52                   ; $8AB232
@@ -5194,7 +5198,7 @@ CODE_8ABD6C:
     jsl.l video_load_screen_long; $8ABE4D
     jsl.l clear_vram            ; $8ABE51
     jsr.w fade_out_wait         ; $8ABE55
-    jsr.w $B18C                 ; $8ABE58
+    jsr.w password_hdma_off     ; $8ABE58
     jsr.w wipe_columns          ; $8ABE5B
     stz.b $8E                   ; $8ABE5E
     ldx.w #$8601                ; $8ABE60
