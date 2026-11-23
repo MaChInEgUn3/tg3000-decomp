@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "misc.h"
+#include "util.h"
 #include "text.h"
 #include "tg3000.h"
 
@@ -201,6 +202,29 @@ bool password_checksum_ok(void) {
   wr16(DP + 0x42, alphabet_index(typed_at(x)));
   wr16(DP + 0x42, (uint16_t)((uint16_t)(alphabet_index(typed_at((uint16_t)(x + 1))) << 5) | rd16(DP + 0x42)));
   return rd16(DP + 0x42) == rd16(DP + 0x92);
+}
+
+#define PASSWORD_FIELDS 0x8ACF61  // 6 bytes a field: a 24-bit address, a shift, a width
+
+// TG3000_ROUTINE($8A:BAFF) password_unpack
+void password_unpack(bool carry) {
+  uint16_t x = 0;
+  while(rom16(PASSWORD_FIELDS + x) != 0) x = (uint16_t)(x + 6);
+  x = (uint16_t)(x - 6);
+  do {
+    wr16(DP + 0x42, rom16(PASSWORD_FIELDS + x));
+    wr16(DP + 0x44, rom16(PASSWORD_FIELDS + 2 + (uint32_t)x));
+    const uint16_t shape = rom16(PASSWORD_FIELDS + 4 + (uint32_t)x);
+    const uint16_t width = (uint16_t)(shape >> 8), shift = (uint16_t)(shape & 0x00FF);
+    wr16(DP + 0x46, 0);
+    const uint16_t bits = func_8ABB5C(width, &carry);  // D+$46 is now the width's mask
+    wr16(DP + 0x48, (uint16_t)((bits ^ rom16(0x8ABC3D + (uint32_t)width)) & rd16(DP + 0x46)));
+    wr16(DP + 0x48, asl_n(rd16(DP + 0x48), shift, &carry));
+    wr16(DP + 0x46, (uint16_t)~asl_n(rd16(DP + 0x46), shift, &carry));
+    const uint32_t field = (uint32_t)rd8(DP + 0x44) << 16 | rd16(DP + 0x42);
+    bus_wr16(field, (uint16_t)((bus_rd16(field) & rd16(DP + 0x46)) | rd16(DP + 0x48)));
+    x = (uint16_t)(x - 6);
+  } while(!(x & 0x8000));
 }
 
 // TG3000_ROUTINE($8A:B612) password_lines_print

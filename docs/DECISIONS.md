@@ -2034,6 +2034,21 @@ password screen, a skipped track's bonus.
   time"). That rule is by design, so a waiting row must not enclose other waiting rows.
   For the password screen's loop (`$8A:B295`), that means a row would hide the samples of
   the waiting rows it calls. It gets no row, as shop-21's dispatch no longer encloses any.
+
+## The password's fields unpacked (password-5, 2026-11-23)
+
+- **`password_unpack` ($8A:BAFF) is ported** (in `src/password.c`). It is `password_pack`
+  undone: the fields of the table at `$8A:CF61` come back out of the 256-bit number, last
+  field first.
+  - For each: `width` bits shifted out (`func_8ABB5C`, which also leaves the width's mask
+    in D+$46), XOR the width's mask at `$8A:BC3D`, shifted into place (`asl_n`) and written
+    over those bits of the field's word.
+  - The first bit shifted in at the top is the caller's carry. That is clear on the one
+    call, after `password_checksum_ok`; the C takes it as a parameter.
+- **Check:** its one entry on the password movie is interrupted, so it is replayed from its
+  entry state in the fuzz phase. Then 500 fuzz cases run over the big number, the fields and
+  the carry. Exit: X `$FFFA` (N/Z of the last `DEX`), A the last field's word, Y the first
+  field's shift, C of the last `asl_n` (the mask shifted).
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

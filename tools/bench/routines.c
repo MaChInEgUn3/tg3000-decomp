@@ -6575,6 +6575,31 @@ static void fuzz_password_read(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x92, sum);
 }
 
+// password_unpack: A the last field's word as written, X below the table ($FFFA: N/Z of the
+// last DEX), Y the first field's shift, C the last asl_n's, V kept
+static void call_password_unpack(const Regs* in, Regs* out) {
+  password_unpack(in->c);
+  const uint32_t field = (uint32_t)rd8(DP + 0x44) << 16 | rd16(DP + 0x42);
+  out->a = bus_rd16(field);
+  out->x = 0xFFFA;
+  setNZ16(out, out->x);
+  const uint16_t shift = (uint16_t)(rom16(0x8ACF65) & 0x00FF);
+  out->y = shift;
+  // the carry of the last asl_n: the width's mask (func_8ABB5C leaves it in D+$46) shifted
+  bool carry;
+  const uint16_t width = (uint16_t)(rom16(0x8ACF65) >> 8);
+  const uint16_t mask = (uint16_t)(width >= 16 ? 0xFFFF : (1u << width) - 1);
+  (void)asl_n(mask, shift, &carry);
+  out->c = carry;
+}
+// the big number, the fields, the entry carry
+static void fuzz_password_unpack(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_password_pack(r, ram, rnd);
+  for(int i = 0; i < 32; i++) ram[0x0DAC + i] = (uint8_t)rnd();
+  wr16ram(ram, DP + 0x46, (uint16_t)rnd());
+  r->c = rnd() & 1;
+}
+
 // the typing's state, with a button (A, B, X or Y one time in two) on one of the pads
 static void fuzz_password_press_a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_password_typing(r, ram, rnd);
@@ -10106,6 +10131,9 @@ const Routine routines[] = {
   {.name = "password_checksum_ok", .entry = 0x8ABD25, .end = 0x8ABD6E, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_checksum_ok, ALL_OUTPUTS,
    .fuzz = fuzz_password_read},
+  {.name = "password_unpack", .entry = 0x8ABAFF, .end = 0x8ABB5C, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .db = 0x8A, .call = call_password_unpack, ALL_OUTPUTS,
+   .fuzz = fuzz_password_unpack},
   {.name = "password_lines_print", .entry = 0x8AB612, .end = 0x8AB644, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_lines_print, ALL_OUTPUTS,
    .fuzz = fuzz_password_lines_print},

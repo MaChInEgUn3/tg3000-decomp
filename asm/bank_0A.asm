@@ -4141,7 +4141,7 @@ CODE_8AB2CE:
 CODE_8AB31B:
     lda.w #$79FF                ; $8AB31B
     trb.w $03DC                 ; $8AB31E
-    jsr.w $BAFF                 ; $8AB321
+    jsr.w password_unpack       ; $8AB321
     lda.w #$0010                ; $8AB324
     tsb.w $03DC                 ; $8AB327
     jsr.w func_8ABF76           ; $8AB32A
@@ -4887,6 +4887,7 @@ fade_in_start:
     lda.w #$0080                ; $8ABAF8
     sta.w $0196                 ; $8ABAFB
     rts                         ; $8ABAFE
+password_unpack:
     ldx.w #$0000                ; $8ABAFF
 CODE_8ABB02:
     lda.w $CF61,x               ; $8ABB02

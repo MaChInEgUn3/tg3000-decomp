@@ -55,6 +55,13 @@ void password_decode(void);
 // masked to 10 bits there.
 bool password_checksum_ok(void);
 
+// $8A:BAFF: password_pack undone. The fields of the table at $8A:CF61 come back out of the
+// 256-bit number, last field first: `width` bits shifted out (func_8ABB5C, which also leaves
+// the width's mask in D+$46), XOR the width's mask ($8A:BC3D), shifted back into place and
+// written over those bits of the field's word. `carry` is the first bit shifted in at the
+// top (the caller's carry: clear, after password_checksum_ok).
+void password_unpack(bool carry);
+
 // $8A:B612: the screen's four lines of text ($8A:C4F6, C515, C534, C553), centred on rows $0D,
 // $10, $13, $16 (D+$68 = 0 first).
 void password_lines_print(void);
