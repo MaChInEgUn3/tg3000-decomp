@@ -5309,6 +5309,15 @@ static void call_irq_menu_frame(const Regs* in, Regs* out) {
 // the results screen, cut at its first wait (advisor): the load (endAt $8A:95EB, not a
 // waiting row: the NMIs that land in its long decompressions are its interruptions, and its
 // samples are replayed from their entry state) ends after upload_7f_to_3000 (its exit)
+// the show: a waiting row with a budget; it returns when the fade is 0 (its LDA: Z set, N
+// clear; the carry is stars_draw_8a's)
+static void call_results_screen_show(const Regs* in, Regs* out) {
+  (void)in;
+  results_screen_show();
+  out->n = false;
+  out->z = true;
+  out->c = true;
+}
 static void call_results_screen(const Regs* in, Regs* out) {
   (void)in;
   results_screen_load();
@@ -10576,9 +10585,9 @@ const Routine routines[] = {
   {.name = "results_screen", .entry = 0x8A94C3, .end = 0x8A95EB, .endAt = 0x8A95EB, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true,
    .call = call_results_screen},
-  // (results_screen_show, $8A:95EB: no row yet. On the 60k movie one sample in four takes a
-  // frame more in the C, an interrupt the replay places a frame late: see docs/DECISIONS.md
-  // "The results screen")
+  {.name = "results_screen_show", .entry = 0x8A95EB, .end = 0x8A9675, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .waitsForInterrupts = true, .maxInsns = 40000000,
+   .call = call_results_screen_show, .holes = {{0x8A9655, 0x8A965E}}},
   {.name = "irq_menu_frame", .entry = 0x80BC9B, .end = 0x80BDC1, .rti = true, .endAt = 0x80BDC1, .source = "src/frame.c",
    .call = call_irq_menu_frame},  // up to the two tasks' stack switch
   {.name = "nmi_prologue", .entry = 0x808807, .end = 0x808931, .rti = true, .endAt = 0x808931, .source = "src/frame.c",

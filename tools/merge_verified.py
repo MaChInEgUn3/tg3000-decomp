@@ -18,7 +18,9 @@ vis:) are judged on the evidence pooled over the movies instead:
   live set is the union of the flags seen read, and a mismatch on a flag in that set, on
   any movie, fails the routine;
 - the paths: the union of the paths visited must cover every instruction start;
-- verified then needs at least one movie that compared something.
+- verified then needs at least one movie that compared something;
+- harness-15: lagged samples that failed (lagfail:) fail the routine only when no movie has a
+  sample without lag that passed (cleanpass:).
 
 --update (tools/verify_new.sh): NEW's rows, already merged over the movies, replace
 FILE's rows of the same entry; new entries go at the end; FILE's other rows stay.
@@ -65,7 +67,9 @@ def pooled(rows):
     base = list(compared[0][0]) if compared else list(reached[0])
     base[6] = f"{seen}/{need}"
     base[8] = "live-flags:" + ("".join(c for c in "NVZC" if c in live) or "-")
-    ok = bool(compared) and paths_ok and not (live & mism)
+    lagfail = sum(int(e.get("lagfail", "0")) for _, e in evs)
+    cleanpass = sum(int(e.get("cleanpass", "0")) for _, e in evs)
+    ok = bool(compared) and paths_ok and not (live & mism) and (lagfail == 0 or cleanpass > 0)
     base[7] = "verified" if ok else "failed"
     return base[:10]  # the committed columns (entry .. replayed), without the raw evidence
 

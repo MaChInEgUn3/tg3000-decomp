@@ -2477,13 +2477,44 @@ password screen, a skipped track's bonus.
   - The load's row ends at the first wait (`endAt` `$8A:95EB`) and is not a waiting row.
     Its four live entries are interrupted, so it is verified by replays from their entry
     state, on all 107 paths. It compares nothing the NMIs do during the load.
-- **The show has no row yet.** On the 60k movie 3 of its 4 samples pass. In the fourth the
-  C takes one frame more (157 uploads against 156).
-  - The likely cause: an interrupt recorded outside a wait (an IRQ after the NMI, say),
-    which the replay hands to the C a frame late.
-  - Its C is written; the row waits for a harness look at where each recorded interrupt
-    landed (the return PC of each).
+- **The show had no row in screen-1.** On the 60k movie 3 of its 4 samples passed. In the
+  fourth the C took one frame more (157 uploads against 156). screen-1 guessed an IRQ after
+  the NMI; that was wrong. It is an NMI in the loop body (a lag frame, harness-15 below).
 - **Check:** incremental gate (`verify_new results_screen`).
+
+## Lag frames in waiting rows (harness-15, 2026-11-23)
+
+- **What was measured:** every interrupt a waiting sample recorded, on all five movies, with
+  the last instruction before it.
+  - Nearly all land in a polling loop: `wait_frames` and its copies, the shop's `$4E`,
+    `$8C`/`$8E` and `$64` polls, the fade polls.
+  - The rest stop the routine's own work: decompressions, `text_centred_line`, clears,
+    `split_screen_setup`'s table loop, `race_pause`'s body and the results screen's loop body
+    (`$8A:9C61`, inside `hdma_table_0d00_settle`).
+  - Such an NMI is a lag frame. The original does a frame's work late, and a frame loop can
+    run one pass fewer. A port that waits in step with the frame has none.
+- **Lagged samples (from the original's run alone):** a waiting sample one of whose
+  interrupts came while the last instruction lay outside the wait sites. The sites are a
+  table in `difftest.c`, from the poll's target read (the `ADC $0024`) to its branch. After
+  the `CLC` or the `JSR` the NMI still counts as lag.
+- **The rule: a lagged sample may pass, but may not fail the row.**
+  - Lagged and passing: counted as before.
+  - Lagged and failing: counted apart (`lagfail:` in the evidence), its paths and flags not
+    credited. It fails the routine only when no movie has a sample without lag that passed
+    (`cleanpass:`, pooled in `merge_verified.py`). A missing wait site therefore cannot excuse
+    a row: all its samples would be lagged.
+- **Why not skip every lagged sample (the first plan, with the advisor):** the counts showed
+  it would leave `title_card_show` (5 of 5 lagged) and both password rows (2 of 2) with
+  nothing compared, and drop 45 of 55 `queue_unpacked_upload` samples. All of those pass
+  today. They also show a weaker point: a C that replayed fewer interrupts than were
+  recorded still passes (the rest are applied after its last wait). Those rows pass on
+  lagged samples only, and are candidates for the first-wait cut later.
+- **Why not fold a lag interrupt into the next wait:** the ported `wait_frames` sets a target
+  from `$0024` and polls for it, so two NMIs in one wait jump past the target. Folding would
+  also need this rule as its fallback.
+- **`results_screen_show` ($8A:95EB) now has its row:** on the 60k movie 3 samples pass, 1
+  lagged one fails (the lag frame at `$8A:9C61`), 49/49 paths from the passes.
+- **Check:** full gate; every other row as at HEAD, all negatives still fail.
 
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 

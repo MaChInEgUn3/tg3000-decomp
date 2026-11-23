@@ -67,6 +67,10 @@ typedef struct {
   bool ppuLines;
   unsigned long ppuWrites, ppuDrawn, ppuSamplesChanged;
   unsigned long foreignStack;  // passing samples that waited through a switch to another task's stack
+  // harness-15: waiting samples an interrupt stopped outside a wait (a lag frame), failing
+  // ones (not a failure while some sample without lag passes), and passes without lag
+  unsigned long lagFail, cleanPass;
+  char firstLagFailure[400];
   uint8_t ppuModes;
   uint8_t ppuHdma[32];  // B-bus addresses ($21xx) of HDMA channels active at the writes
 } Stats;
@@ -155,7 +159,41 @@ typedef struct {
   uint32_t vramEntry;  // the VRAM pointer and VMAIN at entry (vramPack)
   bool m7Latch, scrollLatch, scrollLatch2;  // latch bytes written inside the sample
   int replaySlot;  // the entry state kept in case an interrupt drops the sample, or -1
+  bool lagged;  // harness-15: an interrupt it recorded stopped code outside a wait (lagPc)
+  uint32_t lagPc;
 } Sample;
+
+// harness-15: the waits, as the original's polling loops: an interrupt whose last instruction
+// before it lies in one of these ranges (from the poll's target read to its branch) was
+// waited for. Elsewhere it stopped the routine's own work (a decompression, a clear, the
+// body of a frame loop): a lag frame, which a port that waits in step with the frame does
+// not have. Such a sample can differ in its frame count; see finishSample.
+static const struct { uint32_t lo, hi; } waitSites[] = {
+  {0x808374, 0x80837A},  // wait_frames: ADC $0024 .. BNE
+  {0x82841F, 0x828425},  // wait_frames_82
+  {0x8ABA91, 0x8ABA99},  // wait_frames_long
+  {0x8A9881, 0x8A9889},  // wait_frames_8a9880
+  {0x8A8BB7, 0x8A8BBF},  // wait_frames_8a8bb6
+  {0x80B953, 0x80B95A},  // wait_flag_76: TSB $76 .. BEQ
+  {0x84A4CD, 0x84A4D1},  // wait_03e0
+  {0x8ABAE9, 0x8ABAEF},  // fade_out_wait: STA $0196 .. BNE
+  {0x808FCB, 0x808FCD},  // shop_item_down: CMP $4E / BCS
+  {0x808FF3, 0x808FF5},  // shop_item_up
+  {0x809B04, 0x809B08},  // shop_item_slide_row: $8C = $8E
+  {0x809B99, 0x809B9D},  // shop_item_slide_list_in
+  {0x80B10C, 0x80B115},  // shop_panel_clear
+  {0x8AC0E5, 0x8AC0EB},  // title_card_show: STA $0196 .. the $019A poll
+  {0x80B95E, 0x80B960},  // queue_unpacked_upload: the $64 poll
+  {0x808CE1, 0x808CE3},  // the $64 polls around a wait_frames ($80:8CE1, $80:8CEB)
+  {0x808CEB, 0x808CED},
+};
+static bool atWaitSite(uint32_t pc) {
+  for(size_t i = 0; i < sizeof waitSites / sizeof waitSites[0]; i++)
+    if(pc >= waitSites[i].lo && pc <= waitSites[i].hi) return true;
+  return false;
+}
+static bool visitedAtStart[MAX_DEPTH][MAX_EXTENT];  // a waiting row's paths before the sample
+static uint32_t prevInsnPc;  // the instruction before the current one (a handler's first: the stopped one)
 
 static Sample samples[MAX_DEPTH];
 
@@ -1254,6 +1292,17 @@ static void finishSample(int k, const Cpu* cpu) {
     ok = compareWithC(k, &after, why, sizeof why, &flagDiff);
     irqOwner = owner ? -1 : outerOwner;
   }
+  // harness-15: a lagged sample that fails is set apart (its own count; its paths and flags
+  // not credited); it fails the routine only when no sample without lag passed
+  if(!ok && smp->lagged && !fuzzing && !replaying) {
+    s->lagFail++;
+    memcpy(s->visited, visitedAtStart[k], MAX_EXTENT);
+    if(s->firstLagFailure[0] == '\0')
+      snprintf(s->firstLagFailure, sizeof s->firstLagFailure, "%s at D=%04X A=%04X (lag frame at $%06X): %s", table[idx].name,
+        smp->entryRegs.d, smp->entryRegs.a, smp->lagPc, why);
+    return;
+  }
+  if(ok && !smp->lagged && !fuzzing && !replaying) s->cleanPass++;
   for(int f = 0; f < 4; f++) {
     if(!(flagDiff & flagBits[f])) continue;
     s->flagMismatch[f]++;
@@ -1301,6 +1350,7 @@ static void startSample(int idx, const Cpu* cpu) {
   int k = depth++;
   Sample* smp = &samples[k];
   memcpy(sampleRam[k], snes->ram, TG3000_WRAM_SIZE);
+  if(r->waitsForInterrupts) memcpy(visitedAtStart[k], stats[idx].visited, MAX_EXTENT);  // (harness-15)
   uint16_t sp = cpu->sp;
   *smp = (Sample){
     .idx = idx, .entryRegs = readRegs(cpu), .entrySp = sp, .minSp = sp,
@@ -1455,6 +1505,8 @@ static void checkEntries(Cpu* cpu, uint32_t pc, bool inHandler) {
 void difftest_on_insn(Cpu* cpu) {
   uint32_t pc = norm(((uint32_t)cpu->k << 16) | cpu->pc);
   insnPc = pc;
+  const uint32_t stoppedPc = prevInsnPc;
+  prevInsnPc = pc;
   // fuzz and replay cases run with interrupts off, even after the routine itself writes
   // $4200 (harness-13: an NMI the routine enabled lost a case; the write itself is still
   // compared, as a byte register)
@@ -1474,6 +1526,10 @@ void difftest_on_insn(Cpu* cpu) {
         if(irqCount >= (table[samples[irqOwner].idx].maxInsns ? MAX_IRQS : MAX_IRQS_DEFAULT)) irqOverflow = true;
         else {
           memcpy(irqPre[irqCount], snes->ram, TG3000_WRAM_SIZE);
+          if(!atWaitSite(stoppedPc) && !samples[irqOwner].lagged) {
+            samples[irqOwner].lagged = true;
+            samples[irqOwner].lagPc = stoppedPc;
+          }
           irqActive = true;
           irqForeign = false;
           irqBaseDepth = depth;
@@ -1781,7 +1837,8 @@ bool difftest_report(const char* resultsPath) {
     unsigned long fuzzLost = s->fuzzRequested - (s->fuzzPass + s->fuzzFail);
     unsigned long replayLost = s->replayRequested - (s->replayPass + s->replayFail);
     bool ok = flagsOk && s->fail == 0 && s->fuzzFail == 0 && fuzzLost == 0 && s->replayFail == 0 && replayLost == 0 &&
-              (s->pass + s->fuzzPass + s->replayPass) > 0 && seen == need && !s->contractBroken;
+              (s->pass + s->fuzzPass + s->replayPass) > 0 && seen == need && !s->contractBroken &&
+              (s->lagFail == 0 || s->cleanPass > 0);  // harness-15
     const char* status = !reached ? "unreached" : ok ? "verified" : "failed";
     if(reached) allOk &= ok;  // a routine this run never reached is reported, not failed
     printf("difftest %-16s $%06X: %s  live %lu/%lu pass (%lu entries, %lu interrupted, %lu abandoned), fuzz %lu/%lu (%lu lost), paths %d/%d%s\n",
@@ -1796,6 +1853,9 @@ bool difftest_report(const char* resultsPath) {
     }
     printf("    %s; mismatches N%lu V%lu Z%lu C%lu\n", flagNote, s->flagMismatch[0], s->flagMismatch[1], s->flagMismatch[2], s->flagMismatch[3]);
     if(s->firstFailure[0]) printf("    first failure: %s\n", s->firstFailure);
+    if(s->lagFail)
+      printf("    %lu lagged sample(s) failed, set apart (harness-15; %lu passed without lag): %s\n", s->lagFail, s->cleanPass,
+        s->firstLagFailure);
     if(s->hidden)
       printf("    %lu entries inside interrupt handlers a waiting sample recorded (not sampled)\n", s->hidden);
     if(s->foreignStack)
@@ -1853,9 +1913,9 @@ bool difftest_report(const char* resultsPath) {
       }
       const bool hard = s->fail > 0 || s->fuzzFail > 0 || fuzzLostOf(s) > 0 || s->replayFail > 0 ||
                         (s->replayRequested - (s->replayPass + s->replayFail)) > 0 || s->contractBroken;
-      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s replayed:%lu watched:%lu read:%s mism:%s hard:%d compared:%lu vis:%s\n",
+      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s replayed:%lu watched:%lu read:%s mism:%s hard:%d compared:%lu vis:%s lagfail:%lu cleanpass:%lu\n",
         r->entry, r->name, r->source, (unsigned long long)verificationHash(r->source), s->pass, s->fuzzPass, seen, need,
-        status, liveFlags, s->replayPass, s->watched, readSet, mismSet, hard ? 1 : 0, s->pass + s->fuzzPass + s->replayPass, vis);
+        status, liveFlags, s->replayPass, s->watched, readSet, mismSet, hard ? 1 : 0, s->pass + s->fuzzPass + s->replayPass, vis, s->lagFail, s->cleanPass);
     }
   }
   if(out != NULL) fclose(out);
