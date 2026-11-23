@@ -3837,7 +3837,14 @@ func_8AA49E:
     sta.w $0D7E                 ; $8AA4AA
     pla                         ; $8AA4AD
     rts                         ; $8AA4AE
-    incbin !baserom:$524AF..$524BE
+func_8AA4AF:
+    sep.b #$20                  ; $8AA4AF static
+    lda.b #$12                  ; $8AA4B1 static
+    sta.b $FB                   ; $8AA4B3 static
+    rep.b #$20                  ; $8AA4B5 static
+    lda.w #$0A8C                ; $8AA4B7 static
+    sta.w $0D7E                 ; $8AA4BA static
+    rts                         ; $8AA4BD static
 func_8AA4BE:
     sta.b $4A                   ; $8AA4BE
     ldy.w #$0000                ; $8AA4C0
@@ -4078,7 +4085,7 @@ CODE_8AB23D:
     sta.w $0D88                 ; $8AB260
     lda.w #$0064                ; $8AB263
     sta.w $0D90                 ; $8AB266
-    jsr.w $B43D                 ; $8AB269
+    jsr.w password_text_draw    ; $8AB269
 CODE_8AB26C:
     lda.w #$0001                ; $8AB26C
     jsl.l wait_frames_long      ; $8AB26F
@@ -4159,7 +4166,7 @@ CODE_8AB31B:
     rts                         ; $8AB35A
     incbin !baserom:$5335B..$533A7
 CODE_8AB3A7:
-    jsr.w $B4A4                 ; $8AB3A7
+    jsr.w password_press_last_column; $8AB3A7
     bcs CODE_8AB3DF             ; $8AB3AA
     lda.w $0D80                 ; $8AB3AC
     clc                         ; $8AB3AF
@@ -4191,35 +4198,56 @@ CODE_8AB3DF:
     incbin !baserom:$533E0..$533E3
 CODE_8AB3E3:
     lda.w $C572,y               ; $8AB3E3
-    jsr.w $B403                 ; $8AB3E6
+    jsr.w password_type_char    ; $8AB3E6
     clc                         ; $8AB3E9
     rts                         ; $8AB3EA
 CODE_8AB3EB:
     lda.w $C57E,y               ; $8AB3EB
-    jsr.w $B403                 ; $8AB3EE
+    jsr.w password_type_char    ; $8AB3EE
     clc                         ; $8AB3F1
     rts                         ; $8AB3F2
 CODE_8AB3F3:
     lda.w $C58A,y               ; $8AB3F3
-    jsr.w $B403                 ; $8AB3F6
+    jsr.w password_type_char    ; $8AB3F6
     clc                         ; $8AB3F9
     rts                         ; $8AB3FA
 CODE_8AB3FB:
     lda.w $C596,y               ; $8AB3FB
-    jsr.w $B403                 ; $8AB3FE
+    jsr.w password_type_char    ; $8AB3FE
     clc                         ; $8AB401
     rts                         ; $8AB402
+password_type_char:
     sep.b #$20                  ; $8AB403
     ldy.b $80                   ; $8AB405
     cpy.w #$0015                ; $8AB407
-    db $F0,$0E ; beq            ; $8AB40A
+    beq CODE_8AB41A             ; $8AB40A
     sta.w $0D40,y               ; $8AB40C
     inc.b $80                   ; $8AB40F
     rep.b #$20                  ; $8AB411
-    jsr.w $B43D                 ; $8AB413
+    jsr.w password_text_draw    ; $8AB413
     jsr.w func_8AA48D           ; $8AB416
     rts                         ; $8AB419
-    incbin !baserom:$5341A..$5343D
+CODE_8AB41A:
+    jsr.w func_8AA4AF           ; $8AB41A static
+    rep.b #$20                  ; $8AB41D static
+    rts                         ; $8AB41F static
+password_delete:
+    lda.b $80                   ; $8AB420 static
+    beq CODE_8AB439             ; $8AB422 static
+    dec.b $80                   ; $8AB424 static
+    lda.b $80                   ; $8AB426 static
+    tay                         ; $8AB428 static
+    sep.b #$20                  ; $8AB429 static
+    lda.b #$00                  ; $8AB42B static
+    sta.w $0D40,y               ; $8AB42D static
+    rep.b #$20                  ; $8AB430 static
+    jsr.w password_text_draw    ; $8AB432 static
+    jsr.w func_8AA48D           ; $8AB435 static
+    rts                         ; $8AB438 static
+CODE_8AB439:
+    jsr.w func_8AA4AF           ; $8AB439 static
+    rts                         ; $8AB43C static
+password_text_draw:
     lda.w #$0002                ; $8AB43D
     sta.b $3A                   ; $8AB440
     lda.b $80                   ; $8AB442
@@ -4235,7 +4263,7 @@ CODE_8AB44B:
     lda.b $48                   ; $8AB458
     and.w #$0003                ; $8AB45A
     bne CODE_8AB46A             ; $8AB45D
-    jsr.w $B47C                 ; $8AB45F
+    jsr.w password_no_vowel     ; $8AB45F
     bcc CODE_8AB46A             ; $8AB462
     lda.w #$0020                ; $8AB464
     jsr.w text_put_char         ; $8AB467
@@ -4250,37 +4278,53 @@ CODE_8AB470:
     dec.b $3A                   ; $8AB476
     jsr.w password_caret_place  ; $8AB478
     rts                         ; $8AB47B
+password_no_vowel:
     sep.b #$20                  ; $8AB47C
     ldx.w #$0003                ; $8AB47E
 CODE_8AB481:
     lda.l $810D40,x             ; $8AB481
     cmp.b #$41                  ; $8AB485
-    db $F0,$17 ; beq            ; $8AB487
+    beq CODE_8AB4A0             ; $8AB487
     cmp.b #$45                  ; $8AB489
-    db $F0,$13 ; beq            ; $8AB48B
+    beq CODE_8AB4A0             ; $8AB48B
     cmp.b #$49                  ; $8AB48D
-    db $F0,$0F ; beq            ; $8AB48F
+    beq CODE_8AB4A0             ; $8AB48F
     cmp.b #$4F                  ; $8AB491
-    db $F0,$0B ; beq            ; $8AB493
+    beq CODE_8AB4A0             ; $8AB493
     cmp.b #$55                  ; $8AB495
-    db $F0,$07 ; beq            ; $8AB497
+    beq CODE_8AB4A0             ; $8AB497
     dex                         ; $8AB499
     bpl CODE_8AB481             ; $8AB49A
     rep.b #$20                  ; $8AB49C
     sec                         ; $8AB49E
     rts                         ; $8AB49F
-    incbin !baserom:$534A0..$534A4
+CODE_8AB4A0:
+    rep.b #$20                  ; $8AB4A0 static
+    clc                         ; $8AB4A2 static
+    rts                         ; $8AB4A3 static
+password_press_last_column:
     lda.w $0D80                 ; $8AB4A4
     cmp.w #$0064                ; $8AB4A7
     bne CODE_8AB4BE             ; $8AB4AA
     lda.w $0D68                 ; $8AB4AC
     cmp.w #$0094                ; $8AB4AF
     beq CODE_8AB4CD             ; $8AB4B2
-    incbin !baserom:$534B4..$534BE
+    cmp.w #$007C                ; $8AB4B4 static
+    beq CODE_8AB4C8             ; $8AB4B7 static
+    cmp.w #$0064                ; $8AB4B9 static
+    beq CODE_8AB4C0             ; $8AB4BC static
 CODE_8AB4BE:
     clc                         ; $8AB4BE
     rts                         ; $8AB4BF
-    incbin !baserom:$534C0..$534CD
+CODE_8AB4C0:
+    lda.w #$0020                ; $8AB4C0 static
+    jsr.w password_type_char    ; $8AB4C3 static
+    clc                         ; $8AB4C6 static
+    rts                         ; $8AB4C7 static
+CODE_8AB4C8:
+    jsr.w password_delete       ; $8AB4C8 static
+    clc                         ; $8AB4CB static
+    rts                         ; $8AB4CC static
 CODE_8AB4CD:
     jsr.w func_8AA49E           ; $8AB4CD
     sec                         ; $8AB4D0

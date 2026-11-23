@@ -6366,6 +6366,106 @@ static void call_password_pad_down(const Regs* in, Regs* out) {
   if(s == 2) pwDownExit(out, x, y);
   else pwPadExit(out, s, y, at);
 }
+// the typing ($8A:B403-B4D1). After password_text_draw: A and the flags of
+// password_caret_place's ADC, X the last text_put_char's tilemap offset (D+$38 * $40 + D+$36,
+// the doubled column it leaves), Y kept. A beep after it (func_8AA48D) keeps A (its PLA: N/Z)
+static void pwDrawExit(Regs* out) {
+  const uint16_t row = (uint16_t)(rd16(DP + 0x3C) << 3);
+  out->a = (uint16_t)(row + 0x0F);
+  setNZ16(out, out->a);
+  setAdc16(out, row, 0x0F);
+  out->x = (uint16_t)((rd16(DP + 0x38) << 6) + rd16(DP + 0x36));
+}
+static void pwRefusalExit(Regs* out) {  // func_8AA4AF: LDA #$0A8C last
+  out->a = 0x0A8C;
+  setNZ16(out, 0x0A8C);
+}
+static void pwTypeExit(Regs* out, uint16_t count) {
+  if(count == 0x15) {
+    pwRefusalExit(out);
+    out->c = true;  // the CPY #$15 that matched
+    out->y = 0x15;
+    return;
+  }
+  pwDrawExit(out);
+  out->y = count;
+}
+static void pwDeleteExit(Regs* out, uint16_t count) {
+  if(count == 0) {
+    pwRefusalExit(out);
+    return;
+  }
+  pwDrawExit(out);
+  out->y = (uint16_t)(count - 1);
+}
+static void call_password_type_char(const Regs* in, Regs* out) {
+  const uint16_t count = rd16(DP + 0x80);
+  password_type_char((uint8_t)in->a);
+  pwTypeExit(out, count);
+}
+static void call_password_delete(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t count = rd16(DP + 0x80);
+  password_delete();
+  pwDeleteExit(out, count);
+}
+static void call_password_text_draw(const Regs* in, Regs* out) {
+  (void)in;
+  password_text_draw();
+  pwDrawExit(out);
+}
+// none: the DEX/BPL that ended the loop (X = $FFFF), SEC; one: the CMP that matched, CLC. A's
+// low byte the last character read
+static void call_password_no_vowel(const Regs* in, Regs* out) {
+  const bool none = password_no_vowel();
+  uint16_t i = 3;  // the original reads from the fourth down: the highest vowel
+  for(; !none; i--) {
+    const uint8_t ch = rd8(0x0D40 + (uint32_t)i);
+    if(ch == 'A' || ch == 'E' || ch == 'I' || ch == 'O' || ch == 'U') break;
+  }
+  out->x = none ? 0xFFFF : i;
+  out->a = (uint16_t)((in->a & 0xFF00) | rd8(0x0D40 + (uint32_t)(none ? 0 : i)));
+  out->n = none;
+  out->z = !none;
+  out->c = none;
+}
+// not on the last column: the CMP #$64 of x; EXIT: func_8AA49E keeps A (y), SEC; DEL and
+// SPACE: their exits, CLC; any other row: the CMP #$64 of y
+static void call_password_press_last_column(const Regs* in, Regs* out) {
+  const uint16_t x = rd16(0x0D80), y = rd16(0x0D68), count = rd16(DP + 0x80);
+  const bool exit = password_press_last_column();
+  if(x != 0x0064) {
+    pwCmpExit(out, x, 0x0064);
+  } else if(y == 0x0094) {
+    out->a = y;
+    setNZ16(out, y);
+  } else if(y == 0x007C) {
+    pwDeleteExit(out, count);
+  } else if(y == 0x0064) {
+    pwTypeExit(out, count);
+  } else {
+    pwCmpExit(out, y, 0x0064);
+  }
+  out->c = exit;
+  (void)in;
+}
+// the typed text (the password alphabet, a vowel now and then), its count (full or empty one
+// time in four), the text cell's row, the font
+static void fuzz_password_typing(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  static const char alphabet[] = "BCDFGHJKLN?PQRSTVWXYZ0123456789M.!AEIOU ";
+  const uint32_t k = rnd() % 8;
+  const uint16_t count = k == 0 ? 0x15 : k == 1 ? 0 : (uint16_t)(rnd() % 0x15 + 1);
+  for(uint32_t i = 0; i < 0x16; i++)
+    ram[0x0D40 + i] = i < count ? (uint8_t)alphabet[rnd() % ((rnd() & 3) ? 33 : (sizeof alphabet - 1))] : 0;
+  wr16ram(ram, DP + 0x80, count);
+  wr16ram(ram, DP + 0x3C, (uint16_t)(rnd() % 16));
+  wr16ram(ram, TEXT_FONT_SEL, (rnd() & 3) == 0 ? 0 : 1);
+  r->a = (uint16_t)((r->a & 0xFF00) | (uint8_t)alphabet[rnd() % (sizeof alphabet - 1)]);
+  const uint32_t at = rnd() % 4;
+  wr16ram(ram, 0x0D80, at ? 0x0064 : (uint16_t)rnd());
+  wr16ram(ram, 0x0D68, at == 1 ? 0x0094 : at == 2 ? 0x007C : at == 3 ? 0x0064 : (uint16_t)rnd());
+}
+
 // the cursor on the grid (three in four) or anywhere; where it is: where it goes, or not
 static uint16_t pwGridX(uint32_t (*rnd)(void)) {
   const uint32_t k = rnd() % 16;
@@ -9884,6 +9984,21 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .call = call_password_cursor_up, ALL_OUTPUTS, .fuzz = fuzz_password_cursor},
   {.name = "password_cursor_down", .entry = 0x8AB5F2, .end = 0x8AB612, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_password_cursor_down, ALL_OUTPUTS, .fuzz = fuzz_password_cursor},
+  {.name = "password_type_char", .entry = 0x8AB403, .end = 0x8AB420, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_password_type_char, ALL_OUTPUTS,
+   .fuzz = fuzz_password_typing},
+  {.name = "password_delete", .entry = 0x8AB420, .end = 0x8AB43D, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_password_delete, ALL_OUTPUTS,
+   .fuzz = fuzz_password_typing},
+  {.name = "password_text_draw", .entry = 0x8AB43D, .end = 0x8AB47C, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_password_text_draw, ALL_OUTPUTS,
+   .fuzz = fuzz_password_typing},
+  {.name = "password_no_vowel", .entry = 0x8AB47C, .end = 0x8AB4A4, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_password_no_vowel, ALL_OUTPUTS,
+   .fuzz = fuzz_password_typing},
+  {.name = "password_press_last_column", .entry = 0x8AB4A4, .end = 0x8AB4D2, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_password_press_last_column,
+   ALL_OUTPUTS, .fuzz = fuzz_password_typing},
   {.name = "password_lines_print", .entry = 0x8AB612, .end = 0x8AB644, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_lines_print, ALL_OUTPUTS,
    .fuzz = fuzz_password_lines_print},

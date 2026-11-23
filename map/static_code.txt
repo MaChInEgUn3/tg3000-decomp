@@ -173,3 +173,9 @@
 80:9750 80:9832 m16x16 ; shop_buy_list10, list 10's buying handler: its one pointer is the table word at $81:AE20 (list 10, row 0); in no run. The same code as lists 6-9's (src/shop.c shop_buy_upgrade)
 8A:B58E 8A:B596 m16x16 ; password_cursor_right on the row of three ($8A:B58C BNE): executed by its difftest fuzz, matched by src/password.c
 8A:B5D4 8A:B5E2 m16x16 ; password_cursor_left off the last column ($8A:B5C5 BEQ): executed by its difftest fuzz, matched by src/password.c
+8A:A4AF 8A:A4BE m16x16 ; func_8AA4AF ($01FB = $12): called only on paths no movie takes (the password full, or empty on DEL): executed by the password typing rows' difftest fuzz, matched by src/misc.c
+8A:B41A 8A:B420 m8x16 ; password_type_char with the text full ($8A:B40A BEQ): executed by its difftest fuzz, matched by src/password.c
+8A:B420 8A:B43D m16x16 ; password_delete (DEL; no movie presses it): executed by password_press_last_column's difftest fuzz (its own row is unreached, so it has none), matched by src/password.c
+8A:B4A0 8A:B4A4 m8x16 ; password_no_vowel finding one ($8A:B487-B497 BEQs): executed by its difftest fuzz, matched by src/password.c
+8A:B4B4 8A:B4BE m16x16 ; password_press_last_column on DEL or SPACE: executed by its difftest fuzz, matched by src/password.c
+8A:B4C0 8A:B4CD m16x16 ; the same: SPACE typed, DEL

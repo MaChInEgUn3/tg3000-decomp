@@ -10,6 +10,11 @@ func    8AA25D   take_slot           ; Y = word at D+$8C, then += 2 -> src/util.
 func    8AB15E   lsr_n               ; A >>= Y, one bit at a time -> src/util.c
 func    8AB152   asl_n               ; A <<= Y, one bit at a time (Y kept) -> src/util.c
 func    8AB2BC   password_caret_blink ; the caret shown while D+$66 is odd ($0578) -> src/password.c
+func    8AB403   password_type_char  ; a character typed into the password ($0D40, D+$80) -> src/password.c
+func    8AB420   password_delete     ; the last typed character taken off -> src/password.c
+func    8AB43D   password_text_draw  ; the typed text, in groups of four, and the caret -> src/password.c
+func    8AB47C   password_no_vowel   ; none of the first four typed is a vowel -> src/password.c
+func    8AB4A4   password_press_last_column ; A on SPACE, DEL or EXIT -> src/password.c
 func    8AB4D2   password_pad_right  ; right on any pad: the grid cursor one place right -> src/password.c
 func    8AB4FF   password_pad_left   ; left on any pad: one place left -> src/password.c
 func    8AB52C   password_pad_up     ; up on any pad: one place up -> src/password.c
@@ -179,6 +184,7 @@ func    8AC13F   text_print_tiles    ; string at DB:A, one tile per char, $80 = 
 func    8A8F02   clear_sprites       ; $0900+4i = $E000 for 128 entries (long call) -> src/misc.c
 func    8AA48D   func_8AA48D         ; $01FB = $11, $0D7E = $0A8C -> src/misc.c
 func    8AA49E   func_8AA49E         ; $01FB = $13, $0D7E = $0A8C -> src/misc.c
+func    8AA4AF   func_8AA4AF         ; $01FB = $12 (the password's refusal), $0D7E = $0A8C -> src/misc.c
 func    8AB91A   wipe_columns        ; 16 func_8AB942 steps from both edges, a frame wait after each change -> src/misc.c
 func    8AC137   text_print_tiles_at ; cursor = (X, Y), then text_print_tiles -> src/text.c
 func    80B49E   sprite_group        ; two 6-byte item lists from DB=A table -> sprite entries at $0900+slot -> src/text.c

@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
+#include "misc.h"
 #include "text.h"
 #include "tg3000.h"
 
@@ -71,6 +72,79 @@ void password_cursor_down(void) {
   const uint16_t y = rd16(CURSOR_Y);
   if(y == 0x0094 && not_below(rd16(CURSOR_X), 0xFFB4)) return;  // no fourth row under these
   if(y != 0x00AC) wr16(CURSOR_Y, (uint16_t)(y + 0x18));
+}
+
+#define TYPED 0x0D40
+#define TYPED_MAX 0x15
+
+// TG3000_ROUTINE($8A:B403) password_type_char
+void password_type_char(uint8_t ch) {
+  const uint16_t count = rd16(DP + 0x80);
+  if(count == TYPED_MAX) {
+    func_8AA4AF();
+    return;
+  }
+  wr8(TYPED + (uint32_t)count, ch);
+  wr8(DP + 0x80, (uint8_t)(rd8(DP + 0x80) + 1));  // an 8-bit INC
+  password_text_draw();
+  func_8AA48D();
+}
+
+// TG3000_ROUTINE($8A:B420) password_delete
+void password_delete(void) {
+  if(rd16(DP + 0x80) == 0) {
+    func_8AA4AF();
+    return;
+  }
+  wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) - 1));
+  wr8(TYPED + (uint32_t)rd16(DP + 0x80), 0);
+  password_text_draw();
+  func_8AA48D();
+}
+
+// TG3000_ROUTINE($8A:B43D) password_text_draw
+void password_text_draw(void) {
+  wr16(DP + 0x3A, 2);
+  if(rd16(DP + 0x80) != 0) {
+    wr16(DP + 0x48, 0);
+    uint16_t i = 0;
+    do {
+      text_put_char(rd8(TYPED + (uint32_t)i));
+      wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) + 1));
+      if((rd16(DP + 0x48) & 3) == 0 && password_no_vowel()) text_put_char(' ');
+      i++;
+    } while(i != rd16(DP + 0x80));
+  }
+  text_put_char(' ');
+  wr16(DP + 0x3A, (uint16_t)(rd16(DP + 0x3A) - 1));
+  password_caret_place();
+}
+
+// TG3000_ROUTINE($8A:B47C) password_no_vowel
+bool password_no_vowel(void) {
+  for(int i = 3; i >= 0; i--) {
+    const uint8_t ch = rd8(TYPED + (uint32_t)i);
+    if(ch == 'A' || ch == 'E' || ch == 'I' || ch == 'O' || ch == 'U') return false;
+  }
+  return true;
+}
+
+// TG3000_ROUTINE($8A:B4A4) password_press_last_column
+bool password_press_last_column(void) {
+  if(rd16(CURSOR_AT_X) != 0x0064) return false;
+  switch(rd16(CURSOR_AT_Y)) {
+    case 0x0094:  // EXIT
+      func_8AA49E();
+      return true;
+    case 0x007C:  // DEL (never pressed in a movie)
+      password_delete();
+      return false;
+    case 0x0064:  // SPACE (never pressed in a movie)
+      password_type_char(' ');
+      return false;
+    default:
+      return false;
+  }
 }
 
 // TG3000_ROUTINE($8A:B612) password_lines_print

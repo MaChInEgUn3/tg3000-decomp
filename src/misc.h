@@ -459,6 +459,8 @@ uint16_t wipe_columns(void);
 // $01FB = $11 (or $13 for func_8AA49E) and $0D7E = $0A8C.
 void func_8AA48D(void);
 void func_8AA49E(void);
+// $8A:A4AF: the same with $12 (the password screen's refusal), A not kept.
+void func_8AA4AF(void);
 
 // Set the first word of each of the 128 entries of $0900 (4 bytes each) to $E000.
 void clear_sprites(void);

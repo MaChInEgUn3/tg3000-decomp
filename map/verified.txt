@@ -494,3 +494,8 @@
 8AB612 password_lines_print src/password.c 52a261cb426c8e18 1 500 21/21 verified live-flags:NVZC replayed:0
 8AB644 password_caret_place src/password.c 52a261cb426c8e18 37 500 13/13 verified live-flags:NVZC replayed:0
 8AB2BC password_caret_blink src/password.c 52a261cb426c8e18 858 500 8/8 verified live-flags:- replayed:0
+8AB403 password_type_char src/password.c 830f68e05ef36a12 19 500 13/13 verified live-flags:NVZC replayed:0
+8AB420 password_delete src/password.c 830f68e05ef36a12 0 0 0/14 unreached live-flags:NVZC replayed:0
+8AB43D password_text_draw src/password.c 830f68e05ef36a12 20 500 27/27 verified live-flags:NVZC replayed:0
+8AB47C password_no_vowel src/password.c 830f68e05ef36a12 35 500 21/21 verified live-flags:NVZC replayed:0
+8AB4A4 password_press_last_column src/password.c 830f68e05ef36a12 20 500 22/22 verified live-flags:NVZC replayed:0

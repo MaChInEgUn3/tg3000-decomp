@@ -1946,6 +1946,24 @@ password screen, a skipped track's bonus.
   left off the last column.
 - **Not yet:** `$8A:B4A4` (A on SPACE, DEL or EXIT) calls the typing routines `$8A:B403`
   and `$8A:B420`, which are not ported.
+
+## The password screen's typing (password-2, 2026-11-23)
+
+- **Ported in `src/password.c`:** the typed text (up to `$15` characters at `$0D40`, their
+  count at D+$80):
+  - `password_type_char` ($8A:B403), `password_delete` ($8A:B420): each redraws the text and
+    beeps (`func_8AA48D`). When the text is full, or empty on DEL, they refuse with
+    `func_8AA4AF` ($8A:A4AF, `$01FB = $12`; now ported too);
+  - `password_text_draw` ($8A:B43D): the text from column 2, the caret on the space after
+    it. A space follows each group of four, but only while the first four characters hold
+    no vowel (`password_no_vowel`, $8A:B47C). The password alphabet has no vowels;
+  - `password_press_last_column` ($8A:B4A4): A on SPACE, DEL or EXIT; returns EXIT.
+- **Check:** they pass on the password movie with a fuzzer that types from the alphabet (a
+  vowel now and then), with the text full or empty one time in four, on every cell of the
+  last column.
+  - `password_delete`'s row is unreached, because no movie presses DEL. Its C is still
+    compared, through `password_press_last_column`'s fuzz on DEL.
+  - The paths only the fuzz runs are `map/static_code.txt` ranges.
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

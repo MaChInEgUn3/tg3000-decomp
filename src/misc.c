@@ -270,6 +270,9 @@ void func_8AA48D(void) { set_mode_fb(0x11); }
 // TG3000_ROUTINE($8A:A49E) func_8AA49E
 void func_8AA49E(void) { set_mode_fb(0x13); }
 
+// TG3000_ROUTINE($8A:A4AF) func_8AA4AF (A not kept: $0A8C)
+void func_8AA4AF(void) { set_mode_fb(0x12); }
+
 // TG3000_ROUTINE($8A:8F02) clear_sprites (long call)
 void clear_sprites(void) {
   for(uint16_t i = 0; i < 0x200; i += 4) wr16(0x0900 + i, 0xE000);
