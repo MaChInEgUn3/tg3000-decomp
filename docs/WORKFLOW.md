@@ -70,11 +70,11 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
    Before committing, verify one of two ways:
    - `tools/verify_new.sh name1,name2` when the unit only adds lines to `src/` and
      `tools/bench/` (new routines, rows and adapters) and does not touch `difftest.c` or
-     `platform_bench.c`. It verifies the new rows over the 60k, shop and shop-buy movies (about 10
+     `platform_bench.c`. It verifies the new rows over the 60k, shop, shop-buy and password movies (about 10
      minutes) and merges them into `map/verified.txt`; the other rows keep their last
      result. `tools/bench/selftest.sh` still runs every routine the short movie reaches.
    - `tools/verify_all.sh` otherwise. It re-verifies every routine from the full autopilot
-     movie (in parallel slices: `TG3000_SHARDS`, default 5, plus two each for the shop movies;
+     movie (in parallel slices: `TG3000_SHARDS`, default 5, plus two each for the explored movies;
      about 14 minutes on 8 cores), and checks that every negative row (deliberately wrong
      C) fails over that movie too.
 

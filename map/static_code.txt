@@ -6,10 +6,6 @@
 8A:A345 8A:A34C m8x16 ; func_8AA32B's bit-7 path ($8A:A343 BEQ falls into it): executed by its difftest fuzz, matched by src/misc.c
 8A:A3C2 8A:A3F4 m16x16 ; func_8AA381's bit-11 path (four BNEs at $8A:A387-$8A:A39F): executed by its difftest fuzz, matched by src/misc.c
 8A:8295 8A:82B4 m16x16 ; func_8A8290 past its first test ($8A:8292 BNE +1): executed by its difftest fuzz, matched by src/misc.c ($8A:82B4 on is its 6-word table)
-80:D700 80:D704 m16x16 ; func_80D6F3: negate d_x ($80:D6FE BPL skips it): executed by its difftest fuzz, matched by src/misc.c
-80:D712 80:D716 m16x16 ; func_80D6F3: negate d_y ($80:D710 BPL): same
-80:D767 80:D76F m16x16 ; func_80D6F3: negate the x step ($80:D765 BPL): same
-80:D773 80:D77B m16x16 ; func_80D6F3: negate the y step ($80:D771 BPL): same
 85:BC6C 85:BCAB m16x16 ; scroll_tables_build: the band for a negative $0242 ($85:BC6A BPL skips it): executed by its difftest fuzz, matched by src/scroll_tables.c
 85:BCBB 85:BCBE m16x16 ; scroll_tables_build: a zero height byte counts as $DC: same
 85:BCC4 85:BCC7 m16x16 ; scroll_tables_build: a negative height becomes 0: same
@@ -37,13 +33,11 @@
 80:B364 80:B366 m16x16 ; shop_list_locked: SEC, RTS when the key is negative ($80:B362 BPL)
 80:AC34 80:AC36 m16x16 ; shop_item_view_g: the stop at $7FFF ($80:AC32 BPL): as shop_item_view_a's
 80:A398 80:A39A m16x16 ; shop_item_view_f: the stop at $7FFF ($80:A396 BPL): as shop_item_view_a's
-80:AF2A 80:AF2D m16x16 ; shop_item_view_h: SBC #$1E00, the spin's wrap ($80:AF28 BCC)
 80:AF33 80:AF35 m16x16 ; shop_item_view_h: the stop at $7FFF ($80:AF31 BPL)
 80:AEB2 80:AEB5 m16x16 ; shop_item_view_i: SBC #$0F00, the spin's wrap ($80:AEB0 BCC)
 80:AEBB 80:AEBD m16x16 ; shop_item_view_i: the stop at $7FFF ($80:AEB9 BPL)
 80:ACB3 80:ACB5 m16x16 ; shop_item_view_j: the stop at $7FFF ($80:ACB1 BPL)
 80:ACD6 80:ACD9 m16x16 ; shop_gauge_lines: ORA #$FF00 for a column past 255 ($80:ACD4 BEQ)
-80:AF5E 80:AF76 m16x16 ; shop_level_blocks: all seven blocks full ($80:AF5C BNE)
 80:B641 80:B643 m16x16 ; text_type_step: INC $CE when the text pointer crosses a bank ($80:B63F BCC)
 80:B6AB 80:B6AD m16x16 ; text_type_step: the same after a letter ($80:B6A9 BCC)
 80:B6DD 80:B6F2 m16x16 ; text_type_step: codes $81 (column 0) and $82 (jump), from the table at $80:B6BC
@@ -76,9 +70,7 @@
 8A:9CBC 8A:9CC6 m16x16 ; player_in_top5: two players (variants with both shown) (never run)
 8A:9CCE 8A:9CF3 m16x16 ; player_in_top5: the player not first, its search and the "not found" ends (never run)
 8A:C2EF 8A:C311 m16x16 ; track_snap: variants 0 and $300, list $8A:CAC4 (never run)
-8A:C320 8A:C328 m16x16 ; track_snap: variant $100, a track skipped (never run)
 8A:C342 8A:C34A m16x16 ; track_snap: variant $200, a track skipped (never run)
-8A:C355 8A:C379 m16x16 ; money_skip_bonus: + 75,000 to both players' money with $03DC bit 12 (never run)
 81:F496 81:F4A2 m16x16 ; effect_request_p1: the cooldown (never run)
 81:F4AD 81:F4AF m16x16 ; effect_request_p1: PLA, RTS when the cooldown keeps the request (never run)
 8A:85B3 8A:85CB m16x16 ; tile_anim_step: the animation (D+$42 set; never run)

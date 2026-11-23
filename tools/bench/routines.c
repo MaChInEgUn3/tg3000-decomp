@@ -6247,7 +6247,33 @@ static void call_shop_buy(const Regs* in, Regs* out, uint16_t field, uint16_t he
       break;
   }
 }
-static void call_shop_buy_list1(const Regs* in, Regs* out) { call_shop_buy(in, out, 0, 0x0078, true, false); }
+// list 1's row ends at its JMP to the settle: owned, shop_item_show_icon's N/Z (D+$44);
+// bought, shop_money_store's (its LDA of D+$54); C set and V clear either way (the redraw's
+// last SBC #$0900 in oam_finish); short, as the others
+static void call_shop_buy_list1(const Regs* in, Regs* out) {
+  ShopMoneyFlags f = {in->c, in->v};
+  switch(shop_buy_part(0, 0x0078, true, false, &f)) {
+    case SHOP_BUY_OWNED:
+      setNZ16(out, rd16(DP + 0x44));
+      out->c = true;
+      out->v = false;
+      break;
+    case SHOP_BUY_BOUGHT:
+      setNZ16(out, rd16(DP + 0x54));
+      out->c = true;
+      out->v = false;
+      break;
+    case SHOP_BUY_REFUNDED_SHORT:
+      out->n = out->z = false;
+      out->c = f.c;
+      out->v = f.v;
+      break;
+    default:
+      setNZ16(out, rd16(DP + 0x6C));
+      out->c = false;
+      break;
+  }
+}
 static void call_shop_buy_list2(const Regs* in, Regs* out) { call_shop_buy(in, out, 1, 0x00B4, false, true); }
 static void call_shop_buy_list3(const Regs* in, Regs* out) { call_shop_buy(in, out, 2, 0x00B4, false, true); }
 static void call_shop_buy_list4(const Regs* in, Regs* out) { call_shop_buy(in, out, 3, 0x00B4, false, true); }
@@ -6382,14 +6408,63 @@ static void call_shop_item_view_c(const Regs* in, Regs* out) { (void)out; shop_i
 static void call_shop_item_view_d(const Regs* in, Regs* out) { (void)out; shop_item_view_d(in->y); }
 static void call_shop_item_view_e(const Regs* in, Regs* out) { (void)out; shop_item_view_e(in->y); }
 static void call_shop_item_view_g(const Regs* in, Regs* out) { (void)out; shop_item_view_g(in->y); }
-// lists 6-8's views and their helpers: only the view dispatch reaches them (rows for when a
-// movie does); no register outputs
-static void call_shop_item_view_h(const Regs* in, Regs* out) { (void)out; shop_item_view_h(in->y); }
-static void call_shop_item_view_i(const Regs* in, Regs* out) { (void)out; shop_item_view_i(in->y); }
-static void call_shop_item_view_j(const Regs* in, Regs* out) { (void)out; shop_item_view_j(in->y); }
-static void call_shop_level_blocks(const Regs* in, Regs* out) { (void)in; (void)out; shop_level_blocks(); }
-static void call_shop_gauge_lines(const Regs* in, Regs* out) { (void)in; (void)out; shop_gauge_lines(); }
-static void call_shop_gauge_line(const Regs* in, Regs* out) { (void)out; shop_gauge_line((uint8_t)in->a, in->y, in->x); }
+// lists 6-8's views and their helpers (only the password movie reaches them, with few
+// returns: their exit flags are modelled). A view's tail: D+$40 += $40 (wrapping at `wrap`,
+// a SBC, for views h and i), then INC D+$3E (DEC back from $8000): N/Z of D+$3E; C/V of the
+// last CMP/SBC or of the ADC
+static void viewTail(Regs* out, uint16_t old40, uint16_t wrap) {
+  const uint16_t a = (uint16_t)(old40 + 0x0040);
+  setNZ16(out, rd16(DP + 0x3E));
+  if(wrap == 0 || a < wrap) {
+    out->c = wrap != 0 ? false : (uint32_t)old40 + 0x40 > 0xFFFF;  // the CMP's borrow, or the ADC's carry
+    out->v = (~(old40 ^ 0x0040) & (old40 ^ a) & 0x8000) != 0;
+  } else {  // never run on a movie: SBC wrap (C set by the CMP), its V
+    const uint16_t r = (uint16_t)(a - wrap);
+    out->c = true;
+    out->v = ((a ^ wrap) & (a ^ r) & 0x8000) != 0;
+  }
+}
+static void call_shop_item_view_h(const Regs* in, Regs* out) { const uint16_t o = rd16(DP + 0x40); shop_item_view_h(in->y); viewTail(out, o, 0x1E00); }
+static void call_shop_item_view_i(const Regs* in, Regs* out) { const uint16_t o = rd16(DP + 0x40); shop_item_view_i(in->y); viewTail(out, o, 0x0F00); }
+static void call_shop_item_view_j(const Regs* in, Regs* out) { const uint16_t o = rd16(DP + 0x40); shop_item_view_j(in->y); viewTail(out, o, 0); }
+// shop_level_blocks ends on the CMP #$2D that matched (Z, C set, N clear) after the ADC #6
+// from $27 (V clear); or, all seven full with three left over, at the SBC #3 of D+$7E (not
+// stored): its N/Z/V, C set
+static void call_shop_level_blocks(const Regs* in, Regs* out) {
+  (void)in;
+  if(shop_level_blocks()) {
+    const uint16_t a = rd16(DP + 0x7E), r = (uint16_t)(a - 3);
+    setNZ16(out, r);
+    out->c = true;
+    out->v = ((a ^ 3) & (a ^ r) & 0x8000) != 0;
+    return;
+  }
+  out->n = false;
+  out->z = out->c = true;
+  out->v = false;
+}
+// shop_gauge_line ends past column $48 (the CMP's N/Z/C) or at its string's 0 word (that
+// LDA's N/Z, the CMP's C); V of the last ADC #8
+static void gaugeLineOut(Regs* out) {
+  const uint16_t now = rd16(DP + 0x80), old = (uint16_t)(now - 8);
+  out->c = now >= 0x0048;
+  out->v = (~(old ^ 0x0008) & (old ^ now) & 0x8000) != 0;
+  if(!((uint16_t)(now - 0x0048) & 0x8000)) {
+    out->n = false;
+    out->z = now == 0x0048;
+  } else {
+    out->n = false;
+    out->z = true;
+  }
+}
+static void call_shop_gauge_line(const Regs* in, Regs* out) { shop_gauge_line((uint8_t)in->a, in->y, in->x); gaugeLineOut(out); }
+// four gauge lines, then PLB: N/Z of the bank it restores (the entry's), C/V the last line's
+static void call_shop_gauge_lines(const Regs* in, Regs* out) {
+  shop_gauge_lines();
+  gaugeLineOut(out);
+  out->n = (in->db & 0x80) != 0;
+  out->z = in->db == 0;
+}
 static void call_shop_item_dispatch_view(const Regs* in, Regs* out) { (void)in; (void)out; shop_item_dispatch_view(); }
 // the panel dispatch: X = the entry (its PLX: N, Z); C and V of the last queue ADC (one
 // upload for lists 0 and 6-8, two for the rest)
@@ -6687,6 +6762,35 @@ static void fuzz_shop_item_view_of(Regs* r, uint8_t* ram, uint32_t (*rnd)(void),
   if((rnd() & 7) == 0) wr16ram(ram, DP + 0x3E, 0x7FFF);
 }
 static void fuzz_shop_item_view_a(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA2CB); }
+// lists 6-8's views: the view's spin D+$40 near its wrap now and then
+static void fuzz_shop_item_view_hij(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), uint16_t view, uint16_t wrap) {
+  fuzz_shop_item_view_of(r, ram, rnd, view);
+  wr16ram(ram, DP + 0x40, (rnd() & 1) && wrap ? (uint16_t)(wrap - 0x40 + (rnd() % 3) * 0x40 - 0x40) : (uint16_t)(rnd() % 0x2000));
+  wr16ram(ram, DP + 0x46, (uint16_t)rnd());
+}
+static void fuzz_shop_item_view_h(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_hij(r, ram, rnd, 0xAEBE, 0x1E00); }
+static void fuzz_shop_item_view_i(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_hij(r, ram, rnd, 0xAE4E, 0x0F00); }
+static void fuzz_shop_item_view_j(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_hij(r, ram, rnd, 0xAC37, 0); }
+// the stage D+$3E (0-$5F), the sprite slot (a shop's), the view's place words
+static void fuzz_shop_level_blocks(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x3E, (uint16_t)(rnd() % 0x60));
+  wr16ram(ram, DP + 0x74, (uint16_t)(4 * (rnd() % 32)));
+  wr16ram(ram, DP + 0x7A, (uint16_t)(rnd() % 0x40));
+  wr16ram(ram, DP + 0xE7, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x14, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x84, (uint16_t)rnd());
+}
+// the gauges: their speed word D+$46, the column D+$14 (from $C0 up its high byte is set: the
+// sign path), the view's place, the sprite slot
+static void fuzz_shop_gauge_lines(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x46, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x14, (rnd() & 1) ? (uint16_t)(0x00C0 + rnd() % 0x80) : (uint16_t)(rnd() % 0x100));
+  wr16ram(ram, DP + 0x7A, (uint16_t)(rnd() % 0x40));
+  wr16ram(ram, DP + 0xE8, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x74, (uint16_t)(4 * (rnd() % 32)));
+}
 static void fuzz_shop_item_view_b(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA831); }
 static void fuzz_shop_item_view_c(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xAA15); }
 static void fuzz_shop_item_view_d(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_shop_item_view_of(r, ram, rnd, 0xA717); }
@@ -9885,19 +9989,17 @@ const Routine routines[] = {
    .lowWramDb = true, .call = call_shop_part_level_7, ALL_OUTPUTS, .fuzz = fuzz_shop_part_level},
   {.name = "shop_money_take", .entry = 0x80993E, .end = 0x809957, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_shop_money_take, ALL_OUTPUTS, .fuzz = fuzz_shop_money_take},
-  {.name = "shop_buy_list1", .entry = 0x809053, .end = 0x809100, .source = "src/shop.c", .needM16 = true, .needX16 = true,
+  {.name = "shop_buy_list1", .entry = 0x809053, .end = 0x8090FD, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list1,
    .endAt = 0x8090FD,  // its tail jump to shop_item_icon_settle
-   // lists 1-3: no movie buys from them (the owned and short paths run); their refund and
-   // buying paths are the bytes shop_buy_list4 verifies, but for the level byte, the height
-   // (list 1: $78) and list 1's order of two calls when short after a refund: holes here
-   .holes = {{0x80907D, 0x809090}, {0x80909A, 0x809100}}},
+   // lists 1-3: the money short, after a refund or not: no movie runs it (holes; as list 4's)
+   .holes = {{0x809088, 0x809090}, {0x809095, 0x80909A}}},
   {.name = "shop_buy_list2", .entry = 0x809100, .end = 0x8091AE, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list2,
-   .holes = {{0x80912A, 0x80913D}, {0x809147, 0x8091AA}}},  // as list 1's
+   .holes = {{0x809135, 0x80913D}, {0x809142, 0x809147}}},  // as list 1's
   {.name = "shop_buy_list3", .entry = 0x8091AE, .end = 0x80925C, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list3,
-   .holes = {{0x8091D8, 0x8091EB}, {0x8091F5, 0x809258}}},  // as list 1's
+   .holes = {{0x8091E3, 0x8091EB}, {0x8091F0, 0x8091F5}}},  // as list 1's
   {.name = "shop_buy_list4", .entry = 0x80925C, .end = 0x80930A, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list4,
    .holes = {{0x80929E, 0x8092A3}}},  // the money short with no refund (JSL shop_flag_fb, RTS): no
@@ -10056,15 +10158,15 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_item_affordable,
    .fuzz = fuzz_shop_item_affordable},
   {.name = "shop_item_view_h", .entry = 0x80AEBE, .end = 0x80AF36, .source = "src/shop.c", .needM16 = true, .needX16 = true,
-   .fixedD = true, .db = 0x81, .call = call_shop_item_view_h},
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_h, .fuzz = fuzz_shop_item_view_h},
   {.name = "shop_item_view_i", .entry = 0x80AE4E, .end = 0x80AEBE, .source = "src/shop.c", .needM16 = true, .needX16 = true,
-   .fixedD = true, .db = 0x81, .call = call_shop_item_view_i},
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_i, .fuzz = fuzz_shop_item_view_i},
   {.name = "shop_item_view_j", .entry = 0x80AC37, .end = 0x80ACB6, .source = "src/shop.c", .needM16 = true, .needX16 = true,
-   .fixedD = true, .db = 0x81, .call = call_shop_item_view_j},
+   .fixedD = true, .db = 0x81, .call = call_shop_item_view_j, .fuzz = fuzz_shop_item_view_j},
   {.name = "shop_level_blocks", .entry = 0x80AF36, .end = 0x80AFE1, .source = "src/shop.c", .needM16 = true, .needX16 = true,
-   .fixedD = true, .call = call_shop_level_blocks},
+   .fixedD = true, .call = call_shop_level_blocks, .fuzz = fuzz_shop_level_blocks},
   {.name = "shop_gauge_lines", .entry = 0x80ACB6, .end = 0x80ADD9, .source = "src/shop.c", .needM16 = true, .needX16 = true,
-   .fixedD = true, .call = call_shop_gauge_lines},
+   .fixedD = true, .call = call_shop_gauge_lines, .fuzz = fuzz_shop_gauge_lines},
   {.name = "shop_gauge_line", .entry = 0x80ADD9, .end = 0x80AE4E, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x7E, .call = call_shop_gauge_line},
   // the control codes' handlers follow the code table ($80:B6BC-B6C9, data)

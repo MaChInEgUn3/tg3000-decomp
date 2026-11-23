@@ -963,7 +963,7 @@ static void shop_view_spin(uint16_t wrap) {
 }
 
 // TG3000_ROUTINE($80:AF36) shop_level_blocks
-void shop_level_blocks(void) {
+bool shop_level_blocks(void) {
   wr16(DP + 0x80, 0);
   uint16_t y = rd16(DP + 0x74);
   wr16(DP + 0x7E, 0);
@@ -975,9 +975,10 @@ void shop_level_blocks(void) {
       wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x7E) - 6));
       wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) + 6));
       if(rd16(DP + 0x80) != 0x002A) continue;
-      // all seven full: the last is drawn half a block over ($80:AF5E, never run)
+      // all seven full: the last is drawn half a block over ($80:AF5E; the password movie
+      // runs it); with three or more left over, nothing is drawn (a JMP to the RTS)
       wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) - 3));
-      if(rd16(DP + 0x7E) >= 3) return;
+      if(rd16(DP + 0x7E) >= 3) return true;
       wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x7E) + 3));
       break;
     }
@@ -1008,6 +1009,7 @@ void shop_level_blocks(void) {
     }
   } while(pos != 0x002D);
   wr16(DP + 0x74, y);
+  return false;
 }
 
 // TG3000_ROUTINE($80:ADD9) shop_gauge_line
@@ -1105,7 +1107,7 @@ void shop_item_view_h(uint16_t entry) {
   wr16(DP + 0x7C, entry);
   shop_item_group(rd16(DP + 0x7C), 0, rd16(DP + 0x7A));
   wr16(DP + 0x84, 0x257B);
-  shop_level_blocks();
+  (void)shop_level_blocks();
   uint16_t frame = (uint16_t)((rd16(DP + 0x40) >> 8) & 0x00FF);
   shop_view_group(shop_view_x(0x50), rom16(0x81BD44 + (uint32_t)(uint16_t)(frame << 1)));
   shop_view_group(shop_view_x(0x50), 0x46BA);

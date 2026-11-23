@@ -1151,7 +1151,17 @@ CODE_808A71:
     jsl.l track_snap            ; $808A97
     lda.w $0444                 ; $808A9B
     beq CODE_808AB8             ; $808A9E
-    incbin !baserom:$AA0..$AB8
+    stz.b $14                   ; $808AA0
+    ldx.b $14                   ; $808AA2
+CODE_808AA4:
+    jsl.l $84A34E               ; $808AA4
+    ldx.b $14                   ; $808AA8
+    jsl.l $84A31E               ; $808AAA
+    ldx.b $14                   ; $808AAE
+    inx                         ; $808AB0
+    stx.b $14                   ; $808AB1
+    cpx.w $0444                 ; $808AB3
+    bne CODE_808AA4             ; $808AB6
 CODE_808AB8:
     jsl.l result_tally          ; $808AB8
     jsr.w $8BC5                 ; $808ABC
@@ -1747,7 +1757,11 @@ CODE_809072:
     lda.w $0393,x               ; $809075
     bit.w #$0080                ; $809078
     beq CODE_809090             ; $80907B
-    incbin !baserom:$107D..$1090
+    and.w #$007F                ; $80907D
+    jsr.w shop_money_after_refund; $809080
+    jsr.w shop_item_affordable  ; $809083
+    bcs CODE_80909A             ; $809086
+    incbin !baserom:$1088..$1090
 CODE_809090:
     jsr.w shop_item_affordable  ; $809090
     bcs CODE_80909A             ; $809093
@@ -1813,7 +1827,11 @@ CODE_80911F:
     lda.w $0394,x               ; $809122
     bit.w #$0080                ; $809125
     beq CODE_80913D             ; $809128
-    incbin !baserom:$112A..$113D
+    and.w #$007F                ; $80912A
+    jsr.w shop_money_after_refund; $80912D
+    jsr.w shop_item_affordable  ; $809130
+    bcs CODE_809147             ; $809133
+    incbin !baserom:$1135..$113D
 CODE_80913D:
     jsr.w shop_item_affordable  ; $80913D
     bcs CODE_809147             ; $809140
@@ -1880,7 +1898,11 @@ CODE_8091CD:
     lda.w $0395,x               ; $8091D0
     bit.w #$0080                ; $8091D3
     beq CODE_8091EB             ; $8091D6
-    incbin !baserom:$11D8..$11EB
+    and.w #$007F                ; $8091D8
+    jsr.w shop_money_after_refund; $8091DB
+    jsr.w shop_item_affordable  ; $8091DE
+    bcs CODE_8091F5             ; $8091E1
+    incbin !baserom:$11E3..$11EB
 CODE_8091EB:
     jsr.w shop_item_affordable  ; $8091EB
     bcs CODE_8091F5             ; $8091EE
@@ -2134,7 +2156,12 @@ CODE_8094BF:
     dec a                       ; $8094E6
     cmp.b $4A                   ; $8094E7
     bne CODE_8094FE             ; $8094E9
-    incbin !baserom:$14EB..$14FE
+    jsl.l func_80E4C5           ; $8094EB
+    ldx.w #$B535                ; $8094EF
+    lda.w #$0080                ; $8094F2
+    jsr.w func_80B58D           ; $8094F5
+    jsr.w shop_item_show_icon   ; $8094F8
+    jmp.w $95BC                 ; $8094FB
 CODE_8094FE:
     jsr.w shop_money_take       ; $8094FE
     lda.w $0398,x               ; $809501
@@ -5208,7 +5235,7 @@ shop_item_view_h:
     adc.w #$0040                ; $80AF22
     cmp.w #$1E00                ; $80AF25
     bcc CODE_80AF2D             ; $80AF28
-    sbc.w #$1E00                ; $80AF2A static
+    sbc.w #$1E00                ; $80AF2A
 CODE_80AF2D:
     sta.b $40                   ; $80AF2D
     inc.b $3E                   ; $80AF2F
@@ -5238,18 +5265,18 @@ CODE_80AF47:
     sta.b $80                   ; $80AF57
     cmp.w #$002A                ; $80AF59
     bne CODE_80AF47             ; $80AF5C
-    lda.b $80                   ; $80AF5E static
-    sec                         ; $80AF60 static
-    sbc.w #$0003                ; $80AF61 static
-    sta.b $80                   ; $80AF64 static
-    lda.b $7E                   ; $80AF66 static
-    sec                         ; $80AF68 static
-    sbc.w #$0003                ; $80AF69 static
-    bcc CODE_80AF71             ; $80AF6C static
-    jmp.w $AFE0                 ; $80AF6E static
+    lda.b $80                   ; $80AF5E
+    sec                         ; $80AF60
+    sbc.w #$0003                ; $80AF61
+    sta.b $80                   ; $80AF64
+    lda.b $7E                   ; $80AF66
+    sec                         ; $80AF68
+    sbc.w #$0003                ; $80AF69
+    bcc CODE_80AF71             ; $80AF6C
+    jmp.w $AFE0                 ; $80AF6E
 CODE_80AF71:
-    adc.w #$0006                ; $80AF71 static
-    sta.b $7E                   ; $80AF74 static
+    adc.w #$0006                ; $80AF71
+    sta.b $7E                   ; $80AF74
 CODE_80AF76:
     lda.w #$0062                ; $80AF76
     sec                         ; $80AF79
@@ -9190,8 +9217,8 @@ func_80D6F3:
     sbc.b $34                   ; $80D6FA
     sta.b $16                   ; $80D6FC
     bpl CODE_80D704             ; $80D6FE
-    eor.w #$FFFF                ; $80D700 static
-    inc a                       ; $80D703 static
+    eor.w #$FFFF                ; $80D700
+    inc a                       ; $80D703
 CODE_80D704:
     sta.b $14                   ; $80D704
     lda.b $26                   ; $80D706
@@ -9200,8 +9227,8 @@ CODE_80D704:
     sbc.b $36                   ; $80D70C
     sta.b $18                   ; $80D70E
     bpl CODE_80D716             ; $80D710
-    eor.w #$FFFF                ; $80D712 static
-    inc a                       ; $80D715 static
+    eor.w #$FFFF                ; $80D712
+    inc a                       ; $80D715
 CODE_80D716:
     cmp.b $14                   ; $80D716
     bmi CODE_80D742             ; $80D718
@@ -9246,17 +9273,17 @@ CODE_80D742:
 CODE_80D763:
     lda.b $16                   ; $80D763
     bpl CODE_80D76F             ; $80D765
-    lda.b $38                   ; $80D767 static
-    eor.w #$FFFF                ; $80D769 static
-    inc a                       ; $80D76C static
-    sta.b $38                   ; $80D76D static
+    lda.b $38                   ; $80D767
+    eor.w #$FFFF                ; $80D769
+    inc a                       ; $80D76C
+    sta.b $38                   ; $80D76D
 CODE_80D76F:
     lda.b $18                   ; $80D76F
     bpl CODE_80D77B             ; $80D771
-    lda.b $3A                   ; $80D773 static
-    eor.w #$FFFF                ; $80D775 static
-    inc a                       ; $80D778 static
-    sta.b $3A                   ; $80D779 static
+    lda.b $3A                   ; $80D773
+    eor.w #$FFFF                ; $80D775
+    inc a                       ; $80D778
+    sta.b $3A                   ; $80D779
 CODE_80D77B:
     sep.b #$20                  ; $80D77B
     sta.b $34                   ; $80D77D

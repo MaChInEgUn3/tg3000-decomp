@@ -1819,6 +1819,73 @@ Advisor-reviewed; they follow from "0% emulator", not new owner decisions.
   interleaved with roots, and long refbench captures run in the background, never during
   a gate.
 
+## A password movie (explore-3, 2026-11-23)
+
+**`tools/bench/movies/explore_pw.txt` is the fourth movie** of `verify_all` (two slices)
+and `verify_new`. It reaches what no movie did: the later championship's shop lists, the
+password screen, a skipped track's bonus.
+- **What gates the shop's lists.** Not money: a list shows only while its byte at `$036E` +
+  its index is non-zero (`shop_list_label`). `result_tally` ($84:A34B) raises those bytes
+  after certain tracks (`$0444`), by the variant (`$03DC` bits 8-9). For example, in
+  variant 0 list 6 opens after track 15 and list 7 after track 33. The 60k movie never gets
+  that far.
+- **The password's fields** (`password_pack`'s table at `$8A:CF61`) hold:
+  - `$03DC`, the track `$0444`, and the colour `$0392`;
+  - the level bytes `$0393-$039C`;
+  - 13 bits of the money `$038E`;
+  - player 2's copies.
+- **How the password was made (a recipe, not in the repo):**
+  - A temporary hook in the bench wrote `$0444` = 30 and `$038E` = 8,000 when the 60k
+    movie entered `password_pack` ($8A:BB99, after `func_8ABF4E` has turned the money into
+    binary).
+  - The game's own `password_pack`/`password_encode` then made `T9Y9LFR1M?N9B6R1VQ9`, and
+    its decoder accepted it.
+  - The shop then showed "Credits 8000000"; how the display relates to `$038E` was not
+    measured.
+- **The typing:** `tools/password_movie.py` writes the taps from the grid, and reproduces
+  the movie's typing.
+  - The grid's last row (`.?!`) is reached from its own columns.
+  - EXIT's A waits 60 steps, because the cursor glides there and an early A does nothing.
+- **The movie:** race1 to the Championship menu, PASSWORD (Down x4, A), the typing, EXIT,
+  RACE, the track description and the shop. Then the explorer: 40 + 24 segments of 300
+  steps, aimed at the lists. 29,000 steps in all.
+  - It buys from lists 1-3, 6 and 8, runs the refund, the dispatcher `$80:9039` and
+    `shop_level_blocks`.
+  - It does not buy from lists 4, 5 or 7: `explore_buy.txt` stays, the only movie that buys
+    from list 4.
+  - It ends inside a race (lap 1 of 2, not paused): the fuzz base of every row it enters.
+- **Before wiring it, every row ran over it at two slices:** 18 failed, 2 of them hard
+  (harness-9's). Of the 16 others, the first full gate still failed 8 after pooling. Five
+  of them, and `shop_gauge_line`, are rows no movie had reached, with no fuzzer and no flag
+  model. This unit verifies them for the first time:
+  - **lists 6-8's views** `shop_item_view_h`/`_i`/`_j` ($80:AEBE, $AE4E, $AC37). Their
+    tail: D+$40 += `$40`, wrapping at `$1E00`/`$0F00` for h and i (a `SBC`), then
+    `INC $3E`. So N/Z come from D+$3E, and C/V from the `CMP`, the `SBC` or the `ADC`. A
+    fuzzer per view (after views e/f's), with the spin near its wrap;
+  - **`shop_level_blocks`** ($80:AF36). It ends on the `CMP #$2D` that matched (Z and C set,
+    N and V clear), or, with all seven blocks full and three or more left over, at a `JMP`
+    to its `RTS`: the `SBC #3`'s N/Z/V, C set, nothing drawn. The movie runs that path;
+    `map/static_code.txt` had it as never run. The C now returns which. A fuzzer over the
+    stage D+$3E;
+  - **`shop_gauge_lines`** ($80:ACB6) **and `shop_gauge_line`** ($80:ADD9). A line ends past
+    column `$48` (the `CMP`'s N/Z/C) or at its string's 0 word (that `LDA`'s N/Z, the
+    `CMP`'s C); V is the last `ADC #8`'s. The four lines end with `PLB`: N/Z of the entry's
+    bank. A fuzzer for the lines, with the column D+$14 from `$C0` up, where the sign path
+    `$80:ACD6` runs.
+- **Lists 1-3:** the movie buys from them, so their buying paths are compared now.
+  - The money short, with or without a refund, still runs on no movie: holes, as list 4's.
+  - List 1's row now ends at its own `endAt` (`$80:90FD`, the `JMP` to the settle), as
+    `hud_markers_write` does.
+  - At that `JMP` list 1 has its own exit model: owned, `shop_item_show_icon`'s N/Z (D+$44);
+    bought, `shop_money_store`'s (D+$54). Either way C is set and V clear, from the
+    redraw's last `SBC #$0900` in `oam_finish`.
+  - Still unchecked: list 1's order of its two calls when short after a refund.
+- **Its coverage is merged into the map:** code grows from 70,518 to 71,889 bytes. Eight
+  `map/static_code.txt` ranges it executes left that file (`func_80D6F3`'s negations,
+  `shop_item_view_h`'s wrap, `shop_level_blocks`' full row, `track_snap`'s skip,
+  `money_skip_bonus`).
+- **Gate:** the full one, over four movies; `verify_all`'s wall time is recorded below.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
@@ -1880,12 +1947,11 @@ through a pushed address and `RTS`; it waits for lists 6-8's handlers before its
   `shop_buy_colour` (live 28/28, fuzz 500/500).
   - list 4's "short, no refund" path (`$80:929E-$92A3`) is a hole: no movie runs it, and a
     waiting row has no fuzz.
-  - Lists 1-3: the shop movies run their owned and short paths (live 43, 40 and 5 samples).
-    No movie buys from them, so their refund and buying paths are holes (my call, after
-    `shop_item_show_icon`'s precedent; open to the advisor's and the owner's review).
-  - Those holes are the bytes list 4's row verifies, except the level byte, list 1's panel
-    height (`$78`) and list 1's order of two calls when short after a refund. Those three
-    go unchecked until a movie buys from lists 1-3.
+  - Lists 1-3: the shop movies run their owned and short paths. Their refund and buying
+    paths were holes until the password movie bought from them (explore-3).
+  - Unchecked: list 4's sequence "refund, then affordable, then bought" (its one refund
+    sample ended short; both halves are visited separately, so path coverage cannot show
+    the gap).
   - List 5's row is left out: the movie only shows an owned part there, so its buying paths
     would stay unvisited. Its C is the same function list 4 verifies.
 - **The refund path does run.** It ran once on the movie (a level-1 part, then row 2 too

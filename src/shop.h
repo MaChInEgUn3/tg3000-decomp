@@ -217,7 +217,8 @@ void shop_item_view_j(uint16_t entry);
 
 // $80:AF36: a row of 2x2 blocks filling with the stage: (D+$3E / 2 - $10) / 6 blocks full,
 // the next at tile D+$84 + 2 * the remainder; 7 blocks, the last half a block over.
-void shop_level_blocks(void);
+// Returns true when all seven blocks are full with three or more left over: nothing drawn.
+bool shop_level_blocks(void);
 
 // $80:ACB6: the gauge: four sprites (tile $032F) at D+$14 + $40, then lines of
 // sprites from the strings at $7E:44BA-$7E:44E0 (shop_gauge_line); twelve lines in all.
