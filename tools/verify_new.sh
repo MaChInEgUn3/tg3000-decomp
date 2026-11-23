@@ -25,6 +25,16 @@ if ! git diff --quiet HEAD -- tools/bench/difftest.c tools/bench/platform_bench.
   echo "verify_new: src/ or tools/bench/ changed by more than additions: run tools/verify_all.sh" >&2
   exit 7
 fi
+# a new waiting row can enclose older rows' samples and change their evidence (shop-21): it
+# goes through the full run
+for name in $(echo "$rows" | tr ',' ' '); do
+  if awk -v n="$name" 'index($0, "{.name = \"" n "\"") > 0 { f = 1; print; next }
+       f && (/^  \{\.name/ || /^  \/\// || /^};/) { exit } f { print }' tools/bench/routines.c \
+     | grep -q waitsForInterrupts; then
+    echo "verify_new: $name waits for interrupts (a waiting row): run tools/verify_all.sh" >&2
+    exit 7
+  fi
+done
 make -s -C tools/bench >/dev/null
 rom="${TG3000_ROM:-TG3000.sfc}"
 tmp=$(mktemp -d)

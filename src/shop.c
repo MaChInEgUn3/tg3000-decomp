@@ -368,25 +368,27 @@ void shop_buy_list9(void) { (void)shop_buy_upgrade(9, NULL); }
 // TG3000_ROUTINE($80:9750) shop_buy_list10 (never run)
 void shop_buy_list10(void) { (void)shop_buy_upgrade(8, NULL); }
 
-// TG3000_ROUTINE($80:9039) shop_buy_dispatch
 // The ROM pushes the return to its own RTS ($80:9052), then the handler's address - 1, and
 // RTSes into it.
-ShopBuyEnd shop_buy_dispatch(ShopMoneyFlags* f) {
+uint16_t shop_buy_handler(void) {
   const uint16_t entry = (uint16_t)((rd16(DP + 0x4A) << 4) + rom16(0x81A892 + (uint32_t)(uint16_t)(rd16(DP + 0x48) << 1)));
-  switch(rom16(0x81A89F + (uint32_t)entry)) {
-    case 0x930A: shop_buy_colour(); return SHOP_BUY_BOUGHT;
-    case 0x9053: return shop_buy_part(0, 0x0078, true, true, f);
-    case 0x9100: return shop_buy_part(1, 0x00B4, false, true, f);
-    case 0x91AE: return shop_buy_part(2, 0x00B4, false, true, f);
-    case 0x925C: return shop_buy_part(3, 0x00B4, false, true, f);
-    case 0x95C0: return shop_buy_part(4, 0x00B4, false, true, f);
-    case 0x94DE: return shop_buy_upgrade(5, f);
-    case 0x93FC: return shop_buy_upgrade(6, f);
-    case 0x931A: return shop_buy_upgrade(7, f);
-    case 0x966E: return shop_buy_upgrade(9, f);
-    case 0x9750: return shop_buy_upgrade(8, f);
-    default:  // no other word in the table's rows: the ROM would jump to it
-      return SHOP_BUY_OWNED;
+  return rom16(0x81A89F + (uint32_t)entry);
+}
+// TG3000_ROUTINE($80:9039) shop_buy_dispatch
+void shop_buy_dispatch(void) {
+  switch(shop_buy_handler()) {
+    case 0x930A: shop_buy_colour(); break;
+    case 0x9053: shop_buy_list1(); break;
+    case 0x9100: shop_buy_list2(); break;
+    case 0x91AE: shop_buy_list3(); break;
+    case 0x925C: shop_buy_list4(); break;
+    case 0x95C0: shop_buy_list5(); break;
+    case 0x94DE: shop_buy_list6(); break;
+    case 0x93FC: shop_buy_list7(); break;
+    case 0x931A: shop_buy_list8(); break;
+    case 0x966E: shop_buy_list9(); break;
+    case 0x9750: shop_buy_list10(); break;
+    default: break;  // no other word in the table's rows: the ROM would jump to it
   }
 }
 

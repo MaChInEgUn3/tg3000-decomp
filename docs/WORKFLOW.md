@@ -73,6 +73,8 @@ Frame dumps are game assets: write them outside the repo (they are also ignored)
      `platform_bench.c`. It verifies the new rows over the 60k, shop, shop-buy and password movies (about 10
      minutes) and merges them into `map/verified.txt`; the other rows keep their last
      result. `tools/bench/selftest.sh` still runs every routine the short movie reaches.
+     It refuses a new waiting row (`waitsForInterrupts`): such a row can enclose older rows'
+     samples, so it needs the full run.
    - `tools/verify_all.sh` otherwise. It re-verifies every routine from the full autopilot
      movie (in parallel slices: `TG3000_SHARDS`, default 5, plus two each for the explored movies;
      about 14 minutes on 8 cores), and checks that every negative row (deliberately wrong

@@ -1913,9 +1913,9 @@ password screen, a skipped track's bonus.
   entry (list D+$48, row D+$4A). The ROM pushes its own `RTS` ($80:9052) as the return,
   then the handler's address - 1, and `RTS`es into it. The C is a `switch` over the eleven
   words the table holds and returns the handler's `ShopBuyEnd`.
-  - Its row is a waiting row around the handlers' waiting rows. Nesting needed no harness
-    change: it passes on the shop, buy and password movies (134, 35 and 46 samples, every
-    path). 3 entries were abandoned there, as with lists 2 and 3's rows.
+  - Its row was a waiting row around the handlers' waiting rows. On its own it passed on
+    the shop, buy and password movies (134, 35 and 46 samples, every path). The claim
+    written here then, that nesting needed no harness change, was wrong: see shop-21.
   - Exit: the handler's. After the colour (list 0) C and V are the dispatch's `ADC` of the
     entry, and N/Z are the `PLA` in `func_80E4DB`: the handler's address - 1 as the high
     byte, D+$4A as the low.
@@ -1927,6 +1927,34 @@ password screen, a skipped track's bonus.
     `map/static_code.txt` range, so the listing decodes it; it has no row.
 - **Holes are not counted.** `tools/progress.py` counts code bytes in verified extents
   minus their holes, so a hole never adds to the verified percentage.
+
+## The dispatch's row ends at its RTS (shop-21, 2026-11-23)
+
+- **What went wrong.** shop-20's waiting row for `shop_buy_dispatch` enclosed the handlers'
+  rows. In a full run, the handlers' samples taken inside it were not compared. List 1 had
+  6 entries on the password movie and 4 compared; list 2 had 11 and 6. Their refund paths
+  went unvisited: 56/60 and 58/62, failed.
+  - `verify_new.sh` re-ran only the new rows, so the gate did not see it.
+  - Commits c425554, a841198 and ada9863 publish lists 1 and 2 as verified on rows carried
+    from 927d0f7, which a full run then fails. The owner is told.
+- **The fix (the advisor's call, open to the owner's veto):** no harness change.
+  - The row now ends at the dispatch's own `RTS` into the handler (`$80:9051`, `endAt` =
+    `end`), so it encloses no other row and needs no waiting.
+  - It checks the lookup: `shop_buy_handler` returns the word at `$81:A89F` in the entry.
+    The adapter models A (the handler's address - 1, N/Z of the `DEC`), X (the entry), the
+    `ADC`'s C/V and the two pushes of the `RTS` trick.
+  - A fuzzer runs over the table's lists (0-10) and rows (0-7). Off those, the entry runs
+    past bank `$81` into `$82`'s WRAM and I/O mirror, which is not a game state.
+  - `shop_buy_dispatch`'s `switch` now calls the handlers by name (`shop_buy_list1()` ...).
+    No row checks the `switch` itself (word to function); each handler's row checks its
+    own C.
+- **`verify_new.sh` refuses a new waiting row** and sends it to the full run (also in
+  `WORKFLOW.md`). This is the advisor's call, open to veto.
+- **Still open:** with the dispatch enclosing it, list 1 started no sample for 2 of its 6
+  entries, with none abandoned or interrupted. That condition in `difftest.c` is not found
+  yet. It does not block this fix, but it blocks a row for the password screen's loop
+  (`$8A:B295`), which has the same shape.
+- **Gate:** the full one. Lists 1 and 2 are back at 60/60 and 62/62.
 
 ## The password screen's grid cursor (password-1, 2026-11-23)
 

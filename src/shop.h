@@ -66,10 +66,10 @@ void shop_buy_list8(void);
 // 10's (its one entry is at $81:AE20).
 void shop_buy_list9(void);
 void shop_buy_list10(void);
-// $80:9039: the current item's buying handler (the word at $81:A89F in the item's entry, list
-// D+$48, row D+$4A) is run. Returns how it went (the colour, list 0: SHOP_BUY_BOUGHT); `f` as
-// shop_buy_part's.
-ShopBuyEnd shop_buy_dispatch(ShopMoneyFlags* f);
+// $80:9039: the current item's buying handler is run: the word at $81:A89F in the item's
+// entry (list D+$48, row D+$4A; shop_buy_handler returns it).
+uint16_t shop_buy_handler(void);
+void shop_buy_dispatch(void);
 // $80:930A: list 0, the car's colour: $0392 + D+$94 = the row (a byte), then func_80E4DB.
 void shop_buy_colour(void);
 
