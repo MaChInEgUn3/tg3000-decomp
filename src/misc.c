@@ -2326,17 +2326,23 @@ static uint32_t result_table(uint16_t* offset) {
 }
 
 // TG3000_ROUTINE($84:A31B) result_slot_step
-void result_slot_step(void) {
+void result_slot_step(void) { result_slot_step_at(rd16(0x0444)); }
+
+// TG3000_ROUTINE($84:A31E) result_slot_step_at
+void result_slot_step_at(uint16_t track) {
   uint16_t off;
   const uint32_t t = result_table(&off);
-  if(bus_rd8(t + (uint32_t)rd16(0x0444))) wr16(0x036C, (uint16_t)(rd16(0x036C) + 4));
+  if(bus_rd8(t + (uint32_t)track)) wr16(0x036C, (uint16_t)(rd16(0x036C) + 4));
 }
 
 // TG3000_ROUTINE($84:A34B) result_tally
-void result_tally(void) {
+void result_tally(void) { result_tally_at(rd16(0x0444)); }
+
+// TG3000_ROUTINE($84:A34E) result_tally_at
+void result_tally_at(uint16_t track) {
   uint16_t off;
   const uint32_t t = result_table(&off);
-  if(!bus_rd8(t + (uint32_t)rd16(0x0444))) return;
+  if(!bus_rd8(t + (uint32_t)track)) return;
   const uint16_t x = bus_rd16(0x85D590 + (uint32_t)(uint16_t)(off + rd16(0x036C)));
   wr16(0x036E + (uint32_t)x, (uint16_t)(rd16(0x036E + (uint32_t)x) + 1));
 }

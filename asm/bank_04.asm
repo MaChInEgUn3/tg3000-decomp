@@ -4,6 +4,7 @@ org $848000
     incbin !baserom:$20000..$2231B
 result_slot_step:
     ldx.w $0444                 ; $84A31B
+result_slot_step_at:
     lda.w $03DC                 ; $84A31E
     and.w #$0300                ; $84A321
     beq CODE_84A331             ; $84A324
@@ -27,6 +28,7 @@ CODE_84A34A:
     rtl                         ; $84A34A
 result_tally:
     ldx.w $0444                 ; $84A34B
+result_tally_at:
     lda.w $03DC                 ; $84A34E
     and.w #$0300                ; $84A351
     beq CODE_84A364             ; $84A354

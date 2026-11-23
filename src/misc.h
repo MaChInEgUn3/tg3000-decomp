@@ -753,6 +753,10 @@ void result_slot_step(void);
 // $84:A34B: when it is set, the word $036E + (the word at $85:D590 + (0, $1C or $44 by
 // variant) + $036C) counts up.
 void result_tally(void);
+// $84:A31E / $84:A34E: the same for track `track` (their second entries, past the LDX $0444:
+// the password's tally of the tracks before $0444, $80:8AA4).
+void result_slot_step_at(uint16_t track);
+void result_tally_at(uint16_t track);
 
 // $8A:9D1E: the 20 words at $041C = 0.
 void clear_041c(void);

@@ -1154,9 +1154,9 @@ CODE_808A71:
     stz.b $14                   ; $808AA0
     ldx.b $14                   ; $808AA2
 CODE_808AA4:
-    jsl.l $84A34E               ; $808AA4
+    jsl.l result_tally_at       ; $808AA4
     ldx.b $14                   ; $808AA8
-    jsl.l $84A31E               ; $808AAA
+    jsl.l result_slot_step_at   ; $808AAA
     ldx.b $14                   ; $808AAE
     inx                         ; $808AB0
     stx.b $14                   ; $808AB1

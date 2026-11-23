@@ -2070,6 +2070,20 @@ password screen, a skipped track's bonus.
   - Waiting rows elsewhere pass only because nothing writes `$420D` while they wait.
   - Fixing it means attributing writes made on the other task's stack: a harness change,
     left for a unit of its own.
+
+## Second entries of the results routines (roots-114, 2026-11-23)
+
+- **A census over the three explored movies.** `map/census.txt` stays the 60k movie's.
+  `tools/roots.py` over the explored movies' censuses adds new roots: `$84:A31E` and
+  `$84:A34E` (32 entries each on the password movie), and `$82:884B` (a waiting routine).
+- **`$84:A31E` and `$84:A34E` are second entries** of `result_slot_step` and `result_tally`,
+  past their `LDX $0444`. `$80:8AA4` calls them with X counting up to `$0444`: with a
+  password, the tracks before it are tallied.
+  - The C gets `result_slot_step_at(track)` and `result_tally_at(track)`. The two old
+    functions now call them with `$0444`, and the shared adapter takes X from its caller
+    for the second entries.
+  - Both pass on the password movie (32 samples each and a fuzzer). The old rows still pass.
+- **Gate:** the full one: the old functions and their adapter changed.
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
