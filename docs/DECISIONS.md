@@ -2216,9 +2216,11 @@ password screen, a skipped track's bonus.
   but the hash and the full-run line, for every row but one.
   - That row is `shop_panel_frame`: 578 compared samples in shop-24's incremental run,
     467 now, and still verified on all 159 paths.
-  - Shop-24 verified it alone. A full run shares each slice with other rows, and a
-    waiting row that encloses it hides some of its samples (one interrupt recorder at a
-    time). So the difference is not harness-11's.
+  - Shop-24 verified it alone. In a full run, other rows record interrupt handlers, and
+    `checkEntries` hides a non-`rti` row's entries inside a recorded handler. The NMI calls
+    `shop_panel_frame` through `$01EC`, so some of its entries fall inside one. (Corrected
+    in shop-26: an earlier version blamed "one interrupt recorder at a time".) So the
+    difference is not harness-11's.
 - **The full gate took 684 s** (it was 2,510-2,680 s): 3.8 times faster.
 
 ## `verify_new` skips movies that never reach the rows (harness-12, 2026-11-23)
@@ -2331,6 +2333,25 @@ password screen, a skipped track's bonus.
     no C dispatch of the handlers yet.
 - **Check:** both rows pass on the INFODATA movie (one live sample each, 500 fuzz cases).
   Incremental gate.
+
+## The panel's picture handlers (shop-26, 2026-11-23)
+
+- **The inventory first** (with the advisor): every B run (no C, run by a bench movie),
+  with the census entry around it. Of the 12,244 B bytes, the twelve largest runs hold
+  6,847; the rest are smaller leaves, such as these handlers, the typewriter's control-code
+  handlers (`$80:B6F2`), `$8A:A2AF` and `$8A:A419`.
+- **Ported as functions with rows:** `shop_item_dispatch_panel`'s seven handlers, inline in
+  its `switch` before:
+  - `shop_item_panel_1`, `_2`, `_3`, `_5`, `_4` ($80:9C47, 9C85, 9CC3, 9D02, 9D41; two
+    picture uploads each);
+  - `_0` ($80:9D80) and `_6` ($80:9D9E, lists 6-10; one upload, a `JMP` to `func_80B537`).
+  - Their rows declare `func_80B537` as part of them (`alsoIn`).
+  - Exit: the last `func_80B537`'s (A the next index, X the index + 2, C/V of its `ADC`),
+    and Y = D+$5C + the last upload's VRAM offset.
+  - The fuzzer pins the ring's base to a multiple of `$40`, as the panel dispatch's does;
+    an unpinned base let the queue overwrite the stack.
+- **Check:** all seven pass on the pooled shop, buy and password movies (3-32 samples
+  each, 500 fuzz cases, every path). Full gate, since the dispatch changed.
 
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 

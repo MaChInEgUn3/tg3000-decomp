@@ -7107,6 +7107,38 @@ static void call_shop_item_dispatch_panel(const Regs* in, Regs* out) {
   out->x = entry;
   setNZ16(out, entry);
 }
+// the panel's handlers (shop-26): their last func_80B537's exit: A the next index (N/Z), X the
+// index it used + 2, C/V of its ADC, Y D+$5C + the last upload's VRAM offset
+static void shopItemPanelOut(const Regs* in, Regs* out, void (*fn)(uint16_t), bool two, uint16_t lastVram) {
+  uint16_t i = rd16(DP + 0x8C);
+  const uint16_t base = rd16(DP + 0x8A);
+  if(two) i = (uint16_t)(((i + 2) & 0x3F) + base);
+  fn(in->y);
+  out->a = (uint16_t)(((i + 2) & 0x3F) + base);
+  out->x = (uint16_t)(i + 2);
+  out->y = (uint16_t)(rd16(DP + 0x5C) + lastVram);
+  setNZ16(out, out->a);
+  setAdc16(out, (uint16_t)((i + 2) & 0x3F), base);
+}
+static void call_shop_item_panel_1(const Regs* in, Regs* out) { shopItemPanelOut(in, out, shop_item_panel_1, true, 0x1780); }
+static void call_shop_item_panel_2(const Regs* in, Regs* out) { shopItemPanelOut(in, out, shop_item_panel_2, true, 0x1260); }
+static void call_shop_item_panel_3(const Regs* in, Regs* out) { shopItemPanelOut(in, out, shop_item_panel_3, true, 0x1240); }
+static void call_shop_item_panel_5(const Regs* in, Regs* out) { shopItemPanelOut(in, out, shop_item_panel_5, true, 0x1340); }
+static void call_shop_item_panel_4(const Regs* in, Regs* out) { shopItemPanelOut(in, out, shop_item_panel_4, true, 0x1560); }
+static void call_shop_item_panel_0(const Regs* in, Regs* out) { shopItemPanelOut(in, out, shop_item_panel_0, false, 0x1000); }
+static void call_shop_item_panel_6(const Regs* in, Regs* out) { shopItemPanelOut(in, out, shop_item_panel_6, false, 0x1140); }
+// a list's pictures (Y: the entry's word at $81:A89B for lists 0-10), the queue as
+// func_80B537's fuzz
+static void fuzz_shop_item_panel(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  const uint16_t list = (uint16_t)(rnd() % 11);
+  const uint16_t entry = (uint16_t)(((list == 0 || list >= 6) ? 0 : (rnd() % 5) << 4) + rom16(0x81A892 + (uint32_t)(uint16_t)(list << 1)));
+  r->y = rom16(0x81A89B + (uint32_t)entry);
+  wr16ram(ram, DP + 0x5C, (uint16_t)rnd());
+  wr16ram(ram, DP + 0x5E, (uint16_t)rnd());
+  // as the panel dispatch's fuzzer: the ring's base a multiple of $40 (the game's)
+  wr16ram(ram, DP + 0x8A, (uint16_t)((rnd() % 0x14) * 0x40));
+  wr16ram(ram, DP + 0x8C, (uint16_t)(rnd() % 0x500));
+}
 // the slides: no register outputs (their callers return or reload them); the last CMP
 // matched: N clear, Z and C set
 static void slideFlags(Regs* out) {
@@ -10909,6 +10941,20 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_shop_ring_piece_back, ALL_OUTPUTS, .fuzz = fuzz_shop_ring},
   {.name = "shop_item_dispatch_view", .entry = 0x80A251, .end = 0x80A26E, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_item_dispatch_view, .fuzz = fuzz_shop_item_dispatch_view},
+  {.name = "shop_item_panel_1", .entry = 0x809C47, .end = 0x809C85, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .alsoIn = {{0x80B537, 0x80B556}}, .call = call_shop_item_panel_1, ALL_OUTPUTS, .fuzz = fuzz_shop_item_panel},
+  {.name = "shop_item_panel_2", .entry = 0x809C85, .end = 0x809CC3, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .alsoIn = {{0x80B537, 0x80B556}}, .call = call_shop_item_panel_2, ALL_OUTPUTS, .fuzz = fuzz_shop_item_panel},
+  {.name = "shop_item_panel_3", .entry = 0x809CC3, .end = 0x809D02, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .alsoIn = {{0x80B537, 0x80B556}}, .call = call_shop_item_panel_3, ALL_OUTPUTS, .fuzz = fuzz_shop_item_panel},
+  {.name = "shop_item_panel_5", .entry = 0x809D02, .end = 0x809D41, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .alsoIn = {{0x80B537, 0x80B556}}, .call = call_shop_item_panel_5, ALL_OUTPUTS, .fuzz = fuzz_shop_item_panel},
+  {.name = "shop_item_panel_4", .entry = 0x809D41, .end = 0x809D80, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .alsoIn = {{0x80B537, 0x80B556}}, .call = call_shop_item_panel_4, ALL_OUTPUTS, .fuzz = fuzz_shop_item_panel},
+  {.name = "shop_item_panel_0", .entry = 0x809D80, .end = 0x809D9E, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .alsoIn = {{0x80B537, 0x80B556}}, .call = call_shop_item_panel_0, ALL_OUTPUTS, .fuzz = fuzz_shop_item_panel},
+  {.name = "shop_item_panel_6", .entry = 0x809D9E, .end = 0x809DBC, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .alsoIn = {{0x80B537, 0x80B556}}, .call = call_shop_item_panel_6, ALL_OUTPUTS, .fuzz = fuzz_shop_item_panel},
   {.name = "shop_item_dispatch_panel", .entry = 0x809C28, .end = 0x809C47, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_item_dispatch_panel, .compareX = true,
    .fuzz = fuzz_shop_item_dispatch_panel},

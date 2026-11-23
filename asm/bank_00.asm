@@ -2964,6 +2964,7 @@ shop_item_dispatch_panel:
     rts                         ; $809C44
     plx                         ; $809C45
     rts                         ; $809C46
+shop_item_panel_1:
     phy                         ; $809C47
     lda.w #$007F                ; $809C48
     sta.b $14                   ; $809C4B
@@ -2996,6 +2997,7 @@ shop_item_dispatch_panel:
     lda.w $A898,y               ; $809C7E
     ply                         ; $809C81
     jmp.w func_80B537           ; $809C82
+shop_item_panel_2:
     phy                         ; $809C85
     lda.w #$007F                ; $809C86
     sta.b $14                   ; $809C89
@@ -3028,6 +3030,7 @@ shop_item_dispatch_panel:
     lda.w $A894,y               ; $809CBC
     ply                         ; $809CBF
     jmp.w func_80B537           ; $809CC0
+shop_item_panel_3:
     phy                         ; $809CC3
     lda.w #$007F                ; $809CC4
     sta.b $14                   ; $809CC7
@@ -3061,6 +3064,7 @@ shop_item_dispatch_panel:
     ply                         ; $809CFD
     jsr.w func_80B537           ; $809CFE
     rts                         ; $809D01
+shop_item_panel_5:
     phy                         ; $809D02
     lda.w #$007F                ; $809D03
     sta.b $14                   ; $809D06
@@ -3094,6 +3098,7 @@ shop_item_dispatch_panel:
     ply                         ; $809D3C
     jsr.w func_80B537           ; $809D3D
     rts                         ; $809D40
+shop_item_panel_4:
     phy                         ; $809D41
     lda.w #$007F                ; $809D42
     sta.b $14                   ; $809D45
@@ -3127,6 +3132,7 @@ shop_item_dispatch_panel:
     ply                         ; $809D7B
     jsr.w func_80B537           ; $809D7C
     rts                         ; $809D7F
+shop_item_panel_0:
     lda.w #$007F                ; $809D80
     sta.b $14                   ; $809D83
     lda.b $5C                   ; $809D85
@@ -3142,6 +3148,7 @@ shop_item_dispatch_panel:
     lda.w $A894,y               ; $809D97
     ply                         ; $809D9A
     jmp.w func_80B537           ; $809D9B
+shop_item_panel_6:
     lda.w #$007F                ; $809D9E
     sta.b $14                   ; $809DA1
     lda.b $5C                   ; $809DA3

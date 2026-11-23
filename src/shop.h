@@ -278,6 +278,16 @@ void shop_item_dispatch_view(void);
 // picture's offset, with its size; the pictures' (offset, size) pairs are at $81:A892 +
 // the item's word at $81:A89B (the first pair) and + 4 (the second).
 void shop_item_dispatch_panel(void);
+// Its handlers ($80:9C47 list 1, $80:9C85 list 2, $80:9CC3 list 3, $80:9D02 list 5, $80:9D41
+// list 4, $80:9D80 list 0, $80:9D9E lists 6-10): one or two picture uploads each, from the
+// pairs at $81:A892 + `pictures` (Y).
+void shop_item_panel_0(uint16_t pictures);
+void shop_item_panel_1(uint16_t pictures);
+void shop_item_panel_2(uint16_t pictures);
+void shop_item_panel_3(uint16_t pictures);
+void shop_item_panel_4(uint16_t pictures);
+void shop_item_panel_5(uint16_t pictures);
+void shop_item_panel_6(uint16_t pictures);
 
 // The item screen's frame ($80:9847): with the upload queue empty, the next typewriter
 // step (text_type_step) and the panel's upload; then the price at (16, 24), the item's

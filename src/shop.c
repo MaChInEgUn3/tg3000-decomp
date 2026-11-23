@@ -1302,20 +1302,34 @@ static void shop_panel_picture(uint16_t pictures, uint16_t pair, uint16_t vram) 
               (uint16_t)(rd16(DP + 0x5C) + vram));
 }
 
+// TG3000_ROUTINE($80:9C47) shop_item_panel_1 (list 1)
+void shop_item_panel_1(uint16_t pictures) { shop_panel_picture(pictures, 0, 0x11E0); shop_panel_picture(pictures, 4, 0x1780); }
+// TG3000_ROUTINE($80:9C85) shop_item_panel_2 (list 2)
+void shop_item_panel_2(uint16_t pictures) { shop_panel_picture(pictures, 4, 0x1120); shop_panel_picture(pictures, 0, 0x1260); }
+// TG3000_ROUTINE($80:9CC3) shop_item_panel_3 (list 3)
+void shop_item_panel_3(uint16_t pictures) { shop_panel_picture(pictures, 4, 0x1120); shop_panel_picture(pictures, 0, 0x1240); }
+// TG3000_ROUTINE($80:9D02) shop_item_panel_5 (list 5)
+void shop_item_panel_5(uint16_t pictures) { shop_panel_picture(pictures, 4, 0x1140); shop_panel_picture(pictures, 0, 0x1340); }
+// TG3000_ROUTINE($80:9D41) shop_item_panel_4 (list 4)
+void shop_item_panel_4(uint16_t pictures) { shop_panel_picture(pictures, 4, 0x1400); shop_panel_picture(pictures, 0, 0x1560); }
+// TG3000_ROUTINE($80:9D80) shop_item_panel_0 (list 0)
+void shop_item_panel_0(uint16_t pictures) { shop_panel_picture(pictures, 0, 0x1000); }
+// TG3000_ROUTINE($80:9D9E) shop_item_panel_6 (lists 6-10)
+void shop_item_panel_6(uint16_t pictures) { shop_panel_picture(pictures, 0, 0x1140); }
+
 // TG3000_ROUTINE($80:9C28) shop_item_dispatch_panel
 void shop_item_dispatch_panel(void) {
   uint16_t entry = shop_item_entry(rd16(DP + 0x4A));
   uint16_t pictures = rom16(0x81A89B + (uint32_t)entry);
   switch(rom16(0x81A899 + (uint32_t)entry)) {
-  // (handler: the uploads in order, as (VRAM offset, pair))
-  case 0x9C47: shop_panel_picture(pictures, 0, 0x11E0); shop_panel_picture(pictures, 4, 0x1780); break;  // list 1
-  case 0x9C85: shop_panel_picture(pictures, 4, 0x1120); shop_panel_picture(pictures, 0, 0x1260); break;  // list 2
-  case 0x9CC3: shop_panel_picture(pictures, 4, 0x1120); shop_panel_picture(pictures, 0, 0x1240); break;  // list 3
-  case 0x9D02: shop_panel_picture(pictures, 4, 0x1140); shop_panel_picture(pictures, 0, 0x1340); break;  // list 5
-  case 0x9D41: shop_panel_picture(pictures, 4, 0x1400); shop_panel_picture(pictures, 0, 0x1560); break;  // list 4
-  case 0x9D80: shop_panel_picture(pictures, 0, 0x1000); break;                                          // list 0
-  case 0x9D9E: shop_panel_picture(pictures, 0, 0x1140); break;                                          // lists 6-8
-  default: break;  // the table holds no other handler for lists 0-8
+  case 0x9C47: shop_item_panel_1(pictures); break;
+  case 0x9C85: shop_item_panel_2(pictures); break;
+  case 0x9CC3: shop_item_panel_3(pictures); break;
+  case 0x9D02: shop_item_panel_5(pictures); break;
+  case 0x9D41: shop_item_panel_4(pictures); break;
+  case 0x9D80: shop_item_panel_0(pictures); break;
+  case 0x9D9E: shop_item_panel_6(pictures); break;  // lists 6-10
+  default: break;  // the table holds no other handler for lists 0-10
   }
 }
 

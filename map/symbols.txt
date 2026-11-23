@@ -275,6 +275,13 @@ func    809957   shop_money_after_price ; the money less the item's price (BCD) 
 func    8099D1   shop_money_roll     ; one step of the money rolling down to $52/$54 -> src/shop.c
 func    809ABB   shop_money_store    ; $52/$54 become the player's money -> src/shop.c
 func    80E4D0   shop_flag_fb        ; $01FB = $12 (long) -> src/shop.c
+func    809C47   shop_item_panel_1   ; the panel's pictures, list 1 -> src/shop.c
+func    809C85   shop_item_panel_2   ; the panel's pictures, list 2 -> src/shop.c
+func    809CC3   shop_item_panel_3   ; the panel's pictures, list 3 -> src/shop.c
+func    809D02   shop_item_panel_5   ; the panel's pictures, list 5 -> src/shop.c
+func    809D41   shop_item_panel_4   ; the panel's pictures, list 4 -> src/shop.c
+func    809D80   shop_item_panel_0   ; the panel's pictures, list 0 -> src/shop.c
+func    809D9E   shop_item_panel_6   ; the panel's pictures, lists 6-10 -> src/shop.c
 func    809DBC   shop_panel_upload   ; queue the shop panel's VRAM upload (func_80B537) -> src/shop.c
 func    809BF2   shop_item_picture   ; current item's picture (func_80B58D) -> src/shop.c
 func    80B096   shop_item_text      ; copy the current item's text from bank $89 -> src/shop.c
