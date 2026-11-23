@@ -113,6 +113,11 @@ void text_type_step(void);
 // D+$3A to its low 3 bits << 10 (a palette). Codes: space, !, ., + as tiles $27, $24, $25,
 // $26; below ':' (digits) - $16; letters - $41.
 void text_centred_line(void);
+// $82:8911: text_centred_line for string `string` (D+$3C) in palette `palette` (D+$18), in the
+// window's plane (D+$3A = $0C00). The ROM pushes $837E and pulls one byte for the data bank
+// ($7E), then the other at its end: it returns with DB = $83, which its callers' code does
+// not read.
+void text_centred_line_at(uint16_t palette, uint16_t string);
 
 // $82:B11F (DB = $7E within, $83 after): the race's message line. A new message D+$16
 // replaces the shown one D+$14 if its priority ($83:A0A4 + 2 * message) is at least the

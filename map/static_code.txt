@@ -182,3 +182,4 @@
 8A:B3DE 8A:B3DF m16x16 ; password_press_a past the grid (its CLC before the RTS): executed by its difftest fuzz, matched by src/password.c
 8A:B3E0 8A:B3E3 m16x16 ; password_press_a off a letter's column: the same
 8A:BD6A 8A:BD6C m16x16 ; password_checksum_ok on a mismatch (SEC): executed by its difftest fuzz, matched by src/password.c
+8A:C35D 8A:C378 m16x16 ; money_skip_bonus with $03DC bit 12 (the skip bonus): executed by its difftest fuzz, matched by src/misc.c

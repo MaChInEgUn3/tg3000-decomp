@@ -2365,6 +2365,57 @@ static void fuzz_save_data_seal(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(int i = 0; i < 0x78; i++) ram[0x0368 + i] = (uint8_t)rnd();
 }
 
+// ---- text_centred_line_at ($82:8911) ----  C and V as text_centred_line's adapter models them
+// (from the string X and palette A); N/Z of the final PLB ($83)
+static void call_text_centred_line_at(const Regs* in, Regs* out) {
+  const uint16_t start = rom16(0x83A006 + (uint32_t)in->x);
+  uint16_t free = 13;
+  for(uint16_t s = start; bus_rd8(0x830000 | s); s++) if(!(bus_rd8(0x830000 | s) & 0x80)) free--;
+  setAdc16(out, (uint16_t)(free & 0xFFFE), in->a);
+  for(uint16_t s = start; bus_rd8(0x830000 | s); s++) {
+    const uint8_t c = bus_rd8(0x830000 | s);
+    out->c = false;
+    if(!(c & 0x80) && c != 0x20 && c != 0x21 && c != 0x2E && c != 0x2B) out->v = false;
+  }
+  text_centred_line_at(in->a, in->x);
+  out->n = true;  // its last PLB: the $83 left on the stack
+  out->z = false;
+}
+static void fuzz_text_centred_line_at(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_text_centred_line(r, ram, rnd);
+  r->x = (uint16_t)(ram[DP + 0x3C] | ram[DP + 0x3D] << 8);
+  r->a = (uint16_t)rnd();
+}
+
+// ---- money_skip_bonus ($8A:C355) ----  $03DC bit 12 clear: its LDA's N, the BIT's Z; set:
+// the decimal adds (N/Z of the new $0390, their carry, V of the last), A that word
+static uint16_t bcdValue(uint16_t v) {
+  return (uint16_t)((v >> 12) * 1000 + ((v >> 8) & 15) * 100 + ((v >> 4) & 15) * 10 + (v & 15));
+}
+static void call_money_skip_bonus(const Regs* in, Regs* out) {
+  const uint16_t flags = rd16(0x03DC), lo = rd16(0x038E), hi = rd16(0x0390);
+  bool v = in->v;
+  money_skip_bonus(&v);
+  if(!(flags & 0x1000)) {
+    out->a = flags;
+    out->n = (flags & 0x8000) != 0;
+    out->z = true;
+    return;
+  }
+  const bool carry = bcdValue(lo) + 5000 >= 10000;
+  out->a = rd16(0x0390);
+  setNZ16(out, out->a);
+  out->c = bcdValue(hi) + 7 + carry >= 10000;
+  out->v = v;
+}
+static uint16_t bcd4(uint32_t (*rnd)(void));
+static void fuzz_money_skip_bonus(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x03DC, (uint16_t)rnd());
+  wr16ram(ram, 0x038E, bcd4(rnd));
+  wr16ram(ram, 0x0390, (rnd() & 3) ? bcd4(rnd) : (uint16_t)(0x9990 + rnd() % 10));
+}
+
 // ---- track_snap ($8A:C2DD) ----  A = the new $0444 (N clear, Z of it: its AND #$FF), X =
 // its index, C of the CMP that stopped (the track at or above the old $0444); V of the last
 // money_skip_bonus add, else as on entry
@@ -10733,6 +10784,10 @@ const Routine routines[] = {
    .lowWramDb = true, .fixedD = true, .call = call_timer_0d7e_tick, ALL_OUTPUTS, .fuzz = fuzz_timer_0d7e_tick},
   {.name = "text_line_put", .entry = 0x8A9B85, .end = 0x8A9BAA, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_text_line_put, ALL_OUTPUTS, .fuzz = fuzz_text_line_put},
+  {.name = "text_centred_line_at", .entry = 0x828911, .end = 0x828923, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_text_centred_line_at, .fuzz = fuzz_text_centred_line_at},
+  {.name = "money_skip_bonus", .entry = 0x8AC355, .end = 0x8AC379, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_money_skip_bonus, .compareA = true, .fuzz = fuzz_money_skip_bonus},
   {.name = "text_centred_line", .entry = 0x82B18B, .end = 0x82B234, .source = "src/text.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_text_centred_line, .fuzz = fuzz_text_centred_line},
   {.name = "shop_list_label", .entry = 0x80B2F2, .end = 0x80B333, .source = "src/shop.c", .needM16 = true,

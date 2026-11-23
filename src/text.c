@@ -448,6 +448,14 @@ static uint16_t centred_tile(uint16_t c) {
   }
 }
 
+// TG3000_ROUTINE($82:8911) text_centred_line_at
+void text_centred_line_at(uint16_t palette, uint16_t string) {
+  wr16(DP + 0x18, palette);
+  wr16(DP + 0x3C, string);
+  wr16(DP + 0x3A, 0x0C00);
+  text_centred_line();
+}
+
 // TG3000_ROUTINE($82:B18B) text_centred_line
 void text_centred_line(void) {
   uint16_t x = rd16(DP + 0x18), blank = rom16(0x83A5A4);

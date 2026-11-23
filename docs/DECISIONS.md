@@ -2049,6 +2049,27 @@ password screen, a skipped track's bonus.
   entry state in the fuzz phase. Then 500 fuzz cases run over the big number, the fields and
   the carry. Exit: X `$FFFA` (N/Z of the last `DEX`), A the last field's word, Y the first
   field's shift, C of the last `asl_n` (the mask shifted).
+
+## Two leaves from the password movie, and a harness limit (roots-113, 2026-11-23)
+
+- **`text_centred_line_at` ($82:8911)** is `text_centred_line` for string X in palette A, in
+  the window's plane.
+  - The ROM pushes `$837E` and pulls one byte for the data bank, then the other at its
+    end, so it returns with DB = `$83` and N set by that `PLB`.
+  - Its callers do not read DB after it, and the harness does not compare the exit DB, so
+    the quirk is only written down, in `src/text.h`.
+  - The password movie runs it 110 times. It has a fuzzer from `text_centred_line`'s.
+- **`money_skip_bonus` ($8A:C355)** had C but no row. The password movie runs its entry 25
+  times, with `$03DC` bit 12 clear. A fuzzer runs the bonus, the decimal adds of 75,000;
+  that path is now a static range.
+- **Not ported, a harness limit:** the password screen's way in and out (`$8A:B1A5`,
+  `$8A:B1E2`) and their HDMA steps (`$8A:B18C`, `$8A:B197`).
+  - While they wait for a frame, the game's other code writes the register shadows,
+    `$420D` among them (`$80:836C`). The harness puts that write on the waiting sample, and
+    the C does not make it, so the rows fail on "byte registers written".
+  - Waiting rows elsewhere pass only because nothing writes `$420D` while they wait.
+  - Fixing it means attributing writes made on the other task's stack: a harness change,
+    left for a unit of its own.
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

@@ -432,7 +432,7 @@ CODE_82886E:
 CODE_82887A:
     ldx.w #$0088                ; $82887A
     lda.w #$4E61                ; $82887D
-    jsr.w $8911                 ; $828880
+    jsr.w text_centred_line_at  ; $828880
     lda.w #$0004                ; $828883
     tsb.w $00B8                 ; $828886
     ldx.w #$0040                ; $828889
@@ -450,7 +450,7 @@ CODE_82888C:
     bne CODE_82888C             ; $8288A6
     ldx.w #$008C                ; $8288A8
     lda.w #$4E61                ; $8288AB
-    jsr.w $8911                 ; $8288AE
+    jsr.w text_centred_line_at  ; $8288AE
     lda.w #$0004                ; $8288B1
     tsb.w $00B8                 ; $8288B4
     ldx.w #$0040                ; $8288B7
@@ -473,7 +473,7 @@ CODE_8288F2:
     asl a                       ; $8288F6
     tax                         ; $8288F7
     lda.w #$4E61                ; $8288F8
-    jsr.w $8911                 ; $8288FB
+    jsr.w text_centred_line_at  ; $8288FB
     pla                         ; $8288FE
     sta.l $7E4E4D               ; $8288FF
     lda.w #$0004                ; $828903
@@ -482,6 +482,7 @@ CODE_8288F2:
     trb.w $0026                 ; $82890C
     plx                         ; $82890F
     rts                         ; $828910
+text_centred_line_at:
     pea.w $837E                 ; $828911
     plb                         ; $828914
     sta.b $18                   ; $828915

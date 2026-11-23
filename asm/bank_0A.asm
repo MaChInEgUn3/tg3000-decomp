@@ -5757,7 +5757,17 @@ money_skip_bonus:
     lda.w $03DC                 ; $8AC355
     bit.w #$1000                ; $8AC358
     beq CODE_8AC378             ; $8AC35B
-    incbin !baserom:$5435D..$54378
+    sed                         ; $8AC35D static
+    lda.w $038E                 ; $8AC35E static
+    clc                         ; $8AC361 static
+    adc.w #$5000                ; $8AC362 static
+    sta.w $038E                 ; $8AC365 static
+    sta.w $03BD                 ; $8AC368 static
+    lda.w $0390                 ; $8AC36B static
+    adc.w #$0007                ; $8AC36E static
+    sta.w $0390                 ; $8AC371 static
+    sta.w $03BF                 ; $8AC374 static
+    cld                         ; $8AC377 static
 CODE_8AC378:
     rts                         ; $8AC378
     incbin !baserom:$54379..$58000

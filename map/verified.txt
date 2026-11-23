@@ -503,3 +503,5 @@
 8ABCEA password_decode src/password.c 46215ea9c672adf7 1 500 29/29 verified live-flags:NVZC replayed:0
 8ABD25 password_checksum_ok src/password.c 46215ea9c672adf7 1 500 38/38 verified live-flags:NVZC replayed:0
 8ABAFF password_unpack src/password.c 64395f3d383fe719 0 500 51/51 verified live-flags:NVZC replayed:1
+828911 text_centred_line_at src/text.c 3629593858cc6412 38 500 9/9 verified live-flags:NVZC replayed:0
+8AC355 money_skip_bonus src/misc.c abde172a3e535a5d 25 500 15/15 verified live-flags:NVZC replayed:0
