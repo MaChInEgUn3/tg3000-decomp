@@ -7220,7 +7220,7 @@ CODE_80C039:
     lda.b $76                   ; $80C049
     bit.w #$0020                ; $80C04B
     beq CODE_80C053             ; $80C04E
-    jmp.w $D16C                 ; $80C050
+    jmp.w race_start_close      ; $80C050
 CODE_80C053:
     ldx.w #$0000                ; $80C053
 CODE_80C056:
@@ -9258,6 +9258,7 @@ CODE_80D165:
     pla                         ; $80D169
     pla                         ; $80D16A
     pla                         ; $80D16B
+race_start_close:
     stz.b $4C                   ; $80D16C
     lda.w #$0001                ; $80D16E
     sta.b $4E                   ; $80D171
@@ -9267,6 +9268,7 @@ CODE_80D178:
     lda.b $4E                   ; $80D178
     bne CODE_80D178             ; $80D17A
     jsr.w wait_flag_76          ; $80D17C
+race_start_bar:
     lda.w #$00FF                ; $80D17F
     trb.w $036A                 ; $80D182
     phb                         ; $80D185
@@ -9291,6 +9293,7 @@ CODE_80D1A8:
     lda.b #$14                  ; $80D1AD
     sta.w $431A                 ; $80D1AF
     rep.b #$20                  ; $80D1B2
+race_start_load:
     lda.w #$8934                ; $80D1B4
     sta.w $0008                 ; $80D1B7
     lda.w #$89B2                ; $80D1BA
@@ -9361,6 +9364,7 @@ CODE_80D24B:
     sta.w $0008                 ; $80D260
     lda.w #$0001                ; $80D263
     jsr.w wait_frames           ; $80D266
+race_start_setup:
     stz.w $0504                 ; $80D269
     lda.w #$2D6B                ; $80D26C
     sta.w $0502                 ; $80D26F
@@ -9483,6 +9487,7 @@ CODE_80D24B:
     ldx.w #$1000                ; $80D3B3
     ldy.w #$6000                ; $80D3B6
     pla                         ; $80D3B9
+race_start_setup_end:
     jsr.w vram_queue_push       ; $80D3BA
     lda.w #$007F                ; $80D3BD
     sta.b $14                   ; $80D3C0

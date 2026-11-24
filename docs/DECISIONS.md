@@ -2953,6 +2953,28 @@ password screen, a skipped track's bonus.
   - **Lesson:** a cut row that can also return needs its flags modelled at the cut too.
 - **Check:** full gate (the last full run was 4 commits back).
 
+## The race choice's setup (menu-14, 2026-11-24)
+
+- **`$80:D168`, the menu's fourth choice (the race)**, drops two returns with four PLAs, so
+  the menu task leaves. It closes the bar and loads the pre-race screen. Its setup has five
+  rows between its waits, hardware polls and PLA (in `src/misc.c`):
+  - `race_start_close` ($80:D16C). Either player's D: the `$80:BE32` screen jumps here too;
+  - `race_start_bar` ($80:D17F): `$036A`, the window lines, BG2's scroll;
+  - `race_start_load` ($80:D1B4): the targets, three graphics, the maps, the scenery, the star
+    layers, the sprites cleared. Its PHA of a length is above the cut;
+  - `race_start_setup` ($80:D269): five HDMA channels, the windows, the palettes, seven VRAM
+    queue entries;
+  - `race_start_setup_end` ($80:D3BA, after the PLA): four more queue entries, steering, the
+    meter, the HUD, the music choice.
+- **Not portable as rows:**
+  - the polls on `$4212` (H-blank) and on channel 1's HDMA line counter `$431A`, and its write
+    there (the harness does not model those counters);
+  - the PLAs and the waits.
+- **Left for later:** the pre-race frame loop from `$80:D46F`.
+- **Results:** on the 60k movie, 5 samples each (2 for the close, both players' tasks); on
+  the menus' movie, 1 each.
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

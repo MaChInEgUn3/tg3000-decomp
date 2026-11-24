@@ -1663,4 +1663,13 @@ void menu_choice_panels(uint16_t len);
 void menu_choice_redraw(void);
 void menu_choice_done(void);
 
+// The race choice ($80:D168) in parts: the bar's closing ($80:D16C), the bar's lines and
+// scroll ($80:D17F), the pre-race load ($80:D1B4; returns the length the setup's end uses),
+// the setup ($80:D269) and its end ($80:D3BA).
+void race_start_close(uint16_t dp);
+void race_start_bar(void);
+uint16_t race_start_load(void);
+void race_start_setup(void);
+void race_start_setup_end(uint16_t len);
+
 #endif

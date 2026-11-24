@@ -15,6 +15,8 @@
 #include "stars.h"
 #include "text.h"
 #include "video_dma.h"
+#include "vram_queue.h"
+#include "hud.h"
 #include "tg3000.h"
 #include "track.h"
 #include "util.h"
@@ -8647,4 +8649,110 @@ void menu_choice_redraw(void) {
 void menu_choice_done(void) {
   wr16(DP + 0x1E, 0);
   wr16(DP + 0x4E, 0x0002);
+}
+
+// The race choice ($80:D168): the menu task leaves (its four PLAs drop two returns), the
+// menu bar closes, and the pre-race screen loads. In parts between its waits, its hardware
+// polls ($4212, the HDMA line counter $431A, written too) and its PLA.
+
+// TG3000_ROUTINE($80:D16C) race_start_close
+// The bar's window closing (either player's D: the $80:BE32 screen jumps here too).
+void race_start_close(uint16_t dp) {
+  wr16((uint16_t)(dp + 0x4C), 0);
+  wr16((uint16_t)(dp + 0x4E), 0x0001);
+  wr16((uint16_t)(dp + 0xEC), 0xC5E0);
+}
+
+// TG3000_ROUTINE($80:D17F) race_start_bar
+// After the bar is closed: $036A's low byte cleared, the window's HDMA lines ($81:C1E9, 30
+// bytes) to $1B00, BG2's vertical scroll $FFDB.
+void race_start_bar(void) {
+  wr16(0x036A, (uint16_t)(rd16(0x036A) & 0xFF00));
+  for(uint16_t i = 0; i < 30; i++) wr8((uint16_t)(0x1B00 + i), rom8(0x81C1E9 + i));
+  video_set_bg2_vofs(0xFFDB);
+}
+
+// TG3000_ROUTINE($80:D1B4) race_start_load
+// The race's NMI and IRQ targets back ($8934, $89B2; interrupts masked: SEI, a comment), the
+// scroll step D+$14 (8, or $3A for $0176 bit 6), the pre-race NMI target ($E175), three
+// graphics to $7F ($0000, $1000, $2700), the map at $7F:2000 filled with $0048, eight
+// columns at $7F:C410... cleared, the scenery, the star layers, the sprites cleared. Returns
+// the second graphic's length (the original pushes it).
+uint16_t race_start_load(void) {
+  uint16_t end;
+  wr16(0x0008, 0x8934);
+  wr16(0x0005, 0x89B2);
+  wr16(DP + 0x14, (rd16(0x0176) & 0x0040) ? 0x003A : 0x0008);
+  wr16(DP + 0x16, 0);
+  wr16(0x0008, 0xE175);
+  decompress_near(DP, 0x9C, 0x8FC3, 0x7F, 0x0000, &end);
+  const uint16_t len = decompress_near(DP, 0x87, 0x8190, 0x7F, 0x1000, &end);
+  decompress_near(DP, 0x92, 0x80B2, 0x7F, 0x2700, &end);
+  for(uint32_t x = 0x0700; x != 0; x -= 2) wr16(0x7F1FFE + x, 0x0048);
+  static const uint32_t cols[8] = {0x7FC40E, 0x7FC68E, 0x7FC90E, 0x7FCB8E, 0x7FCE0E, 0x7FD08E, 0x7FD30E, 0x7FD58E};
+  for(uint32_t x = 0x0280; x != 0; x -= 2)
+    for(int c = 0; c < 8; c++) wr16(cols[c] + x, 0);
+  scenery_build();
+  star_layers_init();
+  oam_clear();
+  return len;
+}
+
+// TG3000_ROUTINE($80:D269) race_start_setup
+// The pre-race screen: the sprite records at $0500, five HDMA channels (2, 3 from $7F:0000 and
+// $7F:0100; 6, 5 from the lists at $0D28 and $0D00; 4 from $95:0D14), the windows (edges $FF,
+// $00; logic $AA, $0A), two colours, the palettes ($89:8452...; MVN into bank $81), seven
+// graphics queued for VRAM.
+void race_start_setup(void) {
+  wr16(0x0504, 0);
+  wr16(0x0502, 0x2D6B);
+  wr16(0x0500, 0x1BE6);
+  wr16(0x7F0000, 0);
+  dma_hdma_setup(2, 0x01, 0x26, 0x7F0000);
+  dma_hdma_setup(3, 0x01, 0x28, 0x7F0100);
+  dma_hdma_setup(6, 0x01, 0x2E, 0x810D28);
+  dma_hdma_setup(5, 0x01, 0x05, 0x810D00);
+  wr16(0x0D00, 0);
+  wr16(0x0D14, 0);
+  dma_hdma_setup(4, 0x02, 0x0F, 0x950D14);
+  video_hdma_enable(0x7E);
+  video_set_window_position(0, 0xFF);
+  video_set_window_position(1, 0x00);
+  video_set_window_logic_bg(0xAA);
+  video_set_window_logic_obj(0x0A);
+  wr16(0x0622, 0x17FF);
+  wr16(0x0624, 0x00C6);
+  for(uint16_t i = 0; i < 0x60; i++) wr8((uint16_t)(0x0520 + i), rom8(0x898452 + i));
+  for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(0x0600 + i), rom8(0x8984B2 + i));
+  for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(0x0640 + i), rom8(0x8984D2 + i));
+  wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0001));
+  static const uint16_t q[7][3] = {  // size, VRAM word, $7F source
+    {0x0700, 0x5000, 0xAE50}, {0x0700, 0x5400, 0xCB10}, {0x0700, 0x0000, 0xB550}, {0x0700, 0x5800, 0xBD10},
+    {0x0700, 0x5C00, 0xC410}, {0x0600, 0x3010, 0xD210}, {0x0700, 0x0400, 0x2000},
+  };
+  for(int i = 0; i < 7; i++) {
+    wr16(DP + 0x14, 0x007F);
+    vram_queue_push(q[i][0], q[i][1], q[i][2], 0x007F);
+  }
+  wr16(DP + 0x14, 0x007F);
+}
+
+// TG3000_ROUTINE($80:D3BA) race_start_setup_end
+// Four more graphics queued (the first `len` bytes, from the load), the steering state, the
+// meter, the HUD's sprites, the race's music choice ($0368: by $84:A240 + the track; first
+// func_80D6F3 with the old one's $81:CB14 word).
+void race_start_setup_end(uint16_t len) {
+  static const uint16_t q[4][3] = {{0, 0x6000, 0x1000}, {0x24E0, 0x1400, 0x2700}, {0x1A40, 0x7000, 0x4BE0}, {0x0020, 0x3000, 0x6620}};
+  for(int i = 0; i < 4; i++) {
+    if(i > 0) wr16(DP + 0x14, 0x007F);
+    vram_queue_push(i == 0 ? len : q[i][0], q[i][1], q[i][2], 0x007F);
+  }
+  wr16(DP + 0x7A, 0x0072);
+  steer_state_init();
+  draw_meter(DP);
+  race_hud_sprites();
+  oam_finish_0b00_near(DP);
+  wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
+  func_80D6F3(rom16(0x81CB14 + (uint32_t)(uint16_t)(rd16(0x0368) << 1)));
+  wr16(0x0368, rom8(0x84A240 + (uint32_t)rd16(0x0444)));
 }

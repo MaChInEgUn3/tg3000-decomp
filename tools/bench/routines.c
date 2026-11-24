@@ -5483,6 +5483,54 @@ static void call_name_entry_frame(const Regs* in, Regs* out) {
 }
 static void call_name_entry_draw(const Regs* in, Regs* out) { (void)in; (void)out; name_entry_draw(); }
 
+// the race choice's parts: the close ends at the bar's poll (A = $C5E0: N set); the bar's
+// lines at the $4212 poll (A = $DB40 in 8 bits, the poll's mask: its LDA #$40); the load at the
+// D+$16 poll (its PHA of the second length above the cut; A = $E0E0, X = 0 from oam_clear);
+// the setup at its PLA (A = $7F, X = $1000, Y = $6000: N Z of the LDY); its end at the frame
+// poll (A = $0028, X = $0444; C V func_80D6F3's)
+static void call_race_start_close(const Regs* in, Regs* out) {
+  race_start_close(in->d);
+  out->a = 0xC5E0;
+  out->n = true;
+  out->z = false;
+}
+static void call_race_start_bar(const Regs* in, Regs* out) {
+  (void)in;
+  race_start_bar();
+  out->a = 0xDB40;
+  out->m8 = true;
+  out->n = out->z = false;
+}
+static void call_race_start_load(const Regs* in, Regs* out) {
+  const uint16_t len = race_start_load();
+  wr16((uint16_t)(in->sp - 1), len);
+  out->a = 0xE0E0;
+  out->x = 0;
+  out->n = false;
+  out->z = true;
+}
+static void call_race_start_setup(const Regs* in, Regs* out) {
+  (void)in;
+  race_start_setup();
+  out->a = 0x007F;
+  out->x = 0x1000;
+  out->y = 0x6000;
+  out->n = out->z = false;
+}
+static void call_race_start_setup_end(const Regs* in, Regs* out) {
+  const uint16_t arg = rom16(0x81CB14 + (uint32_t)(uint16_t)(rd16(0x0368) << 1));
+  race_start_setup_end(in->a);
+  uint16_t dx = (uint16_t)(((arg & 0xFF) << 8) - rd16(DP + 0x34));
+  uint16_t ax = (dx & 0x8000) ? (uint16_t)-dx : dx;
+  uint16_t hy = (uint16_t)(arg & 0xFF00), y0 = rd16(DP + 0x36), dy = (uint16_t)(hy - y0);
+  uint16_t ay = (dy & 0x8000) ? (uint16_t)-dy : dy;
+  out->c = ay >= ax;
+  out->v = ((hy ^ y0) & (hy ^ dy) & 0x8000) != 0;
+  out->a = rd16(0x0028);
+  out->x = rd16(0x0444);
+  setNZ16(out, out->a);
+}
+
 // the menu choice's parts: the dispatch ends at its JSR (A = D+$4A, N Z of it; X the offset,
 // C its ASL's; D+$48 and D+$4A pushed above the cut); back from a choice at the window poll
 // (its PHA above the cut; A = 0, X = D+$5E + 24, Y = 0 from the clear's DEY: Z set; C V
@@ -11153,6 +11201,19 @@ const Routine routines[] = {
   {.name = "menu_button_assign", .entry = 0x80CC7E, .end = 0x80CCE1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .mayLeaveCaller = true, .compareA = true, .compareY = true,
    .call = call_menu_button_assign, .holes = {{0x80CC93, 0x80CC94}, {0x80CCD5, 0x80CCDA}}},
+  {.name = "race_start_close", .entry = 0x80D16C, .end = 0x80D178, .endAt = 0x80D178, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .compareA = true, .call = call_race_start_close},
+  {.name = "race_start_bar", .entry = 0x80D17F, .end = 0x80D1A1, .endAt = 0x80D1A1, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .call = call_race_start_bar},
+  {.name = "race_start_load", .entry = 0x80D1B4, .end = 0x80D241, .endAt = 0x80D241, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true,
+   .call = call_race_start_load},
+  {.name = "race_start_setup", .entry = 0x80D269, .end = 0x80D3B9, .endAt = 0x80D3B9, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_race_start_setup},
+  {.name = "race_start_setup_end", .entry = 0x80D3BA, .end = 0x80D422, .endAt = 0x80D422, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true,
+   .call = call_race_start_setup_end},
   {.name = "menu_choice_begin", .entry = 0x80C4F9, .end = 0x80C503, .endAt = 0x80C503, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true,
    .call = call_menu_choice_begin},
