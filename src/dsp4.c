@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "dsp4.h"
+#include <stdbool.h>
 
 int32_t dsp4_multiply(int16_t a, int16_t b) { return (int32_t)a * b; }
 
@@ -32,7 +33,16 @@ uint16_t dsp4_row(const int16_t edge[4]) {
   return row;
 }
 
+// (dsp4-03c: whether the entry is shown, measured on the firmware for a single entry on a
+// fresh list: by y alone. Below 0 only -7..-1; from 0 on, rows 0-232 and 234 of every 512.)
+static bool dsp4_sprite_row_shown(int16_t y) {
+  if(y < 0) return y >= -7;
+  const int row = y & 0x01FF;
+  return row <= 232 || row == 234;
+}
+
 uint16_t dsp4_sprite(uint16_t x, uint16_t y, uint16_t attr, uint16_t out[2]) {
+  if(!dsp4_sprite_row_shown((int16_t)y)) return 0;
   out[0] = (uint16_t)((x & 0x00FF) | (y & 0x00FF) << 8);
   out[1] = attr;
   return 1;

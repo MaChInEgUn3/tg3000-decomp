@@ -52,11 +52,12 @@ static void answerSpriteAt(const uint8_t* e, uint8_t* out) {
 }
 static void answerSprite(const uint8_t* in, uint8_t* out) { answerSpriteAt(in, out); }
 static void answerSpriteList(const uint8_t* in, uint8_t* out) { answerSpriteAt(in + 4, out); }
-static const struct { int cmd, in, out; void (*answer)(const uint8_t*, uint8_t*); } routes[] = {
-	{0x0A, 6, 8, answerEdges},
-	{0x11, 8, 2, answerRow},
-	{0x03, 10, 6, answerSpriteList},
-	{0x0B, 6, 6, answerSprite},
+// flagEnds: a first word of 0 is the whole answer (dsp4-03c: a hidden sprite)
+static const struct { int cmd, in, out; void (*answer)(const uint8_t*, uint8_t*); bool flagEnds; } routes[] = {
+	{0x0A, 6, 8, answerEdges, false},
+	{0x11, 8, 2, answerRow, false},
+	{0x03, 10, 6, answerSpriteList, true},
+	{0x0B, 6, 6, answerSprite, true},
 };
 static int routed = -1;  // index into routes, or -1
 static uint8_t routedIn[16], routedOut[16];
@@ -221,7 +222,11 @@ extern "C" uint8_t dsp4_bridge_read(uint8_t bank, uint16_t adr) {
 	uint8_t val = data ? chip.readData() : chip.readStatus();
 	if(data && routed >= 0 && routedNOut >= 0) {
 		val = routedOut[routedNOut++];
-		if(routedNOut == routes[routed].out) routed = -1;
+		if(routedNOut == 2 && routes[routed].flagEnds && routedOut[0] == 0 && routedOut[1] == 0) {
+			// (dsp4-03c) the clean-room chip shows every sprite: read its other words away
+			for(int i = 2; i < routes[routed].out; i++) chip.readData();
+			routed = -1;
+		} else if(routedNOut == routes[routed].out) routed = -1;
 	}
 	bench_log_dsp4(false, data, bank, adr, val);
 	return val;

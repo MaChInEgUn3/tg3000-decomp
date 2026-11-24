@@ -3779,6 +3779,41 @@ password screen, a skipped track's bonus.
 - **Check:** the probe (`$11` and `$0A` 0 of 50,000 differ; the sprite words 0 differ), and
   `progress.py --check`. It only adds lines to `tools/bench/dsp4_probe.cpp`.
 
+## dsp4_sprite hides by row (dsp4-03c, 2026-11-24)
+
+- **Measured further on the firmware, outputs only.**
+  - **The per-row count is per list.** Within one list, 33 entries on one row are shown
+    and the 34th is hidden. After them, entries from 7 rows above to 7 rows below are
+    hidden, which fits a sprite 8 rows tall, but with a gap: 6 rows above is shown, the
+    same odd gap as the lone shown row 234.
+  - **x and the attribute do not count.** A new `$0003` list starts the count again.
+  - **The count changes with `$03`'s word** (word 4 gives 31, word 8 gives 40, word 6
+    gives 1). The game always sends 5.
+  - **The game sends one list per frame for the mini-map, with two entries,** so the count
+    never reaches 34 there.
+- **So the C keeps the fresh list's rule for a single entry, a function of y:**
+  - shown for y -7..-1;
+  - from 0 on, shown for rows 0-232 and 234 of every 512;
+  - hidden otherwise.
+  - The game's y is an 8-bit sum (`minimap_car`), so rows 233 and 235-255 can be hidden in
+    the game. The TAS never reached them.
+- **Not modelled, stated in `src/dsp4.h`:**
+  - the per-row count (the 34th entry of a list on one row);
+  - rows 233, 235, 236 and 238 after other commands, where the answer depends on the
+    chip's history; the C gives the fresh chip's answer.
+- **When the flag is 0, the answer is the flag alone, as the game reads it** (`beq` at
+  `$82:D91E`). The bench follows:
+  - `dsp4_bridge.cpp`: the routes `$03`/`$0B` end after the flag when it is 0. The
+    clean-room chip shows every entry (checked: flag 1 at y 240 and 255, and 60 of 60 on
+    one row), so the bridge reads its other four bytes away to keep it in step.
+  - `difftest.c`'s command table: the sprite commands end after a zero flag.
+  - `refbench` already compared only the words the game read.
+- **Check:**
+  - `dsp4_probe`: the flag over every y in -512..511 on a fresh list, 0 differ, and the
+    words 0 differ.
+  - `minimap_car`: its fuzz now reaches hidden rows, 500/500.
+  - The full gate (`src/dsp4.c`, `difftest.c` and the bridge changed).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

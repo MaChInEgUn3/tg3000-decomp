@@ -145,6 +145,7 @@ typedef struct {
   // where the routine is in a DSP-4 command (see dsp4Step): phase 0 idle, 1 half of the
   // command word, 2 parameters, 3 results; the command and the bytes of the phase so far
   uint8_t dsp4Phase, dsp4Cmd, dsp4Count;
+  uint16_t dsp4Flag;  // the result's first word so far (dsp4-03c)
   // a taped row's DSP-4 data-port bytes, in order, in tapes[depth] (the C consumes them:
   // difftest_dsp4_byte); kept out of the sample, which every entry clears
   int nTape;
@@ -826,12 +827,13 @@ static bool isMathReg(uint32_t adr, bool write) {
 // other commands' results must be read. Status reads are free. Anything else, or a command
 // left unfinished, is a hardware access the C cannot reproduce. Returns whether the access
 // fits.
-static const struct { uint8_t cmd, in, out; bool writeSkips; } dsp4Commands[] = {
-  {0x00, 4, 4, true},   // dsp4_multiply
-  {0x0A, 6, 8, false},  // dsp4_edges
-  {0x11, 8, 2, false},  // dsp4_row
-  {0x03, 10, 6, false}, // dsp4_sprite: its word, then a sprite entry
-  {0x0B, 6, 6, false},  // dsp4_sprite
+// flagEnds: a first result word of 0 is the whole result (dsp4-03c: a hidden sprite).
+static const struct { uint8_t cmd, in, out; bool writeSkips, flagEnds; } dsp4Commands[] = {
+  {0x00, 4, 4, true, false},   // dsp4_multiply
+  {0x0A, 6, 8, false, false},  // dsp4_edges
+  {0x11, 8, 2, false, false},  // dsp4_row
+  {0x03, 10, 6, false, true},  // dsp4_sprite: its word, then a sprite entry
+  {0x0B, 6, 6, false, true},   // dsp4_sprite
 };
 static bool isDsp4(uint32_t adr) {
   uint8_t bank = (adr >> 16) & 0x7F;
@@ -869,13 +871,17 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
   case 2: {  // the parameters
     if(!write) return false;
     const int i = dsp4CommandIndex(smp->dsp4Cmd);
-    if(++smp->dsp4Count == dsp4Commands[i].in) { smp->dsp4Phase = 3; smp->dsp4Count = 0; }
+    if(++smp->dsp4Count == dsp4Commands[i].in) { smp->dsp4Phase = 3; smp->dsp4Count = 0; smp->dsp4Flag = 0; }
     break;
   }
   default: {  // the results: a read takes one (a write skips one, for the multiply)
     const int i = dsp4CommandIndex(smp->dsp4Cmd);
     if(write && !dsp4Commands[i].writeSkips) return false;
-    if(++smp->dsp4Count == dsp4Commands[i].out) { smp->dsp4Phase = 0; smp->dsp4Count = 0; }
+    if(smp->dsp4Count < 2) smp->dsp4Flag |= (uint16_t)(val << (8 * smp->dsp4Count));
+    if(++smp->dsp4Count == dsp4Commands[i].out || (dsp4Commands[i].flagEnds && smp->dsp4Count == 2 && smp->dsp4Flag == 0)) {
+      smp->dsp4Phase = 0;
+      smp->dsp4Count = 0;
+    }
     break;
   }
   }

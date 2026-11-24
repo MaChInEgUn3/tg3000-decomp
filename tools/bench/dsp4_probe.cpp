@@ -6,8 +6,8 @@
 //   $0A (dsp4_edges): t, near, far in; four edges out.
 //   $03/$0B (dsp4_sprite, dsp4-03b): as the game sends them ($82:CBD4, $82:D8C6): $0003,
 //   $0005, then each entry $000B, x, y, attribute; out a flag, then (when it is not 0) two
-//   words. A measurement: the firmware hides some entries, dsp4_sprite shows every one
-//   (docs/DECISIONS.md dsp4-03b). Only the shown entries' words are checked.
+//   words. Single entries on a fresh list, every y in -512..511: the flag and the words
+//   against dsp4_sprite (dsp4-03c). The firmware's per-row count is only reported.
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
   {
     // dsp4-03b: single entries on a fresh list (the chip reset first), every y in
     // -512..511, x and the attribute at random
-    long shown = 0, hiddenRows = 0, badWords = 0;
+    long shown = 0, hiddenRows = 0, badWords = 0, badFlags = 0;
     int prevShown = -1, start = 0;
     std::printf("$03/$0B single entries, the firmware's flag by y:");
     for(int y = -512; y <= 512; y++) {
@@ -71,9 +71,10 @@ int main(int argc, char** argv) {
         uint16_t fo[3] = {0, 0, 0};
         dsp4_lle_command(0x0003, in, 5, fo, 1);
         s = fo[0] != 0;
+        uint16_t mine[2];
+        const uint16_t flag = dsp4_sprite(x, uint16_t(y), attr, mine);
+        if(flag != fo[0] && badFlags++ < 12) std::printf("\n  y %d: firmware flag %04X, C %04X", y, fo[0], flag);
         if(s) {
-          uint16_t mine[2];
-          dsp4_sprite(x, uint16_t(y), attr, mine);
           fo[1] = dsp4_lle_word();
           fo[2] = dsp4_lle_word();
           shown++;
@@ -87,8 +88,8 @@ int main(int argc, char** argv) {
         start = y;
       }
     }
-    std::printf("\n  %ld shown (their words: %ld differ), %ld hidden: dsp4_sprite shows them all\n", shown, badWords,
-                hiddenRows);
+    std::printf("\n  %ld shown (their words: %ld differ), %ld hidden; flags: %ld differ from dsp4_sprite\n", shown, badWords,
+                hiddenRows, badFlags);
     // and one list of many entries on one row: the firmware's count per row
     const uint16_t head[1] = {0x0005};
     uint16_t none[1];
@@ -101,7 +102,7 @@ int main(int argc, char** argv) {
       else { dsp4_lle_word(); dsp4_lle_word(); }
     }
     std::printf("  one list, every entry at y 50: the firmware hides entry %d on (a count per row)\n", firstHidden);
-    if(badWords) return 1;
+    if(badWords || badFlags) return 1;
   }
   std::printf("%ld cases: $11 %ld differ, $0A %ld differ\n", cases, bad11, bad0a);
   return bad11 || bad0a ? 1 : 0;
