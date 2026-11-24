@@ -1672,4 +1672,10 @@ uint16_t race_start_load(void);
 void race_start_setup(void);
 void race_start_setup_end(uint16_t len);
 
+// A frame of the pre-race screen ($80:D475, race_start_frame_draw; true when its fade is done
+// and it ends with race_start_end, $80:D668).
+bool race_start_frame(void);
+void race_start_frame_draw(void);
+void race_start_end(void);
+
 #endif

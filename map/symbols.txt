@@ -418,6 +418,8 @@ func    80D17F   race_start_bar      ; the race choice: $036A, the window lines,
 func    80D1B4   race_start_load     ; the pre-race load: targets, graphics, maps, scenery, stars -> src/misc.c
 func    80D269   race_start_setup    ; the pre-race setup: HDMA, windows, palettes, VRAM queue -> src/misc.c
 func    80D3BA   race_start_setup_end ; the pre-race setup's end: queue, steering, meter, HUD, music -> src/misc.c
+func    80D475   race_start_frame_draw ; a pre-race screen frame: meter, animations, camera, colours, fade; ends the screen -> src/misc.c
+func    80D668   race_start_end      ; the pre-race screen's end: targets, HDMA off, the track's bit and number -> src/misc.c
 func    80D026   menu_panel_sprites  ; a menu panel: two groups, colour, steps toward targets, frame -> src/misc.c
 func    80CB4A   menu_controls_open  ; the controls menu: window opening, graphics, rows -> src/misc.c
 func    80CB8D   menu_controls_lines ; the controls menu: the cursor on EXIT, frame size -> src/misc.c

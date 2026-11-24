@@ -5488,6 +5488,32 @@ static void call_name_entry_draw(const Regs* in, Regs* out) { (void)in; (void)ou
 // D+$16 poll (its PHA of the second length above the cut; A = $E0E0, X = 0 from oam_clear);
 // the setup at its PLA (A = $7F, X = $1000, Y = $6000: N Z of the LDY); its end at the frame
 // poll (A = $0028, X = $0444; C V func_80D6F3's)
+// the pre-race frame ends at its fade test (the raster IRQ moves the fade mid-frame, after
+// the C's frame: the test and the end are apart); its end returns after the bit search's BIT
+// (N V of the track's word, Z clear; C clear from an ASL, else the entry's; A the bit, X =
+// D+$2C, Y its number)
+static void call_race_start_frame(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  race_start_frame_draw();
+}
+static void call_race_start_end(const Regs* in, Regs* out) {
+  (void)in;
+  race_start_end();
+  const uint16_t bits = rd16((uint16_t)(0x0808 + rd16(DP + 0x2C)));
+  uint16_t a = 1, n = 0;
+  while(!(bits & a)) {
+    a = (uint16_t)(a << 1);
+    n++;
+  }
+  out->a = a;
+  out->x = rd16(DP + 0x2C);
+  out->y = n;
+  out->n = bits >> 15;
+  out->v = (bits >> 14) & 1;
+  out->z = false;
+  if(n > 0) out->c = false;
+}
 static void call_race_start_close(const Regs* in, Regs* out) {
   race_start_close(in->d);
   out->a = 0xC5E0;
@@ -11214,6 +11240,14 @@ const Routine routines[] = {
   {.name = "race_start_setup_end", .entry = 0x80D3BA, .end = 0x80D422, .endAt = 0x80D422, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true,
    .call = call_race_start_setup_end},
+  {.name = "race_start_end", .entry = 0x80D668, .end = 0x80D6A0, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_race_start_end},
+  {.name = "race_start_frame_draw", .entry = 0x80D475, .end = 0x80D65D, .endAt = 0x80D65D, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_race_start_frame,
+   .holes = {{0x80D4D8, 0x80D520}, {0x80D548, 0x80D54D}, {0x80D572, 0x80D57D}, {0x80D5A7, 0x80D5A9}}},
+   // (the big animation, $0700 set: no movie runs it; the far camera, the scroll back, the
+   // markers' end)
   {.name = "menu_choice_begin", .entry = 0x80C4F9, .end = 0x80C503, .endAt = 0x80C503, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true,
    .call = call_menu_choice_begin},

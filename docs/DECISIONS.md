@@ -2975,6 +2975,37 @@ password screen, a skipped track's bonus.
   the menus' movie, 1 each.
 - **Check:** incremental gate.
 
+## The pre-race frame, DMA modes 2 and 6, raster IRQs (menu-15, harness-21, harness-22, 2026-11-24)
+
+- **`race_start_frame_draw` ($80:D475) is the pre-race screen's frame**, after its wait. In it:
+  - the meter;
+  - the animated tiles' high bytes to VRAM (raw mode-2 DMAs);
+  - the big animation through the PPU multiplier, never run, a hole;
+  - the camera eased toward the track;
+  - the stars;
+  - the text colour between the course's markers (CPU divider and PPU multiplier);
+  - a button's fade;
+  - the course's slide;
+  - the HUD's sprites;
+  - the colour cycle.
+- **Its row is a waiting row ending at the fade test** (`endAt $80:D65D`). Its end,
+  `race_start_end` ($80:D668), is a row of its own: the race's targets back, HDMA off, the
+  track's bit and number.
+  - Reason: the raster IRQ moves the fade mid-frame. The C, which gets the frame's interrupts
+    after it, would see the fade one frame late.
+- **harness-21:** a raw DMA in mode 2 or 6 (one register written twice per unit) now steps the
+  C's VRAM pointer as mode 0 does. A second such DMA without a new address was compared
+  against the first one's address.
+- **harness-22:** only a frame's interrupt makes a sample lagged (harness-15): one that moved
+  the frame counter `$0024`, the NMI.
+  - The raster IRQs of a split screen land mid-body every frame and lose no frame, but they
+    made every sample of this row lagged, so none could pass clean. This is the narrowing the
+    advisor foresaw in harness-15.
+- **Results:** on the 60k movie, 685 frames and 5 ends, all paths. The menus' movie also
+  passes.
+- **Check:** full gate (`difftest.c` changed). The narrowing can turn an old lagged failure
+  into a hard one; the full run says.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

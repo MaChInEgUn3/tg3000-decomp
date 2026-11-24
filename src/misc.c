@@ -8756,3 +8756,143 @@ void race_start_setup_end(uint16_t len) {
   func_80D6F3(rom16(0x81CB14 + (uint32_t)(uint16_t)(rd16(0x0368) << 1)));
   wr16(0x0368, rom8(0x84A240 + (uint32_t)rd16(0x0444)));
 }
+
+// $80:DAAE (never run): the star layers' positions moved by their speeds, wrapping at $8800
+// (star_layers_move's sibling, called when the screen scrolls back).
+static void star_layers_add(void) {
+  for(uint16_t x = 0; x != 0x0200; x = (uint16_t)(x + 8)) {
+    uint16_t v = (uint16_t)(rd16((uint16_t)(0x0F06 + x)) + rd16((uint16_t)(0x0F00 + x)));
+    if(v >= 0x8800) v = (uint16_t)(v - 0x8800);
+    wr16((uint16_t)(0x0F06 + x), v);
+  }
+}
+
+// A frame of the pre-race screen, and its end when the fade is done.
+bool race_start_frame(void) {
+  race_start_frame_draw();
+  if(rd16(0x019A) & 0x0F00) return false;
+  race_start_end();
+  return true;
+}
+
+// TG3000_ROUTINE($80:D475) race_start_frame_draw
+//
+// A frame of the pre-race screen (after its wait; interrupts on: CLI, a comment): the meter;
+// the animated tiles' high bytes to VRAM $3010 (a list at $0700 + 10n: step, phase; each
+// phase's $80 bytes from $7E:8000 + n * $800); the big animation's frame to VRAM $2DC0
+// ($480 bytes at $7F:6640 + its frame * $480, by the PPU multiplier); the camera D+$2A eased
+// toward the track's place (its record by $81:C7B8 and the track), the stars moved when the
+// view rises; the text colour D+$1E between the course's markers (by the CPU divider and the
+// PPU multiplier); a button starts the fade out; the course's slide (D+$34/D+$36); the HUD's
+// sprites; D+$30 counting the colour cycle ($81:CAFA).
+void race_start_frame_draw(void) {
+  draw_meter(DP);
+  wr16(DP + 0x20, rd16(DP + 0x22));
+  wr16(DP + 0x2E, rd16(DP + 0x2A));
+  wr16(DP + 0x14, 0x8000);
+  video_set_vram_address(0x3010);
+  for(uint16_t x = 0x000A; rd16((uint16_t)(0x0700 + x)) != 0; x = (uint16_t)(x + 0x000A)) {
+    const uint16_t phase = (uint16_t)(rd16((uint16_t)(0x0700 + x)) + rd16((uint16_t)(0x0702 + x)));
+    wr16((uint16_t)(0x0702 + x), phase);
+    dma_stream_setup(0, 0x02, 0x19, 0x7E0000 | (uint16_t)(((phase & 0x0F00) >> 1) + rd16(DP + 0x14)));
+    dma_stream_size(0, 0x0080);
+    dma_stream_kick(0x01);
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 0x0800));
+  }
+  if(rd16(0x0700) != 0) {
+    wr16(0x0702, (uint16_t)(rd16(0x0700) + rd16(0x0702)));
+    const uint8_t frame = (uint8_t)(rd8(0x0703) & 0x0F);
+    video_set_m7a(0x0480);
+    video_set_m7b((int16_t)(frame << 8 | 0x04));
+    dma_stream_setup(0, 0x01, 0x18, 0x7F0000 | (uint16_t)(0x0480 * frame + 0x6640));
+    dma_stream_size(0, 0x0480);
+    video_set_vram_address(0x2DC0);
+    dma_stream_kick(0x01);
+  }
+  const uint16_t rec = rom8(0x81C7B8 + (uint32_t)rd16(0x0444));
+  wr16(DP + 0x2C, rec);
+  wr16(DP + 0x32, rom16(0x81C7E8 + (uint32_t)rd16((uint16_t)(0x0806 + rec))));
+  uint16_t d = (uint16_t)(rd16((uint16_t)(0x0804 + rec)) - rd16(DP + 0x2A));
+  if(!((uint16_t)(d - 0x0008) & 0x8000)) d = 0x0008;
+  else if((uint16_t)(d - 0xFFF8) & 0x8000) d = 0xFFF8;  // (never run)
+  const bool odd = d & 1;
+  d = (uint16_t)((d >> 1) | (d & 0x8000));  // (CMP #$8000 / ROR: halved, rounded up when positive)
+  if(!(d & 0x8000)) d = (uint16_t)(d + odd);
+  wr16(DP + 0x2A, (uint16_t)(d + rd16(DP + 0x2A)));
+  const uint16_t rise = (uint16_t)(rd16(DP + 0x2A) - rd16(DP + 0x20) - 0x0080);
+  if(!(rise & 0x8000)) {
+    if(!((uint16_t)(rise - 0x0003) & 0x8000) && rd16(DP + 0x22) != 0x00FF) {
+      wr16(DP + 0x22, (uint16_t)(rd16(DP + 0x22) + 3));
+      star_layers_move();
+    }
+  } else if((uint16_t)(rise - 0xFFFD) & 0x8000 && rd16(DP + 0x22) != 0) {  // never run
+    wr16(DP + 0x22, (uint16_t)(rd16(DP + 0x22) - 3));
+    star_layers_add();
+  }
+  for(uint16_t x = 0;; x = (uint16_t)(x + 4)) {
+    const uint16_t at = rd16(DP + 0x2E), mark = rd16((uint16_t)(0x0884 + x));
+    if(at == mark) {
+      wr16(DP + 0x1E, rom16(0x81CAEE + (uint32_t)rd16((uint16_t)(0x0882 + x))));
+      break;
+    }
+    if(at < mark) {  // between two markers: the colour interpolated
+      const uint16_t prev = rd16((uint16_t)(0x0880 + x));
+      const uint16_t num = (uint16_t)(at - prev), dividend = (uint16_t)(num << 8 | num >> 8);
+      const uint8_t divisor = (uint8_t)(mark - prev);
+      const uint16_t q = divisor ? (uint16_t)(dividend / divisor) : 0xFFFF;
+      const uint16_t y1 = rd16((uint16_t)(0x0882 + x)), y0 = rd16((uint16_t)(0x087E + x));
+      const uint8_t b = (uint8_t)(rom8(0x81CAEE + (uint32_t)y1) - rom8(0x81CAEE + (uint32_t)y0));
+      video_set_m7a((int16_t)q);
+      video_set_m7b((int16_t)(b << 8 | q >> 8));
+      const uint32_t p = (uint32_t)((int32_t)(int16_t)q * (int8_t)b);
+      wr16(DP + 0x1E, (uint16_t)(rom16(0x81CAEE + (uint32_t)y0) + (uint16_t)(p >> 8)));
+      break;
+    }
+    if((uint16_t)(x + 4) == rd16(0x0880)) break;  // (never run: past the last marker)
+  }
+  bool press = (rd16(0x0012) & 0xC0C0) != 0;
+  wr16(0x0012, (uint16_t)(rd16(0x0012) & ~0xC0C0));
+  if(!press) {
+    press = (rd16(0x000E) & 0xC0C0) != 0;
+    wr16(0x000E, (uint16_t)(rd16(0x000E) & ~0xC0C0));
+  }
+  if(press) {
+    wr16(0x0198, 0);
+    wr16(0x0196, 0xFF80);
+    func_80E4DB();
+  }
+  if(rd16(DP + 0x30) < 0x000D && rd16(DP + 0x26) != 0) {
+    wr16(DP + 0x34, (uint16_t)(rd16(DP + 0x34) + rd16(DP + 0x38)));
+    wr16(DP + 0x36, (uint16_t)(rd16(DP + 0x36) + rd16(DP + 0x3A)));
+    wr16(DP + 0x26, (uint16_t)(rd16(DP + 0x26) - 1));
+  }
+  race_hud_sprites();
+  oam_finish_0b00_near(DP);
+  wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
+  wr16(DP + 0x30, (uint16_t)(rd16(DP + 0x30) - 1));
+  if(rd16(DP + 0x30) & 0x8000) {
+    wr16(DP + 0x30, 0x000C);
+    wr16(DP + 0x24, (uint16_t)(rd8(DP + 0x37) << 8 | rd8(DP + 0x35)));
+  }
+  const uint16_t k = rd16(DP + 0x30) < 0x000C ? rd16(DP + 0x30) : 0;
+  wr16(DP + 0x7C, rom16(0x81CAFA + (uint32_t)(uint16_t)(k << 1)));
+}
+
+// TG3000_ROUTINE($80:D668) race_start_end
+// The pre-race screen's end (its fade done): the race's NMI and IRQ targets back (SEI: a
+// comment), HDMA off, the track's bit in $036A and its number in $036B.
+void race_start_end(void) {
+  wr16(0x019A, 0);
+  wr16(0x0005, 0x89B2);
+  video_hdma_enable(0x00);  // (a 16-bit store at $420B)
+  wr16(0x0008, 0x8934);
+  wr16(0x0196, 0);
+  const uint16_t bits = rd16((uint16_t)(0x0808 + rd16(DP + 0x2C)));
+  wr16(0x036A, (uint16_t)(bits | rd16(0x036A)));
+  uint16_t a = 1, n = 0;
+  while(!(bits & a)) {
+    a = (uint16_t)(a << 1);
+    n++;
+  }
+  wr8(0x036B, (uint8_t)n);
+}

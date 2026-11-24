@@ -273,8 +273,17 @@ static void applyIrq(int i) {
   for(size_t k = irqFirst[i]; k < irqFirst[i + 1]; k++) g_ram[irqBytes[k].adr] = irqBytes[k].val;
 }
 
-// The handler just recorded returned: keep the bytes it changed.
+// The handler just recorded returned: keep the bytes it changed. A frame's interrupt (it moved
+// the frame counter $0024: the NMI) that stopped the routine outside a wait makes the sample
+// lagged (harness-15); a raster IRQ does not (harness-22: it is part of every frame of a
+// split screen, and no frame is lost to it).
+static uint32_t irqStoppedPc;
 static void recordIrqEnd(void) {
+  const bool frame = irqPre[0x24] != snes->ram[0x24] || irqPre[0x25] != snes->ram[0x25];
+  if(frame && !atWaitSite(irqStoppedPc) && !samples[irqOwner].lagged) {
+    samples[irqOwner].lagged = true;
+    samples[irqOwner].lagPc = irqStoppedPc;
+  }
   if(irqCount == 0) irqBytesUsed = 0;
   irqFirst[irqCount] = irqBytesUsed;
   for(uint32_t a = 0; a < TG3000_WRAM_SIZE; a++) {
@@ -515,7 +524,8 @@ void difftest_stream_kick(uint8_t mask) {
       e.vram = vramPack(at, onHigh, inc, remap);
       // the pointer moves on with each write to the byte that increments it
       uint32_t steps = 0;
-      if((dmap & 7) == 0) steps = ((target == 0x19) == onHigh) ? size : 0;
+      // (harness-21: modes 2 and 6, one register written twice per unit, step as mode 0)
+      if((dmap & 7) == 0 || (dmap & 7) == 2 || (dmap & 7) == 6) steps = ((target == 0x19) == onHigh) ? size : 0;
       else if((dmap & 7) == 1 && target == 0x18) steps = onHigh ? size / 2 : (size + 1) / 2;
       cVramPtr = (uint16_t)(at + steps * inc);
       cVramAdrClaim = -1;
@@ -1605,10 +1615,7 @@ void difftest_on_insn(Cpu* cpu) {
         if(irqCount >= (table[samples[irqOwner].idx].maxInsns ? MAX_IRQS : MAX_IRQS_DEFAULT)) irqOverflow = true;
         else {
           memcpy(irqPre, snes->ram, TG3000_WRAM_SIZE);
-          if(!atWaitSite(stoppedPc) && !samples[irqOwner].lagged) {
-            samples[irqOwner].lagged = true;
-            samples[irqOwner].lagPc = stoppedPc;
-          }
+          irqStoppedPc = stoppedPc;  // (the lag test waits for its RTI: harness-22)
           irqActive = true;
           irqForeign = false;
           irqBaseDepth = depth;

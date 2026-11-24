@@ -9557,6 +9557,7 @@ CODE_80D422:
 CODE_80D46F:
     lda.w #$0001                ; $80D46F
     jsr.w wait_frames           ; $80D472
+race_start_frame_draw:
     cli                         ; $80D475
     jsr.w draw_meter            ; $80D476
     lda.b $22                   ; $80D479
@@ -9786,9 +9787,9 @@ CODE_80D656:
     sta.b $7C                   ; $80D65B
     lda.w $019A                 ; $80D65D
     and.w #$0F00                ; $80D660
-    beq CODE_80D668             ; $80D663
+    beq race_start_end          ; $80D663
     jmp.w $D46F                 ; $80D665
-CODE_80D668:
+race_start_end:
     sei                         ; $80D668
     stz.w $019A                 ; $80D669
     lda.w #$89B2                ; $80D66C
