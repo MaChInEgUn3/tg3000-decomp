@@ -5313,6 +5313,47 @@ static void call_ticker_screen(const Regs* in, Regs* out) {
   out->z = out->a == 0;
   out->c = false;
 }
+// menu_button_assign, X = the buttons. On the exit line (C set by its CMP #5): an ignored
+// press leaves A = X (N of X, Z of its BIT); the exit leaves the caller too, with its PLA of
+// the JSR's word (A, N Z of it). Else a swap ends on PLY (N Z of Y; A the line's old button),
+// a new button on TXA (A = X), both with C and V of the CLC / ADC of D+$94. (Not one bit
+// exactly: never run.)
+static void call_menu_button_assign(const Regs* in, Regs* out) {
+  const uint16_t button = in->x, line = rd16(DP + 0x48), p94 = rd16(DP + 0x94);
+  const uint16_t mine = (uint16_t)((line << 1) + p94);
+  uint16_t found = 0xFFFF;
+  if(line != 5) {
+    for(uint16_t y = p94; y != 0x000A; y = (uint16_t)(y + 2))
+      if(bus_rd16(0x810000 | (uint16_t)(0x039D + y)) == button) { found = y; break; }
+  }
+  const uint16_t old = rd16((uint16_t)(0x039D + mine));
+  const uint16_t ret = rd16((uint16_t)(in->sp + 1));
+  const bool leave = menu_button_assign(button);
+  if(line == 5) {
+    out->c = true;
+    if(leave) {
+      out->a = ret;
+      setNZ16(out, ret);
+      out->leftCaller = true;
+    } else {
+      out->a = button;
+      out->n = button >> 15;
+      out->z = true;
+    }
+    return;
+  }
+  setAdc16(out, (uint16_t)(line << 1), p94);
+  if(found != 0xFFFF) {
+    out->a = old;
+    out->y = found;
+    setNZ16(out, found);
+  } else {
+    out->a = button;
+    out->y = mine;
+    setNZ16(out, button);
+  }
+}
+
 // menu_bit_word: its SEC / ROR loop (the SEC's 1 shifted in at the top) leaves Y = twice the
 // bit's number, C set; A = X = the word (N Z of its TAX)
 static void call_menu_bit_word(const Regs* in, Regs* out) {
@@ -10843,6 +10884,9 @@ const Routine routines[] = {
   {.name = "menu_panel_sprites", .entry = 0x80D026, .end = 0x80D168, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_menu_panel_sprites, ALL_OUTPUTS,
    .holes = {{0x80D041, 0x80D044}, {0x80D066, 0x80D069}, {0x80D098, 0x80D099}, {0x80D0A2, 0x80D0AA}}},
+  {.name = "menu_button_assign", .entry = 0x80CC7E, .end = 0x80CCE1, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .mayLeaveCaller = true, .compareA = true, .compareY = true,
+   .call = call_menu_button_assign, .holes = {{0x80CC93, 0x80CC94}, {0x80CCD5, 0x80CCDA}}},
   {.name = "menu_bit_word", .entry = 0x80CE7F, .end = 0x80CE91, .source = "src/misc.c", .needM16 = true, .needX16 = true,
    .call = call_menu_bit_word, ALL_OUTPUTS, .fuzz = fuzz_menu_bit_word},
   // the menu bar's line window (steps 2-5 never run or call routines not ported)

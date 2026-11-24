@@ -8022,3 +8022,46 @@ void menu_panel_sprites(void) {
   }
   wr16(DP + 0x74, x);
 }
+
+// TG3000_ROUTINE($80:CC7E) menu_button_assign
+//
+// The controls menu: `button` (the pad bits just pressed) given to line D+$48 of the
+// player's five ($039D + D+$94, a word each). One button only (none or two: ignored). The
+// line that held it gets the line's old button. On line 5 (EXIT) a B/Y/A/X press sets
+// D+$4E = 4 and leaves the caller too (its PLA, RTS): returns true then.
+bool menu_button_assign(uint16_t button) {
+  if(rd16(DP + 0x48) == 0x0005) {
+    if(!(button & 0xC0C0)) return false;
+    if(rd16(DP + 0x4C) != 0) {  // never run
+      func_80E4DB();
+      return false;
+    }
+    wr16(DP + 0x4E, 0x0004);
+    return true;
+  }
+  func_80E4C5();
+  uint16_t a = button, n = 16;
+  for(;;) {  // the lowest set bit ...
+    const bool bit = a & 1;
+    a = (uint16_t)(a >> 1);
+    if(bit) break;
+    if(--n == 0) return false;  // (never run: no bit)
+  }
+  for(;;) {  // ... and no other above it
+    const bool bit = a & 1;
+    a = (uint16_t)(a >> 1);
+    if(bit) return false;
+    if(--n == 0) break;
+  }
+  const uint16_t mine = (uint16_t)((rd16(DP + 0x48) << 1) + rd16(DP + 0x94));
+  for(uint16_t y = rd16(DP + 0x94); y != 0x000A; y = (uint16_t)(y + 2)) {
+    if(bus_rd16(0x810000 | (uint16_t)(0x039D + y)) == button) {  // held by line y: swapped
+      const uint16_t old = rd16((uint16_t)(0x039D + mine));
+      wr16((uint16_t)(0x039D + mine), button);
+      wr16((uint16_t)(0x039D + y), old);
+      return false;
+    }
+  }
+  wr16((uint16_t)(0x039D + mine), button);
+  return false;
+}

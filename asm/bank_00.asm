@@ -8653,11 +8653,12 @@ CODE_80CC6A:
     lda.w #$C0F0                ; $80CC6C
     trb.b $0E                   ; $80CC6F
     beq CODE_80CC76             ; $80CC71
-    jsr.w $CC7E                 ; $80CC73
+    jsr.w menu_button_assign    ; $80CC73
 CODE_80CC76:
     jsr.w $CCE1                 ; $80CC76
     jsr.w oam_finish_near       ; $80CC79
     bra CODE_80CC3F             ; $80CC7C
+menu_button_assign:
     lda.b $48                   ; $80CC7E
     cmp.w #$0005                ; $80CC80
     beq CODE_80CCCB             ; $80CC83

@@ -2809,6 +2809,20 @@ password screen, a skipped track's bonus.
 - **Results:** on the menus' movie, 122 of 302 entries sampled, all 137 paths.
 - **Check:** incremental gate.
 
+## The controls menu's button (menu-6, 2026-11-24)
+
+- **`menu_button_assign` ($80:CC7E) is ported** (in `src/misc.c`). It gives the buttons just
+  pressed to line D+$48 of the player's five (`$039D + D+$94`):
+  - one button only;
+  - the line that held it gets the old one.
+  - On line 5 (EXIT), a B/Y/A/X press sets D+$4E = 4 and leaves the caller too, with a PLA
+    and an RTS. The C returns true then, and the row is `mayLeaveCaller`.
+- **Its 11 samples are below the 100-return rule,** so every flag is live, and the adapter
+  models each exit.
+- **The unrun paths are holes:** no bit pressed, and the exit while D+$4C is set.
+- **Results:** 11 of 11 entries sampled, all 53 paths.
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

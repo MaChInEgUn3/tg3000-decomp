@@ -1609,4 +1609,8 @@ uint32_t menu_frame_sprites(void);
 // their targets, a frame D+$7E high.
 void menu_panel_sprites(void);
 
+// $80:CC7E: the controls menu's button for line D+$48 (swapped with the line that held it);
+// on line 5 a B/Y/A/X press leaves (returns true: the caller returns too).
+bool menu_button_assign(uint16_t button);
+
 #endif
