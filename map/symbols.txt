@@ -14,6 +14,13 @@ func    8AB18C   password_hdma_off   ; a frame, then HDMA off ($420C/$420D = 0) 
 func    8AB197   password_hdma_on    ; a frame, then HDMA channels 1 and 7 on -> src/password.c
 func    8AB1A5   password_screen_open ; the password screen faded in (tiles, map, palettes) -> src/password.c
 func    8AB1E2   password_screen_close ; back to the menu's tiles, faded in -> src/password.c
+func    8AB232   password_entry_open ; the password entry: tables, lines, text cleared, caret sliding in -> src/password.c
+func    8AB273   password_entry_sprites ; the password entry frame's sprites -> src/password.c
+func    8AB284   password_entry_slide ; the password entry: the caret's slide -> src/password.c
+func    8AB28C   password_entry_ready ; the password entry: the grid ready -> src/password.c
+func    8AB29C   password_entry_frame ; a password typing frame: sprites, A/B/X/Y -> src/password.c
+func    8AB2AA   password_entry_pads ; a password typing frame: the moves, the caret -> src/password.c
+func    8AB2CE   password_entry_check ; the password check on EXIT: a valid password unpacked -> src/password.c
 func    8AB2BC   password_caret_blink ; the caret shown while D+$66 is odd ($0578) -> src/password.c
 func    8AB339   password_press_a    ; A/B/X/Y on the grid: a letter typed, or the last column
 func    8AB35B   password_code_find  ; the typed text against the 17 codes at $8A:CDAB (XOR $9A): the handler -> src/password.c

@@ -4070,12 +4070,13 @@ wait_one_frame:
     rts                         ; $8AB21B
     jsr.w wipe_columns          ; $8AB21C
     jsr.w password_screen_open  ; $8AB21F
-    jsr.w $B232                 ; $8AB222
+    jsr.w password_entry_open   ; $8AB222
     lda.w $0D7C                 ; $8AB225
     db $F0,$04 ; beq            ; $8AB228
     jsr.w password_screen_close ; $8AB22A
     rts                         ; $8AB22D
     incbin !baserom:$5322E..$53232
+password_entry_open:
     stz.b $52                   ; $8AB232
     jsr.w hdma_window_tables_init; $8AB234
     jsr.w password_lines_print  ; $8AB237
@@ -4102,27 +4103,31 @@ CODE_8AB23D:
 CODE_8AB26C:
     lda.w #$0001                ; $8AB26C
     jsl.l wait_frames_long      ; $8AB26F
+password_entry_sprites:
     jsr.w clear_object_slots    ; $8AB273
     ldx.w #$0000                ; $8AB276
     jsr.w sprite_frame          ; $8AB279
     lda.w $0D88                 ; $8AB27C
     cmp.w $0D80                 ; $8AB27F
-    beq CODE_8AB28C             ; $8AB282
+    beq password_entry_ready    ; $8AB282
+password_entry_slide:
     jsr.w password_caret_place  ; $8AB284
     jsr.w password_caret_blink  ; $8AB287
     bra CODE_8AB26C             ; $8AB28A
-CODE_8AB28C:
+password_entry_ready:
     lda.w #$0002                ; $8AB28C
     sta.b $7A                   ; $8AB28F
     sta.b $7C                   ; $8AB291
     sta.b $7E                   ; $8AB293
     lda.w #$0001                ; $8AB295
     jsl.l wait_frames_long      ; $8AB298
+password_entry_frame:
     jsr.w clear_object_slots    ; $8AB29C
     ldx.w #$0000                ; $8AB29F
     jsr.w sprite_frame          ; $8AB2A2
     jsr.w password_press_a      ; $8AB2A5
-    bcs CODE_8AB2CE             ; $8AB2A8
+    bcs password_entry_check    ; $8AB2A8
+password_entry_pads:
     jsr.w password_pad_right    ; $8AB2AA
     jsr.w password_pad_left     ; $8AB2AD
     jsr.w password_pad_up       ; $8AB2B0
@@ -4139,7 +4144,7 @@ password_caret_blink:
 CODE_8AB2CA:
     stz.w $0578                 ; $8AB2CA
     rts                         ; $8AB2CD
-CODE_8AB2CE:
+password_entry_check:
     lda.w #$0004                ; $8AB2CE
     sta.b $7A                   ; $8AB2D1
     sta.b $7C                   ; $8AB2D3

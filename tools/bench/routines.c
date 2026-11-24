@@ -7406,12 +7406,12 @@ static void call_password_press_last_column(const Regs* in, Regs* out) {
 // no press: the last TRB (Z) after LDA #$C0C0 (N), CLC. A press: password_press_last_column's
 // exit, and past it the ADC #$74 of x (V) and the path's last load or compare, CLC; on a letter
 // password_type_char's exit
-static void call_password_press_a(const Regs* in, Regs* out) {
-  (void)in;
+// (password_entry_frame ends on the same exit: `fn` is either)
+static void pressAOut(Regs* out, bool (*fn)(void)) {
   const bool pressed = ((rd16(0x000E) | rd16(0x0012) | rd16(0x0016) | rd16(0x001A)) & 0xC0C0) != 0;
   const PwLastColumn s = pwLastColumnBefore();
   const uint16_t row = rd16(0x0D90);
-  const bool exit = password_press_a();
+  const bool exit = fn();
   if(!pressed) {
     out->a = 0xC0C0;
     out->n = out->z = true;
@@ -7437,6 +7437,35 @@ static void call_password_press_a(const Regs* in, Regs* out) {
     pwCmpExit(out, row, 0x00AC);
   }
   out->c = false;
+}
+static void call_password_press_a(const Regs* in, Regs* out) {
+  (void)in;
+  pressAOut(out, password_press_a);
+}
+// the password entry's parts: the typing frame ends at its BCS on password_press_a's exit
+// (pressAOut); the check at the code search's JSR (C set: the checksum failed) or returns
+// after its last STA of $03DC (a valid password: A = $03DC, N Z of its ORA; C func_8ABF76's,
+// V clear)
+static void call_password_entry_frame(const Regs* in, Regs* out) {
+  (void)in;
+  pressAOut(out, password_entry_frame);
+}
+static void call_password_entry_open(const Regs* in, Regs* out) { (void)in; (void)out; password_entry_open(); }
+static void call_password_entry_sprites(const Regs* in, Regs* out) { (void)in; (void)out; password_entry_sprites(); }
+static void call_password_entry_slide(const Regs* in, Regs* out) { (void)in; (void)out; password_entry_slide(); }
+static void call_password_entry_ready(const Regs* in, Regs* out) { (void)in; (void)out; password_entry_ready(); }
+static void call_password_entry_pads(const Regs* in, Regs* out) { (void)in; (void)out; password_entry_pads(); }
+static void call_password_entry_check(const Regs* in, Regs* out) {
+  (void)in;
+  bool carry = false;
+  if(password_entry_check(&carry)) {
+    out->a = rd16(0x03DC);
+    setNZ16(out, out->a);
+    out->c = carry;
+    out->v = false;
+  } else {
+    out->c = true;
+  }
 }
 // the typed text (the password alphabet, a vowel now and then), its count (full or empty one
 // time in four), the text cell's row, the font
@@ -11243,6 +11272,21 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .fixedD = true, .waitsForInterrupts = true, .maxInsns = 40000000,
    .call = call_password_screen_close, .compareA = true},
   // (its SEC; RTS at $8A:B3A2, after the handler returns, lies past the sample: not in the extent)
+  {.name = "password_entry_open", .entry = 0x8AB232, .end = 0x8AB26C, .endAt = 0x8AB26C, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_entry_open},
+  {.name = "password_entry_sprites", .entry = 0x8AB273, .end = 0x8AB27C, .endAt = 0x8AB27C, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_entry_sprites},
+  {.name = "password_entry_slide", .entry = 0x8AB284, .end = 0x8AB28C, .endAt = 0x8AB26C, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_entry_slide},
+  {.name = "password_entry_ready", .entry = 0x8AB28C, .end = 0x8AB295, .endAt = 0x8AB295, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_entry_ready},
+  {.name = "password_entry_frame", .entry = 0x8AB29C, .end = 0x8AB2A8, .endAt = 0x8AB2A8, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_password_entry_frame},
+  {.name = "password_entry_pads", .entry = 0x8AB2AA, .end = 0x8AB2BC, .endAt = 0x8AB295, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_entry_pads},
+  {.name = "password_entry_check", .entry = 0x8AB2CE, .end = 0x8AB339, .endAt = 0x8AB2E8, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_entry_check,
+   .holes = {{0x8AB2E8, 0x8AB31B}}},  // (the code search and what follows it: not this part)
   {.name = "password_code_find", .entry = 0x8AB35B, .end = 0x8AB3A2, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_code_find, .fuzz = fuzz_password_code_find,
    .endAt = 0x8AB3A4},  // its JMP ($0182) into the handler

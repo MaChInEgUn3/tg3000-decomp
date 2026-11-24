@@ -341,3 +341,85 @@ void password_caret_place(void) {
 
 // TG3000_ROUTINE($8A:B2BC) password_caret_blink
 void password_caret_blink(void) { wr16(0x0578, (rd16(DP + 0x66) & 1) ? 0 : 0xFFFF); }
+
+// The password entry ($8A:B232, the password menu item's screen) in parts between its waits
+// and its code search (password_code_find jumps to the code's handler).
+
+// TG3000_ROUTINE($8A:B232) password_entry_open
+// The screen's state: the windows' HDMA tables, the lines printed, the typed text ($0D40-$0D57)
+// cleared, the caret hidden, the grid's cursor, the caret sliding in from $FF8C to row $64.
+void password_entry_open(void) {
+  wr16(DP + 0x52, 0);
+  hdma_window_tables_init();
+  password_lines_print();
+  for(int x = 0x17; x >= 0; x -= 2) wr16((uint16_t)(0x0D40 + x), 0);
+  wr16(0x0578, 0xFFFF);
+  wr16(0x0878, 0x3002);
+  wr16(DP + 0x3C, 0x0019);
+  wr16(DP + 0x80, 0);
+  wr16(0x0D78, 0x0006);
+  wr16(0x0D88, 0xFF8C);
+  wr16(0x0D90, 0x0064);
+  password_text_draw();
+}
+
+// TG3000_ROUTINE($8A:B273) password_entry_sprites
+// A frame's sprites cleared and the screen's frame (both loops begin so).
+void password_entry_sprites(void) {
+  clear_object_slots();
+  sprite_frame(0);
+}
+
+// TG3000_ROUTINE($8A:B29C) password_entry_frame
+// A frame of typing (after its wait): the sprites, then A/B/X/Y on the grid; true when EXIT
+// was pressed (the check follows).
+bool password_entry_frame(void) {
+  password_entry_sprites();
+  return password_press_a();
+}
+
+// TG3000_ROUTINE($8A:B284) password_entry_slide
+// While the caret slides in ($0D88 short of $0D80): its place and its blink.
+void password_entry_slide(void) {
+  password_caret_place();
+  password_caret_blink();
+}
+
+// TG3000_ROUTINE($8A:B28C) password_entry_ready
+void password_entry_ready(void) {
+  wr16(DP + 0x7A, 0x0002);
+  wr16(DP + 0x7C, 0x0002);
+  wr16(DP + 0x7E, 0x0002);
+}
+
+// TG3000_ROUTINE($8A:B2AA) password_entry_pads
+// A frame's moves on the grid, and the caret's blink.
+void password_entry_pads(void) {
+  password_pad_right();
+  password_pad_left();
+  password_pad_up();
+  password_pad_down();
+  password_caret_blink();
+}
+
+// TG3000_ROUTINE($8A:B2CE) password_entry_check
+// EXIT pressed: the typed text decoded; a valid password (its checksum) unpacked into the
+// game's state ($03DC's flags, the money as BCD), the menu left (D+$6C), $03DC bit 14; true
+// then (*carry: func_8ABF76's, which the original returns). Else false: the codes are searched
+// next (password_code_find).
+bool password_entry_check(bool* carry) {
+  wr16(DP + 0x7A, 0x0004);
+  wr16(DP + 0x7C, 0x0004);
+  wr16(DP + 0x7E, 0x0007);
+  wr16(0x0D88, 0);
+  wr16(0x0578, 0);
+  password_decode();
+  if(!password_checksum_ok()) return false;
+  wr16(0x03DC, (uint16_t)(rd16(0x03DC) & ~0x79FF));
+  password_unpack(false);
+  wr16(0x03DC, (uint16_t)(rd16(0x03DC) | 0x0010));
+  *carry = func_8ABF76();
+  wr16(DP + 0x6C, (uint16_t)(rd16(DP + 0x6C) + 1));
+  wr16(0x03DC, (uint16_t)(rd16(0x03DC) | 0x4000));
+  return true;
+}

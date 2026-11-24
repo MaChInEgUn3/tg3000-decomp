@@ -99,4 +99,16 @@ void password_caret_place(void);
 // $8A:B2BC: the caret blinks: shown ($0578 = 0) while D+$66 is odd, else hidden ($FFFF).
 void password_caret_blink(void);
 
+// The password entry ($8A:B232) in parts: its opening, a frame's sprites ($8A:B273), the
+// caret's slide ($8A:B284), the grid ready ($8A:B28C), a typing frame ($8A:B29C: true on EXIT),
+// the pads ($8A:B2AA), the check on EXIT
+// ($8A:B2CE: true for a valid password, false: the codes are searched next).
+void password_entry_open(void);
+void password_entry_sprites(void);
+void password_entry_slide(void);
+void password_entry_ready(void);
+void password_entry_pads(void);
+bool password_entry_check(bool* carry);
+bool password_entry_frame(void);
+
 #endif
