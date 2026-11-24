@@ -740,3 +740,7 @@ func    8A9E5B   options_state_clear ; the options screens' long entry: $0D00-$0
 func    8A9E82   options_screen_open ; the main options menu: its opening up to the wipe -> src/misc.c
 func    8A9EC5   options_screen_setup ; the main options menu: its setup up to the first frame -> src/misc.c
 func    8A9F47   options_screen_tick ; the main options menu: a frame's end, the menus left -> src/misc.c
+func    8ABE2E   password_show_open  ; the password shown: its opening up to the fade out -> src/password.c
+func    8ABE5E   password_show_graphics ; the password shown: its graphics -> src/password.c
+func    8ABE86   password_show_text  ; the password shown: packed, encoded, printed -> src/password.c
+func    8ABECC   password_show_wait  ; the password shown: the fade in, a press, the fade out -> src/password.c

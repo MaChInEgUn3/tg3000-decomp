@@ -6200,6 +6200,27 @@ static void call_options_screen_tick(const Regs* in, Regs* out) {
   out->a = options_screen_tick() ? 0xFFC0 : 0x0001;
   setNZ16(out, out->a);
 }
+// the password shown: its opening ends at the fade out (the pushed handler above the cut);
+// the graphics at the wipe; the text at the 8-frame wait (A = 8); the waiting part before its
+// PLA (A = 0, the fade's end read)
+static void call_password_show_open(const Regs* in, Regs* out) {
+  (void)out;
+  wr16((uint16_t)(in->sp - 1), password_show_open());
+}
+static void call_password_show_graphics(const Regs* in, Regs* out) { (void)in; (void)out; password_show_graphics(); }
+static void call_password_show_text(const Regs* in, Regs* out) {
+  (void)in;
+  password_show_text();
+  out->a = 0x0008;
+  setNZ16(out, out->a);
+}
+static void call_password_show_wait(const Regs* in, Regs* out) {
+  (void)in;
+  password_show_wait();
+  out->a = 0;
+  out->n = false;
+  out->z = true;
+}
 // a letter from the table (its first byte of a random entry)
 static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)ram;
@@ -12204,6 +12225,15 @@ const Routine routines[] = {
   {.name = "options_screen_tick", .entry = 0x8A9F47, .end = 0x8A9F5A, .endAt = 0x8A9F3D, .endAt2 = 0x8A9F5A,
    .alsoIn = {{0x8A9F3A, 0x8A9F3D}}, .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A,
    .compareA = true, .call = call_options_screen_tick, .fuzz = fuzz_options_screen_tick},
+  {.name = "password_show_open", .entry = 0x8ABE2E, .end = 0x8ABE55, .endAt = 0x8ABE55, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_show_open},
+  {.name = "password_show_graphics", .entry = 0x8ABE5E, .end = 0x8ABE7D, .endAt = 0x8ABE7D, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_show_graphics},
+  {.name = "password_show_text", .entry = 0x8ABE86, .end = 0x8ABEC8, .endAt = 0x8ABEC8, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_password_show_text},
+  {.name = "password_show_wait", .entry = 0x8ABECC, .end = 0x8ABF08, .endAt = 0x8ABF08, .source = "src/password.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .waitsForInterrupts = true,
+   .maxInsns = 40000000, .call = call_password_show_wait},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

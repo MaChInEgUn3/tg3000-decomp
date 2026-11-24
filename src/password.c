@@ -481,3 +481,81 @@ void password_entry(void) {
   password_screen_close();
   menu_submenu(0xCC45);
 }
+
+// TG3000_ROUTINE($8A:BE2E) password_show_open
+uint16_t password_show_open(void) {
+  const uint16_t handler = rd16(0x0008);
+  wr16(0x0196, 0);
+  wr16(0x0198, 0);
+  wr16(0x019A, 0);
+  wr16(0x0008, 0x8934);
+  clear_dp_scratch();
+  wr16(DP + 0x8E, 0);
+  video_load_screen_long(0x8AC4B0);
+  clear_vram();
+  return handler;
+}
+
+// TG3000_ROUTINE($8A:BE5E) password_show_graphics
+void password_show_graphics(void) {
+  wr16(DP + 0x8E, 0);
+  decompress_to_vram(DP, 0x88, 0x8601, 0x1000);
+  func_8ABA55(DP);
+  upload_cgram_now(0x60, 0x85, 0xFA37, 0x0040);
+}
+
+// TG3000_ROUTINE($8A:BE86) password_show_text
+void password_show_text(void) {
+  wr16(DP + 0x8E, (uint16_t)(rd16(DP + 0x8E) + 1));
+  wr16(TEXT_FONT_SEL, (uint16_t)(rd16(TEXT_FONT_SEL) + 1));
+  func_8A8EEF();
+  clear_tilemap_7f();
+  func_8ABF4E();
+  wr16(0x0008, 0xFC5F);
+  wr16(DP + 0x8E, (uint16_t)(rd16(DP + 0x8E) + 1));
+  uint16_t x, y;
+  password_encode(password_pack(), &x, &y);
+  func_8ABF76();
+  wr16(DP + 0x3E, 0x0000);
+  wr16(DP + 0x40, 0x001F);
+  wr16(DP + 0x3C, 0x0010);
+  wr16(DP + 0x68, 0);
+  wr16(DP + 0x86, 0x0001);
+  string_space_fours();
+  text_print_centered(0x8A0D60);
+}
+
+// TG3000_ROUTINE($8A:BECC) password_show_wait
+void password_show_wait(void) {
+  wr16(0x0198, 0x0F00);
+  wr16(0x0196, 0x0080);
+  static const uint16_t pads[4] = {0x000E, 0x0012, 0x0016, 0x001A};
+  for(;;) {
+    bool press = false;
+    for(int i = 0; i < 4 && !press; i++) {
+      press = (rd16(pads[i]) & 0xC0C0) != 0;
+      wr16(pads[i], (uint16_t)(rd16(pads[i]) & ~0xC0C0));
+    }
+    if(press) break;
+    platform_wait_vblank();
+  }
+  wr16(0x0198, 0);
+  wr16(0x0196, 0xFFC0);
+  while(rd16(0x019A) != 0) platform_wait_vblank();
+}
+
+// The player's password shown whole ($8A:BE2E).
+void password_show(void) {
+  const uint16_t handler = password_show_open();
+  fade_out_wait();
+  password_hdma_off();
+  wipe_columns();
+  password_show_graphics();
+  wipe_columns();
+  fade_in_start();
+  wait_one_frame();
+  password_show_text();
+  wait_frames(8);
+  password_show_wait();
+  wr16(0x0008, handler);
+}

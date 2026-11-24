@@ -3480,6 +3480,24 @@ password screen, a skipped track's bonus.
   the others.
 - **Check:** incremental gate (additions only).
 
+## The player's password shown (menu-23, 2026-11-24)
+
+- **`$8A:BE2E` shows the player's password** after a championship race.
+  - It loads the password screen's graphics and packs and encodes the password.
+  - It prints the password centred and waits for a press on any pad, between the fades.
+  - It runs once in the 60k movie.
+- **Rows in `src/password.c`**, cut at the waits:
+  - `password_show_open` (up to the fade out; the pushed NMI handler above the cut);
+  - `password_show_graphics`;
+  - `password_show_text` (up to its 8-frame wait);
+  - `password_show_wait`, a waiting row: the fade in, a press (the first pad with B/Y/A/X
+    has its press taken), the fade out.
+  - `password_show` composes them with `fade_out_wait`, `password_hdma_off`, the wipes and
+    the waits. `options_screens` now calls it (the trap is gone).
+- **Results:** each passes on the 60k movie. Three are interrupted and pass from their
+  entry state.
+- **Check:** full gate (`options_screens` changed).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

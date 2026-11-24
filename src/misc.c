@@ -9481,5 +9481,5 @@ void options_screens(uint16_t x) {
   if(x == 0) options_screen();
   else if(x == 2) title_card_show();
   else if(x == 3) tg3000_unported("$8A:C379");
-  else tg3000_unported("$8A:BE2E: the password shown");
+  else password_show();
 }

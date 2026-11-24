@@ -3124,7 +3124,7 @@ CODE_8A9E5F:
     beq CODE_8A9E7A             ; $8A9E6F
     cpx.w #$0003                ; $8A9E71
     db $F0,$08 ; beq            ; $8A9E74
-    jsr.w $BE2E                 ; $8A9E76
+    jsr.w password_show_open    ; $8A9E76
     rtl                         ; $8A9E79
 CODE_8A9E7A:
     jsr.w title_card_show       ; $8A9E7A
@@ -6745,6 +6745,7 @@ CODE_8ABD6C:
     clc                         ; $8ABD6C
     rts                         ; $8ABD6D
     incbin !baserom:$53D6E..$53E2E
+password_show_open:
     lda.w $0008                 ; $8ABE2E
     pha                         ; $8ABE31
     stz.w $0196                 ; $8ABE32
@@ -6761,6 +6762,7 @@ CODE_8ABD6C:
     jsr.w fade_out_wait         ; $8ABE55
     jsr.w password_hdma_off     ; $8ABE58
     jsr.w wipe_columns          ; $8ABE5B
+password_show_graphics:
     stz.b $8E                   ; $8ABE5E
     ldx.w #$8601                ; $8ABE60
     ldy.w #$1000                ; $8ABE63
@@ -6774,6 +6776,7 @@ CODE_8ABD6C:
     jsr.w wipe_columns          ; $8ABE7D
     jsr.w fade_in_start         ; $8ABE80
     jsr.w wait_one_frame        ; $8ABE83
+password_show_text:
     inc.b $8E                   ; $8ABE86
     inc.w $0D7C                 ; $8ABE88
     jsl.l func_8A8EEF           ; $8ABE8B
@@ -6799,6 +6802,7 @@ CODE_8ABD6C:
     jsr.w text_print_centered   ; $8ABEC2
     lda.w #$0008                ; $8ABEC5
     jsl.l wait_frames_long      ; $8ABEC8
+password_show_wait:
     lda.w #$0F00                ; $8ABECC
     sta.w $0198                 ; $8ABECF
     lda.w #$0080                ; $8ABED2

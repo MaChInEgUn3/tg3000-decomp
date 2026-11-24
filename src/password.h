@@ -116,4 +116,14 @@ bool password_entry_found(void);
 void password_code_run(uint16_t handler);
 void password_entry(void);
 
+// The player's password shown ($8A:BE2E) in parts between its waits: its opening (returns the
+// NMI handler $0008 it keeps), the graphics, the fade in, the password packed, encoded and
+// printed centred, then (a waiting part) the fade in run, a press on any pad, the fade out
+// run; the handler back.
+uint16_t password_show_open(void);
+void password_show_graphics(void);
+void password_show_text(void);
+void password_show_wait(void);
+void password_show(void);
+
 #endif
