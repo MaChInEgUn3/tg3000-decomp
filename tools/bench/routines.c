@@ -13584,9 +13584,32 @@ static void call_password_show(const Regs* in, Regs* out) {
   setNZ16(out, out->a);
   out->c = true;
 }
+// The password entry whole ($8A:B232): the caret's slide, the typing, the check (the codes'
+// handlers, the menus' submenu after a star name, a wrong one's message: never run)
+// (exit: a valid password returns after its last STA of $03DC, A = $03DC, V clear and C
+// func_8ABF76's; after a code, at the found test's RTS, A = D+$52 and C set by the search)
+static void call_password_entry(const Regs* in, Regs* out) {
+  (void)in;
+  bool carry;
+  if(password_entry(&carry)) {
+    out->a = rd16(0x03DC);
+    out->v = false;
+  } else {
+    out->a = rd16(DP + 0x52);
+  }
+  out->c = carry;
+  setNZ16(out, out->a);
+}
+// Each composed row names the movies it runs on (verify_all.sh reads the "movies:" comment
+// before it).
 const Routine composedRoutines[] = {
+  // movies: autopilot_60k
   {.name = "password_show", .entry = 0x8ABE2E, .end = 0x8ABF0D, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .waitsForInterrupts = true, .maxInsns = 40000000,
    .manyEffects = true, .call = call_password_show},
+  // movies: explore_pw code_infodata
+  {.name = "password_entry", .entry = 0x8AB232, .end = 0x8AB339, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .waitsForInterrupts = true, .maxInsns = 40000000,
+   .manyEffects = true, .call = call_password_entry, .holes = {{0x8AB2ED, 0x8AB2FD}, {0x8AB302, 0x8AB31B}}},
 };
 const int composedRoutineCount = sizeof composedRoutines / sizeof composedRoutines[0];

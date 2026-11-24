@@ -451,8 +451,9 @@ void password_code_run(uint16_t handler) {
 
 // The password entry ($8A:B232) whole: the caret slides in, then a frame at a time the pads
 // move on the grid and A/B/X/Y types, until EXIT. A valid password is taken; else a code's
-// handler runs, and a star name's track goes on to the menu with CANCEL PASSWORD.
-void password_entry(void) {
+// handler runs, and a star name's track goes on to the menu with CANCEL PASSWORD. Returns
+// true for a valid password (*carry: func_8ABF76's), false after a code.
+bool password_entry(bool* carry) {
   password_entry_open();
   for(;;) {
     wait_frames(1);
@@ -466,20 +467,21 @@ void password_entry(void) {
     if(password_entry_frame()) break;
     password_entry_pads();
   }
-  bool carry;
-  if(password_entry_check(&carry)) return;
+  if(password_entry_check(carry)) return true;
+  *carry = true;  // (the code search's: found)
   const uint16_t handler = password_code_find();
   if(handler == 0) {
     // (never run: no code matched)
     if(rd8(0x0D40) != 0) tg3000_unported("$8A:BD6E: a wrong password's message");
     else wipe_columns();
-    return;
+    return false;
   }
   password_code_run(handler);
-  if(!password_entry_found()) return;
+  if(!password_entry_found()) return false;
   // (never run)
   password_screen_close();
   menu_submenu(0xCC45);
+  return false;
 }
 
 // TG3000_ROUTINE($8A:BE2E) password_show_open

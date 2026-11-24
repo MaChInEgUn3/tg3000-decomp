@@ -81,13 +81,23 @@ pids="$pids $!:menu"
 build/bench/bench "$rom" "$optframes" --movie tools/bench/movies/explore_options.txt \
   --difftest "$tmp/opt.txt" --fuzz 500 > "$tmp/opt.log" 2>&1 &
 pids="$pids $!:opt"
-# glue-1: the composed rows (a screen whole, its parts' rows inside it), one per process
-# over the 60k movie, live samples only (each encloses waiting rows, so apart from the slices)
-composed=$(awk '/^const Routine composedRoutines\[\]/ {p = 1} p && /\.name = "/ {match($0, /\.name = "[^"]+"/); print substr($0, RSTART + 9, RLENGTH - 10)} p && /^};/ {exit}' tools/bench/routines.c)
-for name in $composed; do
-  build/bench/bench "$rom" 60000 --movie tools/bench/movies/autopilot_60k.txt --difftest-composed \
-    --difftest-only "$name" --difftest "$tmp/comp_$name.txt" --fuzz 0 > "$tmp/comp_$name.log" 2>&1 &
-  pids="$pids $!:comp_$name"
+# glue-1: the composed rows (a screen whole, its parts' rows inside it), one per process and
+# movie, live samples only (each encloses waiting rows, so apart from the slices), over the
+# movies its "// movies:" comment in tools/bench/routines.c names
+composed=$(awk '/^const Routine composedRoutines\[\]/ {p = 1} p && /\/\/ movies:/ {m = $0; sub(/.*movies: */, "", m)} p && /\.name = "/ {match($0, /\.name = "[^"]+"/); print substr($0, RSTART + 9, RLENGTH - 10) ":" m; gsub(/ /, "", m)} p && /^};/ {exit}' tools/bench/routines.c | tr ' ' ',')
+compfiles=""
+for row in $composed; do
+  name=${row%%:*}
+  for movie in $(echo "${row#*:}" | tr ',' ' '); do
+    frames=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' "tools/bench/movies/$movie.txt")
+    [ -n "$frames" ] || frames=60000  # (the 60k movie has no such line)
+    extra=""
+    if [ "$movie" = vs_race ]; then extra="--dsp4-firmware $firmware"; fi
+    build/bench/bench "$rom" "$frames" --movie "tools/bench/movies/$movie.txt" $extra --difftest-composed \
+      --difftest-only "$name" --difftest "$tmp/comp_${name}_$movie.txt" --fuzz 0 > "$tmp/comp_${name}_$movie.log" 2>&1 &
+    pids="$pids $!:comp_${name}_$movie"
+    compfiles="$compfiles $tmp/comp_${name}_$movie.txt"
+  done
 done
 # the VS race's movie (verify-vs): the firmware DSP-4, live samples only: its last state is a
 # race, no base for the other rows' fuzz (theirs comes from the other movies)
@@ -122,11 +132,11 @@ while [ $k -lt $buyshards ]; do tail -n +2 "$tmp/buy$k.txt" >> "$tmp/buy.txt"; k
 head -n 1 "$tmp/pw0.txt" > "$tmp/pw.txt"
 k=0
 while [ $k -lt $pwshards ]; do tail -n +2 "$tmp/pw$k.txt" >> "$tmp/pw.txt"; k=$((k + 1)); done
-python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt" "$tmp/vs.txt" $(for n in $composed; do echo "$tmp/comp_$n.txt"; done)
+python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt" "$tmp/vs.txt" $compfiles
 # harness-24: a row a slice's waiting row hid entries from (and with no hard failure) runs
 # again alone over that movie, its line replacing the slice's; then the movies merge again
 python3 -I tools/rerun_hidden.py "$tmp" "$rom"
-python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt" "$tmp/vs.txt" $(for n in $composed; do echo "$tmp/comp_$n.txt"; done)
+python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt" "$tmp/vs.txt" $compfiles
 # the verdict: a routine the merge failed (its per-movie lines show why)
 failed=$(awk '!/^#/ && $8 == "failed" {print $2}' map/verified.txt)
 if [ -n "$failed" ]; then

@@ -9251,7 +9251,8 @@ bool menu_password_back(void) { return rd16(0x0D7C) != 0; }
 static void menu_action_password(void) {
   wipe_columns();
   password_screen_open();
-  password_entry();
+  bool carry;
+  password_entry(&carry);
   if(menu_password_back()) password_screen_close();
   else wipe_columns();
 }

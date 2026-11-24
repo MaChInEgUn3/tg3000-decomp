@@ -3579,6 +3579,24 @@ password screen, a skipped track's bonus.
   open must be checked first.
 - **Check:** full gate (`difftest.c` and the scripts changed).
 
+## The password entry whole (glue-2, 2026-11-24)
+
+- **`password_entry` (`$8A:B232`) is the second composed row.** It covers the caret's slide,
+  the typing frames and the check, with the code search and its handlers.
+  - The never-run tails are holes: the wrong password's message, and the menus' submenu
+    after a star name.
+  - It matches the original in WRAM and every effect on the password movie (a valid
+    password) and on the INFODATA movie (a code).
+  - Each movie misses the other's path, and the pooling covers both.
+- **Its exit flags depend on the way out.** A valid password returns after its last STA of
+  `$03DC`, with C from `func_8ABF76` and V clear. A code returns at the found test's RTS,
+  with A = D+$52 and C set by the search. `password_entry` now returns which (true for a
+  valid password) and the carry.
+- **Composed rows name their movies.** A `// movies:` comment before each row in
+  `composedRoutines[]` names them, and `verify_all.sh` runs the row on each, one process
+  per movie. The VS race gets the firmware DSP-4.
+- **Check:** full gate.
+
 ## The main options menu (menu-22, 2026-11-24)
 
 - **`$8A:9E5B` is the options screens' long entry.**
