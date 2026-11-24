@@ -32,7 +32,7 @@ void car_road_step(uint16_t car);
 // widest of the two), the car in front, a pushed side, and the side flags; then which
 // way the car is off the middle ($1E9C bits 2/3). The original runs with D = $0200.
 // ($83:E8AB)
-void player_road_limits(void);
+void player_road_limits(uint16_t dp);
 
 // $81:FA8F: the player's car `car` (its offset in the tables at $7E:FAB5) takes the player's
 // motion. Directly (bit 0 of $0244 clear): its position gains $022D:$022F, its speed

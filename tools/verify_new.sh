@@ -55,6 +55,8 @@ pwframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/ex
 infoframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/code_infodata.txt)
 menuframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_menu.txt)
 optframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_options.txt)
+vsframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/vs_race.txt)
+firmware="${TG3000_DSP4_FIRMWARE:-ext/firmware/dsp4.rom}"
 # harness-12: a movie that never executes any named row's entry gives the merge no evidence;
 # it is skipped. Each movie's coverage is cached in build/cache/, keyed by the movie, the
 # emulator patch and bench.c (a stale or missing file is made again: one plain run).
@@ -67,13 +69,16 @@ for name in sys.argv[1].split(","):
 PY
 )
 mkdir -p build/cache
+# the VS race runs with the firmware DSP-4 and live samples only (verify_all.sh says why)
+movieargs() { if [ "$1" = vs_race ]; then echo "--dsp4-firmware $firmware"; fi; }
+moviefuzz() { if [ "$1" = vs_race ]; then echo 0; else echo 500; fi; }
 covfile() { echo "build/cache/$1-$(cat "tools/bench/movies/$1.txt" tools/bench/patches/*.patch tools/bench/bench.c | sha1sum | cut -c1-16).cov"; }
 covpids=""
-for m in "autopilot_60k:60000" "explore_shop:$shopframes" "explore_buy:$buyframes" "explore_pw:$pwframes" "code_infodata:$infoframes" "explore_menu:$menuframes" "explore_options:$optframes"; do
+for m in "autopilot_60k:60000" "explore_shop:$shopframes" "explore_buy:$buyframes" "explore_pw:$pwframes" "code_infodata:$infoframes" "explore_menu:$menuframes" "explore_options:$optframes" "vs_race:$vsframes"; do
   movie=${m%%:*}; cov=$(covfile "$movie")
   if [ ! -f "$cov" ]; then  # made again, side by side
     rm -f build/cache/"$movie"-*.cov
-    ( build/bench/bench "$rom" "${m#*:}" --movie "tools/bench/movies/$movie.txt" --coverage "$cov.tmp" > /dev/null 2>&1 \
+    ( build/bench/bench "$rom" "${m#*:}" --movie "tools/bench/movies/$movie.txt" $(movieargs "$movie") --coverage "$cov.tmp" > /dev/null 2>&1 \
       && mv "$cov.tmp" "$cov" || rm -f "$cov.tmp"; rm -f "$cov.tmp.ram" ) &  # (the RAM-executed list: unused)
     covpids="$covpids $!"
   fi
@@ -93,7 +98,7 @@ sys.exit(1)
 PY
 }
 runs=""
-for m in "main:autopilot_60k:60000" "shop:explore_shop:$shopframes" "buy:explore_buy:$buyframes" "pw:explore_pw:$pwframes" "info:code_infodata:$infoframes" "menu:explore_menu:$menuframes" "opt:explore_options:$optframes"; do
+for m in "main:autopilot_60k:60000" "shop:explore_shop:$shopframes" "buy:explore_buy:$buyframes" "pw:explore_pw:$pwframes" "info:code_infodata:$infoframes" "menu:explore_menu:$menuframes" "opt:explore_options:$optframes" "vs:vs_race:$vsframes"; do
   k=${m%%:*}; rest=${m#*:}; movie=${rest%%:*}; frames=${rest#*:}
   if reaches "$movie"; then runs="$runs $k:$movie:$frames"; else echo "verify_new: $movie skipped (no named row's entry runs there)"; fi
 done
@@ -101,8 +106,8 @@ done
 pids=""
 for r in $runs; do
   k=${r%%:*}; rest=${r#*:}; movie=${rest%%:*}; frames=${rest#*:}
-  build/bench/bench "$rom" "$frames" --movie "tools/bench/movies/$movie.txt" --difftest "$tmp/$k.txt" \
-    --difftest-only "$rows" --fuzz 500 > "$tmp/$k.log" 2>&1 &
+  build/bench/bench "$rom" "$frames" --movie "tools/bench/movies/$movie.txt" $(movieargs "$movie") --difftest "$tmp/$k.txt" \
+    --difftest-only "$rows" --fuzz "$(moviefuzz "$movie")" > "$tmp/$k.log" 2>&1 &
   pids="$pids $!:$k"
 done
 for p in $pids; do

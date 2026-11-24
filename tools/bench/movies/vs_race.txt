@@ -1,8 +1,9 @@
-# The VS race (explore-9): REFERENCE RUNNER ONLY. explore_options.txt's way into VS MODE and
-# its car choice, then A at 5500 (THE CHEETAH chosen) and three more taps: a four-way split
-# race with three computer drivers starts at step ~5533. The bench cannot run it: its DSP-4
-# road command $08 (StackBlender's clean-room chip) loses step at once and the game crashes
-# (docs/DECISIONS.md explore-9). Run it on the reference runner:
+# The VS race (explore-9): explore_options.txt's way into VS MODE and its car choice, then A
+# at 5500 (THE CHEETAH chosen) and three more taps: a four-way split race with three computer
+# drivers starts at step ~5533. On the bench it needs the DSP-4 run from its firmware
+# (--dsp4-firmware ext/firmware/dsp4.rom, harness-27): the clean-room chip loses step on $08 at
+# once and the game crashes (explore-9). verify_all.sh runs it so, live samples only (verify-vs).
+# On the reference runner:
 #   python3 -I tools/movie_to_log.py tools/bench/movies/vs_race.txt 9000 > /tmp/vs.log
 #   build/refbench/refbench TG3000.sfc /tmp/vs.log --firmware ext/firmware/dsp4.rom --coverage traces/coverage.bin
 # Run it for 9000 steps.

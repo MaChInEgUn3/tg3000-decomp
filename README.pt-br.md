@@ -34,7 +34,7 @@ a matemática do DSP-4, o vídeo e o driver de som viram código nativo.
 | Bytes de código | 94,830 (`0x1726E`) |
 | Bytes de dados | 788,838 (`0xC0966`) |
 | Pontos de entrada de rotinas em C, aprovados no teste diferencial | **687** |
-| Última reverificação completa de todas as rotinas | 2026-11-24T18:05:38Z |
+| Última reverificação completa de todas as rotinas | 2026-11-24T19:05:10Z |
 | Destes, aprovados num commit anterior, com o código só acrescido desde então | 0 (todos contra este código) |
 | Bytes de código dentro de rotinas em C aprovadas | **69,202 / 94,830 (72.97%)** |
 
@@ -47,7 +47,7 @@ _Gerado por `tools/progress.py` a partir de `map/` e `src/`._
 | 1. Bancada: rodar a ROM original sem tela, como referência | ✅ liga, desenha, DSP-4 encaixado, determinística |
 | 2. Mapa: classificar cada byte da ROM como código ou dado, a partir de traces | ⏳ em andamento (menus + várias corridas no piloto automático) |
 | 3. Listagem: disassembly gerado, com nomes, que remonta byte a byte | ✅ remonta a ROM exata; cresce junto com o mapa |
-| 4. C: portar as rotinas, cada uma aprovada no teste diferencial | ⏳ começou: harness + primeira rotina (`rng_next`) |
+| 4. C: portar as rotinas, cada uma aprovada no teste diferencial | ⏳ em andamento: a maior parte do código, rotina por rotina (números acima); as peças ainda não rodam juntas só em C |
 
 ## Como a fidelidade é comprovada
 
@@ -97,7 +97,7 @@ tools/bench/   o executor de referência: LakeSnes + DSP-4, movies, prints
 tools/         mapeador, gerador da listagem, relatório de progresso
 map/           mapa de código/dados da ROM (em breve)
 asm/           disassembly gerado (asar), remonta byte a byte
-src/           C legível e portável da lógica do jogo (primeiras rotinas)
+src/           C legível e portável da lógica do jogo
 ```
 
 ## Contribuindo

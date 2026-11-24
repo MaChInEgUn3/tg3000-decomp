@@ -32,6 +32,9 @@ pwframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/ex
 infoframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/code_infodata.txt)
 menuframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_menu.txt)
 optframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_options.txt)
+vsframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/vs_race.txt)
+# the VS race runs only with the DSP-4 run from its firmware (harness-27, the owner's file)
+firmware="${TG3000_DSP4_FIRMWARE:-ext/firmware/dsp4.rom}"
 # every deliberately wrong C must fail over the same movie (in parallel): the selftest's
 # short movie does not reach them all
 build/bench/bench "$rom" 60000 --movie tools/bench/movies/autopilot_60k.txt \
@@ -78,6 +81,11 @@ pids="$pids $!:menu"
 build/bench/bench "$rom" "$optframes" --movie tools/bench/movies/explore_options.txt \
   --difftest "$tmp/opt.txt" --fuzz 500 > "$tmp/opt.log" 2>&1 &
 pids="$pids $!:opt"
+# the VS race's movie (verify-vs): the firmware DSP-4, live samples only: its last state is a
+# race, no base for the other rows' fuzz (theirs comes from the other movies)
+build/bench/bench "$rom" "$vsframes" --movie tools/bench/movies/vs_race.txt --dsp4-firmware "$firmware" \
+  --difftest "$tmp/vs.txt" --fuzz 0 > "$tmp/vs.log" 2>&1 &
+pids="$pids $!:vs"
 for p in $pids; do
   pid=${p%%:*}
   name=${p#*:}
@@ -106,15 +114,15 @@ while [ $k -lt $buyshards ]; do tail -n +2 "$tmp/buy$k.txt" >> "$tmp/buy.txt"; k
 head -n 1 "$tmp/pw0.txt" > "$tmp/pw.txt"
 k=0
 while [ $k -lt $pwshards ]; do tail -n +2 "$tmp/pw$k.txt" >> "$tmp/pw.txt"; k=$((k + 1)); done
-python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt"
+python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt" "$tmp/vs.txt"
 # harness-24: a row a slice's waiting row hid entries from (and with no hard failure) runs
 # again alone over that movie, its line replacing the slice's; then the movies merge again
 python3 -I tools/rerun_hidden.py "$tmp" "$rom"
-python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt"
+python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt" "$tmp/vs.txt"
 # the verdict: a routine the merge failed (its per-movie lines show why)
 failed=$(awk '!/^#/ && $8 == "failed" {print $2}' map/verified.txt)
 if [ -n "$failed" ]; then
-  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp"/main*.log "$tmp"/shop*.log "$tmp"/buy*.log "$tmp"/pw*.log "$tmp"/info.log "$tmp"/menu.log "$tmp"/opt.log >&2 || true; done
+  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp"/main*.log "$tmp"/shop*.log "$tmp"/buy*.log "$tmp"/pw*.log "$tmp"/info.log "$tmp"/menu.log "$tmp"/opt.log "$tmp"/vs.log >&2 || true; done
   echo "verify_all: failed after pooling the movies: $(echo $failed | tr ' ' ',')" >&2
   status=4
 fi

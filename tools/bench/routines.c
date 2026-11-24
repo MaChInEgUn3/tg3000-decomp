@@ -6221,6 +6221,12 @@ static void call_password_show_wait(const Regs* in, Regs* out) {
   out->n = false;
   out->z = true;
 }
+// vs_panel's cases with the panel's name length a real one (0-12): a longer one writes past
+// the names, into the hardware registers on the VS race's entry states
+static void fuzz_vs_name_len(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_vs_panel(r, ram, rnd);
+  wr16ram(ram, (uint16_t)(0x0DD4 + r->x), (uint16_t)(rnd() % 13));
+}
 // a letter from the table (its first byte of a random entry)
 static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)ram;
@@ -7665,7 +7671,7 @@ static void fuzz_car_road_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 }
 
 // ---- player_road_limits ($83:E8AB) ----  no register outputs (it restores DB itself)
-static void call_player_road_limits(const Regs* in, Regs* out) { (void)in; (void)out; player_road_limits(); }
+static void call_player_road_limits(const Regs* in, Regs* out) { (void)out; player_road_limits(in->d); }
 
 // Negative test: the bend flag's bit read as bit 1
 static void call_player_road_limits_wrong(const Regs* in, Regs* out) {
@@ -7673,7 +7679,7 @@ static void call_player_road_limits_wrong(const Regs* in, Regs* out) {
   (void)out;
   uint16_t bend = rd16(0x1F2C);
   wr16(0x1F2C, (uint16_t)(bend ^ 0x0001));
-  player_road_limits();
+  player_road_limits(in->d);
   wr16(0x1F2C, bend);
 }
 
@@ -12173,7 +12179,7 @@ const Routine routines[] = {
   {.name = "vs_names_load", .entry = 0x8AA922, .end = 0x8AA97F, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .call = call_vs_names_load},
   {.name = "vs_name_put", .entry = 0x8AAC73, .end = 0x8AACB2, .source = "src/vs.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_name_put, .fuzz = fuzz_vs_panel},
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_name_put, .fuzz = fuzz_vs_name_len},
   {.name = "vs_put_char", .entry = 0x8AB730, .end = 0x8AB7AC, .source = "src/vs.c", .needM16 = false,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_put_char, .fuzz = fuzz_vs_char},
   {.name = "vs_put_sprite_char", .entry = 0x8AB721, .end = 0x8AB730, .alsoIn = {{0x8AB730, 0x8AB7AC}}, .source = "src/vs.c", .needM16 = true,
@@ -13133,7 +13139,7 @@ const Routine routines[] = {
   {.name = "race_positions_update", .entry = 0x82AD2C, .end = 0x82AD99, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x83, .call = call_race_positions_update, ALL_OUTPUTS, .fuzz = fuzz_race_positions_update},
   {.name = "race_bands_merge", .entry = 0x85B1FF, .end = 0x85B2B7, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_bands_merge, ALL_OUTPUTS,
+   .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_race_bands_merge, ALL_OUTPUTS,
    .fuzz = fuzz_race_bands_merge},
   {.name = "tiles_planar_upload_5fe0", .entry = 0x85817B, .end = 0x858245, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_tiles_planar_upload_5fe0, ALL_OUTPUTS,

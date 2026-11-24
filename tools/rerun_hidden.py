@@ -30,7 +30,11 @@ MOVIES = [
     ("info", "info", "code_infodata", None),
     ("menu", "menu", "explore_menu", None),
     ("opt", "opt", "explore_options", None),
+    ("vs", "vs", "vs_race", None),
 ]
+# the VS race runs with the firmware DSP-4 and live samples only (verify_all.sh)
+EXTRA = {"vs_race": ["--dsp4-firmware", os.environ.get("TG3000_DSP4_FIRMWARE", "ext/firmware/dsp4.rom")]}
+FUZZ = {"vs_race": "0"}
 HIDDEN = "inside interrupt handlers a waiting sample recorded"
 
 
@@ -93,8 +97,8 @@ def main():
     for name, stem, movie, frames in jobs:
         out = os.path.join(tmp, "rerun-%s-%s.txt" % (stem, name))
         log = open(os.path.join(tmp, "rerun-%s-%s.log" % (stem, name)), "w")
-        cmd = ["build/bench/bench", rom, str(frames), "--movie", "tools/bench/movies/%s.txt" % movie,
-               "--difftest", out, "--difftest-only", name, "--fuzz", "500"]
+        cmd = (["build/bench/bench", rom, str(frames), "--movie", "tools/bench/movies/%s.txt" % movie]
+               + EXTRA.get(movie, []) + ["--difftest", out, "--difftest-only", name, "--fuzz", FUZZ.get(movie, "500")])
         procs.append((name, stem, out, subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT)))
     for name, stem, out, p in procs:
         status = p.wait()

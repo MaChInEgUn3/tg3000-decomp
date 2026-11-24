@@ -150,8 +150,7 @@ void car_road_step(uint16_t car) {
 static bool below(uint16_t a, uint16_t b) { return ((uint16_t)(a - b) & 0x8000) != 0; }
 
 // TG3000_ROUTINE($83:E8AB) player_road_limits
-void player_road_limits(void) {
-  const uint32_t dp = 0x0200;
+void player_road_limits(uint16_t dp) {
   int16_t edge[4];
   uint16_t t = (uint16_t)((rd16(dp + 0x24) & 0xFF00) >> 1);
   uint16_t row = (uint16_t)(rd16(dp + 0x26) << 1);

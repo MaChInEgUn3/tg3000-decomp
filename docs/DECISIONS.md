@@ -3495,6 +3495,57 @@ password screen, a skipped track's bonus.
   (expect the 15 dropped static ranges' rows to see new paths).
 - **Check:** full gate (`tools/bench` changed; the default path is untouched).
 
+## Video in the port: the owner's rule applied (2026-11-24)
+
+- **Asked by the owner:** what does not break "not even 1% emulator" for the port's video?
+  His own Scope rule answers it ("no CPU/PPU/SPC700/DSP-4 model in any port"), with a test he
+  can apply.
+  - **The test:** if the port's video (or sound) code could show (or play) *another* SNES
+    game when fed that game's video (or sound) memory, it is an emulator. If it only knows
+    how to draw Top Gear 3000's menus, panels and road, it is the game.
+  - **Fine:** turning the cartridge's tiles and palettes into ordinary images; drawing from
+    the buffers the game builds in RAM (tile maps, sprite slots, palettes, the road's row
+    tables), with drawing code per kind of screen.
+  - **Not fine:** port code that takes VRAM addresses, register values or HDMA channel
+    setups and reproduces what the chip does with them.
+  - **Grey, his to rule when it comes:** per-line effects. Drawing each line from a table
+    the game computed is the game's effect; a general per-line register mechanism is the
+    chip.
+  - **Sound:** the same test; nothing runs the SPC700 program.
+- **The cost:** `src/platform.h` is chip-shaped on purpose (the bench compares with the
+  original). The port needs its boundary one level up, at the game's RAM buffers, as
+  "Portability rules" already says. That work is not counted in the 73% and is not designed
+  yet.
+- **The bench is unaffected:** it is a measuring instrument and may emulate (a C-only run's
+  picture can come from its own PPU).
+
+## The VS race in the verification (verify-vs, 2026-11-24)
+
+- **`tools/bench/movies/vs_race.txt` is the eighth movie** of `verify_all.sh`,
+  `verify_new.sh` and `tools/rerun_hidden.py`. It runs with the firmware DSP-4
+  (`--dsp4-firmware`, `TG3000_DSP4_FIRMWARE` to point elsewhere) as one slice of about two
+  minutes.
+- **Live samples only (`--fuzz 0`).** A row's fuzz starts from the RAM the movie leaves.
+  This movie ends in a race, so the VS screen's rows (and others) got race RAM as their
+  base: names 30,000 letters long, sound queue indices past 7. The original then does what
+  the game never does (writes into the hardware registers), and the C cannot match it. The
+  rows' fuzz evidence still comes from the other seven movies.
+- **What the race found in the C, all fixed:**
+  - **`player_road_limits` assumed player 1's record** (D = `$0200` written into the C). In
+    the VS race it runs for the other players' records too (D = `$02B3`, ...), and 664 of
+    850 samples failed. It now takes the record (`player_road_limits(dp)`); its caller
+    passes `$0200`.
+  - **The sound request queue (`func_80894E`, `func_80899F`)** read and wrote `$1B30 +
+    index` as low WRAM. The original goes through DB = `$81`, so an index past 7 reaches
+    ROM or the hardware. Found by the fuzz on race RAM; the C now goes through the bus.
+  - **`race_bands_merge` enters with DB = `$30`** in the VS race. Its absolute addresses are
+    all in low WRAM, so its row now asks only for a low-WRAM DB (`lowWramDb`) instead of
+    `$83`.
+  - **`vs_name_put`'s fuzz** keeps the name's length real (0-12).
+- **On the VS race alone,** every row passes live. The rows that fail there fail only by
+  paths not reached without fuzz, which the pooling over the movies covers.
+- **Check:** full gate (scripts, adapters and the C changed).
+
 ## The main options menu (menu-22, 2026-11-24)
 
 - **`$8A:9E5B` is the options screens' long entry.**

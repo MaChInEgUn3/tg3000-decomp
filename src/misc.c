@@ -707,9 +707,11 @@ uint16_t bcd_to_binary(uint16_t a) {
 }
 
 // TG3000_ROUTINE($80:899F) func_80899F
+// (Through DB = $81, as the original's STA $1B30,X: an index past 7, which the VS race leaves
+// in $1B24, reaches past low WRAM.)
 uint16_t func_80899F(uint8_t b, uint16_t x) {
   if(b == 0) return x;
-  wr8(0x1B30 + x, b);
+  bus_wr8(0x810000 | (uint16_t)(0x1B30 + x), b);
   return (uint16_t)((x + 1) & 7);
 }
 
@@ -747,7 +749,9 @@ void func_80894E(void) {
   if(w == r) return;
   wr16(0x0466, 0);
   wr16(0x0465, 0xFF00);
-  wr16(0x0463, (uint16_t)(rd16(0x1B30 + r) | 0xFF00));
+  // (through DB = $81: the VS race leaves an index past 7 in $1B26, and the original then
+  // reads the ROM at $81:$1B30 + index)
+  wr16(0x0463, (uint16_t)(bus_rd16(0x810000 | (uint16_t)(0x1B30 + r)) | 0xFF00));
   wr16(0x1B26, (uint16_t)((r + 1) & 7));
 }
 
@@ -2246,7 +2250,7 @@ void player_frame_setup(void) {
   wr16(0x1EBC, (uint16_t)((rd16(0x0226) << 1) & 0x003E));
   wr16(0x1E9C, 0);
   if((rd16(0x0244) & 0x0004) || !(rd16(0x03DC) & 0x0010)) {
-    player_road_limits();
+    player_road_limits(0x0200);
     return;
   }
   const uint16_t pad = rd16(0x000C);
