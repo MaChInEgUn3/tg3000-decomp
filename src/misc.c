@@ -7,6 +7,7 @@
 #include "line_tables.h"
 #include "pads.h"
 #include "rng.h"
+#include "scale.h"
 #include "platform.h"
 #include "scroll_tables.h"
 #include "sprites.h"
@@ -7334,4 +7335,105 @@ void race_frame_draw_body(void) {
 void race_frame_draw(void) {
   race_frame_draw_body();
   oam_high_load();
+}
+
+// TG3000_ROUTINE($8A:800B) title_screen (long)
+//
+// The title screen in three parts, cut at its first two waits (as results_screen): the
+// load, the scene (each with a long decompression or two that NMIs land in), the show.
+void title_screen(void) {
+  title_screen_load();
+  title_screen_scene();
+  title_screen_show();
+}
+
+// (the part up to the first wait: its row is title_screen's entry with endAt $8A:8042)
+void title_screen_load(void) {
+  wr16(0x0196, 0);
+  wr16(0x0198, 0);
+  wr16(0x019A, 0);
+  video_hdma_enable(0x00);  // (and $420B = 0: no DMA started)
+  video_load_screen_long(0x8A9307);
+  wr16(0x0008, 0xFBD1);  // the NMI hook
+  clear_dp_scratch();
+  clear_vram();
+  wr16(DP + 0x8C, 0);
+  for(int x = 0x1E; x >= 0; x -= 2) wr16((uint16_t)(0x1516 + x), 0);
+}
+
+// TG3000_ROUTINE($8A:8042) title_screen_scene
+//
+// From the first wait: the scene, the mode 7 view, the sprites, the HDMA and the palettes.
+void title_screen_scene(void) {
+  wait_frames(1);
+  track_preview_maybe();
+  hdma_gradients_init();
+  clear_dp_scratch();
+  func_8A8EEF();
+  vram_planes_build();
+  title_scene_load();
+  mode7_view(DP);
+  oam_from_objects();
+  hdma_title_setup();
+  wr16(DP + 0x46, 0x0087);
+  wr16(DP + 0x44, 0x82CA);
+  wr16(DP + 0x56, 0x0008);
+  wr16(DP + 0x62, 0xFFFF);
+  wr16(0x050A, 0x0001);
+  wr16(0x050C, 0x0001);
+  scene_step();
+  func_8A8232();
+  func_8A823D();
+  func_8A8290();
+  title_sprites_place();
+  rotation_from_angle();
+  func_8A869A();
+  scene_objects_place();
+  screen_objects_place();
+  oam_from_objects();
+  wr16(DP + 0x8A, 0x0004);
+  dma_hdma_setup(6, 0x43, 0x21, 0x7E2C00);
+  dma_hdma_set_indirect_bank(6, 0x7E);
+  palettes_load_8a();
+}
+
+// TG3000_ROUTINE($8A:80C8) title_screen_show
+//
+// From the second wait: the screen on, then a frame at a time until D+$58 is set, or D+$8C
+// is set with D+$9A at 0. D+$5A (never set in the movies) asks for one of three graphics
+// uploads first.
+void title_screen_show(void) {
+  wait_frames(1);
+  video_hdma_enable(0xFE);
+  platform_set_interrupts(0x81);
+  wr16(DP + 0x98, 0x0F00);
+  wr16(DP + 0x96, 0x0080);
+  for(;;) {
+    fade_out_on_confirm_once();
+    wait_frames(1);
+    mode7_view(DP);
+    const uint16_t ask = rd16(DP + 0x5A);
+    if(ask != 0) {
+      wr16(DP + 0x14, 0x007E);
+      if(ask == 2) upload_vram_now(0x3000, 0x7E, 0xB5D2, 0x0520);
+      else if(ask == 3) upload_vram_now(0x2000, 0x7E, 0xBAF2, 0x0280);
+      else upload_vram_now(0x3000, 0x7E, 0xA071, 0x1300);
+      wr16(DP + 0x5A, 0);
+    }
+    tile_anim_step();
+    wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
+    scene_step();
+    func_8A8232();
+    func_8A823D();
+    func_8A8290();
+    title_sprites_place();
+    rotation_from_angle();
+    scene_objects_place();
+    screen_objects_place();
+    func_8A869A();
+    oam_from_objects();
+    if(rd16(DP + 0x58) != 0) break;
+    if(rd16(DP + 0x8C) != 0 && rd16(DP + 0x9A) == 0) break;
+  }
+  wait_frames(8);
 }

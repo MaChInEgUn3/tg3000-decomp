@@ -414,6 +414,9 @@ func    83FA6A   track_object_bump   ; a track object's side bump -> src/misc.c
 func    83FAD7   track_object_money  ; a money pickup: + 4000 BCD, effect, message $47 -> src/misc.c
 func    83FD26   car_set_53_1        ; dp+$53 = 1, dp+$B1 = the track object's bytes -> src/misc.c
 func    83FD31   car_set_53_2        ; dp+$53 = 2, dp+$B1 = the track object's bytes -> src/misc.c
+func    8A800B   title_screen        ; the title screen: loads, then a frame at a time until a choice or the demo (long) -> src/misc.c
+func    8A8042   title_screen_scene  ; the title screen from its first wait: scene, sprites, HDMA, palettes -> src/misc.c
+func    8A80C8   title_screen_show   ; the title screen from its second wait: a frame at a time -> src/misc.c
 func    8A8BB6   wait_frames_8a8bb6  ; wait A frames (a long-call copy) -> src/frame.c
 func    8A9880   wait_frames_8a9880  ; wait A frames (a long-call copy) -> src/frame.c
 func    8A9AB1   variant_lines       ; D+$56 = $14, or 4 with variant 2 ($03DC) -> src/misc.c

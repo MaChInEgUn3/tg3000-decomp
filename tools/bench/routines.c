@@ -5309,6 +5309,32 @@ static void call_irq_menu_frame(const Regs* in, Regs* out) {
 // the results screen, cut at its first wait (advisor): the load (endAt $8A:95EB, not a
 // waiting row: the NMIs that land in its long decompressions are its interruptions, and its
 // samples are replayed from their entry state) ends after upload_7f_to_3000 (its exit)
+// the title screen, cut at its first two waits: the load ends after its loop clearing $1516..$1534
+// (X = -2, N set); the show returns after wait_frames(8) (its CMP: Z and C set, N clear)
+static void call_title_screen(const Regs* in, Regs* out) {
+  (void)in;
+  title_screen_load();
+  out->x = 0xFFFE;
+  out->n = true;
+  out->z = false;
+}
+// the scene ends after palettes_load_8a (its exit: N, Z clear, C = $1536 bit 13)
+static void call_title_screen_scene(const Regs* in, Regs* out) {
+  (void)in;
+  title_screen_scene();
+  out->x = 0x2202;
+  out->a = 0xA001;
+  out->y = 0x0020;
+  out->n = out->z = false;
+  out->c = (rd16(0x1536) & 0x2000) != 0;
+}
+static void call_title_screen_show(const Regs* in, Regs* out) {
+  (void)in;
+  title_screen_show();
+  out->n = false;
+  out->z = out->c = true;
+}
+
 // the show: a waiting row with a budget; it returns when the fade is 0 (its LDA: Z set, N
 // clear; the carry is stars_draw_8a's)
 static void call_results_screen_show(const Regs* in, Regs* out) {
@@ -10585,6 +10611,15 @@ const Routine routines[] = {
   {.name = "results_screen", .entry = 0x8A94C3, .end = 0x8A95EB, .endAt = 0x8A95EB, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true,
    .call = call_results_screen},
+  // the title screen, cut at its first two waits (one path no movie runs: D+$5A's uploads)
+  {.name = "title_screen", .entry = 0x8A800B, .end = 0x8A8042, .endAt = 0x8A8042, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareX = true, .call = call_title_screen},
+  {.name = "title_screen_scene", .entry = 0x8A8042, .end = 0x8A80C8, .endAt = 0x8A80C8, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .waitsForInterrupts = true, .maxInsns = 40000000,
+   .call = call_title_screen_scene},
+  {.name = "title_screen_show", .entry = 0x8A80C8, .end = 0x8A8181, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .waitsForInterrupts = true, .maxInsns = 40000000,
+   .call = call_title_screen_show, .holes = {{0x8A80F8, 0x8A8142}}},
   {.name = "results_screen_show", .entry = 0x8A95EB, .end = 0x8A9675, .rtl = true, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .waitsForInterrupts = true, .maxInsns = 40000000,
    .call = call_results_screen_show, .holes = {{0x8A9655, 0x8A965E}}},

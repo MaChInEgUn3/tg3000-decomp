@@ -13679,7 +13679,7 @@ decompress_near:
     ldy.w #$8000                ; $80FBB7
     lda.w #$7E9A                ; $80FBBA
     jsl.l decompress            ; $80FBBD
-    jsl.l $8A800B               ; $80FBC1
+    jsl.l title_screen          ; $80FBC1
     sep.b #$20                  ; $80FBC5
     stz.w $420C                 ; $80FBC7
     stz.w $420B                 ; $80FBCA

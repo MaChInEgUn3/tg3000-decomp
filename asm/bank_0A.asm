@@ -11,6 +11,7 @@ CODE_8A8004:
     dex                         ; $8A8007
     bpl CODE_8A8004             ; $8A8008
     rtl                         ; $8A800A
+title_screen:
     stz.w $0196                 ; $8A800B
     stz.w $0198                 ; $8A800E
     stz.w $019A                 ; $8A8011
@@ -32,6 +33,7 @@ CODE_8A803B:
     dex                         ; $8A803E
     dex                         ; $8A803F
     bpl CODE_8A803B             ; $8A8040
+title_screen_scene:
     lda.w #$0001                ; $8A8042
     jsl.l wait_frames_8a8bb6    ; $8A8045
     jsr.w track_preview_maybe   ; $8A8049
@@ -78,6 +80,7 @@ CODE_8A803B:
     sta.w $4367                 ; $8A80C0
     rep.b #$20                  ; $8A80C3
     jsr.w palettes_load_8a      ; $8A80C5
+title_screen_show:
     lda.w #$0001                ; $8A80C8
     jsl.l wait_frames_8a8bb6    ; $8A80CB
     sep.b #$20                  ; $8A80CF

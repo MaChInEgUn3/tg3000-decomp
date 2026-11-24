@@ -2516,6 +2516,27 @@ password screen, a skipped track's bonus.
   lagged one fails (the lag frame at `$8A:9C61`), 49/49 paths from the passes.
 - **Check:** full gate; every other row as at HEAD, all negatives still fail.
 
+## The title screen (screen-2, 2026-11-23)
+
+- **`title_screen` ($8A:800B, long) is ported in three parts** (in `src/misc.c`), cut at its
+  first two waits:
+  - the load: the image, the NMI hook, cleared DP scratch and VRAM;
+  - the scene (`title_screen_scene`, $8A:8042): the track preview, gradients, the mode 7
+    planes and scene, the sprites, the title HDMA (slot 6, indirect, `$7E:2C00`), the
+    palettes;
+  - the show (`title_screen_show`, $8A:80C8): HDMA and NMI on, then a frame at a time until
+    D+$58 is set, or D+$8C with D+$9A at 0; then 8 frames.
+- **Why the second cut:** with the scene inside the show, all four samples were lagged
+  (NMIs in `title_scene_load`'s decompressions) and failed, so harness-15 failed the row.
+  The scene's own samples are lagged too but pass (their late interrupts are applied after
+  its one wait); the show's are clean.
+- **The unrun block** `$8A:80F8-$8A:8141` (D+$5A: one of three VRAM uploads from `$7E`) is
+  decoded and in the C, and is the show row's hole.
+- **Results:** 60k movie 4/4 for each part (the load by replays), buy movie 1/1.
+- **Also:** `bus_rd8`'s index starts at 0 (a GCC may-be-uninitialised warning, no change in
+  behaviour).
+- **Check:** full gate (new waiting rows).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

@@ -1560,4 +1560,12 @@ void object_sprites_stream(void);
 void race_frame_draw(void);
 void race_frame_draw_body(void);
 
+// The title screen ($8A:800B, long): its load (up to the first wait), its scene (from that
+// wait, $8A:8042) and its show (from the second, $8A:80C8): a frame at a time until D+$58 is
+// set, or D+$8C with D+$9A at 0; then 8 frames.
+void title_screen(void);
+void title_screen_load(void);
+void title_screen_scene(void);
+void title_screen_show(void);
+
 #endif

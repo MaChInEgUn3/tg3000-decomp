@@ -54,7 +54,7 @@ static inline int bus_wram(uint32_t bus, uint32_t* index) {
 }
 
 static inline uint8_t bus_rd8(uint32_t bus) {
-  uint32_t i;
+  uint32_t i = 0;  // (set whenever it is read; GCC cannot always see it)
   return bus_wram(bus, &i) ? g_ram[i] : rom8(bus);
 }
 
