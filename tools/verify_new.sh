@@ -69,9 +69,9 @@ for name in sys.argv[1].split(","):
 PY
 )
 mkdir -p build/cache
-# the VS race runs with the firmware DSP-4 and live samples only (verify_all.sh says why)
-movieargs() { if [ "$1" = vs_race ]; then echo "--dsp4-firmware $firmware"; fi; }
-moviefuzz() { if [ "$1" = vs_race ]; then echo 0; else echo 500; fi; }
+# the VS race runs with the firmware DSP-4, the VS screen's frame not fuzzed there (harness-28)
+movieargs() { if [ "$1" = vs_race ]; then echo "--dsp4-firmware $firmware --fuzz-skip vs_screen_frame,track_rows_build,player_car_frame"; fi; }
+moviefuzz() { echo 500; }
 covfile() { echo "build/cache/$1-$(cat "tools/bench/movies/$1.txt" tools/bench/patches/*.patch tools/bench/bench.c | sha1sum | cut -c1-16).cov"; }
 covpids=""
 for m in "autopilot_60k:60000" "explore_shop:$shopframes" "explore_buy:$buyframes" "explore_pw:$pwframes" "code_infodata:$infoframes" "explore_menu:$menuframes" "explore_options:$optframes" "vs_race:$vsframes"; do

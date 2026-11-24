@@ -35,6 +35,7 @@ optframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/e
 vsframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/vs_race.txt)
 # the VS race runs only with the DSP-4 run from its firmware (harness-27, the owner's file)
 firmware="${TG3000_DSP4_FIRMWARE:-ext/firmware/dsp4.rom}"
+vsfuzzskip=vs_screen_frame,track_rows_build,player_car_frame
 # every deliberately wrong C must fail over the same movie (in parallel): the selftest's
 # short movie does not reach them all
 build/bench/bench "$rom" 60000 --movie tools/bench/movies/autopilot_60k.txt \
@@ -99,10 +100,10 @@ for row in $composed; do
     compfiles="$compfiles $tmp/comp_${name}_$movie.txt"
   done
 done
-# the VS race's movie (verify-vs): the firmware DSP-4, live samples only: its last state is a
-# race, no base for the other rows' fuzz (theirs comes from the other movies)
+# the VS race's movie (verify-vs): the firmware DSP-4; its last state is a race, which is no
+# base for the VS screen's frame's fuzz (harness-28: skipped there)
 build/bench/bench "$rom" "$vsframes" --movie tools/bench/movies/vs_race.txt --dsp4-firmware "$firmware" \
-  --difftest "$tmp/vs.txt" --fuzz 0 > "$tmp/vs.log" 2>&1 &
+  --fuzz-skip "$vsfuzzskip" --difftest "$tmp/vs.txt" --fuzz 500 > "$tmp/vs.log" 2>&1 &
 pids="$pids $!:vs"
 for p in $pids; do
   pid=${p%%:*}

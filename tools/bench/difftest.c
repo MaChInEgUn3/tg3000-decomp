@@ -1748,6 +1748,11 @@ void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
   for(int i = 0; i < tableCount; i++) findStarts(&table[i], &stats[i]);
 }
 
+// harness-28: rows not fuzzed on this movie (bench --fuzz-skip): their fuzz needs a base this
+// movie's last RAM is not (the VS race ends in a race; the VS screen's frame needs its own)
+static const char* fuzzSkipNames;
+void difftest_fuzz_skip(const char* names) { fuzzSkipNames = names; }
+
 // Fuzz: synthetic inputs, run on the interpreter from the entry, interrupts disabled.
 static uint32_t fuzzSeed;
 static uint32_t fuzzRandom(void) {
@@ -1805,6 +1810,7 @@ void difftest_fuzz(int iterations) {
       replaying = false;
     }
     if(r->fuzz == NULL || s->contractCount == 0) continue;
+    if(fuzzSkipNames != NULL && named(fuzzSkipNames, r->name)) continue;  // (harness-28)
     // Each routine's inputs depend only on its own entry, not on its place in the
     // registry: adding a routine must not change what the others are tested with.
     fuzzSeed = 0x13579BDFu ^ (r->entry * 2654435761u);

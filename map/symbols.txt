@@ -744,3 +744,5 @@ func    8ABE2E   password_show_open  ; the password shown: its opening up to the
 func    8ABE5E   password_show_graphics ; the password shown: its graphics -> src/password.c
 func    8ABE86   password_show_text  ; the password shown: packed, encoded, printed -> src/password.c
 func    8ABECC   password_show_wait  ; the password shown: the fade in, a press, the fade out -> src/password.c
+func    829B62   vs_cars_ahead       ; VS race: how many players' cars are ahead of the record at D -> src/vs.c
+func    81F68B   vs_cars_ring        ; VS race: the four cars linked in a ring at $7E:FACD -> src/vs.c

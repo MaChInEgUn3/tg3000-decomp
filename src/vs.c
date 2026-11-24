@@ -683,3 +683,43 @@ void vs_screen(void) {
   vs_screen_setup();
   vs_screen_loop();
 }
+
+// The VS race's four players: records at $0200, $0262, $02B3... ($0225, $0287, $02D8, $033A:
+// their D + $25). The race's distance of the record at D: D+$25/D+$27 (32 bits) and D+$35.
+
+// TG3000_ROUTINE($82:9B62) vs_cars_ahead
+// How many of the four players' cars are ahead of the record at D: its distance minus
+// theirs as one subtraction over D+$25, D+$27 and D+$35, whose borrow in is the CPX of the
+// player's index (X: 1-4) against the car's (4, 3, 2, 1), so that an equal distance counts
+// for the lower index. Returns the count; *a and *carry / *overflow the last SBC's.
+uint16_t vs_cars_ahead(uint16_t dp, uint16_t x, uint16_t* a, bool* carry, bool* overflow) {
+  static const uint16_t cars[4] = {0x0225, 0x02D8, 0x0287, 0x033A};
+  static const uint16_t index[4] = {4, 3, 2, 1};
+  uint16_t count = 0;
+  for(int i = 0; i < 4; i++) {
+    bool c = x >= index[i];
+    const uint16_t at = cars[i];
+    const uint16_t pair[3][2] = {{rd16((uint16_t)(dp + 0x25)), rd16(at)},
+                                 {rd16((uint16_t)(dp + 0x27)), rd16((uint16_t)(at + 2))},
+                                 {rd16((uint16_t)(dp + 0x35)), rd16((uint16_t)(at + 0x10))}};
+    uint16_t r = 0;
+    for(int k = 0; k < 3; k++) {
+      const uint32_t d = (uint32_t)pair[k][0] - pair[k][1] - (c ? 0 : 1);
+      r = (uint16_t)d;
+      *overflow = ((pair[k][0] ^ pair[k][1]) & (pair[k][0] ^ r) & 0x8000) != 0;
+      c = d <= 0xFFFF;
+    }
+    *a = r;
+    *carry = c;
+    if(r & 0x8000) count++;
+  }
+  return count;
+}
+
+// TG3000_ROUTINE($81:F68B) vs_cars_ring
+// The four players' cars linked in a ring of next pointers at $7E:FACD + car: $1E6A to
+// $1E6C to $1E6E to $1E70 and back to $1E6A.
+void vs_cars_ring(void) {
+  static const uint16_t order[5] = {0x1E6A, 0x1E6C, 0x1E6E, 0x1E70, 0x1E6A};
+  for(int i = 0; i < 4; i++) wr16((uint16_t)(0xFACD + rd16(order[i])), rd16(order[i + 1]));
+}

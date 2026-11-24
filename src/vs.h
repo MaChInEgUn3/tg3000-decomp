@@ -159,5 +159,10 @@ void vs_names_absent(void);
 // The VS screen whole ($8A:A573).
 void vs_screen(void);
 void vs_screen_loop(void);
+// $82:9B62: the players' cars ahead of the record at D (X its index 1-4); *a, *carry and
+// *overflow are the last subtraction's, as the original leaves them.
+uint16_t vs_cars_ahead(uint16_t dp, uint16_t x, uint16_t* a, bool* carry, bool* overflow);
+// $81:F68B: the four players' cars linked in a ring ($7E:FACD + car).
+void vs_cars_ring(void);
 
 #endif

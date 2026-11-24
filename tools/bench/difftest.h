@@ -131,6 +131,8 @@ void difftest_vram_address(uint16_t word);
 void difftest_init(Snes* snes, const uint8_t* rom, bool negative);
 // glue-1: use the composed rows' table (before difftest_init).
 void difftest_composed(void);
+// harness-28: rows (comma-separated names) whose fuzz cases are skipped on this movie.
+void difftest_fuzz_skip(const char* names);
 // Before difftest_init: test only the rows named (comma-separated), to iterate on a few
 // quickly. Live counts then differ (another row no longer owns the interrupts it waits
 // through); tools/verify_all.sh always runs every row.

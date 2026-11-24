@@ -3641,6 +3641,22 @@ password screen, a skipped track's bonus.
   of the work: the commands' algorithms are still unmeasured beyond this.
 - **Check:** the tool's run above (a measurement; no row or C changed).
 
+## The VS race's first rows (vs-race-1, 2026-11-24)
+
+- **The first two routines that run only in the VS race**, verified on the bench with the
+  firmware DSP-4:
+  - `vs_cars_ahead` (`$82:9B62`): how many of the four players' cars are ahead of the record
+    at D (records at `$0200`, `$0262`, `$02B3`, `$0315`; their race distance in D+$25,
+    D+$27 and D+$35).
+    - It is one subtraction over the three words. Its borrow in is the `CPX` of the player's
+      index against each car's, so an equal distance counts for the lower index.
+    - The C keeps that subtraction, its last carry and overflow included.
+    - 1,070 live samples, from all four records, and 500 fuzz cases. Its tie path
+      (`$8A:9B79`) runs only in the fuzz, so the VS movie is fuzzed again (harness-28).
+  - `vs_cars_ring` (`$81:F68B`): the four cars linked in a ring of next pointers at
+    `$7E:FACD` + car. 6 live samples.
+- **Check:** incremental gate (additions only).
+
 ## The main options menu (menu-22, 2026-11-24)
 
 - **`$8A:9E5B` is the options screens' long entry.**
@@ -3662,7 +3678,29 @@ password screen, a skipped track's bonus.
     until the next unit.
 - **Results:** 81 and 118 frame ends on the 60k and options movies; one entry for each of
   the others.
-- **Check:** incremental gate (additions only).
+- **Check:** full gate. The incremental gate failed first: the tie path is fuzz-only, and the
+  VS movie ran live-only (harness-28 below).
+
+## The VS movie fuzzed again, minus three rows (harness-28, 2026-11-24)
+
+**The advisor's call, open to the owner's veto.**
+- **verify-vs ran the VS race live-only.** Its last RAM is a race, which is no base for the
+  VS screen's frame's fuzz. But that also took the fuzz from rows reached only there: the
+  first one, `vs_cars_ahead`, has a fuzz-only path and failed the incremental gate.
+- **Now `bench --fuzz-skip NAMES` skips the fuzz of the named rows on that movie.** Every
+  other row is fuzzed on the VS race again (500 cases). `verify_all.sh`, `verify_new.sh` and
+  `tools/rerun_hidden.py` skip three rows there:
+  - `vs_screen_frame`: the race RAM is no base for the VS screen (verify-vs);
+  - `track_rows_build` and `player_car_frame`: their fuzz on the race RAM, with the firmware
+    chip answering, finds what is below.
+- **Found: `dsp4_row` (`src/dsp4.c`) is not exact against the firmware.** On the default
+  bench, the clean-room chip's routes answer the game with `dsp4_row` itself, so the
+  original and the C always agreed. With the firmware answering, 5 of `track_rows_build`'s
+  500 fuzz cases differ by one in a row table byte (`$7E:D1EE`: firmware `$6A`, C `$6B`).
+  `player_car_frame` loses 31 cases on the same base. These rows' live samples still pass.
+  Next unit: measure `dsp4_row` and `dsp4_edges` against the firmware on fuzzed edges, and
+  fix them. The firmware on the bench is the oracle for that now.
+- **Check:** full gate (`difftest.c` changed).
 
 ## The player's password shown (menu-23, 2026-11-24)
 

@@ -32,9 +32,10 @@ MOVIES = [
     ("opt", "opt", "explore_options", None),
     ("vs", "vs", "vs_race", None),
 ]
-# the VS race runs with the firmware DSP-4 and live samples only (verify_all.sh)
-EXTRA = {"vs_race": ["--dsp4-firmware", os.environ.get("TG3000_DSP4_FIRMWARE", "ext/firmware/dsp4.rom")]}
-FUZZ = {"vs_race": "0"}
+# the VS race runs with the firmware DSP-4, the VS screen's frame not fuzzed there (harness-28)
+EXTRA = {"vs_race": ["--dsp4-firmware", os.environ.get("TG3000_DSP4_FIRMWARE", "ext/firmware/dsp4.rom"),
+                     "--fuzz-skip", "vs_screen_frame,track_rows_build,player_car_frame"]}
+FUZZ = {}
 HIDDEN = "inside interrupt handlers a waiting sample recorded"
 
 

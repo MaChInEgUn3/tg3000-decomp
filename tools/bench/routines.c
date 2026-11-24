@@ -6227,6 +6227,32 @@ static void fuzz_vs_name_len(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_vs_panel(r, ram, rnd);
   wr16ram(ram, (uint16_t)(0x0DD4 + r->x), (uint16_t)(rnd() % 13));
 }
+// the VS race's cars
+static void call_vs_cars_ahead(const Regs* in, Regs* out) {
+  uint16_t a;
+  bool c, v;
+  out->y = vs_cars_ahead(in->d, in->x, &a, &c, &v);
+  out->a = a;
+  out->c = c;
+  out->v = v;
+  setNZ16(out, a);
+}
+static void call_vs_cars_ring(const Regs* in, Regs* out) {
+  vs_cars_ring();
+  out->a = rd16(0x1E6A);
+  setNZ16(out, in->x);
+}
+// the player's index 1-4 and the four cars' distances near the record's
+static void fuzz_vs_cars_ahead(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)(1 + rnd() % 4);
+  static const uint16_t cars[4] = {0x0225, 0x02D8, 0x0287, 0x033A};
+  const uint16_t base25 = (uint16_t)rnd(), base27 = (uint16_t)rnd(), base35 = (uint16_t)rnd();
+  for(int i = 0; i < 4; i++) {
+    wr16ram(ram, cars[i], (rnd() & 1) ? base25 : (uint16_t)(base25 + (rnd() & 0xFF) - 0x80));
+    wr16ram(ram, (uint16_t)(cars[i] + 2), (rnd() & 3) ? base27 : (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(cars[i] + 0x10), (rnd() & 3) ? base35 : (uint16_t)rnd());
+  }
+}
 // a letter from the table (its first byte of a random entry)
 static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)ram;
@@ -12240,6 +12266,10 @@ const Routine routines[] = {
   {.name = "password_show_wait", .entry = 0x8ABECC, .end = 0x8ABF08, .endAt = 0x8ABF08, .source = "src/password.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .waitsForInterrupts = true,
    .maxInsns = 40000000, .call = call_password_show_wait},
+  {.name = "vs_cars_ahead", .entry = 0x829B62, .end = 0x829BBA, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .compareA = true, .compareY = true, .call = call_vs_cars_ahead, .fuzz = fuzz_vs_cars_ahead},
+  {.name = "vs_cars_ring", .entry = 0x81F68B, .end = 0x81F6AE, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = false, .compareA = true, .call = call_vs_cars_ring},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

@@ -1151,7 +1151,7 @@ CODE_829AF3:
     lda.w #$0200                ; $829AF5
     tcd                         ; $829AF8
     ldx.w #$0004                ; $829AF9
-    jsr.w $9B62                 ; $829AFC
+    jsr.w vs_cars_ahead         ; $829AFC
     cpy.w $1ED2                 ; $829AFF
     beq CODE_829B12             ; $829B02
     sty.w $1ED2                 ; $829B04
@@ -1164,7 +1164,7 @@ CODE_829B12:
     lda.w #$02B3                ; $829B12
     tcd                         ; $829B15
     ldx.w #$0003                ; $829B16
-    jsr.w $9B62                 ; $829B19
+    jsr.w vs_cars_ahead         ; $829B19
     cpy.w $1ED4                 ; $829B1C
     beq CODE_829B2C             ; $829B1F
     sty.w $1ED4                 ; $829B21
@@ -1176,7 +1176,7 @@ CODE_829B2C:
     lda.w #$0262                ; $829B2C
     tcd                         ; $829B2F
     ldx.w #$0002                ; $829B30
-    jsr.w $9B62                 ; $829B33
+    jsr.w vs_cars_ahead         ; $829B33
     cpy.w $1ED6                 ; $829B36
     beq CODE_829B46             ; $829B39
     sty.w $1ED6                 ; $829B3B
@@ -1188,7 +1188,7 @@ CODE_829B46:
     lda.w #$0315                ; $829B46
     tcd                         ; $829B49
     ldx.w #$0001                ; $829B4A
-    jsr.w $9B62                 ; $829B4D
+    jsr.w vs_cars_ahead         ; $829B4D
     cpy.w $1ED8                 ; $829B50
     beq CODE_829B60             ; $829B53
     sty.w $1ED8                 ; $829B55
@@ -1199,6 +1199,7 @@ CODE_829B46:
 CODE_829B60:
     pld                         ; $829B60
     rts                         ; $829B61
+vs_cars_ahead:
     ldy.w #$0000                ; $829B62
     cpx.w #$0004                ; $829B65
     lda.b $25                   ; $829B68

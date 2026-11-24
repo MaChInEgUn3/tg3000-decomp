@@ -2983,7 +2983,7 @@ CODE_81F54E:
     bcs CODE_81F576             ; $81F566
     sty.w $1E6E                 ; $81F568
     stx.w $1E70                 ; $81F56B
-    jsr.w $F68B                 ; $81F56E
+    jsr.w vs_cars_ring          ; $81F56E
     bra CODE_81F576             ; $81F571
 CODE_81F573:
     jsr.w $F6AE                 ; $81F573
@@ -3002,7 +3002,7 @@ CODE_81F579:
     bcs CODE_81F5A1             ; $81F591
     sty.w $1E6C                 ; $81F593
     stx.w $1E6E                 ; $81F596
-    jsr.w $F68B                 ; $81F599
+    jsr.w vs_cars_ring          ; $81F599
     bra CODE_81F54E             ; $81F59C
 CODE_81F59E:
     jsr.w $F6AE                 ; $81F59E
@@ -3020,7 +3020,7 @@ CODE_81F5A1:
     bcs CODE_81F5CC             ; $81F5BC
     sty.w $1E6A                 ; $81F5BE
     stx.w $1E6C                 ; $81F5C1
-    jsr.w $F68B                 ; $81F5C4
+    jsr.w vs_cars_ring          ; $81F5C4
     bra CODE_81F579             ; $81F5C7
 CODE_81F5C9:
     jsr.w $F6AE                 ; $81F5C9
@@ -3059,6 +3059,7 @@ CODE_81F629:
 CODE_81F689:
     plb                         ; $81F689
     rtl                         ; $81F68A
+vs_cars_ring:
     phx                         ; $81F68B
     phy                         ; $81F68C
     ldy.w $1E6A                 ; $81F68D
