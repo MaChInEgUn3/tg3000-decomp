@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
+#include "rng.h"
 #include "video_dma.h"
 #include "tg3000.h"
 
@@ -167,4 +168,68 @@ void vs_row_next(uint16_t x) {
     const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(0xAFF1 + vs_letter_index(x)));
     if(c != 0x20 && c != 0x3C) return;
   }
+}
+
+// TG3000_ROUTINE($8A:A9F2) vs_panel_reset
+bool vs_panel_reset(uint16_t x) {
+  bool carry = true;
+  wr16((uint16_t)(0x0DB4 + x), 0);
+  if(rd16((uint16_t)(0x0D38 + x)) != 0xFFFF)
+    wr16((uint16_t)(0x0DB4 + x), (uint16_t)(rng_next((uint16_t)(DP + 0x10), &carry) & 0x0003));
+  vs_cursor_home(x);
+  return carry;
+}
+
+// TG3000_ROUTINE($8A:AE46) vs_panel_text_clear
+void vs_panel_text_clear(uint16_t x) {
+  wr16(DP + 0x72, 0x007F);
+  vs_panel_text_base(x);
+  for(int row = 0; row < 14; row++) {
+    for(uint16_t y = 0; y < 0x1E; y += 2) wr16(0x7F0000 | (uint16_t)(rd16(DP + 0x70) + y), 0x003D);
+    wr16(DP + 0x70, (uint16_t)(rd16(DP + 0x70) + 0x40));
+  }
+}
+
+// TG3000_ROUTINE($8A:A768) vs_ready_check
+void vs_ready_check(void) {
+  vs_all_ready();
+  for(uint16_t x = 0; x < 8; x += 2)
+    if(rd16((uint16_t)(0x0DDC + x)) != 0xFFFD) return;
+  wr16(0x0198, 0);
+  wr16(0x0196, 0xFF80);
+}
+
+// TG3000_ROUTINE($8A:A8E5) vs_name_default
+//
+// The copy runs in no recorded movie (the player's name is never empty there); it is
+// checked by the fuzz.
+uint16_t vs_name_default(uint16_t x) {
+  wr16(DP + 0x46, 0);
+  const uint16_t name = table8a(0xA804, x);
+  wr16(DP + 0x42, name);
+  for(uint16_t y = 0;; y++) {
+    const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(name + y));
+    if(c == 0) break;
+    if(c >= 0x41 && c < 0x5B) wr16(DP + 0x46, (uint16_t)(rd16(DP + 0x46) + 1));
+  }
+  const uint16_t count = rd16(DP + 0x46);
+  if(count != 0) return count;
+  const uint16_t from = table8a(0xA814, x);
+  wr16(DP + 0x44, from);
+  for(uint16_t y = 0;; y++) {
+    const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(from + y));
+    bus_wr8(0x8A0000 | (uint16_t)(name + y), c);
+    if(c == 0) break;
+  }
+  return 0;
+}
+
+// TG3000_ROUTINE($8A:ACFF) vs_letter_width
+//
+// The 's' and 'd' cases run in no recorded movie; they are checked by the fuzz.
+void vs_letter_width(uint16_t x) {
+  const uint16_t y = rd16(DP + 0x4E);
+  wr16((uint16_t)(0x0D78 + x), bus_rd8(0x8A0000 | (uint16_t)(0xB014 + y)));
+  const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(0xAFF1 + y));
+  wr16(DP + 0x50, (c == 0x73 || c == 0x65) ? 9 : (c == 0x64) ? 8 : 0);
 }

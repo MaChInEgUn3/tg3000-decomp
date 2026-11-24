@@ -3266,6 +3266,24 @@ password screen, a skipped track's bonus.
   others.
 - **Check:** incremental gate (additions only in `src/` and `tools/bench/`).
 
+## VS MODE's screen: five more routines (vs-4, 2026-11-24)
+
+- **In `src/vs.c`:**
+  - `vs_panel_reset` (`$8A:A9F2`): the cursor goes home on column 0 for a player, or on a
+    random column 0-3 for the computer (`rng_next`);
+  - `vs_panel_text_clear` (`$8A:AE46`): 14 rows of 15 tiles `$3D` at `$7F:(D+$70)`;
+  - `vs_ready_check` (`$8A:A768`): `vs_all_ready`, and with all four panels ready, the
+    slower fade-out (`$0196 = $FF80`);
+  - `vs_name_default` (`$8A:A8E5`): a name with no letter A-Z gets the panel's default
+    name;
+  - `vs_letter_width` (`$8A:ACFF`): the cursor's width and the text's shift for the
+    letter ('s' and 'e' 9, 'd' 8).
+- **Fuzz-only paths** (static ranges now): the default-name copy (`$8A:A90A`) and the 's'
+  and 'd' cases (`$8A:AD22`).
+- **Results on the options movie:** 526 and 606 samples for the per-frame ones, 3-4 for the
+  others, with 500 fuzz cases where the movie misses paths.
+- **Check:** incremental gate (additions only in `src/` and `tools/bench/`).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

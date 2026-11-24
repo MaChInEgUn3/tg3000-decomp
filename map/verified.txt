@@ -664,3 +664,8 @@
 8AA97F vs_text_center src/vs.c 5714380214e2a727 603 0 20/20 verified live-flags:- replayed:0
 8AAF08 vs_row_next src/vs.c 5714380214e2a727 12 500 18/18 verified live-flags:NVZC replayed:0
 8AAE9B rng_next_8a_2 src/rng.c 44da91ddd8583527 27 500 16/16 verified live-flags:NVZC replayed:0
+8AA9F2 vs_panel_reset src/vs.c e27744ef85a72b6c 4 500 11/11 verified live-flags:NVZC replayed:0
+8AAE46 vs_panel_text_clear src/vs.c e27744ef85a72b6c 606 0 20/20 verified live-flags:V replayed:0
+8AA768 vs_ready_check src/vs.c e27744ef85a72b6c 3 500 17/17 verified live-flags:NVZC replayed:0
+8AA8E5 vs_name_default src/vs.c e27744ef85a72b6c 3 500 29/29 verified live-flags:NVZC replayed:0
+8AACFF vs_letter_width src/vs.c e27744ef85a72b6c 526 500 23/23 verified live-flags:- replayed:0

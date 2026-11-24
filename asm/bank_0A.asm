@@ -4158,6 +4158,7 @@ CODE_8AA75E:
     pla                         ; $8AA762
     rts                         ; $8AA763
     incbin !baserom:$52764..$52768
+vs_ready_check:
     jsr.w vs_all_ready          ; $8AA768
     lda.w $0DDC                 ; $8AA76B
     cmp.w #$FFFD                ; $8AA76E
@@ -4247,7 +4248,7 @@ CODE_8AA7F7:
     jsr.w $AAC1                 ; $8AA829
     jsr.w $AD74                 ; $8AA82C
     jsr.w vs_letter_index       ; $8AA82F
-    jsr.w $ACFF                 ; $8AA832
+    jsr.w vs_letter_width       ; $8AA832
     jsr.w vs_cursor_target      ; $8AA835
     jsr.w sprite_frame          ; $8AA838
     jsr.w $ABEF                 ; $8AA83B
@@ -4281,7 +4282,7 @@ CODE_8AA869:
     lda.b $66                   ; $8AA877
     and.w #$0001                ; $8AA879
     bne CODE_8AA882             ; $8AA87C
-    jsr.w $AE46                 ; $8AA87E
+    jsr.w vs_panel_text_clear   ; $8AA87E
     rts                         ; $8AA881
 CODE_8AA882:
     txy                         ; $8AA882
@@ -4300,8 +4301,8 @@ CODE_8AA882:
     jsr.w $B072                 ; $8AA89D
     rts                         ; $8AA8A0
 CODE_8AA8A1:
-    jsr.w $AE46                 ; $8AA8A1
-    jsr.w $A8E5                 ; $8AA8A4
+    jsr.w vs_panel_text_clear   ; $8AA8A1
+    jsr.w vs_name_default       ; $8AA8A4
     lda.w #$FFFD                ; $8AA8A7
     sta.w $0DDC,x               ; $8AA8AA
     jsr.w vs_panel_screens      ; $8AA8AD
@@ -4328,8 +4329,9 @@ CODE_8AA8DB:
     sta.l $81041B               ; $8AA8DB
 CODE_8AA8DF:
     rep.b #$20                  ; $8AA8DF
-    jsr.w $A768                 ; $8AA8E1
+    jsr.w vs_ready_check        ; $8AA8E1
     rts                         ; $8AA8E4
+vs_name_default:
     stz.b $46                   ; $8AA8E5
     lda.w $A804,x               ; $8AA8E7
     sta.b $42                   ; $8AA8EA
@@ -4348,9 +4350,23 @@ CODE_8AA902:
     bra CODE_8AA8EF             ; $8AA903
 CODE_8AA905:
     lda.b $46                   ; $8AA905
-    db $F0,$01 ; beq            ; $8AA907
+    beq CODE_8AA90A             ; $8AA907
     rts                         ; $8AA909
-    incbin !baserom:$5290A..$52922
+CODE_8AA90A:
+    ldy.w #$0000                ; $8AA90A static
+    lda.w $A814,x               ; $8AA90D static
+    sta.b $44                   ; $8AA910 static
+    sep.b #$20                  ; $8AA912 static
+CODE_8AA914:
+    lda.b ($44),y               ; $8AA914 static
+    sta.b ($42),y               ; $8AA916 static
+    cmp.b #$00                  ; $8AA918 static
+    beq CODE_8AA91F             ; $8AA91A static
+    iny                         ; $8AA91C static
+    bra CODE_8AA914             ; $8AA91D static
+CODE_8AA91F:
+    rep.b #$20                  ; $8AA91F static
+    rts                         ; $8AA921 static
     sep.b #$20                  ; $8AA922
     ldx.w #$0000                ; $8AA924
 CODE_8AA927:
@@ -4430,7 +4446,7 @@ CODE_8AA98E:
     pha                         ; $8AA9BC
     lda.w $AA9A,x               ; $8AA9BD
     pha                         ; $8AA9C0
-    jsr.w $AE46                 ; $8AA9C1
+    jsr.w vs_panel_text_clear   ; $8AA9C1
     jsr.w $AA71                 ; $8AA9C4
     pla                         ; $8AA9C7
     sta.b $3C                   ; $8AA9C8
@@ -4459,6 +4475,7 @@ CODE_8AA9E5:
     bra CODE_8AA9D2             ; $8AA9EF
 CODE_8AA9F1:
     rts                         ; $8AA9F1
+vs_panel_reset:
     stz.w $0DB4,x               ; $8AA9F2
     lda.w $0D38,x               ; $8AA9F5
     cmp.w #$FFFF                ; $8AA9F8
@@ -4723,12 +4740,12 @@ CODE_8AAC2E:
     bcc CODE_8AAC3A             ; $8AAC37
     rts                         ; $8AAC39
 CODE_8AAC3A:
-    jsr.w $AE46                 ; $8AAC3A
+    jsr.w vs_panel_text_clear   ; $8AAC3A
     lda.w $0DDC,x               ; $8AAC3D
     sta.w $0D38,x               ; $8AAC40
     lda.w #$FFFE                ; $8AAC43
     sta.w $0DDC,x               ; $8AAC46
-    jsr.w $A9F2                 ; $8AAC49
+    jsr.w vs_panel_reset        ; $8AAC49
     jsr.w vs_panel_screens      ; $8AAC4C
     rts                         ; $8AAC4F
     incbin !baserom:$52C50..$52C73
@@ -4804,6 +4821,7 @@ CODE_8AACF7:
     sta.b $4E                   ; $8AACFB
     tay                         ; $8AACFD
     rts                         ; $8AACFE
+vs_letter_width:
     ldy.b $4E                   ; $8AACFF
     lda.w $B014,y               ; $8AAD01
     and.w #$00FF                ; $8AAD04
@@ -4811,14 +4829,21 @@ CODE_8AACF7:
     lda.w $AFF1,y               ; $8AAD0A
     and.w #$00FF                ; $8AAD0D
     cmp.w #$0073                ; $8AAD10
-    db $F0,$0D ; beq            ; $8AAD13
+    beq CODE_8AAD22             ; $8AAD13
     cmp.w #$0064                ; $8AAD15
-    db $F0,$0E ; beq            ; $8AAD18
+    beq CODE_8AAD28             ; $8AAD18
     cmp.w #$0065                ; $8AAD1A
     beq CODE_8AAD2E             ; $8AAD1D
     stz.b $50                   ; $8AAD1F
     rts                         ; $8AAD21
-    incbin !baserom:$52D22..$52D2E
+CODE_8AAD22:
+    lda.w #$0009                ; $8AAD22 static
+    sta.b $50                   ; $8AAD25 static
+    rts                         ; $8AAD27 static
+CODE_8AAD28:
+    lda.w #$0008                ; $8AAD28 static
+    sta.b $50                   ; $8AAD2B static
+    rts                         ; $8AAD2D static
 CODE_8AAD2E:
     lda.w #$0009                ; $8AAD2E
     sta.b $50                   ; $8AAD31
@@ -4952,6 +4977,7 @@ CODE_8AAE2F:
     stz.w $0DB5,x               ; $8AAE40
     rep.b #$20                  ; $8AAE43
     rts                         ; $8AAE45
+vs_panel_text_clear:
     phx                         ; $8AAE46
     lda.w #$007F                ; $8AAE47
     sta.b $72                   ; $8AAE4A

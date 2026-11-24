@@ -704,3 +704,8 @@ func    8AA728   vs_panel_screens_bg2_off ; VS panel: the split-screen byte $11 
 func    8AAE6E   vs_panel_text_base  ; VS panel: its text offset in D+$70 -> src/vs.c
 func    8AA97F   vs_text_center      ; VS text: the column moved to centre a string -> src/vs.c
 func    8AAF08   vs_row_next         ; VS panel: the row start one on, past spaces -> src/vs.c
+func    8AA9F2   vs_panel_reset      ; VS panel: cursor home, a random column for the computer -> src/vs.c
+func    8AAE46   vs_panel_text_clear ; VS panel: its text cleared at $7F -> src/vs.c
+func    8AA768   vs_ready_check      ; VS screen: all ready, and the slower fade with four -> src/vs.c
+func    8AA8E5   vs_name_default     ; VS panel: an empty name gets its default -> src/vs.c
+func    8AACFF   vs_letter_width     ; VS panel: the cursor's width and shift for its letter -> src/vs.c

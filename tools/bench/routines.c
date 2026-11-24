@@ -5953,6 +5953,77 @@ static void fuzz_vs_ready(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
     wr16ram(ram, (uint16_t)(0x0DDC + x), (rnd() % 3) ? 0xFFFD : (uint16_t)rnd());
   }
 }
+static void call_vs_panel_reset(const Regs* in, Regs* out) {
+  out->c = vs_panel_reset(in->x);
+  out->a = 0xFFFF;
+  setNZ16(out, out->a);
+}
+static void call_vs_panel_text_clear(const Regs* in, Regs* out) {
+  vs_panel_text_clear(in->x);
+  out->a = rd16(DP + 0x70);
+  setAdc16(out, (uint16_t)(out->a - 0x40), 0x40);
+  out->y = 0x001E;
+  setNZ16(out, in->x);
+}
+static void call_vs_ready_check(const Regs* in, Regs* out) {
+  (void)in;
+  vs_ready_check();
+  out->a = 0xFF80;
+  out->c = true;
+  setNZ16(out, out->a);
+  for(uint16_t x = 0; x < 8; x += 2) {
+    const uint16_t s = rd16((uint16_t)(0x0DDC + x));
+    if(s != 0xFFFD) {
+      cmpOut(out, s, 0xFFFD);
+      break;
+    }
+  }
+}
+static void call_vs_name_default(const Regs* in, Regs* out) {
+  const uint16_t name = rom16(0x8AA804 + in->x);
+  bool c = in->c;  // (the count loop's last compare)
+  uint16_t n = 0;
+  for(uint8_t ch; (ch = bus_rd8(0x8A0000 | (uint16_t)(name + n))) != 0; n++) c = ch >= (ch < 0x41 ? 0x41 : 0x5B) ? true : false;
+  const uint16_t count = vs_name_default(in->x);
+  out->c = c;
+  if(count != 0) {
+    out->a = count;
+    out->y = n;
+    setNZ16(out, count);
+    return;
+  }
+  uint16_t m = 0;
+  const uint16_t from = rom16(0x8AA814 + in->x);
+  while(bus_rd8(0x8A0000 | (uint16_t)(from + m)) != 0) m++;
+  out->a = (uint16_t)(from & 0xFF00);
+  out->y = m;
+  out->n = false;
+  out->z = true;
+  out->c = true;
+}
+static void call_vs_letter_width(const Regs* in, Regs* out) {
+  vs_letter_width(in->x);
+  const uint16_t y = rd16(DP + 0x4E);
+  const uint8_t c = rom8(0x8AAFF1 + y);
+  out->y = y;
+  if(c == 0x73 || c == 0x64 || c == 0x65) {
+    out->a = rd16(DP + 0x50);
+    setNZ16(out, out->a);
+    out->c = true;
+  } else {
+    cmpOut(out, c, 0x0065);
+  }
+}
+// a panel, its letter index (the grid's 35 cells), its name empty or not
+static void fuzz_vs_name(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)((rnd() % 4) * 2);
+  wr16ram(ram, DP + 0x4E, (uint16_t)(rnd() % 35));
+  const uint16_t name = rom16(0x8AA804 + r->x);
+  if(name < 0x2000) {
+    const int n = (int)(rnd() % 7);
+    for(int i = 0; i < 6; i++) ram[name + i] = i < n ? (uint8_t)((rnd() & 1) ? 0x41 + rnd() % 26 : 0x20 + rnd() % 0x60) : 0;
+  }
+}
 // a letter from the table (its first byte of a random entry)
 static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)ram;
@@ -11890,6 +11961,16 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_row_next, .fuzz = fuzz_vs_row},
   {.name = "rng_next_8a_2", .entry = 0x8AAE9B, .end = 0x8AAEB9, .source = "src/rng.c",
    .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
+  {.name = "vs_panel_reset", .entry = 0x8AA9F2, .end = 0x8AAA0E, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_panel_reset, .fuzz = fuzz_vs_step},
+  {.name = "vs_panel_text_clear", .entry = 0x8AAE46, .end = 0x8AAE6E, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_panel_text_clear},
+  {.name = "vs_ready_check", .entry = 0x8AA768, .end = 0x8AA795, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_ready_check, .fuzz = fuzz_vs_ready},
+  {.name = "vs_name_default", .entry = 0x8AA8E5, .end = 0x8AA922, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_name_default, .fuzz = fuzz_vs_name},
+  {.name = "vs_letter_width", .entry = 0x8AACFF, .end = 0x8AAD34, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_letter_width, .fuzz = fuzz_vs_name},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

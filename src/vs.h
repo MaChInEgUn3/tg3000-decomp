@@ -57,5 +57,19 @@ void vs_text_center(uint16_t str);
 // $8A:AF08: the panel's row start ($0DAC) one on, past spaces and $3C, up to 6 (then it
 // stays where it was).
 void vs_row_next(uint16_t x);
+// $8A:A9F2: a panel's cursor home, on column 0 for a player and a random one (0-3) for the
+// computer ($0D38 not $FFFF). Returns rng's carry for the computer, true for a player.
+bool vs_panel_reset(uint16_t x);
+// $8A:AE46: the panel's text cleared: 14 rows of 15 tiles $3D at $7F:(D+$70), its base on.
+void vs_panel_text_clear(uint16_t x);
+// $8A:A768: vs_all_ready, and with all four panels ready ($0DDC-$0DE2 = $FFFD), the slower
+// fade out ($0196 = $FF80).
+void vs_ready_check(void);
+// $8A:A8E5: the panel's name's letters (A-Z) counted in D+$46; with none, its default name
+// (the pointer at $8A:A814) copied in (from D+$44 to D+$42). Returns the count.
+uint16_t vs_name_default(uint16_t x);
+// $8A:ACFF: the cursor's width for the letter D+$4E ($8A:B014's byte) and the text's shift
+// D+$50: 9 for 's' and 'e', 8 for 'd', else 0.
+void vs_letter_width(uint16_t x);
 
 #endif

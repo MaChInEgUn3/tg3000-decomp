@@ -169,3 +169,5 @@
 8A:AF03 8A:AF08 m16x16 ; vs_letter_next: a $3C letter steps the row's start back: executed by its difftest fuzz, matched by src/vs.c
 8A:AF2A 8A:AF2C m16x16 ; vs_row_next: a step that lands on a letter (PLA, RTS): executed by its difftest fuzz, matched by src/vs.c
 8A:AE82 8A:AE83 m16x16 ; vs_panel_text_base: a panel other than 0-6 (RTS): executed by its difftest fuzz, matched by src/vs.c
+8A:A90A 8A:A922 m16x16 ; vs_name_default: an empty name gets its default ($8A:A907 BEQ): executed by its difftest fuzz, matched by src/vs.c
+8A:AD22 8A:AD2E m16x16 ; vs_letter_width: the 's' and 'd' cases ($8A:AD13, $8A:AD18 BEQ): executed by its difftest fuzz, matched by src/vs.c
