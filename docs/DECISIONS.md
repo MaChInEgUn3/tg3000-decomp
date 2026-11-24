@@ -2749,6 +2749,19 @@ password screen, a skipped track's bonus.
 - **`verify_all` runs it as one slice and `verify_new` as a sixth movie.** It adds about 30 s
   to the full gate.
 - **Check:** full gate. A new movie can fail rows it reaches for the first time.
+- **Result:** every row's status is as before. Only `func_809DD0`'s live count moved.
+
+## The menus' movie in the map (explore-6, 2026-11-24)
+
+- **The menus' movie is a coverage source.** It follows the game's intended path, button
+  presses only. Its coverage is merged into `traces/coverage.bin`, and `map/` and `asm/` are
+  regenerated.
+- **Effect:** code grows from 72,062 to 72,986 bytes, the 924 bytes the TAS never ran
+  either. The ROM classified goes from 80.45% to 80.88%. The verified share drops from 84.02%
+  to 82.95%, because the denominator grew: nothing verified was lost.
+- The menu's routines the listing now shows (`$80:CE7F`, `$80:CC7E` and others) are the next
+  ports.
+- **Check:** `asm/` rebuilds the exact ROM, and `progress.py --check`.
 
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
