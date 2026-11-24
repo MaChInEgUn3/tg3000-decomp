@@ -9071,3 +9071,33 @@ void champ_menu_ready(uint16_t dp) {
   oam_finish_near(dp);
   champ_big_panel(dp);
 }
+
+// TG3000_ROUTINE($80:C2BB) champ_menu_frame
+//
+// A pass of the championship menu's loop (it has no wait: the task runs while the other
+// one's frames switch to it): the cursor's colours by D+$1F ($81:BE1A, $81:BE3A), D+$1E
+// counting, the menu bar and the sprites, up/down moving the cursor (0-3; up never run).
+// A/B/X/Y then opens the choice (menu_choice_begin, not in this part).
+void champ_menu_frame(void) {
+  const uint32_t k = (uint32_t)(rd16(DP + 0x1F) & 0x001E);
+  const uint16_t c4 = rd16(DP + 0xC4);
+  wr16((uint16_t)(c4 + 0x0122), rom16(0x81BE1A + k));
+  wr16((uint16_t)(c4 + 0x0124), rom16(0x81BE3A + k));
+  wr16(DP + 0x1E, (uint16_t)(rd16(DP + 0x1E) + 0x0020));
+  menu_bar_draw();
+  oam_finish_near(DP);
+  uint16_t p = rd16(DP + 0x0E);
+  wr16(DP + 0x0E, (uint16_t)(p & ~0x0800));
+  if((p & 0x0800) && rd16(DP + 0x48) != 0) {  // never run
+    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) - 1));
+    wr16(DP + 0x1E, 0);
+    func_80E4C5();
+  }
+  p = rd16(DP + 0x0E);
+  wr16(DP + 0x0E, (uint16_t)(p & ~0x0400));
+  if((p & 0x0400) && rd16(DP + 0x48) != 0x0003) {
+    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) + 1));
+    wr16(DP + 0x1E, 0);
+    func_80E4C5();
+  }
+}

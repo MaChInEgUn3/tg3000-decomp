@@ -3041,6 +3041,19 @@ password screen, a skipped track's bonus.
   for the others.
 - **Check:** incremental gate.
 
+## The championship menu's pass (menu-18, 2026-11-24)
+
+- **`champ_menu_frame` ($80:C2BB)** is a pass of the championship menu's loop: the cursor's
+  colours, the menu bar, the sprites, up/down. It has no wait, because the task runs while
+  the other one's frames switch to it.
+- **Cut at the button test** (`$80:C306`): A/B/X/Y opens the choice through
+  `menu_choice_begin`, whose rows cover it. The test and the JSR are left out.
+- **The row is not a waiting row.** The NMIs that land in it make those samples interrupted,
+  and they are replayed from their entry state.
+- **The unrun path:** up pressed, a hole.
+- **Results:** 732 passes on the 60k movie and 1,065 on the menus' movie.
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

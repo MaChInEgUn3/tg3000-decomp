@@ -7500,7 +7500,7 @@ CODE_80C269:
     jsr.w wait_frames           ; $80C2B4
     stz.b $1E                   ; $80C2B7
     stz.b $4C                   ; $80C2B9
-CODE_80C2BB:
+champ_menu_frame:
     lda.b $1F                   ; $80C2BB
     and.w #$001E                ; $80C2BD
     tax                         ; $80C2C0
@@ -7542,7 +7542,7 @@ CODE_80C306:
     jsl.l func_80E4DB           ; $80C311
     jsr.w menu_choice_begin     ; $80C315
 CODE_80C318:
-    bra CODE_80C2BB             ; $80C318
+    bra champ_menu_frame        ; $80C318
 block_c4_build:
     phb                         ; $80C31A
     ldx.w #$8000                ; $80C31B

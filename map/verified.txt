@@ -616,3 +616,4 @@
 80C144 champ_noise src/misc.c 47472e1c4ae1b628 7 0 89/89 verified live-flags:V replayed:0
 80C22D champ_noise_panels src/misc.c 47472e1c4ae1b628 8 0 21/21 verified live-flags:VC replayed:0
 80C261 champ_menu_ready src/misc.c 47472e1c4ae1b628 1 0 31/31 verified live-flags:- replayed:0
+80C2BB champ_menu_frame src/misc.c 27a5078f4a83d583 732 0 26/26 verified live-flags:- replayed:0

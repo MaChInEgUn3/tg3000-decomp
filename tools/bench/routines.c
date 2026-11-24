@@ -5540,6 +5540,17 @@ static void call_champ_fade_in(const Regs* in, Regs* out) {
   out->n = out->z = false;
 }
 
+// the championship menu's pass ends at its button test: C V oam_finish_near's, or with down
+// pressed its CMP #3's C (the cursor at the bottom)
+static void call_champ_menu_frame(const Regs* in, Regs* out) {
+  (void)in;
+  const bool down = rd16(DP + 0x0E) & 0x0400;
+  const uint16_t line = rd16(DP + 0x48);
+  champ_menu_frame();
+  setSbc16(out, rd16(DP + 0x6C), 0x0900);
+  if(down) out->c = line >= 0x0003;
+}
+
 // the championship screen's opening animation: the slide step returns its offset in X
 static void call_champ_slide_step(const Regs* in, Regs* out) { out->x = champ_slide_step(in->d, in->x); }
 static void call_champ_clear_panels(const Regs* in, Regs* out) { (void)out; champ_clear_panels(in->d); }
@@ -11331,6 +11342,9 @@ const Routine routines[] = {
    .call = call_champ_panel},
   {.name = "champ_fade_in", .entry = 0x80C039, .end = 0x80C043, .endAt = 0x80C043, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareA = true, .call = call_champ_fade_in},
+  {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
+   .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)
   {.name = "champ_slide_step", .entry = 0x80C05C, .end = 0x80C091, .endAt = 0x80C091, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareX = true, .call = call_champ_slide_step},
   {.name = "champ_clear_panels", .entry = 0x80C096, .end = 0x80C13E, .endAt = 0x80C13E, .source = "src/misc.c",

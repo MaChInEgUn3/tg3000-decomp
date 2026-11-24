@@ -1700,4 +1700,7 @@ void champ_noise(uint16_t dp);
 void champ_noise_panels(uint16_t dp);
 void champ_menu_ready(uint16_t dp);
 
+// $80:C2BB: a pass of the championship menu's loop (colours, bar, sprites, the cursor).
+void champ_menu_frame(void);
+
 #endif
