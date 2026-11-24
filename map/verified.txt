@@ -574,3 +574,7 @@
 80F549 upload_slice_13 src/video_dma.c 9dd08885b5ba68ef 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 9dd08885b5ba68ef 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 9dd08885b5ba68ef 1 500 20/20 verified live-flags:NVZC replayed:0
+80CB4A menu_controls_open src/misc.c d9466938b4cea1cd 0 0 29/29 verified live-flags:VC replayed:2
+80CB8D menu_controls_lines src/misc.c d9466938b4cea1cd 4 0 16/16 verified live-flags:- replayed:0
+80CBB0 menu_controls_setup src/misc.c d9466938b4cea1cd 4 0 55/55 verified live-flags:V replayed:0
+80CC45 menu_controls_frame src/misc.c d9466938b4cea1cd 169 0 19/19 verified live-flags:- replayed:0

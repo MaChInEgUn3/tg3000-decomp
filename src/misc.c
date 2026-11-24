@@ -8257,3 +8257,80 @@ bool name_entry_key(void) {
   wr16(DP + 0x44, 0x0020);
   return false;
 }
+
+// The controls menu ($80:CB4A, the menu's second choice) in parts, the waits between them
+// still the original's: its opening, its setup (in two, around a PLA), its frame.
+
+// TG3000_ROUTINE($80:CB4A) menu_controls_open
+// The bar's window opening (D+$4E = 1, the callback $C5E0), two graphics to $7F (D+$5E +
+// $1000 and + $2000), the rows copied. Returns the second one's length (the original keeps it
+// on the stack for the setup). `x`, `y`: rows_7f_copy8's registers after it.
+uint16_t menu_controls_open(uint16_t* x, uint16_t* y) {
+  uint16_t end;
+  wr16(DP + 0x4C, 0);
+  wr16(DP + 0x4E, 0x0001);
+  wr16(DP + 0xEC, 0xC5E0);
+  decompress_near(DP, 0x8C, 0x8A95, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x1000), &end);
+  const uint16_t len = decompress_near(DP, 0x9F, 0x8000, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x2000), &end);
+  *x = (uint16_t)(rd16(DP + 0x5E) + 0x1000);
+  *y = (uint16_t)(rd16(DP + 0x5E) + 0x08C4);
+  rows_7f_copy8(x, y);
+  return len;
+}
+
+// TG3000_ROUTINE($80:CB8D) menu_controls_lines
+// Once the window is open: the cursor on line 5 (EXIT), the frame's height and width
+// ($81:C193, $81:C19F).
+void menu_controls_lines(void) {
+  wr16(DP + 0x48, 0x0005);
+  wr16(DP + 0x4A, rom16(0x81C193));
+  wr16(DP + 0x7A, rom16(0x81C19F));
+  wr16(DP + 0x14, 0x007F);
+}
+
+// TG3000_ROUTINE($80:CBB0) menu_controls_setup
+// The three panels (`len` bytes from D+$5E + $2000, then two of $200), the palette's $20
+// bytes from $98:9FCB (MVN into bank $81), the sprites, the colours.
+void menu_controls_setup(uint16_t len) {
+  func_80B537(DP, len, (uint16_t)(rd16(DP + 0x5E) + 0x2000), (uint16_t)(rd16(DP + 0x5C) + 0x1200));
+  wr16(DP + 0x14, 0x007F);
+  func_80B537(DP, 0x0200, (uint16_t)(rd16(DP + 0x5E) + 0x08C4), (uint16_t)(rd16(DP + 0x5C) + 0x0462));
+  wr16(DP + 0x14, 0x007F);
+  func_80B537(DP, 0x0200, (uint16_t)(rd16(DP + 0x5E) + 0x11C0), (uint16_t)(rd16(DP + 0x5C) + 0x0060));
+  wr16(DP + 0xBC, 0x0013);
+  const uint16_t c4 = rd16(DP + 0xC4);
+  for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0020 + i), rom8(0x989FCB + i));
+  menu_controls_sprites();
+  oam_finish_near(DP);
+  static const uint16_t words[4][2] = {{0x0102, 0x0FFF}, {0x0104, 0x0042}, {0x0106, 0x14BF}, {0x0108, 0x0000}};
+  for(int i = 0; i < 4; i++) wr16((uint16_t)(c4 + words[i][0]), words[i][1]);
+  wr16((uint16_t)(c4 + 0x0122), rom16(0x81C1B1));
+  wr16((uint16_t)(c4 + 0x0124), rom16(0x81C1D5));
+  wr16((uint16_t)(c4 + 0x0126), rom16(0x81C1E7));
+  wr16((uint16_t)(c4 + 0x0128), rom16(0x81C1C3));
+}
+
+// TG3000_ROUTINE($80:CC45) menu_controls_frame
+// A frame (after its wait): up/down move the cursor (0-5), a button press goes to the line
+// (menu_button_assign); the sprites. True when EXIT was chosen: the controls menu returns
+// (menu_button_assign's PLA, RTS).
+bool menu_controls_frame(void) {
+  uint16_t p = rd16(DP + 0x0E);
+  wr16(DP + 0x0E, (uint16_t)(p & ~0x0800));
+  if((p & 0x0800) && rd16(DP + 0x48) != 0) {
+    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) - 1));
+    func_80E4C5();
+  }
+  p = rd16(DP + 0x0E);
+  wr16(DP + 0x0E, (uint16_t)(p & ~0x0400));
+  if((p & 0x0400) && rd16(DP + 0x48) != 0x0005) {
+    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) + 1));
+    func_80E4C5();
+  }
+  p = rd16(DP + 0x0E);
+  wr16(DP + 0x0E, (uint16_t)(p & ~0xC0F0));
+  if((p & 0xC0F0) && menu_button_assign(p)) return true;
+  menu_controls_sprites();
+  oam_finish_near(DP);
+  return false;
+}

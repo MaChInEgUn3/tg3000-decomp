@@ -8524,6 +8524,7 @@ CODE_80CB2F:
     lda.w #$0081                ; $80CB43
     jsr.w sprite_group          ; $80CB46
     rts                         ; $80CB49
+menu_controls_open:
     stz.b $4C                   ; $80CB4A
     lda.w #$0001                ; $80CB4C
     sta.b $4E                   ; $80CB4F
@@ -8556,6 +8557,7 @@ CODE_80CB2F:
 CODE_80CB89:
     lda.b $4E                   ; $80CB89
     bne CODE_80CB89             ; $80CB8B
+menu_controls_lines:
     lda.w #$0005                ; $80CB8D
     sta.b $48                   ; $80CB90
     lda.w $C193                 ; $80CB92
@@ -8573,6 +8575,7 @@ CODE_80CB89:
     adc.w #$2000                ; $80CBAB
     tax                         ; $80CBAE
     pla                         ; $80CBAF
+menu_controls_setup:
     jsr.w func_80B537           ; $80CBB0
     lda.w #$007F                ; $80CBB3
     sta.b $14                   ; $80CBB6
@@ -8637,6 +8640,7 @@ CODE_80CC36:
 CODE_80CC3F:
     lda.w #$0001                ; $80CC3F
     jsr.w wait_frames           ; $80CC42
+menu_controls_frame:
     lda.w #$0800                ; $80CC45
     trb.b $0E                   ; $80CC48
     beq CODE_80CC56             ; $80CC4A

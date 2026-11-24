@@ -2873,6 +2873,25 @@ password screen, a skipped track's bonus.
   (a full name, a delete with nothing typed) are holes.
 - **Check:** full gate (`difftest.c` changed).
 
+## The controls menu's parts (menu-10, 2026-11-24)
+
+- **The controls menu (`$80:CB4A`, the menu's second choice) has four rows** between its waits
+  (in `src/misc.c`):
+  - `menu_controls_open` ($80:CB4A): the window opening, two graphics, the rows copied. Its
+    PHA of the second length is above the cut, and the adapter writes it;
+  - `menu_controls_lines` ($80:CB8D): the cursor on EXIT, the frame's size;
+  - `menu_controls_setup` ($80:CBB0, after the PLA of that length): three panels, the
+    palette, the sprites, the colours;
+  - `menu_controls_frame` ($80:CC45, after the loop's wait): the cursor, a button to the line,
+    the sprites. On EXIT `menu_button_assign` pulls its own return, so the sample ends at the
+    controls menu's own return. Its RTS at `$80:CCE0` is `alsoIn`.
+- **Left out:** the two polls (the window open, the text typed), the loop's wait, and the
+  CLC/PLA bytes at the cuts.
+- **The unrun path:** up pressed, a hole; the movie only goes down.
+- **Results:** on the menus' movie: the opening by replays, 4 and 4 for the lines and the
+  setup, 169 frames.
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

@@ -1626,4 +1626,12 @@ void menu_controls_sprites(void);
 // then it leaves the caller too: returns true).
 bool name_entry_key(void);
 
+// The controls menu ($80:CB4A) in parts: its opening (returns the length the setup uses;
+// `x`, `y`: the registers rows_7f_copy8 leaves), its lines ($80:CB8D), its setup ($80:CBB0)
+// and a frame ($80:CC45; true: EXIT chosen, the menu returns).
+uint16_t menu_controls_open(uint16_t* x, uint16_t* y);
+void menu_controls_lines(void);
+void menu_controls_setup(uint16_t len);
+bool menu_controls_frame(void);
+
 #endif

@@ -5381,6 +5381,56 @@ static void call_name_entry_key(const Regs* in, Regs* out) {
   out->c = key == 0x001D || key == 0x001E;
 }
 
+// the controls menu's parts: the opening ends at the window poll (its PHA of the second
+// length above the cut; A = $FFFF, X Y C V rows_7f_copy8's, N Z of DB); the lines end at the
+// setup's PLA (A = X = D+$5E + $2000, its TAX's N Z and ADC's C V; Y = D+$5C + $1200); the
+// setup gets that length (A)
+// and ends at the typed-text poll (A the last colour, N Z of it, C V oam_finish_near's); the
+// frame ends at its loop's wait (A oam_finish_near's) or returns with the controls menu on EXIT (A = $CC75, the
+// JSR's word menu_button_assign pulled: N set, Z clear; C set; X the buttons)
+static void call_menu_controls_open(const Regs* in, Regs* out) {
+  uint16_t x, y;
+  const uint16_t len = menu_controls_open(&x, &y);
+  wr16((uint16_t)(in->sp - 1), len);
+  out->x = x;
+  out->y = y;
+  out->a = 0xFFFF;
+  Regs t;
+  setAdc16(&t, (uint16_t)(y - 0x38 - 8), 0x0008);
+  out->c = t.c;
+  out->v = t.v;
+  out->n = (in->db & 0x80) != 0;
+  out->z = in->db == 0;
+}
+static void call_menu_controls_lines(const Regs* in, Regs* out) {
+  (void)in;
+  menu_controls_lines();
+  out->a = out->x = (uint16_t)(rd16(DP + 0x5E) + 0x2000);
+  out->y = (uint16_t)(rd16(DP + 0x5C) + 0x1200);
+  setNZ16(out, out->x);
+  setAdc16(out, rd16(DP + 0x5E), 0x2000);
+}
+static void call_menu_controls_setup(const Regs* in, Regs* out) {
+  menu_controls_setup(in->a);
+  out->a = rom16(0x81C1C3);
+  setNZ16(out, out->a);
+  setSbc16(out, rd16(DP + 0x6C), 0x0900);
+}
+static void call_menu_controls_frame(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t buttons = rd16(DP + 0x0E);
+  const uint16_t other = rd16(DP + 0x6E);
+  if(!menu_controls_frame()) {
+    out->a = other;  // (oam_finish_near's A: the other buffer's end)
+  } else {
+    out->a = 0xCC75;
+    out->n = true;
+    out->z = false;
+    out->c = true;
+    out->x = buttons;
+  }
+}
+
 // menu_controls_sprites returns after the last colour's LDA (A, N Z of it), X its index
 // (D+$4C / 2, even: C its LSR's), Y = D+$C4
 static void call_menu_controls_sprites(const Regs* in, Regs* out) {
@@ -10931,6 +10981,18 @@ const Routine routines[] = {
   {.name = "menu_button_assign", .entry = 0x80CC7E, .end = 0x80CCE1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .mayLeaveCaller = true, .compareA = true, .compareY = true,
    .call = call_menu_button_assign, .holes = {{0x80CC93, 0x80CC94}, {0x80CCD5, 0x80CCDA}}},
+  {.name = "menu_controls_open", .entry = 0x80CB4A, .end = 0x80CB89, .endAt = 0x80CB89, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_menu_controls_open},
+  {.name = "menu_controls_lines", .entry = 0x80CB8D, .end = 0x80CBAF, .endAt = 0x80CBAF, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_menu_controls_lines},
+  {.name = "menu_controls_setup", .entry = 0x80CBB0, .end = 0x80CC34, .endAt = 0x80CC34, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .call = call_menu_controls_setup},
+  {.name = "menu_controls_frame", .entry = 0x80CC45, .end = 0x80CC7E, .endAt = 0x80CC3F, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .call = call_menu_controls_frame,
+   .holes = {{0x80CC4C, 0x80CC56}},  // up pressed (the movie only goes down)
+   .alsoIn = {{0x80CCE0, 0x80CCE1}}},  // EXIT: menu_button_assign's RTS after its PLA, at this depth
   {.name = "name_entry_key", .entry = 0x80C9A6, .end = 0x80CA97, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .mayLeaveCaller = true, .compareA = true,
    .compareX = true, .call = call_name_entry_key, .holes = {{0x80CA05, 0x80CA0A}, {0x80CA2B, 0x80CA30}}},

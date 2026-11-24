@@ -403,6 +403,10 @@ func    80C475   sprite_bar8         ; a bar of 8 sprites, D+$14 wide, centred o
 func    80C9A6   name_entry_key      ; the name entry's key: a letter, a delete, or the end (leaves) -> src/misc.c
 func    80CA97   menu_frame_sprites  ; a menu frame's corner and edge sprites, then a group -> src/misc.c
 func    80D026   menu_panel_sprites  ; a menu panel: two groups, colour, steps toward targets, frame -> src/misc.c
+func    80CB4A   menu_controls_open  ; the controls menu: window opening, graphics, rows -> src/misc.c
+func    80CB8D   menu_controls_lines ; the controls menu: the cursor on EXIT, frame size -> src/misc.c
+func    80CBB0   menu_controls_setup ; the controls menu: panels, palette, sprites, colours -> src/misc.c
+func    80CC45   menu_controls_frame ; the controls menu frame: cursor, button assignment, sprites -> src/misc.c
 func    80CC7E   menu_button_assign  ; the controls menu: a button to line D+$48, swapped; line 5 leaves -> src/misc.c
 func    80CCE1   menu_controls_sprites ; the controls menu's sprites: frame, steps, title, button names -> src/misc.c
 func    80CE7F   menu_bit_word       ; the word of $80:CE96 for A's lowest set bit -> src/misc.c
