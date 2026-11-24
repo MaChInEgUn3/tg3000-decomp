@@ -3452,9 +3452,14 @@ password screen, a skipped track's bonus.
 - **So a tape cannot drive the bench through a race.** Our own road commands can: they answer
   whatever the bench's own run sends. The VS race waits for them (explore-9).
   - The tool stays as a diagnostic: it pinpoints where two runs part.
-- **The TAS (`Input Log.txt`) is no longer on disk.** WORKFLOW's reference commands and the
-  road-command plan (measured on the TAS) depend on it. Measuring on the reference runner
-  with the bench movies works instead (`tools/movie_to_log.py`).
+- **The TAS (`Input Log.txt`) was not on disk any more.** WORKFLOW's reference commands and
+  the road-command plan (measured on the TAS) depend on it.
+  - It had been kept in the session's temporary folder. A cleanup on 2026-11-22 (a disk
+    quota in `/tmp`) deleted it along with real throwaway measurements, wrongly reported as
+    regenerable.
+  - Restored the same day (2026-11-24): `tools/fetch_tas.sh` downloads it from TASVideos
+    into `traces/tas/` (ignored by git), checks that its header names our ROM, and unpacks
+    `traces/tas/unpacked/Input Log.txt`. WORKFLOW's commands point there.
 - **Check:** full gate (`tools/bench` changed; the default path is untouched).
 
 ## The main options menu (menu-22, 2026-11-24)

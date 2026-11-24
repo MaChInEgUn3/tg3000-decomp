@@ -33,11 +33,12 @@ build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt 
 tools/bench/selftest.sh         # determinism + fresh-process save/load + race reached + all rows (sharded); SELFTEST_DIFFTEST=0 skips the rows
 python3 -I tools/listing.py && tools/build_asm.sh   # asm/ -> exact ROM (SHA-1 + code-from-text proof)
 tools/refbench/fetch.sh && make -C tools/refbench    # TAS reference: bsnes from BizHawk 1.9.4
-build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --coverage traces/coverage.bin
-build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --dsp4-mul /tmp/mul.txt   # src/dsp4.c vs the chip
-build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --dsp4-catalogue /tmp/cat.txt   # commands + clean-room shadow
-build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --frames 50000 --dsp4-cmdlog 0A /tmp/0a.txt   # one command's runs (in, out); checked against src/dsp4.c
-build/refbench/refbench TG3000.sfc "Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --frames 20000 --dsp4-tape /tmp/t.bin 0 && python3 -I tools/dsp4_tape.py /tmp/t.bin   # every DSP-4 data byte in order; the $09 streams measured
+tools/fetch_tas.sh                 # the reference TAS into traces/tas/ (not committed)
+build/refbench/refbench TG3000.sfc "traces/tas/unpacked/Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --coverage traces/coverage.bin
+build/refbench/refbench TG3000.sfc "traces/tas/unpacked/Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --dsp4-mul /tmp/mul.txt   # src/dsp4.c vs the chip
+build/refbench/refbench TG3000.sfc "traces/tas/unpacked/Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --dsp4-catalogue /tmp/cat.txt   # commands + clean-room shadow
+build/refbench/refbench TG3000.sfc "traces/tas/unpacked/Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --frames 50000 --dsp4-cmdlog 0A /tmp/0a.txt   # one command's runs (in, out); checked against src/dsp4.c
+build/refbench/refbench TG3000.sfc "traces/tas/unpacked/Input Log.txt" --firmware ext/firmware/dsp4.rom --bizhawk --frames 20000 --dsp4-tape /tmp/t.bin 0 && python3 -I tools/dsp4_tape.py /tmp/t.bin   # every DSP-4 data byte in order; the $09 streams measured
 ```
 
 Frame dumps are game assets: write them outside the repo (they are also ignored).
