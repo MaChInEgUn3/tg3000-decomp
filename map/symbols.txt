@@ -408,6 +408,11 @@ func    80C7E8   name_entry_frame    ; the name entry frame: colours, blink, cur
 func    80C97C   name_entry_draw     ; the name entry frame's end: sprites and the name -> src/misc.c
 func    80C9A6   name_entry_key      ; the name entry's key: a letter, a delete, or the end (leaves) -> src/misc.c
 func    80CA97   menu_frame_sprites  ; a menu frame's corner and edge sprites, then a group -> src/misc.c
+func    80CEE2   menu_gears_open     ; the menu's third choice: window opening, three graphics, rows -> src/misc.c
+func    80CF36   menu_gears_lines    ; the third choice: D+$7A, D+$14 -> src/misc.c
+func    80CF4C   menu_gears_panel    ; the third choice: its first panel -> src/misc.c
+func    80CF63   menu_gears_setup    ; the third choice: panels, palettes, targets, sprites -> src/misc.c
+func    80CFDF   menu_gears_frame    ; the third choice frame: the choice by up/down, a press leaves -> src/misc.c
 func    80D026   menu_panel_sprites  ; a menu panel: two groups, colour, steps toward targets, frame -> src/misc.c
 func    80CB4A   menu_controls_open  ; the controls menu: window opening, graphics, rows -> src/misc.c
 func    80CB8D   menu_controls_lines ; the controls menu: the cursor on EXIT, frame size -> src/misc.c

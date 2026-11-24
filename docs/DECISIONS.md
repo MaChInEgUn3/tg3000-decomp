@@ -2913,6 +2913,21 @@ password screen, a skipped track's bonus.
   frames each for the frame halves.
 - **Check:** incremental gate.
 
+## The menu's third choice (menu-12, 2026-11-24)
+
+- **`$80:CEE2`, the menu's third choice**, sets the player's `$03A7` (0 or 1, the panel
+  `menu_panel_sprites` draws). It has five rows between its waits (in `src/misc.c`):
+  - the opening (three graphics; its two PHAs of lengths above the cut);
+  - the lines;
+  - the first panel and the setup, cut at the second PLA for the same reason as the controls
+    menu's;
+  - the frame: up/down pick, and B/Y/A/X with the window open leave (D+$4E = 5). The sample
+    then ends at the screen's own RTS.
+- **Hole:** down pressed; the movie only presses up.
+- **Results:** on the menus' movie: the opening by replays, 6 samples each for the lines, the
+  panel and the setup, and 104 frames.
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

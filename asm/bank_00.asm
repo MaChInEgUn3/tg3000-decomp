@@ -8942,6 +8942,7 @@ CODE_80CE8A:
     tax                         ; $80CE8F
     rts                         ; $80CE90
     incbin !baserom:$4E91..$4EE2
+menu_gears_open:
     stz.b $4C                   ; $80CEE2
     lda.w #$0001                ; $80CEE4
     sta.b $4E                   ; $80CEE7
@@ -8982,6 +8983,7 @@ CODE_80CE8A:
 CODE_80CF32:
     lda.b $4E                   ; $80CF32
     bne CODE_80CF32             ; $80CF34
+menu_gears_lines:
     stz.b $7A                   ; $80CF36
     lda.w #$007F                ; $80CF38
     sta.b $14                   ; $80CF3B
@@ -8994,6 +8996,7 @@ CODE_80CF32:
     adc.w #$2000                ; $80CF47
     tax                         ; $80CF4A
     pla                         ; $80CF4B
+menu_gears_panel:
     jsr.w func_80B537           ; $80CF4C
     lda.w #$007F                ; $80CF4F
     sta.b $14                   ; $80CF52
@@ -9006,6 +9009,7 @@ CODE_80CF32:
     adc.w #$4000                ; $80CF5E
     tax                         ; $80CF61
     pla                         ; $80CF62
+menu_gears_setup:
     jsr.w func_80B537           ; $80CF63
     lda.w #$007F                ; $80CF66
     sta.b $14                   ; $80CF69
@@ -9062,6 +9066,7 @@ CODE_80CFD0:
 CODE_80CFD9:
     lda.w #$0001                ; $80CFD9
     jsr.w wait_frames           ; $80CFDC
+menu_gears_frame:
     jsr.w menu_panel_sprites    ; $80CFDF
     jsr.w oam_finish_near       ; $80CFE2
     ldx.b $94                   ; $80CFE5

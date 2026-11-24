@@ -5483,6 +5483,54 @@ static void call_name_entry_frame(const Regs* in, Regs* out) {
 }
 static void call_name_entry_draw(const Regs* in, Regs* out) { (void)in; (void)out; name_entry_draw(); }
 
+// the third choice's parts: the opening pushes both lengths above the cut (the second, then
+// the third); the lines and the first panel end at their PLAs (A = X = D+$5E + the next
+// graphic's offset); the setup at the text poll (A, C V oam_finish_near's); the frame at its
+// loop's wait, or returns on a press (A = 5, N Z clear, C V oam_finish_near's)
+static void call_menu_gears_open(const Regs* in, Regs* out) {
+  uint16_t a, b, x, y;
+  menu_gears_open(&a, &b, &x, &y);
+  wr16((uint16_t)(in->sp - 1), a);
+  wr16((uint16_t)(in->sp - 3), b);
+  out->x = x;
+  out->y = y;
+  out->a = 0xFFFF;
+  Regs t;
+  setAdc16(&t, (uint16_t)(y - 0x38 - 8), 0x0008);
+  out->c = t.c;
+  out->v = t.v;
+  out->n = (in->db & 0x80) != 0;
+  out->z = in->db == 0;
+}
+static void gearsLinesOut(Regs* out, uint16_t xoff, uint16_t yoff) {
+  out->a = out->x = (uint16_t)(rd16(DP + 0x5E) + xoff);
+  out->y = (uint16_t)(rd16(DP + 0x5C) + yoff);
+  setNZ16(out, out->x);
+  setAdc16(out, rd16(DP + 0x5E), xoff);
+}
+static void call_menu_gears_lines(const Regs* in, Regs* out) {
+  (void)in;
+  menu_gears_lines();
+  gearsLinesOut(out, 0x2000, 0x1200);
+}
+static void call_menu_gears_panel(const Regs* in, Regs* out) {
+  menu_gears_panel(in->a);
+  gearsLinesOut(out, 0x4000, 0x2D00);
+}
+static void call_menu_gears_setup(const Regs* in, Regs* out) {
+  menu_gears_setup(in->a);
+  out->a = rd16(DP + 0x6C);
+  setSbc16(out, rd16(DP + 0x6C), 0x0900);
+}
+static void call_menu_gears_frame(const Regs* in, Regs* out) {
+  (void)in;
+  if(menu_gears_frame()) {
+    out->a = 0x0005;
+    out->n = out->z = false;
+    setSbc16(out, rd16(DP + 0x6C), 0x0900);
+  }
+}
+
 // menu_controls_sprites returns after the last colour's LDA (A, N Z of it), X its index
 // (D+$4C / 2, even: C its LSR's), Y = D+$C4
 static void call_menu_controls_sprites(const Regs* in, Regs* out) {
@@ -11033,6 +11081,20 @@ const Routine routines[] = {
   {.name = "menu_button_assign", .entry = 0x80CC7E, .end = 0x80CCE1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .mayLeaveCaller = true, .compareA = true, .compareY = true,
    .call = call_menu_button_assign, .holes = {{0x80CC93, 0x80CC94}, {0x80CCD5, 0x80CCDA}}},
+  {.name = "menu_gears_open", .entry = 0x80CEE2, .end = 0x80CF32, .endAt = 0x80CF32, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_menu_gears_open},
+  {.name = "menu_gears_lines", .entry = 0x80CF36, .end = 0x80CF4B, .endAt = 0x80CF4B, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_menu_gears_lines},
+  {.name = "menu_gears_panel", .entry = 0x80CF4C, .end = 0x80CF62, .endAt = 0x80CF62, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_menu_gears_panel},
+  {.name = "menu_gears_setup", .entry = 0x80CF63, .end = 0x80CFCE, .endAt = 0x80CFCE, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .call = call_menu_gears_setup},
+  {.name = "menu_gears_frame", .entry = 0x80CFDF, .end = 0x80D026, .endAt = 0x80CFD9, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_menu_gears_frame,
+   .holes = {{0x80CFEE, 0x80CFFB}}},  // down pressed (the movie only presses up)
   {.name = "name_entry_open", .entry = 0x80C6D4, .end = 0x80C713, .endAt = 0x80C713, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
    .call = call_name_entry_open},

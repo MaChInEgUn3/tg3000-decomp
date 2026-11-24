@@ -1644,4 +1644,13 @@ void name_entry_ready(void);
 void name_entry_frame(void);
 void name_entry_draw(void);
 
+// The menu's third choice ($80:CEE2) in parts: its opening (the two lengths the panels use),
+// lines ($80:CF36), first panel ($80:CF4C), setup ($80:CF63) and a frame ($80:CFDF; true: it
+// leaves, the screen returns).
+void menu_gears_open(uint16_t* len4000, uint16_t* len2000, uint16_t* x, uint16_t* y);
+void menu_gears_lines(void);
+void menu_gears_panel(uint16_t len);
+void menu_gears_setup(uint16_t len);
+bool menu_gears_frame(void);
+
 #endif

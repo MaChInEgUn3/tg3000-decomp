@@ -8514,3 +8514,85 @@ void name_entry_draw(void) {
   }
   oam_finish_near(DP);
 }
+
+// The menu's third choice ($80:CEE2, the car's transmission: D+$7C/$7E by the player's
+// $03A7) in parts between its waits, as the controls menu.
+
+// TG3000_ROUTINE($80:CEE2) menu_gears_open
+// The window opening, three graphics to $7F (D+$5E + $1000, + $4000, + $2000), the rows copied.
+// Returns the second and third lengths (the original pushes both). `x`, `y`: rows_7f_copy8's.
+void menu_gears_open(uint16_t* len4000, uint16_t* len2000, uint16_t* x, uint16_t* y) {
+  uint16_t end;
+  wr16(DP + 0x4C, 0);
+  wr16(DP + 0x4E, 0x0001);
+  wr16(DP + 0xEC, 0xC5E0);
+  decompress_near(DP, 0x9E, 0x8D6B, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x1000), &end);
+  *len4000 = decompress_near(DP, 0x87, 0x898E, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x4000), &end);
+  *len2000 = decompress_near(DP, 0x8C, 0x8B54, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x2000), &end);
+  *x = (uint16_t)(rd16(DP + 0x5E) + 0x1000);
+  *y = (uint16_t)(rd16(DP + 0x5E) + 0x08C4);
+  rows_7f_copy8(x, y);
+}
+
+// TG3000_ROUTINE($80:CF36) menu_gears_lines
+void menu_gears_lines(void) {
+  wr16(DP + 0x7A, 0);
+  wr16(DP + 0x14, 0x007F);
+}
+
+// TG3000_ROUTINE($80:CF4C) menu_gears_panel
+// The first panel (`len` bytes from D+$5E + $2000).
+void menu_gears_panel(uint16_t len) {
+  func_80B537(DP, len, (uint16_t)(rd16(DP + 0x5E) + 0x2000), (uint16_t)(rd16(DP + 0x5C) + 0x1200));
+  wr16(DP + 0x14, 0x007F);
+}
+
+// TG3000_ROUTINE($80:CF63) menu_gears_setup
+// The second panel (`len` bytes from D+$5E + $4000) and a third of $200, the palette's $20 bytes
+// from $9B:8060 twice (MVN into bank $81, at D+$C4 + $20 and + $120), two colour words, the
+// panel's targets for the player's choice ($81:C20E, $81:C212), its sprites.
+void menu_gears_setup(uint16_t len) {
+  func_80B537(DP, len, (uint16_t)(rd16(DP + 0x5E) + 0x4000), (uint16_t)(rd16(DP + 0x5C) + 0x2D00));
+  wr16(DP + 0x14, 0x007F);
+  func_80B537(DP, 0x0200, (uint16_t)(rd16(DP + 0x5E) + 0x08C4), (uint16_t)(rd16(DP + 0x5C) + 0x0462));
+  wr16(DP + 0xBC, 0x0012);
+  const uint16_t c4 = rd16(DP + 0xC4);
+  for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0020 + i), rom8(0x9B8060 + i));
+  for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0120 + i), rom8(0x9B8060 + i));
+  wr16((uint16_t)(c4 + 0x0146), 0x14BF);
+  wr16((uint16_t)(c4 + 0x0148), 0x0000);
+  const uint32_t k = (uint32_t)((rd16((uint16_t)(0x03A7 + rd16(DP + 0x94))) & 0x00FF) << 1);
+  wr16(DP + 0x7C, rom16(0x81C20E + k));
+  wr16(DP + 0x7E, rom16(0x81C212 + k));
+  menu_panel_sprites();
+  oam_finish_near(DP);
+}
+
+// TG3000_ROUTINE($80:CFDF) menu_gears_frame
+// A frame (after its wait): the panel; down/up pick the choice ($03A7 + D+$94 = 1, 0); B/Y/A/X
+// with the window open leave (D+$4E = 5): true then, the screen returns.
+bool menu_gears_frame(void) {
+  menu_panel_sprites();
+  oam_finish_near(DP);
+  const uint16_t me = rd16(DP + 0x94);
+  uint16_t p = rd16(DP + 0x0E);
+  wr16(DP + 0x0E, (uint16_t)(p & ~0x0400));
+  if(p & 0x0400) {
+    wr8((uint16_t)(0x03A7 + me), 0x01);
+    func_80E4C5();
+  }
+  p = rd16(DP + 0x0E);
+  wr16(DP + 0x0E, (uint16_t)(p & ~0x0800));
+  if(p & 0x0800) {
+    wr8((uint16_t)(0x03A7 + me), 0x00);
+    func_80E4C5();
+  }
+  p = rd16(DP + 0x0E);
+  wr16(DP + 0x0E, (uint16_t)(p & ~0xC0C0));
+  if((p & 0xC0C0) && rd16(DP + 0x4C) == 0) {
+    wr16(DP + 0x4E, 0x0005);
+    func_80E4DB();
+    return true;
+  }
+  return false;
+}

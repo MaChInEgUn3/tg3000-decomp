@@ -584,3 +584,8 @@
 80C7AE name_entry_ready src/misc.c 936a5857500b71d9 2 0 20/20 verified live-flags:- replayed:0
 80C7E8 name_entry_frame src/misc.c 936a5857500b71d9 204 0 148/148 verified live-flags:- replayed:0
 80C97C name_entry_draw src/misc.c 936a5857500b71d9 204 0 20/20 verified live-flags:- replayed:0
+80CEE2 menu_gears_open src/misc.c 0a8cdb46a204e2ca 0 0 37/37 verified live-flags:VC replayed:2
+80CF36 menu_gears_lines src/misc.c 0a8cdb46a204e2ca 6 0 11/11 verified live-flags:- replayed:0
+80CF4C menu_gears_panel src/misc.c 0a8cdb46a204e2ca 6 0 11/11 verified live-flags:- replayed:0
+80CF63 menu_gears_setup src/misc.c 0a8cdb46a204e2ca 6 0 47/47 verified live-flags:V replayed:0
+80CFDF menu_gears_frame src/misc.c 0a8cdb46a204e2ca 104 0 24/24 verified live-flags:- replayed:0
