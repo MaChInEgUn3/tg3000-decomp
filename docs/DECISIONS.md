@@ -2850,6 +2850,29 @@ password screen, a skipped track's bonus.
 - **Check:** full gate. Two comments that said steps 2-5 were not rows changed, so the change
   is not additions only.
 
+## The name entry's keys, and writes to nothing (menu-9, harness-20, 2026-11-24)
+
+- **`name_entry_key` ($80:C9A6) is ported** (in `src/misc.c`). It handles the name entry's
+  key D+$48:
+  - a letter from `$81:C16C` typed into the name at `$037E` (13 at most, the cursor `_`
+    after it);
+  - `$1D`/`$1E` delete;
+  - `$1F`/`$20` end. With D+$4C at 0, the frame and the name are redrawn a frame at a time
+    while the colours run through a table; then D+$4E = 3, and it leaves the caller too (PLA,
+    RTS). It is a waiting, `mayLeaveCaller` row.
+- **A quirk kept:** in the end's loop the colours go to `$0122 + Y` through DB = `$81`. Y is
+  not reloaded: it is what `sprite_text_menu` and `oam_finish_near` leave, a screen position
+  such as `$5C86`. So the game writes them to `$81:5DA8`, where no device answers, and they
+  are lost. The C does the same through `bus_wr16`, which writes WRAM only.
+- **harness-20:** a write to an address no device answers is dropped, as on the console. In
+  the system banks these are `$2000-$20FF`, `$2200-$3FFF` and `$4400-$7FFF`, outside the
+  DSP-4's banks. Before, it marked the sample as a hardware access.
+  - Reads there (open bus) stay hardware accesses.
+  - A C that wrote WRAM where the original wrote to nothing would still fail on WRAM.
+- **Results:** on the menus' movie, 13 of 13 entries sampled, all 102 paths. The unrun paths
+  (a full name, a delete with nothing typed) are holes.
+- **Check:** full gate (`difftest.c` changed).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

@@ -1622,4 +1622,8 @@ bool menu_button_assign(uint16_t button);
 // five button names, the cursor's colours.
 void menu_controls_sprites(void);
 
+// $80:C9A6: the name entry's key D+$48: a letter typed, a delete, or the end (a few frames,
+// then it leaves the caller too: returns true).
+bool name_entry_key(void);
+
 #endif

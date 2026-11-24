@@ -823,6 +823,16 @@ static bool isDsp4(uint32_t adr) {
   return bank >= 0x30 && bank < 0x40 && (adr & 0xFFFF) >= 0x8000;
 }
 
+// harness-20: no device answers here ($2000-$20FF, $2200-$3FFF, $4400-$7FFF of the system
+// banks, outside the DSP-4's): a write is lost, as on the console; the C drops it too
+// (bus_wr16). Reads (open bus) stay hardware accesses.
+static bool isUnmapped(uint32_t adr) {
+  const uint8_t bank = (adr >> 16) & 0x7F;
+  const uint16_t lo = adr & 0xFFFF;
+  if(bank >= 0x40) return false;
+  return (lo >= 0x2000 && lo < 0x2100) || (lo >= 0x2200 && lo < 0x4000) || (lo >= 0x4400 && lo < 0x8000);
+}
+
 static int dsp4CommandIndex(uint8_t cmd) {
   for(int i = 0; i < (int)(sizeof dsp4Commands / sizeof dsp4Commands[0]); i++) if(dsp4Commands[i].cmd == cmd) return i;
   return -1;
@@ -888,6 +898,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
     }
     return;
   }
+  if(write && isUnmapped(adr)) return;  // (harness-20)
   if(isWram(adr) || (!write && isRom(adr))) return;
   if(write && ppuFieldWrite(adr, val)) return;
   if(write && ((adr >> 16) & 0x7F) < 0x40 && (adr & 0xFFFF) == 0x2122) { cgramWordWrite(adr, val); return; }

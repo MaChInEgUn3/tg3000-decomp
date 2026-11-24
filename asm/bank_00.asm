@@ -8306,7 +8306,7 @@ CODE_80C972:
     lda.w #$C0C0                ; $80C972
     trb.b $0E                   ; $80C975
     beq CODE_80C97C             ; $80C977
-    jsr.w $C9A6                 ; $80C979
+    jsr.w name_entry_key        ; $80C979
 CODE_80C97C:
     jsr.w menu_frame_sprites    ; $80C97C
     lda.b $4C                   ; $80C97F
@@ -8329,6 +8329,7 @@ CODE_80C97C:
 CODE_80C9A0:
     jsr.w oam_finish_near       ; $80C9A0
     jmp.w $C7E2                 ; $80C9A3
+name_entry_key:
     lda.b $48                   ; $80C9A6
     cmp.w #$001F                ; $80C9A8
     beq CODE_80C9B0             ; $80C9AB

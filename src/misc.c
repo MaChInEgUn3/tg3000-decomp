@@ -10,6 +10,7 @@
 #include "scale.h"
 #include "platform.h"
 #include "scroll_tables.h"
+#include "shop.h"
 #include "sprites.h"
 #include "stars.h"
 #include "text.h"
@@ -8181,4 +8182,78 @@ void menu_controls_sprites(void) {
   wr16((uint16_t)(c4 + 0x0124), rom16(0x81C1C5 + (uint32_t)k));
   wr16((uint16_t)(c4 + 0x0126), rom16(0x81C1D7 + (uint32_t)k));
   wr16((uint16_t)(c4 + 0x0128), rom16(0x81C1B3 + (uint32_t)k));
+}
+
+// TG3000_ROUTINE($80:C9A6) name_entry_key
+//
+// The name entry's key D+$48 pressed: a letter ($81:C16C) typed at D+$40 into the name at
+// $037E (13 at most, the cursor `_` after it), $1D/$1E delete, $1F/$20 end. The first key
+// after a fresh start ($03A9 + D+$94 bit 15) clears the name. Ending (with D+$4C at 0):
+// the frame and the name redrawn a frame at a time while its colours run through $81:C124...
+// (from D+$3E), then D+$4E = 3, the cursor taken off; it leaves the caller too (PLA, RTS):
+// returns true then. A full name or an empty delete: sound $12 (shop_flag_fb, $80:E4D0; never run).
+bool name_entry_key(void) {
+  const uint16_t key = rd16(DP + 0x48);
+  if(key == 0x001F || key == 0x0020) {
+    if(rd16(DP + 0x4C) != 0) return false;
+    func_80E4DB();
+    for(uint16_t x = rd16(DP + 0x3E);;) {
+      wait_frames(1);
+      menu_frame_sprites();
+      wr16(DP + 0x14, 0x3354);
+      const uint16_t at = (uint16_t)(0x495C + rd16(DP + 0xE8) - rd16(DP + 0x4C));
+      uint16_t y = sprite_text_menu((uint16_t)(0x037E + rd16(DP + 0x94)), (uint16_t)(at << 8 | at >> 8));
+      if(rd16(DP + 0x74) < rd16(DP + 0x72)) y = 0;  // (oam_finish_near's Y: 0 when it clears)
+      oam_finish_near(DP);
+      x = (uint16_t)(x + 2);
+      // the colours go where Y points, through DB = $81 (as the original: Y is not reloaded;
+      // past $1FFF that is no memory, and the writes are lost)
+      bus_wr16(0x810000 | (uint16_t)(0x0122 + y), rom16(0x81C124 + (uint32_t)x));
+      bus_wr16(0x810000 | (uint16_t)(0x0124 + y), rom16(0x81C136 + (uint32_t)x));
+      bus_wr16(0x810000 | (uint16_t)(0x0126 + y), rom16(0x81C148 + (uint32_t)x));
+      bus_wr16(0x810000 | (uint16_t)(0x0128 + y), rom16(0x81C112 + (uint32_t)x));
+      if(x == 0x000E) break;
+    }
+    menu_frame_sprites();
+    oam_finish_near(DP);
+    wr16(DP + 0x4E, 0x0003);
+    wr16((uint16_t)(0x037E + rd16(DP + 0x40)), 0);
+    return true;
+  }
+  const uint16_t me = rd16(DP + 0x94), fresh = rd16((uint16_t)(0x03A9 + me));
+  if(fresh & 0x8000) {
+    wr16((uint16_t)(0x03A9 + me), (uint16_t)(fresh & 0x7FFF));
+    wr16(DP + 0x42, 0);
+    wr16(DP + 0x40, me);
+    wr16((uint16_t)(0x037E + me), 0x005F);
+    wr16(DP + 0x44, 0x0020);
+  }
+  if(key == 0x001D || key == 0x001E) {
+    if(rd16(DP + 0x42) == 0) {  // never run
+      shop_flag_fb();
+      return false;
+    }
+    func_80E4C5();
+    const uint16_t x = (uint16_t)(rd16(DP + 0x40) - 1);
+    wr8((uint16_t)(0x037E + x), 0x5F);
+    wr8((uint16_t)(0x037F + x), 0x00);
+    wr16(DP + 0x40, x);
+    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) - 1));
+    wr16(DP + 0x44, 0x0020);
+    return false;
+  }
+  if(rd16(DP + 0x42) == 0x000D) {  // never run
+    shop_flag_fb();
+    return false;
+  }
+  wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 1));
+  func_80E4C5();
+  uint16_t x = rd16(DP + 0x40);
+  wr8((uint16_t)(0x037E + x), rom8(0x81C16C + (uint32_t)key));
+  x = (uint16_t)(x + 1);
+  wr8((uint16_t)(0x037E + x), 0x5F);
+  wr16(DP + 0x40, x);
+  wr8((uint16_t)(0x037F + x), 0x00);
+  wr16(DP + 0x44, 0x0020);
+  return false;
 }

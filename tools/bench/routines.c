@@ -5354,6 +5354,33 @@ static void call_menu_button_assign(const Regs* in, Regs* out) {
   }
 }
 
+// name_entry_key: a letter or a delete ends on LDA #$20 (N Z clear), X = the new D+$40, C
+// from its last CMP (a letter: D+$42 below 13, clear; a delete: set); the end with D+$4C set
+// on its LDA of it (C set); the end proper leaves the caller with its PLA of the JSR's word
+// (N Z of it), X = D+$40, C and V oam_finish_near's
+static void call_name_entry_key(const Regs* in, Regs* out) {
+  const uint16_t key = rd16(DP + 0x48), ret = rd16((uint16_t)(in->sp + 1));
+  const bool leave = name_entry_key();
+  if(key == 0x001F || key == 0x0020) {
+    out->c = true;
+    if(leave) {
+      out->a = ret;
+      setNZ16(out, ret);
+      out->x = rd16(DP + 0x40);
+      setSbc16(out, rd16(DP + 0x6C), 0x0900);
+      out->leftCaller = true;
+    } else {
+      out->a = rd16(DP + 0x4C);
+      setNZ16(out, out->a);
+    }
+    return;
+  }
+  out->a = 0x0020;
+  out->n = out->z = false;
+  out->x = rd16(DP + 0x40);
+  out->c = key == 0x001D || key == 0x001E;
+}
+
 // menu_controls_sprites returns after the last colour's LDA (A, N Z of it), X its index
 // (D+$4C / 2, even: C its LSR's), Y = D+$C4
 static void call_menu_controls_sprites(const Regs* in, Regs* out) {
@@ -10904,6 +10931,9 @@ const Routine routines[] = {
   {.name = "menu_button_assign", .entry = 0x80CC7E, .end = 0x80CCE1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .mayLeaveCaller = true, .compareA = true, .compareY = true,
    .call = call_menu_button_assign, .holes = {{0x80CC93, 0x80CC94}, {0x80CCD5, 0x80CCDA}}},
+  {.name = "name_entry_key", .entry = 0x80C9A6, .end = 0x80CA97, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .mayLeaveCaller = true, .compareA = true,
+   .compareX = true, .call = call_name_entry_key, .holes = {{0x80CA05, 0x80CA0A}, {0x80CA2B, 0x80CA30}}},
   {.name = "menu_controls_sprites", .entry = 0x80CCE1, .end = 0x80CE7F, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
    .call = call_menu_controls_sprites, .holes = {{0x80CDAF, 0x80CDB4}, {0x80CDBD, 0x80CDC0}}},  // D+$7A past its target

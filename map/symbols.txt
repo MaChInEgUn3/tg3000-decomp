@@ -400,6 +400,7 @@ func    80B97B   nmi_menu_frame      ; the menus' NMI frame: rings, registers, p
 func    80B94F   empty_80B94F        ; a lone RTS (the shop's idle frame hook) -> src/misc.c
 func    80855A   sprite_number_point ; a 4-digit value as sprites, a point before the last two -> src/text.c
 func    80C475   sprite_bar8         ; a bar of 8 sprites, D+$14 wide, centred on D+$18 -> src/text.c
+func    80C9A6   name_entry_key      ; the name entry's key: a letter, a delete, or the end (leaves) -> src/misc.c
 func    80CA97   menu_frame_sprites  ; a menu frame's corner and edge sprites, then a group -> src/misc.c
 func    80D026   menu_panel_sprites  ; a menu panel: two groups, colour, steps toward targets, frame -> src/misc.c
 func    80CC7E   menu_button_assign  ; the controls menu: a button to line D+$48, swapped; line 5 leaves -> src/misc.c
