@@ -19,6 +19,8 @@ vis:) are judged on the evidence pooled over the movies instead:
   any movie, fails the routine;
 - the paths: the union of the paths visited must cover every instruction start;
 - verified then needs at least one movie that compared something;
+- harness-17: a flag every watch of every movie found written in the straight-line code
+  after a cut (sdead:, endAt rows) is dead there even below MIN_WATCHED;
 - harness-15: lagged samples that failed (lagfail:) fail the routine only when no movie has a
   sample without lag that passed (cleanpass:).
 
@@ -51,7 +53,14 @@ def pooled(rows):
         return list(hard[0])[:10]
     compared = [(r, e) for r, e in evs if int(e["compared"]) > 0]
     watched = sum(int(e["watched"]) for _, e in evs)
-    live = set("NVZC") if watched < MIN_WATCHED else set("".join(e["read"] for _, e in evs).replace("-", ""))
+    read = set("".join(e["read"] for _, e in evs).replace("-", ""))
+    live = set("NVZC") if watched < MIN_WATCHED else set(read)
+    watching = [e for _, e in evs if int(e["watched"]) > 0]
+    if watching and all("sdead" in e for e in watching):  # harness-17
+        sdead = set("NVZC")
+        for e in watching:
+            sdead &= set(e["sdead"].replace("-", ""))
+        live -= sdead - read
     mism = set("".join(e["mism"] for _, e in compared).replace("-", ""))
     # vis: one bit per instruction start, the first the most significant, padded with zero
     # bits to whole hex digits

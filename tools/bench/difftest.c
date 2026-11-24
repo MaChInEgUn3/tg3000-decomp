@@ -59,6 +59,9 @@ typedef struct {
   char firstFailure[400];
   // flags: compared separately; a mismatch only fails the routine if the flag is live
   unsigned long watched, live[4], dead[4], flagMismatch[4];
+  // harness-17: watches of a cut (a sample that ended at endAt, inside a routine) that found
+  // the flag written in straight-line code after it; at every watched cut: dead there
+  unsigned long straightDead[4];
   char firstFlagFailure[4][160];
   // the original's PPU field writes in live samples: scanlines, how many while the picture
   // is being drawn (line < 225, screen on), BG modes, HDMA targets at the time, and how
@@ -740,6 +743,7 @@ typedef struct {
   uint8_t shadow;
   int phpDepth;
   struct { uint16_t sp; uint8_t shadow; } php[4];
+  bool straight;  // harness-17: a cut's watch still in the straight-line code after it
 } Watch;
 static Watch* watches;
 static void watchStart(int idx);  // (below, with the active-watch list)
@@ -1429,6 +1433,9 @@ static int* activeWatches;
 static int activeWatchCount;
 static void watchStart(int idx) {
   watches[idx] = (Watch){true, FN | FV | FZ | FC, 0, cpu_interruptCount, -1};
+  // harness-17: a sample that ended at its endAt (not at a return): the code after the cut
+  // is the same every time, so up to its first branch one watch has seen all of it
+  watches[idx].straight = table[idx].endAt != 0 && insnPc == norm(table[idx].endAt);
   activeWatches[activeWatchCount++] = idx;
 }
 
@@ -1438,6 +1445,7 @@ static void resolveFlags(int idx, uint8_t mask, bool live) {
   for(int f = 0; f < 4; f++) {
     if(!(w->unresolved & mask & flagBits[f])) continue;
     if(live) s->live[f]++; else s->dead[f]++;
+    if(!live && w->straight) s->straightDead[f]++;
     w->unresolved &= ~flagBits[f];
   }
   if(w->unresolved == 0) w->active = false;
@@ -1449,6 +1457,7 @@ static void watchStep(int idx, const Cpu* cpu, uint8_t op, uint8_t reads, uint8_
   Watch* w = &watches[idx];
   if(cpu_interruptCount != w->interrupts) {
     w->interrupts = cpu_interruptCount;
+    w->straight = false;
     if(w->pausedUntilSp < 0) w->pausedUntilSp = (uint16_t)(cpu->sp + (cpu->e ? 3 : 4));
   }
   if(w->pausedUntilSp >= 0) {
@@ -1456,6 +1465,7 @@ static void watchStep(int idx, const Cpu* cpu, uint8_t op, uint8_t reads, uint8_
     w->pausedUntilSp = -1;
   }
   if(++w->count > (table[idx].endAt ? WATCH_CAP_HANDLER : WATCH_CAP)) { resolveFlags(idx, FN | FV | FZ | FC, true); return; }
+  if((op == 0x08 || op == 0x28)) w->straight = false;  // (harness-17: PHP, PLP end the straight code)
   if(op == 0x08 && w->phpDepth < 4) {  // PHP: the flags are saved, not read
     w->php[w->phpDepth].sp = cpu->sp;
     w->php[w->phpDepth++].shadow = w->shadow;
@@ -1469,6 +1479,17 @@ static void watchStep(int idx, const Cpu* cpu, uint8_t op, uint8_t reads, uint8_
   if(reads) resolveFlags(idx, reads, true);
   if(w->phpDepth > 0) w->shadow |= writes;
   else if(w->active && writes) resolveFlags(idx, writes, false);
+  // the straight-line code ends at a conditional branch, an indirect jump, a return, a
+  // break, PHP or PLP (the flags a later path sees depend on the state)
+  switch(op) {
+    case 0x10: case 0x30: case 0x50: case 0x70: case 0x90: case 0xB0: case 0xD0: case 0xF0:
+    case 0x6C: case 0x7C: case 0xDC: case 0xFC: case 0x60: case 0x6B: case 0x40: case 0x00: case 0x02:
+    case 0x08: case 0x28:
+      w->straight = false;
+      break;
+    default:
+      break;
+  }
 }
 
 // Inside a handler that a waiting sample records, only the watches of rows that end inside
@@ -1843,7 +1864,7 @@ bool difftest_report(const char* resultsPath) {
     char liveFlags[5] = "", flagNote[64] = "";
     bool flagsOk = true;
     for(int f = 0, n = 0; f < 4; f++) {
-      bool live = s->live[f] > 0 || s->watched < MIN_WATCHED;
+      bool live = s->live[f] > 0 || (s->watched < MIN_WATCHED && !(s->watched > 0 && s->straightDead[f] == s->watched));
       if(live) liveFlags[n++] = flagNames[f];
       if(live && s->flagMismatch[f] > 0) flagsOk = false;
     }
@@ -1894,7 +1915,7 @@ bool difftest_report(const char* resultsPath) {
       printf("\n");
     }
     for(int f = 0; f < 4; f++) {
-      bool live = s->live[f] > 0 || s->watched < MIN_WATCHED;
+      bool live = s->live[f] > 0 || (s->watched < MIN_WATCHED && !(s->watched > 0 && s->straightDead[f] == s->watched));
       if(live && s->firstFlagFailure[f][0]) printf("    first live-flag failure: %s\n", s->firstFlagFailure[f]);
     }
     bool keptRow = false;
@@ -1911,13 +1932,15 @@ bool difftest_report(const char* resultsPath) {
       // flags with a compared mismatch, a hard failure (anything but the flag and path
       // rules), the cases compared, and the paths visited (one bit per instruction start,
       // in order, as hex)
-      char readSet[5] = "", mismSet[5] = "", vis[MAX_EXTENT / 4 + 2] = "";
-      for(int f = 0, nr = 0, nm = 0; f < 4; f++) {
+      char readSet[5] = "", mismSet[5] = "", sdeadSet[5] = "", vis[MAX_EXTENT / 4 + 2] = "";
+      for(int f = 0, nr = 0, nm = 0, nd = 0; f < 4; f++) {
         if(s->live[f] > 0) readSet[nr++] = flagNames[f];
         if(s->flagMismatch[f] > 0) mismSet[nm++] = flagNames[f];
+        if(s->watched > 0 && s->straightDead[f] == s->watched) sdeadSet[nd++] = flagNames[f];  // (harness-17)
       }
       if(readSet[0] == '\0') strcpy(readSet, "-");
       if(mismSet[0] == '\0') strcpy(mismSet, "-");
+      if(sdeadSet[0] == '\0') strcpy(sdeadSet, "-");
       {
         int bit = 0, nib = 0, at = 0;
         for(int k = 0; k < MAX_EXTENT; k++) {
@@ -1931,9 +1954,9 @@ bool difftest_report(const char* resultsPath) {
       }
       const bool hard = s->fail > 0 || s->fuzzFail > 0 || fuzzLostOf(s) > 0 || s->replayFail > 0 ||
                         (s->replayRequested - (s->replayPass + s->replayFail)) > 0 || s->contractBroken;
-      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s replayed:%lu watched:%lu read:%s mism:%s hard:%d compared:%lu vis:%s lagfail:%lu cleanpass:%lu\n",
+      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s replayed:%lu watched:%lu read:%s mism:%s hard:%d compared:%lu vis:%s lagfail:%lu cleanpass:%lu sdead:%s\n",
         r->entry, r->name, r->source, (unsigned long long)verificationHash(r->source), s->pass, s->fuzzPass, seen, need,
-        status, liveFlags, s->replayPass, s->watched, readSet, mismSet, hard ? 1 : 0, s->pass + s->fuzzPass + s->replayPass, vis, s->lagFail, s->cleanPass);
+        status, liveFlags, s->replayPass, s->watched, readSet, mismSet, hard ? 1 : 0, s->pass + s->fuzzPass + s->replayPass, vis, s->lagFail, s->cleanPass, sdeadSet);
     }
   }
   if(out != NULL) fclose(out);

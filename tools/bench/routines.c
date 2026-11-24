@@ -5313,6 +5313,10 @@ static void call_ticker_screen(const Regs* in, Regs* out) {
   out->z = out->a == 0;
   out->c = false;
 }
+static void call_ticker_screen_wrong_carry(const Regs* in, Regs* out) {  // (negative: C set)
+  call_ticker_screen(in, out);
+  out->c = true;
+}
 static void call_ticker_screen_show(const Regs* in, Regs* out) {
   out->c = ticker_screen_show(in->c);
   out->a = 0x89B2;
@@ -11739,6 +11743,11 @@ const Routine routines[] = {
 const int routineCount = sizeof routines / sizeof routines[0];
 
 const Routine negativeRoutines[] = {
+  // harness-17: a cut whose carry the code after it does not overwrite before its first
+  // branch (split_screen_setup's), given wrong: it must still fail on its few samples
+  {.name = "ticker_screen_wrong_carry", .entry = 0x80E4E6, .end = 0x80E5F7, .endAt = 0x80E5F7, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_ticker_screen_wrong_carry},
   {.name = "hud_markers_write_wrong", .entry = 0x828961, .end = 0x8289B2, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_hud_markers_write_wrong, ALL_OUTPUTS,
    .fuzz = fuzz_hud_markers_write, .endAt = 0x8289B2, .vramReadAt = 0x828976},

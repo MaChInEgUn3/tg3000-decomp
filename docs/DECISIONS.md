@@ -2567,6 +2567,30 @@ password screen, a skipped track's bonus.
   1/1 each.
 - **Check:** full gate (a harness change and a new waiting row).
 
+## Flags at a cut (harness-17, 2026-11-24, with the advisor)
+
+- **The problem:** a row cut inside a routine (`endAt`, the screens' load rows) with fewer
+  than 100 watched returns counts every flag as live. At such a cut the code after it is
+  written over by the next instructions (`$80:F115`: `LDA #1`, then `CLC`, `ADC $0024`), but
+  the rule made the adapter model flags nothing reads (V after `func_80F745`, say).
+- **The rule:** for a sample that ended at its `endAt`, the watch notes each flag written
+  while still in the straight-line code after the cut. Straight-line code ends at a
+  conditional branch, an indirect jump, a return, BRK/COP, PHP/PLP, or an interrupt. A flag
+  every watch found written there (`sdead:` in the evidence, pooled over the movies) is
+  dead at the cut, even below 100 returns.
+  - This is sound because the code after a cut is the same every time: up to its first
+    branch, one watch has seen all of it.
+  - Returns keep the 100-return rule: one watched caller says nothing about another. A
+    dispatcher whose `endAt` is its RTS stops being straight at once, so it keeps the old
+    rule too.
+- **What changed:** the cut rows `results_screen`, `title_screen` and `title_screen_scene`
+  now have no live flags. `ticker_screen` and `hud_markers_write` keep V and C, which the
+  code after them does not write before a branch.
+- **Negative row `ticker_screen_wrong_carry`:** the ticker load with C set. C is not written
+  before `split_screen_setup`'s first branch, so it stays live, and the row fails on its
+  two replayed samples.
+- **Check:** full gate. Every row's status is as at HEAD, and every negative fails.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
