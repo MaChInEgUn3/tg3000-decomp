@@ -645,3 +645,13 @@
 80F549 upload_slice_13 src/video_dma.c 5ba131e12608bf8e 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 5ba131e12608bf8e 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 5ba131e12608bf8e 1 500 20/20 verified live-flags:NVZC replayed:0
+8AA7CD vs_palette_load src/vs.c 2b7f0cc451755ae3 1 0 5/5 verified live-flags:NVZC replayed:0
+8AAD58 vs_cursor_moving src/vs.c 2b7f0cc451755ae3 589 0 13/13 verified live-flags:C replayed:0
+8AABCF vs_panel_sprite src/vs.c 2b7f0cc451755ae3 526 0 17/17 verified live-flags:- replayed:0
+8AAA58 vs_cursor_home src/vs.c 2b7f0cc451755ae3 4 0 9/9 verified live-flags:NVZC replayed:0
+8AACE4 vs_letter_index src/vs.c 2b7f0cc451755ae3 534 500 14/14 verified live-flags:- replayed:0
+8AA72F vs_panel_screens src/vs.c 2b7f0cc451755ae3 7 500 30/30 verified live-flags:NVZC replayed:0
+8AAEDA vs_letter_next src/vs.c 2b7f0cc451755ae3 24 500 20/20 verified live-flags:NVZC replayed:0
+8AAA0E vs_cursor_column src/vs.c 2b7f0cc451755ae3 292 0 11/11 verified live-flags:- replayed:0
+8AAAA2 vs_caret_blink src/vs.c 2b7f0cc451755ae3 526 0 13/13 verified live-flags:V replayed:0
+8AACB2 vs_name_clear src/vs.c 2b7f0cc451755ae3 18 0 16/16 verified live-flags:NVZC replayed:0

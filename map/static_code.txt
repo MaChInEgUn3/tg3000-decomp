@@ -164,3 +164,6 @@
 80:9F38 80:9F3C m16x16 ; shop_part_level_b, list 10's level getter (the $80:9EEA table's entry 10): executed by shop_level_marks' difftest fuzz (list 10), matched by src/shop.c
 80:A1A3 80:A1E4 m16x16 ; shop_item_icon_10, list 10's icon handler: executed by the dispatches' difftest fuzz (list 10), matched by src/shop.c
 8A:A531 8A:A53C m16x16 ; vs_players_mask: a pad absent ($8A:A511 BCC): executed by its difftest fuzz, matched by src/misc.c
+8A:A748 8A:A74C m16x16 ; vs_panel_screens: a panel other than 0-6 (its CPX chain falls through): executed by its difftest fuzz, matched by src/vs.c
+8A:AEE6 8A:AEFE m16x16 ; vs_letter_next: a step along the row ($8A:AEE4 BEQ skips it at the row's end): executed by its difftest fuzz, matched by src/vs.c
+8A:AF03 8A:AF08 m16x16 ; vs_letter_next: a $3C letter steps the row's start back: executed by its difftest fuzz, matched by src/vs.c

@@ -28,6 +28,7 @@
 #include "stars.h"
 #include "text.h"
 #include "password.h"
+#include "vs.h"
 #include "tg3000.h"
 #include "util.h"
 #include "video_dma.h"
@@ -5690,6 +5691,121 @@ static void call_password_entry_found(const Regs* in, Regs* out) {
   password_entry_found();
   out->a = rd16(DP + 0x52);
   setNZ16(out, out->a);
+}
+
+// VS MODE's screen: the panels' leaves (X the panel: 0, 2, 4, 6)
+static void cmpOut(Regs* out, uint16_t a, uint16_t b) {  // A = a, then CMP b
+  out->a = a;
+  setNZ16(out, (uint16_t)(a - b));
+  out->c = a >= b;
+}
+static void call_vs_palette_load(const Regs* in, Regs* out) {
+  (void)in;
+  vs_palette_load();
+  out->a = 0x0001;
+  out->x = 0x2202;
+  out->y = 0x0080;
+  out->n = out->z = false;
+}
+static void call_vs_cursor_moving(const Regs* in, Regs* out) {
+  const uint16_t x = in->x;
+  const bool moving = vs_cursor_moving(x);
+  const uint16_t d88 = rd16((uint16_t)(0x0D88 + x)), d78 = rd16((uint16_t)(0x0D78 + x));
+  if(d88 != rd16((uint16_t)(0x0D80 + x))) cmpOut(out, d88, rd16((uint16_t)(0x0D80 + x)));
+  else if(d78 != rd16((uint16_t)(0x0D70 + x))) cmpOut(out, d78, rd16((uint16_t)(0x0D70 + x)));
+  else {
+    const uint16_t a = rd16((uint16_t)(0x0D90 + x)), b = rd16((uint16_t)(0x0D68 + x));
+    out->a = (uint16_t)(a - b);
+    setNZ16(out, out->a);
+    setSbc16(out, a, b);
+  }
+  out->c = moving;
+}
+static void call_vs_panel_sprite(const Regs* in, Regs* out) {
+  vs_panel_sprite(in->x);
+  out->a = 0x3002;
+  setNZ16(out, out->a);
+  setAdc16(out, (uint16_t)(rom16(0x8AACDC + in->x) << 3), 7);
+}
+static void call_vs_cursor_home(const Regs* in, Regs* out) {
+  vs_cursor_home(in->x);
+  out->a = 0xFFFF;
+  setNZ16(out, out->a);
+}
+static void call_vs_letter_index(const Regs* in, Regs* out) {
+  const uint16_t times = (uint16_t)(rd16((uint16_t)(0x0DB4 + in->x)) * 7);
+  out->a = out->y = vs_letter_index(in->x);
+  setNZ16(out, out->a);
+  setAdc16(out, times, rd16((uint16_t)(0x0DAC + in->x)));
+}
+static void call_vs_panel_screens(const Regs* in, Regs* out) {
+  vs_panel_screens(in->x);
+  setNZ16(out, in->a);
+  const uint16_t x = in->x;
+  out->c = (x == 0 || x == 2 || x == 4 || x == 6) || x >= 6;  // (its last CPX)
+}
+static void call_vs_letter_next(const Regs* in, Regs* out) {
+  const uint16_t was = rd16((uint16_t)(0x0DB4 + in->x));
+  // the flags: its steps over again (CMP #4; vs_letter_index's ADC; CMP #$20, CMP #$3C)
+  uint16_t col = was, row = rd16((uint16_t)(0x0DAC + in->x));
+  for(;;) {
+    if(col == 4) {
+      out->c = true;
+      break;
+    }
+    col++;
+    setAdc16(out, (uint16_t)(col * 7), row);
+    const uint8_t c = rom8(0x8AAFF1 + (uint16_t)(col * 7 + row));
+    out->c = c >= 0x20;
+    if(c == 0x20) continue;
+    out->c = c >= 0x3C;
+    if(c == 0x3C) {
+      row--;
+      continue;
+    }
+    break;
+  }
+  vs_letter_next(in->x);
+  out->a = was;
+  setNZ16(out, was);
+  if(was != 4) out->y = rd16(DP + 0x4E);  // (the letters' index of its last step)
+}
+static void call_vs_cursor_column(const Regs* in, Regs* out) {
+  vs_cursor_column(in->x);
+  out->a = rom16(0x8AAA8A + in->x);
+  setNZ16(out, out->a);
+  setAdc16(out, (uint16_t)(rd16((uint16_t)(0x0DB4 + in->x)) << 4), rom16(0x8AAA82 + in->x));
+}
+static void call_vs_caret_blink(const Regs* in, Regs* out) {
+  const uint16_t state = rd16((uint16_t)(0x0DDC + in->x));
+  vs_caret_blink(in->x);
+  out->c = state >= 0xFFFE;
+  if(state == 0xFFFE) {
+    out->a = 0xFFFE;
+    out->z = true;
+    out->n = false;
+  } else {
+    out->a = rd16((uint16_t)(0x05F8 + in->x));
+    setNZ16(out, out->a);
+  }
+}
+static void call_vs_name_clear(const Regs* in, Regs* out) {
+  const bool once = rd16((uint16_t)(0x0DEC + in->x)) == 0;
+  vs_name_clear(in->x);
+  if(once) {
+    out->y = 0x000C;
+    out->c = true;
+  }
+  setNZ16(out, in->a);
+}
+// a panel (0-6, even; sometimes another X for the screens' byte), its letter column 0-4 and
+// row start
+static void fuzz_vs_panel(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)((rnd() % 8) ? (rnd() % 4) * 2 : rnd() % 16);
+  const uint16_t x = (uint16_t)(r->x & 6);
+  r->x = (r->x & 1) ? r->x : x | (r->x & 8);
+  wr16ram(ram, (uint16_t)(0x0DB4 + r->x), (uint16_t)(rnd() % 5));
+  wr16ram(ram, (uint16_t)(0x0DAC + r->x), (uint16_t)(rnd() % 32));
 }
 
 // the championship menu's pass ends at its button test: C V oam_finish_near's, or with down
@@ -11584,6 +11700,26 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_menu_select_restore},
   {.name = "password_entry_found", .entry = 0x8AB2FD, .end = 0x8AB302, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_password_entry_found},
+  {.name = "vs_palette_load", .entry = 0x8AA7CD, .end = 0x8AA7DB, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_palette_load},
+  {.name = "vs_cursor_moving", .entry = 0x8AAD58, .end = 0x8AAD74, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_cursor_moving},
+  {.name = "vs_panel_sprite", .entry = 0x8AABCF, .end = 0x8AABEF, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_panel_sprite},
+  {.name = "vs_cursor_home", .entry = 0x8AAA58, .end = 0x8AAA71, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_cursor_home},
+  {.name = "vs_letter_index", .entry = 0x8AACE4, .end = 0x8AACFF, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_letter_index, .fuzz = fuzz_vs_panel},
+  {.name = "vs_panel_screens", .entry = 0x8AA72F, .end = 0x8AA764, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_panel_screens, .fuzz = fuzz_vs_panel},
+  {.name = "vs_letter_next", .entry = 0x8AAEDA, .end = 0x8AAF08, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_letter_next, .fuzz = fuzz_vs_panel},
+  {.name = "vs_cursor_column", .entry = 0x8AAA0E, .end = 0x8AAA23, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_cursor_column},
+  {.name = "vs_caret_blink", .entry = 0x8AAAA2, .end = 0x8AAAC1, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_caret_blink},
+  {.name = "vs_name_clear", .entry = 0x8AACB2, .end = 0x8AACD4, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_name_clear},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

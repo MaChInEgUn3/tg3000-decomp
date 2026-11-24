@@ -686,3 +686,13 @@ func    8AB0AD   menu_action_music   ; MUSIC: $1528 bits 2-5 step 0, 1 -> src/mi
 func    8AA53C   menu_action_players ; VS MODE's player counts: the count an action chooses -> src/misc.c
 func    8AA509   vs_players_mask     ; the first N VS players' pads from D+$56 -> src/misc.c
 func    8AA558   vs_players_set      ; $03DC = the VS players' pads | 2 -> src/misc.c
+func    8AA7CD   vs_palette_load     ; VS screen: its 64 colours from $8A:C5D8 -> src/vs.c
+func    8AAD58   vs_cursor_moving    ; VS panel: C clear once its cursor has arrived -> src/vs.c
+func    8AABCF   vs_panel_sprite     ; VS panel: its frame sprite (slot $F8 + X) -> src/vs.c
+func    8AAA58   vs_cursor_home      ; VS panel: the cursor back on its first letter -> src/vs.c
+func    8AACE4   vs_letter_index     ; VS panel: its letter's index (7 a row), D+$4E -> src/vs.c
+func    8AA72F   vs_panel_screens    ; VS panel: the split-screen byte $13 into D+$FB or D+$FC -> src/vs.c
+func    8AAEDA   vs_letter_next      ; VS panel: the cursor one letter on, past spaces -> src/vs.c
+func    8AAA0E   vs_cursor_column    ; VS panel: the cursor on its letter's column -> src/vs.c
+func    8AAAA2   vs_caret_blink      ; VS panel: its caret hidden or blinking -> src/vs.c
+func    8AACB2   vs_name_clear       ; VS panel: its name cleared, once -> src/vs.c

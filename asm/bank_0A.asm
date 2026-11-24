@@ -3958,7 +3958,7 @@ vs_players_set:
     stz.b $8E                   ; $8AA579
     lda.w #$0001                ; $8AA57B
     jsl.l wait_frames_long      ; $8AA57E
-    jsr.w $A7CD                 ; $8AA582
+    jsr.w vs_palette_load       ; $8AA582
     jsr.w $B9AF                 ; $8AA585
     sep.b #$20                  ; $8AA588
     lda.b #$00                  ; $8AA58A
@@ -4120,6 +4120,7 @@ CODE_8AA71D:
     sep.b #$20                  ; $8AA729
     lda.b #$11                  ; $8AA72B
     bra CODE_8AA734             ; $8AA72D
+vs_panel_screens:
     pha                         ; $8AA72F
     sep.b #$20                  ; $8AA730
     lda.b #$13                  ; $8AA732
@@ -4132,7 +4133,9 @@ CODE_8AA734:
     beq CODE_8AA758             ; $8AA741
     cpx.w #$0006                ; $8AA743
     beq CODE_8AA75E             ; $8AA746
-    incbin !baserom:$52748..$5274C
+    rep.b #$20                  ; $8AA748 static
+    pla                         ; $8AA74A static
+    rts                         ; $8AA74B static
 CODE_8AA74C:
     sta.b $FB                   ; $8AA74C
     rep.b #$20                  ; $8AA74E
@@ -4203,6 +4206,7 @@ CODE_8AA7B5:
 CODE_8AA7CB:
     plx                         ; $8AA7CB
     rts                         ; $8AA7CC
+vs_palette_load:
     lda.w #$8A00                ; $8AA7CD
     ldx.w #$C5D8                ; $8AA7D0
     ldy.w #$0080                ; $8AA7D3
@@ -4240,21 +4244,21 @@ CODE_8AA7F7:
     beq CODE_8AA869             ; $8AA827
     jsr.w $AAC1                 ; $8AA829
     jsr.w $AD74                 ; $8AA82C
-    jsr.w $ACE4                 ; $8AA82F
+    jsr.w vs_letter_index       ; $8AA82F
     jsr.w $ACFF                 ; $8AA832
     jsr.w $AD34                 ; $8AA835
     jsr.w sprite_frame          ; $8AA838
     jsr.w $ABEF                 ; $8AA83B
-    jsr.w $AAA2                 ; $8AA83E
+    jsr.w vs_caret_blink        ; $8AA83E
     rts                         ; $8AA841
 CODE_8AA842:
     jsr.w $AA23                 ; $8AA842
-    jsr.w $AA0E                 ; $8AA845
+    jsr.w vs_cursor_column      ; $8AA845
     jsr.w $A9A7                 ; $8AA848
     jsr.w $A852                 ; $8AA84B
     jsr.w sprite_frame          ; $8AA84E
     rts                         ; $8AA851
-    jsr.w $AD58                 ; $8AA852
+    jsr.w vs_cursor_moving      ; $8AA852
     bcc CODE_8AA858             ; $8AA855
     rts                         ; $8AA857
 CODE_8AA858:
@@ -4298,7 +4302,7 @@ CODE_8AA8A1:
     jsr.w $A8E5                 ; $8AA8A4
     lda.w #$FFFD                ; $8AA8A7
     sta.w $0DDC,x               ; $8AA8AA
-    jsr.w $A72F                 ; $8AA8AD
+    jsr.w vs_panel_screens      ; $8AA8AD
     lda.w $0DB4,x               ; $8AA8B0
     sep.b #$20                  ; $8AA8B3
     cpx.w #$0000                ; $8AA8B5
@@ -4459,11 +4463,12 @@ CODE_8AA9F1:
     jsr.w rng_next_8a_2         ; $8AA9FD
     and.w #$0003                ; $8AAA00
     sta.w $0DB4,x               ; $8AAA03
-    jsr.w $AA58                 ; $8AAA06
+    jsr.w vs_cursor_home        ; $8AAA06
     rts                         ; $8AAA09
 CODE_8AAA0A:
-    jsr.w $AA58                 ; $8AAA0A
+    jsr.w vs_cursor_home        ; $8AAA0A
     rts                         ; $8AAA0D
+vs_cursor_column:
     lda.w $0DB4,x               ; $8AAA0E
     asl a                       ; $8AAA11
     asl a                       ; $8AAA12
@@ -4480,7 +4485,7 @@ CODE_8AAA0A:
     beq CODE_8AAA2C             ; $8AAA29
     rts                         ; $8AAA2B
 CODE_8AAA2C:
-    jsr.w $AD58                 ; $8AAA2C
+    jsr.w vs_cursor_moving      ; $8AAA2C
     bcc CODE_8AAA32             ; $8AAA2F
     rts                         ; $8AAA31
 CODE_8AAA32:
@@ -4504,6 +4509,7 @@ CODE_8AAA4F:
     dec.w $0DB4,x               ; $8AAA54
 CODE_8AAA57:
     rts                         ; $8AAA57
+vs_cursor_home:
     lda.w $AA82,x               ; $8AAA58
     sta.w $0D88,x               ; $8AAA5B
     lda.w $AA8A,x               ; $8AAA5E
@@ -4521,6 +4527,7 @@ CODE_8AAA57:
     jsr.w $B072                 ; $8AAA7E
     rts                         ; $8AAA81
     incbin !baserom:$52A82..$52AA2
+vs_caret_blink:
     lda.w $0DDC,x               ; $8AAAA2
     cmp.w #$FFFE                ; $8AAAA5
     bne CODE_8AAAAE             ; $8AAAA8
@@ -4563,7 +4570,7 @@ CODE_8AAADF:
     lda.w #$03E4                ; $8AAAEF
     jsr.w $B072                 ; $8AAAF2
     ldx.w #$0000                ; $8AAAF5
-    jsr.w $ABCF                 ; $8AAAF8
+    jsr.w vs_panel_sprite       ; $8AAAF8
     stz.b $88                   ; $8AAAFB
     jsr.w $AB6B                 ; $8AAAFD
     plx                         ; $8AAB00
@@ -4582,7 +4589,7 @@ CODE_8AAB02:
     lda.w #$03F1                ; $8AAB12
     jsr.w $B072                 ; $8AAB15
     ldx.w #$0002                ; $8AAB18
-    jsr.w $ABCF                 ; $8AAB1B
+    jsr.w vs_panel_sprite       ; $8AAB1B
     stz.b $88                   ; $8AAB1E
     jsr.w $AB84                 ; $8AAB20
     plx                         ; $8AAB23
@@ -4601,7 +4608,7 @@ CODE_8AAB25:
     lda.w #$03FE                ; $8AAB35
     jsr.w $B072                 ; $8AAB38
     ldx.w #$0004                ; $8AAB3B
-    jsr.w $ABCF                 ; $8AAB3E
+    jsr.w vs_panel_sprite       ; $8AAB3E
     stz.b $88                   ; $8AAB41
     jsr.w $AB9D                 ; $8AAB43
     plx                         ; $8AAB46
@@ -4620,7 +4627,7 @@ CODE_8AAB48:
     lda.w #$040B                ; $8AAB58
     jsr.w $B072                 ; $8AAB5B
     ldx.w #$0006                ; $8AAB5E
-    jsr.w $ABCF                 ; $8AAB61
+    jsr.w vs_panel_sprite       ; $8AAB61
     stz.b $88                   ; $8AAB64
     jsr.w $ABB6                 ; $8AAB66
     plx                         ; $8AAB69
@@ -4661,6 +4668,7 @@ CODE_8AAB48:
     ldy.w #$00B8                ; $8AABC8
     jsr.w $B721                 ; $8AABCB
     rts                         ; $8AABCE
+vs_panel_sprite:
     lda.w $ACD4,x               ; $8AABCF
     asl a                       ; $8AABD2
     asl a                       ; $8AABD3
@@ -4693,7 +4701,7 @@ CODE_8AABF8:
     cmp.w #$0064                ; $8AAC0B
     db $F0,$4D ; beq            ; $8AAC0E
     pha                         ; $8AAC10
-    jsr.w $ACB2                 ; $8AAC11
+    jsr.w vs_name_clear         ; $8AAC11
     lda.w $0DD4,x               ; $8AAC14
     cmp.w #$000C                ; $8AAC17
     db $F0,$0D ; beq            ; $8AAC1A
@@ -4707,7 +4715,7 @@ CODE_8AABF8:
 CODE_8AAC2E:
     lda.w #$0000                ; $8AAC2E
     jsr.w $AC73                 ; $8AAC31
-    jsr.w $AD58                 ; $8AAC34
+    jsr.w vs_cursor_moving      ; $8AAC34
     bcc CODE_8AAC3A             ; $8AAC37
     rts                         ; $8AAC39
 CODE_8AAC3A:
@@ -4717,7 +4725,7 @@ CODE_8AAC3A:
     lda.w #$FFFE                ; $8AAC43
     sta.w $0DDC,x               ; $8AAC46
     jsr.w $A9F2                 ; $8AAC49
-    jsr.w $A72F                 ; $8AAC4C
+    jsr.w vs_panel_screens      ; $8AAC4C
     rts                         ; $8AAC4F
     incbin !baserom:$52C50..$52C73
     pha                         ; $8AAC73
@@ -4755,6 +4763,7 @@ CODE_8AACAC:
     plx                         ; $8AACAF
     pla                         ; $8AACB0
     rts                         ; $8AACB1
+vs_name_clear:
     pha                         ; $8AACB2
     lda.w $0DEC,x               ; $8AACB3
     bne CODE_8AACD2             ; $8AACB6
@@ -4774,6 +4783,7 @@ CODE_8AACD2:
     pla                         ; $8AACD2
     rts                         ; $8AACD3
     incbin !baserom:$52CD4..$52CE4
+vs_letter_index:
     lda.w $0DB4,x               ; $8AACE4
     tay                         ; $8AACE7
     lda.w #$0000                ; $8AACE8
@@ -4830,6 +4840,7 @@ CODE_8AAD2E:
     adc.w $0DC4,x               ; $8AAD51
     sta.w $0D90,x               ; $8AAD54
     rts                         ; $8AAD57
+vs_cursor_moving:
     lda.w $0D88,x               ; $8AAD58
     cmp.w $0D80,x               ; $8AAD5B
     bne CODE_8AAD72             ; $8AAD5E
@@ -4852,7 +4863,7 @@ CODE_8AAD7D:
     lda.w $0DDC,x               ; $8AAD7D
     cmp.w #$FFFF                ; $8AAD80
     beq CODE_8AADD4             ; $8AAD83
-    jsr.w $AD58                 ; $8AAD85
+    jsr.w vs_cursor_moving      ; $8AAD85
     bcc CODE_8AAD8B             ; $8AAD88
     rts                         ; $8AAD8A
 CODE_8AAD8B:
@@ -4899,7 +4910,7 @@ CODE_8AADE9:
     lda.w $0D90,x               ; $8AADF0
     cmp.w $0D68,x               ; $8AADF3
     bne CODE_8AADFB             ; $8AADF6
-    jsr.w $AEDA                 ; $8AADF8
+    jsr.w vs_letter_next        ; $8AADF8
 CODE_8AADFB:
     lda.b $42                   ; $8AADFB
     and.w #$0100                ; $8AADFD
@@ -5001,17 +5012,30 @@ CODE_8AAEB2:
     lda.b $10                   ; $8AAEB6
     rts                         ; $8AAEB8
     incbin !baserom:$52EB9..$52EDA
+vs_letter_next:
     lda.w $0DB4,x               ; $8AAEDA
     pha                         ; $8AAEDD
+CODE_8AAEDE:
     lda.w $0DB4,x               ; $8AAEDE
     cmp.w #$0004                ; $8AAEE1
     beq CODE_8AAEFE             ; $8AAEE4
-    incbin !baserom:$52EE6..$52EFE
+    inc.w $0DB4,x               ; $8AAEE6 static
+    jsr.w vs_letter_index       ; $8AAEE9 static
+    lda.w $AFF1,y               ; $8AAEEC static
+    and.w #$00FF                ; $8AAEEF static
+    cmp.w #$0020                ; $8AAEF2 static
+    beq CODE_8AAEDE             ; $8AAEF5 static
+    cmp.w #$003C                ; $8AAEF7 static
+    beq CODE_8AAF03             ; $8AAEFA static
+    pla                         ; $8AAEFC static
+    rts                         ; $8AAEFD static
 CODE_8AAEFE:
     pla                         ; $8AAEFE
     sta.w $0DB4,x               ; $8AAEFF
     rts                         ; $8AAF02
-    incbin !baserom:$52F03..$52F08
+CODE_8AAF03:
+    dec.w $0DAC,x               ; $8AAF03 static
+    bra CODE_8AAEDE             ; $8AAF06 static
     lda.w $0DAC,x               ; $8AAF08
     pha                         ; $8AAF0B
 CODE_8AAF0C:
@@ -5019,7 +5043,7 @@ CODE_8AAF0C:
     cmp.w #$0006                ; $8AAF0F
     beq CODE_8AAF2C             ; $8AAF12
     inc.w $0DAC,x               ; $8AAF14
-    jsr.w $ACE4                 ; $8AAF17
+    jsr.w vs_letter_index       ; $8AAF17
     lda.w $AFF1,y               ; $8AAF1A
     and.w #$00FF                ; $8AAF1D
     cmp.w #$0020                ; $8AAF20

@@ -3077,6 +3077,171 @@ password screen, a skipped track's bonus.
 - **Results:** 109, 109, 109 and 1 on the 60k movie; 229-230 on the INFODATA movie.
 - **Check:** full gate (the last full run was 4 commits back).
 
+## The password entry screen (menu-20, 2026-11-24)
+
+- **`$8A:B232` is the password menu item's screen.** It sets up the windows and lines, slides
+  the caret in, then loops a frame at a time: the pads move on the grid and A/B/X/Y types a
+  letter. EXIT checks the typed text.
+  - A valid password is unpacked into the game's state and leaves the menu.
+  - Otherwise the codes are searched (`password_code_find`, which jumps to the code's
+    handler).
+- **Seven rows** in `src/password.c`, cut between the waits:
+  - `password_entry_open`, `_sprites`, `_slide`, `_ready`, `_frame` (ends at its BCS on
+    `password_press_a`'s exit, so its adapter shares that model), `_pads`;
+  - `password_entry_check` (up to the code search). The valid path's carry is
+    `func_8ABF76`'s.
+- **Results:** 849 typing frames on the password movie, 492 on the INFODATA movie. The check
+  runs once per movie, interrupted, and passes from its entry state.
+- **Check:** full gate (`password_press_a`'s adapter was split, so not additions-only).
+
+## The options menus' actions and submenus; the options movie (menu-21, explore-7, harness-23, 2026-11-24)
+
+- **The dispatch through `$015C` is a switch in C** (`menu_action`, `src/misc.c`), with one
+  named case per action word.
+  - The actions are found by walking the five menus at `$8A:CBA7` (main), `$8A:CBD2`
+    (championship), `$8A:CC45` (the same, after a star name), `$8A:CC83` (options) and
+    `$8A:CCEB` (VS MODE's players).
+  - Three actions open a submenu, two set an option (DIFFICULTY, MUSIC), and three choose
+    the game's mode. The others are EXIT, PASSWORD and CANCEL PASSWORD.
+  - Unported targets stop the program (`tg3000_unported`, a trap, not a silent return):
+    VS MODE's player counts (`$8A:A53C-$8A:A557`; ported by vs-1), the RELAX code
+    (`$8A:BD9D`) and the wrong-password message (`$8A:BD6E`), all never run then.
+- **The composed C:**
+  - `menu_run`: a menu's frame, the whole of `$8A:A2AF`. It keeps D+$62 and D+$4A around the
+    action, as the original's pushes do; a submenu draws its own menu.
+  - `menu_submenu`: `$8A:B659`.
+  - `password_entry`: the whole of `$8A:B232`, with `password_code_run`, the codes' handlers
+    by address.
+- **The rows** are cut at the waits, and the leaves run through `menu_action`, so the
+  word-to-case mapping is what they check:
+  - `menu_action_submenu`, `_options` and `_vs` end at their JSR to the submenu (A the menu);
+  - `menu_action_difficulty`, `_music` and `_exit`;
+  - `menu_options_apply` (`$8A:B11A`);
+  - `menu_password_back` (`$8A:B225`);
+  - `menu_submenu_open`, `_tick`, `_frame` and `_chosen`;
+  - `menu_select_restore` (`$8A:A462`, after the selection tail's last PLA);
+  - `password_entry_found` (`$8A:B2FD`).
+- **harness-23: a row may have a second cut (`endAt2`).** `menu_submenu_chosen` branches back
+  to the loop's head (`$8A:B65E`) or goes on to its wipe (`$8A:B67C`); both are cuts, and both
+  lead to a wait. The advisor's call, open to the owner's veto.
+- **explore-7: a seventh movie, `explore_options.txt`** (4,400 steps then; explore-8 extends
+  it).
+  - It follows `code_infodata.txt`'s way to CHAMPIONSHIP, then goes into OPTIONS: DIFFICULTY
+    three times, MUSIC twice, and EXIT. Then EXIT from the championship's menu, and VS MODE.
+  - OPTIONS and its submenu ran only in the TAS reference's coverage, in none of the six
+    movies.
+  - It adds 115 bytes of code: MUSIC, VS MODE and its menu. `func_8AA32B`'s bit-7 path
+    (`$8A:A345`) now runs, so its static range is dropped.
+  - `verify_all.sh` and `verify_new.sh` run it as one slice.
+- **Check:** full gate (the harness and the scripts changed).
+
+## VS MODE's menus in the options movie; the VS race stops the bench (explore-8, 2026-11-24)
+
+- **`explore_options.txt` goes on into VS MODE** and now runs 5,450 steps. It chooses
+  1 PLAYER (the action `$8A:A53C`) and opens the VS name entry, a grid with four panels:
+  three computer drivers READY.
+  - Its EXIT (Down x4, Right x2, A) leads to the car's choice.
+  - There it presses Right, Right and Left: THE CHEETAH, THE DEMON and the others, with
+    their acceleration, top speed and boost.
+- **Coverage:** 5,812 new bytes, all in regions the map had as unknown (code 73,034 ->
+  75,593). VS MODE was reachable code no movie ran, and it is in scope (reachable code is
+  ported).
+  - `$8A:AE9B`, rng_next's third copy, now runs, so its static range is dropped.
+- **Choosing a car breaks the bench.** The VS race starts: DSP-4 commands from `$82:BBBA`
+  and `$81:E652` at step 5,533, and code in `$82`, `$85`, `$87`, `$89` and `$9B` the map has
+  as unknown. The screen stays black, though.
+  - By step 6,543 the CPU runs at `$EE:FFF0`, then in low WRAM (`$00:0006`, `$00:0104`).
+  - Settled by explore-9 (below): the bench's DSP-4 is wrong; the input and the game are
+    fine.
+  - The movie ends before the car's choice.
+- **Check:** full gate (a movie the rows run over changed).
+
+## The VS race on the reference runner; its code in the map (explore-9, 2026-11-24)
+
+- **The same inputs on the reference runner** (bsnes with the DSP-4 firmware) run the VS
+  race: a four-way split screen, the player and three computer drivers, speeds shown. The
+  menus line up step for step with the bench.
+  - `tools/movie_to_log.py` turns a bench movie into the runner's input log.
+  - The movie is `tools/bench/movies/vs_race.txt`: the reference runner only, 9,000 steps.
+- **Without the firmware the runner fails too**, using StackBlender's clean-room chip (the
+  DSP-4 activity stops early: 11.6% of the frames against 36.8%). The bench uses that same
+  chip.
+- **The catalogue** (`--dsp4-catalogue`, the chip as the firmware's shadow) puts the first
+  difference at step 5,676, on command `$08` read at `$85:A670`. From there on the shadow's
+  runs merge (80,000+ bytes in), so it has lost step at once.
+  - `$08` is the road command the clean-room chip already gets wrong in most runs on the
+    TAS: 6,907 of 9,595 (the catalogue of 2026-11-15).
+  - In the one-player races that only changes values. In the VS race it crashes the game.
+- **So the bench needs our own road commands** (`$01`/`$07`/`$08` in `src/dsp4.c`, measured
+  against the firmware). That is the owner's standing decision of 2026-11-15, and it is
+  multi-unit research, not started. Until then:
+  - the VS race runs on the reference runner only;
+  - its rows cannot be difftested, and the VS menus are ported first.
+- **Its coverage is in the map** (the reference runner is a trusted run, as the TAS was).
+  - The 9,000 steps add 29,632 bytes to `traces/coverage.bin`. Code grows from 75,593 to
+    94,830 bytes, all from regions the map had as unknown.
+  - The 15 static ranges it executes are dropped from `map/static_code.txt`: the multitap
+    pad read, `player_road_limits`' far-row cases, `car_sync_slot`'s handlers 8-14,
+    `track_setup_load`'s variant 2, `race_bands_merge`, `player_in_top5`'s two players,
+    object kind 0's handler and others.
+  - Their "never run" comments in `src/` are now out of date; they are fixed as each
+    routine is revisited.
+- **Check:** full gate (the map and the listing changed).
+
+## VS MODE's player counts (vs-1, 2026-11-24)
+
+- **The four counts** (`$8A:A53C`, `$8A:A543`, `$8A:A54A`, `$8A:A551`: 1 to 4 PLAYERS) each
+  load Y with the count and call `$8A:A558`. That routine sets `$03DC` and opens the VS screen
+  (`$8A:A573`); the menus are left when the screen returns (`$8A:A570`).
+- **The pads' mask (`$8A:A509`)** walks D+$56's bits from the lowest, shifting each into the
+  top of D+$42, up to its Y-th set bit, one for each pad present.
+  - Then it shifts down by what is left of 4 (its X), and by 8 (`lsr_n`).
+  - It loops forever when D+$56 has fewer set bits than Y. The fuzz gives it at least as
+    many.
+  - Its absent-pad path (`$8A:A531`) runs only in the fuzz, so it is a static range.
+- **`$8A:A558` sets `$03DC` to the mask ORed with 2.** It masks `$03DC` first, but then
+  stores the mask over it.
+- **In C** (`src/misc.c`):
+  - `menu_action_players`, the count for an action word;
+  - `vs_players_mask` and `vs_players_set`;
+  - `vs_players_done` (`$8A:A570`, no row: it runs after the car's choice, past the movies).
+  - `menu_action`'s cases for the four words. The VS screen's setup is still a trap
+    (`tg3000_unported`).
+- **Rows:**
+  - `menu_action_players` ends at its JSR (Y);
+  - `vs_players_mask` (500 fuzz cases);
+  - `vs_players_set` ends at the VS screen's JSR (500 fuzz cases).
+- **Check:** full gate (`menu_action`'s default case changed).
+
+## VS MODE's screen: ten panel leaves (vs-2, 2026-11-24)
+
+- **A new file, `src/vs.c`** (`src/vs.h`), for VS MODE's screen (`$8A:A573` on). The screen
+  has four panels, one a player, with X 0, 2, 4 or 6 selecting the panel. Each panel has a
+  name entry like the password screen's and then the car's choice.
+- **Ten leaves in it:**
+  - `vs_palette_load` (`$8A:A7CD`);
+  - `vs_cursor_moving` (`$8A:AD58`);
+  - `vs_panel_sprite` (`$8A:ABCF`);
+  - `vs_cursor_home` (`$8A:AA58`);
+  - `vs_letter_index` (`$8A:ACE4`);
+  - `vs_panel_screens` (`$8A:A72F`);
+  - `vs_letter_next` (`$8A:AEDA`);
+  - `vs_cursor_column` (`$8A:AA0E`);
+  - `vs_caret_blink` (`$8A:AAA2`);
+  - `vs_name_clear` (`$8A:ACB2`).
+- **Two of them run only partly in the movie**, so the fuzz checks the rest (its panels, the
+  letter column 0-4):
+  - `vs_letter_next` runs only its end case (`$0DB4` is 4 there). Its adapter replays the
+    steps to model the flags, which are all live under 100 watched returns.
+  - `vs_panel_screens` never gets a panel other than 0-6.
+  - Their fuzz-only ranges are in `map/static_code.txt`.
+- **Results on the options movie:** 526-589 samples for the per-frame ones, 4-24 for the
+  others.
+- **The sections from menu-20 to vs-1 were missing until this commit.** The script that
+  inserts each unit's section anchored on a line that occurs twice, failed its check, and
+  the gate ran anyway (`;`, not `&&`). The insertion is now gated with `&&`.
+- **Check:** incremental gate (additions only in `src/` and `tools/bench/`).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
