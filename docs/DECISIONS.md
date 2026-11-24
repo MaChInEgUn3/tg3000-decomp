@@ -2732,6 +2732,24 @@ password screen, a skipped track's bonus.
   on all three that reach it.
 - **Check:** incremental gate (new rows only).
 
+## The menus' movie (explore-5, 2026-11-24)
+
+- **A sixth verification movie, `tools/bench/movies/explore_menu.txt` (9,300 steps).** No
+  movie reached the menu's first three choices, the sub-screens at `$80:C6D4`, `$80:CB4A` and
+  `$80:CEE2` that `$80:C4F9`'s table names. The 60k movie always takes the fourth (`$80:D168`,
+  the race).
+  - The movie is the 60k movie up to its main menu (frame 4300), then A on the first choice
+    (frame 4460).
+  - Then the coverage explorer from frame 4500: 16 segments of 300 steps, each the best of 6,
+    measured against the other five movies' coverage.
+- **What it adds:** 3,040 code bytes no other movie runs.
+  - Explorer runs from the second and third choices reached the same bytes, all but 5 to 16:
+    the explorer leaves one sub-screen for the others. One movie is enough.
+  - Its replay reaches exactly the bytes the explorer counted.
+- **`verify_all` runs it as one slice and `verify_new` as a sixth movie.** It adds about 30 s
+  to the full gate.
+- **Check:** full gate. A new movie can fail rows it reaches for the first time.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

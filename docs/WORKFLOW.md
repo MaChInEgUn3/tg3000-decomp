@@ -72,7 +72,7 @@ about three times faster and gives the same per-frame WRAM hashes.
    Before committing, verify one of two ways:
    - `tools/verify_new.sh name1,name2` when the unit only adds lines to `src/` and
      `tools/bench/` (new routines, rows and adapters) and does not touch `difftest.c` or
-     `platform_bench.c`. It verifies the new rows over the 60k, shop, shop-buy and password movies (about 10
+     `platform_bench.c`. It verifies the new rows over the 60k, shop, shop-buy, password, INFODATA and menu movies (about 10
      minutes) and merges them into `map/verified.txt`; the other rows keep their last
      result. `tools/bench/selftest.sh` still runs every routine the short movie reaches.
      It refuses a new waiting row (`waitsForInterrupts`): such a row can enclose older rows'
