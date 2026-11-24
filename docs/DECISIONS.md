@@ -3613,6 +3613,34 @@ password screen, a skipped track's bonus.
   sample(s) failed, set apart" and as `lagfail:` in the results.
 - **Check:** full gate (`vs_screen`'s C was split).
 
+## The road command's runs measured on the firmware (dsp4-01a, 2026-11-24)
+
+- **The measurement the 2026-11-21 decision asks for before any promise on the road
+  commands**, now on the bench's own runs with the firmware chip (harness-27) rather than on
+  the TAS.
+- **`tools/dsp4_runs.py`** reads `bench --dsp4-log` and splits the data bytes into runs at
+  the road command's word: `$000F` at `$85:B536`, or `$0001` at `$85:B53B` when D+$E4 is
+  negative (`road_rows_project`).
+  - In a race, a run is one frame's DSP-4 traffic: every command from the road command to
+    the next frame's.
+  - It asks two things: is a whole run's output a function of its whole input, and is each
+    answer byte a function of its run's input so far (and its place among the answers since
+    the last input byte)?
+- **The one-player race (`race1.txt`, 9,450 steps):**
+  - 585 runs and 469 distinct inputs. 4 inputs repeat, and none got another output.
+  - 1,691,698 answer bytes, keyed by their run's input so far, give 372,926 keys. Only 17
+    keys got more than one answer.
+  - So within a frame, the chip's answers are almost entirely a function of what the game
+    sent it in that frame. The 17 exceptions (0.005%) are what is left to explain: state
+    carried from an earlier frame, or the split.
+- **The VS race uses another road driver**, whose first different read was at `$85:A670`
+  (explore-9). The tool's anchors do not find its runs yet.
+- **What this means for native road commands:** a per-frame, stream-shaped function of the
+  frame's input is what the C has to compute, and the firmware chip on the bench can check
+  it byte for byte on the bench's own runs, with no TAS drift. No promise yet on the size
+  of the work: the commands' algorithms are still unmeasured beyond this.
+- **Check:** the tool's run above (a measurement; no row or C changed).
+
 ## The main options menu (menu-22, 2026-11-24)
 
 - **`$8A:9E5B` is the options screens' long entry.**
