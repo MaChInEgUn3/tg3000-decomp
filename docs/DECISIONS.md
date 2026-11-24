@@ -3242,6 +3242,30 @@ password screen, a skipped track's bonus.
   the gate ran anyway (`;`, not `&&`). The insertion is now gated with `&&`.
 - **Check:** incremental gate (additions only in `src/` and `tools/bench/`).
 
+## VS MODE's screen: nine more routines (vs-3, 2026-11-24)
+
+- **In `src/vs.c`:**
+  - `vs_cursor_step` (`$8A:AA23`): Right and Left along the row, once the cursor has arrived;
+  - `vs_letter_find` (`$8A:AE20`): the cursor put on a given letter, through the 3-byte
+    table at `$8A:AF57`;
+  - `vs_cursor_target` (`$8A:AD34`);
+  - `vs_all_ready` (`$8A:A795`): the players in and the ready ones counted, and the fade-out
+    once all are ready;
+  - `vs_panel_screens_bg2_off` (`$8A:A728`): the byte `$11` through `vs_panel_screens`'
+    code (`alsoIn`);
+  - `vs_panel_text_base` (`$8A:AE6E`);
+  - `vs_text_center` (`$8A:A97F`);
+  - `vs_row_next` (`$8A:AF08`, the row's `vs_letter_next`).
+- **`rng_next_8a_2` (`$8A:AE9B`)** is a byte-for-byte copy of `rng_next`. Its row runs the same
+  C (`call_rng_next`), as `rng_next_8a` does.
+- **The movie stops before the race,** so some paths run only in the fuzz:
+  - `vs_cursor_step`'s Left and `vs_all_ready`'s all-ready path (500 cases each);
+  - `vs_row_next`'s landing step (`$8A:AF2A`) and `vs_panel_text_base`'s other panel
+    (`$8A:AE82`), which are static ranges now.
+- **Results on the options movie:** 292-606 samples for the per-frame ones, 3-31 for the
+  others.
+- **Check:** incremental gate (additions only in `src/` and `tools/bench/`).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

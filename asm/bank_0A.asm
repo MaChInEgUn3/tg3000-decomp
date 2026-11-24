@@ -4116,6 +4116,7 @@ CODE_8AA71D:
     rep.b #$20                  ; $8AA71D
     bra CODE_8AA6FE             ; $8AA71F
     incbin !baserom:$52721..$52728
+vs_panel_screens_bg2_off:
     pha                         ; $8AA728
     sep.b #$20                  ; $8AA729
     lda.b #$11                  ; $8AA72B
@@ -4157,7 +4158,7 @@ CODE_8AA75E:
     pla                         ; $8AA762
     rts                         ; $8AA763
     incbin !baserom:$52764..$52768
-    jsr.w $A795                 ; $8AA768
+    jsr.w vs_all_ready          ; $8AA768
     lda.w $0DDC                 ; $8AA76B
     cmp.w #$FFFD                ; $8AA76E
     bne CODE_8AA794             ; $8AA771
@@ -4175,6 +4176,7 @@ CODE_8AA75E:
     sta.w $0196                 ; $8AA791
 CODE_8AA794:
     rts                         ; $8AA794
+vs_all_ready:
     phx                         ; $8AA795
     stz.b $42                   ; $8AA796
     stz.b $44                   ; $8AA798
@@ -4246,13 +4248,13 @@ CODE_8AA7F7:
     jsr.w $AD74                 ; $8AA82C
     jsr.w vs_letter_index       ; $8AA82F
     jsr.w $ACFF                 ; $8AA832
-    jsr.w $AD34                 ; $8AA835
+    jsr.w vs_cursor_target      ; $8AA835
     jsr.w sprite_frame          ; $8AA838
     jsr.w $ABEF                 ; $8AA83B
     jsr.w vs_caret_blink        ; $8AA83E
     rts                         ; $8AA841
 CODE_8AA842:
-    jsr.w $AA23                 ; $8AA842
+    jsr.w vs_cursor_step        ; $8AA842
     jsr.w vs_cursor_column      ; $8AA845
     jsr.w $A9A7                 ; $8AA848
     jsr.w $A852                 ; $8AA84B
@@ -4286,7 +4288,7 @@ CODE_8AA882:
     lda.b $3A                   ; $8AA883
     pha                         ; $8AA885
     lda.w $A804,y               ; $8AA886
-    jsr.w $A97F                 ; $8AA889
+    jsr.w vs_text_center        ; $8AA889
     jsr.w $B072                 ; $8AA88C
     pla                         ; $8AA88F
     clc                         ; $8AA890
@@ -4392,6 +4394,7 @@ CODE_8AA975:
     stx.w $0DDA                 ; $8AA979
     rep.b #$20                  ; $8AA97C
     rts                         ; $8AA97E
+vs_text_center:
     pha                         ; $8AA97F
     sta.b $48                   ; $8AA980
     ldy.w #$0000                ; $8AA982
@@ -4480,6 +4483,7 @@ vs_cursor_column:
     lda.w $AA8A,x               ; $8AAA1C
     sta.w $0D90,x               ; $8AAA1F
     rts                         ; $8AAA22
+vs_cursor_step:
     lda.w $0D38,x               ; $8AAA23
     cmp.w #$FFFF                ; $8AAA26
     beq CODE_8AAA2C             ; $8AAA29
@@ -4731,7 +4735,7 @@ CODE_8AAC3A:
     pha                         ; $8AAC73
     phx                         ; $8AAC74
     phy                         ; $8AAC75
-    jsr.w $A728                 ; $8AAC76
+    jsr.w vs_panel_screens_bg2_off; $8AAC76
     sep.b #$20                  ; $8AAC79
     ldy.w $0DD4,x               ; $8AAC7B
     cpx.w #$0000                ; $8AAC7E
@@ -4819,6 +4823,7 @@ CODE_8AAD2E:
     lda.w #$0009                ; $8AAD2E
     sta.b $50                   ; $8AAD31
     rts                         ; $8AAD33
+vs_cursor_target:
     lda.w $0DAC,x               ; $8AAD34
     asl a                       ; $8AAD37
     asl a                       ; $8AAD38
@@ -4886,7 +4891,7 @@ CODE_8AAD9F:
     lda.b ($54),y               ; $8AADAE
     and.w #$00FF                ; $8AADB0
     beq CODE_8AADBC             ; $8AADB3
-    jsr.w $AE20                 ; $8AADB5
+    jsr.w vs_letter_find        ; $8AADB5
     inc.w $0DDC,x               ; $8AADB8
     rts                         ; $8AADBB
 CODE_8AADBC:
@@ -4918,7 +4923,7 @@ CODE_8AADFB:
     lda.w $0D88,x               ; $8AAE02
     cmp.w $0D80,x               ; $8AAE05
     bne CODE_8AAE0D             ; $8AAE08
-    jsr.w $AF08                 ; $8AAE0A
+    jsr.w vs_row_next           ; $8AAE0A
 CODE_8AAE0D:
     lda.b $42                   ; $8AAE0D
     and.w #$0200                ; $8AAE0F
@@ -4926,6 +4931,7 @@ CODE_8AAE0D:
     incbin !baserom:$52E14..$52E1F
 CODE_8AAE1F:
     rts                         ; $8AAE1F
+vs_letter_find:
     ldy.w #$0000                ; $8AAE20
     sep.b #$20                  ; $8AAE23
 CODE_8AAE25:
@@ -4949,7 +4955,7 @@ CODE_8AAE2F:
     phx                         ; $8AAE46
     lda.w #$007F                ; $8AAE47
     sta.b $72                   ; $8AAE4A
-    jsr.w $AE6E                 ; $8AAE4C
+    jsr.w vs_panel_text_base    ; $8AAE4C
     ldx.w #$000E                ; $8AAE4F
 CODE_8AAE52:
     ldy.w #$0000                ; $8AAE52
@@ -4968,6 +4974,7 @@ CODE_8AAE58:
     bne CODE_8AAE52             ; $8AAE6A
     plx                         ; $8AAE6C
     rts                         ; $8AAE6D
+vs_panel_text_base:
     cpx.w #$0000                ; $8AAE6E
     beq CODE_8AAE83             ; $8AAE71
     cpx.w #$0002                ; $8AAE73
@@ -4976,7 +4983,7 @@ CODE_8AAE58:
     beq CODE_8AAE8F             ; $8AAE7B
     cpx.w #$0006                ; $8AAE7D
     beq CODE_8AAE95             ; $8AAE80
-    incbin !baserom:$52E82..$52E83
+    rts                         ; $8AAE82 static
 CODE_8AAE83:
     lda.w #$0000                ; $8AAE83
     sta.b $70                   ; $8AAE86
@@ -5036,6 +5043,7 @@ CODE_8AAEFE:
 CODE_8AAF03:
     dec.w $0DAC,x               ; $8AAF03 static
     bra CODE_8AAEDE             ; $8AAF06 static
+vs_row_next:
     lda.w $0DAC,x               ; $8AAF08
     pha                         ; $8AAF0B
 CODE_8AAF0C:
@@ -5050,7 +5058,8 @@ CODE_8AAF0C:
     beq CODE_8AAF0C             ; $8AAF23
     cmp.w #$003C                ; $8AAF25
     beq CODE_8AAF0C             ; $8AAF28
-    incbin !baserom:$52F2A..$52F2C
+    pla                         ; $8AAF2A static
+    rts                         ; $8AAF2B static
 CODE_8AAF2C:
     pla                         ; $8AAF2C
     sta.w $0DAC,x               ; $8AAF2D

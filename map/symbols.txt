@@ -393,7 +393,7 @@ func    80D6A0   steer_state_init    ; the steering state starts over from $0804
 func    8A8FA4   hdma_gradient_build ; 256-line colour gradient from three colours, dithered -> src/misc.c
 func    8A9F64   flag_03dc_from_52   ; $03DC bit 12 = (D+$52 != 0) -> src/misc.c
 func    8A9F76   timer_0d7e_tick     ; $0D7E counts down; at 0 a random $03DC mode and D+$6C + 1 -> src/misc.c
-func    8AAE9B   rng_next_8a_2       ; a third copy of rng_next (never run; through timer_0d7e_tick) -> src/rng.c
+func    8AAE9B   rng_next_8a_2       ; a third copy of rng_next (the VS screen's; timer_0d7e_tick's) -> src/rng.c
 func    8A9B85   text_line_put       ; a zero-ended string into the $7F:7918 map, then the next line -> src/misc.c
 func    82884B   race_pause          ; the race paused: PAUSE blinks until Start (L+R quits) -> src/misc.c
 func    828911   text_centred_line_at ; text_centred_line for string X, palette A (returns with DB = $83) -> src/text.c
@@ -696,3 +696,11 @@ func    8AAEDA   vs_letter_next      ; VS panel: the cursor one letter on, past 
 func    8AAA0E   vs_cursor_column    ; VS panel: the cursor on its letter's column -> src/vs.c
 func    8AAAA2   vs_caret_blink      ; VS panel: its caret hidden or blinking -> src/vs.c
 func    8AACB2   vs_name_clear       ; VS panel: its name cleared, once -> src/vs.c
+func    8AAA23   vs_cursor_step      ; VS panel: the cursor stepped along its row by the pad -> src/vs.c
+func    8AAE20   vs_letter_find      ; VS panel: the cursor on a given letter (table $8A:AF57) -> src/vs.c
+func    8AAD34   vs_cursor_target    ; VS panel: where its cursor goes -> src/vs.c
+func    8AA795   vs_all_ready        ; VS screen: players in and ready counted; all ready fades out -> src/vs.c
+func    8AA728   vs_panel_screens_bg2_off ; VS panel: the split-screen byte $11 -> src/vs.c
+func    8AAE6E   vs_panel_text_base  ; VS panel: its text offset in D+$70 -> src/vs.c
+func    8AA97F   vs_text_center      ; VS text: the column moved to centre a string -> src/vs.c
+func    8AAF08   vs_row_next         ; VS panel: the row start one on, past spaces -> src/vs.c

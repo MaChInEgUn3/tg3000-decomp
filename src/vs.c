@@ -88,3 +88,83 @@ void vs_name_clear(uint16_t x) {
   wr16(DP + 0x48, at);
   for(uint16_t y = 0; y < 0x0C; y += 2) bus_wr16(0x8A0000 | (uint16_t)(at + y), 0);
 }
+
+// TG3000_ROUTINE($8A:AA23) vs_cursor_step
+void vs_cursor_step(uint16_t x) {
+  if(rd16((uint16_t)(0x0D38 + x)) != 0xFFFF) return;
+  if(vs_cursor_moving(x)) return;
+  const uint16_t pad = rd16((uint16_t)(0x0DCC + x));
+  const uint16_t col = rd16((uint16_t)(0x0DB4 + x));
+  if(pad & 0x0100) {
+    if(col != 3) wr16((uint16_t)(0x0DB4 + x), (uint16_t)(col + 1));
+  } else if(pad & 0x0200) {
+    if(col != 0) wr16((uint16_t)(0x0DB4 + x), (uint16_t)(col - 1));
+  }
+}
+
+// TG3000_ROUTINE($8A:AE20) vs_letter_find
+// (A letter missing from the table: the original searches on past it.)
+void vs_letter_find(uint16_t x, uint8_t c) {
+  uint16_t y = 0;
+  while(bus_rd8(0x8A0000 | (uint16_t)(0xAF57 + y)) != c) y = (uint16_t)(y + 3);
+  wr16((uint16_t)(0x0DAC + x), bus_rd8(0x8A0000 | (uint16_t)(0xAF58 + y)));
+  wr16((uint16_t)(0x0DB4 + x), bus_rd8(0x8A0000 | (uint16_t)(0xAF59 + y)));
+}
+
+// TG3000_ROUTINE($8A:AD34) vs_cursor_target
+void vs_cursor_target(uint16_t x) {
+  wr16((uint16_t)(0x0D88 + x), (uint16_t)((rd16((uint16_t)(0x0DAC + x)) << 4) + rd16((uint16_t)(0x0DBC + x)) -
+                                          0x0080 + rd16(DP + 0x50)));
+  wr16((uint16_t)(0x0D90 + x), (uint16_t)((rd16((uint16_t)(0x0DB4 + x)) << 4) + rd16((uint16_t)(0x0DC4 + x))));
+}
+
+// TG3000_ROUTINE($8A:A795) vs_all_ready
+void vs_all_ready(void) {
+  wr16(DP + 0x42, 0);
+  wr16(DP + 0x44, 0);
+  for(uint16_t x = 0; x < 8; x += 2) {
+    if(rd16((uint16_t)(0x0DF4 + x)) != 0xFFFF) continue;
+    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 1));
+    if(rd16((uint16_t)(0x0DDC + x)) == 0xFFFD) wr16(DP + 0x44, (uint16_t)(rd16(DP + 0x44) + 1));
+  }
+  if(rd16(DP + 0x42) != rd16(DP + 0x44)) return;
+  wr16(0x0198, 0);
+  wr16(0x0196, 0xFFC0);
+}
+
+// TG3000_ROUTINE($8A:A728) vs_panel_screens_bg2_off
+void vs_panel_screens_bg2_off(uint16_t x) {
+  if(x == 0 || x == 4) wr8(DP + 0xFB, 0x11);
+  else if(x == 2 || x == 6) wr8(DP + 0xFC, 0x11);
+}
+
+// TG3000_ROUTINE($8A:AE6E) vs_panel_text_base
+void vs_panel_text_base(uint16_t x) {
+  static const uint16_t base[4] = {0x0000, 0x0022, 0x03C0, 0x03E2};
+  if(x <= 6 && !(x & 1)) wr16(DP + 0x70, base[x >> 1]);
+}
+
+// TG3000_ROUTINE($8A:A97F) vs_text_center
+void vs_text_center(uint16_t str) {
+  wr16(DP + 0x48, str);
+  uint16_t n = 0;
+  while(bus_rd8(0x8A0000 | (uint16_t)(str + n)) != 0) n++;
+  wr16(DP + 0x48, (uint16_t)(n >> 1));
+  wr16(DP + 0x3A, (uint16_t)(0x0006 - rd16(DP + 0x48) + rd16(DP + 0x3A)));
+}
+
+// TG3000_ROUTINE($8A:AF08) vs_row_next
+//
+// Its step that lands on a letter ($8A:AF2A) runs in no movie; it is checked by the fuzz.
+void vs_row_next(uint16_t x) {
+  const uint16_t was = rd16((uint16_t)(0x0DAC + x));
+  for(;;) {
+    if(rd16((uint16_t)(0x0DAC + x)) == 6) {
+      wr16((uint16_t)(0x0DAC + x), was);
+      return;
+    }
+    wr16((uint16_t)(0x0DAC + x), (uint16_t)(rd16((uint16_t)(0x0DAC + x)) + 1));
+    const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(0xAFF1 + vs_letter_index(x)));
+    if(c != 0x20 && c != 0x3C) return;
+  }
+}

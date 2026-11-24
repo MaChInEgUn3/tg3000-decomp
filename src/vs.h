@@ -35,5 +35,27 @@ void vs_caret_blink(uint16_t x);
 // $8A:ACB2: the panel's name cleared, once ($0DEC set): $0DD4 and the six words at the
 // table $8A:A804's pointer.
 void vs_name_clear(uint16_t x);
+// $8A:AA23: a panel's cursor stepped along its row once it has arrived (while $0D38 is
+// $FFFF): Right ($0DCC bit 8) up to column 3, Left (bit 9) down to 0.
+void vs_cursor_step(uint16_t x);
+// $8A:AE20: the panel's cursor on the letter `c` (the 3-byte table at $8A:AF57: letter, row
+// start, column).
+void vs_letter_find(uint16_t x, uint8_t c);
+// $8A:AD34: where the panel's cursor goes: its letter's column and row (16 pixels each) from
+// the panel's corner ($0DBC, $0DC4), x less $80 plus D+$50.
+void vs_cursor_target(uint16_t x);
+// $8A:A795: the players in ($0DF4 = $FFFF) counted in D+$42, those of them ready ($0DDC =
+// $FFFD) in D+$44; when all are ready, the screen fades out ($0198 = 0, $0196 = $FFC0).
+void vs_all_ready(void);
+// $8A:A728: as vs_panel_screens, the byte $11 (BG2 off).
+void vs_panel_screens_bg2_off(uint16_t x);
+// $8A:AE6E: the panel's text offset in D+$70 (0, $22, $3C0, $3E2 for panels 0-6).
+void vs_panel_text_base(uint16_t x);
+// $8A:A97F: the text cursor's column D+$3A moved right by 6 less half the length of the
+// string at $8A:`str` (D+$48 that half).
+void vs_text_center(uint16_t str);
+// $8A:AF08: the panel's row start ($0DAC) one on, past spaces and $3C, up to 6 (then it
+// stays where it was).
+void vs_row_next(uint16_t x);
 
 #endif

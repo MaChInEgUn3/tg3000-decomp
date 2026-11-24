@@ -5808,6 +5808,158 @@ static void fuzz_vs_panel(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, (uint16_t)(0x0DAC + r->x), (uint16_t)(rnd() % 32));
 }
 
+// (vs_cursor_moving's exit, for its callers' early returns: A, N Z of its last compare)
+static void vsMovingOut(Regs* out, uint16_t x) {
+  const uint16_t d88 = rd16((uint16_t)(0x0D88 + x)), d78 = rd16((uint16_t)(0x0D78 + x));
+  if(d88 != rd16((uint16_t)(0x0D80 + x))) cmpOut(out, d88, rd16((uint16_t)(0x0D80 + x)));
+  else if(d78 != rd16((uint16_t)(0x0D70 + x))) cmpOut(out, d78, rd16((uint16_t)(0x0D70 + x)));
+  else {
+    const uint16_t a = rd16((uint16_t)(0x0D90 + x)), b = rd16((uint16_t)(0x0D68 + x));
+    out->a = (uint16_t)(a - b);
+    setNZ16(out, out->a);
+    setSbc16(out, a, b);
+  }
+}
+static void call_vs_cursor_step(const Regs* in, Regs* out) {
+  const uint16_t x = in->x;
+  const uint16_t state = rd16((uint16_t)(0x0D38 + x));
+  if(state != 0xFFFF) {
+    cmpOut(out, state, 0xFFFF);
+    vs_cursor_step(x);
+    return;
+  }
+  const bool moving = vs_cursor_moving(x);
+  vsMovingOut(out, x);
+  out->c = moving;
+  const uint16_t pad = rd16((uint16_t)(0x0DCC + x)), col = rd16((uint16_t)(0x0DB4 + x));
+  vs_cursor_step(x);
+  if(moving) return;
+  if(pad & 0x0100) {
+    cmpOut(out, col, 0x0003);
+    if(col != 3) setNZ16(out, (uint16_t)(col + 1));
+  } else if(pad & 0x0200) {
+    out->a = col;
+    setNZ16(out, col);
+    if(col != 0) setNZ16(out, (uint16_t)(col - 1));
+  } else {
+    out->a = 0;
+    out->n = false;
+    out->z = true;
+  }
+}
+static void call_vs_letter_find(const Regs* in, Regs* out) {
+  uint16_t y = 0;
+  while(rom8(0x8AAF57 + y) != (uint8_t)in->a) y = (uint16_t)(y + 3);
+  vs_letter_find(in->x, (uint8_t)in->a);
+  const uint8_t col = rom8(0x8AAF59 + y);
+  out->a = (uint16_t)((in->a & 0xFF00) | col);
+  out->y = (uint16_t)(y + 2);
+  out->n = (col & 0x80) != 0;
+  out->z = col == 0;
+  out->c = true;
+}
+static void call_vs_cursor_target(const Regs* in, Regs* out) {
+  vs_cursor_target(in->x);
+  out->a = rd16((uint16_t)(0x0D90 + in->x));
+  setNZ16(out, out->a);
+  setAdc16(out, (uint16_t)(rd16((uint16_t)(0x0DB4 + in->x)) << 4), rd16((uint16_t)(0x0DC4 + in->x)));
+}
+static void call_vs_all_ready(const Regs* in, Regs* out) {
+  vs_all_ready();
+  const uint16_t n = rd16(DP + 0x42), ready = rd16(DP + 0x44);
+  out->a = n == ready ? 0xFFC0 : n;
+  out->c = n >= ready;
+  setNZ16(out, in->x);
+}
+static void call_vs_panel_screens_bg2_off(const Regs* in, Regs* out) {
+  vs_panel_screens_bg2_off(in->x);
+  setNZ16(out, in->a);
+  const uint16_t x = in->x;
+  out->c = (x == 0 || x == 2 || x == 4 || x == 6) || x >= 6;
+}
+static void call_vs_panel_text_base(const Regs* in, Regs* out) {
+  vs_panel_text_base(in->x);
+  const uint16_t x = in->x;
+  if(x <= 6 && !(x & 1)) {
+    out->a = rd16(DP + 0x70);
+    setNZ16(out, out->a);
+    out->c = true;
+  } else {
+    cmpOut(out, in->a, 0);  // (A kept)
+    setNZ16(out, (uint16_t)(x - 6));
+    out->c = x >= 6;
+  }
+}
+static void call_vs_text_center(const Regs* in, Regs* out) {
+  const uint16_t col = rd16(DP + 0x3A);
+  vs_text_center(in->a);
+  const uint16_t half = rd16(DP + 0x48);
+  out->y = 0;
+  while(bus_rd8(0x8A0000 | (uint16_t)(in->a + out->y)) != 0) out->y++;
+  setNZ16(out, in->a);
+  setAdc16(out, (uint16_t)(6 - half), col);
+}
+static void call_vs_row_next(const Regs* in, Regs* out) {
+  const uint16_t was = rd16((uint16_t)(0x0DAC + in->x));
+  uint16_t row = was;
+  const uint16_t col7 = (uint16_t)(rd16((uint16_t)(0x0DB4 + in->x)) * 7);
+  for(;;) {
+    if(row == 6) {
+      out->c = true;
+      break;
+    }
+    row++;
+    setAdc16(out, col7, row);
+    const uint8_t c = rom8(0x8AAFF1 + (uint16_t)(col7 + row));
+    out->c = c >= 0x20;
+    if(c == 0x20) continue;
+    out->c = c >= 0x3C;
+    if(c == 0x3C) continue;
+    break;
+  }
+  vs_row_next(in->x);
+  out->a = was;
+  setNZ16(out, was);
+  if(was != 6) out->y = rd16(DP + 0x4E);
+}
+// a panel and its letter's row start 0-6
+static void fuzz_vs_row(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)((rnd() % 4) * 2);
+  wr16ram(ram, (uint16_t)(0x0DB4 + r->x), (uint16_t)(rnd() % 5));
+  wr16ram(ram, (uint16_t)(0x0DAC + r->x), (uint16_t)(rnd() % 7));
+}
+// a panel whose cursor has arrived (mostly) or not, Right, Left or neither, its column 0-3
+static void fuzz_vs_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->x = (uint16_t)((rnd() % 4) * 2);
+  const uint16_t x = r->x;
+  wr16ram(ram, (uint16_t)(0x0D38 + x), (rnd() % 8) ? 0xFFFF : (uint16_t)rnd());
+  const uint16_t at = (uint16_t)rnd(), w = (uint16_t)(rnd() & 0x3F), y = (uint16_t)rnd();
+  const bool arrived = (rnd() % 4) != 0;
+  wr16ram(ram, (uint16_t)(0x0D80 + x), at);
+  wr16ram(ram, (uint16_t)(0x0D88 + x), arrived ? at : (uint16_t)(at + 1 + (rnd() & 1)));
+  wr16ram(ram, (uint16_t)(0x0D70 + x), w);
+  wr16ram(ram, (uint16_t)(0x0D78 + x), w);
+  wr16ram(ram, (uint16_t)(0x0D68 + x), y);
+  wr16ram(ram, (uint16_t)(0x0D90 + x), y);
+  static const uint16_t pads[4] = {0x0000, 0x0100, 0x0200, 0x0300};
+  wr16ram(ram, (uint16_t)(0x0DCC + x), (uint16_t)(pads[rnd() % 4] | (rnd() & 0xFCFF & ((rnd() & 1) ? 0xFFFF : 0))));
+  wr16ram(ram, (uint16_t)(0x0DB4 + x), (uint16_t)(rnd() % 4));
+}
+// the four panels each in or out, ready or not
+static void fuzz_vs_ready(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(uint16_t x = 0; x < 8; x += 2) {
+    wr16ram(ram, (uint16_t)(0x0DF4 + x), (rnd() % 3) ? 0xFFFF : (uint16_t)(rnd() & 1));
+    wr16ram(ram, (uint16_t)(0x0DDC + x), (rnd() % 3) ? 0xFFFD : (uint16_t)rnd());
+  }
+}
+// a letter from the table (its first byte of a random entry)
+static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->x = (uint16_t)((rnd() % 4) * 2);
+  r->a = (uint16_t)((r->a & 0xFF00) | rom8(0x8AAF57 + (rnd() % 8) * 3));
+}
+
 // the championship menu's pass ends at its button test: C V oam_finish_near's, or with down
 // pressed its CMP #3's C (the cursor at the bottom)
 static void call_champ_menu_frame(const Regs* in, Regs* out) {
@@ -11720,6 +11872,24 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_caret_blink},
   {.name = "vs_name_clear", .entry = 0x8AACB2, .end = 0x8AACD4, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_name_clear},
+  {.name = "vs_cursor_step", .entry = 0x8AAA23, .end = 0x8AAA58, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_cursor_step, .fuzz = fuzz_vs_step},
+  {.name = "vs_letter_find", .entry = 0x8AAE20, .end = 0x8AAE46, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_letter_find, .fuzz = fuzz_vs_letter},
+  {.name = "vs_cursor_target", .entry = 0x8AAD34, .end = 0x8AAD58, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_cursor_target},
+  {.name = "vs_all_ready", .entry = 0x8AA795, .end = 0x8AA7CD, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_all_ready, .fuzz = fuzz_vs_ready},
+  {.name = "vs_panel_screens_bg2_off", .entry = 0x8AA728, .end = 0x8AA72F, .alsoIn = {{0x8AA734, 0x8AA764}}, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_panel_screens_bg2_off, .fuzz = fuzz_vs_panel},
+  {.name = "vs_panel_text_base", .entry = 0x8AAE6E, .end = 0x8AAE9B, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_panel_text_base, .fuzz = fuzz_vs_panel},
+  {.name = "vs_text_center", .entry = 0x8AA97F, .end = 0x8AA9A1, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_text_center},
+  {.name = "vs_row_next", .entry = 0x8AAF08, .end = 0x8AAF31, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_row_next, .fuzz = fuzz_vs_row},
+  {.name = "rng_next_8a_2", .entry = 0x8AAE9B, .end = 0x8AAEB9, .source = "src/rng.c",
+   .needM16 = true, .call = call_rng_next, ALL_OUTPUTS, .fuzz = fuzz_rng_next},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)
