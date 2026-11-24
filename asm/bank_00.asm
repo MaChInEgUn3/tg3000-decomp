@@ -7528,7 +7528,7 @@ CODE_80C306:
     lda.b $4C                   ; $80C30D
     bne CODE_80C318             ; $80C30F
     jsl.l func_80E4DB           ; $80C311
-    jsr.w $C4F9                 ; $80C315
+    jsr.w menu_choice_begin     ; $80C315
 CODE_80C318:
     bra CODE_80C2BB             ; $80C318
 block_c4_build:
@@ -7755,6 +7755,7 @@ sprite_bar8:
     adc.w #$0020                ; $80C4F4
     tax                         ; $80C4F7
     rts                         ; $80C4F8
+menu_choice_begin:
     lda.b $48                   ; $80C4F9
     asl a                       ; $80C4FB
     tax                         ; $80C4FC
@@ -7763,6 +7764,7 @@ sprite_bar8:
     lda.b $4A                   ; $80C500
     pha                         ; $80C502
     jsr.w ($C5D5,x)             ; $80C503
+menu_choice_back:
     lda.b $5E                   ; $80C506
     clc                         ; $80C508
     adc.w #$2800                ; $80C509
@@ -7806,6 +7808,7 @@ CODE_80C541:
 CODE_80C566:
     lda.b $4E                   ; $80C566
     bne CODE_80C566             ; $80C568
+menu_choice_lines:
     lda.w #$007F                ; $80C56A
     sta.b $14                   ; $80C56D
     lda.b $5C                   ; $80C56F
@@ -7817,6 +7820,7 @@ CODE_80C566:
     adc.w #$2800                ; $80C579
     tax                         ; $80C57C
     pla                         ; $80C57D
+menu_choice_panels:
     jsr.w func_80B537           ; $80C57E
     lda.w #$007F                ; $80C581
     sta.b $14                   ; $80C584
@@ -7846,6 +7850,7 @@ CODE_80C566:
     sta.b $4A                   ; $80C5B4
     pla                         ; $80C5B6
     sta.b $48                   ; $80C5B7
+menu_choice_redraw:
     lda.w #$0013                ; $80C5B9
     sta.b $BC                   ; $80C5BC
     jsr.w block_c4_build        ; $80C5BE
@@ -7855,6 +7860,7 @@ CODE_80C566:
 CODE_80C5C9:
     cmp.b $8E                   ; $80C5C9
     bne CODE_80C5C9             ; $80C5CB
+menu_choice_done:
     stz.b $1E                   ; $80C5CD
     lda.w #$0002                ; $80C5CF
     sta.b $4E                   ; $80C5D2

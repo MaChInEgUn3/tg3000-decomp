@@ -2928,6 +2928,31 @@ password screen, a skipped track's bonus.
   panel and the setup, and 104 frames.
 - **Check:** incremental gate.
 
+## The menu's choice dispatcher (menu-13, 2026-11-24)
+
+- **`$80:C4F9`, the menu's choice**, has six rows between its waits and its PLAs (in
+  `src/misc.c`):
+  - **the dispatch** (`menu_choice_begin`): its two PHAs (D+$48, D+$4A) above the cut. It
+    ends at its `JSR ($C5D5,X)` into the choice's screen.
+  - **back from a choice**, for the first three only: the race does not return here:
+    - `menu_choice_back`: the menu's two graphics, the rows, eight cleared map rows;
+    - `menu_choice_lines`;
+    - `menu_choice_panels`: two panels, ending at the third panel's JSR;
+    - `menu_choice_redraw`: after the PLAs of D+$4A and D+$48;
+    - `menu_choice_done`: the RTS.
+- **Left out:** the two polls, the PLAs, and the third panel's own JSR (`func_80B537` is a row
+  of its own).
+- **Results:** on the menus' movie, 13 dispatches; 12 returns (`back` by replays); the 60k
+  movie's one dispatch, to the race.
+- **The full run found menu-12's frame row wrong:** sharded, it watched 96 returns, under
+  the 100-return rule. Its watches mix the cut, where the flags are dead (harness-17), with
+  the screen's returns, where they are live. So every flag stayed live, and its adapter
+  modelled none at the cut: N failed 94 times. The incremental gate had seen 104 returns.
+  - Fixed: the adapter now gives the cut's N Z (its `LDA #$C0C0` / TRB, or the LDA of D+$4C)
+    and C V (`oam_finish_near`'s).
+  - **Lesson:** a cut row that can also return needs its flags modelled at the cut too.
+- **Check:** full gate (the last full run was 4 commits back).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

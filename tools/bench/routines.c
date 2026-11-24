@@ -5483,10 +5483,74 @@ static void call_name_entry_frame(const Regs* in, Regs* out) {
 }
 static void call_name_entry_draw(const Regs* in, Regs* out) { (void)in; (void)out; name_entry_draw(); }
 
+// the menu choice's parts: the dispatch ends at its JSR (A = D+$4A, N Z of it; X the offset,
+// C its ASL's; D+$48 and D+$4A pushed above the cut); back from a choice at the window poll
+// (its PHA above the cut; A = 0, X = D+$5E + 24, Y = 0 from the clear's DEY: Z set; C V
+// rows_7f_copy8's); the lines at the panels' PLA; the panels at the third func_80B537's JSR
+// (A = $200, X = D+$5E + $BE08's, Y = D+$5C + $60); the redraw at the text poll (A, C V
+// oam_finish_near's); the end after LDA #2 (C set by the poll's CMP)
+static void call_menu_choice_begin(const Regs* in, Regs* out) {
+  const uint16_t p48 = rd16(DP + 0x48), p4A = rd16(DP + 0x4A);
+  out->x = menu_choice_begin();
+  wr16((uint16_t)(in->sp - 1), p48);
+  wr16((uint16_t)(in->sp - 3), p4A);
+  out->a = p4A;
+  setNZ16(out, p4A);
+  out->c = p48 >> 15;
+}
+static void call_menu_choice_back(const Regs* in, Regs* out) {
+  uint16_t x, y;
+  const uint16_t len = menu_choice_back(&x, &y);
+  wr16((uint16_t)(in->sp - 1), len);
+  Regs t;
+  setAdc16(&t, (uint16_t)(y - 0x38 - 8), 0x0008);
+  out->c = t.c;
+  out->v = t.v;
+  out->a = 0;
+  out->x = (uint16_t)(rd16(DP + 0x5E) + 0x18);
+  out->y = 0;
+  out->n = false;
+  out->z = true;
+}
+static void call_menu_choice_lines(const Regs* in, Regs* out) {
+  (void)in;
+  menu_choice_lines();
+  out->a = out->x = (uint16_t)(rd16(DP + 0x5E) + 0x2800);
+  out->y = (uint16_t)(rd16(DP + 0x5C) + 0x1200);
+  setNZ16(out, out->x);
+  setAdc16(out, rd16(DP + 0x5E), 0x2800);
+}
+static void call_menu_choice_panels(const Regs* in, Regs* out) {
+  menu_choice_panels(in->a);
+  const uint16_t off = rom16(0x81BE08);
+  out->a = 0x0200;
+  out->x = (uint16_t)(rd16(DP + 0x5E) + off);
+  out->y = (uint16_t)(rd16(DP + 0x5C) + 0x0060);
+  setNZ16(out, 0x0200);
+  setAdc16(out, rd16(DP + 0x5E), off);
+}
+static void call_menu_choice_redraw(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t other = rd16(DP + 0x6E);
+  menu_choice_redraw();
+  out->a = other;
+  setNZ16(out, other);
+  setSbc16(out, rd16(DP + 0x6C), 0x0900);
+}
+static void call_menu_choice_done(const Regs* in, Regs* out) {
+  (void)in;
+  menu_choice_done();
+  out->a = 0x0002;
+  out->n = out->z = false;
+  out->c = true;
+}
+
 // the third choice's parts: the opening pushes both lengths above the cut (the second, then
 // the third); the lines and the first panel end at their PLAs (A = X = D+$5E + the next
 // graphic's offset); the setup at the text poll (A, C V oam_finish_near's); the frame at its
-// loop's wait, or returns on a press (A = 5, N Z clear, C V oam_finish_near's)
+// loop's wait, or returns on a press (A = 5, N Z clear), C V oam_finish_near's either way; at
+// the wait N Z are its LDA #$C0C0 / TRB's, or the LDA of D+$4C that keeps it (below 100
+// returns, the returns' watches keep every flag live)
 static void call_menu_gears_open(const Regs* in, Regs* out) {
   uint16_t a, b, x, y;
   menu_gears_open(&a, &b, &x, &y);
@@ -5524,10 +5588,18 @@ static void call_menu_gears_setup(const Regs* in, Regs* out) {
 }
 static void call_menu_gears_frame(const Regs* in, Regs* out) {
   (void)in;
-  if(menu_gears_frame()) {
+  const bool pressed = (rd16(DP + 0x0E) & 0xC0C0) != 0;
+  const bool leave = menu_gears_frame();
+  setSbc16(out, rd16(DP + 0x6C), 0x0900);
+  if(leave) {
     out->a = 0x0005;
     out->n = out->z = false;
-    setSbc16(out, rd16(DP + 0x6C), 0x0900);
+  } else if(pressed) {  // (the window still moving: its LDA of D+$4C)
+    out->n = rd16(DP + 0x4C) >> 15;
+    out->z = rd16(DP + 0x4C) == 0;
+  } else {  // its LDA #$C0C0 and TRB of none
+    out->n = true;
+    out->z = true;
   }
 }
 
@@ -11081,6 +11153,22 @@ const Routine routines[] = {
   {.name = "menu_button_assign", .entry = 0x80CC7E, .end = 0x80CCE1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .mayLeaveCaller = true, .compareA = true, .compareY = true,
    .call = call_menu_button_assign, .holes = {{0x80CC93, 0x80CC94}, {0x80CCD5, 0x80CCDA}}},
+  {.name = "menu_choice_begin", .entry = 0x80C4F9, .end = 0x80C503, .endAt = 0x80C503, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true,
+   .call = call_menu_choice_begin},
+  {.name = "menu_choice_back", .entry = 0x80C506, .end = 0x80C566, .endAt = 0x80C566, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_menu_choice_back},
+  {.name = "menu_choice_lines", .entry = 0x80C56A, .end = 0x80C57D, .endAt = 0x80C57D, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_menu_choice_lines},
+  {.name = "menu_choice_panels", .entry = 0x80C57E, .end = 0x80C5B0, .endAt = 0x80C5B0, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_menu_choice_panels},
+  {.name = "menu_choice_redraw", .entry = 0x80C5B9, .end = 0x80C5C7, .endAt = 0x80C5C7, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .call = call_menu_choice_redraw},
+  {.name = "menu_choice_done", .entry = 0x80C5CD, .end = 0x80C5D5, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .call = call_menu_choice_done},
   {.name = "menu_gears_open", .entry = 0x80CEE2, .end = 0x80CF32, .endAt = 0x80CF32, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
    .call = call_menu_gears_open},

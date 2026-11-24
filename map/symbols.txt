@@ -421,6 +421,12 @@ func    80CC45   menu_controls_frame ; the controls menu frame: cursor, button a
 func    80CC7E   menu_button_assign  ; the controls menu: a button to line D+$48, swapped; line 5 leaves -> src/misc.c
 func    80CCE1   menu_controls_sprites ; the controls menu's sprites: frame, steps, title, button names -> src/misc.c
 func    80CE7F   menu_bit_word       ; the word of $80:CE96 for A's lowest set bit -> src/misc.c
+func    80C4F9   menu_choice_begin   ; the menu's choice: its screen through $80:C5D5 -> src/misc.c
+func    80C506   menu_choice_back    ; back from a choice: the menu's graphics, rows, cleared map rows -> src/misc.c
+func    80C56A   menu_choice_lines   ; back from a choice: D+$14 -> src/misc.c
+func    80C57E   menu_choice_panels  ; back from a choice: two panels -> src/misc.c
+func    80C5B9   menu_choice_redraw  ; back from a choice: the bar's block, the bar, sprites -> src/misc.c
+func    80C5CD   menu_choice_done    ; back from a choice: D+$1E, the bar's step 2 -> src/misc.c
 func    80C5E0   menu_bar_lines      ; the menu bar's line window: middle lines, then the step by D+$4E -> src/misc.c
 func    80C642   menu_bar_open_step  ; the menu bar's window opening by 4 lines a frame -> src/misc.c
 func    80C651   menu_bar_close_step ; the menu bar's window closing by 4 lines a frame -> src/misc.c

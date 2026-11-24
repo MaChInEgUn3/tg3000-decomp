@@ -1653,4 +1653,14 @@ void menu_gears_panel(uint16_t len);
 void menu_gears_setup(uint16_t len);
 bool menu_gears_frame(void);
 
+// The menu's choice ($80:C4F9) in parts: the dispatch's offset, the menu reloaded after a
+// choice ($80:C506; returns the length the panels use), lines ($80:C56A), panels ($80:C57E),
+// redraw ($80:C5B9) and the end ($80:C5CD).
+uint16_t menu_choice_begin(void);
+uint16_t menu_choice_back(uint16_t* x, uint16_t* y);
+void menu_choice_lines(void);
+void menu_choice_panels(uint16_t len);
+void menu_choice_redraw(void);
+void menu_choice_done(void);
+
 #endif

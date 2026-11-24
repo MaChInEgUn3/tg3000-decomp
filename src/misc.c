@@ -8596,3 +8596,55 @@ bool menu_gears_frame(void) {
   }
   return false;
 }
+
+// The menu's choice ($80:C4F9): D+$48's screen through $80:C5D5 (name entry, controls, the
+// third choice, the race), then (for the first three, which return) the menu again. In parts
+// between its waits and its PLAs.
+
+// TG3000_ROUTINE($80:C4F9) menu_choice_begin
+// Returns the table offset of the choice (D+$48 * 2); the original pushes D+$48 and D+$4A.
+uint16_t menu_choice_begin(void) { return (uint16_t)(rd16(DP + 0x48) << 1); }
+
+// TG3000_ROUTINE($80:C506) menu_choice_back
+// Back from a choice: the menu's graphics (`$98:8000` to D+$5E + $2800, `$87:8404` to + $1000),
+// the rows copied, eight rows of 12 words cleared in the map at $7F:08D4 + D+$5E. Returns the
+// first length (the original pushes it). `x`, `y`: rows_7f_copy8's.
+uint16_t menu_choice_back(uint16_t* x, uint16_t* y) {
+  uint16_t end;
+  const uint16_t len = decompress_near(DP, 0x98, 0x8000, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x2800), &end);
+  decompress_near(DP, 0x87, 0x8404, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x1000), &end);
+  *x = (uint16_t)(rd16(DP + 0x5E) + 0x1000);
+  *y = (uint16_t)(rd16(DP + 0x5E) + 0x08C4);
+  rows_7f_copy8(x, y);
+  for(uint16_t i = 0, at = rd16(DP + 0x5E); i < 12; i++, at = (uint16_t)(at + 2))
+    for(uint16_t r = 0; r < 8; r++) wr16(0x7F08D4 + (uint32_t)(uint16_t)(at + 0x40 * r), 0);
+  return len;
+}
+
+// TG3000_ROUTINE($80:C56A) menu_choice_lines
+void menu_choice_lines(void) { wr16(DP + 0x14, 0x007F); }
+
+// TG3000_ROUTINE($80:C57E) menu_choice_panels
+// Two of the menu's panels (`len` bytes from D+$5E + $2800, then $200); its third is the
+// func_80B537 call that follows (with D+$14 = $7F).
+void menu_choice_panels(uint16_t len) {
+  func_80B537(DP, len, (uint16_t)(rd16(DP + 0x5E) + 0x2800), (uint16_t)(rd16(DP + 0x5C) + 0x1200));
+  wr16(DP + 0x14, 0x007F);
+  func_80B537(DP, 0x0200, (uint16_t)(rd16(DP + 0x5E) + 0x08C4), (uint16_t)(rd16(DP + 0x5C) + 0x0462));
+  wr16(DP + 0x14, 0x007F);
+}
+
+// TG3000_ROUTINE($80:C5B9) menu_choice_redraw
+// After D+$4A and D+$48 are pulled back: the bar's block, the bar, the sprites.
+void menu_choice_redraw(void) {
+  wr16(DP + 0xBC, 0x0013);
+  block_c4_build(DP);
+  menu_bar_draw();
+  oam_finish_near(DP);
+}
+
+// TG3000_ROUTINE($80:C5CD) menu_choice_done
+void menu_choice_done(void) {
+  wr16(DP + 0x1E, 0);
+  wr16(DP + 0x4E, 0x0002);
+}
