@@ -1143,9 +1143,12 @@ CODE_808A71:
     lda.w $03DC                 ; $808A77
     and.w #$000F                ; $808A7A
     cmp.w #$0002                ; $808A7D
-    db $F0,$05 ; beq            ; $808A80
+    beq CODE_808A87             ; $808A80
     jsr.w $8A8C                 ; $808A82
-    incbin !baserom:$A85..$A8C
+    incbin !baserom:$A85..$A87
+CODE_808A87:
+    jsr.w $8B79                 ; $808A87
+    incbin !baserom:$A8A..$A8C
     jsr.w champ_begin_2         ; $808A8C
     jsl.l save_data_seal        ; $808A8F
     jsl.l player_in_top5        ; $808A93
@@ -1221,7 +1224,14 @@ CODE_808B55:
 CODE_808B59:
     jsr.w champ_begin           ; $808B59
     jmp.w $8AB8                 ; $808B5C
-    incbin !baserom:$B5F..$BC5
+    incbin !baserom:$B5F..$B79
+    jsl.l player_in_top5        ; $808B79
+    lda.w #$FFFF                ; $808B7D
+    sta.l $8103E0               ; $808B80
+    lda.w $0444                 ; $808B84
+    sta.w $047B                 ; $808B87
+    jsl.l $828342               ; $808B8A
+    incbin !baserom:$B8E..$BC5
 shop_screen_begin:
     stz.w $019A                 ; $808BC5
     ldx.w #$A26F                ; $808BC8
