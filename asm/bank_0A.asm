@@ -3959,7 +3959,7 @@ vs_players_set:
     lda.w #$0001                ; $8AA57B
     jsl.l wait_frames_long      ; $8AA57E
     jsr.w vs_palette_load       ; $8AA582
-    jsr.w $B9AF                 ; $8AA585
+    jsr.w vs_graphics_load      ; $8AA585
     sep.b #$20                  ; $8AA588
     lda.b #$00                  ; $8AA58A
     sta.w $2121                 ; $8AA58C
@@ -4066,13 +4066,13 @@ CODE_8AA6A3:
 CODE_8AA6AE:
     jsr.w clear_object_slots    ; $8AA6AE
     ldx.w #$0000                ; $8AA6B1
-    jsr.w $A81C                 ; $8AA6B4
+    jsr.w vs_panel_frame        ; $8AA6B4
     ldx.w #$0002                ; $8AA6B7
-    jsr.w $A81C                 ; $8AA6BA
+    jsr.w vs_panel_frame        ; $8AA6BA
     ldx.w #$0004                ; $8AA6BD
-    jsr.w $A81C                 ; $8AA6C0
+    jsr.w vs_panel_frame        ; $8AA6C0
     ldx.w #$0006                ; $8AA6C3
-    jsr.w $A81C                 ; $8AA6C6
+    jsr.w vs_panel_frame        ; $8AA6C6
     lda.w $0DCC                 ; $8AA6C9
     sta.w $000E                 ; $8AA6CC
     lda.w $0DCE                 ; $8AA6CF
@@ -4245,6 +4245,7 @@ CODE_8AA7F7:
     pla                         ; $8AA801
     bra CODE_8AA7EF             ; $8AA802
     incbin !baserom:$52804..$5281C
+vs_panel_frame:
     lda.w $0DDC,x               ; $8AA81C
     cmp.w #$FFFE                ; $8AA81F
     beq CODE_8AA842             ; $8AA822
@@ -6305,6 +6306,7 @@ func_8AB994:
     lda.w #$0088                ; $8AB9A7
     jsl.l decompress_to_vram_long; $8AB9AA
     rts                         ; $8AB9AE
+vs_graphics_load:
     ldx.w #$F696                ; $8AB9AF
     lda.w #$008D                ; $8AB9B2
     ldy.w #$4000                ; $8AB9B5

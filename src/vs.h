@@ -131,5 +131,15 @@ void vs_ready_draw(uint16_t x);
 // the title, then the car's description (the pointer at $8A:CE63 + 2 * column: 0 a new
 // line, $FF the end). Returns the original's A.
 uint16_t vs_car_info(uint16_t x);
+// $8A:A81C: a panel's frame, by its state $0DDC: the car's choice ($FFFE: the cursor along
+// the row, its column, the car's description, the confirmation, its sprites), ready ($FFFD:
+// vs_ready_draw), else the name entry (its name, the entry, the cursor on its letter, its
+// sprites, the press, the caret).
+void vs_panel_frame(uint16_t x);
+// $8A:B9AF: the VS screen's graphics: tiles from $8D:F696 to VRAM $4000, the panels' map from
+// $8A:C86C (unpacked to $7F:0000): VRAM $7000 filled with tile $23 (1,024 words), then 28
+// rows of 32: 14 rows of two copies of 16 tiles (the second with palette bit $0400), then
+// the same 14 with $0800 and $0C00.
+void vs_graphics_load(void);
 
 #endif

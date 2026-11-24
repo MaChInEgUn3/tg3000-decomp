@@ -730,3 +730,5 @@ func    8AAAC1   vs_panel_name_draw  ; VS panel: its name as sprites, frame and 
 func    8AA852   vs_car_confirm      ; VS panel: the car's choice confirmed, the panel ready -> src/vs.c
 func    8AA869   vs_ready_draw       ; VS panel: name and READY, blinking -> src/vs.c
 func    8AA9A7   vs_car_info         ; VS panel: the car's description when its column changes -> src/vs.c
+func    8AA81C   vs_panel_frame      ; VS panel: a frame by its state (name, car, ready) -> src/vs.c
+func    8AB9AF   vs_graphics_load    ; VS screen: its tiles and the panels' map in VRAM -> src/vs.c

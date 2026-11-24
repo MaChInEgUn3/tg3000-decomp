@@ -4,6 +4,8 @@
 #include <stdbool.h>
 
 #include "misc.h"
+#include "decompress.h"
+#include "platform.h"
 #include "rng.h"
 #include "util.h"
 #include "video_dma.h"
@@ -534,5 +536,52 @@ uint16_t vs_car_info(uint16_t x) {
       continue;
     }
     a = vs_put_char(c);
+  }
+}
+
+// TG3000_ROUTINE($8A:A81C) vs_panel_frame
+void vs_panel_frame(uint16_t x) {
+  const uint16_t state = rd16((uint16_t)(0x0DDC + x));
+  if(state == 0xFFFE) {
+    vs_cursor_step(x);
+    vs_cursor_column(x);
+    vs_car_info(x);
+    vs_car_confirm(x);
+    sprite_frame(x);
+    return;
+  }
+  if(state == 0xFFFD) {
+    vs_ready_draw(x);
+    return;
+  }
+  vs_panel_name_draw(x);
+  vs_name_entry_frame(x);
+  vs_letter_index(x);
+  vs_letter_width(x);
+  vs_cursor_target(x);
+  sprite_frame(x);
+  vs_name_key(x);
+  vs_caret_blink(x);
+}
+
+// TG3000_ROUTINE($8A:B9AF) vs_graphics_load
+void vs_graphics_load(void) {
+  decompress_to_vram(DP, 0x8D, 0xF696, 0x4000);
+  uint16_t end;
+  decompress(DP, 0x8A, 0xC86C, 0x7F, 0x0000, &end);
+  uint16_t at = 0x7000;
+  for(int i = 0; i < 0x400; i++) video_write_vram_word(at++, 0x0023);
+  at = 0x7000;
+  static const uint16_t bits[2][2] = {{0x0000, 0x0400}, {0x0800, 0x0C00}};
+  for(int half = 0; half < 2; half++) {
+    wr16(DP + 0x44, 0x000E);
+    wr16(DP + 0x42, 0);
+    for(int row = 0; row < 14; row++) {
+      for(int copy = 0; copy < 2; copy++)
+        for(uint16_t k = 0; k < 0x20; k += 2)
+          video_write_vram_word(at++, (uint16_t)(rd16(0x7F0000 | (uint16_t)(rd16(DP + 0x42) + k)) | bits[half][copy]));
+      wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 0x20));
+      wr16(DP + 0x44, (uint16_t)(rd16(DP + 0x44) - 1));
+    }
   }
 }

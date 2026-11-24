@@ -1430,7 +1430,7 @@ static void startSample(int idx, const Cpu* cpu) {
   smp->replaySlot = slot;
   smp->effects = sampleEffects[k];
   smp->inputs = sampleInputs[k];
-  smp->effectCap = (r->waitsForInterrupts && r->maxInsns) ? MAX_EFFECTS_LONG : MAX_EFFECTS;
+  smp->effectCap = (r->manyEffects || (r->waitsForInterrupts && r->maxInsns)) ? MAX_EFFECTS_LONG : MAX_EFFECTS;
   smp->inputCap = (r->waitsForInterrupts && r->maxInsns) ? MAX_INPUTS_LONG : MAX_INPUTS;
   smp->vramEntry = vramNow();
   if(slot >= 0) {

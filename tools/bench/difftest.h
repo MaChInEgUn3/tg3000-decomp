@@ -70,6 +70,9 @@ typedef struct {
   // that waits for interrupts (a title card waiting a few hundred frames). A budget only:
   // what is compared does not change.
   uint32_t maxInsns;
+  // harness-25: the long effect log (MAX_EFFECTS_LONG) for a routine that does not wait but
+  // writes more than MAX_EFFECTS hardware effects (a tilemap written word by word).
+  bool manyEffects;
   // The fuzz's stack: the highest byte of the sentinel frame (0: $1F00, the fuzz's usual
   // place). A routine whose callees write the game's words $1EEE-$1EFD needs the game's own
   // stack instead (measured from its live samples' entry SP).

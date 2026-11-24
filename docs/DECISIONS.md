@@ -3382,6 +3382,24 @@ password screen, a skipped track's bonus.
   title and the grid.
 - **Check:** full gate (`vs_put_string`'s adapter changed).
 
+## VS MODE's screen: a panel's frame and the graphics; long effect logs (vs-8, harness-25, 2026-11-24)
+
+- **`vs_panel_frame` (`$8A:A81C`)** runs a panel's frame by its state `$0DDC`:
+  - the car's choice (`$FFFE`);
+  - ready (`$FFFD`): it branches into `vs_ready_draw`'s code, which is in its row's
+    `alsoIn`;
+  - otherwise the name entry.
+  It has 1,957 samples on the options movie.
+- **`vs_graphics_load` (`$8A:B9AF`)** loads the screen's tiles from `$8D:F696` to VRAM `$4000`.
+  It unpacks the panels' map from `$8A:C86C` to `$7F`, then writes VRAM `$7000` on word by
+  word: 1,024 words of tile `$23`, then 28 rows of 32.
+- **harness-25: `manyEffects`.** That is 1,920 VRAM words, more than a sample's usual 512
+  hardware effects. Until now only waiting rows with `maxInsns` had the long log (65,536);
+  a row may now ask for it with `manyEffects`. What is compared does not change.
+  - Its one live entry is interrupted and passes from its entry state.
+  - The advisor's kind of call, open to the owner's veto.
+- **Check:** full gate (`difftest.c` changed).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

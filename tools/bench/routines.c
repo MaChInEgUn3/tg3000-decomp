@@ -6133,6 +6133,15 @@ static void call_vs_car_info(const Regs* in, Regs* out) {
   while(bus_rd8(0x8A0000 | (uint16_t)(text + y)) != 0xFF) y++;
   out->y = y;
 }
+static void call_vs_panel_frame(const Regs* in, Regs* out) { (void)out; vs_panel_frame(in->x); }
+static void call_vs_graphics_load(const Regs* in, Regs* out) {
+  (void)in;
+  vs_graphics_load();
+  out->a = out->x = 0x01C0;
+  out->y = 0;
+  out->n = out->c = out->v = false;
+  out->z = true;
+}
 // a letter from the table (its first byte of a random entry)
 static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)ram;
@@ -12116,6 +12125,11 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_ready_draw},
   {.name = "vs_car_info", .entry = 0x8AA9A7, .end = 0x8AA9F2, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_car_info},
+  {.name = "vs_panel_frame", .entry = 0x8AA81C, .end = 0x8AA852, .alsoIn = {{0x8AA869, 0x8AA8A1}}, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_panel_frame},
+  {.name = "vs_graphics_load", .entry = 0x8AB9AF, .end = 0x8ABA55, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_graphics_load,
+   .manyEffects = true},  // (1,920 VRAM words)
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)
