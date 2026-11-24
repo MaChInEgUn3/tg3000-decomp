@@ -158,5 +158,6 @@ bool vs_screen_frame(void);
 void vs_names_absent(void);
 // The VS screen whole ($8A:A573).
 void vs_screen(void);
+void vs_screen_loop(void);
 
 #endif

@@ -668,13 +668,18 @@ bool vs_screen_frame(void) {
   return false;
 }
 
-// The VS screen whole ($8A:A573): the fade out, a frame, the setup, then a frame at a time
-// until the fade out its players' readiness started has ended.
+// The VS screen's frames ($8A:A67B on): a frame at a time until the fade out its players'
+// readiness started has ended.
+void vs_screen_loop(void) {
+  do wait_frames(1);
+  while(vs_screen_frame());
+}
+
+// The VS screen whole ($8A:A573): the fade out, a frame, the setup, then its frames.
 void vs_screen(void) {
   fade_out_wait();
   vs_screen_blank();
   wait_frames(1);
   vs_screen_setup();
-  do wait_frames(1);
-  while(vs_screen_frame());
+  vs_screen_loop();
 }

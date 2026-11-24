@@ -13600,6 +13600,15 @@ static void call_password_entry(const Regs* in, Regs* out) {
   out->c = carry;
   setNZ16(out, out->a);
 }
+// The VS screen's frames ($8A:A67B, the loop's head, to the RTS; its setup is cut rows:
+// whole, an NMI landing in the graphics' unpacking lags it): returns after HDMA is put back
+// (A = $0082)
+static void call_vs_screen_loop(const Regs* in, Regs* out) {
+  (void)in;
+  vs_screen_loop();
+  out->a = 0x0082;
+  setNZ16(out, out->a);
+}
 // Each composed row names the movies it runs on (verify_all.sh reads the "movies:" comment
 // before it).
 const Routine composedRoutines[] = {
@@ -13611,5 +13620,10 @@ const Routine composedRoutines[] = {
   {.name = "password_entry", .entry = 0x8AB232, .end = 0x8AB339, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .waitsForInterrupts = true, .maxInsns = 40000000,
    .manyEffects = true, .call = call_password_entry, .holes = {{0x8AB2ED, 0x8AB2FD}, {0x8AB302, 0x8AB31B}}},
+  // movies: vs_race
+  {.name = "vs_screen_loop", .entry = 0x8AA67B, .end = 0x8AA6F6, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .waitsForInterrupts = true, .maxInsns = 400000000,
+   .manyEffects = true, .call = call_vs_screen_loop,
+   .holes = {{0x8AA692, 0x8AA698}, {0x8AA69D, 0x8AA6A3}, {0x8AA6A8, 0x8AA6AE}}},  // (the other players' pads)
 };
 const int composedRoutineCount = sizeof composedRoutines / sizeof composedRoutines[0];

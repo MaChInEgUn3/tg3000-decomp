@@ -3597,6 +3597,22 @@ password screen, a skipped track's bonus.
   per movie. The VS race gets the firmware DSP-4.
 - **Check:** full gate.
 
+## The VS screen's frames whole (glue-3, 2026-11-24)
+
+- **`vs_screen_loop` (`$8A:A67B` to the RTS) is the third composed row**, run on the VS race.
+  It covers a frame at a time of the four panels until the fade out ends: names, the
+  car's choice, the computer drivers, the readiness, then the absent players' names. It
+  matches the original over its one sample, every frame from the first to the return.
+- **First tried whole, from `$8A:A573`.** Its one sample failed only as a lagged sample
+  (harness-15: set apart, not counted), with 987 bytes different. An NMI lands during the
+  graphics' unpacking in the setup: the menus' NMI target is still live there, unlike
+  `password_show_open`, which parks `$0008` first. So the composed row starts at the loop's
+  head; the setup stays with its cut rows (`vs_screen_blank`, `vs_screen_setup`).
+  - The C splits the same way: `vs_screen_loop()`, and `vs_screen()` calls it.
+- **Reading a composed row's result:** a lagged failure shows only in the line "N lagged
+  sample(s) failed, set apart" and as `lagfail:` in the results.
+- **Check:** full gate (`vs_screen`'s C was split).
+
 ## The main options menu (menu-22, 2026-11-24)
 
 - **`$8A:9E5B` is the options screens' long entry.**
