@@ -1591,4 +1591,11 @@ void title_screen_run_close(void);
 void results_screen_run(void);
 void results_screen_run_close(void);
 
+// The menu bar's line window ($80:C5E0, either player's D): its middle lines up to the
+// dispatch by D+$4E (returns D+$4E * 2), step 1 ($80:C642, opening) and the end every step
+// shares ($80:C6B9; returns its last word). Steps 2-5 are not rows.
+uint16_t menu_bar_lines(uint16_t dp);
+void menu_bar_open_step(uint16_t dp);
+uint16_t menu_bar_lines_end(uint16_t dp);
+
 #endif

@@ -7855,6 +7855,7 @@ CODE_80C5C9:
     sta.b $4E                   ; $80C5D2
     rts                         ; $80C5D4
     incbin !baserom:$45D5..$45E0
+menu_bar_lines:
     ldx.b $F2                   ; $80C5E0
     sep.b #$20                  ; $80C5E2
     lda.b #$40                  ; $80C5E4
@@ -7900,19 +7901,20 @@ CODE_80C62F:
     tax                         ; $80C632
     jmp.w ($C636,x)             ; $80C633
     incbin !baserom:$4636..$4642
+menu_bar_open_step:
     lda.b $4C                   ; $80C642
     cmp.w #$0020                ; $80C644
     beq CODE_80C6B7             ; $80C647
     clc                         ; $80C649
     adc.w #$0004                ; $80C64A
     sta.b $4C                   ; $80C64D
-    bra CODE_80C6B9             ; $80C64F
+    bra menu_bar_lines_end      ; $80C64F
     lda.b $4C                   ; $80C651
     beq CODE_80C6B7             ; $80C653
     sec                         ; $80C655
     sbc.w #$0004                ; $80C656
     sta.b $4C                   ; $80C659
-    bra CODE_80C6B9             ; $80C65B
+    bra menu_bar_lines_end      ; $80C65B
     lda.b $4C                   ; $80C65D
     cmp.w #$0020                ; $80C65F
     beq CODE_80C6B7             ; $80C662
@@ -7932,7 +7934,7 @@ CODE_80C62F:
     sta.w $001C,y               ; $80C682
     lda.w $C112,x               ; $80C685
     sta.w $001E,y               ; $80C688
-    bra CODE_80C6B9             ; $80C68B
+    bra menu_bar_lines_end      ; $80C68B
     incbin !baserom:$468D..$46A2
     lda.b $4C                   ; $80C6A2
     cmp.w #$0020                ; $80C6A4
@@ -7942,10 +7944,10 @@ CODE_80C62F:
     sta.b $4C                   ; $80C6AD
     jsr.w $D026                 ; $80C6AF
     jsr.w oam_finish_near       ; $80C6B2
-    bra CODE_80C6B9             ; $80C6B5
+    bra menu_bar_lines_end      ; $80C6B5
 CODE_80C6B7:
     stz.b $4E                   ; $80C6B7
-CODE_80C6B9:
+menu_bar_lines_end:
     ldx.b $F2                   ; $80C6B9
     sep.b #$20                  ; $80C6BB
     lda.b #$18                  ; $80C6BD

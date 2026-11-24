@@ -7857,3 +7857,50 @@ void results_screen_run(void) {
 void results_screen_run_close(void) {
   video_hdma_enable(0x00);  // (and $420B = 0)
 }
+
+// The menu bar's line window ($80:C5E0, the menu task's per-frame callback at D+$EC, called
+// from the menus' NMI with either player's D): the HDMA lines at $1B00 + D+$F2 open and
+// close by D+$4C (0 to $20 in steps of 4), the step chosen by D+$4E through $80:C636.
+
+// TG3000_ROUTINE($80:C5E0) menu_bar_lines
+// The window's middle lines (to the dispatch): $1B03-$1B08 + D+$F2 from D+$4C and D+$E8.
+// Returns the step's table offset (D+$4E * 2).
+uint16_t menu_bar_lines(uint16_t dp) {
+  const uint16_t x = rd16((uint16_t)(dp + 0xF2));
+  const uint8_t l = rd8((uint16_t)(dp + 0x4C));
+  const uint16_t e8 = rd16((uint16_t)(dp + 0xE8)), l16 = rd16((uint16_t)(dp + 0x4C));
+  // SEC, two SBCs: the second borrows the first's carry
+  const uint8_t once = (uint8_t)(0x40 - l);
+  const uint8_t twice = (uint8_t)(once - l - (l > 0x40 ? 1 : 0));
+  const uint16_t top = (uint16_t)(0xFFFF - e8 + l16);
+  if(twice == 0) {
+    wr8((uint16_t)(0x1B03 + x), 0x01);
+    wr8((uint16_t)(0x1B06 + x), (uint8_t)(0x13 + l));
+    wr16((uint16_t)(0x1B07 + x), top);
+    wr16((uint16_t)(0x1B04 + x), top);
+  } else {
+    wr8((uint16_t)(0x1B03 + x), twice);
+    wr8((uint16_t)(0x1B06 + x), (uint8_t)(0x14 + l));
+    wr16((uint16_t)(0x1B07 + x), top);
+    wr16((uint16_t)(0x1B04 + x), (uint16_t)(0xFFFF - e8));
+  }
+  return (uint16_t)(rd16((uint16_t)(dp + 0x4E)) << 1);
+}
+
+// TG3000_ROUTINE($80:C642) menu_bar_open_step
+// Step 1: the window opens by 4 lines a frame; at $20, the step back to 0.
+void menu_bar_open_step(uint16_t dp) {
+  if(rd16((uint16_t)(dp + 0x4C)) == 0x0020) wr16((uint16_t)(dp + 0x4E), 0);
+  else wr16((uint16_t)(dp + 0x4C), (uint16_t)(rd16((uint16_t)(dp + 0x4C)) + 4));
+}
+
+// TG3000_ROUTINE($80:C6B9) menu_bar_lines_end
+// Every step's end (step 0 is it alone): the window's first lines, $1B00-$1B02 + D+$F2.
+// Returns the last word written ($FFFF - D+$E8 - D+$4C).
+uint16_t menu_bar_lines_end(uint16_t dp) {
+  const uint16_t x = rd16((uint16_t)(dp + 0xF2));
+  wr8((uint16_t)(0x1B00 + x), (uint8_t)(0x18 + rd8((uint16_t)(dp + 0x4C))));
+  const uint16_t v = (uint16_t)(0xFFFF - rd16((uint16_t)(dp + 0xE8)) - rd16((uint16_t)(dp + 0x4C)));
+  wr16((uint16_t)(0x1B01 + x), v);
+  return v;
+}

@@ -5313,6 +5313,24 @@ static void call_ticker_screen(const Regs* in, Regs* out) {
   out->z = out->a == 0;
   out->c = false;
 }
+// the menu bar's line window: the middle lines end at the dispatch's JMP (A = X = D+$4E * 2,
+// N Z of the TAX, C the ASL's); step 1 ends at the shared end; the end returns after its two
+// SBCs (A, N Z C V of the second)
+static void call_menu_bar_lines(const Regs* in, Regs* out) {
+  const uint16_t step = rd16((uint16_t)(in->d + 0x4E));
+  out->a = out->x = menu_bar_lines(in->d);
+  setNZ16(out, out->x);
+  out->c = step >> 15;
+}
+static void call_menu_bar_open_step(const Regs* in, Regs* out) { (void)out; menu_bar_open_step(in->d); }
+static void call_menu_bar_lines_end(const Regs* in, Regs* out) {
+  const uint16_t first = (uint16_t)(0xFFFF - rd16((uint16_t)(in->d + 0xE8)));
+  out->a = menu_bar_lines_end(in->d);
+  setNZ16(out, out->a);
+  setSbc16(out, first, rd16((uint16_t)(in->d + 0x4C)));
+  out->m8 = false;
+}
+
 // the shop's main screen in parts, between its waits: the graphics end after the VRAM clear
 // (X = 0: Z set); the records at the queue_unpacked_upload call (its arguments: A = $87,
 // X = $8000, Y = D+$5C); the text words after LDA #2 / STA D+$C0
@@ -10765,6 +10783,14 @@ const Routine routines[] = {
   {.name = "results_screen", .entry = 0x8A94C3, .end = 0x8A95EB, .endAt = 0x8A95EB, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true,
    .call = call_results_screen},
+  // the menu bar's line window (steps 2-5 never run or call routines not ported)
+  {.name = "menu_bar_lines", .entry = 0x80C5E0, .end = 0x80C633, .endAt = 0x80C633, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .compareA = true, .compareX = true, .call = call_menu_bar_lines},
+  {.name = "menu_bar_open_step", .entry = 0x80C642, .end = 0x80C651, .endAt = 0x80C6B9, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_menu_bar_open_step,
+   .alsoIn = {{0x80C6B7, 0x80C6B9}}},  // (the STZ of D+$4E)
+  {.name = "menu_bar_lines_end", .entry = 0x80C6B9, .end = 0x80C6D4, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .compareA = true, .call = call_menu_bar_lines_end},
   // the shop's main screen in parts (its frame loop and waits are not rows yet)
   {.name = "shop_screen_begin", .entry = 0x808BC5, .end = 0x808BD1, .endAt = 0x808BD1, .source = "src/shop.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_screen_begin},

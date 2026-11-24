@@ -2715,6 +2715,23 @@ password screen, a skipped track's bonus.
 - **Check:** full gate (a new waiting row, which hides `wait_flag_76`'s samples from this one
   caller).
 
+## The menu bar's line window (menu-1, 2026-11-24)
+
+- **`$80:C5E0` is the menu task's per-frame callback.** Its address is put in D+$EC, and the
+  menus' NMI calls it with `JSR ($01EC,X)` after its stack switch, for either player's D. It
+  opens and closes the menu bar's HDMA line window at `$1B00 + D+$F2`, by D+$4C (0 to `$20`
+  in steps of 4), choosing the step by D+$4E through the table at `$80:C636`.
+- **Ported as a dispatcher** (as `shop_buy_dispatch`), in `src/misc.c`:
+  - `menu_bar_lines` ($80:C5E0): the middle lines, ending at the table's `JMP ($C636,X)`.
+    Its 8-bit `SEC / SBC / SBC` borrows the first SBC's carry;
+  - `menu_bar_open_step` ($80:C642): step 1, opening;
+  - `menu_bar_lines_end` ($80:C6B9): the end every step shares (step 0 is it alone).
+- **Steps 2-5 are not rows.** Steps 2 and 3 never run. Steps 4 and 5 call `$80:CCE1` and
+  `$80:D026`, menu-task code not ported yet.
+- **Results:** 395 compared samples of 1,121 entries on each movie, with the same evidence
+  on all three that reach it.
+- **Check:** incremental gate (new rows only).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
