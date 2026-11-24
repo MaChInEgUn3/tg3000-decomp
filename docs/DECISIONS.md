@@ -3746,6 +3746,39 @@ password screen, a skipped track's bonus.
 - **Check:** full gate (`src/dsp4.c` and `difftest.c` changed); the probe (0 of 50,000 in
   each range).
 
+## The mini-map's sprite command measured on the firmware (dsp4-03b, 2026-11-24)
+
+- **`tools/bench/dsp4_probe` now also sends the sprite commands** the way the game does
+  (`$82:CBD4`, `$82:D8C6`): `$0003`, `$0005`, then each entry as `$000B`, x, y and the
+  attribute. Read from the TAS (`refbench --dsp4-cmdlog 03`): the first entry's `$000B`
+  belongs to `$03`'s run. The game reads two more words only when the flag is not 0
+  (`beq` at `$82:D91E`).
+- **When the firmware shows an entry, its words are `dsp4_sprite`'s.** The low bytes of x
+  and y are packed into one word and the attribute comes back unchanged: 0 differ.
+- **But the firmware hides entries, and `dsp4_sprite` shows every one.**
+  - On a fresh list, the flag depends on y alone, never on x or the attribute:
+    - shown for y -7..232 and for y 234;
+    - hidden for y -8 and below, 233, and 235..511;
+    - for y 512 and above, the same pattern repeating every 512.
+  - Within one list it also counts. With every entry on one row (y 50), the firmware hides
+    the 34th entry and every one after it; entries 8 rows lower are still shown. That
+    looks like a limit on sprites per row.
+  - Some answers depend on the chip's history from other commands. After random other
+    commands, rows 233, 235, 236 and 238 are sometimes shown and sometimes hidden. The
+    lone shown row 234 is probably the same effect.
+- **The game is not affected so far.** Its runs (the mini-map's two cars, y 32-67 over the
+  whole TAS) are all shown, and two entries per list come nowhere near the count.
+  - But the game's y can range over 0..255 (an 8-bit sum), and the VS screen may send
+    more cars.
+  - So `dsp4_sprite` is right only for the game's runs seen so far.
+- **The fix is the next unit: the chip's sprite state in the C.** A pure function cannot
+  express the per-row count. Once `dsp4_sprite` can answer 0, two places must follow the
+  flag and read 2 bytes instead of 6:
+  - the bridge's answer lengths (`{0x03, 10, 6}`, `{0x0B, 6, 6}`);
+  - the difftest's command table.
+- **Check:** the probe (`$11` and `$0A` 0 of 50,000 differ; the sprite words 0 differ), and
+  `progress.py --check`. It only adds lines to `tools/bench/dsp4_probe.cpp`.
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.
