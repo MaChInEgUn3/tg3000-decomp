@@ -788,6 +788,7 @@ CODE_8086D0:
     ldx.b $18                   ; $8086FF
     lda.b $16                   ; $808701
     rts                         ; $808703
+sprite_text_menu:
     phb                         ; $808704
     sep.b #$20                  ; $808705
     pha                         ; $808707
@@ -8320,7 +8321,7 @@ CODE_80C97C:
     lda.w #$3354                ; $80C995
     sta.b $14                   ; $80C998
     lda.w #$0000                ; $80C99A
-    jsr.w $8704                 ; $80C99D
+    jsr.w sprite_text_menu      ; $80C99D
 CODE_80C9A0:
     jsr.w oam_finish_near       ; $80C9A0
     jmp.w $C7E2                 ; $80C9A3
@@ -8411,7 +8412,7 @@ CODE_80CA3B:
     lda.w #$3354                ; $80CA57
     sta.b $14                   ; $80CA5A
     lda.w #$0000                ; $80CA5C
-    jsr.w $8704                 ; $80CA5F
+    jsr.w sprite_text_menu      ; $80CA5F
     jsr.w oam_finish_near       ; $80CA62
     plx                         ; $80CA65
     inx                         ; $80CA66
@@ -8839,7 +8840,7 @@ CODE_80CDC2:
     tay                         ; $80CDD1
     ldx.w #$CE91                ; $80CDD2
     lda.w #$0080                ; $80CDD5
-    jsr.w $8704                 ; $80CDD8
+    jsr.w sprite_text_menu      ; $80CDD8
     ldx.b $94                   ; $80CDDB
     lda.w $039D,x               ; $80CDDD
     jsr.w $CE7F                 ; $80CDE0
@@ -8850,7 +8851,7 @@ CODE_80CDC2:
     adc.b $E7                   ; $80CDEC
     tay                         ; $80CDEE
     lda.w #$0080                ; $80CDEF
-    jsr.w $8704                 ; $80CDF2
+    jsr.w sprite_text_menu      ; $80CDF2
     ldx.b $94                   ; $80CDF5
     lda.w $039F,x               ; $80CDF7
     jsr.w $CE7F                 ; $80CDFA
@@ -8861,7 +8862,7 @@ CODE_80CDC2:
     adc.b $E7                   ; $80CE06
     tay                         ; $80CE08
     lda.w #$0080                ; $80CE09
-    jsr.w $8704                 ; $80CE0C
+    jsr.w sprite_text_menu      ; $80CE0C
     ldx.b $94                   ; $80CE0F
     lda.w $03A1,x               ; $80CE11
     jsr.w $CE7F                 ; $80CE14
@@ -8872,7 +8873,7 @@ CODE_80CDC2:
     adc.b $E7                   ; $80CE20
     tay                         ; $80CE22
     lda.w #$0080                ; $80CE23
-    jsr.w $8704                 ; $80CE26
+    jsr.w sprite_text_menu      ; $80CE26
     ldx.b $94                   ; $80CE29
     lda.w $03A3,x               ; $80CE2B
     jsr.w $CE7F                 ; $80CE2E
@@ -8883,7 +8884,7 @@ CODE_80CDC2:
     adc.b $E7                   ; $80CE3A
     tay                         ; $80CE3C
     lda.w #$0080                ; $80CE3D
-    jsr.w $8704                 ; $80CE40
+    jsr.w sprite_text_menu      ; $80CE40
     ldx.b $94                   ; $80CE43
     lda.w $03A5,x               ; $80CE45
     jsr.w $CE7F                 ; $80CE48
@@ -8894,7 +8895,7 @@ CODE_80CDC2:
     adc.b $E7                   ; $80CE54
     tay                         ; $80CE56
     lda.w #$0080                ; $80CE57
-    jsr.w $8704                 ; $80CE5A
+    jsr.w sprite_text_menu      ; $80CE5A
     ldy.b $C4                   ; $80CE5D
     lda.b $4C                   ; $80CE5F
     lsr a                       ; $80CE61

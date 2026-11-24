@@ -6001,6 +6001,18 @@ static void fuzz_func_83FE9A(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // ---- sprite_text ($80:841A) ----  A's low byte = the string's bank, X = its address,
 // Y = start x. Exits with Y = final x (N/Z from that LDY), X = the address of the
 // terminator, A = 0 when a glyph was laid out (its 16-bit LDA #0 cleared B), else B kept.
+// sprite_text_menu: as sprite_text; A's high byte is the $01 of its LDA #$0100 once a glyph
+// was written
+static void call_sprite_text_menu(const Regs* in, Regs* out) {
+  uint32_t str = ((uint32_t)(in->a & 0xFF) << 16) | in->x;
+  uint16_t slot = rd16(DP + 0x74);
+  out->y = sprite_text_menu(str, in->y);
+  uint16_t n = 0;
+  while(bus_rd8((str & 0xFF0000) | (uint16_t)(str + n)) != 0) n++;
+  out->x = (uint16_t)(in->x + n);
+  out->a = rd16(DP + 0x74) != slot ? 0x0100 : (uint16_t)(in->a & 0xFF00);
+  setNZ16(out, out->y);
+}
 static void call_sprite_text(const Regs* in, Regs* out) {
   uint32_t str = ((uint32_t)(in->a & 0xFF) << 16) | in->x;
   uint16_t slot = rd16(DP + 0x74);
@@ -11103,6 +11115,9 @@ const Routine routines[] = {
   {.name = "sprite_text", .entry = 0x80841A, .end = 0x8084B0, .source = "src/text.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_sprite_text, ALL_OUTPUTS, .fuzz = fuzz_sprite_text,
    .m8At = {0x808435}},
+  {.name = "sprite_text_menu", .entry = 0x808704, .end = 0x80879B, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_sprite_text_menu, ALL_OUTPUTS, .fuzz = fuzz_sprite_text,
+   .m8At = {0x80871F}},
   {.name = "sprite_text_centered", .entry = 0x8084BE, .end = 0x8084F0, .source = "src/text.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .call = call_sprite_text_centered, ALL_OUTPUTS,
    .fuzz = fuzz_sprite_text_centered},

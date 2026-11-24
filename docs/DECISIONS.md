@@ -2763,6 +2763,19 @@ password screen, a skipped track's bonus.
   ports.
 - **Check:** `asm/` rebuilds the exact ROM, and `progress.py --check`.
 
+## The menus' sprite text (menu-2, 2026-11-24)
+
+- **`sprite_text_menu` ($80:8704) is ported** (in `src/text.c`). It is the menus' copy of
+  `sprite_text`, with its own font:
+  - capitals `$00-$19`, digits `$1A-$23`, and three marks from `$80:879B` (`$24-$26`);
+  - widths from `$80:87B8`;
+  - a glyph's tile doubled into the 16-wide sheet (scratch D+$18);
+  - OAM high bits `$0100`, the large size.
+- **The movie:** only the menus' movie reaches it, where it is sampled 1,152 times of 3,393
+  entries. It also passes 500 fuzz cases.
+- **Never run in the movies:** the space and high-bit characters. The fuzz runs both.
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

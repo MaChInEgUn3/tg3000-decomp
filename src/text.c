@@ -133,6 +133,44 @@ uint16_t sprite_text(uint32_t str, uint16_t x) {
   return rd16(SPRITE_TEXT_X);
 }
 
+// The menus' copy ($80:8704): capitals $00-$19, digits $1A-$23, three marks from $80:879B
+// ($24-$26), its own widths ($80:87B8), a glyph's tile number doubled into the 16-wide
+// sheet (bits 1-3, and 5 up), and its OAM high bits $0100 (the large size).
+#define MENU_GLYPH_WIDTHS 0x8087B8
+#define MENU_MARKS 0x808777  // (read from + $24)
+static uint16_t menu_glyph(uint8_t ch) {
+  if(ch >= 0x30 && ch < 0x3A) return (uint16_t)(ch - 0x16);
+  if(ch >= 0x41 && ch < 0x5B) return (uint16_t)(ch - 0x41);
+  for(uint16_t g = 0x24; g < 0x27; g++) {
+    if(rom8(MENU_MARKS + g) == ch) return g;
+  }
+  return ch;  // (never run: the original falls through with the character itself)
+}
+
+// TG3000_ROUTINE($80:8704) sprite_text_menu
+uint16_t sprite_text_menu(uint32_t str, uint16_t x) {
+  wr16(SPRITE_TEXT_X, x);
+  uint16_t slot = rd16(SPRITE_TEXT_SLOT);
+  for(uint16_t i = 0;; i++) {
+    uint8_t ch = bus_rd8((str & 0xFF0000) | (uint16_t)(str + i));
+    if(ch == 0) break;
+    if(ch & 0x80) continue;  // (never run)
+    if(ch == 0x20) {  // (never run)
+      wr8(SPRITE_TEXT_X, (uint8_t)(rd8(SPRITE_TEXT_X) + 6));
+      continue;
+    }
+    const uint16_t g = menu_glyph(ch);
+    wr16(DP + 0x18, (uint16_t)((g << 1) & 0x000E));  // (its scratch: the tile's low bits)
+    wr16(0x0902 + slot, (uint16_t)((rd16(DP + 0x18) | ((g << 2) & 0xFFE0)) + rd16(SPRITE_TEXT_BASE)));
+    wr16(0x0900 + slot, rd16(SPRITE_TEXT_X));
+    wr16(0x0B01 + slot, 0x0100);
+    wr8(SPRITE_TEXT_X, (uint8_t)(rom8(MENU_GLYPH_WIDTHS + g) + rd8(SPRITE_TEXT_X)));
+    slot = (uint16_t)(slot + 4);
+  }
+  wr16(SPRITE_TEXT_SLOT, slot);
+  return rd16(SPRITE_TEXT_X);
+}
+
 // TG3000_ROUTINE($8A:C13F) text_print_tiles
 uint16_t text_print_tiles(uint32_t str) {
   wr16(DP + 0x48, (uint16_t)str);

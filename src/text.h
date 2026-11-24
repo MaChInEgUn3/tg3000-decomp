@@ -37,6 +37,9 @@ void text_cursor_down3(void);
 // skipped; a character neither alphanumeric nor in the punctuation list uses its own
 // code as the glyph. Leaves the next slot in $0174 and returns the final x (also in $0116).
 uint16_t sprite_text(uint32_t str, uint16_t x);
+// The menus' copy ($80:8704): their own font (capitals, digits, three marks; widths from
+// $80:87B8), large sprites.
+uint16_t sprite_text_menu(uint32_t str, uint16_t x);
 
 // Print the zero-terminated string at bus address `str` (the original takes its low word
 // in A, also left in $0148, and the bank from DB) one tile per character with
