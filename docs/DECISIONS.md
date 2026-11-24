@@ -2671,6 +2671,26 @@ password screen, a skipped track's bonus.
     `verify_all` and `verify_new` judge them.
 - **Check:** full gate (`selftest.sh` changed), and the selftest itself.
 
+## The shop's main screen, the parts between its waits (shop-24, 2026-11-24)
+
+- **`$80:8BC5`, the shop's main screen**, loads, waits, sets up, and then runs a frame loop
+  that calls `shop_item_screen`. Five rows cover the parts with no wait in them (in
+  `src/shop.c`):
+  - `shop_screen_begin` ($80:8BC5): the image;
+  - `shop_screen_graphics` ($80:8BD7): five decompressions, VRAM words 0-15 cleared;
+  - `shop_screen_records` ($80:8C22): the car's record, three MVNs, ten colours;
+  - `shop_screen_text_setup` ($80:8CB9): the text words;
+  - `shop_screen_list_setup` ($80:8D1A): the fade in, the sprite group, the list panel.
+- **Both players' tasks** run the records and the text words, with D = `$0100` and
+  `$0200`, so those two take `dp`, as the census's one state hid. The 60k movie samples each
+  ten times, five per player.
+- **Left for later:** the waits between the parts (`split_screen_setup` and
+  `queue_unpacked_upload`, each its own row; the `$64` polls) and the frame loop from
+  `$80:8D9A`, which calls the item screen.
+- **The unrun paths:** `$03DC` bits 8-9 clear or both set (`$80:8D40-$80:8D51`, the hole).
+  The record a track has (`$80:8D5E`) runs on the 60k and pw movies only, and is pooled.
+- **Check:** incremental gate (new rows only).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

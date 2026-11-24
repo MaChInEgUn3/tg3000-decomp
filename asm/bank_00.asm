@@ -1164,7 +1164,7 @@ CODE_808AA4:
     bne CODE_808AA4             ; $808AB6
 CODE_808AB8:
     jsl.l result_tally          ; $808AB8
-    jsr.w $8BC5                 ; $808ABC
+    jsr.w shop_screen_begin     ; $808ABC
     jsl.l result_slot_step      ; $808ABF
     lda.w #$FFFF                ; $808AC3
     sta.l $8103E0               ; $808AC6
@@ -1221,12 +1221,14 @@ CODE_808B59:
     jsr.w $BE32                 ; $808B59
     jmp.w $8AB8                 ; $808B5C
     incbin !baserom:$B5F..$BC5
+shop_screen_begin:
     stz.w $019A                 ; $808BC5
     ldx.w #$A26F                ; $808BC8
     lda.w #$0084                ; $808BCB
     jsr.w video_load_screen     ; $808BCE
     lda.w #$0001                ; $808BD1
     jsr.w wait_frames           ; $808BD4
+shop_screen_graphics:
     ldx.w #$8B62                ; $808BD7
     ldy.w #$2000                ; $808BDA
     lda.w #$7E81                ; $808BDD
@@ -1254,6 +1256,7 @@ CODE_808C19:
     dex                         ; $808C1C
     bne CODE_808C19             ; $808C1D
     jsr.w split_screen_setup    ; $808C1F
+shop_screen_records:
     ldx.b $92                   ; $808C22
     lda.w $8B35,x               ; $808C24
     sta.b $B8                   ; $808C27
@@ -1312,6 +1315,7 @@ CODE_808C19:
     ldx.w #$8000                ; $808CB0
     lda.w #$0087                ; $808CB3
     jsr.w queue_unpacked_upload ; $808CB6
+shop_screen_text_setup:
     lda.w #$554D                ; $808CB9
     sta.b $AE                   ; $808CBC
     lda.w #$0F00                ; $808CBE
@@ -1354,9 +1358,9 @@ CODE_808CF7:
     jsr.w wait_frames           ; $808D0D
     lda.b $76                   ; $808D10
     bit.w #$0020                ; $808D12
-    beq CODE_808D1A             ; $808D15
+    beq shop_screen_list_setup  ; $808D15
     jmp.w $8EA3                 ; $808D17
-CODE_808D1A:
+shop_screen_list_setup:
     lda.w #$0F00                ; $808D1A
     sta.b $98                   ; $808D1D
     lda.w #$0100                ; $808D1F

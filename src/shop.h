@@ -346,4 +346,13 @@ void shop_item_frame_view(void);
 void shop_item_frame_draw(void);
 void shop_item_frame_tail(void);
 
+// The shop's main screen ($80:8BC5) in parts: its start, its graphics ($80:8BD7), its records
+// ($80:8C22) and text words ($80:8CB9), both run by either player's task (`dp`: its D), and
+// its list's setup ($80:8D1A).
+void shop_screen_begin(void);
+void shop_screen_graphics(void);
+void shop_screen_records(uint16_t dp);
+void shop_screen_text_setup(uint16_t dp);
+void shop_screen_list_setup(void);
+
 #endif

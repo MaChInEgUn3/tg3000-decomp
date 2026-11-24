@@ -354,6 +354,11 @@ func    809847   shop_item_redraw    ; the item screen's frame: typewriter, pric
 func    809AC8   shop_item_slide_row ; the item changes: old up and out, new in from the left -> src/shop.c
 func    809B5D   shop_item_slide_list ; the item changes: old out to the left, then the new one in -> src/shop.c
 func    809B99   shop_item_slide_list_in ; the new item takes over and slides down into place -> src/shop.c
+func    808BC5   shop_screen_begin   ; the shop's main screen: the fade level cleared, its image -> src/shop.c
+func    808BD7   shop_screen_graphics ; the shop's main screen: graphics to $7E:2000 and VRAM -> src/shop.c
+func    808C22   shop_screen_records ; the shop's main screen: the car's record, MVNs, colours -> src/shop.c
+func    808CB9   shop_screen_text_setup ; the shop's main screen: the text and ticker words -> src/shop.c
+func    808D1A   shop_screen_list_setup ; the shop's main screen: fade in, sprite group, list panel -> src/shop.c
 func    808EB4   shop_item_screen    ; a list's item screen: opens, then a frame at a time for good -> src/shop.c
 func    808F4D   shop_item_frame_view ; the item screen frame: price and view -> src/shop.c
 func    808F64   shop_item_frame_draw ; the item screen frame: icon, level marks, sprites -> src/shop.c

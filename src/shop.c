@@ -12,6 +12,7 @@
 #include "sprites.h"
 #include "text.h"
 #include "tg3000.h"
+#include "video_dma.h"
 
 // TG3000_ROUTINE($80:9F23) shop_part_level_2
 uint16_t shop_part_level_2(uint16_t car) { return (uint16_t)(rd16((uint32_t)(0x0392 + car)) + 1); }
@@ -1622,4 +1623,95 @@ void shop_item_frame_tail(void) {
     text_type_step();
     shop_panel_upload();
   }
+}
+
+// The shop's main screen ($80:8BC5: the list of upgrade kinds, a frame at a time) in parts,
+// the waits and the frame loop between them still in the original's hands:
+
+// TG3000_ROUTINE($80:8BC5) shop_screen_begin
+// The fade level cleared and the screen's image loaded.
+void shop_screen_begin(void) {
+  wr16(0x019A, 0);
+  video_load_screen(0x84A26F);
+}
+
+// TG3000_ROUTINE($80:8BD7) shop_screen_graphics
+// After a frame: the panel graphics to $7E:2000, four tile sets to VRAM, and VRAM words
+// $0000-$000F cleared.
+void shop_screen_graphics(void) {
+  uint16_t end;
+  decompress_near(DP, 0x81, 0x8B62, 0x7E, 0x2000, &end);
+  decompress_to_vram(DP, 0x8D, 0x8000, 0x0010);
+  decompress_to_vram(DP, 0x88, 0x8000, 0x1310);
+  decompress_to_vram(DP, 0x87, 0x8190, 0x2000);
+  decompress_to_vram(DP, 0x8D, 0x895F, 0x2500);
+  for(uint16_t i = 0; i < 0x10; i++) video_write_vram_word(i, 0x0000);
+}
+
+// TG3000_ROUTINE($80:8C22) shop_screen_records
+// After split_screen_setup: the car's record (by D+$92, from $81:8B35), three MVNs into bank
+// $81 at D+$C4 ($40 bytes from $9C:8000, $40 from $9D:9ECA, $20 from $94:8000 at + $180) and
+// ten colour words. (Both players' tasks run it: D = $0100 or $0200.)
+void shop_screen_records(uint16_t dp) {
+  const uint32_t rec = 0x818B35 + (uint32_t)rd16((uint16_t)(dp + 0x92));
+  wr16((uint16_t)(dp + 0xB8), rom16(rec));
+  wr16((uint16_t)(dp + 0xB4), (uint16_t)(rom16(rec + 3) + 4));
+  wr16((uint16_t)(dp + 0x5C), rom16(rec + 5));
+  wr8((uint16_t)(dp + 0xAD), rom8(rec + 2));
+  wr16((uint16_t)(dp + 0x60), rom16(rec + 7));
+  wr16((uint16_t)(dp + 0x62), rom16(rec + 9));
+  const uint16_t c4 = rd16((uint16_t)(dp + 0xC4));
+  for(uint16_t i = 0; i < 0x40; i++) wr8((uint16_t)(c4 + i), rom8(0x9C8000 + i));
+  for(uint16_t i = 0; i < 0x40; i++) wr8((uint16_t)(c4 + 0x40 + i), rom8(0x9D9ECA + i));
+  for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0180 + i), rom8(0x948000 + i));
+  static const uint16_t colours[10][2] = {
+    {0x0122, 0x0C70}, {0x0124, 0x0C69}, {0x0142, 0x109F}, {0x0144, 0x108C}, {0x01C2, 0x13FF},
+    {0x01C4, 0x1210}, {0x01A2, 0x7FFF}, {0x01A4, 0x1210}, {0x01E2, 0x7F9C}, {0x01E4, 0x4210},
+  };
+  for(int i = 0; i < 10; i++) wr16((uint16_t)(c4 + colours[i][0]), colours[i][1]);
+}
+
+// TG3000_ROUTINE($80:8CB9) shop_screen_text_setup
+// After the car graphic's upload: the typed text's and the ticker's words (D: the player's).
+void shop_screen_text_setup(uint16_t dp) {
+  wr16((uint16_t)(dp + 0xAE), 0x554D);
+  wr16((uint16_t)(dp + 0xB0), 0x0F00);
+  wr16((uint16_t)(dp + 0xBA), 0x000A);
+  wr8((uint16_t)(dp + 0xA9), 0x08);
+  wr16((uint16_t)(dp + 0xBE), 0x1011);
+  wr16((uint16_t)(dp + 0xB2), 0);
+  wr16((uint16_t)(dp + 0xBC), 0x1013);
+  wr16((uint16_t)(dp + 0xC0), 0x0002);
+}
+
+// TG3000_ROUTINE($80:8D1A) shop_screen_list_setup
+// The fade in, $03E0 set, the sprite group for the track's place ($85:D530/$85:D55F by
+// $03DC's bits 8-9, with $036C: $D60E without one), the list words cleared and its panel
+// built ($7F:(D+$5E), $3C0 bytes to D+$5C + $400).
+void shop_screen_list_setup(void) {
+  wr16(DP + 0x98, 0x0F00);
+  wr16(DP + 0x96, 0x0100);
+  wr16(0x03E0, 0x0001);
+  wr16(DP + 0x50, 0xD60E);
+  const uint16_t track = rd16(0x0444), mode = (uint16_t)(rd16(0x03DC) & 0x0300);
+  uint16_t got, base;
+  if(mode == 0) {  // never run
+    got = rom16(0x85D501 + (uint32_t)track);
+    base = 0x0000;
+  } else if(mode == 0x0100) {
+    got = rom16(0x85D530 + (uint32_t)track);
+    base = 0x001C;
+  } else {
+    got = rom16(0x85D55F + (uint32_t)track);
+    base = 0x0044;
+  }
+  if(got & 0x00FF) wr16(DP + 0x50, rom16(0x85D58E + (uint32_t)(uint16_t)(base + rd16(0x036C))));
+  func_80B556(0x85, rd16(DP + 0x50), (uint16_t)(rd16(DP + 0x5E) + 0x0118));
+  wr16(DP + 0x48, 0);
+  wr16(DP + 0x4A, 0);
+  wr16(DP + 0x4C, 0);
+  wr16(DP + 0x4E, 0);
+  wr16(DP + 0xEE, 0);
+  wr16(DP + 0x14, 0x007F);
+  func_80B537(DP, 0x03C0, rd16(DP + 0x5E), (uint16_t)(rd16(DP + 0x5C) + 0x0400));
 }

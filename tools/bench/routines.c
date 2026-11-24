@@ -5313,6 +5313,33 @@ static void call_ticker_screen(const Regs* in, Regs* out) {
   out->z = out->a == 0;
   out->c = false;
 }
+// the shop's main screen in parts, between its waits: the graphics end after the VRAM clear
+// (X = 0: Z set); the records at the queue_unpacked_upload call (its arguments: A = $87,
+// X = $8000, Y = D+$5C); the text words after LDA #2 / STA D+$C0
+static void call_shop_screen_begin(const Regs* in, Regs* out) { (void)in; (void)out; shop_screen_begin(); }
+static void call_shop_screen_graphics(const Regs* in, Regs* out) {
+  (void)in;
+  shop_screen_graphics();
+  out->x = 0;
+  out->n = false;
+  out->z = true;
+}
+static void call_shop_screen_records(const Regs* in, Regs* out) {
+  const uint16_t step = rom16(0x818B38 + (uint32_t)rd16((uint16_t)(in->d + 0x92)));
+  shop_screen_records(in->d);
+  out->a = 0x0087;
+  out->x = 0x8000;
+  out->y = rd16((uint16_t)(in->d + 0x5C));
+  out->n = out->z = false;
+  setAdc16(out, step, 0x0004);  // (C and V of its CLC / ADC #4)
+}
+static void call_shop_screen_text_setup(const Regs* in, Regs* out) {
+  shop_screen_text_setup(in->d);
+  out->a = 0x0002;
+  out->n = out->z = false;
+}
+static void call_shop_screen_list_setup(const Regs* in, Regs* out) { (void)in; (void)out; shop_screen_list_setup(); }
+
 // the screens' bank $80 wrappers: a prologue row (its PHB of the caller's DB, the only
 // push left above the cut; DB = $8A, D = $0100) and an epilogue row ending at the RTL
 // (PLB: DB back, N Z of it)
@@ -10712,6 +10739,19 @@ const Routine routines[] = {
   {.name = "results_screen", .entry = 0x8A94C3, .end = 0x8A95EB, .endAt = 0x8A95EB, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true,
    .call = call_results_screen},
+  // the shop's main screen in parts (its frame loop and waits are not rows yet)
+  {.name = "shop_screen_begin", .entry = 0x808BC5, .end = 0x808BD1, .endAt = 0x808BD1, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_screen_begin},
+  {.name = "shop_screen_graphics", .entry = 0x808BD7, .end = 0x808C1F, .endAt = 0x808C1F, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareX = true, .call = call_shop_screen_graphics},
+  {.name = "shop_screen_records", .entry = 0x808C22, .end = 0x808CB6, .endAt = 0x808CB6, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_shop_screen_records},
+  {.name = "shop_screen_text_setup", .entry = 0x808CB9, .end = 0x808CE1, .endAt = 0x808CE1, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .db = 0x81, .compareA = true, .call = call_shop_screen_text_setup},
+  {.name = "shop_screen_list_setup", .entry = 0x808D1A, .end = 0x808D9A, .endAt = 0x808D9A, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_screen_list_setup,
+   .holes = {{0x808D40, 0x808D52}}},  // $03DC bits 8-9 clear, or both set
   // the screens' bank $80 wrappers, around their JSLs (the epilogues end at their RTL, which
   // the PLB'd byte keeps the bench from finding as a return: the RTL itself is in no row)
   {.name = "title_screen_run", .entry = 0x80FBA5, .end = 0x80FBC1, .endAt = 0x80FBC1, .source = "src/misc.c",
