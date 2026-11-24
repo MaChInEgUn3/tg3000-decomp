@@ -9101,3 +9101,79 @@ void champ_menu_frame(void) {
     func_80E4C5();
   }
 }
+
+// The options menus' interpreter ($8A:A2AF): a menu is a list of 8-byte items at $8A:(D+$4A)
+// (after a 4-byte head: its first line in D+$3C): a string list, an action, the item's flags'
+// index (X: its $1516 word). Each item is printed centred a line apart; the focused one
+// ($1516 bit 0) takes the cursor, and unless its bit 7 is set, the selection's test
+// (menu_select, $8A:A419). Drawn in parts around that test.
+
+// The items from the current one (D+$4A): 1 when one stops at the selection's test, 0 at
+// the list's end.
+static int menu_items(void) {
+  for(;;) {
+    const uint16_t item = rd16(DP + 0x4A);
+    const uint16_t x = bus_rd16(0x8A0000 | (uint16_t)(item + 4));
+    const uint16_t list = bus_rd16(0x8A0000 | item);
+    if(list == 0) return 0;
+    func_8AA32B(x);
+    // (bit 1 with D+$66 bit 0 prints the item in the other colour, D+$68 = 1: never run)
+    wr16(DP + 0x68, ((rd16((uint16_t)(0x1516 + x)) & 0x0002) && (rd16(DP + 0x66) & 0x0001)) ? 1 : 0);
+    const uint16_t n = (uint16_t)((rd16((uint16_t)(0x1516 + x)) & 0x003C) >> 2);
+    text_print_centered(0x8A0000 | string_list_nth(0x8A0000 | list, n));
+    text_cursor_down3();
+    if(rd16((uint16_t)(0x1516 + x)) & 0x0001) {
+      func_8AA469();
+      func_8AA381(x);
+      if(!(rd16((uint16_t)(0x1516 + x)) & 0x0080)) return 1;
+    }
+    wr16(DP + 0x4A, (uint16_t)(rd16(DP + 0x4A) + 8));
+  }
+}
+
+// TG3000_ROUTINE($8A:A2AF) menu_draw
+// The menu at $8A:`menu`: the sprites cleared and its frame, its first line, its items up to
+// the focused one's selection test (returns 1) or to the end (0).
+int menu_draw(uint16_t menu) {
+  wr16(DP + 0x4A, menu);
+  clear_object_slots();
+  sprite_frame(0);
+  wr16(DP + 0x3C, bus_rd16(0x8A0000 | menu));
+  wr16(DP + 0x4A, (uint16_t)(menu + 4));
+  return menu_items();
+}
+
+// TG3000_ROUTINE($8A:A31D) menu_draw_rest
+// After the selection's test: done if it chose (`chose`, its carry), else the items after the
+// focused one.
+int menu_draw_rest(bool chose) {
+  if(chose) return 0;
+  wr16(DP + 0x4A, (uint16_t)(rd16(DP + 0x4A) + 8));
+  return menu_items();
+}
+
+// TG3000_ROUTINE($8A:A419) menu_select
+// With the cursor on the item (`$0D90` = `$0D68`) and a B/Y/A/X press on any pad: the item's
+// action ready (D+$5E cleared, its word in D+$5C, func_8AA49E: the action in $015C); returns
+// true then (the original saves D+$62, D+$4A, X and Y and jumps to the action).
+bool menu_select(void) {
+  if(rd16(0x0D90) != rd16(0x0D68)) return false;
+  static const uint16_t pads[4] = {0x000E, 0x0012, 0x0016, 0x001A};
+  bool press = false;
+  for(int i = 0; i < 4 && !press; i++) {
+    press = (rd16(pads[i]) & 0xC0C0) != 0;
+    wr16(pads[i], (uint16_t)(rd16(pads[i]) & ~0xC0C0));
+  }
+  if(!press) return false;
+  wr16(DP + 0x5E, 0);
+  wr16(DP + 0x5C, bus_rd16(0x8A0000 | (uint16_t)(rd16(DP + 0x4A) + 2)));
+  func_8AA49E();
+  return true;
+}
+
+// TG3000_ROUTINE($8A:B174) menu_action_rookie
+// An action: $03DC = $10 (a byte), and the menu left (D+$6C counted).
+void menu_action_rookie(void) {
+  wr8(0x03DC, 0x10);
+  wr16(DP + 0x6C, (uint16_t)(rd16(DP + 0x6C) + 1));
+}

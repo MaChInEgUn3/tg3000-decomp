@@ -1703,4 +1703,12 @@ void champ_menu_ready(uint16_t dp);
 // $80:C2BB: a pass of the championship menu's loop (colours, bar, sprites, the cursor).
 void champ_menu_frame(void);
 
+// The options menus' interpreter: the menu drawn up to the focused item's selection test
+// ($8A:A2AF: 1 there, 0 at the end), the rest after it ($8A:A31D), the selection's test
+// ($8A:A419: true when an action is chosen) and one action ($8A:B174).
+int menu_draw(uint16_t menu);
+int menu_draw_rest(bool chose);
+bool menu_select(void);
+void menu_action_rookie(void);
+
 #endif

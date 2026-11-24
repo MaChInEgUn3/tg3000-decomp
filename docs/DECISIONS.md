@@ -3054,6 +3054,29 @@ password screen, a skipped track's bonus.
 - **Results:** 732 passes on the 60k movie and 1,065 on the menus' movie.
 - **Check:** incremental gate.
 
+## The options menus' interpreter, first parts (menu-19, 2026-11-24)
+
+- **`$8A:A2AF` interprets the options menus**, the championship's password and INFODATA
+  screens. A menu is a list of 8-byte items at `$8A:(D+$4A)`: a string list, an action word,
+  and the flags' index (`$1516 + X`).
+  - Each item is printed centred.
+  - The focused one takes the cursor, and its selection is tested (`$8A:A419`).
+  - A press puts the item's action in D+$5C (`$015C` with D = `$0100`) and jumps through it
+    (`JMP ($015C)`, `$8A:A466`).
+  - The actions recurse: `$8A:AA4FB` opens a submenu through `$8A:B659`, which calls
+    `$8A:A2AF` again a frame at a time.
+- **Four rows now** (in `src/misc.c`), cut around the selection test:
+  - `menu_draw` (up to the focused item's test);
+  - `menu_draw_rest` (after it: its carry decides);
+  - `menu_select` (up to the jump; its four pushes above the cut). The movies select in
+    entries the sampling skips, so its 500 fuzz cases cover that path;
+  - `menu_action_rookie` (`$8A:B174`).
+- **Left for later:** the dispatch through `$015C`, the submenu loop `$8A:B659`, the
+  password's action `$8A:B21C` and its typing loop `$8A:B232` (not ported yet: the dispatch's
+  C needs it).
+- **Results:** 109, 109, 109 and 1 on the 60k movie; 229-230 on the INFODATA movie.
+- **Check:** full gate (the last full run was 4 commits back).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

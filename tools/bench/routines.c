@@ -5540,6 +5540,49 @@ static void call_champ_fade_in(const Regs* in, Regs* out) {
   out->n = out->z = false;
 }
 
+// the options menus' interpreter: the drawing parts end at the selection's test or return at
+// the list's end; the selection ends at its jump to the action (its four pushes above the
+// cut: D+$62, D+$4A, X, Y; A the action word, C set by its CMP) or returns with C clear; the
+// action $8A:B174 returns on its INC
+static void call_menu_draw(const Regs* in, Regs* out) { (void)out; menu_draw(in->a); }
+static void call_menu_draw_rest(const Regs* in, Regs* out) { (void)out; menu_draw_rest(in->c); }
+static void call_menu_select(const Regs* in, Regs* out) {
+  const uint16_t p62 = rd16(DP + 0x62), p4A = rd16(DP + 0x4A);
+  const bool on = rd16(0x0D90) == rd16(0x0D68);
+  if(menu_select()) {
+    out->a = rd16(DP + 0x5C);  // (the action: D+$5C is $015C, which the jump goes through)
+    setNZ16(out, out->a);
+    out->c = true;  // (its CMP of $0D68, equal)
+    wr16((uint16_t)(in->sp - 1), p62);
+    wr16((uint16_t)(in->sp - 3), p4A);
+    wr16((uint16_t)(in->sp - 5), in->x);
+    wr16((uint16_t)(in->sp - 7), in->y);
+  } else {
+    out->c = false;
+    if(on) {
+      out->a = 0xC0C0;
+      out->n = true;
+      out->z = true;
+    }
+  }
+}
+// the selection's cases: the cursor on its item or not, B/Y/A/X on one of the four pads or
+// none, the item pointer within the menus' bank
+static void fuzz_menu_select(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  const uint16_t at = (uint16_t)rnd();
+  wr16ram(ram, 0x0D90, at);
+  wr16ram(ram, 0x0D68, (rnd() & 3) ? at : (uint16_t)rnd());
+  static const uint16_t pads[4] = {0x000E, 0x0012, 0x0016, 0x001A};
+  for(int i = 0; i < 4; i++) wr16ram(ram, pads[i], (uint16_t)(rnd() & ((rnd() & 1) ? 0xC0C0 : 0x3F3F)));
+  wr16ram(ram, DP + 0x4A, (uint16_t)(0x8000 | rnd()));
+}
+static void call_menu_action_rookie(const Regs* in, Regs* out) {
+  menu_action_rookie();
+  out->a = (uint16_t)((in->a & 0xFF00) | 0x10);
+  setNZ16(out, rd16(DP + 0x6C));
+}
+
 // the championship menu's pass ends at its button test: C V oam_finish_near's, or with down
 // pressed its CMP #3's C (the cursor at the bottom)
 static void call_champ_menu_frame(const Regs* in, Regs* out) {
@@ -11342,6 +11385,16 @@ const Routine routines[] = {
    .call = call_champ_panel},
   {.name = "champ_fade_in", .entry = 0x80C039, .end = 0x80C043, .endAt = 0x80C043, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareA = true, .call = call_champ_fade_in},
+  {.name = "menu_draw", .entry = 0x8AA2AF, .end = 0x8AA31A, .endAt = 0x8AA31A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_menu_draw, .holes = {{0x8AA2E1, 0x8AA2F7}},
+   .alsoIn = {{0x8AA31F, 0x8AA32B}}},  // (the items after one with bit 7: menu_draw_rest's code)
+  {.name = "menu_draw_rest", .entry = 0x8AA31D, .end = 0x8AA32B, .endAt = 0x8AA31A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_menu_draw_rest, .alsoIn = {{0x8AA2C9, 0x8AA31D}},
+   .holes = {{0x8AA2E1, 0x8AA2F7}}},
+  {.name = "menu_select", .entry = 0x8AA419, .end = 0x8AA459, .endAt = 0x8AA459, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_menu_select, .fuzz = fuzz_menu_select},
+  {.name = "menu_action_rookie", .entry = 0x8AB174, .end = 0x8AB180, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_action_rookie},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

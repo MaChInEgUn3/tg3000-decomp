@@ -9,6 +9,7 @@ func    8088B9   vram_queue_drain    ; NMI part that sends queued transfers with
 func    8AA25D   take_slot           ; Y = word at D+$8C, then += 2 -> src/util.c
 func    8AB15E   lsr_n               ; A >>= Y, one bit at a time -> src/util.c
 func    8AB152   asl_n               ; A <<= Y, one bit at a time (Y kept) -> src/util.c
+func    8AB174   menu_action_rookie  ; an options menu action: $03DC = $10, the menu left -> src/misc.c
 func    8AB18C   password_hdma_off   ; a frame, then HDMA off ($420C/$420D = 0) -> src/password.c
 func    8AB197   password_hdma_on    ; a frame, then HDMA channels 1 and 7 on -> src/password.c
 func    8AB1A5   password_screen_open ; the password screen faded in (tiles, map, palettes) -> src/password.c
@@ -88,6 +89,8 @@ func    8AC03D   func_8AC03D         ; $0390:$038E and $03BF:$03BD <<= 12 -> src
 func    8AC024   func_8AC024         ; $0390:$038E and $03BF:$03BD >>= 12 -> src/misc.c
 func    8ABA55   func_8ABA55         ; two decompress_to_vram, palette from $8A:C658 -> src/video_dma.c
 func    82FB1C   func_82FB1C         ; empty (RTS) -> src/misc.c
+func    8AA2AF   menu_draw           ; an options menu drawn up to the focused item's selection test -> src/misc.c
+func    8AA31D   menu_draw_rest      ; the options menu's items after the selection test -> src/misc.c
 func    8AA32B   func_8AA32B         ; $0D23 + table[D+$3C - 10] from the object's flags -> src/misc.c
 func    8AA381   func_8AA381         ; bits 11/10 of $000E..$001A -> object flags, func_8AA48D -> src/misc.c
 func    8A8290   func_8A8290         ; every 8th count: D+$64 through 1,2,3,4,3,2 -> src/misc.c
@@ -181,6 +184,7 @@ func    8AB942   func_8AB942         ; two-column wipe step through the long poi
 func    82FB70   decompress          ; JSL: data decompressor (A = out:in banks, X = in, Y = out) -> src/decompress.c
 func    80FBA0   decompress_near     ; JSL decompress / RTS bridge -> src/decompress.c
 func    8AA47E   clear_object_slots  ; zero $0500-$05F7 and $018C -> src/misc.c
+func    8AA419   menu_select         ; the options menu's selection: a press readies the item's action -> src/misc.c
 func    8AA469   func_8AA469         ; $0D90 = $013C*8-$1C, $0D78 = $015A*8 -> src/misc.c
 func    8AA4CF   string_list_nth     ; skip n strings (8-bit terminator step) -> src/misc.c
 func    80841A   sprite_text         ; string -> sprite entries at $0900+slot, x advanced by glyph widths ($80:85E5) -> src/text.c

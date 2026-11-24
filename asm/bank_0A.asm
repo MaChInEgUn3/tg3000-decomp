@@ -3204,7 +3204,7 @@ CODE_8A9F3A:
     lda.w #$0001                ; $8A9F3A
     jsl.l wait_frames_long      ; $8A9F3D
     lda.w #$CBA7                ; $8A9F41
-    jsr.w $A2AF                 ; $8A9F44
+    jsr.w menu_draw             ; $8A9F44
     jsr.w timer_0d7e_tick       ; $8A9F47
     lda.b $6C                   ; $8A9F4A
     beq CODE_8A9F3A             ; $8A9F4C
@@ -3592,6 +3592,7 @@ CODE_8AA2A8:
     bne step_toward_0d68        ; $8AA2AC
 CODE_8AA2AE:
     rts                         ; $8AA2AE
+menu_draw:
     sta.b $4A                   ; $8AA2AF
     jsr.w clear_object_slots    ; $8AA2B1
     ldx.w #$0000                ; $8AA2B4
@@ -3628,7 +3629,8 @@ CODE_8AA2F7:
     lda.w $1516,x               ; $8AA312
     and.w #$0080                ; $8AA315
     bne CODE_8AA31F             ; $8AA318
-    jsr.w $A419                 ; $8AA31A
+    jsr.w menu_select           ; $8AA31A
+menu_draw_rest:
     bcs CODE_8AA32A             ; $8AA31D
 CODE_8AA31F:
     clc                         ; $8AA31F
@@ -3755,6 +3757,7 @@ CODE_8AA3F4:
 CODE_8AA417:
     ply                         ; $8AA417
     rts                         ; $8AA418
+menu_select:
     lda.w $0D90                 ; $8AA419
     cmp.w $0D68                 ; $8AA41C
     beq CODE_8AA423             ; $8AA41F
@@ -4000,6 +4003,7 @@ CODE_8AB163:
 CODE_8AB167:
     rts                         ; $8AB167
     incbin !baserom:$53168..$53174
+menu_action_rookie:
     sep.b #$20                  ; $8AB174
     lda.b #$10                  ; $8AB176
     sta.w $03DC                 ; $8AB178
@@ -4598,7 +4602,7 @@ CODE_8AB65E:
     jsl.l wait_frames_long      ; $8AB668
     jsr.w func_8A9FA1           ; $8AB66C
     lda.b $62                   ; $8AB66F
-    jsr.w $A2AF                 ; $8AB671
+    jsr.w menu_draw             ; $8AB671
     lda.b $5E                   ; $8AB674
     beq CODE_8AB65E             ; $8AB676
     stz.b $5E                   ; $8AB678
