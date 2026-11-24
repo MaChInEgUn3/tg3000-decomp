@@ -408,6 +408,11 @@ func    80BF82   champ_load          ; the championship screen: graphics, rows, 
 func    80BFED   champ_queue_map     ; the championship screen: the map queued for VRAM -> src/misc.c
 func    80C003   champ_panel         ; the championship screen: menu words, its panel -> src/misc.c
 func    80C039   champ_fade_in       ; the championship screen: the fade in -> src/misc.c
+func    80C05C   champ_slide_step    ; the championship opening: a slide step -> src/misc.c
+func    80C096   champ_clear_panels  ; the championship opening: panels cleared -> src/misc.c
+func    80C144   champ_noise         ; the championship opening: a frame of static -> src/misc.c
+func    80C22D   champ_noise_panels  ; the championship opening: the static's panels -> src/misc.c
+func    80C261   champ_menu_ready    ; the championship opening over: rows, cursor, bar, panel -> src/misc.c
 func    80C475   sprite_bar8         ; a bar of 8 sprites, D+$14 wide, centred on D+$18 -> src/text.c
 func    80C6D4   name_entry_open     ; the name entry: window opening, graphics, rows -> src/misc.c
 func    80C717   name_entry_lines    ; the name entry: D+$14 for the first panel -> src/misc.c

@@ -7234,6 +7234,7 @@ CODE_80C053:
 CODE_80C056:
     lda.w #$0001                ; $80C056
     jsr.w wait_frames           ; $80C059
+champ_slide_step:
     dec.b $1A                   ; $80C05C
     bne CODE_80C082             ; $80C05E
     lda.w #$007F                ; $80C060
@@ -7265,6 +7266,7 @@ CODE_80C082:
 CODE_80C091:
     cpx.w #$0010                ; $80C091
     bne CODE_80C056             ; $80C094
+champ_clear_panels:
     ldy.w #$000C                ; $80C096
     ldx.b $5E                   ; $80C099
     lda.w #$0000                ; $80C09B
@@ -7340,6 +7342,7 @@ CODE_80C103:
 CODE_80C140:
     cmp.b $8E                   ; $80C140
     bne CODE_80C140             ; $80C142
+champ_noise:
     phb                         ; $80C144
     pea.w $7F7F                 ; $80C145
     plb                         ; $80C148
@@ -7435,6 +7438,7 @@ CODE_80C1C1:
 CODE_80C229:
     cmp.b $8E                   ; $80C229
     bne CODE_80C229             ; $80C22B
+champ_noise_panels:
     lda.w #$007F                ; $80C22D
     sta.b $14                   ; $80C230
     lda.b $5C                   ; $80C232
@@ -7457,9 +7461,9 @@ CODE_80C229:
     lda.w #$0200                ; $80C254
     jsr.w func_80B537           ; $80C257
     dec.b $16                   ; $80C25A
-    beq CODE_80C261             ; $80C25C
-    jmp.w $C144                 ; $80C25E
-CODE_80C261:
+    beq champ_menu_ready        ; $80C25C
+    jmp.w champ_noise           ; $80C25E
+champ_menu_ready:
     ldy.w #$000C                ; $80C261
     ldx.b $5E                   ; $80C264
     lda.w #$0000                ; $80C266

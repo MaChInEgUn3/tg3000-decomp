@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "misc.h"
+#include <stddef.h>
 
 #include "decompress.h"
 #include "dsp4.h"
@@ -8991,4 +8992,82 @@ void champ_panel(uint16_t dp) {
 void champ_fade_in(uint16_t dp) {
   wr16((uint16_t)(dp + 0x98), 0x0F00);
   wr16((uint16_t)(dp + 0x96), 0x0100);
+}
+
+// The championship screen's opening animation, between its waits (either player's task):
+
+// TG3000_ROUTINE($80:C05C) champ_slide_step
+// One frame of the bar's slide: every 4 frames the next panel ($81:BDF8 + x, `x` the step's
+// offset, advanced and returned); D+$18 and D+$9E rise by 2 a frame until $FFFF.
+uint16_t champ_slide_step(uint16_t dp, uint16_t x) {
+  wr16((uint16_t)(dp + 0x1A), (uint16_t)(rd16((uint16_t)(dp + 0x1A)) - 1));
+  if(rd16((uint16_t)(dp + 0x1A)) == 0) {
+    wr16((uint16_t)(dp + 0x14), 0x007F);
+    func_80B537(dp, 0x0200, (uint16_t)(rd16((uint16_t)(dp + 0x5E)) + rom16(0x81BDF8 + (uint32_t)x)),
+                (uint16_t)(rd16((uint16_t)(dp + 0x5C)) + 0x0060));
+    x = (uint16_t)(x + 2);
+    wr16((uint16_t)(dp + 0x1A), 0x0004);
+  }
+  if(rd16((uint16_t)(dp + 0x18)) != 0xFFFF) {
+    wr16((uint16_t)(dp + 0x18), (uint16_t)(rd16((uint16_t)(dp + 0x18)) - 2));
+    wr16((uint16_t)(dp + 0x9E), rd16((uint16_t)(dp + 0x18)));
+  }
+  return x;
+}
+
+// The map's eight rows of 12 words at $7F:08D4 + D+$5E cleared.
+static void champ_clear_rows(uint16_t dp) {
+  for(uint16_t i = 0, at = rd16((uint16_t)(dp + 0x5E)); i < 12; i++, at = (uint16_t)(at + 2))
+    for(uint16_t r = 0; r < 8; r++) wr16(0x7F08D4 + (uint32_t)(uint16_t)(at + 0x40 * r), 0);
+}
+
+// The panel at D+$5E + $800 ($380 bytes) to D+$5C + $400.
+static void champ_big_panel(uint16_t dp) {
+  wr16((uint16_t)(dp + 0x14), 0x007F);
+  func_80B537(dp, 0x0380, (uint16_t)(rd16((uint16_t)(dp + 0x5E)) + 0x0800), (uint16_t)(rd16((uint16_t)(dp + 0x5C)) + 0x0400));
+}
+
+// TG3000_ROUTINE($80:C096) champ_clear_panels
+// After the slide: the map's rows cleared, the big panel and the last slide panel
+// ($81:BE08), a $10-row block of $FFFF words at $7F:(D+$5E) (8 columns), D+$16 = 8.
+void champ_clear_panels(uint16_t dp) {
+  champ_clear_rows(dp);
+  champ_big_panel(dp);
+  wr16((uint16_t)(dp + 0x14), 0x007F);
+  func_80B537(dp, 0x0200, (uint16_t)(rd16((uint16_t)(dp + 0x5E)) + rom16(0x81BE08)), (uint16_t)(rd16((uint16_t)(dp + 0x5C)) + 0x0060));
+  for(uint16_t i = 0, at = rd16((uint16_t)(dp + 0x5E)); i < 8; i++, at = (uint16_t)(at + 2))
+    for(uint16_t r = 0; r < 16; r++) wr16(0x7F0000 + (uint32_t)(uint16_t)(at + 0x20 * r), 0xFFFF);
+  wr16((uint16_t)(dp + 0x16), 0x0008);
+}
+
+// TG3000_ROUTINE($80:C144) champ_noise
+// One frame of static: the map's eight rows of 12 words random ((r & $C00F) + $0D60), and
+// the $10-row block's other half random words (rng_next on the task's state, D+$10).
+void champ_noise(uint16_t dp) {
+  const uint16_t state = (uint16_t)(dp + 0x10);
+  for(uint16_t i = 0, at = rd16((uint16_t)(dp + 0x5E)); i < 12; i++, at = (uint16_t)(at + 2))
+    for(uint16_t r = 0; r < 8; r++)
+      wr16(0x7F08D4 + (uint32_t)(uint16_t)(at + 0x40 * r), (uint16_t)((rng_next(state, NULL) & 0xC00F) + 0x0D60));
+  for(uint16_t i = 0, at = rd16((uint16_t)(dp + 0x5E)); i < 8; i++, at = (uint16_t)(at + 2))
+    for(uint16_t r = 0; r < 16; r++) wr16(0x7F0010 + (uint32_t)(uint16_t)(at + 0x20 * r), rng_next(state, NULL));
+}
+
+// TG3000_ROUTINE($80:C22D) champ_noise_panels
+// The static shown: the big panel, and the block at D+$5E to D+$5C + $2600.
+void champ_noise_panels(uint16_t dp) {
+  champ_big_panel(dp);
+  wr16((uint16_t)(dp + 0x14), 0x007F);
+  func_80B537(dp, 0x0200, rd16((uint16_t)(dp + 0x5E)), (uint16_t)(rd16((uint16_t)(dp + 0x5C)) + 0x2600));
+}
+
+// TG3000_ROUTINE($80:C261) champ_menu_ready
+// The static over: the rows cleared, the cursor at the top (D+$48, D+$4A), the menu bar, the
+// sprites, the big panel.
+void champ_menu_ready(uint16_t dp) {
+  champ_clear_rows(dp);
+  wr16((uint16_t)(dp + 0x48), 0);
+  wr16((uint16_t)(dp + 0x4A), 0);
+  menu_bar_draw();
+  oam_finish_near(dp);
+  champ_big_panel(dp);
 }

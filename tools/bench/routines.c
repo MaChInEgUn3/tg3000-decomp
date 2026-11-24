@@ -5540,6 +5540,18 @@ static void call_champ_fade_in(const Regs* in, Regs* out) {
   out->n = out->z = false;
 }
 
+// the championship screen's opening animation: the slide step returns its offset in X
+static void call_champ_slide_step(const Regs* in, Regs* out) { out->x = champ_slide_step(in->d, in->x); }
+static void call_champ_clear_panels(const Regs* in, Regs* out) { (void)out; champ_clear_panels(in->d); }
+static void call_champ_noise(const Regs* in, Regs* out) { (void)out; champ_noise(in->d); }
+// (the static's panels end after func_80B537: its C and V, the ADD of its queue index, now
+// D+$8C, to D+$8A)
+static void call_champ_noise_panels(const Regs* in, Regs* out) {
+  champ_noise_panels(in->d);
+  setAdc16(out, (uint16_t)(rd16((uint16_t)(in->d + 0x8C)) & 0x3F), rd16((uint16_t)(in->d + 0x8A)));
+}
+static void call_champ_menu_ready(const Regs* in, Regs* out) { (void)out; champ_menu_ready(in->d); }
+
 // the race choice's parts: the close ends at the bar's poll (A = $C5E0: N set); the bar's
 // lines at the $4212 poll (A = $DB40 in 8 bits, the poll's mask: its LDA #$40); the load at the
 // D+$16 poll (its PHA of the second length above the cut; A = $E0E0, X = 0 from oam_clear);
@@ -11319,6 +11331,16 @@ const Routine routines[] = {
    .call = call_champ_panel},
   {.name = "champ_fade_in", .entry = 0x80C039, .end = 0x80C043, .endAt = 0x80C043, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareA = true, .call = call_champ_fade_in},
+  {.name = "champ_slide_step", .entry = 0x80C05C, .end = 0x80C091, .endAt = 0x80C091, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareX = true, .call = call_champ_slide_step},
+  {.name = "champ_clear_panels", .entry = 0x80C096, .end = 0x80C13E, .endAt = 0x80C13E, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .call = call_champ_clear_panels},
+  {.name = "champ_noise", .entry = 0x80C144, .end = 0x80C227, .endAt = 0x80C227, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .call = call_champ_noise},
+  {.name = "champ_noise_panels", .entry = 0x80C22D, .end = 0x80C25A, .endAt = 0x80C25A, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .call = call_champ_noise_panels},
+  {.name = "champ_menu_ready", .entry = 0x80C261, .end = 0x80C2B1, .endAt = 0x80C2B1, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .call = call_champ_menu_ready},
   {.name = "race_start_end", .entry = 0x80D668, .end = 0x80D6A0, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
    .call = call_race_start_end},

@@ -611,3 +611,8 @@
 80BFED champ_queue_map src/misc.c 9bdc5b62d32b01d0 10 0 8/8 verified live-flags:VC replayed:0
 80C003 champ_panel src/misc.c 9bdc5b62d32b01d0 10 0 20/20 verified live-flags:VC replayed:0
 80C039 champ_fade_in src/misc.c 9bdc5b62d32b01d0 2 0 4/4 verified live-flags:- replayed:0
+80C05C champ_slide_step src/misc.c 47472e1c4ae1b628 36 0 27/27 verified live-flags:- replayed:0
+80C096 champ_clear_panels src/misc.c 47472e1c4ae1b628 1 0 69/69 verified live-flags:V replayed:0
+80C144 champ_noise src/misc.c 47472e1c4ae1b628 7 0 89/89 verified live-flags:V replayed:0
+80C22D champ_noise_panels src/misc.c 47472e1c4ae1b628 8 0 21/21 verified live-flags:VC replayed:0
+80C261 champ_menu_ready src/misc.c 47472e1c4ae1b628 1 0 31/31 verified live-flags:- replayed:0

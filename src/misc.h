@@ -1691,4 +1691,13 @@ void champ_queue_map(uint16_t dp);
 void champ_panel(uint16_t dp);
 void champ_fade_in(uint16_t dp);
 
+// The championship screen's opening animation (either player's task, `dp`): a slide step
+// ($80:C05C; `x` its offset, returned advanced), the panels cleared ($80:C096), a frame of
+// static ($80:C144) and its panels ($80:C22D), the menu ready ($80:C261).
+uint16_t champ_slide_step(uint16_t dp, uint16_t x);
+void champ_clear_panels(uint16_t dp);
+void champ_noise(uint16_t dp);
+void champ_noise_panels(uint16_t dp);
+void champ_menu_ready(uint16_t dp);
+
 #endif

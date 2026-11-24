@@ -3028,6 +3028,19 @@ password screen, a skipped track's bonus.
   each shared part. The menus' and password movies also pass.
 - **Check:** incremental gate.
 
+## The championship screen's opening animation (menu-17, 2026-11-24)
+
+- **Five rows between its waits and polls** (in `src/misc.c`, each with `dp`):
+  - `champ_slide_step` ($80:C05C): a frame of the bar's slide; a panel every 4 frames;
+  - `champ_clear_panels` ($80:C096);
+  - `champ_noise` ($80:C144): a frame of static from `rng_next` on the task's state (D+$10);
+  - `champ_noise_panels` ($80:C22D);
+  - `champ_menu_ready` ($80:C261): the static over, the menu bar.
+- **Left for later:** the menu's frame loop from `$80:C2BB`.
+- **Results:** 36 slide steps, 7 static frames (one more by replay), 8 panel pairs, 1 each
+  for the others.
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
