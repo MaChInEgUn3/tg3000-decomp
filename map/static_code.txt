@@ -178,3 +178,4 @@
 8A:A721 8A:A728 m16x16 ; vs_panel_screens_bg1_off, called by vs_name_key's full and empty cases: executed by its difftest fuzz, matched by src/vs.c
 8A:AEB9 8A:AEDA m16x16 ; vs_letter_prev, called by vs_name_entry_frame's Up: executed by its difftest fuzz, matched by src/vs.c
 8A:AF31 8A:AF57 m16x16 ; vs_row_prev, called by vs_name_entry_frame's Left: executed by its difftest fuzz, matched by src/vs.c
+8A:AADB 8A:AADF m16x16 ; vs_panel_name_draw: a panel other than 0-6 (its CPX chain falls through): executed by its difftest fuzz, matched by src/vs.c

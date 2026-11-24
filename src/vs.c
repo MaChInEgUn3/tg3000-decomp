@@ -443,3 +443,96 @@ void vs_name_entry_frame(uint16_t x) {
   wr16((uint16_t)(0x0DB4 + x), 0x0004);
   vs_name_put(x, 0);
 }
+
+// TG3000_ROUTINE($8A:AA71) vs_car_title
+uint16_t vs_car_title(uint16_t x) {
+  wr16(DP + 0x3A, table8a(0xAA92, x));
+  wr16(DP + 0x3C, table8a(0xAA9A, x));
+  return vs_put_string(0xCE5B);
+}
+
+// TG3000_ROUTINE($8A:B037) vs_grid_draw
+uint16_t vs_grid_draw(uint16_t x, uint16_t y) {
+  wr16(DP + 0x3A, x);
+  wr16(DP + 0x3C, y);
+  uint16_t a = vs_put_string(0xAFAB);
+  for(uint16_t row = 1; row < 5; row++) {
+    wr16(DP + 0x3A, x);
+    wr16(DP + 0x3C, (uint16_t)(rd16(DP + 0x3C) + 2));
+    a = vs_put_string((uint16_t)(0xAFAB + 14 * row));
+  }
+  return a;
+}
+
+// TG3000_ROUTINE($8A:AAC1) vs_panel_name_draw
+//
+// A panel other than 0-6 draws nothing (never run).
+uint16_t vs_panel_name_draw(uint16_t x) {
+  static const uint16_t names[4] = {0x03E4, 0x03F1, 0x03FE, 0x040B};
+  wr16(DP + 0x88, 0x0001);
+  if(x > 6 || (x & 1)) {
+    wr16(DP + 0x88, 0);
+    return 0x0001;
+  }
+  wr16(DP + 0x3C, (uint16_t)(table8a(0xACDC, x) << 3));
+  wr16(DP + 0x3A, (uint16_t)(table8a(0xACD4, x) << 3));
+  vs_put_string(names[x >> 1]);
+  vs_panel_sprite(x);
+  wr16(DP + 0x88, 0);
+  return vs_panel_marks((uint16_t)(x >> 1));
+}
+
+// TG3000_ROUTINE($8A:A852) vs_car_confirm
+void vs_car_confirm(uint16_t x) {
+  if(vs_cursor_moving(x)) return;
+  if(rd16((uint16_t)(0x0D38 + x)) == 0xFFFF && !(rd16((uint16_t)(0x0DCC + x)) & 0xC0C0)) return;
+  vs_panel_text_clear(x);
+  vs_name_default(x);
+  wr16((uint16_t)(0x0DDC + x), 0xFFFD);
+  vs_panel_screens(x);
+  const uint16_t panel = (x <= 6 && !(x & 1)) ? (uint16_t)(x >> 1) : 0;
+  wr8((uint16_t)(0x0418 + panel), (uint8_t)rd16((uint16_t)(0x0DB4 + x)));
+  vs_ready_check();
+}
+
+// TG3000_ROUTINE($8A:A869) vs_ready_draw
+void vs_ready_draw(uint16_t x) {
+  wr16(DP + 0x3A, table8a(0xAA92, x));
+  wr16(DP + 0x3C, (uint16_t)(table8a(0xAA9A, x) + 4));
+  if(!(rd16(DP + 0x66) & 1)) {
+    vs_panel_text_clear(x);
+    return;
+  }
+  const uint16_t at = rd16(DP + 0x3A);
+  const uint16_t name = table8a(0xA804, x);
+  vs_text_center(name);
+  vs_put_string(name);
+  wr16(DP + 0x3A, (uint16_t)(at + 4));
+  wr16(DP + 0x3C, (uint16_t)(rd16(DP + 0x3C) + 2));
+  vs_put_string(0xA9A1);
+}
+
+// TG3000_ROUTINE($8A:A9A7) vs_car_info
+uint16_t vs_car_info(uint16_t x) {
+  const uint16_t col = rd16((uint16_t)(0x0DB4 + x));
+  if(col == rd16((uint16_t)(0x0DAC + x))) return col;
+  wr16((uint16_t)(0x0DAC + x), col);
+  const uint16_t text = table8a(0xCE63, (uint16_t)(col << 1));
+  wr16(DP + 0x42, text);
+  const uint16_t left = table8a(0xAA92, x), top = table8a(0xAA9A, x);
+  vs_panel_text_clear(x);
+  uint16_t a = vs_car_title(x);
+  wr16(DP + 0x3C, (uint16_t)(top + 1));
+  wr16(DP + 0x3A, left);
+  for(uint16_t y = 0;; y++) {
+    const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(text + y));
+    if(c == 0xFF) return (uint16_t)((a & 0xFF00) | 0xFF);
+    if(c == 0) {
+      a = left;
+      wr16(DP + 0x3A, left);
+      wr16(DP + 0x3C, (uint16_t)(rd16(DP + 0x3C) + 1));
+      continue;
+    }
+    a = vs_put_char(c);
+  }
+}

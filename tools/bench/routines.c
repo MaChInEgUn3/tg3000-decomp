@@ -6060,8 +6060,7 @@ static void fuzz_vs_char(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 }
 static void call_vs_put_string(const Regs* in, Regs* out) {
   out->a = vs_put_string(in->a);
-  out->n = false;
-  out->z = true;
+  setNZ16(out, in->x);  // (its last PLX)
 }
 static void vsMarksOut(Regs* out, uint16_t panel) {
   out->a = vs_panel_marks(panel);
@@ -6106,6 +6105,33 @@ static void fuzz_vs_entry(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, (uint16_t)(0x0DDC + x), (rnd() & 1) ? 0xFFFF : (uint16_t)(rnd() % 7));
   wr16ram(ram, (uint16_t)(0x0DAC + x), (uint16_t)(rnd() % 7));
   wr16ram(ram, (uint16_t)(0x0DB4 + x), (uint16_t)(rnd() % 5));
+}
+static void call_vs_car_title(const Regs* in, Regs* out) {
+  out->a = vs_car_title(in->x);
+  setNZ16(out, in->x);  // (vs_put_string's PLX)
+}
+static void call_vs_grid_draw(const Regs* in, Regs* out) {
+  out->a = vs_grid_draw(in->x, in->y);
+  setNZ16(out, in->x);  // (vs_put_string's PLX)
+}
+static void call_vs_panel_name_draw(const Regs* in, Regs* out) {
+  out->a = vs_panel_name_draw(in->x);
+  if(in->x <= 6 && !(in->x & 1)) out->y = (in->x & 4) ? 0x00B8 : 0x0048;
+  setNZ16(out, in->x);
+}
+static void call_vs_car_confirm(const Regs* in, Regs* out) { (void)out; vs_car_confirm(in->x); }
+static void call_vs_ready_draw(const Regs* in, Regs* out) { (void)out; vs_ready_draw(in->x); }
+static void call_vs_car_info(const Regs* in, Regs* out) {
+  const uint16_t col = rd16((uint16_t)(0x0DB4 + in->x));
+  const bool same = col == rd16((uint16_t)(0x0DAC + in->x));
+  out->a = vs_car_info(in->x);
+  out->n = false;
+  out->z = out->c = true;
+  if(same) return;
+  const uint16_t text = rom16(0x8ACE63 + (uint16_t)(col << 1));
+  uint16_t y = 0;
+  while(bus_rd8(0x8A0000 | (uint16_t)(text + y)) != 0xFF) y++;
+  out->y = y;
 }
 // a letter from the table (its first byte of a random entry)
 static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -12078,6 +12104,18 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_name_key, .fuzz = fuzz_vs_entry},
   {.name = "vs_name_entry_frame", .entry = 0x8AAD74, .end = 0x8AAE20, .holes = {{0x8AADCC, 0x8AADD4}}, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_name_entry_frame, .fuzz = fuzz_vs_entry},
+  {.name = "vs_car_title", .entry = 0x8AAA71, .end = 0x8AAA82, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_car_title},
+  {.name = "vs_grid_draw", .entry = 0x8AB037, .end = 0x8AB072, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_grid_draw},
+  {.name = "vs_panel_name_draw", .entry = 0x8AAAC1, .end = 0x8AAB6B, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_panel_name_draw, .fuzz = fuzz_vs_panel},
+  {.name = "vs_car_confirm", .entry = 0x8AA852, .end = 0x8AA869, .alsoIn = {{0x8AA8A1, 0x8AA8E5}}, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_car_confirm, .fuzz = fuzz_vs_entry},
+  {.name = "vs_ready_draw", .entry = 0x8AA869, .end = 0x8AA8A1, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_ready_draw},
+  {.name = "vs_car_info", .entry = 0x8AA9A7, .end = 0x8AA9F2, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_car_info},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

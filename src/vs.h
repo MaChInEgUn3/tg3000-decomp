@@ -110,5 +110,26 @@ void vs_name_key(uint16_t x);
 // ($0DE4: 16-48 frames), presses the next letter of its name ($8A:A80C's pointer, index
 // $0DDC), and at its end goes to END (4, 4) and closes the name.
 void vs_name_entry_frame(uint16_t x);
+// $8A:AA71: the car choice's title (the string at $8A:CE5B) at the panel's corner ($8A:AA92,
+// $8A:AA9A). Returns vs_put_string's A.
+uint16_t vs_car_title(uint16_t x);
+// $8A:B037: the letter grid (five rows at $8A:AFAB, 14 bytes apart) from (x, y), a row every
+// two lines. Returns vs_put_string's A.
+uint16_t vs_grid_draw(uint16_t x, uint16_t y);
+// $8A:AAC1: the panel's name drawn as sprites (at the tables $8A:ACD4/$8A:ACDC, 8 pixels a
+// step), its frame sprite and its marks. Returns the marks' A.
+uint16_t vs_panel_name_draw(uint16_t x);
+// $8A:A852: the car's choice confirmed once the cursor has arrived: by a press for a player
+// ($0D38 = $FFFF), at once for the computer. The panel's text is cleared, an empty name gets
+// its default, the panel is ready ($0DDC = $FFFD), the car's column goes to $0418 + panel
+// (a byte), and vs_ready_check runs.
+void vs_car_confirm(uint16_t x);
+// $8A:A869: a ready panel's text: its name centred and READY ($8A:A9A1) below, blinking with
+// D+$66 (cleared on the other frames).
+void vs_ready_draw(uint16_t x);
+// $8A:A9A7: when the panel's car column ($0DB4) changes (kept in $0DAC), its text is redrawn:
+// the title, then the car's description (the pointer at $8A:CE63 + 2 * column: 0 a new
+// line, $FF the end). Returns the original's A.
+uint16_t vs_car_info(uint16_t x);
 
 #endif

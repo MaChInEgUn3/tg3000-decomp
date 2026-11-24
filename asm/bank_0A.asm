@@ -4018,16 +4018,16 @@ vs_players_set:
     sty.w $0DCA                 ; $8AA625
     ldx.w #$0002                ; $8AA628
     ldy.w #$0001                ; $8AA62B
-    jsr.w $B037                 ; $8AA62E
+    jsr.w vs_grid_draw          ; $8AA62E
     ldx.w #$0012                ; $8AA631
     ldy.w #$0001                ; $8AA634
-    jsr.w $B037                 ; $8AA637
+    jsr.w vs_grid_draw          ; $8AA637
     ldx.w #$0002                ; $8AA63A
     ldy.w #$000F                ; $8AA63D
-    jsr.w $B037                 ; $8AA640
+    jsr.w vs_grid_draw          ; $8AA640
     ldx.w #$0012                ; $8AA643
     ldy.w #$000F                ; $8AA646
-    jsr.w $B037                 ; $8AA649
+    jsr.w vs_grid_draw          ; $8AA649
     lda.w #$0004                ; $8AA64C
     sta.w $0DAC                 ; $8AA64F
     sta.w $0DAE                 ; $8AA652
@@ -4249,8 +4249,8 @@ CODE_8AA7F7:
     cmp.w #$FFFE                ; $8AA81F
     beq CODE_8AA842             ; $8AA822
     cmp.w #$FFFD                ; $8AA824
-    beq CODE_8AA869             ; $8AA827
-    jsr.w $AAC1                 ; $8AA829
+    beq vs_ready_draw           ; $8AA827
+    jsr.w vs_panel_name_draw    ; $8AA829
     jsr.w vs_name_entry_frame   ; $8AA82C
     jsr.w vs_letter_index       ; $8AA82F
     jsr.w vs_letter_width       ; $8AA832
@@ -4262,10 +4262,11 @@ CODE_8AA7F7:
 CODE_8AA842:
     jsr.w vs_cursor_step        ; $8AA842
     jsr.w vs_cursor_column      ; $8AA845
-    jsr.w $A9A7                 ; $8AA848
-    jsr.w $A852                 ; $8AA84B
+    jsr.w vs_car_info           ; $8AA848
+    jsr.w vs_car_confirm        ; $8AA84B
     jsr.w sprite_frame          ; $8AA84E
     rts                         ; $8AA851
+vs_car_confirm:
     jsr.w vs_cursor_moving      ; $8AA852
     bcc CODE_8AA858             ; $8AA855
     rts                         ; $8AA857
@@ -4277,7 +4278,7 @@ CODE_8AA858:
     and.w #$C0C0                ; $8AA863
     bne CODE_8AA8A1             ; $8AA866
     rts                         ; $8AA868
-CODE_8AA869:
+vs_ready_draw:
     lda.w $AA92,x               ; $8AA869
     sta.b $3A                   ; $8AA86C
     lda.w $AA9A,x               ; $8AA86E
@@ -4440,6 +4441,7 @@ CODE_8AA98E:
     pla                         ; $8AA99F
     rts                         ; $8AA9A0
     incbin !baserom:$529A1..$529A7
+vs_car_info:
     lda.w $0DB4,x               ; $8AA9A7
     cmp.w $0DAC,x               ; $8AA9AA
     beq CODE_8AA9F1             ; $8AA9AD
@@ -4453,7 +4455,7 @@ CODE_8AA98E:
     lda.w $AA9A,x               ; $8AA9BD
     pha                         ; $8AA9C0
     jsr.w vs_panel_text_clear   ; $8AA9C1
-    jsr.w $AA71                 ; $8AA9C4
+    jsr.w vs_car_title          ; $8AA9C4
     pla                         ; $8AA9C7
     sta.b $3C                   ; $8AA9C8
     pla                         ; $8AA9CA
@@ -4546,6 +4548,7 @@ vs_cursor_home:
     lda.w #$FFFF                ; $8AAA6A
     sta.w $0DAC,x               ; $8AAA6D
     rts                         ; $8AAA70
+vs_car_title:
     lda.w $AA92,x               ; $8AAA71
     sta.b $3A                   ; $8AAA74
     lda.w $AA9A,x               ; $8AAA76
@@ -4571,6 +4574,7 @@ CODE_8AAABA:
 CODE_8AAABD:
     sta.w $05F8,x               ; $8AAABD
     rts                         ; $8AAAC0
+vs_panel_name_draw:
     phx                         ; $8AAAC1
     lda.w #$0001                ; $8AAAC2
     sta.b $88                   ; $8AAAC5
@@ -4582,7 +4586,9 @@ CODE_8AAABD:
     beq CODE_8AAB25             ; $8AAAD4
     cpx.w #$0006                ; $8AAAD6
     beq CODE_8AAB48             ; $8AAAD9
-    incbin !baserom:$52ADB..$52ADF
+    stz.b $88                   ; $8AAADB static
+    plx                         ; $8AAADD static
+    rts                         ; $8AAADE static
 CODE_8AAADF:
     lda.w $ACDC                 ; $8AAADF
     asl a                       ; $8AAAE2
@@ -5166,6 +5172,7 @@ CODE_8AAF52:
     sta.w $0DAC,x               ; $8AAF53 static
     rts                         ; $8AAF56 static
     incbin !baserom:$52F57..$53037
+vs_grid_draw:
     stx.b $3A                   ; $8AB037
     sty.b $3C                   ; $8AB039
     lda.w #$AFAB                ; $8AB03B

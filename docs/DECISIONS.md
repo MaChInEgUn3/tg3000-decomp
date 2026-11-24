@@ -3359,6 +3359,29 @@ password screen, a skipped track's bonus.
   each), 1,696 strings, 94-269 for the marks.
 - **Check:** incremental gate (additions only in `src/` and `tools/bench/`).
 
+## VS MODE's screen: the car's choice (vs-7, 2026-11-24)
+
+- **In `src/vs.c`:**
+  - `vs_car_title` (`$8A:AA71`);
+  - `vs_grid_draw` (`$8A:B037`): the letter grid's five rows;
+  - `vs_panel_name_draw` (`$8A:AAC1`): the panel's name as sprites, with its frame sprite
+    and its marks;
+  - `vs_car_confirm` (`$8A:A852`): the car's choice taken, by a press for a player and at
+    once for the computer. The panel becomes ready and the car's column goes to
+    `$0418 + panel`;
+  - `vs_ready_draw` (`$8A:A869`, entered by a branch from the panel's frame): the name and
+    READY, blinking;
+  - `vs_car_info` (`$8A:A9A7`): the car's description, redrawn when the column changes.
+- **`vs_put_string` returns with N and Z from its last PLX** (X kept), not from the string's
+  ending zero. Its own row had those flags dead, so vs-6 did not catch it.
+  - `vs_car_title` and `vs_grid_draw` end on it with those flags live, and they failed
+    until its adapter was fixed.
+- **`vs_panel_name_draw`'s panel other than 0-6** (`$8A:AADB`) runs only in the fuzz, so it
+  is a static range.
+- **Results on the options movie:** 292-1,183 samples for the per-frame ones, 3-7 for the
+  title and the grid.
+- **Check:** full gate (`vs_put_string`'s adapter changed).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
