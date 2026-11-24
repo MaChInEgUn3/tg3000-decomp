@@ -2785,6 +2785,17 @@ password screen, a skipped track's bonus.
   alone, or with random bits above it).
 - **Check:** incremental gate.
 
+## A menu frame's sprites (menu-4, 2026-11-24)
+
+- **`menu_frame_sprites` ($80:CA97) is ported** (in `src/misc.c`):
+  - four corner sprites (tile `$150`, flipped three ways) around a box D+$4A wide, placed by
+    D+$7A/D+$7C and D+$E7;
+  - its top and bottom edges, every 8 pixels;
+  - then the group of `$81:BF40` (`sprite_group`). Its outputs are the row's exit, since it
+    ends on that JSR.
+- **Results:** on the menus' movie, 210 of 567 entries sampled, all 81 paths.
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

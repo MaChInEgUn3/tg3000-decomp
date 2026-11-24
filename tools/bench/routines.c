@@ -6204,6 +6204,11 @@ static void call_sprite_group(const Regs* in, Regs* out) {
   GroupWalk w = sprite_group_walk(table);
   sprite_group_outputs(out, in, w, sprite_group(in->d, table));
 }
+// menu_frame_sprites ends in sprite_group's JSR, then RTS: its outputs
+static void call_menu_frame_sprites(const Regs* in, Regs* out) {
+  const GroupWalk w = sprite_group_walk(0x81BF40);
+  sprite_group_outputs(out, in, w, menu_frame_sprites());
+}
 
 // ---- func_80EB66 ----  sprite_group's exit registers (its table at $81:CBB8)
 static void call_func_80EB66(const Regs* in, Regs* out) {
@@ -10819,6 +10824,8 @@ const Routine routines[] = {
   {.name = "results_screen", .entry = 0x8A94C3, .end = 0x8A95EB, .endAt = 0x8A95EB, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true,
    .call = call_results_screen},
+  {.name = "menu_frame_sprites", .entry = 0x80CA97, .end = 0x80CB4A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_menu_frame_sprites, ALL_OUTPUTS},
   {.name = "menu_bit_word", .entry = 0x80CE7F, .end = 0x80CE91, .source = "src/misc.c", .needM16 = true, .needX16 = true,
    .call = call_menu_bit_word, ALL_OUTPUTS, .fuzz = fuzz_menu_bit_word},
   // the menu bar's line window (steps 2-5 never run or call routines not ported)

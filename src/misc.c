@@ -7917,3 +7917,44 @@ uint16_t menu_bit_word(uint16_t bits) {
   }
   return rom16(0x80CE96 + (uint32_t)y);
 }
+
+// TG3000_ROUTINE($80:CA97) menu_frame_sprites
+//
+// A menu frame's sprites at $0900 + D+$74: four corners (tiles $150, flipped three ways)
+// around a box D+$4A wide, centred on (D+$7A, D+$7C) + $1E19 + D+$E7; then its top and
+// bottom edges, two tiles $151 every 8 pixels while the width allows; then the group of
+// $81:BF40 at (D+$E8 + $18, $11). Returns the group's end (sprite_group).
+uint32_t menu_frame_sprites(void) {
+  const uint16_t w = rd16(DP + 0x4A);
+  wr16(DP + 0x14, (uint16_t)(w >> 1));
+  uint16_t x = rd16(DP + 0x74);
+  const uint16_t at = (uint16_t)(((rd8(DP + 0x7C) << 8) | rd8(DP + 0x7A)) + 0x1E19 + rd16(DP + 0xE7) - rd16(DP + 0x14));
+  wr16(DP + 0x14, at);
+  wr16((uint16_t)(0x0900 + x), at);
+  wr16((uint16_t)(0x0904 + x), (uint16_t)(at + w));
+  wr16((uint16_t)(0x0908 + x), (uint16_t)(at + w + 0x0400));
+  wr16((uint16_t)(0x090C + x), (uint16_t)(at + 0x0400));
+  wr16((uint16_t)(0x0902 + x), 0x2150);
+  wr16((uint16_t)(0x0906 + x), 0x6150);
+  wr16((uint16_t)(0x090A + x), 0xE150);
+  wr16((uint16_t)(0x090E + x), 0xA150);
+  for(uint16_t k = 1; k < 0x10; k += 4) wr16((uint16_t)(0x0B00 + k + x), 0);
+  x = (uint16_t)(x + 0x10);
+  for(uint16_t left = w; left >= 8; ) {
+    left = (uint16_t)(left - 8);
+    wr16(DP + 0x16, left);
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 8));
+    wr16((uint16_t)(0x0900 + x), rd16(DP + 0x14));
+    wr16((uint16_t)(0x0904 + x), (uint16_t)(rd16(DP + 0x14) + 0x0400));
+    wr16((uint16_t)(0x0902 + x), 0x2151);
+    wr16((uint16_t)(0x0906 + x), 0xA151);
+    wr16((uint16_t)(0x0B01 + x), 0);
+    wr16((uint16_t)(0x0B05 + x), 0);
+    x = (uint16_t)(x + 8);
+  }
+  wr16(DP + 0x74, x);
+  wr16(DP + 0x14, 0x0011);
+  wr16(DP + 0x16, (uint16_t)(rd16(DP + 0xE8) + 0x0018));
+  wr16(DP + 0x18, 0);
+  return sprite_group(DP, 0x81BF40);
+}

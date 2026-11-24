@@ -1601,4 +1601,8 @@ uint16_t menu_bar_lines_end(uint16_t dp);
 // $80:CE7F: the word of $80:CE96 for the lowest set bit of `bits`.
 uint16_t menu_bit_word(uint16_t bits);
 
+// $80:CA97: a menu frame's corner and edge sprites, and the group of $81:BF40 (returns the
+// group's end).
+uint32_t menu_frame_sprites(void);
+
 #endif

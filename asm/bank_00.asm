@@ -8050,7 +8050,7 @@ CODE_80C713:
     sta.b $7C                   ; $80C76B
     lda.w $C0D8                 ; $80C76D
     sta.b $4A                   ; $80C770
-    jsr.w $CA97                 ; $80C772
+    jsr.w menu_frame_sprites    ; $80C772
     jsr.w oam_finish_near       ; $80C775
     ldy.b $C4                   ; $80C778
     lda.w #$0FFF                ; $80C77A
@@ -8304,7 +8304,7 @@ CODE_80C972:
     beq CODE_80C97C             ; $80C977
     jsr.w $C9A6                 ; $80C979
 CODE_80C97C:
-    jsr.w $CA97                 ; $80C97C
+    jsr.w menu_frame_sprites    ; $80C97C
     lda.b $4C                   ; $80C97F
     bne CODE_80C9A0             ; $80C981
     lda.w #$037E                ; $80C983
@@ -8397,7 +8397,7 @@ CODE_80CA3B:
     lda.w #$0001                ; $80CA3B
     jsr.w wait_frames           ; $80CA3E
     phx                         ; $80CA41
-    jsr.w $CA97                 ; $80CA42
+    jsr.w menu_frame_sprites    ; $80CA42
     lda.w #$037E                ; $80CA45
     clc                         ; $80CA48
     adc.b $94                   ; $80CA49
@@ -8427,7 +8427,7 @@ CODE_80CA3B:
     sta.w $0128,y               ; $80CA7D
     cpx.w #$000E                ; $80CA80
     bne CODE_80CA3B             ; $80CA83
-    jsr.w $CA97                 ; $80CA85
+    jsr.w menu_frame_sprites    ; $80CA85
     jsr.w oam_finish_near       ; $80CA88
     lda.w #$0003                ; $80CA8B
     sta.b $4E                   ; $80CA8E
@@ -8435,6 +8435,7 @@ CODE_80CA3B:
     stz.w $037E,x               ; $80CA92
     pla                         ; $80CA95
     rts                         ; $80CA96
+menu_frame_sprites:
     lda.b $4A                   ; $80CA97
     lsr a                       ; $80CA99
     sta.b $14                   ; $80CA9A
