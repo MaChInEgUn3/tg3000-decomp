@@ -674,3 +674,10 @@
 80F549 upload_slice_13 src/video_dma.c 4447f7ecfbd1402a 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 4447f7ecfbd1402a 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 4447f7ecfbd1402a 1 500 20/20 verified live-flags:NVZC replayed:0
+8AB072 vs_put_string src/vs.c 9779d794ee8d8318 1696 0 15/15 verified live-flags:VC replayed:0
+8AAB6B vs_panel_marks src/vs.c 9779d794ee8d8318 269 0 9/9 verified live-flags:- replayed:0
+8AAB84 vs_panel_marks_1 src/vs.c 9779d794ee8d8318 94 0 9/9 verified live-flags:NVZC replayed:0
+8AAB9D vs_panel_marks_2 src/vs.c 9779d794ee8d8318 122 0 9/9 verified live-flags:- replayed:0
+8AABB6 vs_panel_marks_3 src/vs.c 9779d794ee8d8318 104 0 9/9 verified live-flags:- replayed:0
+8AABEF vs_name_key src/vs.c 9779d794ee8d8318 526 500 54/54 verified live-flags:V replayed:0
+8AAD74 vs_name_entry_frame src/vs.c 9779d794ee8d8318 526 500 67/67 verified live-flags:- replayed:0

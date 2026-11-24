@@ -87,5 +87,28 @@ void vs_name_put(uint16_t x, uint8_t c);
 uint16_t vs_put_char(uint8_t c);
 // $8A:B721: vs_put_char as a sprite at (x, y).
 uint16_t vs_put_sprite_char(uint16_t x, uint16_t y, uint8_t c);
+// $8A:B072: the string at $8A:`str` put with vs_put_char (D+$8A cleared first). Returns the
+// original's A.
+uint16_t vs_put_string(uint16_t str);
+// $8A:AB6B, AB84, AB9D, ABB6: the panel's two marks, 'I' and 'T', as sprites (panel 0-3).
+uint16_t vs_panel_marks(uint16_t panel);
+// $8A:A721: as vs_panel_screens, the byte $12 (BG1 off).
+void vs_panel_screens_bg1_off(uint16_t x);
+// $8A:AEB9: the panel's cursor one letter back along its row, past spaces; at column 0 it
+// stays where it was.
+void vs_letter_prev(uint16_t x);
+// $8A:AF31: the panel's row start one back, past spaces and $3C; at 0 it stays.
+void vs_row_prev(uint16_t x);
+// $8A:ABEF: a press (B/Y/A/X, $0DCC) on the panel's grid: its letter added to the name ('s'
+// a space, 'd' deleting the last, 'e' ending it: the name closed with 0, and once the cursor
+// has arrived, the panel goes on to the car's choice: $0D38 = $0DDC, $0DDC = $FFFE). A full
+// name (12) or an empty one to delete takes BG1 off the panel instead. The press is taken:
+// $0DCC becomes its press bits inverted.
+void vs_name_key(uint16_t x);
+// $8A:AD74: a panel's name entry for a frame: a player ($0DDC = $FFFF) moves the cursor with
+// Up/Down (letters) and Left/Right (rows) once it has arrived; the computer, after a delay
+// ($0DE4: 16-48 frames), presses the next letter of its name ($8A:A80C's pointer, index
+// $0DDC), and at its end goes to END (4, 4) and closes the name.
+void vs_name_entry_frame(uint16_t x);
 
 #endif

@@ -6058,6 +6058,55 @@ static void fuzz_vs_char(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->a = (uint16_t)((rnd() & 0xFF00) | (0x20 + rnd() % 0x3B));
   wr16ram(ram, DP + 0x88, (rnd() & 1) ? 1 : 0);
 }
+static void call_vs_put_string(const Regs* in, Regs* out) {
+  out->a = vs_put_string(in->a);
+  out->n = false;
+  out->z = true;
+}
+static void vsMarksOut(Regs* out, uint16_t panel) {
+  out->a = vs_panel_marks(panel);
+  out->x = 0x0001;
+  out->y = (panel & 2) ? 0x00B8 : 0x0048;
+  out->n = out->z = false;
+}
+static void call_vs_panel_marks_0(const Regs* in, Regs* out) { (void)in; vsMarksOut(out, 0); }
+static void call_vs_panel_marks_1(const Regs* in, Regs* out) { (void)in; vsMarksOut(out, 1); }
+static void call_vs_panel_marks_2(const Regs* in, Regs* out) { (void)in; vsMarksOut(out, 2); }
+static void call_vs_panel_marks_3(const Regs* in, Regs* out) { (void)in; vsMarksOut(out, 3); }
+static void call_vs_name_key(const Regs* in, Regs* out) {
+  const uint16_t x = in->x;
+  const bool press = (rd16((uint16_t)(0x0DCC + x)) & 0xC0C0) != 0;
+  const bool end = rom8(0x8AAFF1 + rd16(DP + 0x4E)) == 0x65;
+  // (END: vs_cursor_moving's SBC when it gets to compare the rows; then, once arrived,
+  // vs_panel_text_clear's ADDs. V is unchanged on the other paths.)
+  const bool rowsCompared = rd16((uint16_t)(0x0D88 + x)) == rd16((uint16_t)(0x0D80 + x)) &&
+                            rd16((uint16_t)(0x0D78 + x)) == rd16((uint16_t)(0x0D70 + x));
+  const uint16_t d90 = rd16((uint16_t)(0x0D90 + x)), d68 = rd16((uint16_t)(0x0D68 + x));
+  const bool moving = !rowsCompared || d90 != d68;
+  vs_name_key(x);
+  if(!press || !end) return;
+  if(moving) {
+    if(rowsCompared) setSbc16(out, d90, d68);
+    return;
+  }
+  setAdc16(out, (uint16_t)(rd16(DP + 0x70) - 0x40), 0x40);
+}
+static void call_vs_name_entry_frame(const Regs* in, Regs* out) { (void)out; vs_name_entry_frame(in->x); }
+// a panel's name entry: a press or not, its letter (any cell), its name's length 0-12 and
+// whether it was cleared, its cursor arrived or not, a player or the computer (its index in
+// its name), a delay or not, the pad's directions
+static void fuzz_vs_entry(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_vs_step(r, ram, rnd);
+  const uint16_t x = r->x;
+  wr16ram(ram, (uint16_t)(0x0DCC + x), (uint16_t)(rnd() & ((rnd() & 1) ? 0xC0C0 : 0x0F00) & ((rnd() % 4) ? 0xFFFF : 0x00FF)));
+  wr16ram(ram, DP + 0x4E, (uint16_t)(rnd() % 35));
+  wr16ram(ram, (uint16_t)(0x0DD4 + x), (uint16_t)(rnd() % 13));
+  wr16ram(ram, (uint16_t)(0x0DEC + x), (uint16_t)(rnd() & 1));
+  wr16ram(ram, (uint16_t)(0x0DE4 + x), (rnd() % 4) ? 0 : (uint16_t)(rnd() % 40));
+  wr16ram(ram, (uint16_t)(0x0DDC + x), (rnd() & 1) ? 0xFFFF : (uint16_t)(rnd() % 7));
+  wr16ram(ram, (uint16_t)(0x0DAC + x), (uint16_t)(rnd() % 7));
+  wr16ram(ram, (uint16_t)(0x0DB4 + x), (uint16_t)(rnd() % 5));
+}
 // a letter from the table (its first byte of a random entry)
 static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)ram;
@@ -12015,6 +12064,20 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_put_char, .fuzz = fuzz_vs_char},
   {.name = "vs_put_sprite_char", .entry = 0x8AB721, .end = 0x8AB730, .alsoIn = {{0x8AB730, 0x8AB7AC}}, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_put_sprite_char, .fuzz = fuzz_vs_char},
+  {.name = "vs_put_string", .entry = 0x8AB072, .end = 0x8AB08C, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_put_string},
+  {.name = "vs_panel_marks", .entry = 0x8AAB6B, .end = 0x8AAB84, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_panel_marks_0},
+  {.name = "vs_panel_marks_1", .entry = 0x8AAB84, .end = 0x8AAB9D, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_panel_marks_1},
+  {.name = "vs_panel_marks_2", .entry = 0x8AAB9D, .end = 0x8AABB6, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_panel_marks_2},
+  {.name = "vs_panel_marks_3", .entry = 0x8AABB6, .end = 0x8AABCF, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_panel_marks_3},
+  {.name = "vs_name_key", .entry = 0x8AABEF, .end = 0x8AAC73, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_name_key, .fuzz = fuzz_vs_entry},
+  {.name = "vs_name_entry_frame", .entry = 0x8AAD74, .end = 0x8AAE20, .holes = {{0x8AADCC, 0x8AADD4}}, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_name_entry_frame, .fuzz = fuzz_vs_entry},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

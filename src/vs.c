@@ -309,3 +309,137 @@ uint16_t vs_put_sprite_char(uint16_t x, uint16_t y, uint8_t c) {
   wr16(DP + 0x88, 0);
   return a;
 }
+
+// TG3000_ROUTINE($8A:B072) vs_put_string
+uint16_t vs_put_string(uint16_t str) {
+  wr16(DP + 0x8A, 0);
+  wr16(DP + 0x44, str);
+  uint16_t a = str;
+  for(uint16_t y = 0;; y++) {
+    const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(str + y));
+    a = (uint16_t)((a & 0xFF00) | c);
+    if(c == 0) return a;
+    a = vs_put_char(c);
+  }
+}
+
+// TG3000_ROUTINE($8A:AB6B) vs_panel_marks
+uint16_t vs_panel_marks(uint16_t panel) {
+  const uint16_t x = (panel & 1) ? 0x0080 : 0, y = (panel & 2) ? 0x0070 : 0;
+  vs_put_sprite_char((uint16_t)(0x0021 + x), (uint16_t)(0x0018 + y), 'I');
+  return vs_put_sprite_char((uint16_t)(0x0063 + x), (uint16_t)(0x0048 + y), 'T');
+}
+
+// TG3000_ROUTINE($8A:A721) vs_panel_screens_bg1_off (never run)
+void vs_panel_screens_bg1_off(uint16_t x) {
+  if(x == 0 || x == 4) wr8(DP + 0xFB, 0x12);
+  else if(x == 2 || x == 6) wr8(DP + 0xFC, 0x12);
+}
+
+// TG3000_ROUTINE($8A:AEB9) vs_letter_prev (never run)
+void vs_letter_prev(uint16_t x) {
+  const uint16_t was = rd16((uint16_t)(0x0DB4 + x));
+  for(;;) {
+    if(rd16((uint16_t)(0x0DB4 + x)) == 0) {
+      wr16((uint16_t)(0x0DB4 + x), was);
+      return;
+    }
+    wr16((uint16_t)(0x0DB4 + x), (uint16_t)(rd16((uint16_t)(0x0DB4 + x)) - 1));
+    if(bus_rd8(0x8A0000 | (uint16_t)(0xAFF1 + vs_letter_index(x))) != 0x20) return;
+  }
+}
+
+// TG3000_ROUTINE($8A:AF31) vs_row_prev (never run)
+void vs_row_prev(uint16_t x) {
+  const uint16_t was = rd16((uint16_t)(0x0DAC + x));
+  for(;;) {
+    if(rd16((uint16_t)(0x0DAC + x)) == 0) {
+      wr16((uint16_t)(0x0DAC + x), was);
+      return;
+    }
+    wr16((uint16_t)(0x0DAC + x), (uint16_t)(rd16((uint16_t)(0x0DAC + x)) - 1));
+    const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(0xAFF1 + vs_letter_index(x)));
+    if(c != 0x20 && c != 0x3C) return;
+  }
+}
+
+// TG3000_ROUTINE($8A:ABEF) vs_name_key
+//
+// DEL, SPACE and a full name run in no recorded movie; they are checked by the fuzz.
+void vs_name_key(uint16_t x) {
+  const uint16_t pad = rd16((uint16_t)(0x0DCC + x));
+  if(!(pad & 0xC0C0)) return;
+  wr16((uint16_t)(0x0DCC + x), (uint16_t)((pad & 0xC0C0) ^ 0xFFFF));
+  const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(0xAFF1 + rd16(DP + 0x4E)));
+  const uint16_t len = (uint16_t)(0x0DD4 + x);
+  if(c == 0x65) {  // END
+    vs_name_put(x, 0);
+    if(vs_cursor_moving(x)) return;
+    vs_panel_text_clear(x);
+    wr16((uint16_t)(0x0D38 + x), rd16((uint16_t)(0x0DDC + x)));
+    wr16((uint16_t)(0x0DDC + x), 0xFFFE);
+    vs_panel_reset(x);
+    vs_panel_screens(x);
+    return;
+  }
+  vs_name_clear(x);
+  if(c == 0x64) {  // DEL
+    if(rd16(len) == 0) {
+      vs_panel_screens_bg1_off(x);
+      return;
+    }
+    wr16(len, (uint16_t)(rd16(len) - 1));
+    vs_name_put(x, 0);
+    return;
+  }
+  if(rd16(len) == 0x000C) {  // full
+    vs_panel_screens_bg1_off(x);
+    return;
+  }
+  if(c == 0x73) {  // SPACE
+    vs_name_clear(x);
+    vs_name_put(x, ' ');
+  } else {
+    vs_name_put(x, c);
+  }
+  wr16(len, (uint16_t)(rd16(len) + 1));
+}
+
+// TG3000_ROUTINE($8A:AD74) vs_name_entry_frame
+//
+// The player's Up and Left and their routines run in no recorded movie; they are checked by
+// the fuzz.
+void vs_name_entry_frame(uint16_t x) {
+  const uint16_t wait = (uint16_t)(0x0DE4 + x);
+  if(rd16(wait) != 0) {
+    wr16(wait, (uint16_t)(rd16(wait) - 1));
+    return;
+  }
+  if(rd16((uint16_t)(0x0DDC + x)) == 0xFFFF) {  // a player
+    const uint16_t pad = rd16((uint16_t)(0x0DCC + x));
+    wr16(DP + 0x42, pad);
+    const bool rowArrived = rd16((uint16_t)(0x0D90 + x)) == rd16((uint16_t)(0x0D68 + x));
+    if((pad & 0x0800) && rowArrived) vs_letter_prev(x);
+    if((pad & 0x0400) && rd16((uint16_t)(0x0D90 + x)) == rd16((uint16_t)(0x0D68 + x))) vs_letter_next(x);
+    if((pad & 0x0100) && rd16((uint16_t)(0x0D88 + x)) == rd16((uint16_t)(0x0D80 + x))) vs_row_next(x);
+    if((pad & 0x0200) && rd16((uint16_t)(0x0D88 + x)) == rd16((uint16_t)(0x0D80 + x))) vs_row_prev(x);
+    return;
+  }
+  if(vs_cursor_moving(x)) return;
+  wr16((uint16_t)(0x0DCC + x), (uint16_t)(rd16((uint16_t)(0x0DCC + x)) | 0xC0C0));
+  bool carry;
+  uint16_t r = (uint16_t)(rng_next((uint16_t)(DP + 0x10), &carry) & 0x0003);
+  if(r == 0) r = 2;
+  wr16(wait, (uint16_t)(r << 4));
+  const uint16_t name = table8a(0xA80C, x);
+  wr16(DP + 0x54, name);
+  const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(name + rd16((uint16_t)(0x0DDC + x))));
+  if(c != 0) {
+    vs_letter_find(x, c);
+    wr16((uint16_t)(0x0DDC + x), (uint16_t)(rd16((uint16_t)(0x0DDC + x)) + 1));
+    return;
+  }
+  wr16((uint16_t)(0x0DAC + x), 0x0004);
+  wr16((uint16_t)(0x0DB4 + x), 0x0004);
+  vs_name_put(x, 0);
+}

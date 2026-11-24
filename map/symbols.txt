@@ -714,3 +714,13 @@ func    8AA922   vs_names_load       ; VS screen: the four default names copied 
 func    8AAC73   vs_name_put         ; VS panel: a letter put at the end of its name -> src/vs.c
 func    8AB730   vs_put_char         ; VS text: one character, as a sprite or a map tile -> src/vs.c
 func    8AB721   vs_put_sprite_char  ; VS text: one character as a sprite at (X, Y) -> src/vs.c
+func    8AB072   vs_put_string       ; VS text: a string put with vs_put_char -> src/vs.c
+func    8AAB6B   vs_panel_marks      ; VS panel 0: its marks 'I' and 'T' as sprites -> src/vs.c
+func    8AAB84   vs_panel_marks_1    ; VS panel 1: its marks -> src/vs.c
+func    8AAB9D   vs_panel_marks_2    ; VS panel 2: its marks -> src/vs.c
+func    8AABB6   vs_panel_marks_3    ; VS panel 3: its marks -> src/vs.c
+func    8AA721   vs_panel_screens_bg1_off ; VS panel: the split-screen byte $12 (never run) -> src/vs.c
+func    8AAEB9   vs_letter_prev      ; VS panel: the cursor one letter back (never run) -> src/vs.c
+func    8AAF31   vs_row_prev         ; VS panel: the row start one back (never run) -> src/vs.c
+func    8AABEF   vs_name_key         ; VS panel: a press adds the cursor's letter to the name -> src/vs.c
+func    8AAD74   vs_name_entry_frame ; VS panel: a frame of name entry, player or computer -> src/vs.c

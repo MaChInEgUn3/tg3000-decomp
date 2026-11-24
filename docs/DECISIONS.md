@@ -3332,6 +3332,33 @@ password screen, a skipped track's bonus.
 - **Check:** full gate (the verification script changed; the last full run was 5 commits
   back).
 
+## VS MODE's screen: the name entry (vs-6, 2026-11-24)
+
+- **In `src/vs.c`:**
+  - `vs_put_string` (`$8A:B072`);
+  - `vs_panel_marks` (`$8A:AB6B`, AB84, AB9D, ABB6: one C function, four rows), the
+    panel's two marks as sprites;
+  - `vs_name_key` (`$8A:ABEF`): a press adds the cursor's letter to the name. 's' is a
+    space, 'd' deletes and 'e' ends the name; once the cursor has arrived, the panel goes on
+    to the car's choice;
+  - `vs_name_entry_frame` (`$8A:AD74`): a frame of name entry. A player moves the cursor
+    with the pad; the computer, after a random delay of 16-48 frames, presses the next
+    letter of its own name;
+  - without rows of their own: `vs_panel_screens_bg1_off` (`$8A:A721`), `vs_letter_prev`
+    (`$8A:AEB9`) and `vs_row_prev` (`$8A:AF31`). They run only through the two rows above,
+    in their fuzz.
+- **The press is taken by inverting its bits:** `$0DCC` becomes `(pad & $C0C0) ^ $FFFF`. A
+  first draft inverted the whole word, and the movie caught it at once.
+- **Flags:** only V is live in `vs_name_key`, and only END changes it (`vs_cursor_moving`'s
+  SBC, or `vs_panel_text_clear`'s ADDs). The adapter takes its inputs before the call.
+- **`$8A:ADCC-$8A:ADD4`** inside `vs_name_entry_frame` is unreachable (REP, TYA, STA, PLY,
+  RTS after an RTS) and is a hole in its row.
+- **Fuzz-only ranges** (seven, `map/static_code.txt`): the full name, SPACE and DEL, the
+  player's Up and Left, and the three routines above.
+- **Results on the options movie:** 526 frames for the two entry rows (500 fuzz cases
+  each), 1,696 strings, 94-269 for the marks.
+- **Check:** incremental gate (additions only in `src/` and `tools/bench/`).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
