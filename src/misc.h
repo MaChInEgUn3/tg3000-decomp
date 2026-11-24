@@ -1598,4 +1598,7 @@ uint16_t menu_bar_lines(uint16_t dp);
 void menu_bar_open_step(uint16_t dp);
 uint16_t menu_bar_lines_end(uint16_t dp);
 
+// $80:CE7F: the word of $80:CE96 for the lowest set bit of `bits`.
+uint16_t menu_bit_word(uint16_t bits);
+
 #endif

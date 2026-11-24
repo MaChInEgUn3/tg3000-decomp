@@ -2776,6 +2776,15 @@ password screen, a skipped track's bonus.
 - **Never run in the movies:** the space and high-bit characters. The fuzz runs both.
 - **Check:** incremental gate.
 
+## A menu bit's word (menu-3, 2026-11-24)
+
+- **`menu_bit_word` ($80:CE7F) is ported** (in `src/misc.c`). It gives the word of
+  `$80:CE96` for A's lowest set bit, with a `SEC / ROR` loop that counts it in Y (twice the
+  bit's number).
+- **Results:** on the menus' movie, 811 of 2,370 entries sampled, and 500 fuzz cases (a bit
+  alone, or with random bits above it).
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

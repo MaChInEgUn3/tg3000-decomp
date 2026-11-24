@@ -5313,6 +5313,30 @@ static void call_ticker_screen(const Regs* in, Regs* out) {
   out->z = out->a == 0;
   out->c = false;
 }
+// menu_bit_word: its SEC / ROR loop (the SEC's 1 shifted in at the top) leaves Y = twice the
+// bit's number, C set; A = X = the word (N Z of its TAX)
+static void call_menu_bit_word(const Regs* in, Regs* out) {
+  uint16_t a = in->a, y = 0;
+  bool c = true;
+  for(;;) {
+    const bool out_bit = a & 1;
+    a = (uint16_t)((a >> 1) | (c ? 0x8000 : 0));
+    c = out_bit;
+    if(c) break;
+    y = (uint16_t)(y + 2);
+  }
+  out->x = menu_bit_word(in->a);
+  out->a = out->x;
+  out->y = y;
+  out->c = true;
+  setNZ16(out, out->x);
+}
+static void fuzz_menu_bit_word(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)ram;
+  r->a = (uint16_t)(1u << (rnd() % 16));
+  if(rnd() & 1) r->a = (uint16_t)(r->a | (uint16_t)rnd());
+}
+
 // the menu bar's line window: the middle lines end at the dispatch's JMP (A = X = D+$4E * 2,
 // N Z of the TAX, C the ASL's); step 1 ends at the shared end; the end returns after its two
 // SBCs (A, N Z C V of the second)
@@ -10795,6 +10819,8 @@ const Routine routines[] = {
   {.name = "results_screen", .entry = 0x8A94C3, .end = 0x8A95EB, .endAt = 0x8A95EB, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true,
    .call = call_results_screen},
+  {.name = "menu_bit_word", .entry = 0x80CE7F, .end = 0x80CE91, .source = "src/misc.c", .needM16 = true, .needX16 = true,
+   .call = call_menu_bit_word, ALL_OUTPUTS, .fuzz = fuzz_menu_bit_word},
   // the menu bar's line window (steps 2-5 never run or call routines not ported)
   {.name = "menu_bar_lines", .entry = 0x80C5E0, .end = 0x80C633, .endAt = 0x80C633, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .compareA = true, .compareX = true, .call = call_menu_bar_lines},

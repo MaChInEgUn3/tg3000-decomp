@@ -8843,7 +8843,7 @@ CODE_80CDC2:
     jsr.w sprite_text_menu      ; $80CDD8
     ldx.b $94                   ; $80CDDB
     lda.w $039D,x               ; $80CDDD
-    jsr.w $CE7F                 ; $80CDE0
+    jsr.w menu_bit_word         ; $80CDE0
     lda.w #$2154                ; $80CDE3
     sta.b $14                   ; $80CDE6
     lda.w #$1DAE                ; $80CDE8
@@ -8854,7 +8854,7 @@ CODE_80CDC2:
     jsr.w sprite_text_menu      ; $80CDF2
     ldx.b $94                   ; $80CDF5
     lda.w $039F,x               ; $80CDF7
-    jsr.w $CE7F                 ; $80CDFA
+    jsr.w menu_bit_word         ; $80CDFA
     lda.w #$2154                ; $80CDFD
     sta.b $14                   ; $80CE00
     lda.w #$27AE                ; $80CE02
@@ -8865,7 +8865,7 @@ CODE_80CDC2:
     jsr.w sprite_text_menu      ; $80CE0C
     ldx.b $94                   ; $80CE0F
     lda.w $03A1,x               ; $80CE11
-    jsr.w $CE7F                 ; $80CE14
+    jsr.w menu_bit_word         ; $80CE14
     lda.w #$2154                ; $80CE17
     sta.b $14                   ; $80CE1A
     lda.w #$31AE                ; $80CE1C
@@ -8876,7 +8876,7 @@ CODE_80CDC2:
     jsr.w sprite_text_menu      ; $80CE26
     ldx.b $94                   ; $80CE29
     lda.w $03A3,x               ; $80CE2B
-    jsr.w $CE7F                 ; $80CE2E
+    jsr.w menu_bit_word         ; $80CE2E
     lda.w #$2154                ; $80CE31
     sta.b $14                   ; $80CE34
     lda.w #$3BAE                ; $80CE36
@@ -8887,7 +8887,7 @@ CODE_80CDC2:
     jsr.w sprite_text_menu      ; $80CE40
     ldx.b $94                   ; $80CE43
     lda.w $03A5,x               ; $80CE45
-    jsr.w $CE7F                 ; $80CE48
+    jsr.w menu_bit_word         ; $80CE48
     lda.w #$2154                ; $80CE4B
     sta.b $14                   ; $80CE4E
     lda.w #$45AE                ; $80CE50
@@ -8910,6 +8910,7 @@ CODE_80CDC2:
     lda.w $C1B3,x               ; $80CE78
     sta.w $0128,y               ; $80CE7B
     rts                         ; $80CE7E
+menu_bit_word:
     ldy.w #$0000                ; $80CE7F
     sec                         ; $80CE82
 CODE_80CE83:

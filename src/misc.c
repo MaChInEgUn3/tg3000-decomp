@@ -7904,3 +7904,16 @@ uint16_t menu_bar_lines_end(uint16_t dp) {
   wr16((uint16_t)(0x1B01 + x), v);
   return v;
 }
+
+// TG3000_ROUTINE($80:CE7F) menu_bit_word
+//
+// The word of $80:CE96 for the lowest set bit of `bits` (its SEC / ROR loop: Y = twice the
+// bit's number; no bit set: 16, the word past the table's 16).
+uint16_t menu_bit_word(uint16_t bits) {
+  uint16_t y = 0;
+  while(!(bits & 1) && y < 32) {
+    bits = (uint16_t)(bits >> 1);
+    y = (uint16_t)(y + 2);
+  }
+  return rom16(0x80CE96 + (uint32_t)y);
+}

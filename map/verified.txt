@@ -564,3 +564,4 @@
 80F555 upload_slice_14 src/video_dma.c f856b6f1acaffaaa 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c f856b6f1acaffaaa 1 500 20/20 verified live-flags:NVZC replayed:0
 808704 sprite_text_menu src/text.c e502aa4337067a80 1152 500 78/78 verified live-flags:- replayed:0
+80CE7F menu_bit_word src/misc.c c307e25357a52cc9 811 500 11/11 verified live-flags:- replayed:0
