@@ -355,4 +355,13 @@ void shop_screen_records(uint16_t dp);
 void shop_screen_text_setup(uint16_t dp);
 void shop_screen_list_setup(void);
 
+// The shop's main screen whole ($80:8BC5), and its frame loop's parts: the frame ($80:8DA0),
+// back from the item screen ($80:8E12, D+$4A restored from `saved`), the frame's end
+// ($80:8E2A: returns its CMP's carry) and the closing ($80:8E91).
+void shop_screen(void);
+void shop_screen_frame(void);
+void shop_screen_after_items(uint16_t saved);
+bool shop_screen_frame_end(void);
+void shop_screen_close(void);
+
 #endif

@@ -5339,6 +5339,32 @@ static void call_shop_screen_text_setup(const Regs* in, Regs* out) {
   out->n = out->z = false;
 }
 static void call_shop_screen_list_setup(const Regs* in, Regs* out) { (void)in; (void)out; shop_screen_list_setup(); }
+// the frame loop's parts: the frame ends after oam_finish_near (its C and V); back from the
+// item screen (after its PLA of the saved D+$4A: A), A = $0C69 (N Z clear); the frame's end with its CMP's carry and the BIT of D+$0C's V; the closing after
+// LDA #$89B2 (N set), V from wait_flag_76's BIT of D+$76
+static void call_shop_screen_frame(const Regs* in, Regs* out) {
+  (void)in;
+  shop_screen_frame();
+  setSbc16(out, rd16(DP + 0x6C), 0x0900);
+}
+static void call_shop_screen_after_items(const Regs* in, Regs* out) {
+  shop_screen_after_items(in->a);
+  out->a = 0x0C69;
+  out->n = out->z = false;
+}
+static void call_shop_screen_frame_end(const Regs* in, Regs* out) {
+  (void)in;
+  out->c = shop_screen_frame_end();
+  out->v = (rd16(DP + 0x0C) >> 14) & 1;
+}
+static void call_shop_screen_close(const Regs* in, Regs* out) {
+  (void)in;
+  shop_screen_close();
+  out->a = 0x89B2;
+  out->n = true;
+  out->z = false;
+  out->v = (rd16(DP + 0x76) >> 14) & 1;
+}
 
 // the screens' bank $80 wrappers: a prologue row (its PHB of the caller's DB, the only
 // push left above the cut; DB = $8A, D = $0100) and an epilogue row ending at the RTL
@@ -10752,6 +10778,15 @@ const Routine routines[] = {
   {.name = "shop_screen_list_setup", .entry = 0x808D1A, .end = 0x808D9A, .endAt = 0x808D9A, .source = "src/shop.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_screen_list_setup,
    .holes = {{0x808D40, 0x808D52}}},  // $03DC bits 8-9 clear, or both set
+  {.name = "shop_screen_frame", .entry = 0x808DA0, .end = 0x808E04, .endAt = 0x808E04, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_screen_frame},
+  {.name = "shop_screen_after_items", .entry = 0x808E12, .end = 0x808E2A, .endAt = 0x808E2A, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .call = call_shop_screen_after_items},
+  {.name = "shop_screen_frame_end", .entry = 0x808E2A, .end = 0x808E87, .endAt = 0x808E87, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_screen_frame_end,
+   .holes = {{0x808E53, 0x808E6C}}},  // the held cursor's repeat
+  {.name = "shop_screen_close", .entry = 0x808E91, .end = 0x808EB4, .source = "src/shop.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .waitsForInterrupts = true, .call = call_shop_screen_close},
   // the screens' bank $80 wrappers, around their JSLs (the epilogues end at their RTL, which
   // the PLB'd byte keeps the bench from finding as a return: the RTL itself is in no row)
   {.name = "title_screen_run", .entry = 0x80FBA5, .end = 0x80FBC1, .endAt = 0x80FBC1, .source = "src/misc.c",

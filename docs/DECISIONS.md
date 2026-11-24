@@ -2691,6 +2691,30 @@ password screen, a skipped track's bonus.
   The record a track has (`$80:8D5E`) runs on the 60k and pw movies only, and is pooled.
 - **Check:** incremental gate (new rows only).
 
+## The shop's main screen, its frame loop (shop-25, 2026-11-24)
+
+- **`shop_screen` ($80:8BC5) is now in C whole** (in `src/shop.c`): the parts of shop-24, the
+  waits between them, and the frame loop.
+- **Four more rows:**
+  - `shop_screen_frame` ($80:8DA0, after the frame's wait): the list's labels, the scroll
+    toward the cursor, the sprites;
+  - `shop_screen_after_items` ($80:8E12): back from the item screen, D+$4A restored. It starts
+    after its PLA, because a row whose SP rises above its entry would see its own JSRs as
+    leaving it;
+  - `shop_screen_frame_end` ($80:8E2A): the cursor, the colour cycle and the typed text. It
+    returns its CMP's carry;
+  - `shop_screen_close` ($80:8E91): the upgrade bits cleared, D+$76 waited for, the race's
+    NMI and IRQ targets. It is a waiting row; the SEI is a comment.
+- **Not in a row:**
+  - the item-screen call and its button test (`$80:8E04-$80:8E11`);
+  - the `$9A` test and its JMP (`$80:8E87-$80:8E90`);
+  - the frame's wait;
+  - the loop's head `$80:8D86`, which is inside `shop_screen_list_setup`'s row.
+- **The unrun path:** the held cursor's repeat (`$80:8E53-$80:8E6B`) is decoded and in the C,
+  and is the frame end's hole. The scroll's other ways run on the shop movie only.
+- **Check:** full gate (a new waiting row, which hides `wait_flag_76`'s samples from this one
+  caller).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

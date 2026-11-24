@@ -1416,6 +1416,7 @@ CODE_808D6A:
     jsr.w func_80B537           ; $808D97
     lda.w #$0001                ; $808D9A
     jsr.w wait_frames           ; $808D9D
+shop_screen_frame:
     ldx.w #$0000                ; $808DA0
     lda.b $4A                   ; $808DA3
     clc                         ; $808DA5
@@ -1470,11 +1471,12 @@ CODE_808DFB:
     jsr.w oam_finish_near       ; $808E01
     lda.w #$C1C0                ; $808E04
     trb.b $0E                   ; $808E07
-    beq CODE_808E2A             ; $808E09
+    beq shop_screen_frame_end   ; $808E09
     lda.b $4A                   ; $808E0B
     pha                         ; $808E0D
     jsr.w shop_item_screen      ; $808E0E
     pla                         ; $808E11
+shop_screen_after_items:
     sta.b $4A                   ; $808E12
     ldx.b $50                   ; $808E14
     lda.w #$0085                ; $808E16
@@ -1484,7 +1486,7 @@ CODE_808DFB:
     sta.w $0122,y               ; $808E21
     lda.w #$0C69                ; $808E24
     sta.w $0124,y               ; $808E27
-CODE_808E2A:
+shop_screen_frame_end:
     lda.w #$0800                ; $808E2A
     trb.b $0E                   ; $808E2D
     beq CODE_808E39             ; $808E2F
@@ -1521,9 +1523,9 @@ CODE_808E6C:
 CODE_808E87:
     lda.b $9A                   ; $808E87
     and.w #$7FFF                ; $808E89
-    beq CODE_808E91             ; $808E8C
+    beq shop_screen_close       ; $808E8C
     jmp.w $8D86                 ; $808E8E
-CODE_808E91:
+shop_screen_close:
     ldx.b $94                   ; $808E91
     ldy.w #$000A                ; $808E93
 CODE_808E96:

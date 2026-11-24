@@ -1715,3 +1715,136 @@ void shop_screen_list_setup(void) {
   wr16(DP + 0x14, 0x007F);
   func_80B537(DP, 0x03C0, rd16(DP + 0x5E), (uint16_t)(rd16(DP + 0x5C) + 0x0400));
 }
+
+// TG3000_ROUTINE($80:8DA0) shop_screen_frame
+// A frame of the shop's main screen: the list's labels (from D+$4A + $2830, the cursor's
+// line D+$48 lit), D+$4A scrolled a line toward the cursor, the sprites.
+void shop_screen_frame(void) {
+  uint16_t x = 0;
+  wr16(DP + 0x22, (uint16_t)(rd16(DP + 0x4A) + 0x2830));
+  wr16(DP + 0x20, rd16(DP + 0x48));
+  if(rd16(DP + 0x20) != 0) {
+    do {
+      wr16(DP + 0x14, 0x2200);
+      x = shop_list_label(x);
+      wr16(DP + 0x20, (uint16_t)(rd16(DP + 0x20) - 1));
+    } while(rd16(DP + 0x20) != 0);
+  }
+  wr16(DP + 0x14, 0x2400);
+  x = shop_list_label(x);
+  while(x != 0x0020) {
+    wr16(DP + 0x14, 0x2200);
+    x = shop_list_label(x);
+  }
+  uint16_t a = (uint16_t)(rd16(DP + 0x48) << 3);
+  a = (uint16_t)((uint16_t)(a << 8 | a >> 8) + rd16(DP + 0x4A));
+  if(a & 0x8000) wr16(DP + 0x4A, (uint16_t)(rd16(DP + 0x4A) + 0x0100));
+  else if(a != 0x1800 && !((uint16_t)(a - 0x1800) & 0x8000)) wr16(DP + 0x4A, (uint16_t)(rd16(DP + 0x4A) - 0x0100));
+  func_809DD0();
+  func_808FFC();
+  oam_finish_near(DP);
+}
+
+// TG3000_ROUTINE($80:8E12) shop_screen_after_items
+// Back from a list's item screen: D+$4A as it was (`saved`, which the original keeps on the
+// stack and pulls just before), the sprite group again and the two colours.
+void shop_screen_after_items(uint16_t saved) {
+  wr16(DP + 0x4A, saved);
+  func_80B58D(0x85, rd16(DP + 0x50));
+  const uint16_t c4 = rd16(DP + 0xC4);
+  wr16((uint16_t)(c4 + 0x0122), 0x0C70);
+  wr16((uint16_t)(c4 + 0x0124), 0x0C69);
+}
+
+// TG3000_ROUTINE($80:8E2A) shop_screen_frame_end
+// The frame's end: up/down pressed (D+$0E) move the cursor, held (D+$0C) repeat every 8
+// frames after 24 (never run); the cursor's colour cycles ($80:B400 by D+$4E); the text
+// typed on. Returns its CMP's carry (D+$8C at or past D+$8E).
+bool shop_screen_frame_end(void) {
+  uint16_t press = rd16(DP + 0x0E);
+  wr16(DP + 0x0E, (uint16_t)(press & ~0x0800));
+  if(press & 0x0800) {
+    wr16(DP + 0xEA, 0x0018);
+    shop_list_prev();
+  }
+  press = rd16(DP + 0x0E);
+  wr16(DP + 0x0E, (uint16_t)(press & ~0x0400));
+  if(press & 0x0400) {
+    wr16(DP + 0xEA, 0x0018);
+    shop_list_next();
+  }
+  if(rd16(DP + 0x0C) & 0x0C00) {
+    wr16(DP + 0xEA, (uint16_t)(rd16(DP + 0xEA) - 1));
+    if(rd16(DP + 0xEA) == 0) {  // never run
+      wr16(DP + 0xEA, 0x0008);
+      if(rd16(DP + 0x0C) & 0x0800) shop_list_prev();
+      if(rd16(DP + 0x0C) & 0x0400) shop_list_next();
+    }
+  }
+  wr16((uint16_t)(rd16(DP + 0xC4) + 0x0142), rom16(0x80B400 + (uint32_t)((rd16(DP + 0x4E) << 1) & 0x003E)));
+  wr16(DP + 0x4E, (uint16_t)(rd16(DP + 0x4E) + 1));
+  const bool carry = rd16(DP + 0x8C) >= rd16(DP + 0x8E);
+  if(rd16(DP + 0x8C) == rd16(DP + 0x8E)) text_type_step();
+  return carry;
+}
+
+// TG3000_ROUTINE($80:8E91) shop_screen_close
+// Leaving the shop: bit 7 cleared in the player's ten upgrade bytes ($0393 + D+$94), D+$76
+// waited for, the NMI and IRQ targets back to the race's ($8934, $89B2), interrupts masked
+// (SEI: a comment, as elsewhere).
+static void shop_screen_leave(void) {  // ($80:8EA3)
+  wait_flag_76(DP);
+  wr16(0x0008, 0x8934);
+  wr16(0x0005, 0x89B2);
+}
+void shop_screen_close(void) {
+  for(uint16_t i = 0, x = rd16(DP + 0x94); i < 10; i++, x++)
+    wr16((uint16_t)(0x0393 + x), (uint16_t)(rd16((uint16_t)(0x0393 + x)) & 0xFF7F));
+  shop_screen_leave();
+}
+
+// TG3000_ROUTINE($80:8BC5) shop_screen
+//
+// The shop's main screen, whole: the parts above with the waits between them, then the
+// frame loop until D+$9A's low 15 bits are 0. A/B/X/Y or Select (D+$0E bits $C1C0) opens
+// the list's item screen.
+void shop_screen(void) {
+  shop_screen_begin();
+  wait_frames(1);
+  shop_screen_graphics();
+  split_screen_setup(0x8C21, 0x81);
+  shop_screen_records(DP);
+  uint16_t end;
+  queue_unpacked_upload(DP, 0x87, 0x8000, rd16(DP + 0x5C), &end);
+  shop_screen_text_setup(DP);
+  while(rd16(DP + 0x64) != 0) platform_wait_vblank();
+  wait_frames(1);
+  while(rd16(DP + 0x64) != 0) platform_wait_vblank();
+  for(uint16_t i = 0, x = rd16(DP + 0x5E); i < 0x01E0; i++, x = (uint16_t)(x + 2)) wr16(0x7F0000 + (uint32_t)x, 0);
+  wr16(DP + 0x9C, 0x0004);
+  wr16(DP + 0x9E, 0x0005);
+  wait_frames(1);
+  if(rd16(DP + 0x76) & 0x0020) {  // (straight to the leaving, the upgrade bytes kept)
+    shop_screen_leave();
+    return;
+  }
+  {
+    shop_screen_list_setup();  // (its tail, from $80:8D86, is the loop's head)
+    for(;;) {
+      wait_frames(1);
+      shop_screen_frame();
+      const uint16_t press = rd16(DP + 0x0E);
+      wr16(DP + 0x0E, (uint16_t)(press & ~0xC1C0));
+      if(press & 0xC1C0) {
+        const uint16_t saved = rd16(DP + 0x4A);
+        shop_item_screen();
+        shop_screen_after_items(saved);
+      }
+      shop_screen_frame_end();
+      if(!(rd16(DP + 0x9A) & 0x7FFF)) break;
+      wr16(DP + 0x14, 0x007F);
+      func_80B537(DP, 0x03C0, rd16(DP + 0x5E), (uint16_t)(rd16(DP + 0x5C) + 0x0400));
+    }
+  }
+  shop_screen_close();
+}
