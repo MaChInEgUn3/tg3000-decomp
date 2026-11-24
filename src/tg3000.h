@@ -16,6 +16,13 @@
 extern uint8_t g_ram[TG3000_WRAM_SIZE];  // $7E:0000-$7F:FFFF
 extern const uint8_t* g_rom;              // the 1 MB ROM image, as file offsets
 
+// Code the movies never run and that is not ported yet: reaching it in C stops the program
+// (`what` names it).
+static inline void tg3000_unported(const char* what) {
+  (void)what;
+  __builtin_trap();
+}
+
 static inline uint8_t rd8(uint32_t adr) { return g_ram[adr & (TG3000_WRAM_SIZE - 1)]; }
 
 static inline uint16_t rd16(uint32_t adr) {

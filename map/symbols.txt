@@ -668,3 +668,18 @@ func    82CBD4   object_sprites_stream ; the race's sprites streamed to the DSP-
 func    82CAE5   sprite_put_rows_c   ; an object's sprite streamed, rows $37EC/$38EC/$35EC/$37EC, part set at $84:8080 (kind 0) -> src/misc.c
 func    82DCEC   object_sprite_kind0 ; object kind 0's sprite, then its shadow (in no movie or the TAS) -> src/misc.c
 func    82DAAF   object_sprite_hover ; a track object's sprite, its height less $40 (ran in the TAS only) -> src/misc.c
+
+func    8AA4FB   menu_action_submenu ; the submenu an options action opens (CHAMPIONSHIP, VS MODE, OPTIONS) -> src/misc.c
+func    8AB0D3   menu_action_options ; OPTIONS: its submenu, the options applied, the save sealed -> src/misc.c
+func    8AB08C   menu_action_difficulty ; DIFFICULTY: $1526 bits 2-5 step 0, 1, 2 -> src/misc.c
+func    8AB0D0   menu_action_exit    ; EXIT: the submenu left (D+$5E) -> src/misc.c
+func    8AB11A   menu_options_apply  ; $03DC bits 8-10 from the music and difficulty options -> src/misc.c
+func    8AB225   menu_password_back  ; after the password entry: back to the menu while $0D7C -> src/misc.c
+func    8AB659   menu_submenu_open   ; a submenu: its menu in D+$62 -> src/misc.c
+func    8AB65E   menu_submenu_tick   ; a submenu frame's timer; done when the menus are left -> src/misc.c
+func    8AB66C   menu_submenu_frame  ; a submenu frame: func_8A9FA1, its menu -> src/misc.c
+func    8AB674   menu_submenu_chosen ; after a submenu frame: an item left it (D+$5E) -> src/misc.c
+func    8AA462   menu_select_restore ; the options selection's tail: D+$62 back, C set -> src/misc.c
+func    8AB2FD   password_entry_found ; after a password code's handler: a track chosen (D+$52) -> src/password.c
+func    8AA502   menu_action_vs      ; VS MODE: the players' submenu -> src/misc.c
+func    8AB0AD   menu_action_music   ; MUSIC: $1528 bits 2-5 step 0, 1 -> src/misc.c

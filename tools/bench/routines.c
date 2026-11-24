@@ -5583,6 +5583,82 @@ static void call_menu_action_rookie(const Regs* in, Regs* out) {
   setNZ16(out, rd16(DP + 0x6C));
 }
 
+// the options menus' actions, entered through the jump on $015C (D+$5C): the leaves run
+// through menu_action (the word's case); the submenu actions end at their JSR to the
+// submenu (A the menu); the submenu's parts end at its waits and its menu (the chosen test:
+// at its wipe or back at the loop's head, harness-23); the selection's tail starts after its
+// last PLA (A D+$62's saved value)
+static void call_menu_action_submenu(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = menu_action_submenu(rd16(DP + 0x5C));
+  setNZ16(out, out->a);
+}
+static void call_menu_action_difficulty(const Regs* in, Regs* out) {
+  (void)in;
+  menu_action(rd16(DP + 0x5C));
+  out->a = rd16(0x1526);
+  setNZ16(out, out->a);
+  out->c = false;
+}
+static void call_menu_action_music(const Regs* in, Regs* out) {
+  (void)in;
+  out->c = ((rd16(0x1528) >> 2) & 0x000F) == 1;  // (its CMP #1 on the way to 0; else the ASLs')
+  menu_action(rd16(DP + 0x5C));
+  out->a = rd16(0x1528);
+  setNZ16(out, out->a);
+}
+static void call_menu_action_exit(const Regs* in, Regs* out) {
+  (void)in;
+  menu_action(rd16(DP + 0x5C));
+  setNZ16(out, rd16(DP + 0x5E));
+}
+static void call_menu_options_apply(const Regs* in, Regs* out) {
+  (void)in;
+  out->c = menu_options_apply();
+  out->a = rd16(0x03DC);
+  out->y = 0x0008;
+  setNZ16(out, out->a);
+}
+static void call_menu_password_back(const Regs* in, Regs* out) {
+  (void)in;
+  menu_password_back();
+  out->a = rd16(0x0D7C);
+  setNZ16(out, out->a);
+}
+static void call_menu_submenu_open(const Regs* in, Regs* out) { (void)out; menu_submenu_open(in->a); }
+static void call_menu_submenu_tick(const Regs* in, Regs* out) {
+  (void)in;
+  if(menu_submenu_tick()) {
+    out->a = rd16(DP + 0x6C);
+  } else {
+    out->a = 0x0001;
+  }
+  setNZ16(out, out->a);
+}
+static void call_menu_submenu_frame(const Regs* in, Regs* out) {
+  (void)in;
+  func_8A9FA1();
+  out->a = rd16(DP + 0x62);
+  setNZ16(out, out->a);
+  out->c = true;
+}
+static void call_menu_submenu_chosen(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = rd16(DP + 0x5E);
+  setNZ16(out, out->a);
+  menu_submenu_chosen();
+}
+static void call_menu_select_restore(const Regs* in, Regs* out) {
+  wr16(DP + 0x62, in->a);
+  out->c = true;
+}
+static void call_password_entry_found(const Regs* in, Regs* out) {
+  (void)in;
+  password_entry_found();
+  out->a = rd16(DP + 0x52);
+  setNZ16(out, out->a);
+}
+
 // the championship menu's pass ends at its button test: C V oam_finish_near's, or with down
 // pressed its CMP #3's C (the cursor at the bottom)
 static void call_champ_menu_frame(const Regs* in, Regs* out) {
@@ -11439,6 +11515,34 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_menu_select, .fuzz = fuzz_menu_select},
   {.name = "menu_action_rookie", .entry = 0x8AB174, .end = 0x8AB180, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_action_rookie},
+  {.name = "menu_action_submenu", .entry = 0x8AA4FB, .end = 0x8AA4FE, .endAt = 0x8AA4FE, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_action_submenu},
+  {.name = "menu_action_options", .entry = 0x8AB0D3, .end = 0x8AB0D6, .endAt = 0x8AB0D6, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_action_submenu},
+  {.name = "menu_action_difficulty", .entry = 0x8AB08C, .end = 0x8AB0AD, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_action_difficulty},
+  {.name = "menu_action_vs", .entry = 0x8AA502, .end = 0x8AA505, .endAt = 0x8AA505, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_action_submenu},
+  {.name = "menu_action_music", .entry = 0x8AB0AD, .end = 0x8AB0D0, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_action_music},
+  {.name = "menu_action_exit", .entry = 0x8AB0D0, .end = 0x8AB0D3, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_action_exit},
+  {.name = "menu_options_apply", .entry = 0x8AB11A, .end = 0x8AB152, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_menu_options_apply},
+  {.name = "menu_password_back", .entry = 0x8AB225, .end = 0x8AB22A, .endAt = 0x8AB22A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_password_back},
+  {.name = "menu_submenu_open", .entry = 0x8AB659, .end = 0x8AB65B, .endAt = 0x8AB65B, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_menu_submenu_open},
+  {.name = "menu_submenu_tick", .entry = 0x8AB65E, .end = 0x8AB668, .endAt = 0x8AB668, .alsoIn = {{0x8AB67F, 0x8AB680}}, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_submenu_tick},
+  {.name = "menu_submenu_frame", .entry = 0x8AB66C, .end = 0x8AB671, .endAt = 0x8AB671, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_submenu_frame},
+  {.name = "menu_submenu_chosen", .entry = 0x8AB674, .end = 0x8AB67C, .endAt = 0x8AB67C, .endAt2 = 0x8AB65E, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_submenu_chosen},
+  {.name = "menu_select_restore", .entry = 0x8AA462, .end = 0x8AA466, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_menu_select_restore},
+  {.name = "password_entry_found", .entry = 0x8AB2FD, .end = 0x8AB302, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_password_entry_found},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

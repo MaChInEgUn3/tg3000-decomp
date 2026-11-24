@@ -1711,4 +1711,21 @@ int menu_draw_rest(bool chose);
 bool menu_select(void);
 void menu_action_rookie(void);
 
+// The options menus' actions ($8A:A466 dispatches the item's word): the submenu an action
+// opens, DIFFICULTY, EXIT, the options applied after OPTIONS, the password's way back, the
+// action itself; a menu drawn for a frame ($8A:A2AF whole); a submenu ($8A:B659) and its
+// parts.
+uint16_t menu_action_submenu(uint16_t word);
+uint16_t menu_action_difficulty(void);
+void menu_action_music(void);
+void menu_action_exit(void);
+bool menu_options_apply(void);
+bool menu_password_back(void);
+void menu_action(uint16_t word);
+void menu_run(uint16_t menu);
+void menu_submenu_open(uint16_t menu);
+bool menu_submenu_tick(void);
+bool menu_submenu_chosen(void);
+void menu_submenu(uint16_t menu);
+
 #endif

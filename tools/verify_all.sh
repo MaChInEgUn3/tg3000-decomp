@@ -29,6 +29,7 @@ buyframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/e
 pwframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_pw.txt)
 infoframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/code_infodata.txt)
 menuframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_menu.txt)
+optframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_options.txt)
 # every deliberately wrong C must fail over the same movie (in parallel): the selftest's
 # short movie does not reach them all
 build/bench/bench "$rom" 60000 --movie tools/bench/movies/autopilot_60k.txt \
@@ -71,6 +72,10 @@ pids="$pids $!:info"
 build/bench/bench "$rom" "$menuframes" --movie tools/bench/movies/explore_menu.txt \
   --difftest "$tmp/menu.txt" --fuzz 500 > "$tmp/menu.log" 2>&1 &
 pids="$pids $!:menu"
+# the options submenu's movie (explore-7): short, one slice
+build/bench/bench "$rom" "$optframes" --movie tools/bench/movies/explore_options.txt \
+  --difftest "$tmp/opt.txt" --fuzz 500 > "$tmp/opt.log" 2>&1 &
+pids="$pids $!:opt"
 for p in $pids; do
   pid=${p%%:*}
   name=${p#*:}
@@ -99,11 +104,11 @@ while [ $k -lt $buyshards ]; do tail -n +2 "$tmp/buy$k.txt" >> "$tmp/buy.txt"; k
 head -n 1 "$tmp/pw0.txt" > "$tmp/pw.txt"
 k=0
 while [ $k -lt $pwshards ]; do tail -n +2 "$tmp/pw$k.txt" >> "$tmp/pw.txt"; k=$((k + 1)); done
-python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt"
+python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt"
 # the verdict: a routine the merge failed (its per-movie lines show why)
 failed=$(awk '!/^#/ && $8 == "failed" {print $2}' map/verified.txt)
 if [ -n "$failed" ]; then
-  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp"/main*.log "$tmp"/shop*.log "$tmp"/buy*.log "$tmp"/pw*.log "$tmp"/info.log "$tmp"/menu.log >&2 || true; done
+  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp"/main*.log "$tmp"/shop*.log "$tmp"/buy*.log "$tmp"/pw*.log "$tmp"/info.log "$tmp"/menu.log "$tmp"/opt.log >&2 || true; done
   echo "verify_all: failed after pooling the movies: $(echo $failed | tr ' ' ',')" >&2
   status=4
 fi

@@ -110,5 +110,10 @@ void password_entry_ready(void);
 void password_entry_pads(void);
 bool password_entry_check(bool* carry);
 bool password_entry_frame(void);
+// After a code's handler ($8A:B2FD): true when it chose a track. The handlers by address;
+// the password entry whole.
+bool password_entry_found(void);
+void password_code_run(uint16_t handler);
+void password_entry(void);
 
 #endif

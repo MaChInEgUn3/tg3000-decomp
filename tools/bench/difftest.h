@@ -38,6 +38,8 @@ typedef struct {
   uint32_t endAt;          // a handler's prologue: the sample ends when it reaches this
                            // instruction (its dispatch, an indirect jump to the target, which
                            // has its own row); D and DB are compared there
+  uint32_t endAt2;         // harness-23: a second cut (a loop part whose branch back to the
+                           // loop's head and whose way out both reach a wait)
   const char* source;      // src/ file holding the C, hashed into the results
   bool needM16, needX16;   // entry contract: register widths the C assumes (else either)
   // Run the C from `in` (g_ram already holds the entry WRAM); fill the outputs in `out`

@@ -423,3 +423,61 @@ bool password_entry_check(bool* carry) {
   wr16(0x03DC, (uint16_t)(rd16(0x03DC) | 0x4000));
   return true;
 }
+
+// TG3000_ROUTINE($8A:B2FD) password_entry_found
+// After a code's handler: true when it chose a track (D+$52, a star name's), which goes on to
+// the menu with CANCEL PASSWORD.
+bool password_entry_found(void) { return rd16(DP + 0x52) != 0; }
+
+// The codes' handlers (password_code_find's result, which the original jumps to through
+// D+$82): the star names choose a track; RELAX ($8A:BD9D, a screen effect) is not ported.
+void password_code_run(uint16_t handler) {
+  static const uint16_t stars[12] = {0xBDEC, 0xBDF1, 0xBDF6, 0xBDFB, 0xBE00, 0xBE05,
+                                     0xBE0A, 0xBE0F, 0xBE14, 0xBE19, 0xBE1E, 0xBE23};
+  static const uint16_t tracks[12] = {0x00, 0x03, 0x07, 0x0B, 0x0F, 0x14, 0x18, 0x1C, 0x20, 0x23, 0x27, 0x2A};
+  for(int i = 0; i < 12; i++)
+    if(handler == stars[i]) {
+      password_code_track(tracks[i]);
+      return;
+    }
+  switch(handler) {
+    case 0xC004: password_code_credits(); return;
+    case 0xC01D: password_code_mick4claudia(); return;
+    case 0xC018: password_code_micksmelanie(); return;
+    case 0xC013: password_code_infodata(); return;
+    default: tg3000_unported("$8A:BD9D: the RELAX code's effect"); return;
+  }
+}
+
+// The password entry ($8A:B232) whole: the caret slides in, then a frame at a time the pads
+// move on the grid and A/B/X/Y types, until EXIT. A valid password is taken; else a code's
+// handler runs, and a star name's track goes on to the menu with CANCEL PASSWORD.
+void password_entry(void) {
+  password_entry_open();
+  for(;;) {
+    wait_frames(1);
+    password_entry_sprites();
+    if(rd16(0x0D88) == rd16(0x0D80)) break;
+    password_entry_slide();
+  }
+  password_entry_ready();
+  for(;;) {
+    wait_frames(1);
+    if(password_entry_frame()) break;
+    password_entry_pads();
+  }
+  bool carry;
+  if(password_entry_check(&carry)) return;
+  const uint16_t handler = password_code_find();
+  if(handler == 0) {
+    // (never run: no code matched)
+    if(rd8(0x0D40) != 0) tg3000_unported("$8A:BD6E: a wrong password's message");
+    else wipe_columns();
+    return;
+  }
+  password_code_run(handler);
+  if(!password_entry_found()) return;
+  // (never run)
+  password_screen_close();
+  menu_submenu(0xCC45);
+}

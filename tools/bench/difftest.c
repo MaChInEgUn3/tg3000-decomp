@@ -1485,7 +1485,8 @@ static void watchStart(int idx) {
   watches[idx] = (Watch){true, FN | FV | FZ | FC, 0, cpu_interruptCount, -1};
   // harness-17: a sample that ended at its endAt (not at a return): the code after the cut
   // is the same every time, so up to its first branch one watch has seen all of it
-  watches[idx].straight = table[idx].endAt != 0 && insnPc == norm(table[idx].endAt);
+  watches[idx].straight = (table[idx].endAt != 0 && insnPc == norm(table[idx].endAt)) ||
+                          (table[idx].endAt2 != 0 && insnPc == norm(table[idx].endAt2));
   activeWatches[activeWatchCount++] = idx;
 }
 
@@ -1645,7 +1646,8 @@ void difftest_on_insn(Cpu* cpu) {
   // (harness-7: race_frame_draw's tail jump comes right after func_82A9B7's RTS)
   for(int k = depth - 1; k >= base; k--) {
     Sample* smp = &samples[k];
-    bool ended = table[smp->idx].endAt != 0 && pc == table[smp->idx].endAt && k == depth - 1;
+    bool ended = ((table[smp->idx].endAt != 0 && pc == table[smp->idx].endAt) ||
+                  (table[smp->idx].endAt2 != 0 && pc == table[smp->idx].endAt2)) && k == depth - 1;
     bool left = table[smp->idx].mayLeaveCaller && cpu->pc == smp->altRetPc && cpu->k == smp->retBank &&
                 cpu->sp == smp->altRetSp;
     if(left) smp->leftCaller = true;
@@ -1653,7 +1655,7 @@ void difftest_on_insn(Cpu* cpu) {
       for(int j = depth - 1; j > k; j--) stats[samples[j].idx].abandoned++;  // left without returning
       depth = k + 1;
       finishSample(k, cpu);
-      if(k == 0 || table[samples[k - 1].idx].endAt != pc) break;
+      if(k == 0 || (table[samples[k - 1].idx].endAt != pc && table[samples[k - 1].idx].endAt2 != pc)) break;
     }
   }
   for(int k = base; k < depth; k++) {

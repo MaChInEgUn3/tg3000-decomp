@@ -3654,9 +3654,9 @@ func_8AA32B:
     lda.w $1516,x               ; $8AA33E
     and.b #$80                  ; $8AA341
     beq CODE_8AA34C             ; $8AA343
-    lda.b #$E0                  ; $8AA345 static
-    sta.w $0D23,y               ; $8AA347 static
-    bra CODE_8AA376             ; $8AA34A static
+    lda.b #$E0                  ; $8AA345
+    sta.w $0D23,y               ; $8AA347
+    bra CODE_8AA376             ; $8AA34A
 CODE_8AA34C:
     lda.w $1516,x               ; $8AA34C
     and.b #$40                  ; $8AA34F
@@ -3796,6 +3796,7 @@ CODE_8AA445:
     pla                         ; $8AA45E
     sta.b $4A                   ; $8AA45F
     pla                         ; $8AA461
+menu_select_restore:
     sta.b $62                   ; $8AA462
     sec                         ; $8AA464
     rts                         ; $8AA465
@@ -3894,10 +3895,14 @@ CODE_8AA4F6:
     ply                         ; $8AA4F8
     plx                         ; $8AA4F9
     rts                         ; $8AA4FA
+menu_action_submenu:
     lda.w #$CBD2                ; $8AA4FB
-    jsr.w $B659                 ; $8AA4FE
+    jsr.w menu_submenu_open     ; $8AA4FE
     rts                         ; $8AA501
-    incbin !baserom:$52502..$52E9B
+menu_action_vs:
+    lda.w #$CCEB                ; $8AA502
+    jsr.w menu_submenu_open     ; $8AA505
+    incbin !baserom:$52508..$52E9B
 rng_next_8a_2:
     lda.b $12                   ; $8AAE9B static
     bmi CODE_8AAEB2             ; $8AAE9D static
@@ -3917,6 +3922,7 @@ CODE_8AAEB2:
     lda.b $10                   ; $8AAEB6 static
     rts                         ; $8AAEB8 static
     incbin !baserom:$52EB9..$5308C
+menu_action_difficulty:
     lda.w $1526                 ; $8AB08C
     lsr a                       ; $8AB08F
     lsr a                       ; $8AB090
@@ -3934,12 +3940,33 @@ CODE_8AB09C:
     ora.b $6A                   ; $8AB0A7
     sta.w $1526                 ; $8AB0A9
     rts                         ; $8AB0AC
-    incbin !baserom:$530AD..$530D0
+menu_action_music:
+    lda.w $1528                 ; $8AB0AD
+    lsr a                       ; $8AB0B0
+    lsr a                       ; $8AB0B1
+    and.w #$000F                ; $8AB0B2
+    cmp.w #$0001                ; $8AB0B5
+    bne CODE_8AB0BF             ; $8AB0B8
+    lda.w #$0000                ; $8AB0BA
+    bra CODE_8AB0C2             ; $8AB0BD
+CODE_8AB0BF:
+    inc a                       ; $8AB0BF
+    asl a                       ; $8AB0C0
+    asl a                       ; $8AB0C1
+CODE_8AB0C2:
+    sta.b $6A                   ; $8AB0C2
+    lda.w $1528                 ; $8AB0C4
+    and.w #$FFC3                ; $8AB0C7
+    ora.b $6A                   ; $8AB0CA
+    sta.w $1528                 ; $8AB0CC
+    rts                         ; $8AB0CF
+menu_action_exit:
     inc.b $5E                   ; $8AB0D0
     rts                         ; $8AB0D2
+menu_action_options:
     lda.w #$CC83                ; $8AB0D3
-    jsr.w $B659                 ; $8AB0D6
-    jsr.w $B11A                 ; $8AB0D9
+    jsr.w menu_submenu_open     ; $8AB0D6
+    jsr.w menu_options_apply    ; $8AB0D9
     jsl.l save_data_seal        ; $8AB0DC
     rts                         ; $8AB0E0
 variant_flags_apply:
@@ -3962,6 +3989,7 @@ variant_flags_apply:
     ora.w $1526                 ; $8AB113
     sta.w $1526                 ; $8AB116
     rts                         ; $8AB119
+menu_options_apply:
     lda.l $8103DC               ; $8AB11A
     and.w #$F8FF                ; $8AB11E
     sta.l $8103DC               ; $8AB121
@@ -4071,6 +4099,7 @@ wait_one_frame:
     jsr.w wipe_columns          ; $8AB21C
     jsr.w password_screen_open  ; $8AB21F
     jsr.w password_entry_open   ; $8AB222
+menu_password_back:
     lda.w $0D7C                 ; $8AB225
     db $F0,$04 ; beq            ; $8AB228
     jsr.w password_screen_close ; $8AB22A
@@ -4156,9 +4185,9 @@ password_entry_check:
     jsr.w password_checksum_ok  ; $8AB2E3
     bcc CODE_8AB31B             ; $8AB2E6
     jsr.w password_code_find    ; $8AB2E8
-    bcs CODE_8AB2FD             ; $8AB2EB
+    bcs password_entry_found    ; $8AB2EB
     incbin !baserom:$532ED..$532FD
-CODE_8AB2FD:
+password_entry_found:
     lda.b $52                   ; $8AB2FD
     db $D0,$01 ; bne            ; $8AB2FF
     rts                         ; $8AB301
@@ -4597,19 +4626,22 @@ password_caret_place:
     adc.w #$000F                ; $8AB652
     sta.w $0778                 ; $8AB655
     rts                         ; $8AB658
+menu_submenu_open:
     sta.b $62                   ; $8AB659
     jsr.w wipe_columns          ; $8AB65B
-CODE_8AB65E:
+menu_submenu_tick:
     jsr.w timer_0d7e_tick       ; $8AB65E
     lda.b $6C                   ; $8AB661
     bne CODE_8AB67F             ; $8AB663
     lda.w #$0001                ; $8AB665
     jsl.l wait_frames_long      ; $8AB668
+menu_submenu_frame:
     jsr.w func_8A9FA1           ; $8AB66C
     lda.b $62                   ; $8AB66F
     jsr.w menu_draw             ; $8AB671
+menu_submenu_chosen:
     lda.b $5E                   ; $8AB674
-    beq CODE_8AB65E             ; $8AB676
+    beq menu_submenu_tick       ; $8AB676
     stz.b $5E                   ; $8AB678
     stz.b $6E                   ; $8AB67A
     jsr.w wipe_columns          ; $8AB67C

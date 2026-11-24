@@ -18,6 +18,7 @@
 #include "video_dma.h"
 #include "vram_queue.h"
 #include "hud.h"
+#include "password.h"
 #include "tg3000.h"
 #include "track.h"
 #include "util.h"
@@ -889,7 +890,7 @@ bool func_8AC024(void) {
 
 // TG3000_ROUTINE($8A:A32B) func_8AA32B
 //
-// The bit-7 path ($8A:A345) runs in no recorded movie; it is checked by the fuzz.
+// The bit-7 path ($8A:A345) runs in the options movie (VS MODE's menu) and in the fuzz.
 uint8_t func_8AA32B(uint16_t x) {
   uint8_t i = rom8(0x8AC599 + (uint8_t)(rd8(DP + 0x3C) - 10));
   uint8_t flags = rd8((uint16_t)(0x1516 + x)), v;
@@ -9176,4 +9177,160 @@ bool menu_select(void) {
 void menu_action_rookie(void) {
   wr8(0x03DC, 0x10);
   wr16(DP + 0x6C, (uint16_t)(rd16(DP + 0x6C) + 1));
+}
+
+// The options menus' actions: the item's word, which the original jumps through ($015C,
+// $8A:A466). Three open a submenu; the others set an option, choose the game's mode, leave
+// the menu, or open the password entry.
+
+// TG3000_ROUTINE($8A:A4FB) menu_action_submenu
+// TG3000_ROUTINE($8A:B0D3) menu_action_options (the same, for OPTIONS)
+// TG3000_ROUTINE($8A:A502) menu_action_vs (the same, for VS MODE)
+// The submenu an action opens (0: none): CHAMPIONSHIP the options ($8A:CBD2), VS MODE the
+// players ($8A:CCEB), OPTIONS the difficulty and music ($8A:CC83).
+uint16_t menu_action_submenu(uint16_t word) {
+  switch(word) {
+    case 0xA4FB: return 0xCBD2;
+    case 0xA502: return 0xCCEB;
+    case 0xB0D3: return 0xCC83;
+    default: return 0;
+  }
+}
+
+// TG3000_ROUTINE($8A:B08C) menu_action_difficulty
+// DIFFICULTY: $1526 bits 2-5 step 0, 1, 2, 0 (D+$6A the new field). Returns the new $1526.
+uint16_t menu_action_difficulty(void) {
+  uint16_t v = (uint16_t)((rd16(0x1526) >> 2) & 0x000F);
+  v = (v == 2) ? 0 : (uint16_t)(v + 1);
+  wr16(DP + 0x6A, (uint16_t)(v << 2));
+  wr16(0x1526, (uint16_t)((rd16(0x1526) & 0xFFC3) | (v << 2)));
+  return rd16(0x1526);
+}
+
+// TG3000_ROUTINE($8A:B0AD) menu_action_music
+// MUSIC: $1528 bits 2-5 step 0, 1, 0 (D+$6A the new field).
+void menu_action_music(void) {
+  uint16_t v = (uint16_t)((rd16(0x1528) >> 2) & 0x000F);
+  v = (v == 1) ? 0 : (uint16_t)((v + 1) << 2);
+  wr16(DP + 0x6A, v);
+  wr16(0x1528, (uint16_t)((rd16(0x1528) & 0xFFC3) | v));
+}
+
+// TG3000_ROUTINE($8A:B0D0) menu_action_exit
+// EXIT: the submenu left (D+$5E counted).
+void menu_action_exit(void) { wr16(DP + 0x5E, (uint16_t)(rd16(DP + 0x5E) + 1)); }
+
+// TG3000_ROUTINE($8A:B11A) menu_options_apply
+// After the OPTIONS submenu: $03DC bits 8-10 from the music ($1528 bit 2: bit 10) and the
+// difficulty ($1526 bits 2-3: bits 8-9). Returns the last shift's carry.
+bool menu_options_apply(void) {
+  bool carry;
+  wr16(0x03DC, (uint16_t)(rd16(0x03DC) & 0xF8FF));
+  wr16(0x03DC, (uint16_t)(rd16(0x03DC) | asl_n((uint16_t)((rd16(0x1528) >> 2) & 1), 10, &carry)));
+  wr16(0x03DC, (uint16_t)(rd16(0x03DC) | asl_n((uint16_t)((rd16(0x1526) >> 2) & 3), 8, &carry)));
+  return carry;
+}
+
+// $8A:B168 and $8A:B180 (never run): 1 PLAYER SPLIT and 2 PLAYERS, as menu_action_rookie.
+static void menu_action_mode(uint8_t mode) {
+  wr8(0x03DC, mode);
+  wr16(DP + 0x6C, (uint16_t)(rd16(DP + 0x6C) + 1));
+}
+
+// TG3000_ROUTINE($8A:B225) menu_password_back
+// After the password entry: true (the usual way, $0D7C set) when the password screen closes
+// back to the menu; else (never run) the columns are wiped.
+bool menu_password_back(void) { return rd16(0x0D7C) != 0; }
+
+// PASSWORD ($8A:B21C).
+static void menu_action_password(void) {
+  wipe_columns();
+  password_screen_open();
+  password_entry();
+  if(menu_password_back()) password_screen_close();
+  else wipe_columns();
+}
+
+// $8A:B30C (never run): CANCEL PASSWORD: the track chosen by a star name dropped.
+static void menu_action_cancel_password(void) {
+  wr16(DP + 0x5E, (uint16_t)(rd16(DP + 0x5E) + 1));
+  wr16(0x0444, 0);
+  wr16(0x047B, rd16(0x0444));
+}
+
+// The action `word` ($8A:A466: JMP ($015C)).
+void menu_action(uint16_t word) {
+  const uint16_t sub = menu_action_submenu(word);
+  switch(word) {
+    case 0xA4FB:  // CHAMPIONSHIP
+    case 0xA502:  // VS MODE
+      menu_submenu(sub);
+      return;
+    case 0xB0D3:  // OPTIONS
+      menu_submenu(sub);
+      menu_options_apply();
+      save_data_seal();
+      return;
+    case 0xB08C: menu_action_difficulty(); return;
+    case 0xB0AD: menu_action_music(); return;
+    case 0xB0D0: menu_action_exit(); return;
+    case 0xB168: menu_action_mode(0x11); return;
+    case 0xB174: menu_action_rookie(); return;
+    case 0xB180: menu_action_mode(0x31); return;
+    case 0xB21C: menu_action_password(); return;
+    case 0xB30C: menu_action_cancel_password(); return;
+    default: tg3000_unported("$8A:A53C-$8A:A557: VS MODE's player counts"); return;
+  }
+}
+
+// The options menu `menu` drawn for a frame ($8A:A2AF whole): its items, and the focused one's
+// action when chosen (D+$62 and D+$4A kept around it: a submenu draws its own menu).
+void menu_run(uint16_t menu) {
+  int more = menu_draw(menu);
+  while(more) {
+    const bool chose = menu_select();
+    if(chose) {
+      const uint16_t s62 = rd16(DP + 0x62), s4A = rd16(DP + 0x4A);
+      menu_action(rd16(DP + 0x5C));
+      wr16(DP + 0x4A, s4A);
+      wr16(DP + 0x62, s62);
+    }
+    more = menu_draw_rest(chose);
+  }
+}
+
+// TG3000_ROUTINE($8A:B659) menu_submenu_open
+void menu_submenu_open(uint16_t menu) { wr16(DP + 0x62, menu); }
+
+// TG3000_ROUTINE($8A:B65E) menu_submenu_tick
+// A frame's timer; true when the menus are left (D+$6C).
+bool menu_submenu_tick(void) {
+  timer_0d7e_tick(0);
+  return rd16(DP + 0x6C) != 0;
+}
+
+// TG3000_ROUTINE($8A:B674) menu_submenu_chosen
+// After a frame's menu: true when an item left the submenu (D+$5E, cleared with D+$6E).
+bool menu_submenu_chosen(void) {
+  if(rd16(DP + 0x5E) == 0) return false;
+  wr16(DP + 0x5E, 0);
+  wr16(DP + 0x6E, 0);
+  return true;
+}
+
+// A submenu ($8A:B659): the columns wiped, then a frame at a time ($8A:B66C: func_8A9FA1)
+// its menu, until an item leaves it (the columns wiped again) or the menus are left.
+void menu_submenu(uint16_t menu) {
+  menu_submenu_open(menu);
+  wipe_columns();
+  for(;;) {
+    if(menu_submenu_tick()) return;
+    wait_frames(1);
+    func_8A9FA1();
+    menu_run(rd16(DP + 0x62));
+    if(menu_submenu_chosen()) {
+      wipe_columns();
+      return;
+    }
+  }
 }
