@@ -2537,6 +2537,36 @@ password screen, a skipped track's bonus.
   behaviour).
 - **Check:** full gate (new waiting rows).
 
+## The ticker screen, and interrupts recorded as changes (screen-3, harness-16, 2026-11-24)
+
+- **`ticker_screen` ($80:E4E6) is ported in two parts** around its first wait, which is
+  inside `split_screen_setup` (a row of its own):
+  - the load: the image, three decompressions, the raw VRAM DMAs written as stream setups
+    (high bytes from `$7F`, low bytes filled from `$81:CBF8`, seven `$11`-byte rows), four
+    indirect HDMA channels;
+  - the show (`ticker_screen_show`, $80:E5FA, after `split_screen_setup`): the sprites, the
+    ticker record, three MVNs into bank `$81`, the name and car blocks at `$7F:2000`, then a
+    frame at a time (the zoom in, or the pass) until D+$9A's low 15 bits are 0.
+- **Why the show starts after `split_screen_setup`:** started at the JSR, two of its four
+  samples were lagged (NMIs in that routine's sprite-buffer clear) and failed. Their paths
+  were not credited, so the row failed on paths. The 3-byte JSR at `$80:E5F7` is in no row.
+- **The carry:** the show returns the carry the original leaves. That is the last
+  `ticker_scene_step`'s, which now returns its own carry: the computation moved from its
+  adapter into the C, and the row passes as before.
+- **SEI at the exit (`$80:E87D`):** written as a comment, as the CLIs in `split_screen_setup`
+  and the race NMI. The I flag is not part of the platform calls, and the bench does not
+  compare it.
+- **The unrun paths, decoded and in the C:** D+$76 bit 5, `$03A8` from 10 up (two copies,
+  and a still-view loop at `$80:E88E` past the RTS, as `alsoIn`), D+$84 below `$FE3E`.
+- **harness-16:** a waiting row's interrupts are recorded as the WRAM bytes each handler
+  changed, not as two whole copies of WRAM. The replay applied only the changed bytes
+  anyway, so behaviour is unchanged. The cap goes from 512 to 8192 interrupts per sample:
+  the show records about 1,000 (an NMI and a raster IRQ per frame) and was abandoned at 512.
+  The static 128 MB of copies is gone.
+- **Results:** 60k movie: load 4/4 (by replays), show 4/4 with 292/292 paths. Buy movie:
+  1/1 each.
+- **Check:** full gate (a harness change and a new waiting row).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

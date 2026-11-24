@@ -1034,7 +1034,8 @@ bool car_contacts_chain(uint16_t x, uint16_t y);
 // - D+$46 not negative counts down; at 0, unless D+$48 is set and the car's $03A8 is not
 //   negative (then D+$46 = $8000), it counts back up and a fade starts. At $FFFF a fade
 //   starts.
-void ticker_scene_step(void);
+// Returns the carry it leaves (D+$46 = $FFFF when negative, else oam_finish_near's).
+bool ticker_scene_step(void);
 
 // $80:F5DE: a title step by its frame D+$40 (D = $0100). At frames $13A-$140 (even), $614
 // bytes from $7E:9180 / $9768 / $9D50 / $A338 go to VRAM 0 / $2F4 / $5E8 / $8DC. Then
@@ -1567,5 +1568,12 @@ void title_screen(void);
 void title_screen_load(void);
 void title_screen_scene(void);
 void title_screen_show(void);
+
+// The ticker screen ($80:E4E6): its load (up to split_screen_setup, the first wait) and its
+// show (after it, $80:E5FA): a frame at a time while D+$9A's low 15 bits are set; it returns the
+// carry the original leaves (the last ticker_scene_step's, else `carry`).
+void ticker_screen(void);
+void ticker_screen_load(void);
+bool ticker_screen_show(bool carry);
 
 #endif

@@ -3392,7 +3392,7 @@ bool car_contacts_chain(uint16_t x, uint16_t y) {
 static uint16_t high_signed(uint16_t v) { return (uint16_t)(int16_t)(int8_t)(v >> 8); }
 
 // TG3000_ROUTINE($80:E925) ticker_scene_step
-void ticker_scene_step(void) {
+bool ticker_scene_step(void) {
   uint16_t a = rd16(DP + 0x82);
   if(a & 0x8000) {  // never run
     a = (uint16_t)(a + 0x0012);
@@ -3454,19 +3454,22 @@ void ticker_scene_step(void) {
   oam_finish_near(DP);
   wr16(DP + 0x86, (uint16_t)(rd16(DP + 0x86) + 1));
   const uint16_t s = rd16(DP + 0x46);
+  // the carry the original returns: its CMP #$FFFF with D+$46 negative, else oam_finish's
+  const bool carry = (s & 0x8000) ? s == 0xFFFF : rd16(DP + 0x6C) >= 0x0900;
   if(!(s & 0x8000)) {
     wr16(DP + 0x46, (uint16_t)(s - 1));
-    if(rd16(DP + 0x46) != 0) return;
+    if(rd16(DP + 0x46) != 0) return carry;
     if(rd16(DP + 0x48) != 0 && !(rd16(0x03A8 + (uint32_t)rd16(DP + 0x94)) & 0x8000)) {
       wr16(DP + 0x46, 0x8000);
-      return;
+      return carry;
     }
     wr16(DP + 0x46, (uint16_t)(rd16(DP + 0x46) + 1));
   } else if(s != 0xFFFF) {
-    return;
+    return carry;
   }
   wr16(DP + 0x98, 0);
   wr16(DP + 0x96, 0xFF80);
+  return carry;
 }
 
 // The window settings of the title's picture ($80:F644): windows 1 and 2 at 255-0, BG1/BG2
@@ -7436,4 +7439,208 @@ void title_screen_show(void) {
     if(rd16(DP + 0x8C) != 0 && rd16(DP + 0x9A) == 0) break;
   }
   wait_frames(8);
+}
+
+// The ticker screen's two camera tracks: D+$26 and D+$28 index ($81) tables of (time, step)
+// pairs at `t22` and `t24`, moving on when D+$86 reaches the next time; each step is added
+// to D+$22 and D+$24.
+static void ticker_track(uint16_t t22, uint16_t t24) {
+  uint16_t x = rd16(DP + 0x26);
+  if(rd16(DP + 0x86) >= bus_rd16(0x810000 + (uint32_t)(uint16_t)(t22 + 2 + x))) {
+    x = (uint16_t)(x + 4);
+    wr16(DP + 0x26, x);
+  }
+  wr16(DP + 0x22, (uint16_t)(bus_rd16(0x810000 + (uint32_t)(uint16_t)(t22 + x)) + rd16(DP + 0x22)));
+  x = rd16(DP + 0x28);
+  if(rd16(DP + 0x86) >= bus_rd16(0x810000 + (uint32_t)(uint16_t)(t24 + 2 + x))) {
+    x = (uint16_t)(x + 4);
+    wr16(DP + 0x28, x);
+  }
+  wr16(DP + 0x24, (uint16_t)(bus_rd16(0x810000 + (uint32_t)(uint16_t)(t24 + x)) + rd16(DP + 0x24)));
+}
+
+// TG3000_ROUTINE($80:E4E6) ticker_screen
+//
+// The scrolling-text (ticker) screen, in two parts around its first wait (the one inside
+// split_screen_setup, as results_screen): the load, split_screen_setup, then the show.
+void ticker_screen(void) {
+  ticker_screen_load();
+  split_screen_setup(0xE5F9, 0x81);  // (its return address as the JSR pushed it, and DB)
+  ticker_screen_show(false);
+}
+
+// (the part up to split_screen_setup: its row is ticker_screen's entry with endAt $80:E5F7)
+void ticker_screen_load(void) {
+  uint16_t end;
+  video_load_screen(0x81CB74);
+  decompress_to_vram(DP, 0x88, 0x8601, 0x4000);
+  // a graphic's high bytes, then its low bytes filled from $81:CBF8 (VMAIN 0: a step after
+  // the low byte), each from VRAM word 0
+  const uint16_t len = decompress_near(DP, 0x88, 0x8C7D, 0x7F, 0x0000, &end);
+  video_set_vram_address(0x0000);
+  dma_stream_setup(0, 0x00, 0x19, 0x7F0000);
+  dma_stream_size(0, len ? len : 0x10000);
+  dma_stream_kick(0x01);
+  video_set_vram_address(0x0000);
+  video_set_vram_increment(0x00);
+  dma_stream_setup(0, 0x08, 0x18, 0x81CBF8);
+  dma_stream_size(0, 0x4000);
+  dma_stream_kick(0x01);
+  // seven rows of $11 bytes into the low bytes of VRAM words $0000, $0080, ... $0300
+  decompress_near(DP, 0x95, 0x8000, 0x7F, 0x0000, &end);
+  for(uint16_t i = 0; i < 7; i++) {
+    dma_stream_setup(0, 0x00, 0x18, 0x7F0000 + 0x11u * i);  // (the channel's source moves on)
+    dma_stream_size(0, 0x0011);
+    video_set_vram_address((uint16_t)(0x0080 * i));
+    dma_stream_kick(0x01);
+  }
+  video_set_vram_increment(0x80);
+  // four indirect HDMA channels from bank $81 (their data in bank $00)
+  static const struct { uint8_t target; uint16_t table; } hdma[4] = {
+    {0x1B, 0xCBF9}, {0x1D, 0xCC00}, {0x1F, 0xCC07}, {0x0D, 0xCC0E},
+  };
+  for(int c = 0; c < 4; c++) {
+    dma_hdma_setup(c + 1, 0x43, hdma[c].target, 0x810000 | hdma[c].table);
+    dma_hdma_set_indirect_bank(c + 1, 0x00);
+  }
+  video_hdma_enable(0x1E);
+  wr16(0x0148, rd16(0x03AB));
+  wr16(0x0248, rd16(0x03DA));
+}
+
+// TG3000_ROUTINE($80:E5FA) ticker_screen_show
+//
+// After split_screen_setup: the sprites and the record the ticker reads, the player's
+// name and car blocks at $7F:2000, then a frame at a time until D+$9A's low 15 bits are 0:
+// the zoom in ($03A8 = 0), the pass ($03A8 below 10) or a still view (never run). Returns
+// the carry the original leaves: the last ticker step's, else `carry` (the caller's).
+bool ticker_screen_show(bool carry) {
+  wr16(DP + 0x4A, 0xFFFE);
+  const uint16_t rec = rd16(DP + 0x92);
+  wr16(DP + 0xB8, bus_rd16(0x818B40 + (uint32_t)rec));
+  wr16(DP + 0xB4, (uint16_t)(bus_rd16(0x818B43 + (uint32_t)rec) + 4));
+  wr16(DP + 0x5C, bus_rd16(0x818B45 + (uint32_t)rec));
+  wr8(DP + 0xAD, bus_rd8(0x818B42 + (uint32_t)rec));
+  wr8(DP + 0xBC, 0x11);
+  wr8(DP + 0xA8, 0x07);
+  queue_7f_init(DP);
+  wr16(DP + 0x7A, 0);
+  wr16(DP + 0x7C, 0);
+  wr16(DP + 0x7E, 0);
+  func_80EB66(DP);
+  oam_finish_near(DP);
+  // three MVNs into bank $81: $20 bytes from $9C:9073, the car's $1E bytes from $89 (after
+  // a word from $9D:9F0A), $20 bytes from $9F:8BFB
+  const uint16_t c4 = rd16(DP + 0xC4);
+  for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0100 + i), bus_rd8(0x9C9073 + i));
+  const uint16_t car = rd16((uint16_t)(0x0392 + rd16(DP + 0x94))) & 0x00FF;
+  wr16(DP + 0x7A, car);
+  const uint16_t from = (uint16_t)((uint16_t)(car * 15) * 2 + 0x8380);
+  wr16(c4, bus_rd16(0x9D9F0A));
+  for(uint16_t i = 0; i < 0x1E; i++) wr8((uint16_t)(c4 + 2 + i), bus_rd8(0x890000 + (uint16_t)(from + i)));
+  for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0120 + i), bus_rd8(0x9F8BFB + i));
+  for(uint16_t x = 0, y = c4; x < 0x0E; x += 2, y = (uint16_t)(y + 0x20)) {
+    wr16((uint16_t)(y + 0x0122), bus_rd16(0x81D2A9 + x));
+    wr16((uint16_t)(y + 0x0124), bus_rd16(0x81D2B7 + x));
+    wr16((uint16_t)(y + 0x0126), 0);
+  }
+  if(!(rd16(DP + 0x76) & 0x0020)) {
+    wr16(DP + 0x98, 0x0F00);
+    wr16(DP + 0x96, 0x0080);
+    static const uint8_t zeroed[] = {0x80, 0x82, 0x84, 0x86, 0x22, 0x24, 0x26, 0x28, 0x2A};
+    for(unsigned i = 0; i < sizeof zeroed; i++) wr16(DP + zeroed[i], 0);
+    wr16(DP + 0x2C, 0x0040);
+    wr16(DP + 0x80, 0xF400);
+    uint16_t x = rd16(DP + 0x5E), y = rd16(DP + 0x94);
+    const uint16_t kind = rd16((uint16_t)(0x03A8 + rd16(DP + 0x94)));
+    if(kind < 3) {
+      y = bus_rd16(0x81D3C3 + (uint32_t)(kind * 2));
+      block_copy_7f2000(&x, &y);
+      name_copy_7f2000(&x, &y);
+      car_blocks_7f2000(&x, &y);
+      car_block_7f2000(&x, &y);
+    } else if(kind < 0x0A) {
+      name_copy_7f2000(&x, &y);
+      y = 0x018D;
+      block_copy_7f2000(&x, &y);
+      car_blocks_7f2000(&x, &y);
+      car_block_7f2000(&x, &y);
+    } else {  // never run
+      name_copy_7f2000(&x, &y);
+      car_blocks_7f2000(&x, &y);
+      y = 0x019F;
+      block_copy_7f2000(&x, &y);
+      car_block_7f2000(&x, &y);
+    }
+    wr16(0x7F2000 + (uint32_t)x, 0);
+    wr16(DP + 0x46, 0x0110);
+    const uint16_t view = rd16((uint16_t)(0x03A8 + rd16(DP + 0x94)));
+    if(view == 0) {  // the zoom in
+      for(uint16_t i = 0, at = rd16(DP + 0x5E); i < 0x20; i++, at = (uint16_t)(at + 4)) wr16(0x7F1000 + (uint32_t)at, 0);
+      wr16(DP + 0x3E, 0);
+      do {
+        wait_frames(1);
+        ticker_track(0xCC15, 0xCC31);
+        const uint16_t t = rd16(DP + 0x86);
+        if(t >= 0x0060) {
+          if(t < 0x0080) wr16(DP + 0x82, (uint16_t)(rd16(DP + 0x82) + 0x0018));
+          uint16_t a = rd16(DP + 0x80);
+          if(a & 0x8000) {
+            a = (uint16_t)(a + 0x0020);
+            if(!(a & 0x8000)) a = 0;
+          } else {
+            a = (uint16_t)(a - 0x0020);
+            if(a & 0x8000) a = 0;
+          }
+          wr16(DP + 0x80, a);
+          if(rd16(DP + 0x2A) != 0x0040) wr16(DP + 0x2A, (uint16_t)(rd16(DP + 0x2A) + 0x0010));
+          if(rd16(DP + 0x2C) < 0x0066) wr16(DP + 0x2C, (uint16_t)(rd16(DP + 0x2C) + 0x0002));
+          a = (uint16_t)(rd16(DP + 0x84) - 0xFE3E);
+          if(a & 0x8000) a = 0;  // (never run)
+          if(!((uint16_t)(a - 0x0040) & 0x8000)) a = rd16(DP + 0x2A);
+          wr16(DP + 0x84, (uint16_t)(rd16(DP + 0x84) - (a >> 2)));
+        }
+        carry = ticker_scene_step();
+      } while(rd16(DP + 0x9A) & 0x7FFF);
+    } else if(view < 0x0A) {  // the pass
+      wr16(DP + 0x80, 0xF000);
+      do {
+        wait_frames(1);
+        ticker_track(0xCC71, 0xCC91);
+        const uint16_t t = rd16(DP + 0x86);
+        if(t >= 0x0018) {
+          uint16_t a = rd16(DP + 0x80);
+          if(t >= 0x00A0) {
+            if((uint16_t)(a - 0xFF01) & 0x8000) a = 0xFF01;
+            a = (uint16_t)(rd16(DP + 0x80) - (uint16_t)(a - 1));
+            if(!(a & 0x8000)) {
+              a = 0;
+              wr16(DP + 0x20, 0);
+            }
+          } else {
+            a = (uint16_t)(a - 0x0080);
+            if((uint16_t)(a - 0xE800) & 0x8000) a = 0xE800;
+          }
+          wr16(DP + 0x80, a);
+        }
+        carry = ticker_scene_step();
+      } while(rd16(DP + 0x9A) & 0x7FFF);
+    } else {  // a still view (never run)
+      do {
+        wait_frames(1);
+        wr16(DP + 0x80, 0);
+        wr16(DP + 0x7C, 0xF870);
+        wr16(DP + 0x7E, 0);
+        wr16(DP + 0x84, 0);
+        carry = ticker_scene_step();
+      } while(rd16(DP + 0x9A) & 0x7FFF);
+    }
+  }
+  wait_flag_76(DP);
+  // (SEI: interrupts masked until the caller's CLI; as with the CLIs elsewhere, the I flag
+  // is not a platform call)
+  wr16(0x0008, 0x8934);
+  wr16(0x0005, 0x89B2);
+  video_hdma_enable(0x00);  // (a 16-bit store at $420B: no DMA, and $420C = 0)
+  return carry;
 }

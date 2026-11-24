@@ -1179,7 +1179,7 @@ CODE_808AB8:
     lda.w #$FFFF                ; $808AE6
     cmp.w $0446                 ; $808AE9
     db $F0,$23 ; beq            ; $808AEC
-    jsr.w $E4E6                 ; $808AEE
+    jsr.w ticker_screen         ; $808AEE
     lda.w $03E2                 ; $808AF1
     bit.w #$0001                ; $808AF4
     bne CODE_808B12             ; $808AF7
@@ -11031,6 +11031,7 @@ func_80E4DB:
     rep.b #$20                  ; $80E4E2
     pla                         ; $80E4E4
     rtl                         ; $80E4E5
+ticker_screen:
     ldx.w #$CB74                ; $80E4E6
     lda.w #$0081                ; $80E4E9
     jsr.w video_load_screen     ; $80E4EC
@@ -11134,6 +11135,7 @@ CODE_80E577:
     lda.w $03DA                 ; $80E5F1
     sta.w $0248                 ; $80E5F4
     jsr.w split_screen_setup    ; $80E5F7
+ticker_screen_show:
     lda.w #$FFFE                ; $80E5FA
     sta.b $4A                   ; $80E5FD
     ldx.b $92                   ; $80E5FF

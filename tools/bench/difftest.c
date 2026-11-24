@@ -225,13 +225,17 @@ static bool fuzzing;
 static uint8_t afterRam[TG3000_WRAM_SIZE];
 
 // Interrupts inside the sample of a routine that waits for them (at most one such sample
-// at a time): each one's WRAM before and after the handler, replayed in order by
-// platform_wait_vblank() on the C side.
-#define MAX_IRQS 512        // interrupts a row with a budget (maxInsns) records in one sample
+// at a time): the WRAM bytes each handler changed (harness-16: the changes, not two whole
+// copies of WRAM), replayed in order by platform_wait_vblank() on the C side.
+#define MAX_IRQS 8192       // interrupts a row with a budget (maxInsns) records in one sample
 #define MAX_IRQS_DEFAULT 64 // the others: past it a recording stops, and the routines its
                             // handlers call are sampled again (raising it for every row hid
                             // two rows only reached from handlers inside wait_flag_76)
-static uint8_t irqPre[MAX_IRQS][TG3000_WRAM_SIZE], irqPost[MAX_IRQS][TG3000_WRAM_SIZE];
+static uint8_t irqPre[TG3000_WRAM_SIZE];  // WRAM as the handler being recorded began
+typedef struct { uint32_t adr; uint8_t val; } IrqByte;
+static IrqByte* irqBytes;                    // every recorded handler's changes, in order
+static size_t irqBytesUsed, irqBytesCap;
+static size_t irqFirst[MAX_IRQS + 1];        // handler i's changes: [irqFirst[i], irqFirst[i + 1])
 static int irqOwner = -1;  // depth of the sample that records them
 static int irqCount, irqReplayed, irqLimit;
 static bool irqActive, irqOverflow;
@@ -250,9 +254,23 @@ static jmp_buf cAbort;
 static bool cWaitedTooLong;
 
 static void applyIrq(int i) {
+  for(size_t k = irqFirst[i]; k < irqFirst[i + 1]; k++) g_ram[irqBytes[k].adr] = irqBytes[k].val;
+}
+
+// The handler just recorded returned: keep the bytes it changed.
+static void recordIrqEnd(void) {
+  if(irqCount == 0) irqBytesUsed = 0;
+  irqFirst[irqCount] = irqBytesUsed;
   for(uint32_t a = 0; a < TG3000_WRAM_SIZE; a++) {
-    if(irqPre[i][a] != irqPost[i][a]) g_ram[a] = irqPost[i][a];
+    if(irqPre[a] == snes->ram[a]) continue;
+    if(irqBytesUsed == irqBytesCap) {
+      irqBytesCap = irqBytesCap ? irqBytesCap * 2 : 1u << 16;
+      irqBytes = realloc(irqBytes, irqBytesCap * sizeof *irqBytes);
+      if(irqBytes == NULL) { fprintf(stderr, "difftest: out of memory for interrupts\n"); exit(1); }
+    }
+    irqBytes[irqBytesUsed++] = (IrqByte){a, snes->ram[a]};
   }
+  irqFirst[++irqCount] = irqBytesUsed;
 }
 
 void difftest_replay_interrupt(void) {
@@ -1517,7 +1535,7 @@ void difftest_on_insn(Cpu* cpu) {
   checkCgPtrAfterKick();
   if(irqOwner >= 0) {
     if(irqActive && cpu->sp == irqReturnSp) {  // the handler has returned (RTI)
-      memcpy(irqPost[irqCount++], snes->ram, TG3000_WRAM_SIZE);
+      recordIrqEnd();
       irqActive = false;
     }
     if(cpu_interruptCount != irqSeen) {  // this instruction is a handler's first
@@ -1525,7 +1543,7 @@ void difftest_on_insn(Cpu* cpu) {
       if(!irqActive) {
         if(irqCount >= (table[samples[irqOwner].idx].maxInsns ? MAX_IRQS : MAX_IRQS_DEFAULT)) irqOverflow = true;
         else {
-          memcpy(irqPre[irqCount], snes->ram, TG3000_WRAM_SIZE);
+          memcpy(irqPre, snes->ram, TG3000_WRAM_SIZE);
           if(!atWaitSite(stoppedPc) && !samples[irqOwner].lagged) {
             samples[irqOwner].lagged = true;
             samples[irqOwner].lagPc = stoppedPc;

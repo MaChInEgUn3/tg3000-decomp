@@ -407,6 +407,8 @@ func    829BE5   race_message_request_02e6 ; a race message into $02E6 by priori
 func    81E7DA   track_entry_bounds  ; a track entry's x and its bounds pair -> src/misc.c
 func    80EA77   spark_step          ; the sparks: each draws and fades; new ones laid by D+$86 -> src/misc.c
 func    83FD3C   car_clear_53        ; a car's byte dp+$53 = 0 -> src/misc.c
+func    80E4E6   ticker_screen       ; the scrolling-text screen: loads, then a frame at a time until D+$9A ends -> src/misc.c
+func    80E5FA   ticker_screen_show  ; the scrolling-text screen after split_screen_setup -> src/misc.c
 func    80E8B5   block_copy_7f2000   ; a length-prefixed block from $81:D419 to $7F:2000 -> src/misc.c
 func    8A99E2   text_line_push      ; a text map line pushed to the byte buffer -> src/misc.c
 func    83FA34   track_object_test   ; a track object's hit test at its x -> src/misc.c

@@ -3325,17 +3325,7 @@ static void fuzz_car_contacts_chain(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
 // SBC #$0900 of the old D+$6E, which is D+$6C after it).
 static void call_ticker_scene_step(const Regs* in, Regs* out) {
   (void)in;
-  uint16_t s = rd16(DP + 0x46), count = rd16(DP + 0x4C);
-  if(s & 0x8000) {
-    if(!(s & 1) && rd16(DP + 0x48) != 0) {
-      s = (uint16_t)(s + 1);
-      count = 0x00A0;
-    }
-    count = (uint16_t)(count - 1);
-    if(count == 0) s = (uint16_t)(s + 1);
-  }
-  ticker_scene_step();
-  out->c = (s & 0x8000) ? s == 0xFFFF : rd16(DP + 0x6C) >= 0x0900;
+  out->c = ticker_scene_step();
 }
 // the sparks', the sprites' and the ticker's state; a valid line at $7F:2000 + D+$5E; the
 // camera and view words; D+$46 counting either way (and $FFFF), D+$48/$4A keeping the list
@@ -5309,6 +5299,28 @@ static void call_irq_menu_frame(const Regs* in, Regs* out) {
 // the results screen, cut at its first wait (advisor): the load (endAt $8A:95EB, not a
 // waiting row: the NMIs that land in its long decompressions are its interruptions, and its
 // samples are replayed from their entry state) ends after upload_7f_to_3000 (its exit)
+// the ticker screen, cut around its first wait (split_screen_setup, its own row): the load ends after
+// the STA $0248 (A = $03DA, its N/Z; X = 0 and Y = $11 from the row uploads, C clear from
+// their last ADC); the show returns after the 16-bit STZ $420B (A = $89B2: N set; V from
+// wait_flag_76's BIT of D+$76; C as the show returns it)
+static void call_ticker_screen(const Regs* in, Regs* out) {
+  (void)in;
+  ticker_screen_load();
+  out->a = rd16(0x03DA);
+  out->x = 0;
+  out->y = 0x0011;
+  out->n = out->a >> 15;
+  out->z = out->a == 0;
+  out->c = false;
+}
+static void call_ticker_screen_show(const Regs* in, Regs* out) {
+  out->c = ticker_screen_show(in->c);
+  out->a = 0x89B2;
+  out->n = true;
+  out->z = false;
+  out->v = (rd16(DP + 0x76) >> 14) & 1;
+}
+
 // the title screen, cut at its first two waits: the load ends after its loop clearing $1516..$1534
 // (X = -2, N set); the show returns after wait_frames(8) (its CMP: Z and C set, N clear)
 static void call_title_screen(const Regs* in, Regs* out) {
@@ -10611,6 +10623,15 @@ const Routine routines[] = {
   {.name = "results_screen", .entry = 0x8A94C3, .end = 0x8A95EB, .endAt = 0x8A95EB, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true,
    .call = call_results_screen},
+  // the ticker screen, cut around split_screen_setup; the show's unrun paths: D+$76 bit 5 set,
+  // $03A8 from 10 up (two places, and its still view at $80:E88E), D+$84 below $FE3E
+  {.name = "ticker_screen", .entry = 0x80E4E6, .end = 0x80E5F7, .endAt = 0x80E5F7, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_ticker_screen},
+  {.name = "ticker_screen_show", .entry = 0x80E5FA, .end = 0x80E88E, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .maxInsns = 40000000,
+   .call = call_ticker_screen_show, .holes = {{0x80E6AE, 0x80E6B1}, {0x80E70D, 0x80E71C}, {0x80E734, 0x80E737}, {0x80E7D5, 0x80E7D8}},
+   .alsoIn = {{0x80E88E, 0x80E8B5}}},  // the still view past the RTS (never run; not counted)
   // the title screen, cut at its first two waits (one path no movie runs: D+$5A's uploads)
   {.name = "title_screen", .entry = 0x8A800B, .end = 0x8A8042, .endAt = 0x8A8042, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareX = true, .call = call_title_screen},
