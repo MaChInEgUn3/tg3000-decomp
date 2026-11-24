@@ -3702,6 +3702,50 @@ password screen, a skipped track's bonus.
   fix them. The firmware on the bench is the oracle for that now.
 - **Check:** full gate (`difftest.c` changed).
 
+## dsp4_row exact against the firmware (dsp4-11a, harness-29, 2026-11-24)
+
+- **`tools/bench/dsp4_probe`** (`make -C tools/bench probe`, needs bsnes in `ext/`) sends
+  chosen inputs to the firmware chip (harness-27) and compares the answers with
+  `src/dsp4.c`. This is outputs only: what the chip answers to a command on an idle chip,
+  never its memory.
+  - Command `$11` (`dsp4_row`): four edges in, one row word out.
+  - Command `$0A` (`dsp4_edges`).
+- **`dsp4_edges` was already exact:** 0 differences in every range tried, up to the whole
+  16-bit input.
+- **`dsp4_row` was not.** About 4% of random edges in the game's range differed by one in a
+  nibble, and far more beyond it.
+  - Sweeping one edge at a time through the firmware shows the rule. Every edge is treated
+    alike: the edge times 1364 / 65536, rounded down. It is not a division by 48.
+  - So 48 gives 0 and 49 gives 1, -48 gives -1 and -49 gives -2, and past about 1,000 the
+    steps drift from 48 by one now and then.
+  - The old C (floor(edge / 48), minus one for edges 1 and 3) had been fitted to the TAS's
+    90 inputs. That data could not tell the rounding apart, as its own comment said.
+  - Now exact: 0 of 50,000 differ in each range up to ±32,768.
+- **The default bench was blind to it:** the clean-room chip's route for `$11` answers with
+  `dsp4_row` itself. The firmware chip on the VS movie's fuzz (harness-28) found it, through
+  `track_rows_build`. Its fuzz there now passes (500/500), so it is fuzzed on that movie
+  again.
+- **harness-29:** with the firmware chip, a replay (an interrupted entry run again from its
+  entry state) restores the chip's state as it was at the entry, rather than resetting it.
+  A fuzz case that scripts the DSP-4 resets the firmware chip as it does the clean-room one.
+- **`player_car_frame` stays off the VS movie's fuzz.** All 469 of its cases that finish
+  pass. The other 31 run past the instruction budget: on race RAM with the firmware's
+  answers, its car loop runs longer. That is a fuzz base problem, not a mismatch.
+- **`car_sprite_head` joins it.** The first full run failed on it: its live samples pass
+  (2,569), but every fuzz case on the VS movie's race RAM makes the original read hardware
+  (`$84:2E2E`, an index from the four-car state). Its fuzz still runs on the other movies
+  (500/500).
+- **And on the password movie.** On the second full run, `car_sprite_head` failed the same
+  way there: 0 of 500 fuzz cases, all reading hardware at `$84:2E2E`, and all 2,569 live
+  samples pass.
+  - That movie passes through races. The default bench answers `$11` with `dsp4_row`, so
+    the fix changes how they play, and with them the movie's last RAM, which is the fuzz
+    base.
+  - Every other row still reaches all its paths over the pooled movies.
+  - So its fuzz is skipped there too. It still runs 500/500 on the 60k and shop-buy movies.
+- **Check:** full gate (`src/dsp4.c` and `difftest.c` changed); the probe (0 of 50,000 in
+  each range).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

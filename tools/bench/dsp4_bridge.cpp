@@ -62,6 +62,19 @@ static int routed = -1;  // index into routes, or -1
 static uint8_t routedIn[16], routedOut[16];
 static int routedNIn, routedNOut = -1;
 
+// harness-27: the firmware DSP-4 (tools/bench/dsp4_lle.cpp) in place of the clean-room
+// chip: data and status go to it, and save states carry its state. Scripted cases (the
+// difftest's fuzz) do not touch it.
+#ifdef BENCH_LLE
+extern "C" bool dsp4_lle_load(const char* path);
+extern "C" void dsp4_lle_reset(void);
+extern "C" uint8_t dsp4_lle_read(bool data);
+extern "C" void dsp4_lle_write(bool data, uint8_t v);
+extern "C" int dsp4_lle_state_size(void);
+extern "C" void dsp4_lle_save_state(uint8_t* out, int size);
+extern "C" void dsp4_lle_load_state(const uint8_t* in, int size);
+#endif
+static bool lleOn;
 // A taped row's fuzz case scripts the chip (dsp4_bridge_script): its status always reads
 // ready, data reads come from the script (low byte first, 0 past its end) and writes are
 // not fed to the chip. A reset clears it.
@@ -81,6 +94,9 @@ extern "C" void dsp4_bridge_script(const uint16_t* words, int n) {
 	scriptPos = 0;
 	scripted = true;
 	chip.reset();  // the native sites' commands (harness-5) start on an idle chip
+#ifdef BENCH_LLE
+	if(lleOn) dsp4_lle_reset();  // (so does the firmware chip, which answers them under it)
+#endif
 	routed = -1;
 	routedNOut = -1;
 }
@@ -98,19 +114,8 @@ static uint32_t tapeBadPc;
 static uint8_t tapeBadVal;
 static bool tapeBadWrite;
 
-// harness-27: the firmware DSP-4 (tools/bench/dsp4_lle.cpp) in place of the clean-room
-// chip: data and status go to it, and save states carry its state. Scripted cases (the
-// difftest's fuzz) do not touch it.
-#ifdef BENCH_LLE
-extern "C" bool dsp4_lle_load(const char* path);
-extern "C" void dsp4_lle_reset(void);
-extern "C" uint8_t dsp4_lle_read(bool data);
-extern "C" void dsp4_lle_write(bool data, uint8_t v);
-extern "C" int dsp4_lle_state_size(void);
-extern "C" void dsp4_lle_save_state(uint8_t* out, int size);
-extern "C" void dsp4_lle_load_state(const uint8_t* in, int size);
-#endif
-static bool lleOn;
+// whether the firmware chip answers (harness-29: replays keep its state)
+extern "C" bool dsp4_bridge_firmware_on(void) { return lleOn; }
 // 1: loaded; 0: the bench was built without bsnes; -1: the file could not be loaded
 extern "C" int dsp4_bridge_firmware(const char* path) {
 #ifdef BENCH_LLE

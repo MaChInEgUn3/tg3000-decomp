@@ -10,6 +10,7 @@
 // its extent ran in a compared sample.
 #include "difftest.h"
 #include "dsp4_bridge.h"
+bool dsp4_bridge_firmware_on(void);  // (tools/bench/dsp4_bridge.cpp, harness-29)
 
 #include <setjmp.h>
 #include <stdio.h>
@@ -229,6 +230,10 @@ typedef struct {
   uint8_t ram[TG3000_WRAM_SIZE];
   Ppu ppu;
   Dma dma;
+  // harness-29: with the firmware DSP-4 (harness-27), its state at the entry, so that a
+  // replay finds the chip where the sample did (mid-command); the clean-room chip is reset
+  uint8_t dsp4[8192];
+  int dsp4Size;
 } Replay;
 static Replay* replays;
 static bool replaying;
@@ -1444,6 +1449,11 @@ static void startSample(int idx, const Cpu* cpu) {
     memcpy(p->ram, snes->ram, TG3000_WRAM_SIZE);
     memcpy(&p->ppu, snes->ppu, sizeof p->ppu);
     memcpy(&p->dma, snes->dma, sizeof p->dma);
+    p->dsp4Size = 0;
+    if(dsp4_bridge_firmware_on() && dsp4_bridge_state_size() <= (int)sizeof p->dsp4) {
+      p->dsp4Size = dsp4_bridge_state_size();
+      dsp4_bridge_save_state(p->dsp4);
+    }
   }
   if(r->mayLeaveCaller) {  // the caller's return address, above this routine's
     smp->altRetPc = (uint16_t)((snes->ram[(uint16_t)(sp + 3)] | (snes->ram[(uint16_t)(sp + 4)] << 8)) + 1);
@@ -1789,7 +1799,8 @@ void difftest_fuzz(int iterations) {
       snes->hIrqEnabled = snes->vIrqEnabled = false;
       for(int ch = 0; ch < 8; ch++) snes->dma->channel[ch].hdmaActive = false;
       snes->dma->hdmaInitRequested = snes->dma->hdmaRunRequested = false;
-      dsp4_bridge_reset();
+      if(p->dsp4Size > 0) dsp4_bridge_load_state(p->dsp4, p->dsp4Size);  // (harness-29)
+      else dsp4_bridge_reset();
       s->replayRequested++;
       Cpu* cpu = snes->cpu;
       cpu->nmiWanted = cpu->irqWanted = cpu->intWanted = false;

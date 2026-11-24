@@ -19,11 +19,16 @@ void dsp4_edges(uint16_t t, uint16_t near, uint16_t far, int16_t out[4]) {
   }
 }
 
-static int dsp4_floor_div48(int32_t v) { return v >= 0 ? (int)(v / 48) : -(int)((-v + 47) / 48); }
-
+// (dsp4-11a: measured on the firmware, every edge alike: the edge times 1364 / 65536, rounded
+// down, not a division by 48: 48 gives 0 and 49 gives 1, -48 gives -1 and -49 gives -2, and
+// from about 1,000 on the steps drift from 48 by one now and then.)
 uint16_t dsp4_row(const int16_t edge[4]) {
   uint16_t row = 0;
-  for(int j = 0; j < 4; j++) row = (uint16_t)((row << 4) | (dsp4_floor_div48((int32_t)edge[j] - (j & 1)) & 0xF));
+  for(int j = 0; j < 4; j++) {
+    const int32_t p = (int32_t)edge[j] * 1364;
+    const int32_t q = p >= 0 ? p / 65536 : -((-p + 65535) / 65536);  // floor(p / 2^16)
+    row = (uint16_t)((row << 4) | (q & 0xF));
+  }
   return row;
 }
 

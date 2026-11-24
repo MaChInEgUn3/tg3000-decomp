@@ -31,6 +31,7 @@ build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt 
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --apu-report /tmp/apu.txt     # APU port traffic
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --dsp4-report /tmp/d4.txt    # DSP-4 commands by site, bytes per run
 build/bench/bench TG3000.sfc 9000 --movie tools/bench/movies/vs_race.txt --dsp4-firmware ext/firmware/dsp4.rom   # the DSP-4 run from its firmware (needs tools/refbench/fetch.sh)
+make -C tools/bench probe && build/bench/dsp4_probe ext/firmware/dsp4.rom 50000 32768   # src/dsp4.c's $11/$0A against the firmware on chosen inputs
 tools/bench/selftest.sh         # determinism + fresh-process save/load + race reached + all rows (sharded); SELFTEST_DIFFTEST=0 skips the rows
 python3 -I tools/listing.py && tools/build_asm.sh   # asm/ -> exact ROM (SHA-1 + code-from-text proof)
 tools/refbench/fetch.sh && make -C tools/refbench    # TAS reference: bsnes from BizHawk 1.9.4

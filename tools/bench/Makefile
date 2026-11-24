@@ -24,7 +24,7 @@ endif
 LLE_CXX := $(CXX) -std=gnu++11 -include vector -include algorithm -include type_traits -include utility \
   -include stdint.h -include stddef.h -include string.h -include limits.h -O2 -w -Inecdsp_shim -I$(BSNES)
 
-.PHONY: all clean
+.PHONY: all clean probe
 all: $(OUT)/bench
 
 $(OUT)/bench: $(OBJ)
@@ -41,6 +41,11 @@ $(OUT)/dsp4_bridge.o: dsp4_bridge.cpp bench_log.h $(SRC)/dsp4.h | $(OUT)
 
 $(OUT)/dsp4_lle.o: dsp4_lle.cpp necdsp_shim/snes/snes.hpp | $(OUT)
 	$(LLE_CXX) -c $< -o $@
+
+# dsp4-11a: src/dsp4.c against the firmware chip on chosen inputs (needs bsnes in ext/)
+$(OUT)/dsp4_probe: dsp4_probe.cpp $(OUT)/dsp4_lle.o $(OUT)/src_dsp4.o | $(OUT)
+	$(CXX) $(CXXFLAGS) -o $@ $^
+probe: $(OUT)/dsp4_probe
 
 $(OUT)/png.o: png.c png.h | $(OUT)
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -99,3 +99,20 @@ extern "C" void dsp4_lle_load_state(const uint8_t* in, int size) {
   serializer s(in, unsigned(size));
   necdsp.serialize(s);
 }
+
+// dsp4-11a: one command on an idle chip (reset first): its word, its input words, its output
+// words, as the game sends and reads them (low byte first). For tools/bench/dsp4_probe.cpp.
+extern "C" void dsp4_lle_command(uint16_t cmd, const uint16_t* in, int nin, uint16_t* out, int nout) {
+  dsp4_lle_reset();
+  dsp4_lle_write(true, uint8_t(cmd));
+  dsp4_lle_write(true, uint8_t(cmd >> 8));
+  for(int i = 0; i < nin; i++) {
+    dsp4_lle_write(true, uint8_t(in[i]));
+    dsp4_lle_write(true, uint8_t(in[i] >> 8));
+  }
+  for(int i = 0; i < nout; i++) {
+    const uint8_t lo = dsp4_lle_read(true);
+    const uint8_t hi = dsp4_lle_read(true);
+    out[i] = uint16_t(lo | hi << 8);
+  }
+}

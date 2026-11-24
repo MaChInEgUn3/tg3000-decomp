@@ -35,7 +35,8 @@ optframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/e
 vsframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/vs_race.txt)
 # the VS race runs only with the DSP-4 run from its firmware (harness-27, the owner's file)
 firmware="${TG3000_DSP4_FIRMWARE:-ext/firmware/dsp4.rom}"
-vsfuzzskip=vs_screen_frame,track_rows_build,player_car_frame
+vsfuzzskip=vs_screen_frame,player_car_frame,car_sprite_head
+pwfuzzskip=car_sprite_head  # (dsp4-11a: the password movie's last RAM)
 # every deliberately wrong C must fail over the same movie (in parallel): the selftest's
 # short movie does not reach them all
 build/bench/bench "$rom" 60000 --movie tools/bench/movies/autopilot_60k.txt \
@@ -66,7 +67,7 @@ done
 k=0
 while [ $k -lt $pwshards ]; do
   build/bench/bench "$rom" "$pwframes" --movie tools/bench/movies/explore_pw.txt --difftest-shard "$k/$pwshards" \
-    --difftest "$tmp/pw$k.txt" --fuzz 500 > "$tmp/pw$k.log" 2>&1 &
+    --fuzz-skip "$pwfuzzskip" --difftest "$tmp/pw$k.txt" --fuzz 500 > "$tmp/pw$k.log" 2>&1 &
   pids="$pids $!:pw$k"
   k=$((k + 1))
 done
