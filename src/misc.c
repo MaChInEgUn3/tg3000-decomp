@@ -17,6 +17,7 @@
 #include "text.h"
 #include "video_dma.h"
 #include "vram_queue.h"
+#include "vs.h"
 #include "hud.h"
 #include "password.h"
 #include "tg3000.h"
@@ -9307,11 +9308,11 @@ uint16_t vs_players_set(uint16_t players, bool* carry) {
 // After the VS screen's setup: the menus left (D+$6C counted).
 void vs_players_done(void) { wr16(DP + 0x6C, (uint16_t)(rd16(DP + 0x6C) + 1)); }
 
-// A player count chosen: $03DC set, the VS screen ($8A:A573, not ported yet), the menus left.
+// A player count chosen: $03DC set, the VS screen ($8A:A573), the menus left.
 static void menu_action_vs_players(uint16_t players) {
   bool carry;
   vs_players_set(players, &carry);
-  tg3000_unported("$8A:A573: the VS screen's setup");
+  vs_screen();
   vs_players_done();
 }
 

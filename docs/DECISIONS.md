@@ -3400,6 +3400,30 @@ password screen, a skipped track's bonus.
   - The advisor's kind of call, open to the owner's veto.
 - **Check:** full gate (`difftest.c` changed).
 
+## VS MODE's screen: its setup and its frames (vs-9, 2026-11-24)
+
+- **The VS screen (`$8A:A573`) in parts between its waits** (`src/vs.c`):
+  - `vs_screen_blank` (`$8A:A576`): HDMA off. Its 16-bit STZ of `$420C` also writes
+    `$420D` (the ROM speed, 0);
+  - `vs_screen_setup` (`$8A:A582`, up to the first frame's wait): palettes, graphics, colour
+    0 (`video_set_color`), BG1's scroll, mode 1, the map cleared, the four panels' cursors
+    and corners, the four grids, the names, the players in, the main screen. Its 16-bit
+    store of `$212C` also writes `$212D` with 0. Then the fade in. With 2,000+ VRAM words it
+    takes the long effect log (harness-25);
+  - `vs_screen_frame` (`$8A:A682`): the players' pads into their panels, the four panels'
+    frames, the pads back. It goes on while `$019A` (the fade) runs. Otherwise the absent
+    players' names (`vs_names_absent`, `$8A:A6F6`), and the main screen and HDMA (`$82`)
+    back.
+  - `vs_screen`: the whole, composed with the waits.
+- **`menu_action`'s VS player counts now run it** (the trap is gone).
+- **The movie stops before the race**, so these run only in the fuzz (500 cases), and are
+  static ranges now:
+  - the frame's end and its `vs_names_absent`;
+  - the other players' pads (`$8A:A692`, `$8A:A69D`, `$8A:A6A8`).
+- **Results:** 505 frames on the options movie; the setup's one entry (interrupted) passes
+  from its entry state.
+- **Check:** full gate (`menu_action`'s case changed).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

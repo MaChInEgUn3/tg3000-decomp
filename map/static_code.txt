@@ -179,3 +179,6 @@
 8A:AEB9 8A:AEDA m16x16 ; vs_letter_prev, called by vs_name_entry_frame's Up: executed by its difftest fuzz, matched by src/vs.c
 8A:AF31 8A:AF57 m16x16 ; vs_row_prev, called by vs_name_entry_frame's Left: executed by its difftest fuzz, matched by src/vs.c
 8A:AADB 8A:AADF m16x16 ; vs_panel_name_draw: a panel other than 0-6 (its CPX chain falls through): executed by its difftest fuzz, matched by src/vs.c
+8A:A692 8A:A698 m16x16 ; vs_screen_frame: the second player's pad ($8A:A690 BEQ skips it): executed by its difftest fuzz, matched by src/vs.c
+8A:A69D 8A:A6A3 m16x16 ; vs_screen_frame: the third player's pad ($8A:A69B BEQ skips it): executed by its difftest fuzz, matched by src/vs.c
+8A:A6A8 8A:A6AE m16x16 ; vs_screen_frame: the fourth player's pad ($8A:A6A6 BEQ skips it): executed by its difftest fuzz, matched by src/vs.c

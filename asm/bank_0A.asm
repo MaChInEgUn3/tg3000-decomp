@@ -3954,10 +3954,12 @@ vs_players_set:
     inc.b $6C                   ; $8AA570
     rts                         ; $8AA572
     jsr.w fade_out_wait         ; $8AA573
+vs_screen_blank:
     stz.w $420C                 ; $8AA576
     stz.b $8E                   ; $8AA579
     lda.w #$0001                ; $8AA57B
     jsl.l wait_frames_long      ; $8AA57E
+vs_screen_setup:
     jsr.w vs_palette_load       ; $8AA582
     jsr.w vs_graphics_load      ; $8AA585
     sep.b #$20                  ; $8AA588
@@ -4047,6 +4049,7 @@ vs_players_set:
 CODE_8AA67B:
     lda.w #$0001                ; $8AA67B
     jsl.l wait_frames_long      ; $8AA67E
+vs_screen_frame:
     lda.w $0DF4                 ; $8AA682
     beq CODE_8AA68D             ; $8AA685
     lda.w $000E                 ; $8AA687
@@ -4054,15 +4057,18 @@ CODE_8AA67B:
 CODE_8AA68D:
     lda.w $0DF6                 ; $8AA68D
     beq CODE_8AA698             ; $8AA690
-    incbin !baserom:$52692..$52698
+    lda.w $0012                 ; $8AA692 static
+    sta.w $0DCE                 ; $8AA695 static
 CODE_8AA698:
     lda.w $0DF8                 ; $8AA698
     beq CODE_8AA6A3             ; $8AA69B
-    incbin !baserom:$5269D..$526A3
+    lda.w $0016                 ; $8AA69D static
+    sta.w $0DD0                 ; $8AA6A0 static
 CODE_8AA6A3:
     lda.w $0DFA                 ; $8AA6A3
     beq CODE_8AA6AE             ; $8AA6A6
-    incbin !baserom:$526A8..$526AE
+    lda.w $001A                 ; $8AA6A8 static
+    sta.w $0DD2                 ; $8AA6AB static
 CODE_8AA6AE:
     jsr.w clear_object_slots    ; $8AA6AE
     ldx.w #$0000                ; $8AA6B1
@@ -4083,12 +4089,13 @@ CODE_8AA6AE:
     sta.w $001A                 ; $8AA6DE
     lda.w $019A                 ; $8AA6E1
     bne CODE_8AA67B             ; $8AA6E4
-    jsr.w $A6F6                 ; $8AA6E6
+    jsr.w vs_names_absent       ; $8AA6E6
     lda.w #$0013                ; $8AA6E9
     sta.w $212C                 ; $8AA6EC
     lda.w #$0082                ; $8AA6EF
     sta.w $420C                 ; $8AA6F2
     rts                         ; $8AA6F5
+vs_names_absent:
     ldx.w #$0006                ; $8AA6F6
 CODE_8AA6F9:
     lda.w $0DF4,x               ; $8AA6F9

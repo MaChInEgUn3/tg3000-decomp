@@ -6142,6 +6142,35 @@ static void call_vs_graphics_load(const Regs* in, Regs* out) {
   out->n = out->c = out->v = false;
   out->z = true;
 }
+// the VS screen's parts: the blank and the setup end at their frame waits (A = 1, LDA #1);
+// a frame ends back at the loop's wait (A = 1) or returns (A = $82)
+static void call_vs_screen_blank(const Regs* in, Regs* out) {
+  (void)in;
+  vs_screen_blank();
+  out->a = 0x0001;
+  setNZ16(out, out->a);
+}
+static void call_vs_screen_setup(const Regs* in, Regs* out) {
+  (void)in;
+  vs_screen_setup();
+  out->a = 0x0001;
+  setNZ16(out, out->a);
+}
+static void call_vs_screen_frame(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = vs_screen_frame() ? 0x0001 : 0x0082;
+  setNZ16(out, out->a);
+}
+// a frame that goes on or ends, the four panels in play or not, their pads
+static void fuzz_vs_screen_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x019A, (rnd() & 1) ? 0 : (uint16_t)(1 + rnd() % 0x40));
+  for(uint16_t p = 0; p < 4; p++) {
+    if(p > 0) wr16ram(ram, (uint16_t)(0x0DF4 + 2 * p), (rnd() % 3) ? 0 : 0xFFFF);
+    static const uint16_t pads[4] = {0x000E, 0x0012, 0x0016, 0x001A};
+    wr16ram(ram, pads[p], (uint16_t)(rnd() & 0x0F00));
+  }
+}
 // a letter from the table (its first byte of a random entry)
 static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)ram;
@@ -12130,6 +12159,13 @@ const Routine routines[] = {
   {.name = "vs_graphics_load", .entry = 0x8AB9AF, .end = 0x8ABA55, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_graphics_load,
    .manyEffects = true},  // (1,920 VRAM words)
+  {.name = "vs_screen_blank", .entry = 0x8AA576, .end = 0x8AA57E, .endAt = 0x8AA57E, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_screen_blank},
+  {.name = "vs_screen_setup", .entry = 0x8AA582, .end = 0x8AA67E, .endAt = 0x8AA67E, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_screen_setup,
+   .manyEffects = true},
+  {.name = "vs_screen_frame", .entry = 0x8AA682, .end = 0x8AA6F6, .endAt = 0x8AA67E, .alsoIn = {{0x8AA67B, 0x8AA67E}}, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_screen_frame, .fuzz = fuzz_vs_screen_frame},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

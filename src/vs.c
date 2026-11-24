@@ -5,6 +5,7 @@
 
 #include "misc.h"
 #include "decompress.h"
+#include "frame.h"
 #include "platform.h"
 #include "rng.h"
 #include "util.h"
@@ -584,4 +585,96 @@ void vs_graphics_load(void) {
       wr16(DP + 0x44, (uint16_t)(rd16(DP + 0x44) - 1));
     }
   }
+}
+
+// TG3000_ROUTINE($8A:A576) vs_screen_blank
+void vs_screen_blank(void) {
+  video_hdma_enable(0);
+  platform_set_rom_speed(0);  // (the 16-bit STZ reaches $420D too)
+  wr16(DP + 0x8E, 0);
+}
+
+// TG3000_ROUTINE($8A:A582) vs_screen_setup
+void vs_screen_setup(void) {
+  vs_palette_load();
+  vs_graphics_load();
+  video_set_color(0, bus_rd16(0x8AC4F4));
+  video_set_bg1_vofs(bus_rd16(0x8AA766));
+  video_set_bg1_hofs(bus_rd16(0x8AA764));
+  video_set_bg_mode(0x01);
+  wr16(DP + 0x4C, 0x0002);
+  clear_tilemap_7f();
+  for(uint16_t i = 0; i < 8; i += 2) wr16((uint16_t)(0x0D60 + i), 0x007C);
+  for(uint16_t i = 0; i < 8; i += 2) {
+    wr16((uint16_t)(0x0D78 + i), 0x0002);
+    wr16((uint16_t)(0x0D70 + i), 0x0002);
+  }
+  wr16(DP + 0x7A, 0x0002);
+  wr16(DP + 0x7C, 0x0002);
+  wr16(DP + 0x7E, 0x0001);
+  static const uint16_t corner[4][2] = {{0x13, 0x06}, {0x93, 0x06}, {0x13, 0x76}, {0x93, 0x76}};
+  for(int p = 0; p < 4; p++) {
+    wr16((uint16_t)(0x0DBC + 2 * p), corner[p][0]);
+    wr16((uint16_t)(0x0DC4 + 2 * p), corner[p][1]);
+  }
+  vs_grid_draw(0x0002, 0x0001);
+  vs_grid_draw(0x0012, 0x0001);
+  vs_grid_draw(0x0002, 0x000F);
+  vs_grid_draw(0x0012, 0x000F);
+  for(uint16_t i = 0; i < 8; i += 2) {
+    wr16((uint16_t)(0x0DAC + i), 0x0004);
+    wr16((uint16_t)(0x0DB4 + i), 0x0004);
+  }
+  video_set_main_screen(0x13);
+  video_set_sub_screen(0x00);  // (the 16-bit store reaches $212D too)
+  vs_names_load();
+  vs_players_in();
+  wr16(DP + 0x8E, (uint16_t)(rd16(DP + 0x8E) + 1));
+  fade_in_start();
+}
+
+// TG3000_ROUTINE($8A:A6F6) vs_names_absent
+void vs_names_absent(void) {
+  for(int x = 6; x >= 0; x -= 2) {
+    if(rd16((uint16_t)(0x0DF4 + x)) != 0) continue;
+    const uint16_t to = table8a(0xA804, (uint16_t)x), from = table8a(0xA80C, (uint16_t)x);
+    wr16(DP + 0x42, to);
+    wr16(DP + 0x44, from);
+    for(uint16_t y = 0;; y++) {
+      const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(from + y));
+      bus_wr8(0x8A0000 | (uint16_t)(to + y), c);
+      if(c == 0) break;
+    }
+  }
+}
+
+// TG3000_ROUTINE($8A:A682) vs_screen_frame
+//
+// Only the first player's pad and the frames that go on run in a movie (it stops before the
+// race); the rest is checked by the fuzz.
+bool vs_screen_frame(void) {
+  static const uint16_t pads[4] = {0x000E, 0x0012, 0x0016, 0x001A};
+  for(uint16_t p = 0; p < 4; p++)
+    if(rd16((uint16_t)(0x0DF4 + 2 * p)) != 0) wr16((uint16_t)(0x0DCC + 2 * p), rd16(pads[p]));
+  clear_object_slots();
+  for(uint16_t x = 0; x < 8; x += 2) vs_panel_frame(x);
+  for(uint16_t p = 0; p < 4; p++) wr16(pads[p], rd16((uint16_t)(0x0DCC + 2 * p)));
+  if(rd16(0x019A) != 0) return true;
+  vs_names_absent();
+  video_set_main_screen(0x13);
+  video_set_sub_screen(0x00);
+  video_hdma_enable(0x82);
+  platform_set_rom_speed(0);
+  return false;
+}
+
+// The VS screen whole ($8A:A573): the fade out, a frame, the setup, then a frame at a time
+// until the fade out its players' readiness started has ended.
+void vs_screen(void) {
+  fade_out_wait();
+  vs_screen_blank();
+  wait_frames(1);
+  vs_screen_setup();
+  do wait_frames(1);
+  while(vs_screen_frame());
 }

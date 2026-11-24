@@ -732,3 +732,7 @@ func    8AA869   vs_ready_draw       ; VS panel: name and READY, blinking -> src
 func    8AA9A7   vs_car_info         ; VS panel: the car's description when its column changes -> src/vs.c
 func    8AA81C   vs_panel_frame      ; VS panel: a frame by its state (name, car, ready) -> src/vs.c
 func    8AB9AF   vs_graphics_load    ; VS screen: its tiles and the panels' map in VRAM -> src/vs.c
+func    8AA576   vs_screen_blank     ; VS screen: HDMA off, D+$8E cleared -> src/vs.c
+func    8AA582   vs_screen_setup     ; VS screen: its setup up to the first frame -> src/vs.c
+func    8AA682   vs_screen_frame     ; VS screen: a frame of the four panels -> src/vs.c
+func    8AA6F6   vs_names_absent     ; VS screen: absent players' default names -> src/vs.c

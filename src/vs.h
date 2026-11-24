@@ -141,5 +141,22 @@ void vs_panel_frame(uint16_t x);
 // rows of 32: 14 rows of two copies of 16 tiles (the second with palette bit $0400), then
 // the same 14 with $0800 and $0C00.
 void vs_graphics_load(void);
+// The VS screen ($8A:A573) in parts between its waits:
+// - $8A:A576: HDMA off ($420C/$420D 0), D+$8E cleared;
+// - $8A:A582: its setup: palettes, graphics, colour 0, BG1's scroll, mode 1, the map cleared,
+//   the four panels' cursors and corners, the four grids, the names, the players in, the
+//   main screen ($13), D+$8E set and the fade in started;
+// - $8A:A682: a frame: the players' pads into their panels ($0DCC-$0DD2, for the players in),
+//   the sprites cleared, the four panels' frames, the pads back; returns true while the
+//   screen goes on ($019A, the fade), else the absent players' names ($8A:A6F6), the main
+//   screen and HDMA back ($82).
+void vs_screen_blank(void);
+void vs_screen_setup(void);
+bool vs_screen_frame(void);
+// $8A:A6F6: the names of the panels not in play ($0DF4 = 0) set to their defaults (from the
+// pointer at $8A:A80C to the one at $8A:A804).
+void vs_names_absent(void);
+// The VS screen whole ($8A:A573).
+void vs_screen(void);
 
 #endif
