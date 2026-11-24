@@ -5313,6 +5313,26 @@ static void call_ticker_screen(const Regs* in, Regs* out) {
   out->z = out->a == 0;
   out->c = false;
 }
+// the intro, cut at its first wait: the load leaves DB = $81; its flags are dead after the cut (harness-17); the
+// show returns after LDA #4 / TRB $0026 (N clear, Z from bit 2), C clear and V from the last
+// pad read (pads_read_long; the ADC #$FFFF's when it read no $4213)
+static void call_intro_screen(const Regs* in, Regs* out) {
+  (void)in;
+  intro_screen_load();
+  out->db = 0x81;  // (its PEA $817F and two PLBs)
+}
+static void call_intro_screen_show(const Regs* in, Regs* out) {
+  (void)in;
+  out->z = !intro_screen_show();
+  out->a = 0x0004;
+  out->n = false;
+  out->c = false;
+  uint16_t a = (uint16_t)(rd16(DP + 0xF6) - 3);
+  if(a & 0x8000) a = 0;
+  out->v = (uint16_t)(a << 3) == 0x8000;  // (the ADC #$FFFF's overflow, before the pad read)
+  pads_read_v(out);
+}
+
 static void call_ticker_screen_wrong_carry(const Regs* in, Regs* out) {  // (negative: C set)
   call_ticker_screen(in, out);
   out->c = true;
@@ -10627,6 +10647,12 @@ const Routine routines[] = {
   {.name = "results_screen", .entry = 0x8A94C3, .end = 0x8A95EB, .endAt = 0x8A95EB, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true,
    .call = call_results_screen},
+  // the intro, cut at its first wait
+  {.name = "intro_screen", .entry = 0x80EE56, .end = 0x80F115, .endAt = 0x80F115, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .call = call_intro_screen},
+  {.name = "intro_screen_show", .entry = 0x80F115, .end = 0x80F1E3, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .maxInsns = 40000000,
+   .call = call_intro_screen_show, .holes = {{0x80F1BD, 0x80F1CA}}},  // a button's fade (the movies let it run)
   // the ticker screen, cut around split_screen_setup; the show's unrun paths: D+$76 bit 5 set,
   // $03A8 from 10 up (two places, and its still view at $80:E88E), D+$84 below $FE3E
   {.name = "ticker_screen", .entry = 0x80E4E6, .end = 0x80E5F7, .endAt = 0x80E5F7, .source = "src/misc.c",

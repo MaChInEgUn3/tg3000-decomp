@@ -1113,7 +1113,7 @@ oam_finish_near:
     sta.w $045C                 ; $8089F7
     sta.w $045E                 ; $8089FA
     rep.b #$20                  ; $8089FD
-    jsr.w $EE56                 ; $8089FF
+    jsr.w intro_screen          ; $8089FF
     bra CODE_808A1F             ; $808A02
     incbin !baserom:$A04..$A1F
 CODE_808A1F:
@@ -12175,6 +12175,7 @@ CODE_80EE36:
     stz.b $D3                   ; $80EE50
     iny                         ; $80EE52
     jmp.w $EC5D                 ; $80EE53
+intro_screen:
     stz.w $0196                 ; $80EE56
     stz.w $0198                 ; $80EE59
     stz.w $019A                 ; $80EE5C
@@ -12443,6 +12444,7 @@ CODE_80EF94:
     stz.b $3A                   ; $80F10D
     lda.w #$0004                ; $80F10F
     tsb.w $0026                 ; $80F112
+intro_screen_show:
     lda.w #$0001                ; $80F115
     jsr.w wait_frames           ; $80F118
     lda.b $30                   ; $80F11B
@@ -12531,7 +12533,7 @@ CODE_80F1CA:
     pld                         ; $80F1D3
     lda.w $019A                 ; $80F1D4
     beq CODE_80F1DC             ; $80F1D7
-    jmp.w $F115                 ; $80F1D9
+    jmp.w intro_screen_show     ; $80F1D9
 CODE_80F1DC:
     lda.w #$0004                ; $80F1DC
     trb.w $0026                 ; $80F1DF

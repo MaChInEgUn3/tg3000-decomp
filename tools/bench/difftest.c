@@ -88,6 +88,12 @@ static Stats* stats;
 // callers are registered).
 #define MAX_DEPTH 8
 #define MAX_EFFECTS 512  // track_objects_stream's replay on the password movie makes 158
+// harness-18: a row with a budget (maxInsns: a screen's frame loop, thousands of frames)
+// keeps more effects and input reads; the buffers live outside the sample, one per depth
+#define MAX_EFFECTS_LONG 65536
+#define MAX_INPUTS 256
+#define MAX_INPUTS_LONG (1 << 19)  // (serial pad reads count every bit: ~70 a frame)
+typedef struct { uint16_t reg; uint8_t val; uint32_t frame; } InputRead;  // frame: cpu_interruptCount
 // `vram`: for a raw DMA to VMDATA ($2118/$2119), the VRAM state it wrote with (vramPack:
 // the word pointer and VMAIN's fields), 0 otherwise.
 typedef struct { int kind; uint32_t target, src, size, vram; } Effect;
@@ -132,8 +138,8 @@ typedef struct {
   uint8_t cgAdr;
   uint8_t cgLow;
   // reads of input registers, in order (served to the C by difftest_input)
-  struct { uint16_t reg; uint8_t val; } inputs[256];
-  int nInputs;
+  InputRead* inputs;  // (sampleInputs[depth]; inputCap of them)
+  int nInputs, inputCap;
   bool inputOverflow;
   // where the routine is in a DSP-4 command (see dsp4Step): phase 0 idle, 1 half of the
   // command word, 2 parameters, 3 results; the command and the bytes of the phase so far
@@ -145,7 +151,8 @@ typedef struct {
   uint32_t hwAccessAdr, leftExtentPc;
   bool foreignStack;  // a handler it recorded switched to another stack (two-task screens)
   const char* hwWhy;
-  Effect effects[MAX_EFFECTS];  // hardware effects of the original, from its DMA kicks
+  Effect* effects;  // hardware effects of the original, from its DMA kicks (sampleEffects[depth]; effectCap)
+  int effectCap;
   int effectCount;
   // PPU fields written (bit per PF_*), and those whose last write combined a latch byte
   // written before the sample (the result depends on state the C does not get)
@@ -199,6 +206,8 @@ static bool visitedAtStart[MAX_DEPTH][MAX_EXTENT];  // a waiting row's paths bef
 static uint32_t prevInsnPc;  // the instruction before the current one (a handler's first: the stopped one)
 
 static Sample samples[MAX_DEPTH];
+static Effect sampleEffects[MAX_DEPTH][MAX_EFFECTS_LONG];
+static InputRead sampleInputs[MAX_DEPTH][MAX_INPUTS_LONG];
 
 // Replays. A live sample an interrupt lands in is dropped (the handler changes memory the C
 // does not model). While a routine has no completed live sample yet, its entry states
@@ -285,7 +294,8 @@ void difftest_replay_interrupt(void) {
 }
 
 // The C's platform calls, recorded while it runs.
-static Effect cEffects[MAX_EFFECTS];
+static Effect cEffects[MAX_EFFECTS_LONG];
+static int cEffectCap;  // the compared sample's
 static int cEffectCount;
 static bool cEffectOverflow;
 static void* cSample;  // the sample the C is being compared with
@@ -309,7 +319,7 @@ static uint32_t vramNow(void) {
   const Ppu* p = snes->ppu;
   return vramPack(p->vramPointer, p->vramIncrementOnHigh, p->vramIncrement, p->vramRemapMode);
 }
-static bool cInputUsed[256], cInputMissing;
+static bool cInputUsed[MAX_INPUTS_LONG], cInputMissing;
 static uint16_t cMissingReg;
 
 
@@ -337,11 +347,20 @@ static bool collectingC;
 static int cTapePos;
 static char cTapeWhy[160];
 
+// Each register's reads are served in order: a cursor per register (harness-18: a long row
+// has hundreds of thousands, so no scan from the start).
+typedef struct { uint16_t reg; int pos; } InputCursor;
+static InputCursor cInputPos[32];
+static int cInputPosCount;
 static uint8_t inputFor(void* p, uint16_t reg) {
   Sample* smp = p;
-  for(int i = 0; i < smp->nInputs; i++) {
+  int c = 0;
+  while(c < cInputPosCount && cInputPos[c].reg != reg) c++;
+  if(c == cInputPosCount && cInputPosCount < 32) cInputPos[cInputPosCount++] = (InputCursor){reg, 0};
+  for(int i = c < 32 ? cInputPos[c].pos : 0; i < smp->nInputs; i++) {
     if(smp->inputs[i].reg != reg || cInputUsed[i]) continue;
     cInputUsed[i] = true;
+    if(c < 32) cInputPos[c].pos = i + 1;
     return smp->inputs[i].val;
   }
   if(!cInputMissing) cMissingReg = reg;
@@ -499,13 +518,13 @@ void difftest_stream_kick(uint8_t mask) {
     }
     if(!fromB && target == 0x22) ptr = (uint16_t)((ptr + size / 2) & 0xFF);
     else if(!fromB && target == 0x21) ptr = peekByte(fixed ? src : src + size - 1);
-    if(cEffectCount >= MAX_EFFECTS) { cEffectOverflow = true; return; }
+    if(cEffectCount >= cEffectCap) { cEffectOverflow = true; return; }
     cEffects[cEffectCount++] = e;
     cChanClaim[c] = 0;
   }
   cCgPtr = ptr;
   if(!stream) return;
-  if(cEffectCount >= MAX_EFFECTS) { cEffectOverflow = true; return; }
+  if(cEffectCount >= cEffectCap) { cEffectOverflow = true; return; }
   cEffects[cEffectCount++] = streamEffect(stream, ptr, cStreamSize);
 }
 
@@ -513,7 +532,7 @@ void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size) {
   if(!collectingC) return;
   if(kind == EFFECT_VRAM || kind == EFFECT_VRAM_FILL || kind == EFFECT_VRAM_WORD) cVramAdrClaim = -1;
   if(kind == EFFECT_CGRAM || kind == EFFECT_CGRAM_WORD) cCgAdrClaim = -1;
-  if(cEffectCount >= MAX_EFFECTS) { cEffectOverflow = true; return; }
+  if(cEffectCount >= cEffectCap) { cEffectOverflow = true; return; }
   cEffects[cEffectCount++] = (Effect){kind, target, src, size};
 }
 
@@ -704,7 +723,7 @@ static void recordKick(uint8_t val) {
     }
     for(int c = 0; c < 8; c++) {
       if(!(plainMask & (1 << c))) continue;
-      if(smp->effectCount < MAX_EFFECTS) smp->effects[smp->effectCount++] = plainEffect[c];
+      if(smp->effectCount < smp->effectCap) smp->effects[smp->effectCount++] = plainEffect[c];
       else smp->effectOverflow = true;
     }
     if(stream) {
@@ -715,7 +734,7 @@ static void recordKick(uint8_t val) {
           smp->hwAccessAdr = 0x420B;
         }
       }
-      if(smp->effectCount < MAX_EFFECTS) smp->effects[smp->effectCount++] = streamEffect(stream, snes->ppu->cgramPointer, sizes);
+      if(smp->effectCount < smp->effectCap) smp->effects[smp->effectCount++] = streamEffect(stream, snes->ppu->cgramPointer, sizes);
       else smp->effectOverflow = true;
     }
   }
@@ -884,19 +903,19 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
     for(int k = accessBase; k < depth; k++) {
       Sample* smp = &samples[k];
       if(write) {
-        if(smp->effectCount < MAX_EFFECTS) smp->effects[smp->effectCount++] = (Effect){EFFECT_APU, (adr & 3), val, 1};
+        if(smp->effectCount < smp->effectCap) smp->effects[smp->effectCount++] = (Effect){EFFECT_APU, (adr & 3), val, 1};
         else smp->effectOverflow = true;
       } else {
-        // a value repeated by a polling loop is one input: only changes are recorded
+        // a value repeated by a polling loop is one input: only changes are recorded, and
+        // (harness-18) a repeat after an interrupt, a frame's own read of it
         uint16_t reg = apuPort ? (uint16_t)(0x2140 + (adr & 3)) : lo;
         int last = -1;
         for(int i = smp->nInputs - 1; i >= 0 && last < 0; i--) if(smp->inputs[i].reg == reg) last = i;
         // serial joypad reads are bits: every one counts
-        if(reg != 0x4016 && reg != 0x4017 && last >= 0 && smp->inputs[last].val == val) continue;
-        if(smp->nInputs < 256) {
-          smp->inputs[smp->nInputs].reg = reg;
-          smp->inputs[smp->nInputs++].val = val;
-        } else smp->inputOverflow = true;
+        if(reg != 0x4016 && reg != 0x4017 && last >= 0 && smp->inputs[last].val == val &&
+           smp->inputs[last].frame == cpu_interruptCount) continue;
+        if(smp->nInputs < smp->inputCap) smp->inputs[smp->nInputs++] = (InputRead){reg, val, cpu_interruptCount};
+        else smp->inputOverflow = true;
       }
     }
     return;
@@ -1008,7 +1027,7 @@ static void vramWordWrite(uint32_t adr, uint8_t val) {
     }
     smp->vramLowSet = false;
     smp->vramAdrPending = false;
-    if(smp->effectCount < MAX_EFFECTS)
+    if(smp->effectCount < smp->effectCap)
       smp->effects[smp->effectCount++] = (Effect){EFFECT_VRAM_WORD, ppu->vramPointer, (uint32_t)(smp->vramLow | val << 8), 1};
     else smp->effectOverflow = true;
   }
@@ -1035,7 +1054,7 @@ static void cgramWordWrite(uint32_t adr, uint8_t val) {
     }
     smp->cgLowSet = false;
     smp->cgAdrPending = false;
-    if(smp->effectCount < MAX_EFFECTS)
+    if(smp->effectCount < smp->effectCap)
       smp->effects[smp->effectCount++] = (Effect){EFFECT_CGRAM_WORD, ppu->cgramPointer, (uint32_t)(smp->cgLow | val << 8), 1};
     else smp->effectOverflow = true;
   }
@@ -1113,7 +1132,9 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   cVramAdrClaim = cCgAdrClaim = -1;
   cVramPtr = -1;
   cSample = smp;
-  memset(cInputUsed, 0, sizeof cInputUsed);
+  cEffectCap = smp->effectCap;
+  memset(cInputUsed, 0, (size_t)smp->nInputs * sizeof cInputUsed[0]);
+  cInputPosCount = 0;
   cInputMissing = false;
   cTapePos = 0;
   cTapeWhy[0] = '\0';
@@ -1146,7 +1167,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
     return false;
   }
   if(cEffectOverflow) {
-    snprintf(why, whyLen, "the C made more than %d hardware effects", MAX_EFFECTS);
+    snprintf(why, whyLen, "the C made more than %d hardware effects", cEffectCap);
     return false;
   }
   for(int i = 0; i < smp->effectCount || i < cEffectCount; i++) {
@@ -1290,10 +1311,10 @@ static void finishSample(int k, const Cpu* cpu) {
       (unsigned)smp->ppuStale);
     ok = false;
   } else if(smp->inputOverflow) {
-    snprintf(why, sizeof why, "more than 256 input reads");
+    snprintf(why, sizeof why, "more than %d input reads", smp->inputCap);
     ok = false;
   } else if(smp->effectOverflow) {
-    snprintf(why, sizeof why, "more than %d hardware effects", MAX_EFFECTS);
+    snprintf(why, sizeof why, "more than %d hardware effects", smp->effectCap);
     ok = false;
   } else if(smp->vramLowSet) {
     snprintf(why, sizeof why, "VRAM low byte written without its high byte (not modelled)");
@@ -1382,6 +1403,10 @@ static void startSample(int idx, const Cpu* cpu) {
     .interruptsAtEntry = cpu_interruptCount,
   };
   smp->replaySlot = slot;
+  smp->effects = sampleEffects[k];
+  smp->inputs = sampleInputs[k];
+  smp->effectCap = (r->waitsForInterrupts && r->maxInsns) ? MAX_EFFECTS_LONG : MAX_EFFECTS;
+  smp->inputCap = (r->waitsForInterrupts && r->maxInsns) ? MAX_INPUTS_LONG : MAX_INPUTS;
   smp->vramEntry = vramNow();
   if(slot >= 0) {
     Replay* p = &replays[slot];

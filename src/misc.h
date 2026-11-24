@@ -1576,4 +1576,10 @@ void ticker_screen(void);
 void ticker_screen_load(void);
 bool ticker_screen_show(bool carry);
 
+// The intro ($80:EE56): its load (up to the first wait) and its show ($80:F115), a frame at a
+// time through D+$3E's steps until the fade is done (returns whether $0026 bit 2 was set).
+void intro_screen(void);
+void intro_screen_load(void);
+bool intro_screen_show(void);
+
 #endif

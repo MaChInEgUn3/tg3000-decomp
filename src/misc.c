@@ -7644,3 +7644,184 @@ bool ticker_screen_show(bool carry) {
   video_hdma_enable(0x00);  // (a 16-bit store at $420B: no DMA, and $420C = 0)
   return carry;
 }
+
+// TG3000_ROUTINE($80:EE56) intro_screen
+//
+// The intro (the mode 7 zoom to the title), in two parts cut at its first wait: the load,
+// then the show.
+void intro_screen(void) {
+  intro_screen_load();
+  intro_screen_show();
+}
+
+// (the part up to the first wait: its row is intro_screen's entry with endAt $80:F115)
+void intro_screen_load(void) {
+  uint16_t end;
+  wr16(0x0196, 0);
+  wr16(0x0198, 0);
+  wr16(0x019A, 0);
+  video_load_screen(0x80FB5C);
+  decompress_to_vram(DP, 0x8D, 0x8000, 0x5010);
+  decompress_to_vram(DP, 0x91, 0xAADF, 0x7400);
+  decompress_near(DP, 0x91, 0xAB17, 0x7E, 0x2000, &end);
+  // the mode 7 graphics: a map's high bytes (the characters) to VRAM from word 0
+  const uint16_t len = decompress_near(DP, 0x94, 0x8020, 0x7F, 0x0000, &end);
+  video_set_vram_address(0x0000);
+  dma_stream_setup(0, 0x02, 0x19, 0x7F0000);
+  dma_stream_size(0, len ? len : 0x10000);
+  dma_stream_kick(0x01);
+  for(uint32_t x = 0; x < 0x8000; x += 2) wr16(0x7F0000 + x, 0);
+  // the mode 7 map: eight rows of ten tiles from $7F:4000 (20 bytes a row, one tile in two
+  // bytes' low half) into the cleared $7F:0000 map at $7F:050B, a row every 128 bytes; each
+  // 16-bit store overlaps the next (DB = $7F)
+  decompress_near(DP, 0x90, 0xC343, 0x7F, 0x4000, &end);
+  for(uint16_t r = 0, x = 0x050B, y = 0x4000; r < 8; r++, x = (uint16_t)(x + 0x80), y = (uint16_t)(y + 0x14)) {
+    for(uint16_t k = 0; k < 10; k++) wr16(0x7F0000 + (uint16_t)(x + k), rd16(0x7F0000 + (uint16_t)(y + 2 * k)));
+  }
+  wr16(DP + 0x14, 0);  // (its row count)
+  video_set_vram_address(0x0000);
+  video_set_vram_increment(0x00);
+  dma_stream_setup(0, 0x02, 0x18, 0x7F0000);
+  dma_stream_size(0, 0x4000);
+  dma_stream_kick(0x01);
+  video_set_vram_increment(0x80);
+  for(uint16_t i = 0; i < 0x0140; i++) video_write_vram_word((uint16_t)(0x4400 + i), 0x00A8);
+  for(uint16_t i = 0; i < 0x0008; i++) video_write_vram_word((uint16_t)(0x4540 + i), 0x00FF);
+  for(uint16_t x = 0; x < 0x0800; x += 2) wr16(0x7F0000 + x, 0);
+  for(uint16_t i = 0; i < 0x0010; i++) video_write_vram_word((uint16_t)(0x5000 + i), 0x0000);
+  oam_clear();
+  // seven MVNs into bank $81 (the palettes and sprite records at $0500-$05DF)
+  static const struct { uint32_t src; uint16_t dst, n; } moves[7] = {
+    {0x8C95C3, 0x0600, 0x20}, {0x8984F2, 0x0502, 0x20}, {0x9D9ECA, 0x0540, 0x40}, {0x8F84AE, 0x0520, 0x20},
+    {0x8F84CE, 0x0580, 0x20}, {0x8F84EE, 0x05A0, 0x20}, {0x8F850E, 0x05C0, 0x20},
+  };
+  for(int m = 0; m < 7; m++)
+    for(uint16_t i = 0; i < moves[m].n; i++) wr8((uint16_t)(moves[m].dst + i), bus_rd8(moves[m].src + i));
+  wr16(0x0500, 0x17E5);
+  stars_scatter_8a();  // (the bank $80 copy, stars_scatter)
+  func_80B556(0x81, 0xD750, 0x05C4);
+  wr16(DP + 0xE5, 0x0080);
+  wr16(DP + 0xF9, 0x001C);
+  video_set_bg_mode(0x07);
+  video_set_m7a(0x0100);
+  video_set_m7b(0);
+  video_set_m7c(0);
+  video_set_m7d(0x0100);
+  video_set_m7_select(0xC0);
+  stars_draw(0x0000, 0x0040);
+  oam_finish_0b00_near(DP);
+  wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0003));
+  // six HDMA channels from bank $81: 1-4 by tables, 4 indirect (bank $81), 6 and 7 from the
+  // WRAM lists at $0D40 and $0D00 (each first count cleared)
+  dma_hdma_setup(1, 0x00, 0x05, 0x81D712);
+  dma_hdma_setup(2, 0x01, 0x2C, 0x81D72E);
+  dma_hdma_setup(3, 0x00, 0x0B, 0x81D720);
+  dma_hdma_setup(4, 0x42, 0x10, 0x81D738);
+  dma_hdma_set_indirect_bank(4, 0x81);
+  dma_hdma_setup(7, 0x01, 0x26, 0x810D00);
+  wr16(0x0D00, 0);
+  dma_hdma_setup(6, 0x01, 0x28, 0x810D40);
+  wr16(0x0D40, 0);
+  video_hdma_enable(0xDE);
+  wr16(DP + 0x3E, 0);
+  wr16(DP + 0x7A, 0x27FF);
+  wr16(DP + 0x7C, 0);
+  wr16(DP + 0x80, 0);
+  wr16(DP + 0x82, 0);
+  wr16(DP + 0x86, 0x4000);
+  wr16(DP + 0x7E, 0x001B);
+  wr16(DP + 0x3C, 0xC000);
+  wr16(DP + 0x3A, 0x1C00);
+  wr16(DP + 0x38, 0x0800);
+  wr16(DP + 0x36, 0x0100);
+  wr16(DP + 0x34, 0);
+  wr16(DP + 0x32, 0);
+  func_80F745();
+  wr16(DP + 0x30, 0);
+  wr16(0x0198, 0x0F00);
+  wr16(0x0196, 0x0080);
+  wr16(0x000E, 0);
+  wr16(0x0012, 0);
+  wr16(DP + 0x40, 0);
+  wr16(DP + 0x7C, 0x0200);
+  wr16(DP + 0x86, 0);
+  wr16(DP + 0x3A, 0);
+  wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0004));
+}
+
+// One step of the intro, by D+$3E ($80:F1E3's table): the zoom, the stars, the slices of
+// the title graphic, the title frames and the fade. Returns its carry (set: no stars this
+// frame). `carry` is the one before the call (the ASL of D+$3E), which the empty steps leave.
+static bool intro_step(uint16_t step, bool carry) {
+  bool done;
+  if(step >= 8 && step <= 23) {
+    upload_slice(step - 8);
+    return false;
+  }
+  switch(step) {
+    case 0: mode7_zoom_step(DP); return false;
+    case 1: title_stars_spread(carry); return false;
+    case 2: title_zoom_pan(&done); return false;
+    case 3: title_zoom_cycle(); return false;
+    case 4: title_zoom_settle(); return false;
+    case 5: func_80F3C4(); return false;
+    case 6: func_80F3F4(); return false;
+    case 7: title_mode7_setup(); return false;
+    case 24: title_zoom_drop(); return false;
+    case 26: title_zoom_count(); return false;
+    case 27: title_frame_begin(); return true;
+    case 28: title_frame_step(); return true;
+    case 29: title_fade_step(); return true;
+    case 31: title_scroll_start(); return carry;
+    default: return carry;  // 25, 30, 32: empty_80F225 (past 32: never run)
+  }
+}
+
+// TG3000_ROUTINE($80:F115) intro_screen_show
+//
+// From the first wait: a frame at a time, the mode 7 map to VRAM $4000, the background
+// colour by D+$30, the BG2 scroll, the HDMA lists by D+$36, one intro step, the stars, the
+// typed text; a button (B, Y, A or X on either pad) starts the fade out; until the fade is
+// done. Returns whether $0026 bit 2 was still set at the end (the TRB's Z clear).
+bool intro_screen_show(void) {
+  for(;;) {
+    wait_frames(1);
+    video_upload_vram(0x4000, 0x7F0000, 0x0800);
+    video_set_color(0x00, bus_rd16(0x81D9AC + (uint32_t)(uint16_t)(rd16(DP + 0x30) * 2)));
+    video_set_bg2_vofs(rd16(DP + 0x82));
+    const uint16_t lists = (uint16_t)(rd16(DP + 0x36) + 0x0D00);
+    dma_hdma_set_table(7, lists);
+    dma_hdma_set_table(6, (uint16_t)(lists + 0x0040));
+    wr16(DP + 0x84, rd16(DP + 0x82));
+    const uint16_t step = rd16(DP + 0x3E);
+    if(!intro_step(step, (step & 0x8000) != 0)) {
+      stars_draw(rd16(DP + 0x7C), (uint16_t)(rd16(DP + 0x86) >> 8));
+      oam_finish_0b00_near(DP);
+      wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
+    }
+    text_type_step();
+    uint16_t a = (uint16_t)(rd16(DP + 0xF6) - 3);
+    if(a & 0x8000) a = 0;
+    wr16(DP + 0x82, (uint16_t)((uint16_t)(a << 3) + 0xFFFF));
+    if(rd16(DP + 0xF8) & 0x0001) {
+      wr16(DP + 0xF8, (uint16_t)(rd16(DP + 0xF8) & ~0x0001));
+      wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) + 1));
+    }
+    bool press = (rd16(0x000E) & 0xC0C0) != 0;
+    wr16(0x000E, (uint16_t)(rd16(0x000E) & ~0xC0C0));
+    if(!press) {
+      press = (rd16(0x0012) & 0xC0C0) != 0;
+      wr16(0x0012, (uint16_t)(rd16(0x0012) & ~0xC0C0));
+    }
+    if(press) {
+      wr16(0x0198, 0);
+      wr16(0x0196, 0xFF80);
+      func_80E4DB();
+    }
+    pads_read_long();  // (with D = 0)
+    if(rd16(0x019A) == 0) break;
+  }
+  const bool set = (rd16(0x0026) & 0x0004) != 0;
+  wr16(0x0026, (uint16_t)(rd16(0x0026) & ~0x0004));
+  return set;
+}

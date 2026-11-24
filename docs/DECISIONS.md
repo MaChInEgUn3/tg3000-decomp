@@ -2591,6 +2591,38 @@ password screen, a skipped track's bonus.
   two replayed samples.
 - **Check:** full gate. Every row's status is as at HEAD, and every negative fails.
 
+## The intro, and long rows' logs (screen-4, harness-18, 2026-11-24)
+
+- **`intro_screen` ($80:EE56) is ported in two parts**, cut at its first wait:
+  - the load: the image, five decompressions, the mode 7 characters and map (raw DMAs to
+    the high and low bytes, an overlapping 16-bit copy with DB = `$7F`), VRAM words, seven
+    MVNs into bank `$81`, the stars, mode 7, six HDMA channels;
+  - the show (`intro_screen_show`, $80:F115): a frame at a time, the map upload, the
+    background colour, the BG2 scroll, the HDMA lists, one step of D+$3E's table, the
+    stars, the typed text, until the fade is done.
+- **The table step:** `$80:F1E3`'s 33 handlers (all verified) are a switch in
+  `intro_step`, with their carries as constants: clear for the zoom and slice steps, set
+  for the frame and fade steps, unchanged for the empty steps and `title_scroll_start`.
+  - C is live in every handler's row, so each constant is verified.
+  - `title_stars_spread` takes the carry the ASL of D+$3E leaves.
+- **Exit state:**
+  - The load leaves DB = `$81` (its `PEA $817F` and two PLBs; the bench compares DB). Its
+    flags are dead after the cut (harness-17).
+  - The show returns Z from its last TRB of `$0026` bit 2, and V from the last pad read.
+- **The unrun path:** a button's fade (`$80:F1BD-$80:F1C9`), because the movies let the
+  intro run out; it is the show's hole.
+- **harness-18:** a row with a budget (`maxInsns`) keeps up to 65,536 effects and 524,288
+  input reads. The 2,553-frame show makes thousands of effects and about 70 serial pad
+  reads a frame.
+  - The logs moved out of the sample, into per-depth buffers, so the other rows keep their
+    caps (512 and 256) and their cost.
+  - The C is served each register's reads through a cursor, not a scan from the start.
+  - A repeated input value is recorded again after an interrupt: a frame's own read. Only
+    the repeats inside a polling loop are one input now.
+- **Results:** the one sample, on the 60k and the buy movies: the load by replay
+  (262/262 paths), the show 1/1 (83/83 paths).
+- **Check:** full gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
