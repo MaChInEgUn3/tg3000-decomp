@@ -1425,8 +1425,8 @@ void flag_03dc_from_52(void) {
 uint16_t timer_0d7e_tick(uint16_t a) {
   wr16(0x0D7E, (uint16_t)(rd16(0x0D7E) - 1));
   if(rd16(0x0D7E) != 0) return a;
-  // never run: its random pick goes through a third copy of rng_next ($8A:AE9B), also
-  // never run
+  // never run: its random pick goes through a third copy of rng_next ($8A:AE9B, which the
+  // VS menus run)
   wr16(0x03DC, 0x2000);
   bool carry;
   uint16_t pick = (uint16_t)(rng_next(RNG_STATE, &carry) & 0x0003);

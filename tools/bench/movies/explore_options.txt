@@ -1,8 +1,11 @@
 # The options submenu (explore-7): code_infodata.txt's way to the main menu and CHAMPIONSHIP
 # (A at 3160), then OPTIONS (A at 3210): DIFFICULTY three times (back where it was), MUSIC
 # twice (off and on again), EXIT; back in the championship's menu, EXIT (Down x5, A); at the
-# main menu, VS MODE (Down, A), whose players' menu ends the movie. Taps are held 6 steps.
-# Run it for 4400 steps.
+# main menu, VS MODE (Down, A), 1 PLAYER; on the VS name entry, EXIT (Down x4, Right x2, A);
+# then the car's choice: Right, Right, Left (explore-8). The movie ends before a car is
+# chosen: the VS race does not run on the bench yet (docs/DECISIONS.md explore-8). Taps are
+# held 6 steps.
+# Run it for 5450 steps.
 0 .
 200 S
 206 .
@@ -130,3 +133,25 @@
 3846 .
 3870 A
 3876 .
+3960 A
+3966 .
+4560 D
+4566 .
+4590 D
+4596 .
+4620 D
+4626 .
+4650 D
+4656 .
+4680 R
+4686 .
+4710 R
+4716 .
+4740 A
+4746 .
+5150 R
+5156 .
+5250 R
+5256 .
+5350 L
+5356 .
