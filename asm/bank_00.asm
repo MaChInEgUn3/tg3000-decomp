@@ -7946,7 +7946,7 @@ menu_bar_open_step:
     clc                         ; $80C694
     adc.w #$0004                ; $80C695
     sta.b $4C                   ; $80C698
-    jsr.w $CCE1                 ; $80C69A
+    jsr.w menu_controls_sprites ; $80C69A
     jsr.w oam_finish_near       ; $80C69D
     bra menu_bar_lines_end      ; $80C6A0
     lda.b $4C                   ; $80C6A2
@@ -8604,7 +8604,7 @@ CODE_80CB89:
     lda.w #$001F                ; $80CBF5
     mvn $81,$98                 ; $80CBF8
     plb                         ; $80CBFB
-    jsr.w $CCE1                 ; $80CBFC
+    jsr.w menu_controls_sprites ; $80CBFC
     jsr.w oam_finish_near       ; $80CBFF
     ldy.b $C4                   ; $80CC02
     lda.w #$0FFF                ; $80CC04
@@ -8655,7 +8655,7 @@ CODE_80CC6A:
     beq CODE_80CC76             ; $80CC71
     jsr.w menu_button_assign    ; $80CC73
 CODE_80CC76:
-    jsr.w $CCE1                 ; $80CC76
+    jsr.w menu_controls_sprites ; $80CC76
     jsr.w oam_finish_near       ; $80CC79
     bra CODE_80CC3F             ; $80CC7C
 menu_button_assign:
@@ -8720,6 +8720,7 @@ CODE_80CCDA:
     sta.b $4E                   ; $80CCDD
     pla                         ; $80CCDF
     rts                         ; $80CCE0
+menu_controls_sprites:
     lda.b $7A                   ; $80CCE1
     lsr a                       ; $80CCE3
     sta.b $14                   ; $80CCE4

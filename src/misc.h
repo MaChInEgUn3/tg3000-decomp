@@ -1613,4 +1613,8 @@ void menu_panel_sprites(void);
 // on line 5 a B/Y/A/X press leaves (returns true: the caller returns too).
 bool menu_button_assign(uint16_t button);
 
+// $80:CCE1: the controls menu's sprites: frame, steps toward the line's targets, title, the
+// five button names, the cursor's colours.
+void menu_controls_sprites(void);
+
 #endif

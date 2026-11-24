@@ -8065,3 +8065,75 @@ bool menu_button_assign(uint16_t button) {
   wr16((uint16_t)(0x039D + mine), button);
   return false;
 }
+
+// TG3000_ROUTINE($80:CCE1) menu_controls_sprites
+//
+// The controls menu's sprites: its frame (corners $3350, edges $3351 every 8 pixels) D+$7A
+// wide at height D+$4A - D+$4C; D+$4A stepped 2 and D+$7A 8 toward line D+$48's targets
+// ($81:C189, $81:C195); the title ($80:CE91) and each line's button name
+// (menu_bit_word of $039D-$03A5 + D+$94); the cursor's colours by D+$4C ($81:C1A1...).
+void menu_controls_sprites(void) {
+  const uint16_t w = rd16(DP + 0x7A);
+  wr16(DP + 0x14, (uint16_t)(w >> 1));
+  const uint16_t rise = (uint16_t)(rd16(DP + 0x4A) - rd16(DP + 0x4C));
+  const uint16_t at = (uint16_t)(((rise << 8) & 0xFF00) + rd16(DP + 0xE7) + 0x1C7C - rd16(DP + 0x14));
+  wr16(DP + 0x14, at);
+  uint16_t x = rd16(DP + 0x74);
+  wr16((uint16_t)(0x0902 + x), 0x3350);
+  wr16((uint16_t)(0x0906 + x), 0xB350);
+  wr16((uint16_t)(0x090A + x), 0xF350);
+  wr16((uint16_t)(0x090E + x), 0x7350);
+  wr16((uint16_t)(0x0900 + x), at);
+  wr16((uint16_t)(0x0904 + x), (uint16_t)(at + 0x0400));
+  wr16((uint16_t)(0x0908 + x), (uint16_t)(at + 0x0400 + w));
+  wr16((uint16_t)(0x090C + x), (uint16_t)(at + w));
+  for(uint16_t k = 1; k < 0x10; k += 4) wr16((uint16_t)(0x0B00 + k + x), 0);
+  x = (uint16_t)(x + 0x10);
+  if(w >= 8) {
+    wr16(DP + 0x7C, (uint16_t)(w - 8));
+    for(;;) {
+      wr16((uint16_t)(0x0902 + x), 0x3351);
+      wr16((uint16_t)(0x0906 + x), 0x3351);
+      wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 8));
+      wr16((uint16_t)(0x0900 + x), rd16(DP + 0x14));
+      wr16((uint16_t)(0x0904 + x), (uint16_t)(rd16(DP + 0x14) + 0x0900));
+      wr16((uint16_t)(0x0B01 + x), 0);
+      wr16((uint16_t)(0x0B05 + x), 0);
+      x = (uint16_t)(x + 8);
+      const bool more = rd16(DP + 0x7C) >= 8;
+      wr16(DP + 0x7C, (uint16_t)(rd16(DP + 0x7C) - 8));
+      if(!more) break;
+    }
+  }
+  wr16(DP + 0x74, x);
+  const uint32_t line = (uint32_t)(rd16(DP + 0x48) << 1);
+  uint16_t h = rd16(DP + 0x4A), target = rom16(0x81C189 + line);
+  if(h != target) wr16(DP + 0x4A, (uint16_t)((uint16_t)(h - target) & 0x8000 ? h + 2 : h - 2));
+  uint16_t v = rd16(DP + 0x7A);
+  target = rom16(0x81C195 + line);
+  if(v != target) {
+    if(!((uint16_t)(v - target) & 0x8000)) {
+      v = (uint16_t)(v - 8);
+      if((uint16_t)(v - target) & 0x8000) v = target;
+    } else {
+      v = (uint16_t)(v + 8);
+      wr16(DP + 0x7A, v);
+      if(!((uint16_t)(v - target) & 0x8000)) v = target;
+    }
+    wr16(DP + 0x7A, v);
+  }
+  wr16(DP + 0x14, 0x3354);
+  const uint16_t t = (uint16_t)(0x735B - rd16(DP + 0x4C));
+  sprite_text_menu(0x80CE91, (uint16_t)((uint16_t)(t << 8 | t >> 8) + rd16(DP + 0xE7)));
+  static const uint16_t rows[5] = {0x1DAE, 0x27AE, 0x31AE, 0x3BAE, 0x45AE};
+  for(int i = 0; i < 5; i++) {
+    const uint16_t name = menu_bit_word(rd16((uint16_t)(0x039D + 2 * i + rd16(DP + 0x94))));
+    wr16(DP + 0x14, 0x2154);
+    sprite_text_menu(0x800000 | name, (uint16_t)(rows[i] + rd16(DP + 0xE7)));
+  }
+  const uint16_t c4 = rd16(DP + 0xC4), k = (uint16_t)((rd16(DP + 0x4C) >> 1) & 0xFFFE);
+  wr16((uint16_t)(c4 + 0x0122), rom16(0x81C1A1 + (uint32_t)k));
+  wr16((uint16_t)(c4 + 0x0124), rom16(0x81C1C5 + (uint32_t)k));
+  wr16((uint16_t)(c4 + 0x0126), rom16(0x81C1D7 + (uint32_t)k));
+  wr16((uint16_t)(c4 + 0x0128), rom16(0x81C1B3 + (uint32_t)k));
+}

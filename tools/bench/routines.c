@@ -5354,6 +5354,19 @@ static void call_menu_button_assign(const Regs* in, Regs* out) {
   }
 }
 
+// menu_controls_sprites returns after the last colour's LDA (A, N Z of it), X its index
+// (D+$4C / 2, even: C its LSR's), Y = D+$C4
+static void call_menu_controls_sprites(const Regs* in, Regs* out) {
+  (void)in;
+  menu_controls_sprites();
+  const uint16_t k = (uint16_t)((rd16(DP + 0x4C) >> 1) & 0xFFFE);
+  out->x = k;
+  out->y = rd16(DP + 0xC4);
+  out->a = rom16(0x81C1B3 + (uint32_t)k);
+  setNZ16(out, out->a);
+  out->c = rd16(DP + 0x4C) & 1;
+}
+
 // menu_bit_word: its SEC / ROR loop (the SEC's 1 shifted in at the top) leaves Y = twice the
 // bit's number, C set; A = X = the word (N Z of its TAX)
 static void call_menu_bit_word(const Regs* in, Regs* out) {
@@ -10887,6 +10900,9 @@ const Routine routines[] = {
   {.name = "menu_button_assign", .entry = 0x80CC7E, .end = 0x80CCE1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .mayLeaveCaller = true, .compareA = true, .compareY = true,
    .call = call_menu_button_assign, .holes = {{0x80CC93, 0x80CC94}, {0x80CCD5, 0x80CCDA}}},
+  {.name = "menu_controls_sprites", .entry = 0x80CCE1, .end = 0x80CE7F, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_menu_controls_sprites, .holes = {{0x80CDAF, 0x80CDB4}, {0x80CDBD, 0x80CDC0}}},  // D+$7A past its target
   {.name = "menu_bit_word", .entry = 0x80CE7F, .end = 0x80CE91, .source = "src/misc.c", .needM16 = true, .needX16 = true,
    .call = call_menu_bit_word, ALL_OUTPUTS, .fuzz = fuzz_menu_bit_word},
   // the menu bar's line window (steps 2-5 never run or call routines not ported)

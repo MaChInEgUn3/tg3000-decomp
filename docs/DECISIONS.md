@@ -2823,6 +2823,18 @@ password screen, a skipped track's bonus.
 - **Results:** 11 of 11 entries sampled, all 53 paths.
 - **Check:** incremental gate.
 
+## The controls menu's sprites (menu-7, 2026-11-24)
+
+- **`menu_controls_sprites` ($80:CCE1) is ported** (in `src/misc.c`):
+  - its frame;
+  - D+$4A and D+$7A stepped toward the cursor line's targets;
+  - the title;
+  - the five lines' button names (`menu_bit_word`, `sprite_text_menu`);
+  - the cursor's colours.
+- **Holes:** the two clamps for D+$7A overshooting its target, which the movies never need.
+- **Results:** on the menus' movie, 179 of 474 entries sampled.
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs
