@@ -1605,4 +1605,8 @@ uint16_t menu_bit_word(uint16_t bits);
 // group's end).
 uint32_t menu_frame_sprites(void);
 
+// $80:D026: a menu panel by D+$7C: two sprite groups, its colour, D+$7C/D+$7E stepped toward
+// their targets, a frame D+$7E high.
+void menu_panel_sprites(void);
+
 #endif

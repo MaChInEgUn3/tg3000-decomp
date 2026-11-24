@@ -2796,6 +2796,19 @@ password screen, a skipped track's bonus.
 - **Results:** on the menus' movie, 210 of 567 entries sampled, all 81 paths.
 - **Check:** incremental gate.
 
+## A menu panel's sprites (menu-5, 2026-11-24)
+
+- **`menu_panel_sprites` ($80:D026) is ported** (in `src/misc.c`). It draws a menu panel by
+  D+$7C, the choice:
+  - two sprite groups;
+  - the choice's colour word;
+  - D+$7C and D+$7E stepped one toward the targets the car's `$03A7` picks;
+  - a frame D+$7E high: six corner and side tiles, then its edges every 8 pixels.
+- **The unrun paths are decoded and in the C, and are its holes:** the choices from `$0E`
+  (two other group tables), the step down for D+$7C, and any step for D+$7E.
+- **Results:** on the menus' movie, 122 of 302 entries sampled, all 137 paths.
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

@@ -6204,6 +6204,20 @@ static void call_sprite_group(const Regs* in, Regs* out) {
   GroupWalk w = sprite_group_walk(table);
   sprite_group_outputs(out, in, w, sprite_group(in->d, table));
 }
+// menu_panel_sprites returns after its last SBC #8 (C clear: the borrow that ends it), X =
+// D+$74, Y = D+$C4; A that SBC's result (the frame's half height - 8 when too short for an
+// edge)
+static void call_menu_panel_sprites(const Regs* in, Regs* out) {
+  (void)in;
+  menu_panel_sprites();
+  const uint16_t half = (uint16_t)(rd16(DP + 0x7E) >> 1);
+  const uint16_t prev = half < 8 ? half : (uint16_t)(rd16(DP + 0x80) + 8);
+  out->x = rd16(DP + 0x74);
+  out->y = rd16(DP + 0xC4);  // (its LDY D+$C4 for the colour word)
+  out->a = (uint16_t)(prev - 8);
+  setNZ16(out, out->a);
+  setSbc16(out, prev, 0x0008);
+}
 // menu_frame_sprites ends in sprite_group's JSR, then RTS: its outputs
 static void call_menu_frame_sprites(const Regs* in, Regs* out) {
   const GroupWalk w = sprite_group_walk(0x81BF40);
@@ -10826,6 +10840,9 @@ const Routine routines[] = {
    .call = call_results_screen},
   {.name = "menu_frame_sprites", .entry = 0x80CA97, .end = 0x80CB4A, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_menu_frame_sprites, ALL_OUTPUTS},
+  {.name = "menu_panel_sprites", .entry = 0x80D026, .end = 0x80D168, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_menu_panel_sprites, ALL_OUTPUTS,
+   .holes = {{0x80D041, 0x80D044}, {0x80D066, 0x80D069}, {0x80D098, 0x80D099}, {0x80D0A2, 0x80D0AA}}},
   {.name = "menu_bit_word", .entry = 0x80CE7F, .end = 0x80CE91, .source = "src/misc.c", .needM16 = true, .needX16 = true,
    .call = call_menu_bit_word, ALL_OUTPUTS, .fuzz = fuzz_menu_bit_word},
   // the menu bar's line window (steps 2-5 never run or call routines not ported)

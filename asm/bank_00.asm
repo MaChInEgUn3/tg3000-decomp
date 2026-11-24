@@ -7955,7 +7955,7 @@ menu_bar_open_step:
     clc                         ; $80C6A9
     adc.w #$0004                ; $80C6AA
     sta.b $4C                   ; $80C6AD
-    jsr.w $D026                 ; $80C6AF
+    jsr.w menu_panel_sprites    ; $80C6AF
     jsr.w oam_finish_near       ; $80C6B2
     bra menu_bar_lines_end      ; $80C6B5
 CODE_80C6B7:
@@ -9035,7 +9035,7 @@ CODE_80CF32:
     sta.b $7C                   ; $80CFC1
     lda.w $C212,x               ; $80CFC3
     sta.b $7E                   ; $80CFC6
-    jsr.w $D026                 ; $80CFC8
+    jsr.w menu_panel_sprites    ; $80CFC8
     jsr.w oam_finish_near       ; $80CFCB
     lda.b $8C                   ; $80CFCE
 CODE_80CFD0:
@@ -9046,7 +9046,7 @@ CODE_80CFD0:
 CODE_80CFD9:
     lda.w #$0001                ; $80CFD9
     jsr.w wait_frames           ; $80CFDC
-    jsr.w $D026                 ; $80CFDF
+    jsr.w menu_panel_sprites    ; $80CFDF
     jsr.w oam_finish_near       ; $80CFE2
     ldx.b $94                   ; $80CFE5
     lda.w #$0400                ; $80CFE7
@@ -9078,6 +9078,7 @@ CODE_80D00F:
     rts                         ; $80D023
 CODE_80D024:
     bra CODE_80CFD9             ; $80D024
+menu_panel_sprites:
     lda.b $7C                   ; $80D026
     asl a                       ; $80D028
     tax                         ; $80D029

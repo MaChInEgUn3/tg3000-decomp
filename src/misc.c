@@ -7958,3 +7958,67 @@ uint32_t menu_frame_sprites(void) {
   wr16(DP + 0x18, 0);
   return sprite_group(DP, 0x81BF40);
 }
+
+// TG3000_ROUTINE($80:D026) menu_panel_sprites
+//
+// A menu panel by D+$7C (the choice): two sprite groups ($81:BE5A at the choice's x from
+// $81:C216, $81:BEFE at x $80; the choices from $0E on use $BEAC and $BF14, never run), the
+// choice's colour word ($81:C254 at D+$C4 + $150); D+$7C and D+$7E step one toward the
+// targets the car's $03A7 picks ($81:C20E, $81:C212); then a frame D+$7E high: six corner and
+// side tiles ($2550-$2552) and its edges every 8 pixels (tile $2551).
+void menu_panel_sprites(void) {
+  const uint16_t choice = rd16(DP + 0x7C);
+  wr16(DP + 0x14, rom16(0x81C216 + (uint32_t)(uint16_t)(choice << 1)));
+  wr16(DP + 0x16, (uint16_t)(rd16(DP + 0xE8) + 0x0024));
+  wr16(DP + 0x18, 0x00D0);
+  sprite_group(DP, choice < 0x000E ? 0x81BE5A : 0x81BEAC);
+  wr16(DP + 0x14, 0x0080);
+  wr16(DP + 0x16, (uint16_t)(rd16(DP + 0xE8) + 0x0025));
+  wr16(DP + 0x18, 0x00D0);
+  sprite_group(DP, rd16(DP + 0x7C) < 0x000E ? 0x81BEFE : 0x81BF14);
+  wr16((uint16_t)(rd16(DP + 0xC4) + 0x0150), rom16(0x81C254 + (uint32_t)(rd16(DP + 0x7C) & 0xFFFE)));
+  const uint32_t t = (uint32_t)((rd16((uint16_t)(0x03A7 + rd16(DP + 0x94))) & 0x00FF) << 1);
+  for(int k = 0; k < 2; k++) {  // D+$7C toward $81:C20E, D+$7E toward $81:C212 (never off)
+    const uint16_t adr = k ? (uint16_t)(DP + 0x7E) : (uint16_t)(DP + 0x7C);
+    const uint16_t v = rd16(adr), target = rom16((k ? 0x81C212 : 0x81C20E) + t);
+    if(v != target) wr16(adr, (uint16_t)((uint16_t)(v - target) & 0x8000 ? v + 1 : v - 1));
+  }
+  const uint16_t h = rd16(DP + 0x7E);
+  wr16(DP + 0x16, (uint16_t)(h >> 1));
+  wr16(DP + 0x14, (uint16_t)(h >> 2));
+  const uint16_t at = (uint16_t)(((rd16(DP + 0x7C) << 8) & 0xFF00) + rd16(DP + 0xE7) + 0x1CC2 - rd16(DP + 0x14));
+  wr16(DP + 0x14, at);
+  uint16_t x = rd16(DP + 0x74);
+  static const uint16_t tiles[6][2] = {
+    {0x0902, 0x2550}, {0x0906, 0xA550}, {0x090A, 0xE550}, {0x090E, 0x6550}, {0x0912, 0x2552}, {0x0916, 0x6552},
+  };
+  for(int i = 0; i < 6; i++) wr16((uint16_t)(tiles[i][0] + x), tiles[i][1]);
+  const uint16_t half = rd16(DP + 0x16);
+  wr16((uint16_t)(0x0900 + x), at);
+  wr16((uint16_t)(0x0910 + x), (uint16_t)(at + 0x0700));
+  wr16((uint16_t)(0x0904 + x), (uint16_t)(at + 0x0F00));
+  wr16((uint16_t)(0x0908 + x), (uint16_t)(at + 0x0F00 + half));
+  wr16((uint16_t)(0x0914 + x), (uint16_t)(at + 0x0700 + half));
+  wr16((uint16_t)(0x090C + x), (uint16_t)(at + half));
+  for(uint16_t k = 1; k < 0x18; k += 4) wr16((uint16_t)(0x0B00 + k + x), 0);
+  x = (uint16_t)(x + 0x18);
+  if((h >> 1) >= 8) {
+    uint16_t left = (uint16_t)((h >> 1) - 8);
+    for(;;) {
+      wr16(DP + 0x80, left);
+      wr16((uint16_t)(0x0902 + x), 0x2551);
+      wr16((uint16_t)(0x0906 + x), 0x2551);
+      wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 8));
+      wr16((uint16_t)(0x0900 + x), rd16(DP + 0x14));
+      wr16((uint16_t)(0x0904 + x), (uint16_t)(rd16(DP + 0x14) + 0x1400));
+      wr16((uint16_t)(0x0B01 + x), 0);
+      wr16((uint16_t)(0x0B05 + x), 0);
+      x = (uint16_t)(x + 8);
+      const bool more = rd16(DP + 0x80) >= 8;
+      wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) - 8));
+      if(!more) break;
+      left = rd16(DP + 0x80);
+    }
+  }
+  wr16(DP + 0x74, x);
+}

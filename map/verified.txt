@@ -566,3 +566,4 @@
 808704 sprite_text_menu src/text.c e502aa4337067a80 1152 500 78/78 verified live-flags:- replayed:0
 80CE7F menu_bit_word src/misc.c c307e25357a52cc9 811 500 11/11 verified live-flags:- replayed:0
 80CA97 menu_frame_sprites src/misc.c 350dc2e81d4cea7b 210 0 81/81 verified live-flags:- replayed:0
+80D026 menu_panel_sprites src/misc.c 0c3773217e2874a6 122 0 137/137 verified live-flags:- replayed:0

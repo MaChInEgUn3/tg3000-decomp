@@ -401,6 +401,7 @@ func    80B94F   empty_80B94F        ; a lone RTS (the shop's idle frame hook) -
 func    80855A   sprite_number_point ; a 4-digit value as sprites, a point before the last two -> src/text.c
 func    80C475   sprite_bar8         ; a bar of 8 sprites, D+$14 wide, centred on D+$18 -> src/text.c
 func    80CA97   menu_frame_sprites  ; a menu frame's corner and edge sprites, then a group -> src/misc.c
+func    80D026   menu_panel_sprites  ; a menu panel: two groups, colour, steps toward targets, frame -> src/misc.c
 func    80CE7F   menu_bit_word       ; the word of $80:CE96 for A's lowest set bit -> src/misc.c
 func    80C5E0   menu_bar_lines      ; the menu bar's line window: middle lines, then the step by D+$4E -> src/misc.c
 func    80C642   menu_bar_open_step  ; the menu bar's window opening by 4 lines a frame -> src/misc.c
