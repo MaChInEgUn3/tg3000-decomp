@@ -1469,7 +1469,7 @@ CODE_808DFB:
     beq CODE_808E2A             ; $808E09
     lda.b $4A                   ; $808E0B
     pha                         ; $808E0D
-    jsr.w $8EB4                 ; $808E0E
+    jsr.w shop_item_screen      ; $808E0E
     pla                         ; $808E11
     sta.b $4A                   ; $808E12
     ldx.b $50                   ; $808E14
@@ -1536,6 +1536,7 @@ CODE_808E96:
     sta.w $0005                 ; $808EAF
     sei                         ; $808EB2
     rts                         ; $808EB3
+shop_item_screen:
     lda.b $48                   ; $808EB4
     cmp.b $F0                   ; $808EB6
     bne CODE_808EC6             ; $808EB8
@@ -1607,7 +1608,7 @@ CODE_808F46:
     bne CODE_808F46             ; $808F48
 CODE_808F4A:
     jsr.w shop_panel_upload     ; $808F4A
-CODE_808F4D:
+shop_item_frame_view:
     lda.w #$0010                ; $808F4D
     sta.b $14                   ; $808F50
     lda.w #$0018                ; $808F52
@@ -1618,6 +1619,7 @@ CODE_808F4D:
 CODE_808F5F:
     cmp.w $0024                 ; $808F5F
     beq CODE_808F5F             ; $808F62
+shop_item_frame_draw:
     jsr.w shop_item_dispatch_icon; $808F64
     jsr.w shop_level_marks      ; $808F67
     jsr.w func_809DD0           ; $808F6A
@@ -1639,13 +1641,14 @@ CODE_808F84:
 CODE_808F8E:
     lda.w #$0001                ; $808F8E
     jsr.w wait_frames           ; $808F91
+shop_item_frame_tail:
     lda.b $8C                   ; $808F94
     cmp.b $8E                   ; $808F96
     bne CODE_808F9F             ; $808F98
     jsr.w text_type_step        ; $808F9A
     bra CODE_808F4A             ; $808F9D
 CODE_808F9F:
-    bra CODE_808F4D             ; $808F9F
+    bra shop_item_frame_view    ; $808F9F
 shop_item_down:
     ldx.b $48                   ; $808FA1
     lda.w $036E,x               ; $808FA3

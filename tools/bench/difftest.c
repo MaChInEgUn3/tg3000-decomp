@@ -196,6 +196,10 @@ static const struct { uint32_t lo, hi; } waitSites[] = {
   {0x80B95E, 0x80B960},  // queue_unpacked_upload: the $64 poll
   {0x808CE1, 0x808CE3},  // the $64 polls around a wait_frames ($80:8CE1, $80:8CEB)
   {0x808CEB, 0x808CED},
+  {0x808EFB, 0x808EFF},  // shop_item_screen: the $8C/$8E poll, D+$4E up to 4, the typed poll, $0024 past D+$4E
+  {0x808F32, 0x808F34},
+  {0x808F46, 0x808F48},
+  {0x808F5F, 0x808F62},
 };
 static bool atWaitSite(uint32_t pc) {
   for(size_t i = 0; i < sizeof waitSites / sizeof waitSites[0]; i++)

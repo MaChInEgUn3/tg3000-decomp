@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "decompress.h"
 #include "frame.h"
 #include "misc.h"
 #include "platform.h"
@@ -1526,4 +1527,99 @@ uint16_t shop_list_label(uint16_t x) {
   if(rd8(0x036E + (uint32_t)(x >> 1)) != 0) return x;
   wr16(DP + 0xF0, (uint16_t)(x >> 1));
   return 0x001E;
+}
+
+// TG3000_ROUTINE($80:8EB4) shop_item_screen
+//
+// A shop list's item screen: on the list D+$F0 names, a fade out instead. Else it opens,
+// then runs a frame at a time for good (it is left by the buy handlers and the task switch).
+void shop_item_screen(void) {
+  if(!shop_item_screen_open()) return;
+  shop_panel_clear();
+  shop_item_dispatch_upload();
+  shop_item_slide_list_in();
+  const uint16_t typed = rd16(DP + 0x8C);
+  while(typed != rd16(DP + 0x8E)) platform_wait_vblank();
+  shop_panel_upload();
+  for(;;) {
+    shop_item_frame_view();
+    const uint16_t was = rd16(DP + 0x4E);
+    while(rd16(0x0024) == was) platform_wait_vblank();
+    shop_item_frame_draw();
+    // up/down on the pad move the cursor, A/B/X/Y (D+$0E) buy
+    if(rd16(DP + 0x0C) & 0x0900) shop_item_down();
+    if(rd16(DP + 0x0C) & 0x0600) shop_item_up();
+    const uint16_t press = rd16(DP + 0x0E);
+    wr16(DP + 0x0E, (uint16_t)(press & ~0xC0C0));
+    if(press & 0xC0C0) shop_buy_dispatch();
+    wait_frames(1);
+    shop_item_frame_tail();
+  }
+}
+
+// (the part up to shop_panel_clear: its row is shop_item_screen's entry with endAt $80:8F3B)
+// The picture, the two sprite groups, the panel words cleared, the list's $20-byte record
+// from $80:B2D2 (MVN into bank $81 at D+$C4 + $80), the list's graphic decompressed to
+// $7F:(D+$5E + $0900), the panel blanked; D+$4E set from the frame counter once it is past
+// 4. False on the fade-out path.
+bool shop_item_screen_open(void) {
+  if(rd16(DP + 0x48) == rd16(DP + 0xF0)) {
+    func_80E4DB();
+    wr16(DP + 0x96, 0xFF80);
+    wr16(DP + 0x98, 0);
+    return false;
+  }
+  func_80E4C5();
+  wr16(DP + 0x4C, 0);
+  shop_item_picture();
+  func_809DD0();
+  func_808FFC();
+  oam_finish_near(DP);
+  func_808FFC();
+  func_809DD0();
+  oam_finish_near(DP);
+  wr16(DP + 0x3E, 0);
+  wr16(DP + 0x40, 0);
+  wr16(DP + 0x42, 0);
+  wr16(DP + 0x44, 0);
+  const uint16_t rec = (uint16_t)(rd16(DP + 0xC4) + 0x0080);
+  for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(rec + i), rom8(0x80B2D2 + i));
+  while(rd16(DP + 0x8C) != rd16(DP + 0x8E)) platform_wait_vblank();
+  wait_frames(1);
+  shop_panel_blank();
+  const uint16_t list = rom16(0x81A892 + (uint32_t)(uint16_t)(rd16(DP + 0x48) << 1));
+  wr16(DP + 0x14, rom8(0x81A894 + (uint32_t)list));
+  uint16_t end;
+  decompress_near(DP, (uint8_t)rd16(DP + 0x14), rom16(0x81A892 + (uint32_t)list), 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x0900), &end);
+  wr16(DP + 0x4A, 0);
+  while(rd16(DP + 0x4E) <= 0x0004) platform_wait_vblank();
+  wr16(DP + 0x4E, rd16(0x0024));
+  return true;
+}
+
+// TG3000_ROUTINE($80:8F4D) shop_item_frame_view
+// A frame's first part: the price (at 16, 24) and the item's view.
+void shop_item_frame_view(void) {
+  wr16(DP + 0x14, 0x0010);
+  wr16(DP + 0x16, 0x0018);
+  shop_item_price();
+  shop_item_dispatch_view();
+}
+
+// TG3000_ROUTINE($80:8F64) shop_item_frame_draw
+// After the frame counter moved past D+$4E: the icon, the level marks, the sprites.
+void shop_item_frame_draw(void) {
+  shop_item_dispatch_icon();
+  shop_level_marks();
+  func_809DD0();
+  oam_finish_near(DP);
+}
+
+// TG3000_ROUTINE($80:8F94) shop_item_frame_tail
+// With the text typed (D+$8C = D+$8E), its next step and the panel upload ($80:8F4A).
+void shop_item_frame_tail(void) {
+  if(rd16(DP + 0x8C) == rd16(DP + 0x8E)) {
+    text_type_step();
+    shop_panel_upload();
+  }
 }

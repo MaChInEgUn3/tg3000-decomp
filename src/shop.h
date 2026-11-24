@@ -337,4 +337,13 @@ bool shop_item_affordable(void);
 // running; then D+$76 bit 15 clears.
 void shop_item_icon_settle(void);
 
+// A list's item screen ($80:8EB4), a frame at a time for good: its opening (false: the
+// fade-out path; up to shop_panel_clear at $80:8F3B) and three parts of its frame: the
+// view ($80:8F4D), the drawing ($80:8F64) and the tail ($80:8F94, back to $80:8F4D).
+void shop_item_screen(void);
+bool shop_item_screen_open(void);
+void shop_item_frame_view(void);
+void shop_item_frame_draw(void);
+void shop_item_frame_tail(void);
+
 #endif

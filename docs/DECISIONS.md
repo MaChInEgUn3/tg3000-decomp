@@ -2623,6 +2623,31 @@ password screen, a skipped track's bonus.
   (262/262 paths), the show 1/1 (83/83 paths).
 - **Check:** full gate.
 
+## The shop's item screen (shop-23, 2026-11-24)
+
+- **`shop_item_screen` ($80:8EB4) is ported** (in `src/shop.c`). It is a list's item screen:
+  it opens, then runs a frame at a time for good, left by the buy handlers and the task
+  switch. On the list D+$F0 names it does a fade out instead.
+- **Four rows, cut so that none encloses a waiting row.** The frame's pad input calls
+  `shop_item_down`, `shop_item_up` and the buy lists, and its tail calls `shop_panel_clear`
+  and `shop_item_slide_list_in`, all waiting rows. A waiting row around them would hide
+  their samples (shop-21).
+  - The opening: from the entry up to `shop_panel_clear` (`endAt $80:8F3B`). It is a waiting
+    row for its two polls and its wait, and includes the fade-out path's RTS.
+  - The frame's view (`$80:8F4D-$80:8F5D`), its drawing (`$80:8F64-$80:8F70`), and its tail
+    (`$80:8F94` back to `$80:8F4D`, with the BRA at `$80:8F4A` as `alsoIn`).
+  - Left out, about 60 bytes: the opening's last 15 bytes, the frame's `$0024` poll, and its
+    pad input and wait.
+- **Wait sites added (harness-15):** the opening's `$8C`/`$8E` polls, D+$4E up to 4, and the
+  frame's `$0024` poll.
+- **Results:**
+  - The frame rows: 3,365 (shop), 485 (buy) and 791 (pw) samples, all passed.
+  - The opening: the clean samples pass on the buy and pw movies, 3 and 2 of them. Its
+    lagged samples fail only on D+$4E, the frame counter it copies, which a lag frame moves.
+    On the shop movie every sample is lagged, so the opening is verified on the evidence
+    pooled over the movies.
+- **Check:** full gate (a new waiting row, and wait sites in `difftest.c`).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

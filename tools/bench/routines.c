@@ -5313,6 +5313,41 @@ static void call_ticker_screen(const Regs* in, Regs* out) {
   out->z = out->a == 0;
   out->c = false;
 }
+// the shop's item screen in parts (the frame's pad input and waits call waiting rows, which
+// an enclosing waiting row would hide: left out). The opening: the fade-out path returns
+// after LDA #$FF80 (N set) with C from its CMP (equal); else it ends at $80:8F3B after
+// LDA $0024 / STA D+$4E (N Z of it), C clear from the CMP of D+$4E with 4
+static void call_shop_item_screen(const Regs* in, Regs* out) {
+  (void)in;
+  if(!shop_item_screen_open()) {
+    out->a = 0xFF80;
+    out->n = true;
+    out->z = false;
+    out->c = true;
+    return;
+  }
+  out->a = rd16(DP + 0x4E);
+  setNZ16(out, out->a);
+  out->c = false;
+}
+static void call_shop_item_frame_view(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  shop_item_frame_view();
+}
+// the drawing ends after oam_finish_near: its C and V (the SBC of the other buffer's end,
+// now D+$6C, and $0900)
+static void call_shop_item_frame_draw(const Regs* in, Regs* out) {
+  (void)in;
+  shop_item_frame_draw();
+  setSbc16(out, rd16(DP + 0x6C), 0x0900);
+}
+static void call_shop_item_frame_tail(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  shop_item_frame_tail();
+}
+
 // the intro, cut at its first wait: the load leaves DB = $81; its flags are dead after the cut (harness-17); the
 // show returns after LDA #4 / TRB $0026 (N clear, Z from bit 2), C clear and V from the last
 // pad read (pads_read_long; the ADC #$FFFF's when it read no $4213)
@@ -10647,6 +10682,17 @@ const Routine routines[] = {
   {.name = "results_screen", .entry = 0x8A94C3, .end = 0x8A95EB, .endAt = 0x8A95EB, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true,
    .call = call_results_screen},
+  // the shop's item screen in parts
+  {.name = "shop_item_screen", .entry = 0x808EB4, .end = 0x808F3B, .endAt = 0x808F3B, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .waitsForInterrupts = true,
+   .maxInsns = 40000000, .call = call_shop_item_screen},
+  {.name = "shop_item_frame_view", .entry = 0x808F4D, .end = 0x808F5D, .endAt = 0x808F5D, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_item_frame_view},
+  {.name = "shop_item_frame_draw", .entry = 0x808F64, .end = 0x808F70, .endAt = 0x808F70, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_item_frame_draw},
+  {.name = "shop_item_frame_tail", .entry = 0x808F94, .end = 0x808FA1, .endAt = 0x808F4D, .source = "src/shop.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_item_frame_tail,
+   .alsoIn = {{0x808F4A, 0x808F4D}}},  // (the BRA back to the panel upload)
   // the intro, cut at its first wait
   {.name = "intro_screen", .entry = 0x80EE56, .end = 0x80F115, .endAt = 0x80F115, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .call = call_intro_screen},
