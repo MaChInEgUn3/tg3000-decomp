@@ -3,7 +3,9 @@
 
 #include <stdbool.h>
 
+#include "misc.h"
 #include "rng.h"
+#include "util.h"
 #include "video_dma.h"
 #include "tg3000.h"
 
@@ -232,4 +234,78 @@ void vs_letter_width(uint16_t x) {
   wr16((uint16_t)(0x0D78 + x), bus_rd8(0x8A0000 | (uint16_t)(0xB014 + y)));
   const uint8_t c = bus_rd8(0x8A0000 | (uint16_t)(0xAFF1 + y));
   wr16(DP + 0x50, (c == 0x73 || c == 0x65) ? 9 : (c == 0x64) ? 8 : 0);
+}
+
+// TG3000_ROUTINE($8A:A7DB) vs_players_in
+void vs_players_in(void) {
+  uint16_t a = (uint16_t)(rd16(0x03DC) >> 4);
+  for(uint16_t x = 0; x < 8; x += 2) {
+    const uint16_t v = (a & 1) ? 0xFFFF : 0x0000;
+    a = (uint16_t)(a >> 1);
+    wr16((uint16_t)(0x0DDC + x), v);
+    wr16((uint16_t)(0x0DF4 + x), v);
+  }
+}
+
+// TG3000_ROUTINE($8A:A922) vs_names_load
+void vs_names_load(void) {
+  static const uint16_t from[4] = {0xCD7C, 0xCD87, 0xCD92, 0xCD9F};
+  static const uint16_t to[4] = {0x03E4, 0x03F1, 0x03FE, 0x040B};
+  for(int i = 0; i < 4; i++) {
+    uint16_t n = 0;
+    uint8_t c;
+    do {
+      c = bus_rd8(0x8A0000 | (uint16_t)(from[i] + n));
+      wr8((uint16_t)(to[i] + n), c);
+      if(c != 0) n++;
+    } while(c != 0);
+    wr16((uint16_t)(0x0DD4 + 2 * i), n);
+  }
+}
+
+// TG3000_ROUTINE($8A:AC73) vs_name_put
+void vs_name_put(uint16_t x, uint8_t c) {
+  vs_panel_screens_bg2_off(x);
+  static const uint16_t names[4] = {0x03E4, 0x03F1, 0x03FE, 0x040B};
+  const uint16_t name = (x <= 6 && !(x & 1)) ? names[x >> 1] : names[0];
+  wr8((uint16_t)(name + rd16((uint16_t)(0x0DD4 + x))), c);
+}
+
+// TG3000_ROUTINE($8A:B730) vs_put_char
+uint16_t vs_put_char(uint8_t c) {
+  const uint16_t glyph = (uint16_t)(((uint16_t)c - 0x20) << 1);
+  if(rd16(DP + 0x88) != 0) {
+    uint16_t step = 7;
+    if(c != 0x20) {
+      const uint16_t tile = (uint16_t)(bus_rd16(0x8A0000 | (uint16_t)(0xCB31 + glyph)) | 0x3E80);
+      const uint16_t slot = take_slot(DP + 0x8C);
+      wr16((uint16_t)(0x0600 + slot), rd16(DP + 0x3A));
+      wr16((uint16_t)(0x0700 + slot), rd16(DP + 0x3C));
+      wr16((uint16_t)(0x0500 + slot), 0xFFFF);
+      wr16((uint16_t)(0x0800 + slot), tile);
+      step = bus_rd16(0x8A0000 | (uint16_t)(0xB7AC + glyph));
+    }
+    // (the second add takes the first's carry)
+    const uint32_t x = (uint32_t)rd16(DP + 0x3A) + step;
+    wr16(DP + 0x3A, (uint16_t)x);
+    wr16(DP + 0x8A, (uint16_t)(rd16(DP + 0x8A) + step + (x > 0xFFFF)));
+    return rd16(DP + 0x8A);
+  }
+  wr16(DP + 0x36, rd16(DP + 0x3A));
+  wr16(DP + 0x38, rd16(DP + 0x3C));
+  const uint16_t at = tilemap_offset();
+  const uint16_t tile = (uint16_t)(bus_rd16(0x8A0000 | (uint16_t)(0xCB31 + glyph)) | 0x3880);
+  wr16(0x7F0000 | at, tile);
+  wr16(DP + 0x3A, (uint16_t)(rd16(DP + 0x3A) + 1));
+  return tile;
+}
+
+// TG3000_ROUTINE($8A:B721) vs_put_sprite_char
+uint16_t vs_put_sprite_char(uint16_t x, uint16_t y, uint8_t c) {
+  wr16(DP + 0x3A, x);
+  wr16(DP + 0x3C, y);
+  wr16(DP + 0x88, 0x0001);
+  const uint16_t a = vs_put_char(c);
+  wr16(DP + 0x88, 0);
+  return a;
 }

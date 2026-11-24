@@ -669,3 +669,8 @@
 8AA768 vs_ready_check src/vs.c e27744ef85a72b6c 3 500 17/17 verified live-flags:NVZC replayed:0
 8AA8E5 vs_name_default src/vs.c e27744ef85a72b6c 3 500 29/29 verified live-flags:NVZC replayed:0
 8AACFF vs_letter_width src/vs.c e27744ef85a72b6c 526 500 23/23 verified live-flags:- replayed:0
+8AA7DB vs_players_in src/vs.c f17ab2b77972e325 1 0 21/21 verified live-flags:NVZC replayed:0
+8AA922 vs_names_load src/vs.c f17ab2b77972e325 1 0 35/35 verified live-flags:NVZC replayed:0
+8AAC73 vs_name_put src/vs.c f17ab2b77972e325 31 500 30/30 verified live-flags:NVZC replayed:0
+8AB730 vs_put_char src/vs.c f17ab2b77972e325 4000 500 65/65 verified live-flags:VC replayed:0
+8AB721 vs_put_sprite_char src/vs.c f17ab2b77972e325 1030 500 7/7 verified live-flags:- replayed:0

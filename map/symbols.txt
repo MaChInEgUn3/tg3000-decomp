@@ -709,3 +709,8 @@ func    8AAE46   vs_panel_text_clear ; VS panel: its text cleared at $7F -> src/
 func    8AA768   vs_ready_check      ; VS screen: all ready, and the slower fade with four -> src/vs.c
 func    8AA8E5   vs_name_default     ; VS panel: an empty name gets its default -> src/vs.c
 func    8AACFF   vs_letter_width     ; VS panel: the cursor's width and shift for its letter -> src/vs.c
+func    8AA7DB   vs_players_in       ; VS screen: the panels in play from $03DC bits 4-7 -> src/vs.c
+func    8AA922   vs_names_load       ; VS screen: the four default names copied in -> src/vs.c
+func    8AAC73   vs_name_put         ; VS panel: a letter put at the end of its name -> src/vs.c
+func    8AB730   vs_put_char         ; VS text: one character, as a sprite or a map tile -> src/vs.c
+func    8AB721   vs_put_sprite_char  ; VS text: one character as a sprite at (X, Y) -> src/vs.c

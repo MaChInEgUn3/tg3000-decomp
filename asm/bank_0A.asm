@@ -4040,8 +4040,8 @@ vs_players_set:
     sta.w $0DBA                 ; $8AA667
     lda.w #$0013                ; $8AA66A
     sta.w $212C                 ; $8AA66D
-    jsr.w $A922                 ; $8AA670
-    jsr.w $A7DB                 ; $8AA673
+    jsr.w vs_names_load         ; $8AA670
+    jsr.w vs_players_in         ; $8AA673
     inc.b $8E                   ; $8AA676
     jsr.w fade_in_start         ; $8AA678
 CODE_8AA67B:
@@ -4215,6 +4215,7 @@ vs_palette_load:
     ldy.w #$0080                ; $8AA7D3
     jsl.l upload_cgram_now      ; $8AA7D6
     rts                         ; $8AA7DA
+vs_players_in:
     lda.l $8103DC               ; $8AA7DB
     lsr a                       ; $8AA7DF
     lsr a                       ; $8AA7E0
@@ -4367,6 +4368,7 @@ CODE_8AA914:
 CODE_8AA91F:
     rep.b #$20                  ; $8AA91F static
     rts                         ; $8AA921 static
+vs_names_load:
     sep.b #$20                  ; $8AA922
     ldx.w #$0000                ; $8AA924
 CODE_8AA927:
@@ -4460,7 +4462,7 @@ CODE_8AA9D2:
     beq CODE_8AA9E5             ; $8AA9D6
     cmp.b #$FF                  ; $8AA9D8
     beq CODE_8AA9E2             ; $8AA9DA
-    jsr.w $B730                 ; $8AA9DC
+    jsr.w vs_put_char           ; $8AA9DC
     iny                         ; $8AA9DF
     bra CODE_8AA9D2             ; $8AA9E0
 CODE_8AA9E2:
@@ -4656,38 +4658,38 @@ CODE_8AAB48:
     lda.w #$0049                ; $8AAB6B
     ldx.w #$0021                ; $8AAB6E
     ldy.w #$0018                ; $8AAB71
-    jsr.w $B721                 ; $8AAB74
+    jsr.w vs_put_sprite_char    ; $8AAB74
     lda.w #$0054                ; $8AAB77
     ldx.w #$0063                ; $8AAB7A
     ldy.w #$0048                ; $8AAB7D
-    jsr.w $B721                 ; $8AAB80
+    jsr.w vs_put_sprite_char    ; $8AAB80
     rts                         ; $8AAB83
     lda.w #$0049                ; $8AAB84
     ldx.w #$00A1                ; $8AAB87
     ldy.w #$0018                ; $8AAB8A
-    jsr.w $B721                 ; $8AAB8D
+    jsr.w vs_put_sprite_char    ; $8AAB8D
     lda.w #$0054                ; $8AAB90
     ldx.w #$00E3                ; $8AAB93
     ldy.w #$0048                ; $8AAB96
-    jsr.w $B721                 ; $8AAB99
+    jsr.w vs_put_sprite_char    ; $8AAB99
     rts                         ; $8AAB9C
     lda.w #$0049                ; $8AAB9D
     ldx.w #$0021                ; $8AABA0
     ldy.w #$0088                ; $8AABA3
-    jsr.w $B721                 ; $8AABA6
+    jsr.w vs_put_sprite_char    ; $8AABA6
     lda.w #$0054                ; $8AABA9
     ldx.w #$0063                ; $8AABAC
     ldy.w #$00B8                ; $8AABAF
-    jsr.w $B721                 ; $8AABB2
+    jsr.w vs_put_sprite_char    ; $8AABB2
     rts                         ; $8AABB5
     lda.w #$0049                ; $8AABB6
     ldx.w #$00A1                ; $8AABB9
     ldy.w #$0088                ; $8AABBC
-    jsr.w $B721                 ; $8AABBF
+    jsr.w vs_put_sprite_char    ; $8AABBF
     lda.w #$0054                ; $8AABC2
     ldx.w #$00E3                ; $8AABC5
     ldy.w #$00B8                ; $8AABC8
-    jsr.w $B721                 ; $8AABCB
+    jsr.w vs_put_sprite_char    ; $8AABCB
     rts                         ; $8AABCE
 vs_panel_sprite:
     lda.w $ACD4,x               ; $8AABCF
@@ -4729,13 +4731,13 @@ CODE_8AABF8:
     pla                         ; $8AAC1C
     cmp.w #$0073                ; $8AAC1D
     db $F0,$2E ; beq            ; $8AAC20
-    jsr.w $AC73                 ; $8AAC22
+    jsr.w vs_name_put           ; $8AAC22
     inc.w $0DD4,x               ; $8AAC25
     rts                         ; $8AAC28
     incbin !baserom:$52C29..$52C2E
 CODE_8AAC2E:
     lda.w #$0000                ; $8AAC2E
-    jsr.w $AC73                 ; $8AAC31
+    jsr.w vs_name_put           ; $8AAC31
     jsr.w vs_cursor_moving      ; $8AAC34
     bcc CODE_8AAC3A             ; $8AAC37
     rts                         ; $8AAC39
@@ -4749,6 +4751,7 @@ CODE_8AAC3A:
     jsr.w vs_panel_screens      ; $8AAC4C
     rts                         ; $8AAC4F
     incbin !baserom:$52C50..$52C73
+vs_name_put:
     pha                         ; $8AAC73
     phx                         ; $8AAC74
     phy                         ; $8AAC75
@@ -4924,7 +4927,7 @@ CODE_8AADBC:
     sta.w $0DAC,x               ; $8AADBF
     sta.w $0DB4,x               ; $8AADC2
     lda.w #$0000                ; $8AADC5
-    jsr.w $AC73                 ; $8AADC8
+    jsr.w vs_name_put           ; $8AADC8
     rts                         ; $8AADCB
     incbin !baserom:$52DCC..$52DD4
 CODE_8AADD4:
@@ -5125,7 +5128,7 @@ CODE_8AAF2C:
 CODE_8AB07D:
     lda.b ($44),y               ; $8AB07D
     beq CODE_8AB087             ; $8AB07F
-    jsr.w $B730                 ; $8AB081
+    jsr.w vs_put_char           ; $8AB081
     iny                         ; $8AB084
     bra CODE_8AB07D             ; $8AB085
 CODE_8AB087:
@@ -5955,13 +5958,15 @@ CODE_8AB719:
     sta.w $0D04,y               ; $8AB71C
     ply                         ; $8AB71F
     rts                         ; $8AB720
+vs_put_sprite_char:
     stx.b $3A                   ; $8AB721
     sty.b $3C                   ; $8AB723
     ldx.w #$0001                ; $8AB725
     stx.b $88                   ; $8AB728
-    jsr.w $B730                 ; $8AB72A
+    jsr.w vs_put_char           ; $8AB72A
     stz.b $88                   ; $8AB72D
     rts                         ; $8AB72F
+vs_put_char:
     php                         ; $8AB730
     phy                         ; $8AB731
     phx                         ; $8AB732

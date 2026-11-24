@@ -3284,6 +3284,28 @@ password screen, a skipped track's bonus.
   others, with 500 fuzz cases where the movie misses paths.
 - **Check:** incremental gate (additions only in `src/` and `tools/bench/`).
 
+## VS MODE's screen: names and characters (vs-5, 2026-11-24)
+
+- **In `src/vs.c`:**
+  - `vs_players_in` (`$8A:A7DB`): the panels in play, from `$03DC` bits 4-7;
+  - `vs_names_load` (`$8A:A922`): the four default names copied to `$03E4`, `$03F1`,
+    `$03FE` and `$040B`, with their lengths;
+  - `vs_name_put` (`$8A:AC73`): a letter put at the end of the panel's name;
+  - `vs_put_char` (`$8A:B730`): one character of the screen's text, as a sprite or as a
+    tile at `$7F`;
+  - `vs_put_sprite_char` (`$8A:B721`): the same as a sprite at (X, Y).
+- **`vs_put_char` saves and restores P** (PHP/PLP), so its callers' flags and register widths
+  are their own. Its callers enter it with an 8-bit A as well, so its row takes either width
+  (`needM16` false).
+  - In sprite mode its two adds chain their carry: D+$3A, then D+$8A with the first's carry.
+  - It has 4,000 samples on the options movie (33,001 entries).
+- **Results on the options movie:** 1-31 for the others, `vs_put_sprite_char` 1,030.
+- **Its full gate failed on an older row, not on these.** `race_start_frame_draw` ($80:D475)
+  reached 175 of its 179 paths. The new rows moved it into another slice of the 60k movie,
+  and there a waiting row's recording hid 610 of its 1,990 entries, the only ones that reach
+  `$80:D569-$80:D570`. On its own the row passes, 179/179. The harness fix is harness-24.
+- **Check:** incremental gate (additions only in `src/` and `tools/bench/`).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

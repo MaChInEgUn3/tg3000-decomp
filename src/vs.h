@@ -71,5 +71,21 @@ uint16_t vs_name_default(uint16_t x);
 // $8A:ACFF: the cursor's width for the letter D+$4E ($8A:B014's byte) and the text's shift
 // D+$50: 9 for 's' and 'e', 8 for 'd', else 0.
 void vs_letter_width(uint16_t x);
+// $8A:A7DB: the panels in play from $03DC bits 4-7 (one a panel): $0DDC and $0DF4 $FFFF for
+// one in, 0 for one out.
+void vs_players_in(void);
+// $8A:A922: the four default names ($8A:CD7C, CD87, CD92, CD9F) copied to the names at
+// $03E4, $03F1, $03FE, $040B, their lengths in $0DD4-$0DDA.
+void vs_names_load(void);
+// $8A:AC73: the letter `c` put at the end of the panel's name (its length $0DD4), and the
+// panel's split-screen byte $11 (BG2 off). (A panel other than 0-6 writes panel 0's name.)
+void vs_name_put(uint16_t x, uint8_t c);
+// $8A:B730: one character of the VS screen's text at (D+$3A, D+$3C): as a sprite while D+$88
+// is set (x stepped by its width at $8A:B7AC, also into D+$8A; a space steps 7), else as a
+// tile in the map at $7F (x stepped by one). Its glyph is $8A:CB31's word for c - $20.
+// Returns the original's A: D+$8A for a sprite, the tile for the map.
+uint16_t vs_put_char(uint8_t c);
+// $8A:B721: vs_put_char as a sprite at (x, y).
+uint16_t vs_put_sprite_char(uint16_t x, uint16_t y, uint8_t c);
 
 #endif

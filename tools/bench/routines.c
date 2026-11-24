@@ -6024,6 +6024,40 @@ static void fuzz_vs_name(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
     for(int i = 0; i < 6; i++) ram[name + i] = i < n ? (uint8_t)((rnd() & 1) ? 0x41 + rnd() % 26 : 0x20 + rnd() % 0x60) : 0;
   }
 }
+static void call_vs_players_in(const Regs* in, Regs* out) {
+  (void)in;
+  vs_players_in();
+  out->a = (uint16_t)(rd16(0x03DC) >> 8);
+  out->x = 0x0008;
+  out->n = false;
+  out->z = out->c = true;
+}
+static void call_vs_names_load(const Regs* in, Regs* out) {
+  vs_names_load();
+  out->a = (uint16_t)(in->a & 0xFF00);
+  out->x = rd16(0x0DDA);
+  out->n = false;
+  out->z = true;
+}
+static void call_vs_name_put(const Regs* in, Regs* out) {
+  vs_name_put(in->x, (uint8_t)in->a);
+  setNZ16(out, in->a);
+  const uint16_t x = in->x;
+  out->c = (x == 0 || x == 2 || x == 4 || x == 6) || x >= 6;
+}
+static void call_vs_put_char(const Regs* in, Regs* out) {
+  out->a = vs_put_char((uint8_t)in->a);  // (P, X and Y kept: its PHP/PLP)
+}
+static void call_vs_put_sprite_char(const Regs* in, Regs* out) {
+  out->a = vs_put_sprite_char(in->x, in->y, (uint8_t)in->a);
+  out->x = 0x0001;
+  out->n = out->z = false;
+}
+// a character (mostly the font's printable range), sprite or map mode
+static void fuzz_vs_char(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (uint16_t)((rnd() & 0xFF00) | (0x20 + rnd() % 0x3B));
+  wr16ram(ram, DP + 0x88, (rnd() & 1) ? 1 : 0);
+}
 // a letter from the table (its first byte of a random entry)
 static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)ram;
@@ -11971,6 +12005,16 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_name_default, .fuzz = fuzz_vs_name},
   {.name = "vs_letter_width", .entry = 0x8AACFF, .end = 0x8AAD34, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareY = true, .call = call_vs_letter_width, .fuzz = fuzz_vs_name},
+  {.name = "vs_players_in", .entry = 0x8AA7DB, .end = 0x8AA804, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .call = call_vs_players_in},
+  {.name = "vs_names_load", .entry = 0x8AA922, .end = 0x8AA97F, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .call = call_vs_names_load},
+  {.name = "vs_name_put", .entry = 0x8AAC73, .end = 0x8AACB2, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_name_put, .fuzz = fuzz_vs_panel},
+  {.name = "vs_put_char", .entry = 0x8AB730, .end = 0x8AB7AC, .source = "src/vs.c", .needM16 = false,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_put_char, .fuzz = fuzz_vs_char},
+  {.name = "vs_put_sprite_char", .entry = 0x8AB721, .end = 0x8AB730, .alsoIn = {{0x8AB730, 0x8AB7AC}}, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_put_sprite_char, .fuzz = fuzz_vs_char},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)
