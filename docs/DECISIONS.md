@@ -2648,6 +2648,29 @@ password screen, a skipped track's bonus.
     pooled over the movies.
 - **Check:** full gate (a new waiting row, and wait sites in `difftest.c`).
 
+## The screens' bank $80 wrappers (screen-5, 2026-11-24)
+
+- **`title_screen_run` ($80:FBA5) and `results_screen_run` ($80:FBDC)** call the bank `$8A`
+  screens from bank `$80`. Each has two rows around its JSL:
+  - **The prologue** ends at the JSL (`endAt`). Its PHB of the caller's DB is the only push
+    left above the cut, and the adapter writes it. Then DB = `$8A` and D = `$0100`. The title's
+    prologue also stores the track in `$1536` and decompresses `$9A:EB44` to `$7E:8000`.
+  - **The epilogue** starts after the JSL and ends at the RTL (`endAt`): HDMA off, and the
+    pushed DB pulled back (its N and Z).
+- **The RTL itself is in no row** (one byte each). Because of the pulled byte, the bench
+  cannot read the epilogue's return address at its entry.
+- **Results:** the 60k movie 4/4 for each row (the title's prologue by replays), the buy
+  movie 1/1.
+- **harness-19, the selftest's row check:** the incremental gate failed on `shop_item_screen`
+  (shop-23). The short movie reaches it on its fade-out path only (8 of 59 paths), and the
+  selftest failed any row a movie reaches on part of its paths. The full gate skips the
+  selftest's rows, which is why shop-23 passed.
+  - Now the selftest fails a row only on a hard failure: `hard:1` in its evidence, meaning a
+    compared mismatch, a lost case or a broken contract.
+  - The path and flag rules count over all the movies together (harness-8), and only
+    `verify_all` and `verify_new` judge them.
+- **Check:** full gate (`selftest.sh` changed), and the selftest itself.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

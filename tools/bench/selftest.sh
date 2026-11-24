@@ -56,11 +56,15 @@ done
 "$bench" "$rom" $total --movie "$movie" --difftest-negative --fuzz 50 > "$tmp/n" 2>/dev/null &
 pn=$!
 failed=0
-for p in $pids; do wait "$p" || failed=1; done
+for p in $pids; do s=0; wait "$p" || s=$?; [ $s -eq 0 ] || [ $s -eq 4 ] || failed=1; done
 wait $pn || true
-if [ $failed -ne 0 ]; then
-  echo "FAIL differential test"
-  cat "$tmp"/d* | grep -A3 "^difftest.*: FAIL"
+# a row fails here on a hard failure (a compared mismatch, a lost case, a broken contract:
+# hard:1 in its evidence). The path and flag rules count over all the movies together
+# (harness-8, tools/merge_verified.py): this short movie may reach a row on one path only.
+hard=$(cat "$tmp"/v* | awk '!/^#/ && / hard:1 / {print $2}')
+if [ $failed -ne 0 ] || [ -n "$hard" ]; then
+  echo "FAIL differential test${hard:+ ($(echo $hard | tr ' ' ','))}"
+  for name in $hard; do cat "$tmp"/d* | grep -A3 "^difftest $name .*: FAIL"; done
   exit 1
 fi
 echo "ok   differential test passes ($(cat "$tmp"/d* | grep -c PASS) routine(s))"

@@ -1195,9 +1195,9 @@ CODE_808B0F:
     incbin !baserom:$B11..$B12
 CODE_808B12:
     jsl.l prize_money_award     ; $808B12
-    jsl.l $80FBDC               ; $808B16
+    jsl.l results_screen_run    ; $808B16
     lda.w $047B                 ; $808B1A
-    jsl.l $80FBA5               ; $808B1D
+    jsl.l title_screen_run      ; $808B1D
     jsl.l track_next            ; $808B21
     lda.w $0444                 ; $808B25
     cmp.w #$00FF                ; $808B28
@@ -13673,6 +13673,7 @@ CODE_80FB29:
 decompress_near:
     jsl.l decompress            ; $80FBA0
     rts                         ; $80FBA4
+title_screen_run:
     sta.w $1536                 ; $80FBA5
     phb                         ; $80FBA8
     pea.w $8A8A                 ; $80FBA9
@@ -13687,6 +13688,7 @@ decompress_near:
     lda.w #$7E9A                ; $80FBBA
     jsl.l decompress            ; $80FBBD
     jsl.l title_screen          ; $80FBC1
+title_screen_run_close:
     sep.b #$20                  ; $80FBC5
     stz.w $420C                 ; $80FBC7
     stz.w $420B                 ; $80FBCA
@@ -13699,6 +13701,7 @@ nmi_target_80FBD1:
 oam_clear_long:
     jsr.w oam_clear             ; $80FBD8
     rtl                         ; $80FBDB
+results_screen_run:
     rep.b #$30                  ; $80FBDC
     phb                         ; $80FBDE
     pea.w $8A8A                 ; $80FBDF
@@ -13707,6 +13710,7 @@ oam_clear_long:
     lda.w #$0100                ; $80FBE4
     tcd                         ; $80FBE7
     jsl.l results_screen        ; $80FBE8
+results_screen_run_close:
     plb                         ; $80FBEC
     sep.b #$20                  ; $80FBED
     stz.w $420C                 ; $80FBEF

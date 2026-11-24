@@ -68,6 +68,10 @@ func    8AA005   func_8AA005         ; func_8AA022 of $0018, $0014, $0010, $000C
 func    80E0C8   func_80E0C8         ; 2a + $B990 below $40, else 2a + $2400 -> src/misc.c
 func    8083E8   oam_clear           ; sprite table to $E0, slot indices 0 -> src/misc.c
 func    80B950   wait_flag_76        ; set bit 4 of D+$76, wait for bit 3 -> src/frame.c
+func    80FBA5   title_screen_run    ; the title screen from bank $80: track, graphics, screen, HDMA off (long) -> src/misc.c
+func    80FBC5   title_screen_run_close ; its epilogue: HDMA off, DB pulled -> src/misc.c
+func    80FBDC   results_screen_run  ; the results screen from bank $80, then HDMA off (long) -> src/misc.c
+func    80FBEC   results_screen_run_close ; its epilogue: DB pulled, HDMA off -> src/misc.c
 func    80FBD8   oam_clear_long      ; JSR oam_clear, RTL -> src/misc.c
 func    808FFC   func_808FFC         ; two sprites at the slot D+$74 -> src/misc.c
 func    8AA4BE   func_8AA4BE         ; func_8AB680 for each pointer of a table -> src/misc.c

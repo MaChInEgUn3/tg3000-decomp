@@ -1582,4 +1582,13 @@ void intro_screen(void);
 void intro_screen_load(void);
 bool intro_screen_show(void);
 
+// The title and results screens called from bank $80 ($80:FBA5 with the track in A,
+// $80:FBDC): their prologues (the rows end at the JSL) and epilogues (HDMA off, the DB they
+// pushed pulled back).
+void title_screen_run(uint16_t track);
+void title_screen_run_open(uint16_t track);
+void title_screen_run_close(void);
+void results_screen_run(void);
+void results_screen_run_close(void);
+
 #endif

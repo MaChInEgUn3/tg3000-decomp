@@ -7825,3 +7825,35 @@ bool intro_screen_show(void) {
   wr16(0x0026, (uint16_t)(rd16(0x0026) & ~0x0004));
   return set;
 }
+
+// TG3000_ROUTINE($80:FBA5) title_screen_run (long)
+//
+// The title screen from bank $80: the track in $1536, the title graphics decompressed from
+// $9A:EB44 to $7E:8000 (with DB = $8A, D = $0100), the screen, then HDMA off. Its prologue
+// and epilogue are rows of their own around the JSL.
+void title_screen_run(uint16_t track) {
+  title_screen_run_open(track);
+  title_screen();
+  title_screen_run_close();
+}
+void title_screen_run_open(uint16_t track) {
+  wr16(0x1536, track);
+  uint16_t end;
+  decompress(DP, 0x9A, 0xEB44, 0x7E, 0x8000, &end);
+}
+// TG3000_ROUTINE($80:FBC5) title_screen_run_close
+void title_screen_run_close(void) {
+  video_hdma_enable(0x00);  // (and $420B = 0: no DMA)
+}
+
+// TG3000_ROUTINE($80:FBDC) results_screen_run (long)
+//
+// The results screen from bank $80 (DB = $8A, D = $0100), then HDMA off.
+void results_screen_run(void) {
+  results_screen();
+  results_screen_run_close();
+}
+// TG3000_ROUTINE($80:FBEC) results_screen_run_close
+void results_screen_run_close(void) {
+  video_hdma_enable(0x00);  // (and $420B = 0)
+}

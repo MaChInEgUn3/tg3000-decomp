@@ -5313,6 +5313,36 @@ static void call_ticker_screen(const Regs* in, Regs* out) {
   out->z = out->a == 0;
   out->c = false;
 }
+// the screens' bank $80 wrappers: a prologue row (its PHB of the caller's DB, the only
+// push left above the cut; DB = $8A, D = $0100) and an epilogue row ending at the RTL
+// (PLB: DB back, N Z of it)
+static void call_title_screen_run_open(const Regs* in, Regs* out) {
+  title_screen_run_open(in->a);
+  wr8(in->sp, in->db);
+  out->db = 0x8A;
+  out->d = 0x0100;
+}
+static void call_results_screen_run_open(const Regs* in, Regs* out) {
+  (void)out;
+  wr8(in->sp, in->db);
+  out->db = 0x8A;
+  out->d = 0x0100;
+  out->m8 = out->x8 = false;
+}
+static void runCloseOut(const Regs* in, Regs* out) {
+  out->db = rd8((uint16_t)(in->sp + 1));
+  out->n = out->db >> 7;
+  out->z = out->db == 0;
+}
+static void call_title_screen_run_close(const Regs* in, Regs* out) {
+  title_screen_run_close();
+  runCloseOut(in, out);
+}
+static void call_results_screen_run_close(const Regs* in, Regs* out) {
+  results_screen_run_close();
+  runCloseOut(in, out);
+}
+
 // the shop's item screen in parts (the frame's pad input and waits call waiting rows, which
 // an enclosing waiting row would hide: left out). The opening: the fade-out path returns
 // after LDA #$FF80 (N set) with C from its CMP (equal); else it ends at $80:8F3B after
@@ -10682,6 +10712,16 @@ const Routine routines[] = {
   {.name = "results_screen", .entry = 0x8A94C3, .end = 0x8A95EB, .endAt = 0x8A95EB, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true,
    .call = call_results_screen},
+  // the screens' bank $80 wrappers, around their JSLs (the epilogues end at their RTL, which
+  // the PLB'd byte keeps the bench from finding as a return: the RTL itself is in no row)
+  {.name = "title_screen_run", .entry = 0x80FBA5, .end = 0x80FBC1, .endAt = 0x80FBC1, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .call = call_title_screen_run_open},
+  {.name = "title_screen_run_close", .entry = 0x80FBC5, .end = 0x80FBD0, .endAt = 0x80FBD0, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .call = call_title_screen_run_close},
+  {.name = "results_screen_run", .entry = 0x80FBDC, .end = 0x80FBE8, .endAt = 0x80FBE8, .source = "src/misc.c",
+   .call = call_results_screen_run_open},
+  {.name = "results_screen_run_close", .entry = 0x80FBEC, .end = 0x80FBF7, .endAt = 0x80FBF7, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .call = call_results_screen_run_close},
   // the shop's item screen in parts
   {.name = "shop_item_screen", .entry = 0x808EB4, .end = 0x808F3B, .endAt = 0x808F3B, .source = "src/shop.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .waitsForInterrupts = true,
