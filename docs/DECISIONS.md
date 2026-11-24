@@ -3172,9 +3172,11 @@ password screen, a skipped track's bonus.
   - `$08` is the road command the clean-room chip already gets wrong in most runs on the
     TAS: 6,907 of 9,595 (the catalogue of 2026-11-15).
   - In the one-player races that only changes values. In the VS race it crashes the game.
-- **So the bench needs our own road commands** (`$01`/`$07`/`$08` in `src/dsp4.c`, measured
-  against the firmware). That is the owner's standing decision of 2026-11-15, and it is
-  multi-unit research, not started. Until then:
+- **So the bench needs correct DSP-4 answers in the race.** First tried: a firmware tape
+  replayed on the bench (harness-26, below). The races' timing differs between the two
+  emulators, so that cannot work. That leaves our own road commands (`$01`/`$07`/`$08` in
+  `src/dsp4.c`, measured against the firmware): the owner's standing decision of
+  2026-11-15, multi-unit research, not started. Until then:
   - the VS race runs on the reference runner only;
   - its rows cannot be difftested, and the VS menus are ported first.
 - **Its coverage is in the map** (the reference runner is a trusted run, as the TAS was).
@@ -3423,6 +3425,37 @@ password screen, a skipped track's bonus.
 - **Results:** 505 frames on the options movie; the setup's one entry (interrupted) passes
   from its entry state.
 - **Check:** full gate (`menu_action`'s case changed).
+
+## A firmware tape replayed on the bench (harness-26, 2026-11-24)
+
+**The advisor's call, open to the owner's veto.**
+- **The idea:** to run the VS race on the bench, answer the DSP-4 from a tape of the
+  firmware's bytes instead of the clean-room chip.
+  - The tape is recorded on the reference runner with the same inputs
+    (`refbench --dsp4-tape`, from power-on).
+  - `bench --dsp4-tape-replay FILE` (`tools/bench/dsp4_bridge.cpp`) consumes it in order,
+    not by frame. Each data read returns the tape's next byte. Each data write must equal
+    it. The status reads ready.
+  - The first mismatch stops the run and prints the step, the byte, and both sides' PCs and
+    values. The default mode is untouched.
+  - Tapes are firmware output: they stay in `build/cache` and are made again, never
+    committed.
+- **Result: the races diverge between the emulators.**
+  - The VS race replays its first 30,576 bytes, then at step 5,683 (`$83:F78A`) the bench
+    writes `$1E9E` = 4 where the firmware run has 5. `$1E9E` is the number of 60 Hz steps a
+    game frame took, which the race's physics multiplies by.
+  - The one-player race (`race1.txt`) diverges the same way at step 8,117 (`$82:D959`),
+    about 190 frames into the race.
+  - LakeSnes honours the ROM speed (`$420D`). The DSP-4 status is not polled before the
+    divergence either, so it is not the chip's compute time. It is the emulators' timing,
+    which the game's frame-step count turns into different game states.
+- **So a tape cannot drive the bench through a race.** Our own road commands can: they answer
+  whatever the bench's own run sends. The VS race waits for them (explore-9).
+  - The tool stays as a diagnostic: it pinpoints where two runs part.
+- **The TAS (`Input Log.txt`) is no longer on disk.** WORKFLOW's reference commands and the
+  road-command plan (measured on the TAS) depend on it. Measuring on the reference runner
+  with the bench movies works instead (`tools/movie_to_log.py`).
+- **Check:** full gate (`tools/bench` changed; the default path is untouched).
 
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 

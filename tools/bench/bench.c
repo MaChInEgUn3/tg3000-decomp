@@ -112,6 +112,15 @@ void bench_log_dsp4(bool write, bool data, uint8_t bank, uint16_t adr, uint8_t v
   }
 }
 
+uint32_t bench_cpu_pc(void) { return (uint32_t)snes->cpu->k << 16 | snes->cpu->pc; }
+
+// harness-26: the DSP-4 tape replay (tools/bench/dsp4_bridge.cpp)
+long dsp4_bridge_tape(const char* path);
+bool dsp4_bridge_tape_failed(long* index, uint32_t* tapePc, uint8_t* tapeVal, int* tapeRead, uint32_t* pc,
+                             uint8_t* val, int* write);
+long dsp4_bridge_tape_used(long* total);
+static const char* dsp4TapePath;
+
 static uint8_t* readFile(const char* path, int* size) {
   FILE* f = fopen(path, "rb");
   if(f == NULL) return NULL;
@@ -415,6 +424,8 @@ int main(int argc, char** argv) {
   for(int i = 2; i < argc; i++) {
     if(strcmp(argv[i], "--dsp4-report") == 0 && i + 1 < argc) {
       dsp4ReportPath = argv[++i];
+    } else if(strcmp(argv[i], "--dsp4-tape-replay") == 0 && i + 1 < argc) {
+      dsp4TapePath = argv[++i];
     } else
     if(strcmp(argv[i], "--dsp4-log") == 0 && i + 1 < argc) {
       dsp4Log = fopen(argv[++i], "w");
@@ -516,12 +527,30 @@ int main(int argc, char** argv) {
     free(st);
   }
 
+  if(dsp4TapePath != NULL) {
+    const long n = dsp4_bridge_tape(dsp4TapePath);
+    if(n < 0) { fprintf(stderr, "could not read DSP-4 tape %s\n", dsp4TapePath); return 1; }
+    fprintf(stderr, "DSP-4: replaying the firmware tape %s (%ld bytes)\n", dsp4TapePath, n);
+  }
   uint16_t lastRecorded = 0;
   for(int i = 0; i < frames; i++) {
     applyMovie(i);
     if(autopilotFrom >= 0 && i >= autopilotFrom) autopilot();
     recordStep(record, i, &lastRecorded);
     benchRunFrame();
+    if(dsp4TapePath != NULL) {
+      long at;
+      uint32_t tpc, pc;
+      uint8_t tval, val;
+      int tread, write;
+      if(dsp4_bridge_tape_failed(&at, &tpc, &tval, &tread, &pc, &val, &write)) {
+        fprintf(stderr, "DSP-4 tape: mismatch at step %d, byte %ld: the bench %s %02X at %02X:%04X; the tape: ", i,
+                at, write ? "wrote" : "read", val, pc >> 16, pc & 0xFFFF);
+        if(tread < 0) fprintf(stderr, "ended\n");
+        else fprintf(stderr, "%s %02X at %02X:%04X\n", tread ? "a read of" : "a write of", tval, tpc >> 16, tpc & 0xFFFF);
+        return 3;
+      }
+    }
     if(hdmaOn) hdma_on_frame(i);
     if(apuOn) apu_on_frame(i);
     if(wramDump != NULL) fwrite(snes->ram, 1, sizeof snes->ram, wramDump);
@@ -541,6 +570,11 @@ int main(int argc, char** argv) {
     free(known);
   }
 
+  if(dsp4TapePath != NULL) {
+    long total;
+    const long used = dsp4_bridge_tape_used(&total);
+    fprintf(stderr, "DSP-4 tape: %ld of %ld bytes replayed, no mismatch\n", used, total);
+  }
   int status = 0;
   if(stateTest > 0) {
     int size = snes_saveState(snes, NULL);

@@ -18,6 +18,7 @@ extern "C" {
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 static dsp4::Dsp4 chip;
 
@@ -84,6 +85,74 @@ extern "C" void dsp4_bridge_script(const uint16_t* words, int n) {
 	routedNOut = -1;
 }
 
+// harness-26: a firmware tape (refbench --dsp4-tape, 5-byte records: PC low first, value, 1
+// for a read) replayed in place of the clean-room chip's answers. Each data read returns the
+// tape's next byte, which must be a read; each data write must equal the tape's next byte,
+// which must be a write. The tape is consumed in order, never by frame. The status register
+// reads ready ($80). The first mismatch stops the replay (dsp4_bridge_tape_failed); the
+// chip is not fed while it runs. Scripted cases (the difftest's fuzz) do not touch it.
+static std::vector<uint8_t> tapeData;
+static size_t tapePos;  // in records
+static bool tapeOn, tapeBad;
+static uint32_t tapeBadPc;
+static uint8_t tapeBadVal;
+static bool tapeBadWrite;
+
+extern "C" long dsp4_bridge_tape(const char* path) {
+	FILE* f = std::fopen(path, "rb");
+	if(f == nullptr) return -1;
+	std::fseek(f, 0, SEEK_END);
+	const long size = std::ftell(f);
+	std::rewind(f);
+	tapeData.resize(size_t(size));
+	const bool ok = std::fread(tapeData.data(), 1, size_t(size), f) == size_t(size);
+	std::fclose(f);
+	if(!ok) return -1;
+	tapePos = 0;
+	tapeOn = true;
+	tapeBad = false;
+	return size / 5;
+}
+static size_t tapeRecords(void) { return tapeData.size() / 5; }
+// the record at the replay's place: its PC, value and direction; false past the end
+static bool tapeRecord(size_t i, uint32_t* pc, uint8_t* val, bool* read) {
+	if(i >= tapeRecords()) return false;
+	const uint8_t* r = &tapeData[5 * i];
+	*pc = uint32_t(r[0] | r[1] << 8 | r[2] << 16);
+	*val = r[3];
+	*read = (r[4] & 1) != 0;
+	return true;
+}
+static void tapeMismatch(uint8_t val, bool write) {
+	tapeBad = true;
+	tapeOn = false;
+	tapeBadPc = bench_cpu_pc();
+	tapeBadVal = val;
+	tapeBadWrite = write;
+}
+// After a mismatch: the record it stopped at (index; its PC, value, direction) and the
+// bench's access (PC, value, write). False while none.
+extern "C" bool dsp4_bridge_tape_failed(long* index, uint32_t* tapePc, uint8_t* tapeVal, int* tapeRead,
+                                        uint32_t* pc, uint8_t* val, int* write) {
+	if(!tapeBad) return false;
+	*index = long(tapePos);
+	uint32_t p = 0;
+	uint8_t v = 0;
+	bool r = false;
+	const bool have = tapeRecord(tapePos, &p, &v, &r);
+	*tapePc = have ? p : 0xFFFFFFFF;
+	*tapeVal = v;
+	*tapeRead = have ? r : -1;
+	*pc = tapeBadPc;
+	*val = tapeBadVal;
+	*write = tapeBadWrite;
+	return true;
+}
+extern "C" long dsp4_bridge_tape_used(long* total) {
+	*total = long(tapeRecords());
+	return long(tapePos);
+}
+
 extern "C" void dsp4_bridge_reset(void) {
 	scripted = false;
 	chip.reset();
@@ -95,6 +164,17 @@ extern "C" uint8_t dsp4_bridge_read(uint8_t bank, uint16_t adr) {
 	const bool data = adr < 0xC000;
 	if(scripted && !difftest_dsp4_native_now()) {
 		const uint8_t val = !data ? 0x80 : scriptPos < scriptLen ? scriptBytes[scriptPos++] : 0;
+		bench_log_dsp4(false, data, bank, adr, val);
+		return val;
+	}
+	if(tapeOn) {
+		uint8_t val = 0x80;
+		if(data) {
+			uint32_t p;
+			bool read;
+			if(!tapeRecord(tapePos, &p, &val, &read) || !read) tapeMismatch(0, false);
+			else tapePos++;
+		}
 		bench_log_dsp4(false, data, bank, adr, val);
 		return val;
 	}
@@ -110,6 +190,17 @@ extern "C" uint8_t dsp4_bridge_read(uint8_t bank, uint16_t adr) {
 extern "C" void dsp4_bridge_write(uint8_t bank, uint16_t adr, uint8_t val) {
 	const bool data = adr < 0xC000;
 	if(scripted && !difftest_dsp4_native_now()) {
+		bench_log_dsp4(true, data, bank, adr, val);
+		return;
+	}
+	if(tapeOn) {
+		if(data) {
+			uint32_t p;
+			uint8_t v;
+			bool read;
+			if(!tapeRecord(tapePos, &p, &v, &read) || read || v != val) tapeMismatch(val, true);
+			else tapePos++;
+		}
 		bench_log_dsp4(true, data, bank, adr, val);
 		return;
 	}
