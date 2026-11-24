@@ -1722,6 +1722,12 @@ void menu_action_exit(void);
 bool menu_options_apply(void);
 bool menu_password_back(void);
 void menu_action(uint16_t word);
+// VS MODE's player counts: the count an action chooses ($8A:A53C), the players' pads
+// ($8A:A509), $03DC set ($8A:A558), the menus left after the VS screen ($8A:A570).
+uint16_t menu_action_players(uint16_t word);
+uint16_t vs_players_mask(uint16_t players, bool* carry);
+uint16_t vs_players_set(uint16_t players, bool* carry);
+void vs_players_done(void);
 void menu_run(uint16_t menu);
 void menu_submenu_open(uint16_t menu);
 bool menu_submenu_tick(void);

@@ -9258,6 +9258,63 @@ static void menu_action_cancel_password(void) {
   wr16(0x047B, rd16(0x0444));
 }
 
+// VS MODE's player counts ($8A:A53C, $8A:A543, $8A:A54A, $8A:A551: 1 to 4 PLAYERS).
+
+// TG3000_ROUTINE($8A:A53C) menu_action_players
+// The player count an action chooses (0: none).
+uint16_t menu_action_players(uint16_t word) {
+  switch(word) {
+    case 0xA53C: return 1;
+    case 0xA543: return 2;
+    case 0xA54A: return 3;
+    case 0xA551: return 4;
+    default: return 0;
+  }
+}
+
+// TG3000_ROUTINE($8A:A509) vs_players_mask
+// The pads of the first `players` (1-4) VS players: D+$56's bits from the lowest, up to its
+// `players`-th set bit (a pad present), each go into the top of D+$42; then down so that the
+// first four pads' bits land at bits 12-15 (X counts the bits taken from 4, and past 0 wraps:
+// then nothing is left), returned shifted down to bits 4-7 (*carry the last bit shifted out).
+// (D+$56 must hold that many set bits; the original loops forever otherwise.)
+uint16_t vs_players_mask(uint16_t players, bool* carry) {
+  uint16_t a = rd16(DP + 0x56);
+  uint16_t x = 4;
+  wr16(DP + 0x42, 0);
+  for(;;) {
+    const bool bit = (a & 1) != 0;
+    a = (uint16_t)(a >> 1);
+    wr16(DP + 0x42, (uint16_t)((rd16(DP + 0x42) >> 1) | (bit ? 0x8000 : 0)));
+    x--;
+    if(bit && --players == 0) break;
+  }
+  a = rd16(DP + 0x42);
+  for(; x != 0; x--) a = (uint16_t)(a >> 1);
+  return lsr_n(a, 8, carry);
+}
+
+// TG3000_ROUTINE($8A:A558) vs_players_set
+// $03DC: the players' pads (vs_players_mask) and mode 2, VS. Returns it.
+uint16_t vs_players_set(uint16_t players, bool* carry) {
+  wr16(0x03DC, (uint16_t)(rd16(0x03DC) & 0xFFF8));
+  const uint16_t v = (uint16_t)(vs_players_mask(players, carry) | 0x0002);
+  wr16(0x03DC, v);
+  return v;
+}
+
+// TG3000_ROUTINE($8A:A570) vs_players_done
+// After the VS screen's setup: the menus left (D+$6C counted).
+void vs_players_done(void) { wr16(DP + 0x6C, (uint16_t)(rd16(DP + 0x6C) + 1)); }
+
+// A player count chosen: $03DC set, the VS screen ($8A:A573, not ported yet), the menus left.
+static void menu_action_vs_players(uint16_t players) {
+  bool carry;
+  vs_players_set(players, &carry);
+  tg3000_unported("$8A:A573: the VS screen's setup");
+  vs_players_done();
+}
+
 // The action `word` ($8A:A466: JMP ($015C)).
 void menu_action(uint16_t word) {
   const uint16_t sub = menu_action_submenu(word);
@@ -9279,7 +9336,11 @@ void menu_action(uint16_t word) {
     case 0xB180: menu_action_mode(0x31); return;
     case 0xB21C: menu_action_password(); return;
     case 0xB30C: menu_action_cancel_password(); return;
-    default: tg3000_unported("$8A:A53C-$8A:A557: VS MODE's player counts"); return;
+    case 0xA53C:
+    case 0xA543:
+    case 0xA54A:
+    case 0xA551: menu_action_vs_players(menu_action_players(word)); return;
+    default: tg3000_unported("an options action the menus do not have"); return;
   }
 }
 

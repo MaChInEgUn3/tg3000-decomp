@@ -5607,6 +5607,39 @@ static void call_menu_action_music(const Regs* in, Regs* out) {
   out->a = rd16(0x1528);
   setNZ16(out, out->a);
 }
+// VS MODE's player counts: the action ends at its JSR (Y the count); the pads' mask returns
+// after lsr_n (X 0, Y 0, N clear, Z set); the setting ends at the VS screen's JSR (its tail
+// $8A:A570 runs after the car's choice, past the movies)
+static void call_menu_action_players(const Regs* in, Regs* out) {
+  (void)in;
+  out->y = menu_action_players(rd16(DP + 0x5C));
+  setNZ16(out, out->y);
+}
+static void call_vs_players_mask(const Regs* in, Regs* out) {
+  bool carry;
+  out->a = vs_players_mask(in->y, &carry);
+  out->c = carry;
+  out->x = 0;
+  out->y = 0;
+  out->n = false;
+  out->z = true;
+}
+static void call_vs_players_set(const Regs* in, Regs* out) {
+  bool carry;
+  out->a = vs_players_set(in->y, &carry);
+  out->c = carry;
+  out->x = 0;
+  out->y = 0;
+  setNZ16(out, out->a);
+}
+// the pads' mask for 1 to 4 players and any pads with at least that many present (else the
+// original loops forever)
+static void fuzz_vs_players(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->y = (uint16_t)(1 + rnd() % 4);
+  uint16_t pads = (uint16_t)(rnd() & ((rnd() & 1) ? 0x000F : 0xFFFF));
+  while(__builtin_popcount(pads) < r->y) pads = (uint16_t)(pads | (1u << (rnd() % 8)));
+  wr16ram(ram, DP + 0x56, pads);
+}
 static void call_menu_action_exit(const Regs* in, Regs* out) {
   (void)in;
   menu_action(rd16(DP + 0x5C));
@@ -11525,6 +11558,14 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_action_submenu},
   {.name = "menu_action_music", .entry = 0x8AB0AD, .end = 0x8AB0D0, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_action_music},
+  {.name = "menu_action_players", .entry = 0x8AA53C, .end = 0x8AA53F, .endAt = 0x8AA53F, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareY = true, .call = call_menu_action_players},
+  {.name = "vs_players_mask", .entry = 0x8AA509, .end = 0x8AA53C, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_vs_players_mask, .fuzz = fuzz_vs_players},
+  {.name = "vs_players_set", .entry = 0x8AA558, .end = 0x8AA56D, .endAt = 0x8AA56D, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true,
+   .compareY = true, .call = call_vs_players_set, .fuzz = fuzz_vs_players},
   {.name = "menu_action_exit", .entry = 0x8AB0D0, .end = 0x8AB0D3, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_menu_action_exit},
   {.name = "menu_options_apply", .entry = 0x8AB11A, .end = 0x8AB152, .source = "src/misc.c", .needM16 = true,

@@ -3902,12 +3902,13 @@ menu_action_vs:
     lda.w #$CCEB                ; $8AA502
     jsr.w menu_submenu_open     ; $8AA505
     rts                         ; $8AA508
+vs_players_mask:
     ldx.w #$0004                ; $8AA509
     stz.b $42                   ; $8AA50C
     lda.b $56                   ; $8AA50E
 CODE_8AA510:
     lsr a                       ; $8AA510
-    db $90,$1E ; bcc            ; $8AA511
+    bcc CODE_8AA531             ; $8AA511
     pha                         ; $8AA513
     lda.b $42                   ; $8AA514
     sec                         ; $8AA516
@@ -3928,15 +3929,25 @@ CODE_8AA52A:
     ldy.w #$0008                ; $8AA52A
     jsr.w lsr_n                 ; $8AA52D
     rts                         ; $8AA530
-    incbin !baserom:$52531..$5253C
+CODE_8AA531:
+    pha                         ; $8AA531 static
+    lda.b $42                   ; $8AA532 static
+    clc                         ; $8AA534 static
+    ror a                       ; $8AA535 static
+    sta.b $42                   ; $8AA536 static
+    pla                         ; $8AA538 static
+    dex                         ; $8AA539 static
+    bra CODE_8AA510             ; $8AA53A static
+menu_action_players:
     ldy.w #$0001                ; $8AA53C
-    jsr.w $A558                 ; $8AA53F
+    jsr.w vs_players_set        ; $8AA53F
     rts                         ; $8AA542
     incbin !baserom:$52543..$52558
+vs_players_set:
     lda.l $8103DC               ; $8AA558
     and.w #$FFF8                ; $8AA55C
     sta.l $8103DC               ; $8AA55F
-    jsr.w $A509                 ; $8AA563
+    jsr.w vs_players_mask       ; $8AA563
     ora.w #$0002                ; $8AA566
     sta.l $8103DC               ; $8AA569
     jsr.w $A573                 ; $8AA56D

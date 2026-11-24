@@ -683,3 +683,6 @@ func    8AA462   menu_select_restore ; the options selection's tail: D+$62 back,
 func    8AB2FD   password_entry_found ; after a password code's handler: a track chosen (D+$52) -> src/password.c
 func    8AA502   menu_action_vs      ; VS MODE: the players' submenu -> src/misc.c
 func    8AB0AD   menu_action_music   ; MUSIC: $1528 bits 2-5 step 0, 1 -> src/misc.c
+func    8AA53C   menu_action_players ; VS MODE's player counts: the count an action chooses -> src/misc.c
+func    8AA509   vs_players_mask     ; the first N VS players' pads from D+$56 -> src/misc.c
+func    8AA558   vs_players_set      ; $03DC = the VS players' pads | 2 -> src/misc.c
