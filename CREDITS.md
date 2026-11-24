@@ -9,6 +9,10 @@
 - **[snes-dsp4](https://github.com/StackBlender/snes-dsp4)** by StackBlender
   (GPL-3.0-or-later) — clean-room DSP-4 used by the bench, and documentation of the
   chip's commands.
+- **bsnes v087** by byuu (GPLv3), as shipped in BizHawk 1.9.4 — the reference runner in
+  `tools/refbench/`, and its NEC uPD7725 core, compiled from `ext/` into the bench for
+  `--dsp4-firmware` (`tools/bench/dsp4_lle.cpp`, `tools/bench/necdsp_shim/`). Fetched by
+  `tools/refbench/fetch.sh`, never vendored.
 - **[Asar](https://github.com/RPGHacker/asar)** by RPGHacker and contributors
   (LGPL-3.0-or-later) — the assembler for `asm/`; fetched and built by `fetch.sh`.
 - **[top-gear-snes-re](https://github.com/pedro-walter/top-gear-snes-re)** by

@@ -3449,8 +3449,9 @@ password screen, a skipped track's bonus.
   - LakeSnes honours the ROM speed (`$420D`). The DSP-4 status is not polled before the
     divergence either, so it is not the chip's compute time. It is the emulators' timing,
     which the game's frame-step count turns into different game states.
-- **So a tape cannot drive the bench through a race.** Our own road commands can: they answer
-  whatever the bench's own run sends. The VS race waits for them (explore-9).
+- **So a tape cannot drive the bench through a race.** A chip that runs the firmware can, as
+  can our own road commands: either answers whatever the bench's own run sends. harness-27
+  (below) does the first.
   - The tool stays as a diagnostic: it pinpoints where two runs part.
 - **The TAS (`Input Log.txt`) was not on disk any more.** WORKFLOW's reference commands and
   the road-command plan (measured on the TAS) depend on it.
@@ -3460,6 +3461,38 @@ password screen, a skipped track's bonus.
   - Restored the same day (2026-11-24): `tools/fetch_tas.sh` downloads it from TASVideos
     into `traces/tas/` (ignored by git), checks that its header names our ROM, and unpacks
     `traces/tas/unpacked/Input Log.txt`. WORKFLOW's commands point there.
+- **Check:** full gate (`tools/bench` changed; the default path is untouched).
+
+## The DSP-4 run from its firmware on the bench (harness-27, 2026-11-24; the owner's decision)
+
+- **The owner's decision (2026-11-24):** the firmware file he supplied may also run inside the
+  bench, for verification only. It is still never committed, never read or disassembled
+  by the project, and never used by the port's C.
+- **How:** `bench --dsp4-firmware ext/firmware/dsp4.rom`.
+  - bsnes v087's NEC uPD7725 core (GPLv3, the reference runner's) is compiled from `ext/`
+    (`tools/refbench/fetch.sh`) with a small shim (`tools/bench/necdsp_shim/snes/snes.hpp`:
+    nall's types, stubs for the scheduler and the CPU's synchronisation).
+    `tools/bench/dsp4_lle.cpp` drives it. Nothing of bsnes is vendored.
+  - Without `ext/bizhawk-1.9.4` (as in CI), the bench builds without it and the option
+    says so.
+  - The default path, the clean-room chip, is untouched: no row's result changes.
+- **Timing:** on each data access the chip runs until it next waits for the CPU, i.e. until
+  it is about to test RQM (`JRQM`/`JNRQM`) while RQM is set. So it always looks ready.
+  - A first draft stopped as soon as RQM rose. The chip sets it when it reads the CPU's
+    word, before its answer exists: every multiply came back as its own input, and the
+    race never started.
+- **Result:**
+  - The VS race (`vs_race.txt`, 9,000 steps) runs on the bench: the four-way split, the
+    speeds, FINAL LAP, with 3.7M data reads and 5.1M writes. Two runs give the same
+    per-frame WRAM hashes.
+  - A save and reload in the race gives 600 identical frames.
+  - The one-player race (`race1.txt`) looks as it should.
+  - The bench's coverage of the VS race against the reference runner's: 1,023 bytes only
+    the bench ran and 327 only the reference ran, mostly in bank `$84`. The two races play
+    out differently by timing (harness-26), so their after-race screens differ.
+- **Next (not this unit):** run `vs_race` in `verify_all` with the firmware chip, so the VS
+  race's rows can be difftested. Rows reached only there will need their checks
+  (expect the 15 dropped static ranges' rows to see new paths).
 - **Check:** full gate (`tools/bench` changed; the default path is untouched).
 
 ## The main options menu (menu-22, 2026-11-24)

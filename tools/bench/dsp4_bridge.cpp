@@ -98,6 +98,31 @@ static uint32_t tapeBadPc;
 static uint8_t tapeBadVal;
 static bool tapeBadWrite;
 
+// harness-27: the firmware DSP-4 (tools/bench/dsp4_lle.cpp) in place of the clean-room
+// chip: data and status go to it, and save states carry its state. Scripted cases (the
+// difftest's fuzz) do not touch it.
+#ifdef BENCH_LLE
+extern "C" bool dsp4_lle_load(const char* path);
+extern "C" void dsp4_lle_reset(void);
+extern "C" uint8_t dsp4_lle_read(bool data);
+extern "C" void dsp4_lle_write(bool data, uint8_t v);
+extern "C" int dsp4_lle_state_size(void);
+extern "C" void dsp4_lle_save_state(uint8_t* out, int size);
+extern "C" void dsp4_lle_load_state(const uint8_t* in, int size);
+#endif
+static bool lleOn;
+// 1: loaded; 0: the bench was built without bsnes; -1: the file could not be loaded
+extern "C" int dsp4_bridge_firmware(const char* path) {
+#ifdef BENCH_LLE
+	if(!dsp4_lle_load(path)) return -1;
+	lleOn = true;
+	return 1;
+#else
+	(void)path;
+	return 0;
+#endif
+}
+
 extern "C" long dsp4_bridge_tape(const char* path) {
 	FILE* f = std::fopen(path, "rb");
 	if(f == nullptr) return -1;
@@ -154,6 +179,9 @@ extern "C" long dsp4_bridge_tape_used(long* total) {
 }
 
 extern "C" void dsp4_bridge_reset(void) {
+#ifdef BENCH_LLE
+	if(lleOn) dsp4_lle_reset();
+#endif
 	scripted = false;
 	chip.reset();
 	routed = -1;
@@ -167,6 +195,13 @@ extern "C" uint8_t dsp4_bridge_read(uint8_t bank, uint16_t adr) {
 		bench_log_dsp4(false, data, bank, adr, val);
 		return val;
 	}
+#ifdef BENCH_LLE
+	if(lleOn) {
+		const uint8_t val = dsp4_lle_read(data);
+		bench_log_dsp4(false, data, bank, adr, val);
+		return val;
+	}
+#endif
 	if(tapeOn) {
 		uint8_t val = 0x80;
 		if(data) {
@@ -193,6 +228,13 @@ extern "C" void dsp4_bridge_write(uint8_t bank, uint16_t adr, uint8_t val) {
 		bench_log_dsp4(true, data, bank, adr, val);
 		return;
 	}
+#ifdef BENCH_LLE
+	if(lleOn) {
+		dsp4_lle_write(data, val);
+		bench_log_dsp4(true, data, bank, adr, val);
+		return;
+	}
+#endif
 	if(tapeOn) {
 		if(data) {
 			uint32_t p;
@@ -226,14 +268,31 @@ extern "C" void dsp4_bridge_write(uint8_t bank, uint16_t adr, uint8_t val) {
 	bench_log_dsp4(true, data, bank, adr, val);
 }
 
-extern "C" int dsp4_bridge_state_size(void) { return int(chip.saveState().size()); }
+extern "C" int dsp4_bridge_state_size(void) {
+#ifdef BENCH_LLE
+	if(lleOn) return dsp4_lle_state_size();
+#endif
+	return int(chip.saveState().size());
+}
 
 extern "C" void dsp4_bridge_save_state(uint8_t* out) {
+#ifdef BENCH_LLE
+	if(lleOn) {
+		dsp4_lle_save_state(out, dsp4_lle_state_size());
+		return;
+	}
+#endif
 	const std::vector<uint8_t> blob = chip.saveState();
 	std::memcpy(out, blob.data(), blob.size());
 }
 
 extern "C" void dsp4_bridge_load_state(const uint8_t* data, int size) {
+#ifdef BENCH_LLE
+	if(lleOn) {
+		dsp4_lle_load_state(data, size);
+		return;
+	}
+#endif
 	if(!chip.loadState(data, size_t(size))) {
 		std::fprintf(stderr, "dsp4: save state rejected\n");
 		std::abort();  // a silently wrong DSP-4 would poison every comparison

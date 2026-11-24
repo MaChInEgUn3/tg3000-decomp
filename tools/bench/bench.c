@@ -120,6 +120,9 @@ bool dsp4_bridge_tape_failed(long* index, uint32_t* tapePc, uint8_t* tapeVal, in
                              uint8_t* val, int* write);
 long dsp4_bridge_tape_used(long* total);
 static const char* dsp4TapePath;
+// harness-27: the firmware DSP-4 (tools/bench/dsp4_lle.cpp)
+int dsp4_bridge_firmware(const char* path);
+static const char* dsp4FirmwarePath;
 
 static uint8_t* readFile(const char* path, int* size) {
   FILE* f = fopen(path, "rb");
@@ -426,6 +429,8 @@ int main(int argc, char** argv) {
       dsp4ReportPath = argv[++i];
     } else if(strcmp(argv[i], "--dsp4-tape-replay") == 0 && i + 1 < argc) {
       dsp4TapePath = argv[++i];
+    } else if(strcmp(argv[i], "--dsp4-firmware") == 0 && i + 1 < argc) {
+      dsp4FirmwarePath = argv[++i];
     } else
     if(strcmp(argv[i], "--dsp4-log") == 0 && i + 1 < argc) {
       dsp4Log = fopen(argv[++i], "w");
@@ -511,6 +516,12 @@ int main(int argc, char** argv) {
   // drawing is most of the emulation's time (bench-5)
   snes->ppu->skipRender = dumpDir == NULL && !render;
   if(!snes_loadRom(snes, rom, size)) { fprintf(stderr, "ROM did not load\n"); return 1; }
+  if(dsp4FirmwarePath != NULL) {
+    const int got = dsp4_bridge_firmware(dsp4FirmwarePath);
+    if(got == 0) { fprintf(stderr, "--dsp4-firmware: this bench was built without bsnes (tools/refbench/fetch.sh)\n"); return 1; }
+    if(got < 0) { fprintf(stderr, "--dsp4-firmware: could not load %s (8,192 bytes)\n", dsp4FirmwarePath); return 1; }
+    fprintf(stderr, "DSP-4: the firmware %s, run by bsnes v087's uPD7725 core\n", dsp4FirmwarePath);
+  }
   if(snes->cart->type != 5) { fprintf(stderr, "ROM was not detected as DSP-4 (type %d)\n", snes->cart->type); return 1; }
   if(snes->cart->romSize != 0x100000) { fprintf(stderr, "expected a 1 MB ROM\n"); return 1; }
   if(coveragePath != NULL) { coverage_start(snes->cpu, snes->cart->rom); coverageOn = true; }
