@@ -1678,4 +1678,17 @@ bool race_start_frame(void);
 void race_start_frame_draw(void);
 void race_start_end(void);
 
+// The championship menu screen ($80:BE32 / $80:BEC6) in parts: its start, its setup
+// ($80:BED8; fresh, with the clears, $80:BE44), the records ($80:BF0F), the load ($80:BF82),
+// the map's queue ($80:BFED), the panel ($80:C003) and the fade in ($80:C039); from the records
+// on, either player's task (`dp`).
+void champ_begin(void);
+void champ_setup(void);
+void champ_setup_fresh(void);
+void champ_records(uint16_t dp);
+void champ_load(uint16_t dp);
+void champ_queue_map(uint16_t dp);
+void champ_panel(uint16_t dp);
+void champ_fade_in(uint16_t dp);
+
 #endif

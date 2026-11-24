@@ -602,3 +602,12 @@
 80F549 upload_slice_13 src/video_dma.c 02c439ded132bf25 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 02c439ded132bf25 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 02c439ded132bf25 1 500 20/20 verified live-flags:NVZC replayed:0
+80BE32 champ_begin src/misc.c 9bdc5b62d32b01d0 4 0 4/4 verified live-flags:- replayed:0
+80BEC6 champ_begin_2 src/misc.c 9bdc5b62d32b01d0 1 0 4/4 verified live-flags:- replayed:0
+80BE44 champ_setup_fresh src/misc.c 9bdc5b62d32b01d0 4 0 44/44 verified live-flags:VC replayed:0
+80BED8 champ_setup src/misc.c 9bdc5b62d32b01d0 1 0 20/20 verified live-flags:VC replayed:0
+80BF0F champ_records src/misc.c 9bdc5b62d32b01d0 10 0 19/19 verified live-flags:VC replayed:0
+80BF82 champ_load src/misc.c 9bdc5b62d32b01d0 0 0 47/47 verified live-flags:VC replayed:2
+80BFED champ_queue_map src/misc.c 9bdc5b62d32b01d0 10 0 8/8 verified live-flags:VC replayed:0
+80C003 champ_panel src/misc.c 9bdc5b62d32b01d0 10 0 20/20 verified live-flags:VC replayed:0
+80C039 champ_fade_in src/misc.c 9bdc5b62d32b01d0 2 0 4/4 verified live-flags:- replayed:0

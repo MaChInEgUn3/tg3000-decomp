@@ -1146,7 +1146,7 @@ CODE_808A71:
     db $F0,$05 ; beq            ; $808A80
     jsr.w $8A8C                 ; $808A82
     incbin !baserom:$A85..$A8C
-    jsr.w $BEC6                 ; $808A8C
+    jsr.w champ_begin_2         ; $808A8C
     jsl.l save_data_seal        ; $808A8F
     jsl.l player_in_top5        ; $808A93
     jsl.l track_snap            ; $808A97
@@ -1219,7 +1219,7 @@ CODE_808B12:
 CODE_808B55:
     jsl.l $80FC25               ; $808B55
 CODE_808B59:
-    jsr.w $BE32                 ; $808B59
+    jsr.w champ_begin           ; $808B59
     jmp.w $8AB8                 ; $808B5C
     incbin !baserom:$B5F..$BC5
 shop_screen_begin:
@@ -6992,12 +6992,14 @@ CODE_80BE1D:
     pla                         ; $80BE2F
     plb                         ; $80BE30
     rti                         ; $80BE31
+champ_begin:
     stz.w $019A                 ; $80BE32
     ldx.w #$A26F                ; $80BE35
     lda.w #$0084                ; $80BE38
     jsr.w video_load_screen     ; $80BE3B
     lda.w #$0001                ; $80BE3E
     jsr.w wait_frames           ; $80BE41
+champ_setup_fresh:
     phb                         ; $80BE44
     ldx.w #$BF2A                ; $80BE45
     ldy.w #$1B00                ; $80BE48
@@ -7046,13 +7048,15 @@ CODE_80BEB1:
     jsr.w split_screen_setup    ; $80BEBB
     lda.w #$0040                ; $80BEBE
     tsb.b $76                   ; $80BEC1
-    jmp.w $BF0F                 ; $80BEC3
+    jmp.w champ_records         ; $80BEC3
+champ_begin_2:
     stz.w $019A                 ; $80BEC6
     ldx.w #$A26F                ; $80BEC9
     lda.w #$0084                ; $80BECC
     jsr.w video_load_screen     ; $80BECF
     lda.w #$0001                ; $80BED2
     jsr.w wait_frames           ; $80BED5
+champ_setup:
     phb                         ; $80BED8
     ldx.w #$BF2A                ; $80BED9
     ldy.w #$1B00                ; $80BEDC
@@ -7074,6 +7078,7 @@ CODE_80BEB1:
     lda.w #$000C                ; $80BF06
     sta.w $02F2                 ; $80BF09
     jsr.w split_screen_setup    ; $80BF0C
+champ_records:
     ldx.b $92                   ; $80BF0F
     lda.w $8B2C,x               ; $80BF11
     sta.b $B8                   ; $80BF14
@@ -7125,6 +7130,7 @@ CODE_80BEB1:
 CODE_80BF7E:
     lda.b $64                   ; $80BF7E
     bne CODE_80BF7E             ; $80BF80
+champ_load:
     lda.b $5E                   ; $80BF82
     clc                         ; $80BF84
     adc.w #$0800                ; $80BF85
@@ -7175,6 +7181,7 @@ CODE_80BF7E:
 CODE_80BFE9:
     lda.b $64                   ; $80BFE9
     bne CODE_80BFE9             ; $80BFEB
+champ_queue_map:
     lda.b $5C                   ; $80BFED
     sta.b $6A                   ; $80BFEF
     lda.b $5E                   ; $80BFF1
@@ -7186,6 +7193,7 @@ CODE_80BFE9:
 CODE_80BFFF:
     lda.b $64                   ; $80BFFF
     bne CODE_80BFFF             ; $80C001
+champ_panel:
     lda.w #$0027                ; $80C003
     sta.b $9E                   ; $80C006
     sta.b $18                   ; $80C008
@@ -7208,9 +7216,9 @@ CODE_80BFFF:
     sta.b $BC                   ; $80C02D
     lda.b $76                   ; $80C02F
     bit.w #$0040                ; $80C031
-    beq CODE_80C039             ; $80C034
+    beq champ_fade_in           ; $80C034
     jmp.w $D17C                 ; $80C036
-CODE_80C039:
+champ_fade_in:
     lda.w #$0F00                ; $80C039
     sta.b $98                   ; $80C03C
     lda.w #$0100                ; $80C03E

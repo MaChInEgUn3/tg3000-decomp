@@ -5483,6 +5483,63 @@ static void call_name_entry_frame(const Regs* in, Regs* out) {
 }
 static void call_name_entry_draw(const Regs* in, Regs* out) { (void)in; (void)out; name_entry_draw(); }
 
+// the championship screen's parts: the start ends at its wait (flags dead after the cut); the
+// setups at split_screen_setup (A = $0C; the fresh one's X = 0 from its clear's DEX: Z set);
+// the records at the first queued upload (its arguments: A = $87, X = $8190, Y = D+$5C +
+// $3000, C V of that ADD); the load at the queue's poll (A = $FFFF, X and Y past the MVN, N Z
+// of its PLB of $81, C V of the ADD of 2); the map's queue and the fade in on their last LDA;
+// the panel on LDA #$13 (X, C V func_80B537's)
+static void call_champ_begin(const Regs* in, Regs* out) { (void)in; (void)out; champ_begin(); }
+static void call_champ_setup(const Regs* in, Regs* out) {
+  (void)in;
+  champ_setup();
+  out->a = 0x000C;
+  out->n = out->z = false;
+}
+static void call_champ_setup_fresh(const Regs* in, Regs* out) {
+  (void)in;
+  champ_setup_fresh();
+  out->a = 0x000C;
+  out->x = 0;
+  out->n = false;
+  out->z = true;
+}
+static void call_champ_records(const Regs* in, Regs* out) {
+  champ_records(in->d);
+  out->a = 0x0087;
+  out->x = 0x8190;
+  out->y = (uint16_t)(rd16((uint16_t)(in->d + 0x5C)) + 0x3000);
+  out->n = out->z = false;
+  setAdc16(out, rd16((uint16_t)(in->d + 0x5C)), 0x3000);
+}
+static void call_champ_load(const Regs* in, Regs* out) {
+  champ_load(in->d);
+  out->a = 0xFFFF;
+  out->x = (uint16_t)(rd16((uint16_t)(in->d + 0x5E)) + 0x07FE);
+  out->y = (uint16_t)(rd16((uint16_t)(in->d + 0x5E)) + 0x0800);
+  out->n = true;
+  out->z = false;
+  setAdc16(out, rd16((uint16_t)(in->d + 0x5E)), 0x0002);
+}
+static void call_champ_queue_map(const Regs* in, Regs* out) {
+  champ_queue_map(in->d);
+  out->a = 0x0800;
+  out->n = out->z = false;
+}
+static void call_champ_panel(const Regs* in, Regs* out) {
+  const uint16_t i = rd16((uint16_t)(in->d + 0x8C)), base = rd16((uint16_t)(in->d + 0x8A));
+  champ_panel(in->d);
+  out->a = 0x0013;
+  out->x = (uint16_t)(i + 2);
+  out->n = out->z = false;
+  setAdc16(out, (uint16_t)((i + 2) & 0x3F), base);
+}
+static void call_champ_fade_in(const Regs* in, Regs* out) {
+  champ_fade_in(in->d);
+  out->a = 0x0100;
+  out->n = out->z = false;
+}
+
 // the race choice's parts: the close ends at the bar's poll (A = $C5E0: N set); the bar's
 // lines at the $4212 poll (A = $DB40 in 8 bits, the poll's mask: its LDA #$40); the load at the
 // D+$16 poll (its PHA of the second length above the cut; A = $E0E0, X = 0 from oam_clear);
@@ -11240,6 +11297,28 @@ const Routine routines[] = {
   {.name = "race_start_setup_end", .entry = 0x80D3BA, .end = 0x80D422, .endAt = 0x80D422, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true,
    .call = call_race_start_setup_end},
+  {.name = "champ_begin", .entry = 0x80BE32, .end = 0x80BE3E, .endAt = 0x80BE3E, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_begin},
+  {.name = "champ_begin_2", .entry = 0x80BEC6, .end = 0x80BED2, .endAt = 0x80BED2, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_begin},
+  {.name = "champ_setup_fresh", .entry = 0x80BE44, .end = 0x80BEBB, .endAt = 0x80BEBB, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true,
+   .call = call_champ_setup_fresh},
+  {.name = "champ_setup", .entry = 0x80BED8, .end = 0x80BF0C, .endAt = 0x80BF0C, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .call = call_champ_setup},
+  {.name = "champ_records", .entry = 0x80BF0F, .end = 0x80BF3B, .endAt = 0x80BF3B, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_champ_records},
+  {.name = "champ_load", .entry = 0x80BF82, .end = 0x80BFE9, .endAt = 0x80BFE9, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_champ_load},
+  {.name = "champ_queue_map", .entry = 0x80BFED, .end = 0x80BFFF, .endAt = 0x80BFFF, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareA = true, .call = call_champ_queue_map},
+  {.name = "champ_panel", .entry = 0x80C003, .end = 0x80C02F, .endAt = 0x80C02F, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareA = true, .compareX = true,
+   .call = call_champ_panel},
+  {.name = "champ_fade_in", .entry = 0x80C039, .end = 0x80C043, .endAt = 0x80C043, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareA = true, .call = call_champ_fade_in},
   {.name = "race_start_end", .entry = 0x80D668, .end = 0x80D6A0, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
    .call = call_race_start_end},

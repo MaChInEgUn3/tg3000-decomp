@@ -8896,3 +8896,99 @@ void race_start_end(void) {
   }
   wr8(0x036B, (uint8_t)n);
 }
+
+// The championship menu screen ($80:BE32, and $80:BEC6 without the clears), its setup in parts
+// between its waits and its queued uploads (queue_unpacked_upload waits, a row of its own).
+
+// TG3000_ROUTINE($80:BE32) champ_begin
+// (also $80:BEC6) The fade level cleared, the screen's image.
+void champ_begin(void) {
+  wr16(0x019A, 0);
+  video_load_screen(0x84A26F);
+}
+
+// TG3000_ROUTINE($80:BED8) champ_setup
+// After a frame: the window's HDMA list ($81:BF2A, 22 bytes) at $1B00, HDMA channel 1 on it
+// (mode 2 to $2110), the two tasks' $F2 offsets.
+void champ_setup(void) {
+  for(uint16_t i = 0; i < 22; i++) wr8((uint16_t)(0x1B00 + i), rom8(0x81BF2A + i));
+  dma_hdma_setup(1, 0x02, 0x10, 0x811B00);
+  dma_hdma_set_indirect_bank(1, 0x81);
+  video_hdma_enable(0x02);
+  wr16(0x01F2, 0);
+  wr16(0x02F2, 0x000C);
+}
+
+// TG3000_ROUTINE($80:BE44) champ_setup_fresh
+// As champ_setup, and both tasks' records cleared ($013E-$014F, $0112-$013B and theirs at
+// $02xx).
+void champ_setup_fresh(void) {
+  champ_setup();
+  static const uint16_t cleared[] = {0x013E, 0x0140, 0x0142, 0x0144, 0x0146, 0x023E, 0x0240, 0x0242, 0x0244,
+                                     0x0246, 0x0148, 0x014A, 0x014C, 0x014E, 0x0248, 0x024A, 0x024C, 0x024E};
+  for(unsigned i = 0; i < sizeof cleared / sizeof cleared[0]; i++) wr16(cleared[i], 0);
+  for(uint16_t x = 0x002A; x != 0; x = (uint16_t)(x - 2)) {
+    wr16((uint16_t)(0x0112 + x), 0);
+    wr16((uint16_t)(0x0212 + x), 0);
+  }
+}
+
+// TG3000_ROUTINE($80:BF0F) champ_records
+// After split_screen_setup: the car's record by D+$92 ($81:8B2C). These parts run in both
+// players' tasks (`dp`: the task's D).
+void champ_records(uint16_t dp) {
+  const uint32_t rec = 0x818B2C + (uint32_t)rd16((uint16_t)(dp + 0x92));
+  wr16((uint16_t)(dp + 0xB8), rom16(rec));
+  wr16((uint16_t)(dp + 0xB4), rom16(rec + 3));
+  wr16((uint16_t)(dp + 0xB6), rom16(rec + 5));
+  wr16((uint16_t)(dp + 0x5C), rom16(rec + 7));
+  wr8((uint16_t)(dp + 0xAD), rom8(rec + 2));
+}
+
+// TG3000_ROUTINE($80:BF82) champ_load
+// After the queued uploads: two graphics to $7F (D+$5E + $800, + $1000), the rows copied, the
+// bar's block, the queue set for $800 bytes from $7F:(D+$5E + $800) to D+$5C + $400, and $800
+// bytes at $7F:(D+$5E) cleared (a word, then an overlapping MVN).
+void champ_load(uint16_t dp) {
+  uint16_t end;
+  decompress_near(dp, 0x92, 0x8000, 0x7F, (uint16_t)(rd16((uint16_t)(dp + 0x5E)) + 0x0800), &end);
+  decompress_near(dp, 0x87, 0x8404, 0x7F, (uint16_t)(rd16((uint16_t)(dp + 0x5E)) + 0x1000), &end);
+  uint16_t x = (uint16_t)(rd16((uint16_t)(dp + 0x5E)) + 0x1000), y = (uint16_t)(rd16((uint16_t)(dp + 0x5E)) + 0x08C4);
+  rows_7f_copy8(&x, &y);
+  block_c4_build(dp);
+  wr16((uint16_t)(dp + 0x6A), (uint16_t)(rd16((uint16_t)(dp + 0x5C)) + 0x0400));
+  wr16((uint16_t)(dp + 0x66), (uint16_t)(rd16((uint16_t)(dp + 0x5E)) + 0x0800));
+  wr16((uint16_t)(dp + 0x68), 0x007F);
+  wr16((uint16_t)(dp + 0x64), 0x0800);
+  const uint16_t at = rd16((uint16_t)(dp + 0x5E));
+  wr16(0x7F0000 + (uint32_t)at, 0);
+  for(uint16_t i = 0; i < 0x07FE; i++) wr8(0x7F0000 + (uint32_t)(uint16_t)(at + 2 + i), rd8(0x7F0000 + (uint32_t)(uint16_t)(at + i)));
+}
+
+// TG3000_ROUTINE($80:BFED) champ_queue_map
+// The cleared $7F map queued for VRAM D+$5C ($800 bytes).
+void champ_queue_map(uint16_t dp) {
+  wr16((uint16_t)(dp + 0x6A), rd16((uint16_t)(dp + 0x5C)));
+  wr16((uint16_t)(dp + 0x66), rd16((uint16_t)(dp + 0x5E)));
+  wr16((uint16_t)(dp + 0x68), 0x007F);
+  wr16((uint16_t)(dp + 0x64), 0x0800);
+}
+
+// TG3000_ROUTINE($80:C003) champ_panel
+// The menu's words (D+$9E, $18 = $27; D+$16 = 0; D+$1A = $10) and its panel ($200 bytes from
+// D+$5E + $81:BDF8's to D+$5C + $60).
+void champ_panel(uint16_t dp) {
+  wr16((uint16_t)(dp + 0x9E), 0x0027);
+  wr16((uint16_t)(dp + 0x18), 0x0027);
+  wr16((uint16_t)(dp + 0x16), 0);
+  wr16((uint16_t)(dp + 0x1A), 0x0010);
+  wr16((uint16_t)(dp + 0x14), 0x007F);
+  func_80B537(dp, 0x0200, (uint16_t)(rd16((uint16_t)(dp + 0x5E)) + rom16(0x81BDF8)), (uint16_t)(rd16((uint16_t)(dp + 0x5C)) + 0x0060));
+  wr16((uint16_t)(dp + 0xBC), 0x0013);
+}
+
+// TG3000_ROUTINE($80:C039) champ_fade_in
+void champ_fade_in(uint16_t dp) {
+  wr16((uint16_t)(dp + 0x98), 0x0F00);
+  wr16((uint16_t)(dp + 0x96), 0x0100);
+}

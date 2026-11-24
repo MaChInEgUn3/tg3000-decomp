@@ -3005,6 +3005,28 @@ password screen, a skipped track's bonus.
   passes.
 - **Check:** full gate (`difftest.c` changed). The narrowing can turn an old lagged failure
   into a hard one; the full run says.
+- **Result:** no old row changed.
+
+## The championship screen's setup (menu-16, 2026-11-24)
+
+- **`$80:BE32`, the championship menu screen** (entered at `$80:BE32`, or at `$80:BEC6`
+  without the records cleared), has nine rows for its setup, between its waits and its five
+  queued uploads (`queue_unpacked_upload` is a waiting row of its own). In `src/misc.c`:
+  - **the start**, on both entries: the image;
+  - **the setup** (`champ_setup`, and `champ_setup_fresh` with the clears): the window's HDMA
+    list and channel, the tasks' offsets;
+  - **from the records on, run by both players' tasks** (D = `$0100` and `$0200`, `dp`):
+    - the records;
+    - the load: two graphics, the rows, the bar's block, the queue, `$800` bytes cleared by an
+      overlapping MVN;
+    - the map's queue;
+    - the panel;
+    - the fade in.
+- **Left for later:** the screen's frame loop from `$80:C053` (rng_next and its menus). Its
+  exits jump into the race choice (`$80:D16C`, `$80:D17C`).
+- **Results:** on the 60k movie, 4 fresh starts, 1 other, and 10 samples (both tasks) of
+  each shared part. The menus' and password movies also pass.
+- **Check:** incremental gate.
 
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 

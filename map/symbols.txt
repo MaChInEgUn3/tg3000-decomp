@@ -399,6 +399,15 @@ func    80BC9B   irq_menu_frame      ; the second task's raster-IRQ frame: its r
 func    80B97B   nmi_menu_frame      ; the menus' NMI frame: rings, registers, palette, sprites, IRQ (to the task switch) -> src/frame.c
 func    80B94F   empty_80B94F        ; a lone RTS (the shop's idle frame hook) -> src/misc.c
 func    80855A   sprite_number_point ; a 4-digit value as sprites, a point before the last two -> src/text.c
+func    80BE32   champ_begin         ; the championship screen: fade cleared, its image (also $80:BEC6) -> src/misc.c
+func    80BEC6   champ_begin_2       ; the championship screen, second entry (champ_begin) -> src/misc.c
+func    80BE44   champ_setup_fresh   ; the championship screen: HDMA list, offsets, both records cleared -> src/misc.c
+func    80BED8   champ_setup         ; the championship screen: HDMA list and channel, offsets -> src/misc.c
+func    80BF0F   champ_records       ; the championship screen: the car's record -> src/misc.c
+func    80BF82   champ_load          ; the championship screen: graphics, rows, block, queue, map cleared -> src/misc.c
+func    80BFED   champ_queue_map     ; the championship screen: the map queued for VRAM -> src/misc.c
+func    80C003   champ_panel         ; the championship screen: menu words, its panel -> src/misc.c
+func    80C039   champ_fade_in       ; the championship screen: the fade in -> src/misc.c
 func    80C475   sprite_bar8         ; a bar of 8 sprites, D+$14 wide, centred on D+$18 -> src/text.c
 func    80C6D4   name_entry_open     ; the name entry: window opening, graphics, rows -> src/misc.c
 func    80C717   name_entry_lines    ; the name entry: D+$14 for the first panel -> src/misc.c
