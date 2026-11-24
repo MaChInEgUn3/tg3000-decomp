@@ -5401,6 +5401,10 @@ static void call_menu_bar_lines(const Regs* in, Regs* out) {
   out->c = step >> 15;
 }
 static void call_menu_bar_open_step(const Regs* in, Regs* out) { (void)out; menu_bar_open_step(in->d); }
+static void call_menu_bar_close_step(const Regs* in, Regs* out) { (void)out; menu_bar_close_step(in->d); }
+static void call_menu_bar_open_colours_step(const Regs* in, Regs* out) { (void)out; menu_bar_open_colours_step(in->d); }
+static void call_menu_bar_open_controls_step(const Regs* in, Regs* out) { (void)in; (void)out; menu_bar_open_controls_step(); }
+static void call_menu_bar_open_panel_step(const Regs* in, Regs* out) { (void)in; (void)out; menu_bar_open_panel_step(); }
 static void call_menu_bar_lines_end(const Regs* in, Regs* out) {
   const uint16_t first = (uint16_t)(0xFFFF - rd16((uint16_t)(in->d + 0xE8)));
   out->a = menu_bar_lines_end(in->d);
@@ -10905,12 +10909,23 @@ const Routine routines[] = {
    .call = call_menu_controls_sprites, .holes = {{0x80CDAF, 0x80CDB4}, {0x80CDBD, 0x80CDC0}}},  // D+$7A past its target
   {.name = "menu_bit_word", .entry = 0x80CE7F, .end = 0x80CE91, .source = "src/misc.c", .needM16 = true, .needX16 = true,
    .call = call_menu_bit_word, ALL_OUTPUTS, .fuzz = fuzz_menu_bit_word},
-  // the menu bar's line window (steps 2-5 never run or call routines not ported)
+  // the menu bar's line window: the dispatch, its six steps (step 0 is the end alone)
   {.name = "menu_bar_lines", .entry = 0x80C5E0, .end = 0x80C633, .endAt = 0x80C633, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .compareA = true, .compareX = true, .call = call_menu_bar_lines},
   {.name = "menu_bar_open_step", .entry = 0x80C642, .end = 0x80C651, .endAt = 0x80C6B9, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_menu_bar_open_step,
    .alsoIn = {{0x80C6B7, 0x80C6B9}}},  // (the STZ of D+$4E)
+  {.name = "menu_bar_close_step", .entry = 0x80C651, .end = 0x80C65D, .endAt = 0x80C6B9, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_menu_bar_close_step, .alsoIn = {{0x80C6B7, 0x80C6B9}}},
+  {.name = "menu_bar_open_colours_step", .entry = 0x80C65D, .end = 0x80C68D, .endAt = 0x80C6B9, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_menu_bar_open_colours_step,
+   .alsoIn = {{0x80C6B7, 0x80C6B9}}},
+  {.name = "menu_bar_open_controls_step", .entry = 0x80C68D, .end = 0x80C6A2, .endAt = 0x80C6B9, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_menu_bar_open_controls_step,
+   .alsoIn = {{0x80C6B7, 0x80C6B9}}},
+  {.name = "menu_bar_open_panel_step", .entry = 0x80C6A2, .end = 0x80C6B7, .endAt = 0x80C6B9, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_menu_bar_open_panel_step,
+   .alsoIn = {{0x80C6B7, 0x80C6B9}}},
   {.name = "menu_bar_lines_end", .entry = 0x80C6B9, .end = 0x80C6D4, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .compareA = true, .call = call_menu_bar_lines_end},
   // the shop's main screen in parts (its frame loop and waits are not rows yet)

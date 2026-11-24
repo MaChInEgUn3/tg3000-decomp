@@ -1593,9 +1593,14 @@ void results_screen_run_close(void);
 
 // The menu bar's line window ($80:C5E0, either player's D): its middle lines up to the
 // dispatch by D+$4E (returns D+$4E * 2), step 1 ($80:C642, opening) and the end every step
-// shares ($80:C6B9; returns its last word). Steps 2-5 are not rows.
+// shares ($80:C6B9; returns its last word); steps 2 ($80:C651, closing) and 3-5 (opening
+// with the colours, $80:C65D; the controls, $80:C68D; the panel, $80:C6A2).
 uint16_t menu_bar_lines(uint16_t dp);
 void menu_bar_open_step(uint16_t dp);
+void menu_bar_close_step(uint16_t dp);
+void menu_bar_open_colours_step(uint16_t dp);
+void menu_bar_open_controls_step(void);
+void menu_bar_open_panel_step(void);
 uint16_t menu_bar_lines_end(uint16_t dp);
 
 // $80:CE7F: the word of $80:CE96 for the lowest set bit of `bits`.

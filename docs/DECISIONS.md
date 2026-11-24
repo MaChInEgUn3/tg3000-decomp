@@ -2835,6 +2835,21 @@ password screen, a skipped track's bonus.
 - **Results:** on the menus' movie, 179 of 474 entries sampled.
 - **Check:** incremental gate.
 
+## The menu bar's other steps (menu-8, 2026-11-24)
+
+- **Steps 2-5 of the menu bar's window are rows now**, since the menus' movie runs them and
+  their callees are ported:
+  - 2 (`$80:C651`): closing;
+  - 3 (`$80:C65D`): opening with four colour words by the height;
+  - 4 (`$80:C68D`): opening with `menu_controls_sprites`;
+  - 5 (`$80:C6A2`): opening with `menu_panel_sprites`.
+- **Each ends at the shared end** (`endAt $80:C6B9`, its flags dead after the cut, by
+  harness-17), with the STZ of D+$4E at `$80:C6B7` as `alsoIn`.
+- **Results:** 93, 18, 33 and 39 samples, all paths. `menu_bar_lines` itself now has 1,885
+  on the menus' movie.
+- **Check:** full gate. Two comments that said steps 2-5 were not rows changed, so the change
+  is not additions only.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

@@ -7894,6 +7894,51 @@ void menu_bar_open_step(uint16_t dp) {
   else wr16((uint16_t)(dp + 0x4C), (uint16_t)(rd16((uint16_t)(dp + 0x4C)) + 4));
 }
 
+// TG3000_ROUTINE($80:C651) menu_bar_close_step
+// Step 2: the window closes by 4 lines a frame; at 0, the step back to 0.
+void menu_bar_close_step(uint16_t dp) {
+  if(rd16((uint16_t)(dp + 0x4C)) == 0) wr16((uint16_t)(dp + 0x4E), 0);
+  else wr16((uint16_t)(dp + 0x4C), (uint16_t)(rd16((uint16_t)(dp + 0x4C)) - 4));
+}
+
+// Steps 3-5 open the window by 4 lines a frame (at $20, the step back to 0) and draw into it.
+static bool menu_bar_open_more(uint16_t dp) {
+  if(rd16((uint16_t)(dp + 0x4C)) == 0x0020) {
+    wr16((uint16_t)(dp + 0x4E), 0);
+    return false;
+  }
+  wr16((uint16_t)(dp + 0x4C), (uint16_t)(rd16((uint16_t)(dp + 0x4C)) + 4));
+  return true;
+}
+
+// TG3000_ROUTINE($80:C65D) menu_bar_open_colours_step
+// Step 3: with the window's four colour words at D+$C4 + $18 by its height ($81:C0DC...).
+void menu_bar_open_colours_step(uint16_t dp) {
+  if(!menu_bar_open_more(dp)) return;
+  const uint32_t k = (uint32_t)((rd16((uint16_t)(dp + 0x4C)) >> 1) & 0xFFFE);
+  const uint16_t c4 = rd16((uint16_t)(dp + 0xC4));
+  wr16((uint16_t)(c4 + 0x0018), rom16(0x81C0DC + k));
+  wr16((uint16_t)(c4 + 0x001A), rom16(0x81C0EE + k));
+  wr16((uint16_t)(c4 + 0x001C), rom16(0x81C100 + k));
+  wr16((uint16_t)(c4 + 0x001E), rom16(0x81C112 + k));
+}
+
+// TG3000_ROUTINE($80:C68D) menu_bar_open_controls_step
+// Step 4: with the controls menu's sprites.
+void menu_bar_open_controls_step(void) {
+  if(!menu_bar_open_more(DP)) return;
+  menu_controls_sprites();
+  oam_finish_near(DP);
+}
+
+// TG3000_ROUTINE($80:C6A2) menu_bar_open_panel_step
+// Step 5: with the menu panel's sprites.
+void menu_bar_open_panel_step(void) {
+  if(!menu_bar_open_more(DP)) return;
+  menu_panel_sprites();
+  oam_finish_near(DP);
+}
+
 // TG3000_ROUTINE($80:C6B9) menu_bar_lines_end
 // Every step's end (step 0 is it alone): the window's first lines, $1B00-$1B02 + D+$F2.
 // Returns the last word written ($FFFF - D+$E8 - D+$4C).

@@ -407,6 +407,10 @@ func    80CCE1   menu_controls_sprites ; the controls menu's sprites: frame, ste
 func    80CE7F   menu_bit_word       ; the word of $80:CE96 for A's lowest set bit -> src/misc.c
 func    80C5E0   menu_bar_lines      ; the menu bar's line window: middle lines, then the step by D+$4E -> src/misc.c
 func    80C642   menu_bar_open_step  ; the menu bar's window opening by 4 lines a frame -> src/misc.c
+func    80C651   menu_bar_close_step ; the menu bar's window closing by 4 lines a frame -> src/misc.c
+func    80C65D   menu_bar_open_colours_step ; opening, with the window's colour words -> src/misc.c
+func    80C68D   menu_bar_open_controls_step ; opening, with the controls menu's sprites -> src/misc.c
+func    80C6A2   menu_bar_open_panel_step ; opening, with the menu panel's sprites -> src/misc.c
 func    80C6B9   menu_bar_lines_end  ; the menu bar's window: its first lines -> src/misc.c
 func    82DA46   clc_82DA46          ; CLC, RTS -> src/misc.c
 func    83FA32   clc_83FA32          ; CLC, RTS -> src/misc.c

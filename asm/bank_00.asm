@@ -7914,12 +7914,14 @@ menu_bar_open_step:
     adc.w #$0004                ; $80C64A
     sta.b $4C                   ; $80C64D
     bra menu_bar_lines_end      ; $80C64F
+menu_bar_close_step:
     lda.b $4C                   ; $80C651
     beq CODE_80C6B7             ; $80C653
     sec                         ; $80C655
     sbc.w #$0004                ; $80C656
     sta.b $4C                   ; $80C659
     bra menu_bar_lines_end      ; $80C65B
+menu_bar_open_colours_step:
     lda.b $4C                   ; $80C65D
     cmp.w #$0020                ; $80C65F
     beq CODE_80C6B7             ; $80C662
@@ -7940,6 +7942,7 @@ menu_bar_open_step:
     lda.w $C112,x               ; $80C685
     sta.w $001E,y               ; $80C688
     bra menu_bar_lines_end      ; $80C68B
+menu_bar_open_controls_step:
     lda.b $4C                   ; $80C68D
     cmp.w #$0020                ; $80C68F
     beq CODE_80C6B7             ; $80C692
@@ -7949,6 +7952,7 @@ menu_bar_open_step:
     jsr.w menu_controls_sprites ; $80C69A
     jsr.w oam_finish_near       ; $80C69D
     bra menu_bar_lines_end      ; $80C6A0
+menu_bar_open_panel_step:
     lda.b $4C                   ; $80C6A2
     cmp.w #$0020                ; $80C6A4
     beq CODE_80C6B7             ; $80C6A7
