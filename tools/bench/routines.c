@@ -5431,6 +5431,58 @@ static void call_menu_controls_frame(const Regs* in, Regs* out) {
   }
 }
 
+// the name entry's parts, as the controls menu's: the opening (its PHA above the cut, X Y C V
+// rows_7f_copy8's); the lines (A = X = D+$5E + $2000); the setup ends at the text poll (A =
+// $0100: its 8-bit LDA of the name's end under the $01 of $018C; X = D+$40, Y = D+$42; Z set,
+// C V oam_finish_near's); the ready part on LDA #$20 (Y = D+$C4); the frame at the key
+// handler's test (A = D+$4A, X = the key * 2, Y = D+$C4); the drawing at the loop's wait
+static void call_name_entry_open(const Regs* in, Regs* out) {
+  uint16_t x, y;
+  const uint16_t len = name_entry_open(&x, &y);
+  wr16((uint16_t)(in->sp - 1), len);
+  out->x = x;
+  out->y = y;
+  out->a = 0xFFFF;
+  Regs t;
+  setAdc16(&t, (uint16_t)(y - 0x38 - 8), 0x0008);
+  out->c = t.c;
+  out->v = t.v;
+  out->n = (in->db & 0x80) != 0;
+  out->z = in->db == 0;
+}
+static void call_name_entry_lines(const Regs* in, Regs* out) {
+  (void)in;
+  name_entry_lines();
+  out->a = out->x = (uint16_t)(rd16(DP + 0x5E) + 0x2000);
+  out->y = (uint16_t)(rd16(DP + 0x5C) + 0x1200);
+  setNZ16(out, out->x);
+  setAdc16(out, rd16(DP + 0x5E), 0x2000);
+}
+static void call_name_entry_setup(const Regs* in, Regs* out) {
+  name_entry_setup(in->a);
+  out->a = 0x0100;
+  out->x = rd16(DP + 0x40);
+  out->y = rd16(DP + 0x42);
+  out->n = false;
+  out->z = true;
+  setSbc16(out, rd16(DP + 0x6C), 0x0900);
+}
+static void call_name_entry_ready(const Regs* in, Regs* out) {
+  (void)in;
+  name_entry_ready();
+  out->a = 0x0020;
+  out->y = rd16(DP + 0xC4);
+  out->n = out->z = false;
+}
+static void call_name_entry_frame(const Regs* in, Regs* out) {
+  (void)in;
+  name_entry_frame();
+  out->a = rd16(DP + 0x4A);
+  out->x = (uint16_t)(rd16(DP + 0x48) << 1);
+  out->y = rd16(DP + 0xC4);
+}
+static void call_name_entry_draw(const Regs* in, Regs* out) { (void)in; (void)out; name_entry_draw(); }
+
 // menu_controls_sprites returns after the last colour's LDA (A, N Z of it), X its index
 // (D+$4C / 2, even: C its LSR's), Y = D+$C4
 static void call_menu_controls_sprites(const Regs* in, Regs* out) {
@@ -10981,6 +11033,25 @@ const Routine routines[] = {
   {.name = "menu_button_assign", .entry = 0x80CC7E, .end = 0x80CCE1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .mayLeaveCaller = true, .compareA = true, .compareY = true,
    .call = call_menu_button_assign, .holes = {{0x80CC93, 0x80CC94}, {0x80CCD5, 0x80CCDA}}},
+  {.name = "name_entry_open", .entry = 0x80C6D4, .end = 0x80C713, .endAt = 0x80C713, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_name_entry_open},
+  {.name = "name_entry_lines", .entry = 0x80C717, .end = 0x80C72A, .endAt = 0x80C72A, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_name_entry_lines},
+  {.name = "name_entry_setup", .entry = 0x80C72B, .end = 0x80C7A8, .endAt = 0x80C7A8, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_name_entry_setup},
+  {.name = "name_entry_ready", .entry = 0x80C7AE, .end = 0x80C7E2, .endAt = 0x80C7E2, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareY = true,
+   .call = call_name_entry_ready},
+  {.name = "name_entry_frame", .entry = 0x80C7E8, .end = 0x80C972, .endAt = 0x80C972, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
+   .call = call_name_entry_frame, .holes = {{0x80C8BD, 0x80C8BF}, {0x80C8C8, 0x80C8CD}, {0x80C8F7, 0x80C91B}, {0x80C95D, 0x80C970}}},
+   // (left past the wide keys; right from the last rows' keys: never pressed in the movie; the
+   // height's two clamps, one hole with the +2 step between them, for the four-hole limit)
+  {.name = "name_entry_draw", .entry = 0x80C97C, .end = 0x80C9A6, .endAt = 0x80C7E2, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_name_entry_draw},
   {.name = "menu_controls_open", .entry = 0x80CB4A, .end = 0x80CB89, .endAt = 0x80CB89, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
    .call = call_menu_controls_open},

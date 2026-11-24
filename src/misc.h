@@ -1634,4 +1634,14 @@ void menu_controls_lines(void);
 void menu_controls_setup(uint16_t len);
 bool menu_controls_frame(void);
 
+// The name entry ($80:C6D4) in parts: its opening (returns the length the setup uses),
+// lines ($80:C717), setup ($80:C72B), ready ($80:C7AE), frame ($80:C7E8: the cursor on the
+// key grid) and drawing ($80:C97C).
+uint16_t name_entry_open(uint16_t* x, uint16_t* y);
+void name_entry_lines(void);
+void name_entry_setup(uint16_t len);
+void name_entry_ready(void);
+void name_entry_frame(void);
+void name_entry_draw(void);
+
 #endif

@@ -578,3 +578,9 @@
 80CB8D menu_controls_lines src/misc.c d9466938b4cea1cd 4 0 16/16 verified live-flags:- replayed:0
 80CBB0 menu_controls_setup src/misc.c d9466938b4cea1cd 4 0 55/55 verified live-flags:V replayed:0
 80CC45 menu_controls_frame src/misc.c d9466938b4cea1cd 169 0 19/19 verified live-flags:- replayed:0
+80C6D4 name_entry_open src/misc.c 936a5857500b71d9 0 0 29/29 verified live-flags:VC replayed:2
+80C717 name_entry_lines src/misc.c 936a5857500b71d9 2 0 10/10 verified live-flags:- replayed:0
+80C72B name_entry_setup src/misc.c 936a5857500b71d9 2 0 54/54 verified live-flags:V replayed:0
+80C7AE name_entry_ready src/misc.c 936a5857500b71d9 2 0 20/20 verified live-flags:- replayed:0
+80C7E8 name_entry_frame src/misc.c 936a5857500b71d9 204 0 148/148 verified live-flags:- replayed:0
+80C97C name_entry_draw src/misc.c 936a5857500b71d9 204 0 20/20 verified live-flags:- replayed:0

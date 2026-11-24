@@ -2892,6 +2892,27 @@ password screen, a skipped track's bonus.
   setup, 169 frames.
 - **Check:** incremental gate.
 
+## The name entry's parts (menu-11, 2026-11-24)
+
+- **The name entry (`$80:C6D4`, the menu's first choice) has six rows**, cut as the controls
+  menu's (in `src/misc.c`):
+  - the opening (its PHA above the cut);
+  - the lines;
+  - the setup (two panels, the palette by MVN, the cursor on END, the name's end in
+    D+$40/D+$42);
+  - the ready part;
+  - the frame, in two around the key handler. `name_entry_key` is a waiting row, and a row
+    around it would hide its samples:
+    - `name_entry_frame` ($80:C7E8): the colours, the cursor's blink, the cursor on the
+      13-wide key grid with the pad's repeats, the frame stepped toward the key;
+    - `name_entry_draw` ($80:C97C): the sprites and the name.
+- **Holes:** left past the wide keys, right from the last rows' keys, and the height's
+  clamps. The last is one hole with the +2 step between the clamps, because of the
+  four-hole limit.
+- **Results:** on the menus' movie: the opening by replays; 2, 2 and 2 for the setups; 204
+  frames each for the frame halves.
+- **Check:** incremental gate.
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

@@ -7979,6 +7979,7 @@ menu_bar_lines_end:
     sbc.b $4C                   ; $80C6CE
     sta.w $1B01,x               ; $80C6D0
     rts                         ; $80C6D3
+name_entry_open:
     stz.b $4C                   ; $80C6D4
     lda.w #$0001                ; $80C6D6
     sta.b $4E                   ; $80C6D9
@@ -8011,6 +8012,7 @@ menu_bar_lines_end:
 CODE_80C713:
     lda.b $4E                   ; $80C713
     bne CODE_80C713             ; $80C715
+name_entry_lines:
     lda.w #$007F                ; $80C717
     sta.b $14                   ; $80C71A
     lda.b $5C                   ; $80C71C
@@ -8022,6 +8024,7 @@ CODE_80C713:
     adc.w #$2000                ; $80C726
     tax                         ; $80C729
     pla                         ; $80C72A
+name_entry_setup:
     jsr.w func_80B537           ; $80C72B
     lda.w #$007F                ; $80C72E
     sta.b $14                   ; $80C731
@@ -8082,6 +8085,7 @@ CODE_80C7A2:
 CODE_80C7AA:
     cmp.b $8E                   ; $80C7AA
     bne CODE_80C7AA             ; $80C7AC
+name_entry_ready:
     lda.w #$0002                ; $80C7AE
     sta.b $4E                   ; $80C7B1
     lda.w #$0001                ; $80C7B3
@@ -8104,6 +8108,7 @@ CODE_80C7AA:
     sta.b $44                   ; $80C7E0
     lda.w #$0001                ; $80C7E2
     jsr.w wait_frames           ; $80C7E5
+name_entry_frame:
     lda.b $4C                   ; $80C7E8
     lsr a                       ; $80C7EA
     and.w #$FFFE                ; $80C7EB
@@ -8305,9 +8310,9 @@ CODE_80C970:
 CODE_80C972:
     lda.w #$C0C0                ; $80C972
     trb.b $0E                   ; $80C975
-    beq CODE_80C97C             ; $80C977
+    beq name_entry_draw         ; $80C977
     jsr.w name_entry_key        ; $80C979
-CODE_80C97C:
+name_entry_draw:
     jsr.w menu_frame_sprites    ; $80C97C
     lda.b $4C                   ; $80C97F
     bne CODE_80C9A0             ; $80C981

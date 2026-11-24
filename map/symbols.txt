@@ -400,6 +400,12 @@ func    80B97B   nmi_menu_frame      ; the menus' NMI frame: rings, registers, p
 func    80B94F   empty_80B94F        ; a lone RTS (the shop's idle frame hook) -> src/misc.c
 func    80855A   sprite_number_point ; a 4-digit value as sprites, a point before the last two -> src/text.c
 func    80C475   sprite_bar8         ; a bar of 8 sprites, D+$14 wide, centred on D+$18 -> src/text.c
+func    80C6D4   name_entry_open     ; the name entry: window opening, graphics, rows -> src/misc.c
+func    80C717   name_entry_lines    ; the name entry: D+$14 for the first panel -> src/misc.c
+func    80C72B   name_entry_setup    ; the name entry: panels, palette, cursor on END, the name's end -> src/misc.c
+func    80C7AE   name_entry_ready    ; the name entry: bar step 2, repeats cleared, colours, blink -> src/misc.c
+func    80C7E8   name_entry_frame    ; the name entry frame: colours, blink, cursor on the key grid -> src/misc.c
+func    80C97C   name_entry_draw     ; the name entry frame's end: sprites and the name -> src/misc.c
 func    80C9A6   name_entry_key      ; the name entry's key: a letter, a delete, or the end (leaves) -> src/misc.c
 func    80CA97   menu_frame_sprites  ; a menu frame's corner and edge sprites, then a group -> src/misc.c
 func    80D026   menu_panel_sprites  ; a menu panel: two groups, colour, steps toward targets, frame -> src/misc.c

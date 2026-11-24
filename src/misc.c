@@ -8334,3 +8334,183 @@ bool menu_controls_frame(void) {
   oam_finish_near(DP);
   return false;
 }
+
+// The name entry ($80:C6D4, the menu's first choice) in parts between its waits, as the
+// controls menu: its opening, its lines, its setups, and its frame in two around the key
+// handler (name_entry_key waits, and a row around it would hide its samples).
+
+// TG3000_ROUTINE($80:C6D4) name_entry_open
+// The window opening, two graphics to $7F, the rows copied; returns the second's length (the
+// original keeps it on the stack). `x`, `y`: rows_7f_copy8's registers after it.
+uint16_t name_entry_open(uint16_t* x, uint16_t* y) {
+  uint16_t end;
+  wr16(DP + 0x4C, 0);
+  wr16(DP + 0x4E, 0x0001);
+  wr16(DP + 0xEC, 0xC5E0);
+  decompress_near(DP, 0x9E, 0x8D11, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x1000), &end);
+  const uint16_t len = decompress_near(DP, 0x8C, 0x8000, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x2000), &end);
+  *x = (uint16_t)(rd16(DP + 0x5E) + 0x1000);
+  *y = (uint16_t)(rd16(DP + 0x5E) + 0x08C4);
+  rows_7f_copy8(x, y);
+  return len;
+}
+
+// TG3000_ROUTINE($80:C717) name_entry_lines
+void name_entry_lines(void) { wr16(DP + 0x14, 0x007F); }
+
+// TG3000_ROUTINE($80:C72B) name_entry_setup
+// Two panels (`len` bytes, $200), the palette's $20 bytes from $96:8000 (MVN into bank $81),
+// the cursor on END ($1F) with the frame's place and size ($81:C054, C096, C0D8), the sprites,
+// four colour words; D+$40/D+$42 at the name's end (the cursor, the length).
+void name_entry_setup(uint16_t len) {
+  func_80B537(DP, len, (uint16_t)(rd16(DP + 0x5E) + 0x2000), (uint16_t)(rd16(DP + 0x5C) + 0x1200));
+  wr16(DP + 0x14, 0x007F);
+  func_80B537(DP, 0x0200, (uint16_t)(rd16(DP + 0x5E) + 0x08C4), (uint16_t)(rd16(DP + 0x5C) + 0x0462));
+  wr16(DP + 0xBC, 0x0012);
+  const uint16_t c4 = rd16(DP + 0xC4);
+  for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0020 + i), rom8(0x968000 + i));
+  wr16(DP + 0x48, 0x001F);
+  wr16(DP + 0x7A, rom16(0x81C054));
+  wr16(DP + 0x7C, rom16(0x81C096));
+  wr16(DP + 0x4A, rom16(0x81C0D8));
+  menu_frame_sprites();
+  oam_finish_near(DP);
+  wr16((uint16_t)(c4 + 0x0102), 0x0FFF);
+  wr16((uint16_t)(c4 + 0x0104), 0x018C);
+  wr16((uint16_t)(c4 + 0x0122), 0x0FFF);
+  wr16((uint16_t)(c4 + 0x0124), 0x018C);
+  uint16_t x = rd16(DP + 0x94), n = 0;
+  while(rd8((uint16_t)(0x037E + x)) != 0) {
+    x = (uint16_t)(x + 1);
+    n = (uint16_t)(n + 1);
+  }
+  wr16(DP + 0x40, x);
+  wr16(DP + 0x42, n);
+}
+
+// TG3000_ROUTINE($80:C7AE) name_entry_ready
+// Once the text is typed: the bar's step 2, the key repeats cleared, the colour run from
+// $0E, four colour words, the cursor's blink.
+void name_entry_ready(void) {
+  wr16(DP + 0x4E, 0x0002);
+  wr16(DP + 0x7E, 0);
+  wr16(DP + 0x80, 0);
+  wr16(DP + 0x82, 0);
+  wr16(DP + 0x84, 0);
+  const uint16_t c4 = rd16(DP + 0xC4);
+  wr16(DP + 0x3E, 0x000E);
+  wr16((uint16_t)(c4 + 0x0122), rom16(0x81C132));
+  wr16((uint16_t)(c4 + 0x0124), rom16(0x81C144));
+  wr16((uint16_t)(c4 + 0x0126), rom16(0x81C156));
+  wr16((uint16_t)(c4 + 0x0128), rom16(0x81C120));
+  wr16(DP + 0x44, 0x0020);
+}
+
+// A step of `adr` toward `target` by 2 (no clamp).
+static void name_entry_step(uint16_t adr, uint16_t target) {
+  const uint16_t v = rd16(adr);
+  if(v != target) wr16(adr, (uint16_t)((uint16_t)(v - target) & 0x8000 ? v + 2 : v - 2));
+}
+
+// TG3000_ROUTINE($80:C7E8) name_entry_frame
+// A frame's first part (after its wait): the window's colours by its height; the cursor `_`
+// blinking at D+$40 (D+$44 counting); once open, the colour run; the cursor on the 13-wide
+// key grid moved by the pad's up/down/left/right with their repeats (D+$7E, $80, $82, $84);
+// the frame's place and height stepped toward the key's ($81:C016, C058, C09A).
+void name_entry_frame(void) {
+  const uint16_t c4 = rd16(DP + 0xC4);
+  uint32_t k = (uint32_t)((rd16(DP + 0x4C) >> 1) & 0xFFFE);
+  wr16((uint16_t)(c4 + 0x0018), rom16(0x81C0DC + k));
+  wr16((uint16_t)(c4 + 0x001A), rom16(0x81C0EE + k));
+  wr16((uint16_t)(c4 + 0x001C), rom16(0x81C100 + k));
+  wr16((uint16_t)(c4 + 0x001E), rom16(0x81C112 + k));
+  wr16(DP + 0x44, (uint16_t)(rd16(DP + 0x44) - 1));
+  if(rd16(DP + 0x44) == 0xFFE0) wr16(DP + 0x44, 0x0020);
+  wr8((uint16_t)(0x037E + rd16(DP + 0x40)), (rd16(DP + 0x44) & 0x8000) ? 0x00 : 0x5F);
+  if(rd16(DP + 0x4C) == 0 && !(rd16(DP + 0x3E) & 0x8000)) {
+    k = rd16(DP + 0x3E);
+    wr16((uint16_t)(c4 + 0x0122), rom16(0x81C124 + k));
+    wr16((uint16_t)(c4 + 0x0124), rom16(0x81C136 + k));
+    wr16((uint16_t)(c4 + 0x0126), rom16(0x81C148 + k));
+    wr16((uint16_t)(c4 + 0x0128), rom16(0x81C112 + k));
+    wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) - 2));
+  }
+  const uint16_t pad = rd16(DP + 0x0C);
+  // up: a row back (13 keys)
+  bool look = true;
+  if(rd16(DP + 0x7E) != 0) {
+    wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x7E) - 1));
+    look = rd16(DP + 0x7E) == 0;
+  }
+  if(look && (pad & 0x0800) && rd16(DP + 0x48) >= 0x000D) {
+    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) - 0x000D));
+    wr16(DP + 0x7E, (uint16_t)(8 - rd16(DP + 0x80)));
+    wr16(DP + 0x80, 0);
+  }
+  // down
+  look = true;
+  if(rd16(DP + 0x80) != 0) {
+    wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) - 1));
+    look = rd16(DP + 0x80) == 0;
+  }
+  if(look && (pad & 0x0400) && rd16(DP + 0x48) < 0x0014) {
+    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) + 0x000D));
+    wr16(DP + 0x80, (uint16_t)(8 - rd16(DP + 0x7E)));
+    wr16(DP + 0x7E, 0);
+  }
+  // left: not past a row's first key; the wide keys ($1E, $20: never run) step two
+  look = true;
+  if(rd16(DP + 0x82) != 0) {
+    wr16(DP + 0x82, (uint16_t)(rd16(DP + 0x82) - 1));
+    look = rd16(DP + 0x82) == 0;
+  }
+  if(look && (pad & 0x0200)) {
+    const uint16_t key = rd16(DP + 0x48);
+    if(key != 0 && key != 0x000D && key != 0x001A) {
+      wr16(DP + 0x48, (uint16_t)(key - ((key == 0x001E || key == 0x0020) ? 2 : 1)));
+      wr16(DP + 0x82, (uint16_t)((rd16(DP + 0x48) == 0x001E ? 0x0010 : 0x0008) - rd16(DP + 0x84)));
+      wr16(DP + 0x84, 0);
+    }
+  }
+  // right: not past a row's last key; the wide key $1D (never run) steps two
+  look = true;
+  if(rd16(DP + 0x84) != 0) {
+    wr16(DP + 0x84, (uint16_t)(rd16(DP + 0x84) - 1));
+    look = rd16(DP + 0x84) == 0;
+  }
+  if(look && (pad & 0x0100)) {
+    const uint16_t key = rd16(DP + 0x48);
+    if(key != 0x000C && key != 0x0019 && key != 0x001F && key != 0x0020) {
+      wr16(DP + 0x48, (uint16_t)(key + (key == 0x001D ? 2 : 1)));
+      wr16(DP + 0x84, (uint16_t)((rd16(DP + 0x48) == 0x001F ? 0x0010 : 0x0008) - rd16(DP + 0x82)));
+      wr16(DP + 0x82, 0);
+    }
+  }
+  const uint32_t line = (uint32_t)(rd16(DP + 0x48) << 1);
+  name_entry_step(DP + 0x7A, rom16(0x81C016 + line));
+  name_entry_step(DP + 0x7C, rom16(0x81C058 + line));
+  const uint16_t h = rd16(DP + 0x4A), target = rom16(0x81C09A + line);
+  if(h != target) {
+    uint16_t v;
+    if((uint16_t)(h - target) & 0x8000) {
+      v = (uint16_t)(h + 2);
+      if(!((uint16_t)(v - target) & 0x8000)) v = target;
+    } else {
+      v = (uint16_t)(h - 2);
+      if((uint16_t)(v - target) & 0x8000) v = target;
+    }
+    wr16(DP + 0x4A, v);
+  }
+}
+
+// TG3000_ROUTINE($80:C97C) name_entry_draw
+// The frame's end: its sprites, and once open the name (sprite_text_menu at $037E + D+$94).
+void name_entry_draw(void) {
+  menu_frame_sprites();
+  if(rd16(DP + 0x4C) == 0) {
+    const uint16_t at = (uint16_t)(0x495C + rd16(DP + 0xE8) - rd16(DP + 0x4C));
+    wr16(DP + 0x14, 0x3354);
+    sprite_text_menu((uint16_t)(0x037E + rd16(DP + 0x94)), (uint16_t)(at << 8 | at >> 8));
+  }
+  oam_finish_near(DP);
+}
