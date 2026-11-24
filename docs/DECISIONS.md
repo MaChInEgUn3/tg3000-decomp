@@ -3306,6 +3306,32 @@ password screen, a skipped track's bonus.
   `$80:D569-$80:D570`. On its own the row passes, 179/179. The harness fix is harness-24.
 - **Check:** incremental gate (additions only in `src/` and `tools/bench/`).
 
+## Hidden entries rerun alone (harness-24, 2026-11-24)
+
+**The advisor's call, open to the owner's veto.**
+- **The fault:** in a slice of a movie, a waiting row's sample records the interrupts that
+  land in it. A row entered inside one of those handlers is not sampled there; the slice's
+  log says "N entries inside interrupt handlers a waiting sample recorded (not sampled)".
+  Which rows share a slice moves whenever a row is added. So a row can lose, by slice
+  luck, the only entries that reach some of its paths.
+- **The case:** `race_start_frame_draw` lost 610 of its 1,990 entries on the 60k movie and
+  four paths with them. The commit before vs-5 already had the same slice mates, so its own
+  full run would have failed too. The earlier full run passed on the old slice split.
+- **The fix, in `tools/verify_all.sh`:** after the merge, `tools/rerun_hidden.py`:
+  - takes every row the merge failed with no hard failure on any movie (`hard:0` in every
+    movie's results);
+  - finds the movies whose slice logs report hidden entries for it;
+  - runs the row alone over each of those movies, one process each (rows run together
+    could hide each other again);
+  - replaces the slice's line with the solo line, not adds it, so the same returns never
+    count twice toward the 100-watched flag rule.
+  Then the movies merge again. A hard failure anywhere still fails, and the rows rerun are
+  printed.
+- **Not chosen:** reordering rows or changing the slice count (it breaks again at the next
+  row added), and sampling rows inside a recorded interrupt (it rewrites harness-16).
+- **Check:** full gate (the verification script changed; the last full run was 5 commits
+  back).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

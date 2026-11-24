@@ -11,7 +11,9 @@
 # (default 5), two each of the shop, shop-buy and password movies and one of the INFODATA
 # movie, beside the negative rows. A slice still runs its
 # whole movie; a waiting row nested in another one's sample is sampled when the outer row
-# is in another slice, so live counts can differ from a single run.
+# is in another slice, so live counts can differ from a single run. A row that fails after
+# the merge because a waiting row in its slice hid entries from it runs again alone over
+# that movie (tools/rerun_hidden.py, harness-24).
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
@@ -104,6 +106,10 @@ while [ $k -lt $buyshards ]; do tail -n +2 "$tmp/buy$k.txt" >> "$tmp/buy.txt"; k
 head -n 1 "$tmp/pw0.txt" > "$tmp/pw.txt"
 k=0
 while [ $k -lt $pwshards ]; do tail -n +2 "$tmp/pw$k.txt" >> "$tmp/pw.txt"; k=$((k + 1)); done
+python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt"
+# harness-24: a row a slice's waiting row hid entries from (and with no hard failure) runs
+# again alone over that movie, its line replacing the slice's; then the movies merge again
+python3 -I tools/rerun_hidden.py "$tmp" "$rom"
 python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt"
 # the verdict: a routine the merge failed (its per-movie lines show why)
 failed=$(awk '!/^#/ && $8 == "failed" {print $2}' map/verified.txt)
