@@ -3546,6 +3546,39 @@ password screen, a skipped track's bonus.
   paths not reached without fuzz, which the pooling over the movies covers.
 - **Check:** full gate (scripts, adapters and the C changed).
 
+## The glue's first test: a screen whole (glue-1, 2026-11-24)
+
+- **Why:** the 73% are routines verified one by one. The functions that compose them (a
+  screen whole, with its waits) had never run, so they are the first thing a C-only run
+  would exercise. The advisor's call, open to the owner's veto: test them first, smallest
+  first.
+- **How: composed rows.** `tools/bench/routines.c` gets a third table, `composedRoutines[]`,
+  beside the main one and the negative rows. `bench --difftest-composed` runs it.
+  - A composed row is a waiting row (`waitsForInterrupts`, `maxInsns`) whose C is the
+    composition. It encloses its parts' rows and other waiting rows, so it runs apart from
+    the main table's slices, one row per process.
+  - `verify_all.sh` runs each one over the 60k movie with live samples only, and merges it
+    like any row. `progress.py` counts its extent too: the calls between the parts' rows
+    (the JSRs to the waits) are verified by it.
+- **First row: `password_show` (`$8A:BE2E`-`$8A:BF0D`, the player's password shown whole).**
+  - Its C, `password_show()`, runs `password_show_open`, `fade_out_wait`,
+    `password_hdma_off`, the wipes, `password_show_graphics`, `fade_in_start`, the waits,
+    `password_show_text` and `password_show_wait`.
+  - Its one entry on the 60k movie matches the original in WRAM and in every hardware
+    effect. The only difference was the exit carry: it comes from the 8-frame wait's last
+    `CMP` (equal), which nothing after it changes, and is now modelled.
+  - The interrupts are the original's, replayed, so the C's NMI handlers are not
+    exercised. This is not yet "menus only in C".
+- **A composed row shares its first part's entry** (`password_show` and `password_show_open`
+  both start at `$8A:BE2E`). The first full run failed on it: `merge_verified.py` and
+  `progress.py` keyed `map/verified.txt`'s rows by entry, so the two rows' evidence mixed. Rows
+  are now keyed by entry and name.
+- **Next:** `password_entry`, then `vs_screen` (it returns only in the VS race, live-only
+  anyway). `menu_submenu` and `options_screen` come last: `menu_submenu` re-enters itself
+  through `menu_run`, and the harness's handling of a row entered while its own sample is
+  open must be checked first.
+- **Check:** full gate (`difftest.c` and the scripts changed).
+
 ## The main options menu (menu-22, 2026-11-24)
 
 - **`$8A:9E5B` is the options screens' long entry.**

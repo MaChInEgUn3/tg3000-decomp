@@ -13573,3 +13573,20 @@ const Routine negativeRoutines[] = {
    .call = call_irq_split_top_wrong, ALL_OUTPUTS},
 };
 const int negativeRoutineCount = sizeof negativeRoutines / sizeof negativeRoutines[0];
+
+// ---- glue-1: composed routines (bench --difftest-composed, one row per process) ----
+// The player's password shown whole ($8A:BE2E): returns after the NMI handler is put back
+// (A = $0008's value; C set by the 8-frame wait's last CMP, which nothing after it changes).
+static void call_password_show(const Regs* in, Regs* out) {
+  (void)in;
+  password_show();
+  out->a = rd16(0x0008);
+  setNZ16(out, out->a);
+  out->c = true;
+}
+const Routine composedRoutines[] = {
+  {.name = "password_show", .entry = 0x8ABE2E, .end = 0x8ABF0D, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .waitsForInterrupts = true, .maxInsns = 40000000,
+   .manyEffects = true, .call = call_password_show},
+};
+const int composedRoutineCount = sizeof composedRoutines / sizeof composedRoutines[0];

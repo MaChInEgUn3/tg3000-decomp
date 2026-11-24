@@ -457,6 +457,8 @@ int main(int argc, char** argv) {
       difftest_only(argv[++i]);
     } else if(strcmp(argv[i], "--difftest-negative") == 0) {
       difftestNegative = true;
+    } else if(strcmp(argv[i], "--difftest-composed") == 0) {
+      difftest_composed();  // glue-1: the composed rows, apart from the main table
     } else if(strcmp(argv[i], "--fuzz") == 0 && i + 1 < argc) {
       fuzzIterations = atoi(argv[++i]);
     } else if(strcmp(argv[i], "--explore") == 0 && i + 1 < argc) {

@@ -220,19 +220,23 @@ def ported_routines():
 def verified_code_bytes():
     """ROM code bytes (rom_map "code") inside the extents of the routines map/verified.txt
     lists as verified and current: [entry, end) minus holes, from the bench's registry
-    (tools/bench/routines.c, `routines[]` only). Overlapping extents count once."""
+    (tools/bench/routines.c: `routines[]` and the composed rows `composedRoutines[]`, a screen
+    whole, whose extent also covers the calls between its parts). Overlapping extents count
+    once."""
     reg_path = os.path.join(ROOT, "tools", "bench", "routines.c")
     ver_path = os.path.join(ROOT, "map", "verified.txt")
     map_path = os.path.join(ROOT, "map", "rom_map.txt")
     if not (os.path.exists(reg_path) and os.path.exists(ver_path) and os.path.exists(map_path)):
         return 0
-    good = {int(parts[0], 16) for parts, status, _ in verified_rows() if status != "stale"}
-    text = open(reg_path).read()
-    text = text[text.index("const Routine routines[]"):text.index("const int routineCount")]
+    good = {(int(parts[0], 16), parts[1]) for parts, status, _ in verified_rows() if status != "stale"}
+    whole = open(reg_path).read()
+    text = whole[whole.index("const Routine routines[]"):whole.index("const int routineCount")]
+    if "const Routine composedRoutines[]" in whole:
+        text += whole[whole.index("const Routine composedRoutines[]"):whole.index("const int composedRoutineCount")]
     covered = set()
     for row in re.split(r"\n\s*\{\.name = ", text)[1:]:
         m = re.search(r"\.entry = 0x([0-9A-Fa-f]+), \.end = 0x([0-9A-Fa-f]+)", row)
-        if not m or int(m.group(1), 16) not in good:
+        if not m or (int(m.group(1), 16), row.split('"')[1]) not in good:
             continue
         holes = [(int(a, 16), int(b, 16)) for a, b in re.findall(r"\{0x([0-9A-Fa-f]+), 0x([0-9A-Fa-f]+)\}", row)]
         for adr in range(int(m.group(1), 16), int(m.group(2), 16)):
@@ -303,7 +307,7 @@ def lost_rows():
             parts = line.split()
             if line.startswith("#") or len(parts) < 8:
                 continue
-            rows[parts[0]] = (parts[1], parts[7])
+            rows[parts[0] + " " + parts[1]] = (parts[1], parts[7])  # (a composed row shares an entry)
         return rows
     before = verified(head)
     with open(os.path.join(ROOT, "map", "verified.txt")) as f:

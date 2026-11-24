@@ -93,8 +93,9 @@ def read(path):
             parts = line.split()
             if len(parts) < 8:
                 continue
-            rows[parts[0]] = parts
-            order.append(parts[0])
+            key = parts[0] + " " + parts[1]  # (entry, name): a composed row shares its first part's entry
+            rows[key] = parts
+            order.append(key)
     return header, rows, order
 
 

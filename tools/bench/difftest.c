@@ -1717,11 +1717,15 @@ static bool named(const char* list, const char* name) {
   return false;
 }
 
+// glue-1: the composed rows' table instead of the main one (bench --difftest-composed)
+static bool useComposed;
+void difftest_composed(void) { useComposed = true; }
+
 void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
   snes = s;
   g_rom = rom;
-  table = negative ? negativeRoutines : routines;
-  tableCount = negative ? negativeRoutineCount : routineCount;
+  table = negative ? negativeRoutines : useComposed ? composedRoutines : routines;
+  tableCount = negative ? negativeRoutineCount : useComposed ? composedRoutineCount : routineCount;
   if(onlyNames != NULL) {  // the named rows only
     Routine* kept = calloc((size_t)tableCount, sizeof *kept);
     int n = 0;
