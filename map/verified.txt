@@ -692,3 +692,7 @@
 80F549 upload_slice_13 src/video_dma.c 3adaf2bf19ba60c4 1 500 20/20 verified live-flags:NVZC replayed:0
 80F555 upload_slice_14 src/video_dma.c 3adaf2bf19ba60c4 1 500 20/20 verified live-flags:NVZC replayed:0
 80F561 upload_slice_15 src/video_dma.c 3adaf2bf19ba60c4 1 500 20/20 verified live-flags:NVZC replayed:0
+8A9E5B options_state_clear src/misc.c 8cd231d16d3de4f8 3 0 7/7 verified live-flags:V replayed:0
+8A9E82 options_screen_open src/misc.c 8cd231d16d3de4f8 0 0 23/23 verified live-flags:V replayed:1
+8A9EC5 options_screen_setup src/misc.c 8cd231d16d3de4f8 1 0 45/45 verified live-flags:- replayed:0
+8A9F47 options_screen_tick src/misc.c 8cd231d16d3de4f8 81 500 7/7 verified live-flags:- replayed:0

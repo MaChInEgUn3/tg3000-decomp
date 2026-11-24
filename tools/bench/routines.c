@@ -6171,6 +6171,35 @@ static void fuzz_vs_screen_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
     wr16ram(ram, pads[p], (uint16_t)(rnd() & 0x0F00));
   }
 }
+// the options screens: the clear ends after its PLX (X kept); the opening at its wipe (the
+// pushed NMI handler above the cut); the setup at its first frame's wait (A = 1); a frame's
+// end back at that wait (A = 1) or at the fade's wait loop (A = $FFC0)
+static void call_options_state_clear(const Regs* in, Regs* out) {
+  options_state_clear();
+  setNZ16(out, in->x);
+}
+static void call_options_screen_open(const Regs* in, Regs* out) {
+  (void)out;
+  wr16((uint16_t)(in->sp - 1), options_screen_open());
+}
+static void call_options_screen_setup(const Regs* in, Regs* out) {
+  (void)in;
+  options_screen_setup();
+  out->a = 0x0001;
+  setNZ16(out, out->a);
+}
+// a frame's end with the menus left (D+$6C) or not, the idle timer far from its end or at it
+static void fuzz_options_screen_tick(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, DP + 0x6C, (rnd() & 1) ? 0 : (uint16_t)(1 + rnd() % 3));
+  wr16ram(ram, DP + 0x52, (uint16_t)(rnd() & 1));
+  wr16ram(ram, 0x0D7E, (rnd() % 8) ? (uint16_t)(2 + rnd() % 0x800) : 1);
+}
+static void call_options_screen_tick(const Regs* in, Regs* out) {
+  (void)in;
+  out->a = options_screen_tick() ? 0xFFC0 : 0x0001;
+  setNZ16(out, out->a);
+}
 // a letter from the table (its first byte of a random entry)
 static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)ram;
@@ -12166,6 +12195,15 @@ const Routine routines[] = {
    .manyEffects = true},
   {.name = "vs_screen_frame", .entry = 0x8AA682, .end = 0x8AA6F6, .endAt = 0x8AA67E, .alsoIn = {{0x8AA67B, 0x8AA67E}}, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_vs_screen_frame, .fuzz = fuzz_vs_screen_frame},
+  {.name = "options_state_clear", .entry = 0x8A9E5B, .end = 0x8A9E67, .endAt = 0x8A9E67, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareX = true, .call = call_options_state_clear},
+  {.name = "options_screen_open", .entry = 0x8A9E82, .end = 0x8A9EC2, .endAt = 0x8A9EC2, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_options_screen_open, .manyEffects = true},
+  {.name = "options_screen_setup", .entry = 0x8A9EC5, .end = 0x8A9F3D, .endAt = 0x8A9F3D, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .call = call_options_screen_setup},
+  {.name = "options_screen_tick", .entry = 0x8A9F47, .end = 0x8A9F5A, .endAt = 0x8A9F3D, .endAt2 = 0x8A9F5A,
+   .alsoIn = {{0x8A9F3A, 0x8A9F3D}}, .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x8A,
+   .compareA = true, .call = call_options_screen_tick, .fuzz = fuzz_options_screen_tick},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

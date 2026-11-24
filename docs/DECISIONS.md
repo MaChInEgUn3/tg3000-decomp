@@ -3457,6 +3457,29 @@ password screen, a skipped track's bonus.
   with the bench movies works instead (`tools/movie_to_log.py`).
 - **Check:** full gate (`tools/bench` changed; the default path is untouched).
 
+## The main options menu (menu-22, 2026-11-24)
+
+- **`$8A:9E5B` is the options screens' long entry.**
+  - It clears `$0D00-$0DFF`.
+  - Then X selects: the main options menu (0), the title card (2), `$8A:C379` (3, never
+    run), and anything else shows the player's password (`$8A:BE2E`, next unit).
+- **The main options menu (`$8A:9E82`)** loads its screen and sets up the cursor, the timer
+  and the menu's head. Then, a frame at a time, it draws the main menu `$8A:CBA7` with
+  `menu_run`, which covers the submenus and their actions, until a choice leaves the menus.
+  Then the fade out, and the NMI handler (`$0008`) is put back.
+- **In `src/misc.c`**, rows cut at the waits:
+  - `options_state_clear` (`$8A:9E5B`, up to its PLX);
+  - `options_screen_open` (up to the wipe; the pushed handler is written above the cut). It
+    takes the long effect log, and its one entry (interrupted) passes from its entry state;
+  - `options_screen_setup` (up to the first frame's wait);
+  - `options_screen_tick` (`$8A:9F47`). It ends back at the frame's wait or at the fade's
+    wait loop (harness-23's second cut), and its exit is checked by the fuzz.
+  - `options_screen` and `options_screens` compose them. The password shown is a trap
+    until the next unit.
+- **Results:** 81 and 118 frame ends on the 60k and options movies; one entry for each of
+  the others.
+- **Check:** incremental gate (additions only).
+
 ## A dead VRAM read; the effect cap (harness-9, 2026-11-23)
 
 **The advisor's call, open to the owner's veto.** A password movie (next unit) runs

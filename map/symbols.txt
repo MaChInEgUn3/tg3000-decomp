@@ -736,3 +736,7 @@ func    8AA576   vs_screen_blank     ; VS screen: HDMA off, D+$8E cleared -> src
 func    8AA582   vs_screen_setup     ; VS screen: its setup up to the first frame -> src/vs.c
 func    8AA682   vs_screen_frame     ; VS screen: a frame of the four panels -> src/vs.c
 func    8AA6F6   vs_names_absent     ; VS screen: absent players' default names -> src/vs.c
+func    8A9E5B   options_state_clear ; the options screens' long entry: $0D00-$0DFF cleared -> src/misc.c
+func    8A9E82   options_screen_open ; the main options menu: its opening up to the wipe -> src/misc.c
+func    8A9EC5   options_screen_setup ; the main options menu: its setup up to the first frame -> src/misc.c
+func    8A9F47   options_screen_tick ; the main options menu: a frame's end, the menus left -> src/misc.c

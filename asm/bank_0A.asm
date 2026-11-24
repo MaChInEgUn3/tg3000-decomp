@@ -3109,6 +3109,7 @@ CODE_8A9D24:
     bpl CODE_8A9D24             ; $8A9D2A
     rts                         ; $8A9D2C
     incbin !baserom:$51D2D..$51E5B
+options_state_clear:
     phx                         ; $8A9E5B
     ldx.w #$00FE                ; $8A9E5C
 CODE_8A9E5F:
@@ -3118,7 +3119,7 @@ CODE_8A9E5F:
     bpl CODE_8A9E5F             ; $8A9E64
     plx                         ; $8A9E66
     cpx.w #$0000                ; $8A9E67
-    beq CODE_8A9E82             ; $8A9E6A
+    beq options_screen_open     ; $8A9E6A
     cpx.w #$0002                ; $8A9E6C
     beq CODE_8A9E7A             ; $8A9E6F
     cpx.w #$0003                ; $8A9E71
@@ -3129,7 +3130,7 @@ CODE_8A9E7A:
     jsr.w title_card_show       ; $8A9E7A
     rtl                         ; $8A9E7D
     incbin !baserom:$51E7E..$51E82
-CODE_8A9E82:
+options_screen_open:
     lda.w $0008                 ; $8A9E82
     pha                         ; $8A9E85
     stz.w $0196                 ; $8A9E86
@@ -3155,6 +3156,7 @@ CODE_8A9E96:
     jsr.w func_8AB994           ; $8A9EBC
     jsr.w text_tiles_put_0      ; $8A9EBF
     jsr.w wipe_columns          ; $8A9EC2
+options_screen_setup:
     jsl.l func_8A8EEF           ; $8A9EC5
     lda.w #$FC5F                ; $8A9EC9
     sta.w $0008                 ; $8A9ECC
@@ -3204,6 +3206,7 @@ CODE_8A9F3A:
     jsl.l wait_frames_long      ; $8A9F3D
     lda.w #$CBA7                ; $8A9F41
     jsr.w menu_draw             ; $8A9F44
+options_screen_tick:
     jsr.w timer_0d7e_tick       ; $8A9F47
     lda.b $6C                   ; $8A9F4A
     beq CODE_8A9F3A             ; $8A9F4C

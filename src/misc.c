@@ -9396,3 +9396,90 @@ void menu_submenu(uint16_t menu) {
     }
   }
 }
+
+// TG3000_ROUTINE($8A:9E5B) options_state_clear
+void options_state_clear(void) {
+  for(int x = 0xFE; x >= 0; x -= 2) wr16((uint16_t)(0x0D00 + x), 0);
+}
+
+// TG3000_ROUTINE($8A:9E82) options_screen_open
+uint16_t options_screen_open(void) {
+  const uint16_t handler = rd16(0x0008);
+  wr16(0x0196, 0);
+  wr16(0x0198, 0);
+  wr16(0x019A, 0);
+  clear_dp_scratch();
+  options_state_clear();
+  wr16(0x03DC, (uint16_t)(rd16(0x03DC) & 0xDFFF));
+  wr16(DP + 0x8E, 0);
+  video_load_screen_long(0x8AC4B0);
+  hdma_window_setup();
+  clear_vram();
+  func_8ABA55(DP);
+  func_8AB994(DP);
+  text_tiles_put_0();
+  return handler;
+}
+
+// TG3000_ROUTINE($8A:9EC5) options_screen_setup
+void options_screen_setup(void) {
+  func_8A8EEF();
+  wr16(0x0008, 0xFC5F);
+  video_hdma_enable(0x82);
+  platform_set_interrupts(0x81);
+  wr16(DP + 0x3A, 0);
+  wr16(DP + 0x3C, 0);
+  wr16(0x0D88, 0);  // ($0D88,X with X 0, func_8A8EEF's)
+  wr16(DP + 0x7A, 0x0004);
+  wr16(DP + 0x7C, 0x0004);
+  wr16(DP + 0x7E, 0x0007);
+  wr16(DP + 0x8E, (uint16_t)(rd16(DP + 0x8E) + 1));
+  wr16(0x0198, 0x0F00);
+  wr16(0x0196, 0x0080);
+  wr16(DP + 0x3A, 0x000A);
+  wr16(DP + 0x3C, 0x0010);
+  wr16(DP + 0x3E, 0x0000);
+  wr16(DP + 0x40, 0x001F);
+  wr16(0x0D60, 0x007C);
+  wr16(0x0D68, 0x007C);
+  wr16(0x0D78, 0x0040);
+  wr16(DP + 0x4C, 0x0008);
+  func_8AA4BE(0x8ACAB0);
+  wr16(DP + 0x6C, 0);
+  variant_flags_apply();
+  wr16(0x0D7E, 0x0A8C);
+}
+
+// TG3000_ROUTINE($8A:9F47) options_screen_tick
+bool options_screen_tick(void) {
+  timer_0d7e_tick(0);
+  if(rd16(DP + 0x6C) == 0) return false;
+  flag_03dc_from_52();
+  wr16(0x0198, 0);
+  wr16(0x0196, 0xFFC0);
+  return true;
+}
+
+// The main options menu whole ($8A:9E82): a frame at a time the main menu ($8A:CBA7, its
+// submenus and actions), until a choice leaves the menus; then the fade out, and the NMI
+// handler back.
+void options_screen(void) {
+  const uint16_t handler = options_screen_open();
+  wipe_columns();
+  options_screen_setup();
+  do {
+    wait_frames(1);
+    menu_run(0xCBA7);
+  } while(!options_screen_tick());
+  while(rd16(0x019A) != 0) platform_wait_vblank();
+  wr16(0x0008, handler);
+}
+
+// The long entry ($8A:9E5B).
+void options_screens(uint16_t x) {
+  options_state_clear();
+  if(x == 0) options_screen();
+  else if(x == 2) title_card_show();
+  else if(x == 3) tg3000_unported("$8A:C379");
+  else tg3000_unported("$8A:BE2E: the password shown");
+}

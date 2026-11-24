@@ -14244,7 +14244,7 @@ CODE_80FC2D:
     plb                         ; $80FC3C
     lda.w #$0100                ; $80FC3D
     tcd                         ; $80FC40
-    jsl.l $8A9E5B               ; $80FC41
+    jsl.l options_state_clear   ; $80FC41
     plb                         ; $80FC45
     jsl.l clear_dp_scratch      ; $80FC46
     ldx.w #$00FE                ; $80FC4A

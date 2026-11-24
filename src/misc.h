@@ -1734,4 +1734,16 @@ bool menu_submenu_tick(void);
 bool menu_submenu_chosen(void);
 void menu_submenu(uint16_t menu);
 
+// The options screens' long entry ($8A:9E5B): $0D00-$0DFF cleared, then by X the main
+// options menu (0), the title card (2), $8A:C379 (3, never run), else the password shown.
+// The main options menu ($8A:9E82) in parts between its waits: its opening (returns the
+// NMI handler $0008 it keeps), its setup up to the first frame, the end of a frame after
+// the menu (true once the menus are left: the fade out started).
+void options_state_clear(void);
+uint16_t options_screen_open(void);
+void options_screen_setup(void);
+bool options_screen_tick(void);
+void options_screen(void);
+void options_screens(uint16_t x);
+
 #endif
