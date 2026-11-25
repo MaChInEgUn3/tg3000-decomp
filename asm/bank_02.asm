@@ -869,7 +869,7 @@ CODE_829522:
     sta.w $0295                 ; $829528
     sta.w $0348                 ; $82952B
 CODE_82952E:
-    jsr.w $97BE                 ; $82952E
+    jsr.w vs_cars_link          ; $82952E
     jsl.l $83E28C               ; $829531
     jsl.l $81F4AF               ; $829535
     jsr.w $9806                 ; $829539
@@ -944,6 +944,7 @@ CODE_829639:
     stx.w $1E9E                 ; $82963C
     jmp.w $94B2                 ; $82963F
     incbin !baserom:$11642..$117BE
+vs_cars_link:
     ldy.w #$0000                ; $8297BE
     ldx.w $1E6A                 ; $8297C1
     lda.w $1E70                 ; $8297C4

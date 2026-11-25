@@ -164,5 +164,12 @@ void vs_screen_loop(void);
 uint16_t vs_cars_ahead(uint16_t dp, uint16_t x, uint16_t* a, bool* carry, bool* overflow);
 // $81:F68B: the four players' cars linked in a ring ($7E:FACD + car).
 void vs_cars_ring(void);
+// $82:97BE: the four cars linked both ways in the order at $1E6A-$1E70 (previous at
+// $7E:FACF + car, next at $7E:FACD + car). Returns the last car, as the original leaves X.
+uint16_t vs_cars_link(void);
+// $83:E878: the car at D's engine and tyre words from the VS tables, by D+$14 (as
+// player_frame_setup takes the one player's from its parts). Returns the tyre table's index,
+// as the original leaves X.
+uint16_t vs_car_parts(uint16_t dp);
 
 #endif

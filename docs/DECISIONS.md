@@ -3900,6 +3900,28 @@ Its "frames N" modes now compare only the stream's own frame.
 **Check:** the tool's runs above, and the full gate (`tools/bench/` changed by more than
 additions).
 
+## The VS cars linked both ways and their parts (vs-race-2, 2026-11-25)
+
+**Two more routines that only the VS race runs,** found by a routine census over the VS movie
+(`bench --census`, with the firmware DSP-4). They are verified on that movie.
+
+- **`vs_cars_link` (`$82:97BE`)** links the four cars in the order at `$1E6A`-`$1E70` both
+  ways, car by car:
+  - the one before it at `$7E:FACF` + car;
+  - the one after it at `$7E:FACD` + car.
+
+  `vs_cars_ring` writes only the second. It returns the last car, as the original leaves X.
+  - Live: 303 samples. Fuzz: 500 cases, with the records' offsets in any order and
+    sometimes any word.
+- **`vs_car_parts` (`$83:E878`)** sets the car at D's engine words (`$1EA8`, `$1EC0`) and
+  tyre words (`$1EB4`, `$1EB6`). They come from the same tables `player_frame_setup` uses
+  for the one player.
+  - Each part is chosen by the car's entry D+$14, through its own table (`$86:DD6D` for the
+    engine, `$86:DD7D` for the tyres).
+  - Live: 1,109 samples, from all four cars. Fuzz: 500 cases.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

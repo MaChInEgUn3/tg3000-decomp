@@ -705,3 +705,5 @@
 8ABE2E password_show src/password.c c08be3c094e02aa5 1 0 79/79 verified live-flags:NVZC replayed:0
 8AB232 password_entry src/password.c c08be3c094e02aa5 1 0 84/84 verified live-flags:NVZC replayed:0
 8AA67B vs_screen_loop src/vs.c 898f9b20d8a8ed14 1 0 37/37 verified live-flags:NVZC replayed:0
+8297BE vs_cars_link src/vs.c 309c6867a50fb884 303 500 22/22 verified live-flags:- replayed:0
+83E878 vs_car_parts src/vs.c 309c6867a50fb884 1109 500 19/19 verified live-flags:- replayed:0

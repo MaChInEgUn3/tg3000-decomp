@@ -6242,6 +6242,30 @@ static void call_vs_cars_ring(const Regs* in, Regs* out) {
   out->a = rd16(0x1E6A);
   setNZ16(out, in->x);
 }
+// vs_cars_link ($82:97BE): A the first car, X the last, Y 0; N Z of the first car
+static void call_vs_cars_link(const Regs* in, Regs* out) {
+  (void)in;
+  out->x = vs_cars_link();
+  out->a = rd16(0x1E6A);
+  out->y = 0;
+  setNZ16(out, out->a);
+}
+// the four cars: the players' records' offsets in any order, sometimes any word
+static void fuzz_vs_cars_link(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const uint16_t cars[4] = {0x0000, 0x0062, 0x00B3, 0x0115};
+  for(int i = 0; i < 4; i++) wr16ram(ram, (uint16_t)(0x1E6A + 2 * i), (rnd() & 7) ? cars[rnd() % 4] : (uint16_t)(rnd() & 0x03FE));
+}
+// vs_car_parts ($83:E878): A the last word loaded ($1EB6), X the tyre index; N Z of A
+static void call_vs_car_parts(const Regs* in, Regs* out) {
+  out->x = vs_car_parts(in->d);
+  out->a = rd16(0x1EB6);
+  setNZ16(out, out->a);
+}
+// the car's entry D+$14: one of the tables' 16 entries, sometimes any byte
+static void fuzz_vs_car_parts(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  wr16ram(ram, (uint16_t)(r->d + 0x14), (uint16_t)((rnd() & 3) ? rnd() % 16 : rnd() & 0xFF));
+}
 // the player's index 1-4 and the four cars' distances near the record's
 static void fuzz_vs_cars_ahead(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->x = (uint16_t)(1 + rnd() % 4);
@@ -12270,6 +12294,12 @@ const Routine routines[] = {
    .needX16 = true, .compareA = true, .compareY = true, .call = call_vs_cars_ahead, .fuzz = fuzz_vs_cars_ahead},
   {.name = "vs_cars_ring", .entry = 0x81F68B, .end = 0x81F6AE, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = false, .compareA = true, .call = call_vs_cars_ring},
+  {.name = "vs_cars_link", .entry = 0x8297BE, .end = 0x829806, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_cars_link,
+   .fuzz = fuzz_vs_cars_link},
+  {.name = "vs_car_parts", .entry = 0x83E878, .end = 0x83E8AB, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .compareA = true, .compareX = true, .call = call_vs_car_parts,
+   .fuzz = fuzz_vs_car_parts},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

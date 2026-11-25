@@ -1686,7 +1686,7 @@ CODE_83E422:
     tax                         ; $83E5C0
     jsr.w func_83EA9B           ; $83E5C1
     sta.w $022B                 ; $83E5C4
-    jsr.w $E878                 ; $83E5C7
+    jsr.w vs_car_parts          ; $83E5C7
     lda.l $86DD45               ; $83E5CA
     sta.w $1EB8                 ; $83E5CE
     stz.w $1ECA                 ; $83E5D1
@@ -1754,7 +1754,7 @@ CODE_83E64C:
     tax                         ; $83E676
     jsr.w func_83EA9B           ; $83E677
     sta.w $02DE                 ; $83E67A
-    jsr.w $E878                 ; $83E67D
+    jsr.w vs_car_parts          ; $83E67D
     lda.l $86DD45               ; $83E680
     sta.w $1EB8                 ; $83E684
     lda.w #$0001                ; $83E687
@@ -1802,7 +1802,7 @@ CODE_83E6B5:
     tax                         ; $83E72F
     jsr.w func_83EA9B           ; $83E730
     sta.w $028D                 ; $83E733
-    jsr.w $E878                 ; $83E736
+    jsr.w vs_car_parts          ; $83E736
     lda.l $86DD45               ; $83E739
     sta.w $1EB8                 ; $83E73D
     lda.w #$0002                ; $83E740
@@ -1850,7 +1850,7 @@ CODE_83E76E:
     tax                         ; $83E7E8
     jsr.w func_83EA9B           ; $83E7E9
     sta.w $0340                 ; $83E7EC
-    jsr.w $E878                 ; $83E7EF
+    jsr.w vs_car_parts          ; $83E7EF
     lda.l $86DD45               ; $83E7F2
     sta.w $1EB8                 ; $83E7F6
     lda.w #$0003                ; $83E7F9
@@ -1878,6 +1878,7 @@ CODE_83E827:
     pld                         ; $83E82F
     rts                         ; $83E830
     incbin !baserom:$1E831..$1E878
+vs_car_parts:
     ldx.b $14                   ; $83E878
     lda.l $86DD6D,x             ; $83E87A
     and.w #$00FF                ; $83E87E

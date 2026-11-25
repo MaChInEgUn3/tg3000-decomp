@@ -723,3 +723,30 @@ void vs_cars_ring(void) {
   static const uint16_t order[5] = {0x1E6A, 0x1E6C, 0x1E6E, 0x1E70, 0x1E6A};
   for(int i = 0; i < 4; i++) wr16((uint16_t)(0xFACD + rd16(order[i])), rd16(order[i + 1]));
 }
+
+// TG3000_ROUTINE($82:97BE) vs_cars_link
+// The four cars in the order at $1E6A, $1E6C, $1E6E, $1E70, each linked to the one before it
+// ($7E:FACF + car) and the one after it ($7E:FACD + car), around the ring, car by car.
+uint16_t vs_cars_link(void) {
+  uint16_t car[4];
+  for(int i = 0; i < 4; i++) car[i] = rd16((uint32_t)(0x1E6A + 2 * i));
+  for(int i = 0; i < 4; i++) {
+    wr16(0xFACF + (uint32_t)car[i], car[(i + 3) & 3]);
+    wr16(0xFACD + (uint32_t)car[i], car[(i + 1) & 3]);
+  }
+  return car[3];
+}
+
+// TG3000_ROUTINE($83:E878) vs_car_parts
+// The car at D's engine words ($1EA8, $1EC0) and tyre words ($1EB4, $1EB6), from the tables
+// player_frame_setup uses, each part chosen by the car's entry (D+$14) in its own table.
+uint16_t vs_car_parts(uint16_t dp) {
+  const uint32_t car = rd16((uint16_t)(dp + 0x14));
+  const uint32_t engine = (uint32_t)bus_rd8(0x86DD6D + car) << 1;
+  wr16(0x1EA8, bus_rd16(0x86DCE1 + engine));
+  wr16(0x1EC0, bus_rd16(0x86DCED + engine));
+  const uint32_t tyres = (uint32_t)bus_rd8(0x86DD7D + car) << 1;
+  wr16(0x1EB4, bus_rd16(0x86DD29 + tyres));
+  wr16(0x1EB6, bus_rd16(0x86DD35 + tyres));
+  return (uint16_t)tyres;
+}
