@@ -188,5 +188,8 @@ void vs_player1_frame_setup(void);
 void vs_player2_frame_setup(void);
 void vs_player3_frame_setup(void);
 void vs_player4_frame_setup(void);
+// $83:E28C: player1_frame for the VS race's four cars (RTL): the frame counted at $7E:4CDD +
+// $1E9E * 2, then for each player its frame setup, player_car_frame and car_track_step.
+void vs_cars_frame(void);
 
 #endif

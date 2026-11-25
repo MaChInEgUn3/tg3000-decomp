@@ -34,7 +34,7 @@ MOVIES = [
 ]
 # the VS race runs with the firmware DSP-4, the VS screen's frame not fuzzed there (harness-28)
 EXTRA = {"vs_race": ["--dsp4-firmware", os.environ.get("TG3000_DSP4_FIRMWARE", "ext/firmware/dsp4.rom"),
-                     "--fuzz-skip", "vs_screen_frame,player_car_frame,car_sprite_head"],
+                     "--fuzz-skip", "vs_screen_frame,player_car_frame,car_sprite_head,vs_cars_frame"],
          "explore_pw": ["--fuzz-skip", "car_sprite_head"]}  # (dsp4-11a)
 FUZZ = {}
 HIDDEN = "inside interrupt handlers a waiting sample recorded"

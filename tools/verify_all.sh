@@ -35,7 +35,7 @@ optframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/e
 vsframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/vs_race.txt)
 # the VS race runs only with the DSP-4 run from its firmware (harness-27, the owner's file)
 firmware="${TG3000_DSP4_FIRMWARE:-ext/firmware/dsp4.rom}"
-vsfuzzskip=vs_screen_frame,player_car_frame,car_sprite_head
+vsfuzzskip=vs_screen_frame,player_car_frame,car_sprite_head,vs_cars_frame
 pwfuzzskip=car_sprite_head  # (dsp4-11a: the password movie's last RAM)
 # every deliberately wrong C must fail over the same movie (in parallel): the selftest's
 # short movie does not reach them all

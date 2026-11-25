@@ -872,6 +872,17 @@ void vs_player3_frame_setup(void) { vs_player_frame_setup(2); }
 // TG3000_ROUTINE($83:E7BF) vs_player4_frame_setup
 void vs_player4_frame_setup(void) { vs_player_frame_setup(3); }
 
+// TG3000_ROUTINE($83:E28C) vs_cars_frame
+void vs_cars_frame(void) {
+  const uint32_t at = 0x4CDD + (uint32_t)(uint16_t)(rd16(0x1E9E) << 1);  // bank $7E
+  wr16(at, (uint16_t)(rd16(at) + 1));
+  for(int n = 0; n < 4; n++) {
+    vs_player_frame_setup(n);
+    player_car_frame(vsPlayers[n].rec);
+    car_track_step(vsPlayers[n].rec);
+  }
+}
+
 // TG3000_ROUTINE($82:BDA9) vs_steps_share
 // For the four cars in turn (records $0200, $02B3, $0262, $0315): its word ($01CE, $01D2,
 // $01D6, $01DA) to the record's +$29, then the word becomes vs_step_share of itself.

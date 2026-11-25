@@ -1481,6 +1481,7 @@ player1_frame:
     pld                         ; $83E25D
     rtl                         ; $83E25E
     incbin !baserom:$1E25F..$1E28C
+vs_cars_frame:
     lda.w $1E9E                 ; $83E28C
     asl a                       ; $83E28F
     tax                         ; $83E290

@@ -70,7 +70,7 @@ PY
 )
 mkdir -p build/cache
 # the VS race runs with the firmware DSP-4, the VS screen's frame not fuzzed there (harness-28)
-movieargs() { if [ "$1" = vs_race ]; then echo "--dsp4-firmware $firmware --fuzz-skip vs_screen_frame,player_car_frame,car_sprite_head";
+movieargs() { if [ "$1" = vs_race ]; then echo "--dsp4-firmware $firmware --fuzz-skip vs_screen_frame,player_car_frame,car_sprite_head,vs_cars_frame";
   elif [ "$1" = explore_pw ]; then echo "--fuzz-skip car_sprite_head"; fi; }
 moviefuzz() { echo 500; }
 covfile() { echo "build/cache/$1-$(cat "tools/bench/movies/$1.txt" tools/bench/patches/*.patch tools/bench/bench.c | sha1sum | cut -c1-16).cov"; }

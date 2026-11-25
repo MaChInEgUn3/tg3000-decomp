@@ -759,3 +759,4 @@ func    83E597   vs_player1_frame_setup ; VS race: player_frame_setup for player
 func    83E64D   vs_player2_frame_setup ; VS race: player_frame_setup for player 2 (record $02B3) -> src/vs.c
 func    83E706   vs_player3_frame_setup ; VS race: player_frame_setup for player 3 (record $0262) -> src/vs.c
 func    83E7BF   vs_player4_frame_setup ; VS race: player_frame_setup for player 4 (record $0315) -> src/vs.c
+func    83E28C   vs_cars_frame       ; VS race: player1_frame for the four cars (RTL) -> src/vs.c

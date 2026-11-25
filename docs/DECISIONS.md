@@ -4041,6 +4041,28 @@ The callers reload the registers, so they are not compared.
 
 **Check:** the incremental gate (additions only).
 
+## The VS race's cars' frame (vs-race-9, 2026-11-25)
+
+**`vs_cars_frame` (`$83:E28C`, RTL)** is `player1_frame` for the VS race's four cars.
+- It counts the frame at `$7E:4CDD` + `$1E9E` × 2.
+- Then, for each player in turn, it runs the player's frame setup (vs-race-7), then
+  `player_car_frame` and `car_track_step` with D = the player's record.
+- **Live:** 65 samples pass. The other entries were interrupted, or were nested in rows that
+  ran at the same time. **Paths:** 35/35.
+
+**Its fuzz is skipped on the VS movie**, its only movie, like `player_car_frame`'s
+(harness-28, dsp4-11a).
+- A first fuzz moved one car as `player_car_frame`'s own fuzz does: 395 of 500 cases ran past
+  the instruction budget.
+- With only the players' setup varied, and the cars left as the movie left them, 26 to 33 of
+  500 still ran past it.
+- Every case that finished passed (467/467, then 474/474). So the lost cases are the VS race
+  RAM's long car frames, not a mismatch.
+- `verify_all.sh`, `verify_new.sh` and `tools/rerun_hidden.py` add `vs_cars_frame` to the VS
+  movie's `--fuzz-skip`.
+
+**Check:** the full gate (the scripts changed by more than additions).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

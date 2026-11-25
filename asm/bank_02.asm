@@ -870,7 +870,7 @@ CODE_829522:
     sta.w $0348                 ; $82952B
 CODE_82952E:
     jsr.w vs_cars_link          ; $82952E
-    jsl.l $83E28C               ; $829531
+    jsl.l vs_cars_frame         ; $829531
     jsl.l $81F4AF               ; $829535
     jsr.w $9806                 ; $829539
     lda.w $0204                 ; $82953C

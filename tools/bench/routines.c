@@ -6347,6 +6347,19 @@ static void fuzz_vs_player_frame_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(vo
   for(int k = 0; k < 6; k++) wr16ram(ram, masks[k], (uint16_t)(1u << (rnd() % 16)));
   for(int i = 0; i < 16; i++) ram[0x0390 + i] = (rnd() & 1) ? (uint8_t)rnd() : 0;
 }
+// vs_cars_frame ($83:E28C), as player1_frame: DB $83, PLD's flags of D = $0100 (vs-race-9)
+static void call_vs_cars_frame(const Regs* in, Regs* out) {
+  (void)in;
+  vs_cars_frame();
+  out->db = 0x83;
+  out->n = out->z = false;
+}
+// the players' setup at random as their own fuzz does, the cars as the movie left them
+// (player_car_frame's own fuzz, which moves a car anywhere, runs past the budget four cars
+// at a time on the VS race's RAM)
+static void fuzz_vs_cars_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_vs_player_frame_setup(r, ram, rnd);
+}
 // the words and the step count: small steps, sometimes any word; the count sometimes 0
 static void fuzz_vs_steps_share(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->a = (rnd() & 1) ? (uint16_t)(rnd() % 0x1000 - 0x800) : (uint16_t)rnd();
@@ -12411,6 +12424,9 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_player3_frame_setup, .fuzz = fuzz_vs_player_frame_setup},
   {.name = "vs_player4_frame_setup", .entry = 0x83E7BF, .end = 0x83E878, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_player4_frame_setup, .fuzz = fuzz_vs_player_frame_setup},
+  {.name = "vs_cars_frame", .entry = 0x83E28C, .end = 0x83E2D7, .rtl = true, .source = "src/vs.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_cars_frame,
+   .fuzz = fuzz_vs_cars_frame},
   {.name = "vs_step_share", .entry = 0x82BDDA, .end = 0x82BE11, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_vs_step_share, ALL_OUTPUTS, .fuzz = fuzz_vs_steps_share},
   {.name = "vs_steps_share", .entry = 0x82BDA9, .end = 0x82BDDA, .source = "src/vs.c", .needM16 = true,
