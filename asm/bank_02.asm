@@ -871,7 +871,7 @@ CODE_829522:
 CODE_82952E:
     jsr.w vs_cars_link          ; $82952E
     jsl.l vs_cars_frame         ; $829531
-    jsl.l $81F4AF               ; $829535
+    jsl.l vs_cars_order         ; $829535
     jsr.w $9806                 ; $829539
     lda.w $0204                 ; $82953C
     sta.w $0200                 ; $82953F

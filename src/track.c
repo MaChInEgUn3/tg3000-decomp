@@ -272,5 +272,15 @@ bool car_sync_player(uint16_t car) { return car_sync_record(car, 0, true, 0x1E66
 // $81:FB20 (never run in a one-player race)
 bool car_sync_player2(uint16_t car) { return car_sync_record(car, 0x00B3, true, 0x1E68); }
 
-// $81:FC72, $81:FCD1, $81:FD30, $81:FD8F (never run)
+// $81:FC72, $81:FCD1, $81:FD30, $81:FD8F: the VS race's four players' (never run in a
+// one-player race)
 void car_sync_slot(uint16_t car, uint16_t b) { (void)car_sync_record(car, b, false, 0); }
+
+// TG3000_ROUTINE($81:FC72) car_sync_slot_0200
+void car_sync_slot_0200(uint16_t car) { car_sync_slot(car, 0x0000); }
+// TG3000_ROUTINE($81:FCD1) car_sync_slot_02b3
+void car_sync_slot_02b3(uint16_t car) { car_sync_slot(car, 0x00B3); }
+// TG3000_ROUTINE($81:FD30) car_sync_slot_0262
+void car_sync_slot_0262(uint16_t car) { car_sync_slot(car, 0x0062); }
+// TG3000_ROUTINE($81:FD8F) car_sync_slot_0315
+void car_sync_slot_0315(uint16_t car) { car_sync_slot(car, 0x0115); }

@@ -654,7 +654,10 @@ func    82EAFE   track_event_place_only ; a track event's positions only (never 
 func    82EB45   track_event2_set    ; the second road's track events $EB45-$EC08 (never run; through road_rows_build) -> src/misc.c
 func    81E812   race_cars_frame     ; the 20 cars' frame: handlers, the race order sorted, lap wraps, finishers (RTL) -> src/misc.c
 func    81FB20   car_sync_player2    ; car_sync_player for the second player (handler 4; never run) -> src/track.c
-func    81FC72   car_sync_slot       ; a car takes a record's motion ($0244+b; handlers 8-14 at $81:FC72/FCD1/FD30/FD8F; never run) -> src/track.c
+func    81FC72   car_sync_slot_0200  ; the VS race's player 1's car takes its record's motion (handler 8) -> src/track.c
+func    81FCD1   car_sync_slot_02b3  ; the same for player 2's record (handler 10) -> src/track.c
+func    81FD30   car_sync_slot_0262  ; the same for player 3's record (handler 12) -> src/track.c
+func    81FD8F   car_sync_slot_0315  ; the same for player 4's record (handler 14) -> src/track.c
 func    8189F5   dsp4_answers_store  ; two runs of DSP-4 (address, value) answers stored in bank $7E (a tape row) -> src/misc.c
 func    818564   road_rows_stream    ; the road's rows streamed to the DSP-4 (command $08), its answers stored, the edges' scan (RTL; a tape row) -> src/misc.c
 func    85B3D7   road_rows_project   ; the road's rows projected by the DSP-4 (command $01): rows $7E:34EC-$39EC, objects, edges (RTL; a tape row) -> src/misc.c
@@ -753,6 +756,7 @@ func    8ABE86   password_show_text  ; the password shown: packed, encoded, prin
 func    8ABECC   password_show_wait  ; the password shown: the fade in, a press, the fade out -> src/password.c
 func    829B62   vs_cars_ahead       ; VS race: how many players' cars are ahead of the record at D -> src/vs.c
 func    81F68B   vs_cars_ring        ; VS race: the four cars linked in a ring at $7E:FACD -> src/vs.c
+func    81F4AF   vs_cars_order       ; VS race: the four cars' order sorted by distance, the laps taken off/given back; RTL, DB = $83 -> src/vs.c
 func    81F6AE   vs_cars_tie         ; VS race: two cars of equal high distance (X, Y): the count at $013C, pushed $40 apart sideways when close -> src/vs.c
 func    81F6F2   vs_cars_apart       ; VS race: two cars (X, Y) $40 or more apart sideways (C clear), else pushed apart -> src/vs.c
 func    829AF4   vs_places_update    ; VS race: each player's place; a changed place requests its message -> src/vs.c

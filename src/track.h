@@ -48,7 +48,12 @@ bool car_sync_player2(uint16_t car);
 
 // $81:FC72 / $81:FCD1 / $81:FD30 / $81:FD8F (b = 0, $B3, $62, $115): the car takes the record
 // at $0244 + b's distance moved (directly or the DSP-4 product) and, directly, its sides;
-// +$12 = $FFFF. Nothing else. Handlers 8-14 of $81:F876; never run.
+// +$12 = $FFFF. Nothing else. Handlers 8-14 of $81:F876: the VS race's players' cars (never run
+// in a one-player race). One entry a record:
 void car_sync_slot(uint16_t car, uint16_t b);
+void car_sync_slot_0200(uint16_t car);  // $81:FC72
+void car_sync_slot_02b3(uint16_t car);  // $81:FCD1
+void car_sync_slot_0262(uint16_t car);  // $81:FD30
+void car_sync_slot_0315(uint16_t car);  // $81:FD8F
 
 #endif

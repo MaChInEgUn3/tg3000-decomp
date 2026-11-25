@@ -2914,6 +2914,7 @@ CODE_81F4AC:
 CODE_81F4AD:
     pla                         ; $81F4AD static
     rts                         ; $81F4AE static
+vs_cars_order:
     pea.w $837E                 ; $81F4AF
     plb                         ; $81F4B2
     ldx.w $1E70                 ; $81F4B3
@@ -3714,7 +3715,7 @@ CODE_81FC59:
     lda.l $840012,x             ; $81FC68
     sta.w $FAE4,y               ; $81FC6C
     jmp.w $FBDE                 ; $81FC6F
-car_sync_slot:
+car_sync_slot_0200:
     lda.w $0244                 ; $81FC72
     bit.w #$0001                ; $81FC75
     bne CODE_81FCA0             ; $81FC78
@@ -3749,6 +3750,7 @@ CODE_81FCA0:
     lda.w #$FFFF                ; $81FCCA
     sta.w $FAC7,y               ; $81FCCD
     rts                         ; $81FCD0
+car_sync_slot_02b3:
     lda.w $02F7                 ; $81FCD1
     bit.w #$0001                ; $81FCD4
     bne CODE_81FCFF             ; $81FCD7
@@ -3783,6 +3785,7 @@ CODE_81FCFF:
     lda.w #$FFFF                ; $81FD29
     sta.w $FAC7,y               ; $81FD2C
     rts                         ; $81FD2F
+car_sync_slot_0262:
     lda.w $02A6                 ; $81FD30
     bit.w #$0001                ; $81FD33
     bne CODE_81FD5E             ; $81FD36
@@ -3817,6 +3820,7 @@ CODE_81FD5E:
     lda.w #$FFFF                ; $81FD88
     sta.w $FAC7,y               ; $81FD8B
     rts                         ; $81FD8E
+car_sync_slot_0315:
     lda.w $0359                 ; $81FD8F
     bit.w #$0001                ; $81FD92
     bne CODE_81FDBD             ; $81FD95

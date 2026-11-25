@@ -5527,17 +5527,17 @@ static void cars_order_link(void) {
   }
 }
 
-static void cars_handler(uint16_t car) {
+void cars_handler(uint16_t car) {
   const uint16_t kind = rd16(0xFAC5 + (uint32_t)car);
   switch(bus_rd16(0x81F876 + kind)) {
     case 0xF887: car_road_step(car); break;
     case 0xFA8F: (void)car_sync_player(car); break;
     case 0xFB20: (void)car_sync_player2(car); break;  // never run
     case 0xF886: break;  // an RTS
-    case 0xFC72: car_sync_slot(car, 0x0000); break;  // never run
-    case 0xFCD1: car_sync_slot(car, 0x00B3); break;  // never run
-    case 0xFD30: car_sync_slot(car, 0x0062); break;  // never run
-    case 0xFD8F: car_sync_slot(car, 0x0115); break;  // never run
+    case 0xFC72: car_sync_slot_0200(car); break;  // (the VS race's players)
+    case 0xFCD1: car_sync_slot_02b3(car); break;
+    case 0xFD30: car_sync_slot_0262(car); break;
+    case 0xFD8F: car_sync_slot_0315(car); break;
     default: break;  // not a handler (no kind the game sets)
   }
 }

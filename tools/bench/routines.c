@@ -6348,6 +6348,79 @@ static void fuzz_vs_cars_pair(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, (uint16_t)(0xFAC1 + x), fx);
   wr16ram(ram, 0x013C, (uint16_t)((rnd() & 1) ? rnd() % 4 : rnd()));
 }
+// vs_cars_order ($81:F4AF, vs-race-14): A the first place's $FAB6 word, X its car, Y 0; the PLB
+// of $83: N set, Z clear; C clear (the lap test's BCC), V of its SBC
+static void call_vs_cars_order(const Regs* in, Regs* out) {
+  (void)in;
+  const VsCarsOrderExit e = vs_cars_order();
+  out->a = e.a;
+  out->x = rd16(0x1E6A);
+  out->y = 0;
+  out->db = 0x83;
+  out->n = true;
+  out->z = false;
+  out->c = false;
+  out->v = e.v;
+}
+// the pair routines' fuzz (sides, saved words, players' words), then the four cars in a random
+// order with distances in 256ths ($FAB6 word) around the lap $019A: under it, past it (one or
+// more at the back), or below 0 (one or more at the front); the handlers' kinds as the movie
+// left them, or now and then the RTS kind
+static void fuzz_vs_cars_order(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_vs_cars_pair(r, ram, rnd);
+  uint16_t order[4] = {0x0000, 0x0035, 0x006A, 0x009F};
+  for(int i = 3; i > 0; i--) {
+    const int j = (int)(rnd() % (uint32_t)(i + 1));
+    const uint16_t t = order[i];
+    order[i] = order[j];
+    order[j] = t;
+  }
+  for(int i = 0; i < 4; i++) wr16ram(ram, (uint16_t)(0x1E6A + 2 * i), order[i]);
+  const int mode = (int)(rnd() % 5);  // 0, 1: all under; 2: some past; 3: some below 0; 4: all below 0
+  // (all four below 0 needs a lap length of $8000 or more: the leader is tested against it
+  // unsigned first, so a negative leader is otherwise "past the lap")
+  const uint16_t lap = mode == 4 ? (uint16_t)(0xC000 + rnd() % 0x3000) : (uint16_t)(0x100 + rnd() % 0x300);
+  wr16ram(ram, 0x019A, lap);
+  for(int i = 0; i < 4; i++) {
+    const uint16_t c = order[i];
+    uint16_t u = (uint16_t)(8 + rnd() % (uint16_t)(lap - 8));
+    if(mode == 2 && i == 0) u = (uint16_t)(lap + rnd() % (lap / 2));  // one past the lap, as in a race
+    // (two or more past it, with cars side by side, can collide and lose laps for ages)
+    if(mode == 3 && i > 0 && (rnd() & 1)) u = (uint16_t)(0x10000 - 1 - rnd() % 0x80);  // (one stays ahead: four
+    // just below 0 with a short lap would count as past it, lap after lap, for ages)
+    if(mode == 4) u = (uint16_t)(0x8000 + 0x0400 * i + rnd() % 0x100);  // apart; a lap added makes it positive
+    wr16ram(ram, (uint16_t)(0xFAB5 + c), (uint16_t)((uint8_t)rnd() | ((u & 0xFF) << 8)));
+    wr16ram(ram, (uint16_t)(0xFAB7 + c), (uint16_t)((u & 0x8000) ? 0xFF00 | (u >> 8) : (u >> 8)));
+    if(!(rnd() % 4)) wr16ram(ram, (uint16_t)(0xFAC5 + c), 0x0006);  // the RTS kind ($F886)
+    // (all four below 0: the cars kept apart sideways, their handlers the RTS so that their
+    // players' sides do not bring them back together, or the sort and their collisions can
+    // cycle for ever on this made-up state)
+    if(mode == 4) {
+      wr16ram(ram, (uint16_t)(0xFABB + c), (uint16_t)(0x0400 * (uint16_t)i));
+      wr16ram(ram, (uint16_t)(0xFAC5 + c), 0x0006);
+    }
+  }
+}
+// car_sync_slot_* ($81:FC72...): the handler's caller reloads the registers (vs-race-14)
+static void call_car_sync_slot_0200(const Regs* in, Regs* out) { (void)out; car_sync_slot_0200(in->y); }
+static void call_car_sync_slot_02b3(const Regs* in, Regs* out) { (void)out; car_sync_slot_02b3(in->y); }
+static void call_car_sync_slot_0262(const Regs* in, Regs* out) { (void)out; car_sync_slot_0262(in->y); }
+static void call_car_sync_slot_0315(const Regs* in, Regs* out) { (void)out; car_sync_slot_0315(in->y); }
+// one of the four cars (Y), its record's words either way of $0244 bit 0
+static void fuzz_car_sync_slot(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  static const uint16_t cars[4] = {0x0000, 0x0035, 0x006A, 0x009F}, recs[4] = {0x0000, 0x00B3, 0x0062, 0x0115};
+  r->y = cars[rnd() % 4];
+  for(int i = 0; i < 4; i++) {
+    const uint16_t b = recs[i];
+    wr16ram(ram, (uint16_t)(0x0244 + b), (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(0x022D + b), (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(0x022F + b), (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(0x0204 + b), (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(0x0206 + b), (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(0x0210 + b), (uint16_t)rnd());
+  }
+  wr16ram(ram, 0x1E9E, (uint16_t)rnd());
+}
 // vs_places_update ($82:9AF4): its caller reloads the registers (vs-race-8)
 static void fuzz_vs_cars_ahead(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 static void call_vs_places_update(const Regs* in, Regs* out) { (void)in; (void)out; vs_places_update(); }
@@ -12496,6 +12569,17 @@ const Routine routines[] = {
    .needX16 = true, .compareA = true, .compareY = true, .call = call_vs_cars_ahead, .fuzz = fuzz_vs_cars_ahead},
   {.name = "vs_cars_ring", .entry = 0x81F68B, .end = 0x81F6AE, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = false, .compareA = true, .call = call_vs_cars_ring},
+  {.name = "vs_cars_order", .entry = 0x81F4AF, .end = 0x81F68B, .rtl = true, .source = "src/vs.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .call = call_vs_cars_order, ALL_OUTPUTS,
+   .fuzz = fuzz_vs_cars_order},
+  {.name = "car_sync_slot_0200", .entry = 0x81FC72, .end = 0x81FCD1, .source = "src/track.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .call = call_car_sync_slot_0200, .fuzz = fuzz_car_sync_slot},
+  {.name = "car_sync_slot_02b3", .entry = 0x81FCD1, .end = 0x81FD30, .source = "src/track.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .call = call_car_sync_slot_02b3, .fuzz = fuzz_car_sync_slot},
+  {.name = "car_sync_slot_0262", .entry = 0x81FD30, .end = 0x81FD8F, .source = "src/track.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .call = call_car_sync_slot_0262, .fuzz = fuzz_car_sync_slot},
+  {.name = "car_sync_slot_0315", .entry = 0x81FD8F, .end = 0x81FDEE, .source = "src/track.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .call = call_car_sync_slot_0315, .fuzz = fuzz_car_sync_slot},
   {.name = "vs_cars_tie", .entry = 0x81F6AE, .end = 0x81F6F2, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_vs_cars_tie, ALL_OUTPUTS, .fuzz = fuzz_vs_cars_pair,
    .alsoIn = {{0x81F70B, 0x81F876}}},       // the shared tail and the collision

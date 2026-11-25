@@ -898,6 +898,108 @@ VsCarsExit vs_cars_apart(uint16_t x, uint16_t y) {
   return (VsCarsExit){.a = gap, .n = (t & 0x8000) != 0, .z = t == 0, .c = false, .v = sub_overflow(sY, sX, gap)};
 }
 
+// One of the order's compares: car Y (the slot above) against car X by distance (the CMP of the
+// low words, the SBC of the high). Equal high words: vs_cars_tie, no swap. Else $013C = 0, and
+// when Y is behind, a swap unless vs_cars_apart leaves C set.
+static bool vs_order_swap(uint16_t x, uint16_t y) {
+  const uint16_t borrow = car_word(0xFAB5, y) < car_word(0xFAB5, x) ? 1 : 0;
+  const uint16_t hi = (uint16_t)(car_word(0xFAB7, y) - car_word(0xFAB7, x) - borrow);
+  if(hi == 0) {
+    (void)vs_cars_tie(x, y);
+    return false;
+  }
+  wr16(DP + 0x3C, 0);
+  if(!(hi & 0x8000)) return false;
+  return !vs_cars_apart(x, y).c;
+}
+
+// The order's slots, last place first: $1E70, $1E6E, $1E6C, $1E6A.
+static uint16_t order_at(int k) { return rd16((uint32_t)(0x1E6A + 2 * k)); }
+static void order_set(int k, uint16_t car) { wr16((uint32_t)(0x1E6A + 2 * k), car); }
+
+// TG3000_ROUTINE($81:F4AF) vs_cars_order
+// (drafted by a delegated agent from the listing; its two never-run lap paths decoded and
+// completed here.) Each frame, for the VS race's four cars:
+// - the ring of next pointers ($FACD) relinked in the order, last place first;
+// - each car's side copied to $FAD5, its distance saved to $FAC1/$FAC3, $FAC7 cleared, and its
+//   handler run (cars_handler);
+// - an unrolled insertion sort of the order (pairs from the last up, a swapped car compared on
+//   down), by vs_order_swap;
+// - the laps: the cars at the back that are past the lap length ($019A, in the $FAB6 word, the
+//   distance / 256) lose a lap and go to the front of the order; else a first place below 0
+//   (and those after it) gains one and goes to the back (never run). The order turns once a car,
+//   but only three times for all four. Either way the sort runs again. Ends when no car moved.
+VsCarsOrderExit vs_cars_order(void) {
+  const uint16_t p0 = order_at(0), p1 = order_at(1), p2 = order_at(2), p3 = order_at(3);
+  wr16(0xFACD + (uint32_t)p3, p0);
+  wr16(0xFACD + (uint32_t)p2, p3);
+  wr16(0xFACD + (uint32_t)p1, p2);
+  wr16(0xFACD + (uint32_t)p0, p1);
+  for(uint32_t c = 0; c < 4 * 0x35; c += 0x35) {
+    wr16(0xFAD5 + c, rd16(0xFABB + c));
+    wr16(0xFAC1 + c, rd16(0xFAB5 + c));
+    wr16(0xFAC3 + c, rd16(0xFAB7 + c));
+    wr16(0xFAC7 + c, 0);
+    cars_handler((uint16_t)c);
+  }
+  for(;;) {  // $81:F549
+    wr16(DP + 0x3C, 0);
+    int k = 2;  // the pair (k, k + 1)
+    uint16_t x = order_at(2);
+    while(k >= 0) {
+      const uint16_t y = order_at(k + 1);
+      if(vs_order_swap(x, y)) {
+        order_set(k, y);
+        order_set(k + 1, x);
+        vs_cars_ring();
+        if(k < 2) {  // the car moved up is compared again one slot higher (X kept)
+          k++;
+          continue;
+        }
+      }
+      k--;
+      if(k >= 0) x = order_at(k);
+    }
+    // the laps ($81:F5CC)
+    const uint16_t lap = rd16(0x019A);
+    int moved = 0;
+    bool overflow = false;
+    for(int s = 3; s >= 0; s--) {
+      const uint32_t at = 0xFAB6 + (uint32_t)order_at(s);
+      const uint16_t w = rd16(at), r = (uint16_t)(w - lap);
+      overflow = sub_overflow(w, lap, r);
+      if(w < lap) break;
+      wr16(at, r);
+      if(s > 0) moved++;  // (the original counts no fourth: all four past the lap turn the order 3 times)
+    }
+    if(moved > 0) {  // $81:F60B: each to the front
+      for(int i = 0; i < moved; i++) {
+        const uint16_t t = order_at(3);
+        order_set(3, order_at(2));
+        order_set(2, order_at(1));
+        order_set(1, order_at(0));
+        order_set(0, t);
+      }
+      continue;
+    }
+    const uint16_t first = rd16(0xFAB6 + (uint32_t)order_at(0));
+    if(!(first & 0x8000)) return (VsCarsOrderExit){.a = first, .v = overflow};
+    for(int s = 0; s < 4; s++) {  // $81:F634 (never run): below 0, a lap back, to the back
+      const uint32_t at = 0xFAB6 + (uint32_t)order_at(s);
+      if(s > 0 && !(rd16(at) & 0x8000)) break;
+      wr16(at, (uint16_t)(rd16(at) + lap));
+      if(s < 3) moved++;  // (likewise: no count for the fourth)
+    }
+    for(int i = 0; i < moved; i++) {
+      const uint16_t t = order_at(0);
+      order_set(0, order_at(1));
+      order_set(1, order_at(2));
+      order_set(2, order_at(3));
+      order_set(3, t);
+    }
+  }
+}
+
 // TG3000_ROUTINE($82:9AF4) vs_places_update
 // For the four players in turn (records $0200, $02B3, $0262, $0315; indices 4 to 1): the cars
 // ahead of it (vs_cars_ahead). When that differs from its last count ($1ED2 + 2 a player), the

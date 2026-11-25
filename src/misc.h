@@ -718,6 +718,8 @@ void track_backdrop_load(uint16_t dp);
 // SBC and BMI), the player included. A position that differs from the last one shown
 // ($1ED2, $1ED4) is kept there and its message ($25 + position) requested.
 void race_positions_update(void);
+// a car's handler from the table at $81:F876 by its kind ($FAC5 + car): JSR ($F876,X), Y = car
+void cars_handler(uint16_t car);
 
 // $85:B1FF: the race's band table from the two players' line lists (zero-ended, ascending;
 // player 1's at $7E:4CFE + $0164, player 2's at $7E:4D4A + $0168, the indices kept in D+$14

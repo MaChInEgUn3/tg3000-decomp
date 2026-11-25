@@ -4199,6 +4199,45 @@ race** with the firmware DSP-4: the first test caught the original leaving its e
 
 **Check:** the incremental gate (additions only).
 
+## The VS race's car order, and its players' cars' motion (vs-race-14, 2026-11-25)
+
+**`vs_cars_order` (`$81:F4AF`, RTL, DB `$83` at exit)** puts the VS race's four cars in order
+each frame. A delegated agent drafted it (US$0.51). Its two never-run lap paths were decoded
+here, with the listing's own opcode table run locally, and completed. Each frame:
+
+1. **The ring** of next pointers (`$FACD`) is relinked in the order, last place first.
+2. **Each car** gets its side copied to `$FAD5`, its distance saved to `$FAC1`/`$FAC3`, `$FAC7`
+   cleared, and its handler run by kind (`cars_handler`, now shared with the one-player race's
+   `src/misc.c`).
+3. **An unrolled insertion sort** runs over the three pairs from the back:
+   - equal high distance words: `vs_cars_tie`, no swap;
+   - otherwise `$013C` = 0, and a car behind swaps unless `vs_cars_apart` leaves C set;
+   - a car moved up is compared again one slot higher.
+4. **The laps** (the `$FAB6` word, the distance / 256, against `$019A`):
+   - the cars at the back that are past the lap lose a lap and go to the front;
+   - otherwise a first place below 0, and those after it, gain one and go to the back. This
+     never ran.
+   - **The order turns once a car, but only three times for all four**: the original counts
+     no fourth. The first fuzz caught this, with 4 of 500 cases.
+   - Then the sort runs again.
+
+**The VS players' handlers were C but never verified:** `car_sync_slot` (`$81:FC72`, `$81:FCD1`,
+`$81:FD30`, `$81:FD8F`; handlers 8-14) is the car taking its record's motion. Each now has its own
+entry and row (`car_sync_slot_0200` ... `_0315`): 281-292 live samples each and 500 fuzz cases.
+
+**The order's fuzz has limits** (`fuzz_vs_cars_order`): made-up states where the original runs
+for ever were found one lost case at a time.
+- **At most one car past the lap, as in a race.** Two or more past it, with cars side by side,
+  collide and lose laps for ages.
+- **All four below 0 needs a lap length of `$8000` or more.** The leader is tested against the lap
+  unsigned first, so with a shorter lap a negative leader counts as past it. That case also keeps
+  the cars apart in distance and sideways, with their handlers the RTS.
+
+**Results:**
+- `vs_cars_order`: 183 live samples, 500 fuzz cases, 180/180 paths.
+
+**Check:** the full gate (`src/misc.c`'s `cars_handler` and `src/track.c` changed).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.
