@@ -782,3 +782,32 @@ void vs_grid_setup(uint16_t dp) {
   for(int i = 0; i < 4; i++) wr16((uint32_t)(0x1E6A + 2 * i), (uint16_t)(0x35 * i));
   for(int i = 0; i < 16; i++) wr16((uint32_t)(0x1E72 + 2 * i), (uint16_t)x);
 }
+
+// TG3000_ROUTINE($82:BDDA) vs_step_share
+// The CPU's 16 / 8 divider gives the magnitude's quotient by the step count; a negative word
+// gives it as it is, a positive one (or 0) gives 0 less it. The sign is the caller's N flag.
+uint16_t vs_step_share(uint16_t a, bool negative) {
+  const uint8_t count = rd8(0x1E9E);
+  if(negative) {
+    const uint16_t m = (uint16_t)(0 - a);
+    return count ? (uint16_t)(m / count) : 0xFFFF;
+  }
+  const uint16_t q = count ? (uint16_t)(a / count) : 0xFFFF;
+  return (uint16_t)(0 - q);
+}
+
+// TG3000_ROUTINE($82:BDA9) vs_steps_share
+// For the four cars in turn (records $0200, $02B3, $0262, $0315): its word ($01CE, $01D2,
+// $01D6, $01DA) to the record's +$29, then the word becomes vs_step_share of itself.
+uint16_t vs_steps_share(void) {
+  static const uint16_t word[4] = {0x01CE, 0x01D2, 0x01D6, 0x01DA};
+  static const uint16_t saved[4] = {0x0229, 0x02DC, 0x028B, 0x033E};
+  uint16_t a = 0;
+  for(int i = 0; i < 4; i++) {
+    a = rd16(word[i]);
+    wr16(saved[i], a);
+    a = vs_step_share(a, (a & 0x8000) != 0);
+    wr16(word[i], a);
+  }
+  return a;
+}

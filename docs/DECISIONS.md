@@ -3972,6 +3972,23 @@ twenty records.
 **Check:** the full gate. The last full run was 5 commits back, so the incremental gate's
 carry rule no longer holds.
 
+## The VS cars' steps shared out (vs-race-6, 2026-11-25)
+
+- **`vs_step_share` (`$82:BDDA`):** minus a signed word over the step count `$1E9E`, on the
+  CPU's 16 / 8 divider. It takes the magnitude's quotient (`$FFFF` for a zero count). A negative
+  word gives it as it is; a positive one, or 0, gives 0 less it.
+  - **It branches on the caller's N flag**, not on the word. Its first instruction is a `BPL`,
+    and the caller's last flag-setting instruction is its load of the word.
+  - The first fuzz run found this: with random flags, 220 of 500 cases differed. The C takes the
+    flag as an argument.
+  - Live: 1,115 samples. Fuzz: 500 cases. Every output is compared.
+- **`vs_steps_share` (`$82:BDA9`):** for the four cars in turn (records `$0200`, `$02B3`,
+  `$0262`, `$0315`), it saves the car's word (`$01CE`, `$01D2`, `$01D6`, `$01DA`) to the
+  record's +`$29`. Then the word becomes `vs_step_share` of itself.
+  - Live: 263 samples. Fuzz: 500 cases.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

@@ -173,5 +173,12 @@ uint16_t vs_cars_link(void);
 uint16_t vs_car_parts(uint16_t dp);
 // $82:BD0E: the VS race's four cars' records set for the start (D+$14-$19 its counters).
 void vs_grid_setup(uint16_t dp);
+// $82:BDDA: minus `a` (signed) over the step count $1E9E, on the CPU's divider (the quotient of
+// the magnitude; $FFFF for a zero count). `negative` is the caller's N flag (its load of `a`):
+// the original branches on it, not on `a` itself.
+uint16_t vs_step_share(uint16_t a, bool negative);
+// $82:BDA9: the four words $01CE, $01D2, $01D6, $01DA each saved to its car's record (+$29)
+// and replaced by vs_step_share of it. Returns the last.
+uint16_t vs_steps_share(void);
 
 #endif

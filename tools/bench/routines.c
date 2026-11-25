@@ -6295,6 +6295,32 @@ static void call_vs_grid_setup(const Regs* in, Regs* out) {
   out->c = false;
   out->v = false;
 }
+// vs_step_share ($82:BDDA): A the share; N set on entry ends at its LDA (N Z; C V as they
+// came), N clear at its SBC from 0 (N Z C V)
+static void shareFlags(bool negative, uint16_t r, const Regs* rin, Regs* out) {
+  out->a = r;
+  setNZ16(out, r);
+  if(negative) {
+    out->c = rin->c;
+    out->v = rin->v;
+  } else {
+    const uint16_t q = (uint16_t)(0 - r);
+    out->c = q == 0;
+    out->v = q == 0x8000;
+  }
+}
+static void call_vs_step_share(const Regs* in, Regs* out) { shareFlags(in->n, vs_step_share(in->a, in->n), in, out); }
+static void call_vs_steps_share(const Regs* in, Regs* out) {
+  const bool negative = (rd16(0x01DA) & 0x8000) != 0;
+  shareFlags(negative, vs_steps_share(), in, out);
+}
+// the words and the step count: small steps, sometimes any word; the count sometimes 0
+static void fuzz_vs_steps_share(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (rnd() & 1) ? (uint16_t)(rnd() % 0x1000 - 0x800) : (uint16_t)rnd();
+  static const uint16_t words[4] = {0x01CE, 0x01D2, 0x01D6, 0x01DA};
+  for(int i = 0; i < 4; i++) wr16ram(ram, words[i], (rnd() & 1) ? (uint16_t)(rnd() % 0x1000 - 0x800) : (uint16_t)rnd());
+  ram[0x1E9E] = (uint8_t)((rnd() % 8) ? 1 + rnd() % 8 : rnd());
+}
 static void fuzz_vs_grid_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   wr16ram(ram, 0x019A, (uint16_t)((rnd() & 1) ? 0x40 + rnd() % 0x200 : rnd()));
@@ -12342,6 +12368,10 @@ const Routine routines[] = {
    .fuzz = fuzz_vs_car_parts},
   {.name = "vs_grid_setup", .entry = 0x82BD0E, .end = 0x82BDA9, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_vs_grid_setup, ALL_OUTPUTS, .fuzz = fuzz_vs_grid_setup},
+  {.name = "vs_step_share", .entry = 0x82BDDA, .end = 0x82BE11, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_vs_step_share, ALL_OUTPUTS, .fuzz = fuzz_vs_steps_share},
+  {.name = "vs_steps_share", .entry = 0x82BDA9, .end = 0x82BDDA, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_vs_steps_share, ALL_OUTPUTS, .fuzz = fuzz_vs_steps_share},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

@@ -890,7 +890,7 @@ CODE_82952E:
     lda.w $031B                 ; $829566
     sta.w $0317                 ; $829569
     jsr.w $DF91                 ; $82956C
-    jsr.w $BDA9                 ; $82956F
+    jsr.w vs_steps_share        ; $82956F
     jsr.w $9AF4                 ; $829572
     stz.b $86                   ; $829575
     stz.b $88                   ; $829577
@@ -4432,23 +4432,25 @@ CODE_82BDA0:
     dey                         ; $82BDA5
     bne CODE_82BDA0             ; $82BDA6
     rts                         ; $82BDA8
+vs_steps_share:
     lda.w $01CE                 ; $82BDA9
     sta.w $0229                 ; $82BDAC
-    jsr.w $BDDA                 ; $82BDAF
+    jsr.w vs_step_share         ; $82BDAF
     sta.w $01CE                 ; $82BDB2
     lda.w $01D2                 ; $82BDB5
     sta.w $02DC                 ; $82BDB8
-    jsr.w $BDDA                 ; $82BDBB
+    jsr.w vs_step_share         ; $82BDBB
     sta.w $01D2                 ; $82BDBE
     lda.w $01D6                 ; $82BDC1
     sta.w $028B                 ; $82BDC4
-    jsr.w $BDDA                 ; $82BDC7
+    jsr.w vs_step_share         ; $82BDC7
     sta.w $01D6                 ; $82BDCA
     lda.w $01DA                 ; $82BDCD
     sta.w $033E                 ; $82BDD0
-    jsr.w $BDDA                 ; $82BDD3
+    jsr.w vs_step_share         ; $82BDD3
     sta.w $01DA                 ; $82BDD6
     rts                         ; $82BDD9
+vs_step_share:
     bpl CODE_82BDF8             ; $82BDDA
     eor.w #$FFFF                ; $82BDDC
     inc a                       ; $82BDDF
