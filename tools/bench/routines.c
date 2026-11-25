@@ -6314,6 +6314,29 @@ static void call_vs_steps_share(const Regs* in, Regs* out) {
   const bool negative = (rd16(0x01DA) & 0x8000) != 0;
   shareFlags(negative, vs_steps_share(), in, out);
 }
+// vs_playerN_frame_setup ($83:E597...): the callers reload the registers (vs-race-7)
+static void call_vs_player1_frame_setup(const Regs* in, Regs* out) { (void)in; (void)out; vs_player1_frame_setup(); }
+static void call_vs_player2_frame_setup(const Regs* in, Regs* out) { (void)in; (void)out; vs_player2_frame_setup(); }
+static void call_vs_player3_frame_setup(const Regs* in, Regs* out) { (void)in; (void)out; vs_player3_frame_setup(); }
+static void call_vs_player4_frame_setup(const Regs* in, Regs* out) { (void)in; (void)out; vs_player4_frame_setup(); }
+// half the time the controls' path (the record's +$44 bit 2 clear, every player's $03DC bit
+// set), with the pads, the masks and the choices at random
+static void fuzz_vs_player_frame_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  static const uint16_t recs[4] = {0x0200, 0x02B3, 0x0262, 0x0315};
+  const bool controls = rnd() & 1;
+  for(int i = 0; i < 4; i++) {
+    const uint16_t f = (uint16_t)rnd();
+    wr16ram(ram, (uint16_t)(recs[i] + 0x44), controls ? (uint16_t)(f & ~0x0004) : (uint16_t)(f | 0x0004));
+    ram[0x0418 + i] = (uint8_t)(rnd() % 8);
+    wr16ram(ram, (uint16_t)(0x000C + 4 * i), (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(0x000E + 4 * i), (uint16_t)rnd());
+  }
+  wr16ram(ram, 0x03DC, controls ? (uint16_t)(rnd() | 0x00F0) : (uint16_t)rnd());
+  static const uint16_t masks[6] = {0x039D, 0x039F, 0x03A1, 0x03CC, 0x03CE, 0x03D0};
+  for(int k = 0; k < 6; k++) wr16ram(ram, masks[k], (uint16_t)(1u << (rnd() % 16)));
+  for(int i = 0; i < 16; i++) ram[0x0390 + i] = (rnd() & 1) ? (uint8_t)rnd() : 0;
+}
 // the words and the step count: small steps, sometimes any word; the count sometimes 0
 static void fuzz_vs_steps_share(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->a = (rnd() & 1) ? (uint16_t)(rnd() % 0x1000 - 0x800) : (uint16_t)rnd();
@@ -12368,6 +12391,14 @@ const Routine routines[] = {
    .fuzz = fuzz_vs_car_parts},
   {.name = "vs_grid_setup", .entry = 0x82BD0E, .end = 0x82BDA9, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_vs_grid_setup, ALL_OUTPUTS, .fuzz = fuzz_vs_grid_setup},
+  {.name = "vs_player1_frame_setup", .entry = 0x83E597, .end = 0x83E64D, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_player1_frame_setup, .fuzz = fuzz_vs_player_frame_setup},
+  {.name = "vs_player2_frame_setup", .entry = 0x83E64D, .end = 0x83E706, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_player2_frame_setup, .fuzz = fuzz_vs_player_frame_setup},
+  {.name = "vs_player3_frame_setup", .entry = 0x83E706, .end = 0x83E7BF, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_player3_frame_setup, .fuzz = fuzz_vs_player_frame_setup},
+  {.name = "vs_player4_frame_setup", .entry = 0x83E7BF, .end = 0x83E878, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_player4_frame_setup, .fuzz = fuzz_vs_player_frame_setup},
   {.name = "vs_step_share", .entry = 0x82BDDA, .end = 0x82BE11, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_vs_step_share, ALL_OUTPUTS, .fuzz = fuzz_vs_steps_share},
   {.name = "vs_steps_share", .entry = 0x82BDA9, .end = 0x82BDDA, .source = "src/vs.c", .needM16 = true,

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "misc.h"
+#include "track.h"
 #include "decompress.h"
 #include "frame.h"
 #include "platform.h"
@@ -795,6 +796,62 @@ uint16_t vs_step_share(uint16_t a, bool negative) {
   const uint16_t q = count ? (uint16_t)(a / count) : 0xFFFF;
   return (uint16_t)(0 - q);
 }
+
+// The VS race's player_frame_setup, one routine a player (vs-race-7). Each sets the frame's car:
+// - $1EBE its view's bit, D+$14 twice its choice byte, $1EB2 the choice's entry at $86:DD75;
+// - the record's +$2B (func_83EA9B of twice +$1F plus the word at $86:DAD9 + twice the entry's
+//   low 7 bits), the engine and tyre words (vs_car_parts), $1EB8 the word at $86:DD45;
+// - $1ECA the player's number - 1, $1EBA its record's offset, $1EBC twice its +$26 (low 5
+//   bits) plus its view's base, $1E9C cleared.
+// Then, when the record's +$44 bit 2 is clear and the player's bit of $03DC is set, the
+// controls into $1E9C from its pad (held, then pressed, with the controls' masks at $039D or
+// $03CC); otherwise player_road_limits for the record.
+typedef struct {
+  uint16_t view, choice, rec, number, base, mask, pad, keys;
+} VsPlayer;
+static const VsPlayer vsPlayers[4] = {
+  {0x8000, 0x0418, 0x0200, 0x0000, 0x0000, 0x0010, 0x000C, 0x039D},
+  {0x2000, 0x0419, 0x02B3, 0x0035, 0x0580, 0x0020, 0x0010, 0x03CC},
+  {0x0800, 0x041A, 0x0262, 0x006A, 0x0300, 0x0040, 0x0014, 0x039D},
+  {0x0200, 0x041B, 0x0315, 0x009F, 0x0880, 0x0080, 0x0018, 0x03CC},
+};
+static void vs_player_frame_setup(int n) {
+  const VsPlayer* p = &vsPlayers[n];
+  wr16(0x1EBE, p->view);
+  const uint16_t i = (uint16_t)((rd16(p->choice) & 0x00FF) << 1);
+  wr16(DP + 0x14, i);
+  const uint16_t t = bus_rd8(0x86DD75 + (uint32_t)i);
+  wr16(0x1EB2, t);
+  const uint32_t x = (uint32_t)((t & 0x7F) << 1);
+  wr16((uint16_t)(p->rec + 0x2B), func_83EA9B((uint16_t)((rd16((uint16_t)(p->rec + 0x1F)) << 1) + bus_rd16(0x86DAD9 + x))));
+  vs_car_parts(DP);
+  wr16(0x1EB8, bus_rd16(0x86DD45));
+  wr16(0x1ECA, (uint16_t)n);
+  wr16(0x1EBA, p->number);
+  wr16(0x1EBC, (uint16_t)(((rd16((uint16_t)(p->rec + 0x26)) << 1) & 0x003E) + p->base));
+  wr16(0x1E9C, 0);
+  if(!(rd16((uint16_t)(p->rec + 0x44)) & 0x0004) && (rd16(0x03DC) & p->mask)) {  // never in the movies
+    const uint16_t held = rd16(p->pad);
+    if(held & rd16(p->keys)) wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | 0x0001));
+    if(held & rd16((uint16_t)(p->keys + 2))) wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | 0x0002));
+    if(held & 0x0200) wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | 0x0004));
+    if(held & 0x0100) wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | 0x0008));
+    const uint16_t key = rd16((uint16_t)(p->keys + 4)), pressed = rd16((uint16_t)(p->pad + 2));
+    wr16((uint16_t)(p->pad + 2), (uint16_t)(pressed & ~key));
+    if(pressed & key) wr16(0x1E9C, (uint16_t)(rd16(0x1E9C) | 0x0010));
+    return;
+  }
+  player_road_limits(p->rec);
+}
+
+// TG3000_ROUTINE($83:E597) vs_player1_frame_setup
+void vs_player1_frame_setup(void) { vs_player_frame_setup(0); }
+// TG3000_ROUTINE($83:E64D) vs_player2_frame_setup
+void vs_player2_frame_setup(void) { vs_player_frame_setup(1); }
+// TG3000_ROUTINE($83:E706) vs_player3_frame_setup
+void vs_player3_frame_setup(void) { vs_player_frame_setup(2); }
+// TG3000_ROUTINE($83:E7BF) vs_player4_frame_setup
+void vs_player4_frame_setup(void) { vs_player_frame_setup(3); }
 
 // TG3000_ROUTINE($82:BDA9) vs_steps_share
 // For the four cars in turn (records $0200, $02B3, $0262, $0315): its word ($01CE, $01D2,

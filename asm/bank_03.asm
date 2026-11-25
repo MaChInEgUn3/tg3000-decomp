@@ -1487,28 +1487,28 @@ player1_frame:
     lda.l $7E4CDD,x             ; $83E291
     inc a                       ; $83E295
     sta.l $7E4CDD,x             ; $83E296
-    jsr.w $E597                 ; $83E29A
+    jsr.w vs_player1_frame_setup; $83E29A
     phd                         ; $83E29D
     lda.w #$0200                ; $83E29E
     tcd                         ; $83E2A1
     jsr.w player_car_frame      ; $83E2A2
     jsr.w car_track_step        ; $83E2A5
     pld                         ; $83E2A8
-    jsr.w $E64D                 ; $83E2A9
+    jsr.w vs_player2_frame_setup; $83E2A9
     phd                         ; $83E2AC
     lda.w #$02B3                ; $83E2AD
     tcd                         ; $83E2B0
     jsr.w player_car_frame      ; $83E2B1
     jsr.w car_track_step        ; $83E2B4
     pld                         ; $83E2B7
-    jsr.w $E706                 ; $83E2B8
+    jsr.w vs_player3_frame_setup; $83E2B8
     phd                         ; $83E2BB
     lda.w #$0262                ; $83E2BC
     tcd                         ; $83E2BF
     jsr.w player_car_frame      ; $83E2C0
     jsr.w car_track_step        ; $83E2C3
     pld                         ; $83E2C6
-    jsr.w $E7BF                 ; $83E2C7
+    jsr.w vs_player4_frame_setup; $83E2C7
     phd                         ; $83E2CA
     lda.w #$0315                ; $83E2CB
     tcd                         ; $83E2CE
@@ -1667,6 +1667,7 @@ CODE_83E422:
     stx.w $1F2E                 ; $83E42D
     rts                         ; $83E430
     incbin !baserom:$1E431..$1E597
+vs_player1_frame_setup:
     lda.w #$8000                ; $83E597
     sta.w $1EBE                 ; $83E59A
     lda.w $0418                 ; $83E59D
@@ -1735,6 +1736,7 @@ CODE_83E63E:
     tsb.w $1E9C                 ; $83E649
 CODE_83E64C:
     rts                         ; $83E64C
+vs_player2_frame_setup:
     lda.w #$2000                ; $83E64D
     sta.w $1EBE                 ; $83E650
     lda.w $0419                 ; $83E653
@@ -1783,6 +1785,7 @@ CODE_83E6B5:
     pld                         ; $83E6BD
     rts                         ; $83E6BE
     incbin !baserom:$1E6BF..$1E706
+vs_player3_frame_setup:
     lda.w #$0800                ; $83E706
     sta.w $1EBE                 ; $83E709
     lda.w $041A                 ; $83E70C
@@ -1831,6 +1834,7 @@ CODE_83E76E:
     pld                         ; $83E776
     rts                         ; $83E777
     incbin !baserom:$1E778..$1E7BF
+vs_player4_frame_setup:
     lda.w #$0200                ; $83E7BF
     sta.w $1EBE                 ; $83E7C2
     lda.w $041B                 ; $83E7C5

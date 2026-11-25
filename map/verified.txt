@@ -713,3 +713,7 @@
 8AA67B vs_screen_loop src/vs.c 3614518ffc2855a8 1 0 37/37 verified live-flags:NVZC replayed:0
 82BDDA vs_step_share src/vs.c e4bc3215ba56e861 1115 500 30/30 verified live-flags:- replayed:0
 82BDA9 vs_steps_share src/vs.c e4bc3215ba56e861 263 500 17/17 verified live-flags:- replayed:0
+83E597 vs_player1_frame_setup src/vs.c 96a4c05475d1e0e9 303 500 71/71 verified live-flags:- replayed:0
+83E64D vs_player2_frame_setup src/vs.c 96a4c05475d1e0e9 296 500 72/72 verified live-flags:- replayed:0
+83E706 vs_player3_frame_setup src/vs.c 96a4c05475d1e0e9 281 500 72/72 verified live-flags:- replayed:0
+83E7BF vs_player4_frame_setup src/vs.c 96a4c05475d1e0e9 126 500 72/72 verified live-flags:- replayed:0

@@ -754,3 +754,7 @@ func    83E878   vs_car_parts        ; VS race: the car at D's engine and tyre w
 func    82BD0E   vs_grid_setup       ; VS race: the four cars' records set for the start, the race order -> src/vs.c
 func    82BDDA   vs_step_share       ; VS race: minus a signed word over the step count $1E9E (CPU divider) -> src/vs.c
 func    82BDA9   vs_steps_share      ; VS race: the four cars' words saved to +$29 and replaced by their share -> src/vs.c
+func    83E597   vs_player1_frame_setup ; VS race: player_frame_setup for player 1 (record $0200) -> src/vs.c
+func    83E64D   vs_player2_frame_setup ; VS race: player_frame_setup for player 2 (record $02B3) -> src/vs.c
+func    83E706   vs_player3_frame_setup ; VS race: player_frame_setup for player 3 (record $0262) -> src/vs.c
+func    83E7BF   vs_player4_frame_setup ; VS race: player_frame_setup for player 4 (record $0315) -> src/vs.c

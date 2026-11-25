@@ -3989,6 +3989,44 @@ carry rule no longer holds.
 
 **Check:** the incremental gate (additions only).
 
+## The VS race's players' frame setup (vs-race-7, 2026-11-25)
+
+**`vs_player1_frame_setup` to `vs_player4_frame_setup`** (`$83:E597`, `$83:E64D`, `$83:E706`,
+`$83:E7BF`) are `player_frame_setup` for the VS race's four players. All four are one function
+in `src/vs.c` over a table of what differs:
+- the view's bit for `$1EBE`;
+- the choice byte (`$0418`-`$041B`);
+- the record (`$0200`, `$02B3`, `$0262`, `$0315`);
+- the record's offset for `$1EBA`;
+- the view's base for `$1EBC`;
+- the player's bit of `$03DC`;
+- the pad (`$000C`, `$0010`, `$0014`, `$0018`, held, then pressed);
+- the controls' masks (`$039D` for players 1 and 3, `$03CC` for 2 and 4).
+
+**What each one does:**
+- **It sets the frame's car:**
+  - D+`$14` = twice the choice, and `$1EB2` = the choice's entry at `$86:DD75`;
+  - the record's +`$2B` = `func_83EA9B` of twice +`$1F`, plus the word at `$86:DAD9` + twice
+    the entry's low 7 bits;
+  - the engine and tyre words, from `vs_car_parts`;
+  - `$1EB8`, `$1ECA` (the player's number - 1), `$1EBA`, `$1EBC`, and `$1E9C` cleared.
+- **Then it takes the controls or the road limits:**
+  - when the record's +`$44` bit 2 is clear and the player's bit of `$03DC` is set, it reads
+    the controls into `$1E9C` from the pad and returns;
+  - otherwise it runs `player_road_limits` for the record (D = the record).
+- **The controls' path never ran in the VS movie for players 2-4.** Their bytes were never
+  decoded by the listing (`$83:E6BF`, `$83:E778`, `$83:E831`), so they were read from the ROM by
+  hand. For player 1, only its button presses never ran.
+
+**Results:**
+- **Live:** 303, 296, 281 and 126 samples.
+- **Fuzz:** 500 cases each, half of them on the controls' path.
+- **Paths:** 71/71 and 72/72.
+
+The callers reload the registers, so they are not compared.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

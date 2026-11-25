@@ -180,5 +180,11 @@ uint16_t vs_step_share(uint16_t a, bool negative);
 // $82:BDA9: the four words $01CE, $01D2, $01D6, $01DA each saved to its car's record (+$29)
 // and replaced by vs_step_share of it. Returns the last.
 uint16_t vs_steps_share(void);
+// $83:E597, $83:E64D, $83:E706, $83:E7BF: player_frame_setup for the VS race's players 1-4
+// (D = $0100): the car's settings, then its controls or its road limits.
+void vs_player1_frame_setup(void);
+void vs_player2_frame_setup(void);
+void vs_player3_frame_setup(void);
+void vs_player4_frame_setup(void);
 
 #endif
