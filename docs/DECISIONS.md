@@ -3935,6 +3935,22 @@ current one's. The slots are `$0295` and `$0348`, the records at `$0262` and `$0
 
 **Check:** the incremental gate (additions only).
 
+## The VS split screen's four view positions (vs-race-4, 2026-11-25)
+
+**`vs_view_scrolls` (`$83:886A`, in `src/race_frame.c`)** is `func_838989` for the VS race's split
+screen. Its caller is the split screen's interrupt handler (`$83:98A6`, not ported yet).
+- **Unless the game is paused** (`$0026` bit 4), four 24-bit positions move by their signed
+  steps: `$00D4` by `$01CC`, `$00D7` by `$01D4`, `$00DA` by `$01D0` and `$00DD` by `$01D8`. Each
+  is a 16-bit add, then the carry and the step's sign go into the high byte.
+- **Then the upper words go to the views' words**, indexed by `$00E2`:
+  - the first two, plus `$3C`, to `$1536` and `$1546`;
+  - the last two, minus `$4C`, to `$1556` and `$1566`.
+- **The first step negative** (`$83:887C`) never ran in a movie; the fuzz runs it.
+- **Live:** 1,128 samples. **Fuzz:** 500 cases. **Paths:** 69/69. The caller reloads the
+  registers, so they are not compared, as for `func_838989`.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

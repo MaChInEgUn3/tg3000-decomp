@@ -5086,6 +5086,19 @@ static void call_race_upload_queue_drain(const Regs* in, Regs* out) { (void)in; 
 static void call_race_upload_queue_drain_long(const Regs* in, Regs* out) { (void)in; if(race_upload_queue_drain_long()) out->db = 0x83; }
 static void call_func_838989(const Regs* in, Regs* out) { (void)in; (void)out; func_838989(); }
 static void call_func_838989_long(const Regs* in, Regs* out) { (void)in; (void)out; func_838989_long(); }
+// (vs-race-4) its caller, the VS split screen's interrupt handler, reloads A, X and Y next
+static void call_vs_view_scrolls(const Regs* in, Regs* out) { (void)in; (void)out; vs_view_scrolls(); }
+static void fuzz_vs_view_scrolls(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0026, (uint16_t)rnd());
+  for(int i = 0; i < 4; i++) {
+    static const uint16_t steps[4] = {0x01CC, 0x01D4, 0x01D0, 0x01D8};
+    wr16ram(ram, steps[i], (rnd() & 1) ? (uint16_t)(rnd() % 0x400 - 0x200) : (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(0x00D4 + 3 * i), (uint16_t)rnd());
+  }
+  ram[0x00DF] = (uint8_t)rnd();
+  wr16ram(ram, 0x00E2, (uint16_t)(rnd() & 0x0E));
+}
 
 // ---- fade_in_start ($8A:BAF2) / hdma_window_tables_init ($8A:A09F) ----  A ends as the
 // last value loaded ($0080; B:$E0 in 8-bit), its flags
@@ -12041,6 +12054,9 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989, .fuzz = fuzz_func_838989},
   {.name = "func_838989_long", .entry = 0x8396D5, .end = 0x8396D9, .rtl = true, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989_long, .fuzz = fuzz_func_838989},
+  {.name = "vs_view_scrolls", .entry = 0x83886A, .end = 0x838909, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_vs_view_scrolls, .fuzz = fuzz_vs_view_scrolls},
+   // (the first step negative, $83:887C, never ran in the movies: the fuzz runs it)
   {.name = "video_load_screen", .entry = 0x8081CC, .end = 0x808373, .source = "src/video_dma.c",
    .call = call_video_load_screen, ALL_OUTPUTS, .fuzz = fuzz_video_load_screen},
   {.name = "video_load_screen_long", .entry = 0x8081C8, .end = 0x8081CC, .rtl = true, .source = "src/video_dma.c",

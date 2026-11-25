@@ -300,6 +300,7 @@ pads_read_pair:
     ora.b $22                   ; $838865
     sta.b $22                   ; $838867
     rts                         ; $838869
+vs_view_scrolls:
     ldx.b $E2                   ; $83886A
     lda.w $0026                 ; $83886C
     bit.w #$0010                ; $83886F
@@ -790,7 +791,7 @@ CODE_839846:
     bmi CODE_8398A6             ; $8398A1
     jsr.w $9B49                 ; $8398A3
 CODE_8398A6:
-    jsr.w $886A                 ; $8398A6
+    jsr.w vs_view_scrolls       ; $8398A6
     lda.w #$0080                ; $8398A9
     sta.w $210D                 ; $8398AC
     lda.w #$0001                ; $8398AF

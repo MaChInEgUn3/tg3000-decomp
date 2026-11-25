@@ -74,6 +74,34 @@ void func_838989(void) {
 // TG3000_ROUTINE($83:96D5) func_838989_long (long)
 void func_838989_long(void) { func_838989(); }
 
+// The 24-bit value at `at` plus the signed word `step` (the original's 16-bit ADC, then its
+// carry and the step's sign into the high byte).
+static void add24_signed(uint16_t at, uint16_t step) {
+  const uint32_t sum = (uint32_t)rd16(at) + step;
+  wr16(at, (uint16_t)sum);
+  wr8((uint16_t)(at + 2), (uint8_t)(rd8((uint16_t)(at + 2)) + ((step & 0x8000) ? 0xFF : 0x00) + (sum >> 16)));
+}
+
+// TG3000_ROUTINE($83:886A) vs_view_scrolls
+//
+// func_838989 for the VS race's split screen: unless the game is paused ($0026 bit 4), four
+// 24-bit values move by their signed steps ($00D4 by $01CC, $00D7 by $01D4, $00DA by $01D0,
+// $00DD by $01D8). Then their upper words go to the views' words, indexed by $00E2: the
+// first two + $3C at $1536 and $1546, the last two - $4C at $1556 and $1566.
+void vs_view_scrolls(void) {
+  const uint16_t x = rd16(0x00E2);
+  if(!(rd16(0x0026) & 0x0010)) {
+    add24_signed(0x00D4, rd16(0x01CC));
+    add24_signed(0x00D7, rd16(0x01D4));
+    add24_signed(0x00DA, rd16(0x01D0));
+    add24_signed(0x00DD, rd16(0x01D8));
+  }
+  wr16((uint16_t)(0x1536 + x), (uint16_t)(rd16(0x00D5) + 0x3C));
+  wr16((uint16_t)(0x1546 + x), (uint16_t)(rd16(0x00D8) + 0x3C));
+  wr16((uint16_t)(0x1556 + x), (uint16_t)(rd16(0x00DB) - 0x4C));
+  wr16((uint16_t)(0x1566 + x), (uint16_t)(rd16(0x00DE) - 0x4C));
+}
+
 // TG3000_ROUTINE($85:9147) race_cycle_blocks
 //
 // Five groups of 64 bytes at $7E:2000-$7E:213F, each eight blocks of 8 bytes (four

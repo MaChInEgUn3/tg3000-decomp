@@ -709,3 +709,4 @@
 83E878 vs_car_parts src/vs.c 309c6867a50fb884 1109 500 19/19 verified live-flags:- replayed:0
 829C01 race_message_request_0295 src/misc.c d59a5a7dee6e9196 2 500 16/16 verified live-flags:NVZC replayed:0
 829C1D race_message_request_0348 src/misc.c d59a5a7dee6e9196 3 500 16/16 verified live-flags:NVZC replayed:0
+83886A vs_view_scrolls src/race_frame.c 8aca67dc6290cadf 1128 500 69/69 verified live-flags:- replayed:0
