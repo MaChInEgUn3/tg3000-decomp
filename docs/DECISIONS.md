@@ -4261,6 +4261,32 @@ The one-player race's version has a limit of `$3000` and its band from twice the
 
 **Check:** the incremental gate (additions only).
 
+## The VS race's HUD (vs-race-16, 2026-11-25)
+
+**`vs_hud_digits` (`$82:9C39`)** is `race_hud_digits`' first half for the VS race's four players in
+turn (records `$0200`, `$02B3`, `$0262`, `$0315`). A delegated agent drafted it (US$0.47). Its
+never-run parts were decoded here; one of them settled the agent's open guess.
+
+For each player, unless the record's +`$44` bit 2 is set:
+- **The bar:** the high word of +`$13` times `$0160`, at most `$0C`. A negative value is negated
+  (never run).
+- **The speed's three digit tiles** (`$83:9F54`; the blank at `$83:9F52` stands for leading
+  zeros): from the high word of 8 × +`$10` times `$4000`, split on the CPU divider.
+- **The offset word:** `$55` less the high word of +`$40` times `$019E`, at least 0, plus the
+  view's base.
+
+**Then, always,** the player's message is updated in the VS font (`vs_message_update`, vs-race-12)
+through the D-page words.
+
+**The agent's open guess:** bit 2 set skips to the message. The never-run bytes at `$82:9C41` are
+`JMP $9D21`, which jumps past the bar, the digits and the offset.
+
+The DSP-4 commands used are all `$0000`, the multiply, which the C has natively.
+
+**Results:** 303 live samples, 500 fuzz cases, 461/461 paths.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

@@ -6440,6 +6440,27 @@ static void fuzz_vs_car_bands(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
     wr16ram(ram, (uint16_t)(0x4E2D + 2 * i), (uint16_t)rnd());
   }
 }
+// vs_hud_digits ($82:9C39): its caller reloads the registers (vs-race-16)
+static void call_vs_hud_digits(const Regs* in, Regs* out) { (void)in; (void)out; vs_hud_digits(); }
+// the four players: flags (bit 2 now and then), +$13 and +$10 on all sides of the bar's and the
+// digits' tests (negative now and then), +$40; the message slots and words as race_message_update's
+static void fuzz_vs_hud_digits(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  static const uint16_t recs[4] = {0x0200, 0x02B3, 0x0262, 0x0315}, slots[4] = {0x0233, 0x02E6, 0x0295, 0x0348};
+  fuzz_race_message_update(r, ram, rnd);
+  wr16ram(ram, 0x019E, (uint16_t)((rnd() & 3) ? 1 + rnd() % 0x100 : rnd()));
+  for(int i = 0; i < 4; i++) {
+    const uint16_t b = recs[i];
+    wr16ram(ram, (uint16_t)(b + 0x44), (uint16_t)((rnd() % 6) ? rnd() & 0xFFFB : rnd()));
+    wr16ram(ram, (uint16_t)(b + 0x13), (uint16_t)((rnd() % 6) ? rnd() % 0x4000 : rnd()));
+    const uint32_t k = rnd() % 5;
+    wr16ram(ram, (uint16_t)(b + 0x10), (uint16_t)(k == 0 ? rnd() % 5 : k == 1 ? 5 + rnd() % 45 : k == 2 ? rnd() : rnd() % 0x1000));
+    wr16ram(ram, (uint16_t)(b + 0x40), (uint16_t)((rnd() % 6) ? rnd() % 0x4000 : rnd()));
+    wr16ram(ram, slots[i], (uint16_t)(rnd() % 0x4F));
+    wr16ram(ram, (uint16_t)(0x4E3D + 2 * i), (uint16_t)(rnd() % 0x4F));
+    wr16ram(ram, (uint16_t)(0x4E45 + 2 * i), (uint16_t)(rnd() % 0x40));
+    wr16ram(ram, (uint16_t)(0x4E4D + 2 * i), (uint16_t)rnd());
+  }
+}
 // vs_places_update ($82:9AF4): its caller reloads the registers (vs-race-8)
 static void fuzz_vs_cars_ahead(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 static void call_vs_places_update(const Regs* in, Regs* out) { (void)in; (void)out; vs_places_update(); }
@@ -12607,6 +12628,8 @@ const Routine routines[] = {
    .alsoIn = {{0x81F70B, 0x81F876}}},
   {.name = "vs_car_bands", .entry = 0x829806, .end = 0x829AF4, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_car_bands, .fuzz = fuzz_vs_car_bands},
+  {.name = "vs_hud_digits", .entry = 0x829C39, .end = 0x82A0C6, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_hud_digits, .fuzz = fuzz_vs_hud_digits},
   {.name = "vs_places_update", .entry = 0x829AF4, .end = 0x829B62, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_vs_places_update, .fuzz = fuzz_vs_places_update},
   {.name = "vs_cars_link", .entry = 0x8297BE, .end = 0x829806, .source = "src/vs.c", .needM16 = true,

@@ -812,7 +812,7 @@ CODE_829348:
     bpl CODE_8294B2             ; $8294A1
     incbin !baserom:$114A3..$114B2
 CODE_8294B2:
-    jsr.w $9C39                 ; $8294B2
+    jsr.w vs_hud_digits         ; $8294B2
     lda.w $1ECE                 ; $8294B5
     bmi CODE_8294BE             ; $8294B8
     beq CODE_82952E             ; $8294BA
@@ -1320,6 +1320,7 @@ CODE_829C32:
     sta.w $0348                 ; $829C33
     rts                         ; $829C36
     incbin !baserom:$11C37..$11C39
+vs_hud_digits:
     lda.w $0244                 ; $829C39
     bit.w #$0004                ; $829C3C
     beq CODE_829C44             ; $829C3F

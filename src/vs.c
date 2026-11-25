@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "misc.h"
+#include "text.h"
 #include "dsp4.h"
 #include "track.h"
 #include "decompress.h"
@@ -1051,6 +1052,73 @@ void vs_car_bands(void) {
     {0x0315, 0xFB53, 0x2D80, 0x4E33, 0x4E3B},
   };
   for(int i = 0; i < 4; i++) vs_car_band(&players[i]);
+}
+
+// One player's block of vs_hud_digits: its record's words, the HUD words it writes, and its
+// message's state.
+typedef struct {
+  uint16_t flags, near, speed, level;    // its record's +$44, +$13, +$10, +$40
+  uint16_t bar, hundreds, tens, ones;    // the HUD words written (D-page offsets in WRAM)
+  uint16_t offset, base;                 // the offset word, and the base added to it
+  uint16_t word, slot, buf, line, tail;  // $7E:4E3D.., its message slot, its line, $7E:4E45.., $7E:4E4D..
+} VsHudPlayer;
+
+static uint16_t hud_digit_tile(uint16_t i) { return bus_rd16(0x839F54 + (uint32_t)(uint16_t)(2 * i)); }  // DB $83
+static uint16_t product_high(uint16_t a, uint16_t b) { return (uint16_t)((uint32_t)dsp4_multiply((int16_t)a, (int16_t)b) >> 16); }
+
+static void vs_hud_player(const VsHudPlayer* p) {
+  if(!(rd16(p->flags) & 0x0004)) {  // (bit 2 set skips to the message: never run)
+    uint16_t a = product_high(rd16(p->near), 0x0160);
+    if(a & 0x8000) a = (uint16_t)(0 - a);  // (never run)
+    if(a >= 0x000C) a = 0x000C;
+    wr16(p->bar, a);
+    wr16(p->hundreds, bus_rd16(0x839F52));  // the blank
+    wr16(p->tens, bus_rd16(0x839F52));
+    uint16_t s = rd16(p->speed);
+    if(s & 0x8000) s = (uint16_t)(0 - s);  // (never run)
+    a = product_high((uint16_t)(s << 3), 0x4000);
+    if(a >= 10) {
+      if(a >= 100) {  // the CPU divider, an 8-bit divisor
+        wr16(p->hundreds, hud_digit_tile((uint16_t)(a / 100)));
+        a = (uint16_t)(a % 100);
+      }
+      wr16(p->tens, hud_digit_tile((uint16_t)(a / 10)));
+      a = (uint16_t)(a % 10);
+    }
+    wr16(p->ones, hud_digit_tile(a));
+    uint16_t v = (uint16_t)(0x55 - product_high(rd16(p->level), rd16(0x019E)));
+    if(v & 0x8000) v = 0;  // (never run)
+    wr16(p->offset, (uint16_t)(v + p->base));
+  }
+  wr16(DP + 0x14, rd16(p->word));
+  wr16(DP + 0x16, rd16(p->slot));
+  wr16(DP + 0x18, p->buf);
+  wr16(DP + 0x1A, rd16(p->line));
+  wr16(DP + 0x1C, rd16(p->tail));
+  wr16(DP + 0x3A, 0x0C00);
+  vs_message_update();
+  wr16(p->word, rd16(DP + 0x14));
+  wr16(p->slot, rd16(DP + 0x16));
+  wr16(p->line, rd16(DP + 0x1A));
+  wr16(p->tail, rd16(DP + 0x1C));
+}
+
+// TG3000_ROUTINE($82:9C39) vs_hud_digits
+// (drafted by a delegated agent; its never-run parts decoded here.) The VS race's HUD for the
+// four players in turn (records $0200, $02B3, $0262, $0315), unless the record's +$44 bit 2 is set:
+// the bar (the high word of +$13 times $0160, at most $0C), the speed's three digit tiles
+// ($83:9F54; blank $83:9F52 for leading zeros; from the high word of 8 x +$10 times $4000, on the
+// CPU divider), the offset word ($55 less the high word of +$40 times $019E, at least 0, plus the
+// view's base). Then, always, the player's message, updated in the VS font (vs_message_update)
+// through the D-page words.
+void vs_hud_digits(void) {
+  static const VsHudPlayer players[4] = {
+    {0x0244, 0x0213, 0x0210, 0x0240, 0x003E, 0x0042, 0x0044, 0x0046, 0x00A4, 0x57A1, 0x4E3D, 0x0233, 0x4E61, 0x4E45, 0x4E4D},
+    {0x02F7, 0x02C6, 0x02C3, 0x02F3, 0x0040, 0x004E, 0x0050, 0x0052, 0x00AC, 0x57A1, 0x4E3F, 0x02E6, 0x4E95, 0x4E47, 0x4E4F},
+    {0x02A6, 0x0275, 0x0272, 0x02A2, 0x0064, 0x0048, 0x004A, 0x004C, 0x00A6, 0x57F9, 0x4E41, 0x0295, 0x4EC9, 0x4E49, 0x4E51},
+    {0x0359, 0x0328, 0x0325, 0x0355, 0x0068, 0x0054, 0x0056, 0x0058, 0x00AE, 0x57F9, 0x4E43, 0x0348, 0x4EFD, 0x4E4B, 0x4E53},
+  };
+  for(int i = 0; i < 4; i++) vs_hud_player(&players[i]);
 }
 
 // TG3000_ROUTINE($82:9AF4) vs_places_update

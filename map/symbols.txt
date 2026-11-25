@@ -760,6 +760,7 @@ func    81F4AF   vs_cars_order       ; VS race: the four cars' order sorted by d
 func    81F6AE   vs_cars_tie         ; VS race: two cars of equal high distance (X, Y): the count at $013C, pushed $40 apart sideways when close -> src/vs.c
 func    81F6F2   vs_cars_apart       ; VS race: two cars (X, Y) $40 or more apart sideways (C clear), else pushed apart -> src/vs.c
 func    829806   vs_car_bands        ; VS race: func_82AC52 for the four players (speed and band words) -> src/vs.c
+func    829C39   vs_hud_digits       ; VS race: race_hud_digits' first half for the four players, then their messages -> src/vs.c
 func    829AF4   vs_places_update    ; VS race: each player's place; a changed place requests its message -> src/vs.c
 func    8297BE   vs_cars_link        ; VS race: the four cars linked both ways in the order at $1E6A -> src/vs.c
 func    83E878   vs_car_parts        ; VS race: the car at D's engine and tyre words from the VS tables -> src/vs.c

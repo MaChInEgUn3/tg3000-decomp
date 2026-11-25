@@ -731,3 +731,4 @@
 8AB232 password_entry src/password.c 492a08623413b6d9 1 0 84/84 verified live-flags:NVZC replayed:0
 8AA67B vs_screen_loop src/vs.c 6aaf250db59f4696 1 0 37/37 verified live-flags:NVZC replayed:0
 829806 vs_car_bands src/vs.c 69a58e2aad19e815 278 500 303/303 verified live-flags:- replayed:0
+829C39 vs_hud_digits src/vs.c 235a8eae6fd09f65 303 500 461/461 verified live-flags:- replayed:0
