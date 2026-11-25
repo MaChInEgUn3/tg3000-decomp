@@ -173,6 +173,12 @@ void vs_hud_digits(void);
 // $82:B902: track_objects_stream for one of the VS race's four views; its parameters in
 // D+$34..$3C, `first` the view's slot-table block's first word.
 void vs_track_objects_stream(uint16_t first);
+// $82:B87A, $82:B89C, $82:B8BF, $82:B8DF: vs_track_objects_stream for view 0-3 (its parameters
+// set from the player's record and the view's constants; the list index kept at $01A0 + 4 x view).
+void vs_track_objects_view0(void);
+void vs_track_objects_view1(void);
+void vs_track_objects_view2(void);
+void vs_track_objects_view3(void);
 // $81:F6AE / $81:F6F2: two cars of the VS race's order (X, Y, record offsets) close in distance
 // or sideways; A and the flags as the original's RTS leaves them (X and Y are restored).
 typedef struct {

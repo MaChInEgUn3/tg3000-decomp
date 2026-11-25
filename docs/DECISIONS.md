@@ -4319,6 +4319,23 @@ state pass. Fuzz: 500 cases. Paths: 128/128.
 
 **Check:** the incremental gate (additions only).
 
+## The VS race's four views' object graphics (vs-race-18, 2026-11-25)
+
+**`vs_track_objects_view0` to `vs_track_objects_view3`** (`$82:B87A`, `$82:B89C`, `$82:B8BF`,
+`$82:B8DF`) set up `vs_track_objects_stream` (vs-race-17) for each view, and keep its list index.
+- **The view's constants:** the slot-table block (0, `$DC`, `$1B8`, `$294`), the VRAM base (0,
+  `$800`, `$1000`, `$1800`), the bias (0, `$80`, 0, `$80`) and the first word (`$100`, `$180`,
+  `$100`, `$180`).
+- **The player's distance:** its record's +`$26` (`$0226`, `$02D9`, `$0288`, `$033B`).
+- **The list index:** read from D+`$A0`, `$A4`, `$A8`, `$AC`, and stored back.
+
+They are one C function over a table.
+
+**Results:** one entry each in the VS movie, interrupted, replayed from its entry state: pass. Fuzz:
+500 cases each, on the stream's records. Paths: 14-15 each.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

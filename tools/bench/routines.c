@@ -6524,6 +6524,42 @@ static void fuzz_vs_track_objects_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(
   const uint16_t pos = (rnd() % 8) ? (uint16_t)(firstAt + rnd() % (uint32_t)(at - firstAt)) : (uint16_t)(firstAt ? firstAt - 1 : 0);
   wr16ram(ram, DP + 0x36, pos);
 }
+// vs_track_objects_view0..3 ($82:B87A...; vs-race-18): as the stream leaves X, Y, C and V; then
+// A = the index stored (N Z of it)
+static void callVsTrackObjectsView(int view, Regs* out) {
+  static const uint16_t vrams[4] = {0x0000, 0x0800, 0x1000, 0x1800}, dists[4] = {0x0226, 0x02D9, 0x0288, 0x033B},
+                        biases[4] = {0x0000, 0x0080, 0x0000, 0x0080};
+  const uint16_t pos = rd16(dists[view]);
+  uint16_t x = rd16((uint16_t)(0x01A0 + 4 * view));
+  while(pos >= rd16(0x5B91 + (uint32_t)x)) {
+    const uint16_t kind = rd16(0x5B94 + (uint32_t)x), slot = rd8(0x5B93 + (uint32_t)x);
+    Regs v;
+    setAdc16(&v, (uint16_t)(slot << 1), biases[view]);
+    out->v = v.v;
+    if(kind) out->y = (uint16_t)((slot << 5) + vrams[view]);
+    x = (uint16_t)(x + 5);
+  }
+  static void (*const fn[4])(void) = {vs_track_objects_view0, vs_track_objects_view1, vs_track_objects_view2,
+                                      vs_track_objects_view3};
+  fn[view]();
+  out->a = x;
+  out->x = x;
+  out->c = false;
+  setNZ16(out, x);
+}
+static void call_vs_track_objects_view0(const Regs* in, Regs* out) { (void)in; callVsTrackObjectsView(0, out); }
+static void call_vs_track_objects_view1(const Regs* in, Regs* out) { (void)in; callVsTrackObjectsView(1, out); }
+static void call_vs_track_objects_view2(const Regs* in, Regs* out) { (void)in; callVsTrackObjectsView(2, out); }
+static void call_vs_track_objects_view3(const Regs* in, Regs* out) { (void)in; callVsTrackObjectsView(3, out); }
+// the stream's records and distances, moved to the words the wrappers read
+static void fuzz_vs_track_objects_view(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_vs_track_objects_stream(r, ram, rnd);
+  static const uint16_t dists[4] = {0x0226, 0x02D9, 0x0288, 0x033B};
+  for(int view = 0; view < 4; view++) {
+    wr16ram(ram, dists[view], (uint16_t)(ram[DP + 0x36] | ram[DP + 0x37] << 8));
+    wr16ram(ram, (uint16_t)(0x01A0 + 4 * view), (uint16_t)(ram[DP + 0x38] | ram[DP + 0x39] << 8));
+  }
+}
 // vs_places_update ($82:9AF4): its caller reloads the registers (vs-race-8)
 static void fuzz_vs_cars_ahead(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 static void call_vs_places_update(const Regs* in, Regs* out) { (void)in; (void)out; vs_places_update(); }
@@ -12691,6 +12727,18 @@ const Routine routines[] = {
    .alsoIn = {{0x81F70B, 0x81F876}}},
   {.name = "vs_car_bands", .entry = 0x829806, .end = 0x829AF4, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_car_bands, .fuzz = fuzz_vs_car_bands},
+  {.name = "vs_track_objects_view0", .entry = 0x82B87A, .end = 0x82B89C, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_track_objects_view0, ALL_OUTPUTS,
+   .fuzz = fuzz_vs_track_objects_view},
+  {.name = "vs_track_objects_view1", .entry = 0x82B89C, .end = 0x82B8BF, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_track_objects_view1, ALL_OUTPUTS,
+   .fuzz = fuzz_vs_track_objects_view},
+  {.name = "vs_track_objects_view2", .entry = 0x82B8BF, .end = 0x82B8DF, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_track_objects_view2, ALL_OUTPUTS,
+   .fuzz = fuzz_vs_track_objects_view},
+  {.name = "vs_track_objects_view3", .entry = 0x82B8DF, .end = 0x82B902, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_track_objects_view3, ALL_OUTPUTS,
+   .fuzz = fuzz_vs_track_objects_view},
   {.name = "vs_track_objects_stream", .entry = 0x82B902, .end = 0x82BA12, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_track_objects_stream, ALL_OUTPUTS,
    .fuzz = fuzz_vs_track_objects_stream},

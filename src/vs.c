@@ -1162,6 +1162,34 @@ void vs_track_objects_stream(uint16_t first) {
   }
 }
 
+// The four views' parameters for vs_track_objects_stream: the slot-table block, the VRAM base,
+// the player's distance word (its record's +$26), the bias, the block's first word.
+static void vs_track_objects_view(int view) {
+  static const struct { uint16_t block, vram, distance, bias, first; } views[4] = {
+    {0x0000, 0x0000, 0x0226, 0x0000, 0x0100},
+    {0x00DC, 0x0800, 0x02D9, 0x0080, 0x0180},
+    {0x01B8, 0x1000, 0x0288, 0x0000, 0x0100},
+    {0x0294, 0x1800, 0x033B, 0x0080, 0x0180},
+  };
+  const uint16_t index = (uint16_t)(0x01A0 + 4 * view);  // D+$A0, D+$A4, D+$A8, D+$AC
+  wr16(DP + 0x3C, views[view].block);
+  wr16(DP + 0x3A, views[view].vram);
+  wr16(DP + 0x36, rd16(views[view].distance));
+  wr16(DP + 0x34, views[view].bias);
+  wr16(DP + 0x38, rd16(index));
+  vs_track_objects_stream(views[view].first);
+  wr16(index, rd16(DP + 0x38));
+}
+
+// TG3000_ROUTINE($82:B87A) vs_track_objects_view0
+void vs_track_objects_view0(void) { vs_track_objects_view(0); }
+// TG3000_ROUTINE($82:B89C) vs_track_objects_view1
+void vs_track_objects_view1(void) { vs_track_objects_view(1); }
+// TG3000_ROUTINE($82:B8BF) vs_track_objects_view2
+void vs_track_objects_view2(void) { vs_track_objects_view(2); }
+// TG3000_ROUTINE($82:B8DF) vs_track_objects_view3
+void vs_track_objects_view3(void) { vs_track_objects_view(3); }
+
 // TG3000_ROUTINE($82:9AF4) vs_places_update
 // For the four players in turn (records $0200, $02B3, $0262, $0315; indices 4 to 1): the cars
 // ahead of it (vs_cars_ahead). When that differs from its last count ($1ED2 + 2 a player), the

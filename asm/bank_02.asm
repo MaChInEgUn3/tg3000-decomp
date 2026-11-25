@@ -718,10 +718,10 @@ CODE_829348:
     stz.b $54                   ; $82938F
     jsr.w track_setup_load      ; $829391
     jsl.l track_rows_build      ; $829394
-    jsr.w $B87A                 ; $829398
-    jsr.w $B89C                 ; $82939B
-    jsr.w $B8BF                 ; $82939E
-    jsr.w $B8DF                 ; $8293A1
+    jsr.w vs_track_objects_view0; $829398
+    jsr.w vs_track_objects_view1; $82939B
+    jsr.w vs_track_objects_view2; $82939E
+    jsr.w vs_track_objects_view3; $8293A1
     lda.w #$0010                ; $8293A4
     ldx.w #$4000                ; $8293A7
     jsr.w func_82AD12           ; $8293AA
@@ -3923,6 +3923,7 @@ func_82B838:
     sta.w $2364,x               ; $82B875
     plb                         ; $82B878
     rts                         ; $82B879
+vs_track_objects_view0:
     lda.w #$0000                ; $82B87A
     sta.b $3C                   ; $82B87D
     lda.w #$0000                ; $82B87F
@@ -3937,6 +3938,7 @@ func_82B838:
     lda.b $38                   ; $82B896
     sta.w $01A0                 ; $82B898
     rts                         ; $82B89B
+vs_track_objects_view1:
     lda.w #$00DC                ; $82B89C
     sta.b $3C                   ; $82B89F
     lda.w #$0800                ; $82B8A1
@@ -3952,6 +3954,7 @@ func_82B838:
     lda.b $38                   ; $82B8BA
     sta.b $A4                   ; $82B8BC
     rts                         ; $82B8BE
+vs_track_objects_view2:
     lda.w #$01B8                ; $82B8BF
     sta.b $3C                   ; $82B8C2
     lda.w #$1000                ; $82B8C4
@@ -3966,6 +3969,7 @@ func_82B838:
     lda.b $38                   ; $82B8DA
     sta.b $A8                   ; $82B8DC
     rts                         ; $82B8DE
+vs_track_objects_view3:
     lda.w #$0294                ; $82B8DF
     sta.b $3C                   ; $82B8E2
     lda.w #$1800                ; $82B8E4
