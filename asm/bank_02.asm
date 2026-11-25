@@ -99,6 +99,7 @@ CODE_828422:
     cmp.w $0024                 ; $828422
     bne CODE_828422             ; $828425
     rts                         ; $828427
+race_load:
     ldx.w #$96DD                ; $828428
     lda.w #$0083                ; $82842B
     jsl.l video_load_screen_long; $82842E

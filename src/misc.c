@@ -5000,6 +5000,52 @@ void race_grid_setup(void) {
   wr16(0x02B9, rd16(0xFABB + 0x35));
 }
 
+// TG3000_ROUTINE($82:8428) race_load
+// The race setup's first piece, entered from the race wrapper's mode table ($82:8418, mode 0), up to
+// the test of $047C at $82:854B: the screen image; the race's interrupt vectors (NMI $83:838A,
+// IRQ $85:8377, its trampoline $85:95BD); the fixed colour; the track's settings and tiles;
+// race_state_reset; $7E:FAFA cleared and two bits of $7E:FB13; 13 bytes from $85:8AAE to
+// $7E:4CCC; the track's segments; the graphics (the car's by $01E4) unpacked to VRAM and to
+// $7F:0000; the track's sky row; the blocks, the backdrop, the HUD rows; 32 colours from
+// $8D:8B70; the HUD's tiles. The rest of the setup waits on the sound loader (not ported).
+void race_load(void) {
+  video_load_screen_long(0x8396DD);
+  wr16(0x0008, 0x838A);
+  wr16(0x0005, 0x95BD);
+  wr8(0x0007, 0x85);
+  wr16(0x0001, 0x8377);
+  wr8(0x0003, 0x85);
+  video_set_fixed_color(0x25);
+  video_set_fixed_color(0x4B);
+  video_set_fixed_color(0x8A);
+  track_settings_load();
+  track_tiles_load(rd16(0x047B));
+  race_state_reset();
+  wr16(0xFAFA, 0);
+  wr16(0xFB13, (uint16_t)(rd16(0xFB13) & 0xFF7D));
+  for(int i = 0; i < 13; i++) wr8((uint16_t)(0x4CCC + i), bus_rd8(0x858AAE + (uint32_t)i));
+  track_segments_load(DP);
+  decompress_to_vram(DP, 0x8F, 0x85F5, 0x5AC0);
+  const uint16_t car = rd16(0x01E4);
+  if(car & 0x8000) decompress_to_vram(DP, 0x9D, 0x9F2A, 0x0000);
+  else if(car != 0) decompress_to_vram(DP, 0x9C, 0xA04F, 0x0000);
+  else decompress_to_vram(DP, 0x9C, 0x9093, 0x0000);
+  uint16_t end;
+  decompress(DP, 0x87, 0x8B3D, 0x7F, 0x0000, &end);
+  wr16(0x10078, bus_rd16(0x83A484 + (uint32_t)(uint16_t)(rd16(0x1F06) << 1)));
+  tile_block_5x5(0x30F4);
+  wr16(DP + 0x14, 0x007F);  // (the uploads' bank, kept in D+$14 as the original does)
+  upload_vram_now(0x7C00, 0x7F, 0x0000, 0x0700);
+  track_backdrop_load(DP);
+  track_block_triple(DP);
+  wr16(DP + 0x14, 0x007E);
+  upload_vram_now(0x57A0, 0x7E, 0x217C, 0x0190);
+  wr16(DP + 0x14, 0x007E);
+  upload_vram_now(0x5868, 0x7E, 0x217C, 0x0190);
+  upload_cgram_now(0x00, 0x8D, 0x8B70, 0x0040);
+  decompress_to_vram(DP, 0x99, 0xB3D5, 0x0EE0);
+}
+
 // TG3000_ROUTINE($82:A28B) race_state_reset
 void race_state_reset(void) {
   wr16(0x00B4, 0);

@@ -6634,6 +6634,14 @@ static void call_vs_race_reset(const Regs* in, Regs* out) {
   out->n = out->z = false;
 }
 static void fuzz_track_palettes_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+// race_load ($82:8428, race-setup-1): the setup's first piece, ending at the $047C test ($82:854B);
+// the flags are the last decompression's (as call_decompress_to_vram: C set, N Z V clear)
+static void call_race_load(const Regs* in, Regs* out) {
+  (void)in;
+  race_load();
+  out->n = out->z = out->v = false;
+  out->c = true;
+}
 // vs_race_load ($82:92BA, vs-race-24): the setup's first piece, ending at the $047C test ($82:932D);
 // the setup goes on with the registers it loads there; the flags are the last decompression's
 // (as call_decompress_to_vram: C set, N Z V clear)
@@ -13248,6 +13256,9 @@ const Routine routines[] = {
   {.name = "vs_car_parts", .entry = 0x83E878, .end = 0x83E8AB, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .compareA = true, .compareX = true, .call = call_vs_car_parts,
    .fuzz = fuzz_vs_car_parts},
+  {.name = "race_load", .entry = 0x828428, .end = 0x82854B, .endAt = 0x82854B, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_race_load, .manyEffects = true,
+   .holes = {{0x8284A8, 0x8284C8}}},  // the other two cars' graphics ($01E4 0 or positive: never in the movies)
   {.name = "vs_race_load", .entry = 0x8292BA, .end = 0x82932D, .endAt = 0x82932D, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_load, .manyEffects = true},
   {.name = "vs_names_absent", .entry = 0x8AA6F6, .end = 0x8AA721, .source = "src/vs.c", .needM16 = true,

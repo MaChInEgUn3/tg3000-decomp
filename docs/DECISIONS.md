@@ -4910,6 +4910,40 @@ DSP-4. It had C but no row: it was judged only through the rows that list it as 
 
 **Check:** the full gate (a line changed: `static` removed).
 
+## The race setup's first piece (race-setup-1, 2026-11-25)
+
+**What is left.** With the VS race in C, the largest stretch of code with no verified C was the
+one-player race setup (`$82:8428`-`$863F`, 535 bytes). It is entered from the race wrapper's mode
+table (`$82:8418`, mode 0). It has the VS setup's shape:
+- a load;
+- the sound loader (`$84:A487`, parked with the others);
+- the track's setup with frame waits;
+- the race loop.
+
+**`race_load` (`$82:8428` to the `$047C` test at `$82:854B`).** In order:
+1. the screen image;
+2. the race's interrupt vectors (NMI `$83:838A`, IRQ `$85:8377`, its trampoline `$85:95BD`);
+3. the fixed colour;
+4. the track's settings and tiles, and `race_state_reset`;
+5. `$7E:FAFA` cleared and two bits of `$7E:FB13`;
+6. 13 bytes from `$85:8AAE` to `$7E:4CCC`;
+7. the segments;
+8. the graphics, the car's by `$01E4`;
+9. the sky row;
+10. the blocks, the backdrop, the HUD rows;
+11. 32 colours;
+12. the HUD's tiles.
+
+**What the first run caught:** the original keeps each upload's bank in D+`$14` before the call.
+The C now writes it too.
+
+**Results:**
+- 1 live entry on race1 and 5 on the 60k movie, all interrupted, so judged by replays.
+- The other two cars' graphics (`$01E4` 0 or positive) never run in the movies. They are ported
+  but untested, a hole.
+
+**Check:** the incremental gate (additions only).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
