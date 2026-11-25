@@ -131,6 +131,8 @@ void text_centred_line_at(uint16_t palette, uint16_t string);
 // ($83:A1E0) set. Otherwise the shown message's time counts down by $1E9E; when it runs
 // out the line is blanked and D+$14 = D+$16 = 0.
 void race_message_update(void);
+// $82:A0C6: race_message_update in the VS race's font (vs_centred_line, its blank).
+void vs_message_update(void);
 
 // $80:855A: the 4-digit value `value` (BCD, kept in D+$1A and read a digit at a time by
 // take_nibble16) as sprites from slot D+$74 at x `x` (kept in D+$16), tiles $34 + digit

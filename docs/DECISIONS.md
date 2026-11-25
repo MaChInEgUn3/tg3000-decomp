@@ -4127,6 +4127,22 @@ into the second.
 
 **Check:** the full gate (`src/text.c` changed by more than additions).
 
+## The VS race's message update (vs-race-12, 2026-11-25)
+
+**`vs_message_update` (`$82:A0C6`)** is `race_message_update` in the VS race's font.
+- It draws the new message with `vs_centred_line`, and blanks it with the VS blank
+  (`$83:9F52`) when its time is up.
+- `src/text.c` now has one `message_update` over the font, as `centred_line` is (vs-race-11).
+- Its callers are the VS race's HUD, one call a player from `$82:A0AB` and its siblings. That
+  HUD also talks to the DSP-4 and is not ported yet.
+
+**Results:**
+- **`vs_message_update`:** 1,149 live samples on the VS movie, from all four players' lines;
+  500 fuzz cases; 51/51 paths.
+- **`race_message_update`:** still 216 live samples and 500 fuzz cases on the race movie.
+
+**Check:** the full gate (`src/text.c` changed by more than additions).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

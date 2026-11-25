@@ -1396,7 +1396,7 @@ CODE_829D1A:
     sta.b $1C                   ; $829D3B
     lda.w #$0C00                ; $829D3D
     sta.b $3A                   ; $829D40
-    jsr.w $A0C6                 ; $829D42
+    jsr.w vs_message_update     ; $829D42
     lda.b $14                   ; $829D45
     sta.l $7E4E3D               ; $829D47
     lda.b $16                   ; $829D4B
@@ -1516,7 +1516,7 @@ CODE_829E3D:
     sta.b $1C                   ; $829E5E
     lda.w #$0C00                ; $829E60
     sta.b $3A                   ; $829E63
-    jsr.w $A0C6                 ; $829E65
+    jsr.w vs_message_update     ; $829E65
     lda.b $14                   ; $829E68
     sta.l $7E4E3F               ; $829E6A
     lda.b $16                   ; $829E6E
@@ -1636,7 +1636,7 @@ CODE_829F60:
     sta.b $1C                   ; $829F81
     lda.w #$0C00                ; $829F83
     sta.b $3A                   ; $829F86
-    jsr.w $A0C6                 ; $829F88
+    jsr.w vs_message_update     ; $829F88
     lda.b $14                   ; $829F8B
     sta.l $7E4E41               ; $829F8D
     lda.b $16                   ; $829F91
@@ -1756,7 +1756,7 @@ CODE_82A083:
     sta.b $1C                   ; $82A0A4
     lda.w #$0C00                ; $82A0A6
     sta.b $3A                   ; $82A0A9
-    jsr.w $A0C6                 ; $82A0AB
+    jsr.w vs_message_update     ; $82A0AB
     lda.b $14                   ; $82A0AE
     sta.l $7E4E43               ; $82A0B0
     lda.b $16                   ; $82A0B4
@@ -1766,6 +1766,7 @@ CODE_82A083:
     lda.b $1C                   ; $82A0BF
     sta.l $7E4E53               ; $82A0C1
     rts                         ; $82A0C5
+vs_message_update:
     pea.w $837E                 ; $82A0C6
     plb                         ; $82A0C9
     lda.b $14                   ; $82A0CA

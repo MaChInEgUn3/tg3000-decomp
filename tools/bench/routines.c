@@ -853,6 +853,13 @@ static void call_race_message_update(const Regs* in, Regs* out) {
   out->n = true;
   out->z = false;
 }
+static void call_vs_message_update(const Regs* in, Regs* out) {  // (vs-race-12) as race_message_update
+  (void)in;
+  vs_message_update();
+  out->db = 0x83;
+  out->n = true;
+  out->z = false;
+}
 // the shown and new messages (the race's: 0-$4E, by D+$3C's table), their times, the step
 static void fuzz_race_message_update(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
@@ -13218,6 +13225,8 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_car_lap_check, .fuzz = fuzz_car_lap_check},
   {.name = "race_message_update", .entry = 0x82B11F, .end = 0x82B18B, .source = "src/text.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_race_message_update, .fuzz = fuzz_race_message_update},
+  {.name = "vs_message_update", .entry = 0x82A0C6, .end = 0x82A134, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_vs_message_update, .fuzz = fuzz_race_message_update},
   {.name = "func_82B769", .entry = 0x82B769, .end = 0x82B78D, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_func_82B769, ALL_OUTPUTS, .fuzz = fuzz_func_82B769},
   {.name = "empty_80B94F", .entry = 0x80B94F, .end = 0x80B950, .source = "src/misc.c", .call = call_empty, ALL_OUTPUTS},

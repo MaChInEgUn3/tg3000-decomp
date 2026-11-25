@@ -534,13 +534,12 @@ void text_centred_line(void) { centred_line(&centredRace); }
 // TG3000_ROUTINE($82:A134) vs_centred_line
 void vs_centred_line(void) { centred_line(&centredVs); }
 
-// TG3000_ROUTINE($82:B11F) race_message_update
-void race_message_update(void) {
+static void message_update(const CentredFont* f) {
   if(rd16(DP + 0x14) != rd16(DP + 0x16)) {
     uint16_t shown = (uint16_t)(rd16(DP + 0x14) << 1), next = (uint16_t)(rd16(DP + 0x16) << 1);
     wr16(DP + 0x3C, next);
     if(rom16(0x83A0A4 + (uint32_t)next) >= rom16(0x83A0A4 + (uint32_t)shown)) {
-      text_centred_line();
+      centred_line(f);
       wr16(DP + 0x1A, rom16(0x83A142 + (uint32_t)rd16(DP + 0x3C)));
       wr16(DP + 0x1C, rom16(0x83A1E0 + (uint32_t)rd16(DP + 0x3C)));
       wr16(DP + 0x14, rd16(DP + 0x16));
@@ -555,7 +554,7 @@ void race_message_update(void) {
     wr16(DP + 0x1A, (uint16_t)(time - step));
     return;
   }
-  uint16_t x = rd16(DP + 0x18), blank = rom16(0x83A5A4);  // its time is up: blank the line
+  uint16_t x = rd16(DP + 0x18), blank = rom16(f->blank);  // its time is up: blank the line
   for(int i = 0; i < 13; i++, x = (uint16_t)(x + 2)) {
     wr16(x, blank);
     wr16((uint16_t)(x + 0x1A), blank);
@@ -564,6 +563,12 @@ void race_message_update(void) {
   wr16(DP + 0x14, 0);
   wr16(DP + 0x1A, 0);
 }
+
+// TG3000_ROUTINE($82:B11F) race_message_update
+void race_message_update(void) { message_update(&centredRace); }
+
+// TG3000_ROUTINE($82:A0C6) vs_message_update
+void vs_message_update(void) { message_update(&centredVs); }
 
 // TG3000_ROUTINE($80:855A) sprite_number_point
 uint16_t sprite_number_point(uint16_t value, uint16_t x) {
