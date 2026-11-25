@@ -11154,6 +11154,21 @@ static void fuzz_oam_high_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(int i = 0; i < 16; i++) words[i] = (uint16_t)rnd();
   dsp4_bridge_script(words, (rnd() % 4 == 0) ? (int)(rnd() % 16) : 16);
 }
+// oam_high_load2 ($82:AEA4, vs-race-31): the same with D+$88 for D+$86; its fuzz the same with D+$88
+static void call_oam_high_load2(const Regs* in, Regs* out) {
+  const uint16_t d88 = rd16(DP + 0x88), d8e = rd16(DP + 0x8E);
+  oam_high_load2();
+  oamHighOut(in, out, d88, d8e);
+}
+static void fuzz_oam_high_load2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  const uint16_t d8e = (uint16_t)(4 * (rnd() % 0x80));
+  wr16ram(ram, DP + 0x8E, d8e);
+  wr16ram(ram, DP + 0x88, (uint16_t)(d8e + 4 * (rnd() % 0x81)));
+  uint16_t words[16];
+  for(int i = 0; i < 16; i++) words[i] = (uint16_t)rnd();
+  dsp4_bridge_script(words, (rnd() % 4 == 0) ? (int)(rnd() % 16) : 16);
+}
 // Negative row: the command word $0007 instead of $0006 (the tape's first write differs).
 // One word fewer read (oamHighWrong(false, 15): the tape left unconsumed) was run once as a
 // second negative row and failed as it must; two rows cannot share an entry in one run
@@ -14329,6 +14344,9 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_results_text, .fuzz = fuzz_results_text},
   {.name = "save_data_check", .entry = 0x808119, .end = 0x808199, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x00, .call = call_save_data_check, ALL_OUTPUTS, .fuzz = fuzz_save_data_check},
+  {.name = "oam_high_load2", .entry = 0x82AEA4, .end = 0x82AF33, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load2, ALL_OUTPUTS, .fuzz = fuzz_oam_high_load2,
+   .dsp4Tape = true, .replays = 32},
   {.name = "oam_high_load", .entry = 0x82AE15, .end = 0x82AEA4, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load, ALL_OUTPUTS, .fuzz = fuzz_oam_high_load,
    .dsp4Tape = true},

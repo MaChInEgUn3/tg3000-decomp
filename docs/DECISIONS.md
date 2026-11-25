@@ -4774,6 +4774,17 @@ holes and the two VS handlers were checked or written here.
 
 **Check:** the incremental gate (additions only).
 
+## The VS race's second sprite table's high part (vs-race-31, 2026-11-25)
+
+**`oam_high_load2` (`$82:AEA4`)** is `oam_high_load` for the VS race's second sprite table. The
+chip's 16 words (command `$06`) go to `$1BB6` + D+`$8E`. The unused sprites from D+`$88` are put
+off screen in the table at `$19B6`.
+- **Results:** 174 live samples, 500 fuzz cases, 59/59 paths.
+- **What is left:** with it, every routine the VS race loop calls is in C, except the parked sound
+  loader's caller.
+
+**Check:** the incremental gate (additions only).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

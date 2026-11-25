@@ -4594,6 +4594,23 @@ void oam_high_load(void) {
   } while(n != 0);
 }
 
+// TG3000_ROUTINE($82:AEA4) oam_high_load2
+// oam_high_load for the VS race's second sprite table: the chip's 16 words to $1BB6 + D+$8E,
+// the unused sprites from D+$88 off screen in the table at $19B6.
+void oam_high_load2(void) {
+  dsp4_port_write16(0x0006);
+  const uint32_t y = rd16(DP + 0x8E);
+  for(uint32_t i = 0; i < 32; i += 2) wr16(0x1BB6 + y + i, dsp4_port_read16());
+  const uint16_t room = (uint16_t)(0x0200 - (uint16_t)(rd16(DP + 0x88) - rd16(DP + 0x8E)));
+  if(room == 0) return;
+  uint16_t n = (uint16_t)(room >> 2), at = rd16(DP + 0x88);
+  do {
+    wr16(0x19B6 + (uint32_t)at, 0xE0E0);
+    at = (uint16_t)(at + 4);
+    n = (uint16_t)(n - 1);
+  } while(n != 0);
+}
+
 // $82:DDBF's overflow: the chip's remaining answers drained (each nonzero flag with its
 // pair), then `open` 0 words ending the lists still open.
 static void sprite_parts_drain(int open) {

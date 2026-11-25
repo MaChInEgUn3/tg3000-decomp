@@ -911,7 +911,7 @@ CODE_829589:
     jsr.w oam_high_load         ; $829593
     jsr.w vs_sprites_view2      ; $829596
     jsr.w vs_sprites_view3      ; $829599
-    jsr.w $AEA4                 ; $82959C
+    jsr.w oam_high_load2        ; $82959C
     lda.w #$0001                ; $82959F
     tsb.w $00B8                 ; $8295A2
     lda.w $1F08                 ; $8295A5
@@ -3194,6 +3194,7 @@ CODE_82AE99:
     bne CODE_82AE99             ; $82AEA1
 CODE_82AEA3:
     rts                         ; $82AEA3
+oam_high_load2:
     pea.w $8330                 ; $82AEA4
     plb                         ; $82AEA7
     lda.w #$0006                ; $82AEA8
