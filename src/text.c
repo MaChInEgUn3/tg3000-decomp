@@ -475,15 +475,21 @@ void text_type_step(void) {
   }
 }
 
-// a character code's tile index (text_centred_line)
-static uint16_t centred_tile(uint16_t c) {
-  switch(c) {
-  case 0x20: return 0x27;
-  case 0x21: return 0x24;
-  case 0x2E: return 0x25;  // never run
-  case 0x2B: return 0x26;
-  default: return c < 0x3A ? (uint16_t)(c - 0x16) : (uint16_t)(c - 0x41);
-  }
+// The centred line's two fonts (vs-race-11): the race's ($83:A504/$83:A554) and the VS race's
+// ($83:9F6A/$83:9FB8), each with its blank and its marks' tiles (the VS font has no '.').
+typedef struct {
+  uint32_t blank, top, bottom;
+  uint8_t marks[4], tiles[4];
+  int nMarks;
+} CentredFont;
+static const CentredFont centredRace = {0x83A5A4, 0x83A504, 0x83A554, {0x20, 0x21, 0x2E, 0x2B}, {0x27, 0x24, 0x25, 0x26}, 4};
+static const CentredFont centredVs = {0x839F52, 0x839F6A, 0x839FB8, {0x20, 0x21, 0x2B}, {0x26, 0x24, 0x25}, 3};
+
+// a character code's tile index ('.' in the race's font never ran, nor '+' in the VS's)
+static uint16_t centred_tile(const CentredFont* f, uint16_t c) {
+  for(int i = 0; i < f->nMarks; i++)
+    if(c == f->marks[i]) return f->tiles[i];
+  return c < 0x3A ? (uint16_t)(c - 0x16) : (uint16_t)(c - 0x41);
 }
 
 // TG3000_ROUTINE($82:8911) text_centred_line_at
@@ -494,9 +500,8 @@ void text_centred_line_at(uint16_t palette, uint16_t string) {
   text_centred_line();
 }
 
-// TG3000_ROUTINE($82:B18B) text_centred_line
-void text_centred_line(void) {
-  uint16_t x = rd16(DP + 0x18), blank = rom16(0x83A5A4);
+static void centred_line(const CentredFont* f) {
+  uint16_t x = rd16(DP + 0x18), blank = rom16(f->blank);
   for(int i = 0; i < 13; i++, x = (uint16_t)(x + 2)) {
     wr16(x, blank);
     wr16((uint16_t)(x + 0x1A), blank);
@@ -516,12 +521,18 @@ void text_centred_line(void) {
       wr16(DP + 0x3A, (uint16_t)((c & 0x07) << 10));
       continue;
     }
-    const uint32_t t = (uint32_t)(uint16_t)(centred_tile(c) << 1);
-    wr16(y, (uint16_t)(rom16(0x83A504 + t) | rd16(DP + 0x3A)));
-    wr16((uint16_t)(y + 0x1A), (uint16_t)(rom16(0x83A554 + t) | rd16(DP + 0x3A)));
+    const uint32_t t = (uint32_t)(uint16_t)(centred_tile(f, c) << 1);
+    wr16(y, (uint16_t)(rom16(f->top + t) | rd16(DP + 0x3A)));
+    wr16((uint16_t)(y + 0x1A), (uint16_t)(rom16(f->bottom + t) | rd16(DP + 0x3A)));
     y = (uint16_t)(y + 2);
   }
 }
+
+// TG3000_ROUTINE($82:B18B) text_centred_line
+void text_centred_line(void) { centred_line(&centredRace); }
+
+// TG3000_ROUTINE($82:A134) vs_centred_line
+void vs_centred_line(void) { centred_line(&centredVs); }
 
 // TG3000_ROUTINE($82:B11F) race_message_update
 void race_message_update(void) {

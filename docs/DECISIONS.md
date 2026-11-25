@@ -4109,6 +4109,24 @@ into the second.
 
 **Check:** the full gate (`src/misc.c` changed by more than additions).
 
+## The VS race's centred line (vs-race-11, 2026-11-25)
+
+**`vs_centred_line` (`$82:A134`)** is `text_centred_line` in the VS race's font.
+- The font's parts: the blank at `$83:9F52`, and the two rows' tiles at `$83:9F6A` and
+  `$83:9FB8`.
+- **The marks:** space, `!` and `+` are tiles `$26`, `$24` and `$25`.
+  - The font has no `.`: it falls to the digits' "- `$16`".
+  - Its `+` and its palette bytes never ran in a movie. Their bytes (`$82:A182`, `$82:A1A5`)
+    were read from the ROM by hand, and the fuzz runs them.
+- **`src/text.c` now has one `centred_line` over the font** (`CentredFont`: blank, tiles and
+  marks). `text_centred_line` is the race's font, and the adapter's C/V rule takes the font's
+  marks.
+- **Results:**
+  - `vs_centred_line`: 27 live samples on the VS movie, 500 fuzz cases, 73/73 paths.
+  - `text_centred_line`: still 6 live samples and 500 fuzz cases on the race movie.
+
+**Check:** the full gate (`src/text.c` changed by more than additions).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

@@ -699,7 +699,7 @@ static void fuzz_text_line_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // final LDA of the zero (N clear, Z set); C clear after any character or palette byte (an
 // ASL), else of the start's ADC; V of the last SBC (a digit or letter), else of that ADC
 // (C and V from the string D+$3C and palette D+$18, before the call: textCentredLineCV)
-static void textCentredLineCV(Regs* out, uint16_t string, uint16_t palette) {
+static void textCentredLineCVFont(Regs* out, uint16_t string, uint16_t palette, bool vs) {
   const uint16_t start = rom16(0x83A006 + (uint32_t)string);
   uint16_t free = 13;
   for(uint16_t s = start; bus_rd8(0x830000 | s); s++) if(!(bus_rd8(0x830000 | s) & 0x80)) free--;
@@ -707,8 +707,17 @@ static void textCentredLineCV(Regs* out, uint16_t string, uint16_t palette) {
   for(uint16_t s = start; bus_rd8(0x830000 | s); s++) {
     uint8_t c = bus_rd8(0x830000 | s);
     out->c = false;
-    if(!(c & 0x80) && c != 0x20 && c != 0x21 && c != 0x2E && c != 0x2B) out->v = false;  // a small SBC
+    if(!(c & 0x80) && c != 0x20 && c != 0x21 && (vs || c != 0x2E) && c != 0x2B) out->v = false;  // a small SBC
   }
+}
+static void textCentredLineCV(Regs* out, uint16_t string, uint16_t palette) { textCentredLineCVFont(out, string, palette, false); }
+// vs_centred_line ($82:A134): as text_centred_line, in the VS font (vs-race-11)
+static void call_vs_centred_line(const Regs* in, Regs* out) {
+  (void)in;
+  textCentredLineCVFont(out, rd16(DP + 0x3C), rd16(DP + 0x18), true);
+  vs_centred_line();
+  out->n = false;
+  out->z = true;
 }
 static void call_text_centred_line(const Regs* in, Regs* out) {
   (void)in;
@@ -13195,6 +13204,8 @@ const Routine routines[] = {
    .lowWramDb = true, .fixedD = true, .call = call_money_skip_bonus, .compareA = true, .fuzz = fuzz_money_skip_bonus},
   {.name = "text_centred_line", .entry = 0x82B18B, .end = 0x82B234, .source = "src/text.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_text_centred_line, .fuzz = fuzz_text_centred_line},
+  {.name = "vs_centred_line", .entry = 0x82A134, .end = 0x82A1D3, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_vs_centred_line, .fuzz = fuzz_text_centred_line},
   {.name = "shop_list_label", .entry = 0x80B2F2, .end = 0x80B333, .source = "src/shop.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_shop_list_label, ALL_OUTPUTS, .fuzz = fuzz_shop_list_label},
   {.name = "race_clear_0242_0208", .entry = 0x82ECEA, .end = 0x82ECF1, .source = "src/misc.c", .needM16 = true,

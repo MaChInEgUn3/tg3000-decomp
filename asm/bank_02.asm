@@ -1786,7 +1786,7 @@ CODE_82A0D3:
     lda.b $14                   ; $82A0E6
     jmp.w $A102                 ; $82A0E8
 CODE_82A0EB:
-    jsr.w $A134                 ; $82A0EB
+    jsr.w vs_centred_line       ; $82A0EB
     ldx.b $3C                   ; $82A0EE
     lda.l $83A142,x             ; $82A0F0
     sta.b $1A                   ; $82A0F4
@@ -1823,6 +1823,7 @@ CODE_82A130:
 CODE_82A132:
     plb                         ; $82A132
     rts                         ; $82A133
+vs_centred_line:
     ldx.b $18                   ; $82A134
     ldy.w #$000D                ; $82A136
     lda.l $839F52               ; $82A139

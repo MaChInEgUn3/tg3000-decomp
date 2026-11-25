@@ -532,6 +532,7 @@ func    84A4CD   wait_03e0           ; wait until $03E0 is 0 (JSL) -> src/frame.
 func    8AB0E1   variant_flags_apply ; $1526/$1528 bits 2-5 from $03DC bits 8-10 -> src/misc.c
 func    8AC19C   sprite_slots_six    ; six sprite slots from $8A:C443 and D+$42/$44 -> src/misc.c
 func    8A8CB7   tiles_planar_upload ; packed 4-bit pixels to planar tiles in $7F, then to VRAM $6FE0 -> src/misc.c
+func    82A134   vs_centred_line     ; VS race: text_centred_line in the VS font -> src/text.c
 func    82A1D3   track_backdrop_load ; the track's backdrop: unpack, five VRAM uploads -> src/misc.c
 func    82AD2C   race_positions_update ; both players' positions among 20 cars; position messages -> src/misc.c
 func    85B1FF   race_bands_merge    ; the band table from the two players' line lists -> src/misc.c

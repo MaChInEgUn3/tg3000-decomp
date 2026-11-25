@@ -116,6 +116,9 @@ void text_type_step(void);
 // D+$3A to its low 3 bits << 10 (a palette). Codes: space, !, ., + as tiles $27, $24, $25,
 // $26; below ':' (digits) - $16; letters - $41.
 void text_centred_line(void);
+// $82:A134: text_centred_line in the VS race's font: the blank at $83:9F52, the tiles at
+// $83:9F6A / $83:9FB8, and space, !, + as tiles $26, $24, $25 ('.' is a digit's - $16 there).
+void vs_centred_line(void);
 // $82:8911: text_centred_line for string `string` (D+$3C) in palette `palette` (D+$18), in the
 // window's plane (D+$3A = $0C00). The ROM pushes $837E and pulls one byte for the data bank
 // ($7E), then the other at its end: it returns with DB = $83, which its callers' code does
