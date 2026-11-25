@@ -4785,6 +4785,33 @@ off screen in the table at `$19B6`.
 
 **Check:** the incremental gate (additions only).
 
+## A row for func_82EA49's bank-$85 copy; the VS race loop's frame parked (vs-race-32, 2026-11-25)
+
+**`func_82EA49_85` (`$85:CD78`)** is `func_82EA49`'s copy in bank `$85`, instruction for
+instruction. The four VS road rows call it with JSR. It now has a row (the same C, adapter and
+fuzz): 2,179 live samples, 100 fuzz cases, 24/24 paths.
+
+**Why it was needed.**
+- **The symptom:** the VS race loop's frame was ported as a taped row (`vs_race_frame`,
+  `$82:94B2` to its jump back). It failed at its tape's byte 2.
+- **The cause:** this copy lay in no row's extent. So its native DSP-4 multiply went onto the
+  frame's tape, while the C does it natively. With the row, the tape lines up.
+
+**`vs_race_frame` itself is parked (advisor's stop rule).**
+- **Every frame lags:** each VS race frame takes more than one frame, so the NMI lands inside
+  every sample (in the road projection).
+- **What passes, what fails:** 158 lagged samples pass. 145 fail past the lag point, by one in a
+  value. The mid-frame NMI changed state the C reads only after its wait; the frame counter, read
+  by `object_sprite_kind0`, is the likely one.
+- **Why it cannot be verified now:** the harness only accepts lagged failures when some sample
+  passed without lag (harness-15), and none does. Verifying it needs the NMI's effects served to
+  the C at the instruction where they landed: a harness unit of its own.
+- **Where the code is:** its C (the countdown, the race's end, the demo's end and the Start test
+  decoded from the ROM; the way out and the VS pause as traps) is kept outside the repository for
+  that unit.
+
+**Check:** the incremental gate (additions only).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

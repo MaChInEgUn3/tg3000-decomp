@@ -5072,7 +5072,7 @@ CODE_85C2A1:
     bcc CODE_85C2B9             ; $85C2B4
     incbin !baserom:$2C2B6..$2C2B9
 CODE_85C2B9:
-    jsr.w $CD78                 ; $85C2B9
+    jsr.w func_82EA49_85        ; $85C2B9
     sta.b $14                   ; $85C2BC
     lda.w $0226                 ; $85C2BE
     sec                         ; $85C2C1
@@ -5080,7 +5080,7 @@ CODE_85C2B9:
     bcs CODE_85C2CA             ; $85C2C5
     incbin !baserom:$2C2C7..$2C2CA
 CODE_85C2CA:
-    jsr.w $CD78                 ; $85C2CA
+    jsr.w func_82EA49_85        ; $85C2CA
     sta.b $16                   ; $85C2CD
     lda.w #$0000                ; $85C2CF
     sta.l $308000               ; $85C2D2
@@ -5472,7 +5472,7 @@ CODE_85C64D:
     bcc CODE_85C665             ; $85C660
     sbc.w $019A                 ; $85C662
 CODE_85C665:
-    jsr.w $CD78                 ; $85C665
+    jsr.w func_82EA49_85        ; $85C665
     sta.b $14                   ; $85C668
     lda.w $02D9                 ; $85C66A
     sec                         ; $85C66D
@@ -5480,7 +5480,7 @@ CODE_85C665:
     bcs CODE_85C676             ; $85C671
     adc.w $019A                 ; $85C673
 CODE_85C676:
-    jsr.w $CD78                 ; $85C676
+    jsr.w func_82EA49_85        ; $85C676
     sta.b $16                   ; $85C679
     lda.w #$0000                ; $85C67B
     sta.l $308000               ; $85C67E
@@ -5844,7 +5844,7 @@ CODE_85C9A6:
     bcc CODE_85C9BB             ; $85C9B6
     sbc.w $019A                 ; $85C9B8
 CODE_85C9BB:
-    jsr.w $CD78                 ; $85C9BB
+    jsr.w func_82EA49_85        ; $85C9BB
     sta.b $14                   ; $85C9BE
     lda.w $0288                 ; $85C9C0
     sec                         ; $85C9C3
@@ -5852,7 +5852,7 @@ CODE_85C9BB:
     bcs CODE_85C9CC             ; $85C9C7
     adc.w $019A                 ; $85C9C9
 CODE_85C9CC:
-    jsr.w $CD78                 ; $85C9CC
+    jsr.w func_82EA49_85        ; $85C9CC
     sta.b $16                   ; $85C9CF
     lda.w #$0000                ; $85C9D1
     sta.l $308000               ; $85C9D4
@@ -6221,7 +6221,7 @@ CODE_85CD06:
     bcc CODE_85CD1B             ; $85CD16
     sbc.w $019A                 ; $85CD18
 CODE_85CD1B:
-    jsr.w $CD78                 ; $85CD1B
+    jsr.w func_82EA49_85        ; $85CD1B
     sta.b $14                   ; $85CD1E
     lda.w $033B                 ; $85CD20
     sec                         ; $85CD23
@@ -6229,7 +6229,7 @@ CODE_85CD1B:
     bcs CODE_85CD2C             ; $85CD27
     adc.w $019A                 ; $85CD29
 CODE_85CD2C:
-    jsr.w $CD78                 ; $85CD2C
+    jsr.w func_82EA49_85        ; $85CD2C
     sta.b $16                   ; $85CD2F
     lda.w #$0000                ; $85CD31
     sta.l $308000               ; $85CD34
@@ -6262,6 +6262,7 @@ CODE_85CD62:
     sta.w $034C                 ; $85CD73
     plb                         ; $85CD76
     rtl                         ; $85CD77
+func_82EA49_85:
     tay                         ; $85CD78
     lda.w #$0000                ; $85CD79
     sta.l $308000               ; $85CD7C

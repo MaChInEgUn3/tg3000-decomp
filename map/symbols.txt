@@ -103,6 +103,7 @@ func    8AA381   func_8AA381         ; bits 11/10 of $000E..$001A -> object flag
 func    8A8290   func_8A8290         ; every 8th count: D+$64 through 1,2,3,4,3,2 -> src/misc.c
 func    809DD0   func_809DD0         ; label + number sprites ($3C00 or $3E00 base) -> src/text.c
 func    82DF91   vs_road_rows        ; VS race: the four players' road rows in turn -> src/vs.c
+func    85CD78   func_82EA49_85      ; func_82EA49's copy in bank $85 (the VS road rows' JSR) -> src/misc.c
 func    829456   vs_race_start       ; VS race setup's last piece: car bands, interrupt vectors, CLI, a frame's wait, up to the race loop -> src/vs.c
 func    829422   vs_race_sums_clear  ; VS race setup piece: sideways sums $01CC-$01DA and $00D4-$00DF cleared -> src/vs.c
 func    85BF78   vs_road_rows_view0  ; VS race: the road's rows for player 1 (record $0200, tables $3AEC; road_rows_build's counterpart) -> src/vs.c

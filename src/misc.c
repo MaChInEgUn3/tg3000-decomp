@@ -523,6 +523,7 @@ bool func_83FD8A(uint16_t dp, uint16_t a) {
 bool func_83FDCD(void) { return false; }
 
 // TG3000_ROUTINE($82:EA49) func_82EA49
+// TG3000_ROUTINE($85:CD78) func_82EA49 (its copy in bank $85, the VS road rows' JSR)
 uint16_t func_82EA49(uint16_t a) {
   uint16_t row = (uint16_t)((a >> 6) & 0xFF);
   uint16_t lo = (uint16_t)dsp4_multiply((int16_t)row, 10);  // only the product's low word is used

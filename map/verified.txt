@@ -759,3 +759,4 @@
 82C489 vs_sprites_view2 src/misc.c fb1925e5bcc4f01f 1 500 326/326 verified live-flags:- replayed:1
 82C7BA vs_sprites_view3 src/misc.c fb1925e5bcc4f01f 7 500 324/324 verified live-flags:- replayed:0
 82AEA4 oam_high_load2 src/misc.c 1638767696be85e7 174 500 59/59 verified live-flags:V replayed:0
+85CD78 func_82EA49_85 src/misc.c c2813623e3ec9206 2179 500 24/24 verified live-flags:- replayed:0
