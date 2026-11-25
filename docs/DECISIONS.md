@@ -4884,6 +4884,20 @@ The two VS handlers are no longer static.
 
 **Check:** the full gate (two lines changed: `static` removed; the slots; the bridge).
 
+## Rows for three routines that had C (vs-race-35, 2026-11-25)
+
+The rankings listed three more routines with C but no row:
+- **`vs_names_absent` (`$8A:A6F6`):** the VS screen's default names for absent players. It gets
+  1 live sample, 500 fuzz cases (each player's name present or absent) and 21/21 paths.
+- **`password_hdma_off` (`$8A:B18C`):** a frame's wait, then HDMA off. It is a waiting row: live
+  samples on the password movies, and every path. Its flags are the wait's.
+- **`password_hdma_on` (`$8A:B197`) has no row.**
+  - **Why:** in the full run it runs only inside other waiting samples. They keep the
+    interrupts, so it got no sample of its own, and the first full run failed it on its paths.
+  - It passed alone, with only its row asked for.
+
+**Check:** the full gate (a new waiting row).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

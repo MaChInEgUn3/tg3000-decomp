@@ -3818,6 +3818,38 @@ static void fuzz_star_layers_move(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
 
 // ---- the fade to black ($8A:BAE3, $8A:9675, $8A:8181) ----
 // waiting: A = 0 from the last LDA $0196
+// password_hdma_off ($8A:B18C, vs-race-35): a frame's wait, then the HDMA enable and the ROM speed
+// off (its 16-bit STZ). The flags are the wait's (as call_wait_frames: Z and C set, N clear, V
+// the add's); A its target. (password_hdma_on, $8A:B197, runs only inside other waiting
+// samples, which keep the interrupts: it can have no sample of its own)
+static void hdmaPairOut(Regs* out, uint16_t now, bool on) {
+  const uint32_t sum = 1u + now;
+  out->a = on ? 0x0082 : (uint16_t)sum;
+  out->z = !on;
+  out->c = true;
+  out->n = false;
+  out->v = (~(1u ^ now) & (1u ^ sum) & 0x8000) != 0;
+}
+static void call_password_hdma_off(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t now = rd16(FRAME_COUNTER);
+  password_hdma_off();
+  hdmaPairOut(out, now, false);
+}
+// vs_names_absent ($8A:A6F6, vs-race-35): X ends $FFFE (N set, Z clear); C set by a copy's CMP
+static void call_vs_names_absent(const Regs* in, Regs* out) {
+  bool copied = false;
+  for(int x = 6; x >= 0; x -= 2) if(rd16((uint16_t)(0x0DF4 + x)) == 0) copied = true;
+  vs_names_absent();
+  out->n = true;
+  out->z = false;
+  out->c = copied ? true : in->c;
+}
+// the four players' names present or absent ($0DF4-$0DFB words, 0 now and then)
+static void fuzz_vs_names_absent(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  for(int x = 0; x < 8; x += 2) wr16ram(ram, 0x0DF4 + (uint32_t)x, (rnd() & 1) ? 0 : (uint16_t)(1 + rnd() % 0xFFFF));
+}
 static void call_fade_out_wait(const Regs* in, Regs* out) {
   (void)in;
   fade_out_wait();
@@ -13193,6 +13225,10 @@ const Routine routines[] = {
    .fuzz = fuzz_vs_car_parts},
   {.name = "vs_race_load", .entry = 0x8292BA, .end = 0x82932D, .endAt = 0x82932D, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_load, .manyEffects = true},
+  {.name = "vs_names_absent", .entry = 0x8AA6F6, .end = 0x8AA721, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_names_absent, .fuzz = fuzz_vs_names_absent},
+  {.name = "password_hdma_off", .entry = 0x8AB18C, .end = 0x8AB197, .source = "src/password.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .waitsForInterrupts = true, .call = call_password_hdma_off},  // no fuzz: it waits
   {.name = "vs_race_frame_body", .entry = 0x8294B2, .end = 0x8295E8, .endAt = 0x8295E8, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_frame_body,
    .manyEffects = true, .dsp4Tape = true, .replays = 32,  // the NMI lands in every live sample
