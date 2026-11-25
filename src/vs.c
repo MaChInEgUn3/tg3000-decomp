@@ -725,6 +725,179 @@ void vs_cars_ring(void) {
   for(int i = 0; i < 4; i++) wr16((uint16_t)(0xFACD + rd16(order[i])), rd16(order[i + 1]));
 }
 
+// (vs-race-13: first drafted by a delegated agent from the listing, then completed and checked here)
+static bool sub_overflow(uint16_t a, uint16_t b, uint16_t r) { return ((a ^ b) & (a ^ r) & 0x8000) != 0; }
+static bool add_overflow(uint16_t a, uint16_t b, uint16_t r) { return (~(a ^ b) & (a ^ r) & 0x8000) != 0; }
+static uint16_t car_word(uint32_t base, uint16_t car) { return rd16(base + car); }
+
+// Whether car Y is less than $40 sideways ($FABB) from car X, either way.
+static bool cars_close_sideways(uint16_t x, uint16_t y, uint16_t* gap) {
+  const uint16_t l = (uint16_t)(car_word(0xFABB, y) - car_word(0xFABB, x));
+  *gap = l;
+  return (l & 0x8000) ? !((uint16_t)(l - 0xFFC0) & 0x8000) : ((uint16_t)(l - 0x40) & 0x8000) != 0;
+}
+
+// One of $81:F7A5's two 40-step shift-subtract divisions, as the original runs it: the 32-bit
+// word pair at $020E/$0210 + `dividendAt`, doubled, by the word at $022B + `divisorAt` (D+$24).
+// Steps 33-40 keep dividing the quotient's own bits, and the remainder wraps at 16 bits (the
+// carry out of its ROL is dropped), so it is not a plain division. D+$20/D+$22 get the result.
+static void cars_collide_divide(uint16_t divisorAt, uint16_t dividendAt) {
+  const uint16_t divisor = rd16(0x022B + (uint32_t)divisorAt);
+  wr16(DP + 0x24, divisor);
+  uint16_t q0 = rd16(0x020E + (uint32_t)dividendAt);
+  const unsigned c0 = q0 >> 15;
+  q0 = (uint16_t)(q0 << 1);
+  uint16_t q1 = rd16(0x0210 + (uint32_t)dividendAt);
+  const unsigned c1 = q1 >> 15;
+  q1 = (uint16_t)((q1 << 1) | c0);
+  uint16_t a = (uint16_t)c1;
+  for(int n = 0x28; n; n--) {
+    const unsigned fits = a >= divisor;
+    if(fits) a = (uint16_t)(a - divisor);
+    const unsigned out0 = q0 >> 15, out1 = q1 >> 15;
+    q0 = (uint16_t)((q0 << 1) | fits);
+    q1 = (uint16_t)((q1 << 1) | out0);
+    a = (uint16_t)((a << 1) | out1);
+  }
+  wr16(DP + 0x20, q0);
+  wr16(DP + 0x22, q1);
+}
+
+// $81:F7A5 (the shared tail's far case: the cars X and Y collide; drafted by a delegated agent,
+// checked here). Their players' words at $0216/$0218 get the other's $020E/$0210 doubled over
+// their own $022B (cars_collide_divide, Y's first). Car X's distance becomes Y's less $100, but
+// not below its saved $FAC1/$FAC3 (never in the movies); D+$1C/$1E the distance X lost, which
+// X's player's race distance ($0225/$0227) also loses unless its $0244 bit 0 is set. Ends with
+// C set and X, Y pulled.
+static void cars_collide(uint16_t pulledX, VsCarsExit* e) {
+  const uint16_t px = rd16(DP + 0x18), py = rd16(DP + 0x1A);
+  cars_collide_divide(py, px);
+  wr16(0x0216 + (uint32_t)py, rd16(DP + 0x20));
+  wr16(0x0218 + (uint32_t)py, rd16(DP + 0x22));
+  const uint16_t px2 = rd16(DP + 0x18);
+  cars_collide_divide(px2, py);
+  wr16(0x0216 + (uint32_t)px2, rd16(DP + 0x20));
+  wr16(0x0218 + (uint32_t)px2, rd16(DP + 0x22));
+  const uint16_t cx = rd16(DP + 0x14), cy = rd16(DP + 0x16);
+  wr16(DP + 0x1C, car_word(0xFAB5, cx));
+  wr16(DP + 0x1E, car_word(0xFAB7, cx));
+  const uint16_t yLo = car_word(0xFAB5, cy);
+  wr16(0xFAB5 + (uint32_t)cx, (uint16_t)(yLo - 0x0100));
+  wr16(0xFAB7 + (uint32_t)cx, (uint16_t)(car_word(0xFAB7, cy) - (yLo >= 0x0100 ? 0 : 1)));
+  const bool notBelow = car_word(0xFAB5, cx) >= car_word(0xFAC1, cx);
+  if((uint16_t)(car_word(0xFAB7, cx) - car_word(0xFAC3, cx) - (notBelow ? 0 : 1)) & 0x8000) {  // never run
+    wr16(0xFAB5 + (uint32_t)cx, car_word(0xFAC1, cx));
+    wr16(0xFAB7 + (uint32_t)cx, car_word(0xFAC3, cx));
+  }
+  const uint16_t oldLo = rd16(DP + 0x1C), newLo = car_word(0xFAB5, cx);
+  wr16(DP + 0x1C, (uint16_t)(oldLo - newLo));
+  const uint16_t oldHi = rd16(DP + 0x1E), newHi = car_word(0xFAB7, cx);
+  uint16_t acc = (uint16_t)(oldHi - newHi - (oldLo >= newLo ? 0 : 1));
+  bool overflow = sub_overflow(oldHi, newHi, acc);
+  wr16(DP + 0x1E, acc);
+  const uint16_t player = rd16(DP + 0x18);
+  acc = rd16(0x0244 + (uint32_t)player);
+  if(!(acc & 0x0001)) {
+    const uint16_t lostLo = rd16(DP + 0x1C), lostHi = rd16(DP + 0x1E);
+    const uint16_t lo = rd16(0x0225 + (uint32_t)player);
+    wr16(0x0225 + (uint32_t)player, (uint16_t)(lo - lostLo));
+    const uint16_t hi = rd16(0x0227 + (uint32_t)player);
+    acc = (uint16_t)(hi - lostHi - (lo >= lostLo ? 0 : 1));
+    overflow = sub_overflow(hi, lostHi, acc);
+    wr16(0x0227 + (uint32_t)player, acc);
+  }
+  *e = (VsCarsExit){.a = acc, .n = (pulledX & 0x8000) != 0, .z = pulledX == 0, .c = true, .v = overflow};
+}
+
+// $81:F70B, the two routines' shared tail (X and Y pushed by them): D+$14/$16 = X/Y, D+$18/$1A =
+// their cars' words at $81:FDEE (by the record / $35, the CPU divider), D+$1C/$1E = the 32-bit
+// gap of their $FAC1/$FAC3. When that gap is under $100 ahead, car X is put $40 to the side of
+// car Y, away by their $FAD5 words, and the same to $0206 + D+$18 when that is a player's (not
+// negative): C clear. Otherwise the cars collide (cars_collide): C set. Ends with X and Y pulled
+// (their N Z of X).
+static void cars_push_apart(uint16_t x, uint16_t y, uint16_t pulledX, VsCarsExit* e) {
+  wr16(DP + 0x14, x);
+  wr16(DP + 0x16, y);
+  wr16(DP + 0x18, bus_rd16(0x81FDEE + 2u * (uint32_t)(uint16_t)(x / 0x35)));
+  wr16(DP + 0x1A, bus_rd16(0x81FDEE + 2u * (uint32_t)(uint16_t)(y / 0x35)));
+  const uint16_t loY = car_word(0xFAC1, y), loX = car_word(0xFAC1, x);
+  const uint16_t lo = (uint16_t)(loY - loX);
+  const uint16_t hi = (uint16_t)(car_word(0xFAC3, y) - car_word(0xFAC3, x) - (loY < loX ? 1 : 0));
+  wr16(DP + 0x1C, lo);
+  wr16(DP + 0x1E, hi);
+  if(!((uint16_t)(hi - (lo >= 0x100 ? 0 : 1)) & 0x8000)) {
+    cars_collide(pulledX, e);
+    return;
+  }
+  const uint16_t side = car_word(0xFABB, y);
+  uint16_t v;
+  bool overflow;
+  if((uint16_t)(car_word(0xFAD5, y) - car_word(0xFAD5, x)) & 0x8000) {
+    v = (uint16_t)(side + 0x40);
+    overflow = add_overflow(side, 0x40, v);
+  } else {
+    v = (uint16_t)(side - 0x40);
+    overflow = sub_overflow(side, 0x40, v);
+  }
+  wr16(0xFABB + (uint32_t)x, v);
+  const uint16_t slot = rd16(DP + 0x18);
+  if(!(slot & 0x8000)) wr16((uint16_t)(0x0206 + slot), v);
+  *e = (VsCarsExit){.a = v, .n = (pulledX & 0x8000) != 0, .z = pulledX == 0, .c = false, .v = overflow};
+}
+
+// TG3000_ROUTINE($81:F6AE) vs_cars_tie
+// Two cars (X, Y) whose high distance words are equal. When their low words ($FAB5) are $100 or
+// more apart, $013C = 0 (C clear). Else $013C counts up and D+$14 takes it; then, walking the
+// ring from Y ($FACD) while the next car is less than $100 ahead of X and D+$14 counts down: a
+// car less than $40 sideways from X is pushed apart (the shared tail); the walk ends with C set
+// at a car $100 or more ahead, or with C clear when the count runs out (never in the movies).
+VsCarsExit vs_cars_tie(uint16_t x, uint16_t y) {
+  const uint16_t dY = car_word(0xFAB5, y), dX = car_word(0xFAB5, x);
+  uint16_t d = (uint16_t)(dY - dX);
+  bool overflow = sub_overflow(dY, dX, d);
+  if(d >= 0x100) {
+    wr16(DP + 0x3C, 0);
+    const uint16_t t = (uint16_t)(d - 0x100);
+    return (VsCarsExit){.a = d, .n = (t & 0x8000) != 0, .z = t == 0, .c = false, .v = overflow};
+  }
+  const uint16_t count = (uint16_t)(rd16(DP + 0x3C) + 1);
+  wr16(DP + 0x3C, count);
+  wr16(DP + 0x14, count);
+  const uint16_t originalX = x;
+  for(;;) {
+    uint16_t gap;
+    if(cars_close_sideways(x, y, &gap)) {
+      VsCarsExit e;
+      cars_push_apart(x, y, originalX, &e);
+      return e;
+    }
+    y = car_word(0xFACD, y);
+    const uint16_t nY = car_word(0xFAB5, y);
+    d = (uint16_t)(nY - dX);
+    overflow = sub_overflow(nY, dX, d);
+    const VsCarsExit end = {.a = d, .n = (originalX & 0x8000) != 0, .z = originalX == 0, .c = d >= 0x100, .v = overflow};
+    if(d >= 0x100) return end;
+    const uint16_t left = (uint16_t)(rd16(DP + 0x14) - 1);  // (never run: a 16-bit DEC)
+    wr16(DP + 0x14, left);
+    if(left == 0) return end;
+  }
+}
+
+// TG3000_ROUTINE($81:F6F2) vs_cars_apart
+// Two cars (X, Y) $40 or more apart sideways: C clear (A the gap, the flags of its CMP with $40 or
+// $FFC0). Closer (never in the movies): the shared tail pushes them apart.
+VsCarsExit vs_cars_apart(uint16_t x, uint16_t y) {
+  const uint16_t sY = car_word(0xFABB, y), sX = car_word(0xFABB, x);
+  uint16_t gap;
+  if(cars_close_sideways(x, y, &gap)) {
+    VsCarsExit e;
+    cars_push_apart(x, y, x, &e);
+    return e;
+  }
+  const uint16_t t = (uint16_t)(gap - ((gap & 0x8000) ? 0xFFC0 : 0x40));
+  return (VsCarsExit){.a = gap, .n = (t & 0x8000) != 0, .z = t == 0, .c = false, .v = sub_overflow(sY, sX, gap)};
+}
+
 // TG3000_ROUTINE($82:9AF4) vs_places_update
 // For the four players in turn (records $0200, $02B3, $0262, $0315; indices 4 to 1): the cars
 // ahead of it (vs_cars_ahead). When that differs from its last count ($1ED2 + 2 a player), the

@@ -6289,6 +6289,65 @@ static void call_vs_cars_ahead(const Regs* in, Regs* out) {
   out->v = v;
   setNZ16(out, a);
 }
+// vs_cars_tie ($81:F6AE) / vs_cars_apart ($81:F6F2): A, N V Z C as the RTS leaves them; X and Y
+// restored (vs-race-13)
+static void vsCarsExitRegs(const VsCarsExit* e, const Regs* in, Regs* out) {
+  out->a = e->a;
+  out->x = in->x;
+  out->y = in->y;
+  out->n = e->n;
+  out->v = e->v;
+  out->z = e->z;
+  out->c = e->c;
+}
+static void call_vs_cars_tie(const Regs* in, Regs* out) {
+  const VsCarsExit e = vs_cars_tie(in->x, in->y);
+  vsCarsExitRegs(&e, in, out);
+}
+static void call_vs_cars_apart(const Regs* in, Regs* out) {
+  const VsCarsExit e = vs_cars_apart(in->x, in->y);
+  vsCarsExitRegs(&e, in, out);
+}
+// two of the four cars, the ring through all four in a random order. Distances: Y and the others
+// within $100 ahead of X or not; sides near or far. The saved $FAC1/$FAC3 near X's either way, so
+// the shared tail both pushes apart and collides. The players' records' words the collision
+// divides at random. The count $013C small, so the ring walk can run out.
+static void fuzz_vs_cars_pair(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  static const uint16_t cars[4] = {0x0000, 0x0035, 0x006A, 0x009F};
+  uint16_t order[4] = {0x0000, 0x0035, 0x006A, 0x009F};
+  for(int i = 3; i > 0; i--) {
+    const int j = (int)(rnd() % (uint32_t)(i + 1));
+    const uint16_t t = order[i];
+    order[i] = order[j];
+    order[j] = t;
+  }
+  for(int i = 0; i < 4; i++) wr16ram(ram, (uint16_t)(0xFACD + order[i]), order[(i + 1) % 4]);
+  const int xi = (int)(rnd() % 4), yi = (xi + 1 + (int)(rnd() % 3)) % 4;
+  const uint16_t x = cars[xi], y = cars[yi];
+  r->x = x;
+  r->y = y;
+  const uint16_t px = (uint16_t)rnd(), sx = (uint16_t)rnd(), fx = (uint16_t)rnd(), fh = (uint16_t)rnd();
+  for(int i = 0; i < 4; i++) {
+    const uint16_t c = cars[i];
+    wr16ram(ram, (uint16_t)(0xFAB5 + c), (uint16_t)(px + ((rnd() % 3) ? rnd() % 0x100 : 0x100 + rnd() % 0xFF00)));
+    wr16ram(ram, (uint16_t)(0xFABB + c), (uint16_t)(sx + ((rnd() & 1) ? (int)(rnd() % 0x80) - 0x40 : (int)(rnd() % 0x10000))));
+    wr16ram(ram, (uint16_t)(0xFAD5 + c), (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(0xFAC1 + c), (uint16_t)(fx + rnd() % 0x400 - 0x200));
+    wr16ram(ram, (uint16_t)(0xFAC3 + c), (rnd() & 7) ? fh : (uint16_t)rnd());
+  }
+  static const uint16_t players[4] = {0x0000, 0x00B3, 0x0062, 0x0115};
+  for(int i = 0; i < 4; i++) {
+    const uint16_t p = players[i];
+    wr16ram(ram, (uint16_t)(0x020E + p), (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(0x0210 + p), (uint16_t)((rnd() & 1) ? rnd() % 8 : rnd()));
+    wr16ram(ram, (uint16_t)(0x022B + p), (uint16_t)((rnd() % 8) ? 0x40 + rnd() % 0x200 : rnd()));
+    wr16ram(ram, (uint16_t)(0x0244 + p), (uint16_t)rnd());
+  }
+  wr16ram(ram, (uint16_t)(0xFAB5 + x), px);
+  wr16ram(ram, (uint16_t)(0xFABB + x), sx);
+  wr16ram(ram, (uint16_t)(0xFAC1 + x), fx);
+  wr16ram(ram, 0x013C, (uint16_t)((rnd() & 1) ? rnd() % 4 : rnd()));
+}
 // vs_places_update ($82:9AF4): its caller reloads the registers (vs-race-8)
 static void fuzz_vs_cars_ahead(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 static void call_vs_places_update(const Regs* in, Regs* out) { (void)in; (void)out; vs_places_update(); }
@@ -12437,6 +12496,12 @@ const Routine routines[] = {
    .needX16 = true, .compareA = true, .compareY = true, .call = call_vs_cars_ahead, .fuzz = fuzz_vs_cars_ahead},
   {.name = "vs_cars_ring", .entry = 0x81F68B, .end = 0x81F6AE, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = false, .compareA = true, .call = call_vs_cars_ring},
+  {.name = "vs_cars_tie", .entry = 0x81F6AE, .end = 0x81F6F2, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_vs_cars_tie, ALL_OUTPUTS, .fuzz = fuzz_vs_cars_pair,
+   .alsoIn = {{0x81F70B, 0x81F876}}},       // the shared tail and the collision
+  {.name = "vs_cars_apart", .entry = 0x81F6F2, .end = 0x81F70B, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_vs_cars_apart, ALL_OUTPUTS, .fuzz = fuzz_vs_cars_pair,
+   .alsoIn = {{0x81F70B, 0x81F876}}},
   {.name = "vs_places_update", .entry = 0x829AF4, .end = 0x829B62, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_vs_places_update, .fuzz = fuzz_vs_places_update},
   {.name = "vs_cars_link", .entry = 0x8297BE, .end = 0x829806, .source = "src/vs.c", .needM16 = true,

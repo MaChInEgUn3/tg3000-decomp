@@ -753,6 +753,8 @@ func    8ABE86   password_show_text  ; the password shown: packed, encoded, prin
 func    8ABECC   password_show_wait  ; the password shown: the fade in, a press, the fade out -> src/password.c
 func    829B62   vs_cars_ahead       ; VS race: how many players' cars are ahead of the record at D -> src/vs.c
 func    81F68B   vs_cars_ring        ; VS race: the four cars linked in a ring at $7E:FACD -> src/vs.c
+func    81F6AE   vs_cars_tie         ; VS race: two cars of equal high distance (X, Y): the count at $013C, pushed $40 apart sideways when close -> src/vs.c
+func    81F6F2   vs_cars_apart       ; VS race: two cars (X, Y) $40 or more apart sideways (C clear), else pushed apart -> src/vs.c
 func    829AF4   vs_places_update    ; VS race: each player's place; a changed place requests its message -> src/vs.c
 func    8297BE   vs_cars_link        ; VS race: the four cars linked both ways in the order at $1E6A -> src/vs.c
 func    83E878   vs_car_parts        ; VS race: the car at D's engine and tyre words from the VS tables -> src/vs.c

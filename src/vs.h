@@ -166,6 +166,14 @@ uint16_t vs_cars_ahead(uint16_t dp, uint16_t x, uint16_t* a, bool* carry, bool* 
 void vs_cars_ring(void);
 // $82:9AF4: each player's place (vs_cars_ahead); a changed place requests its message.
 void vs_places_update(void);
+// $81:F6AE / $81:F6F2: two cars of the VS race's order (X, Y, record offsets) close in distance
+// or sideways; A and the flags as the original's RTS leaves them (X and Y are restored).
+typedef struct {
+  uint16_t a;
+  bool n, v, z, c;
+} VsCarsExit;
+VsCarsExit vs_cars_tie(uint16_t x, uint16_t y);
+VsCarsExit vs_cars_apart(uint16_t x, uint16_t y);
 // $82:97BE: the four cars linked both ways in the order at $1E6A-$1E70 (previous at
 // $7E:FACF + car, next at $7E:FACD + car). Returns the last car, as the original leaves X.
 uint16_t vs_cars_link(void);

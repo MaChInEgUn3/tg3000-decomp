@@ -4143,6 +4143,62 @@ into the second.
 
 **Check:** the full gate (`src/text.c` changed by more than additions).
 
+## Two VS cars close in distance or sideways, and their collision (vs-race-13, 2026-11-25)
+
+**`vs_cars_tie` (`$81:F6AE`) and `vs_cars_apart` (`$81:F6F2`)** take two of the VS race's cars, X
+and Y, as record offsets into `$7E:FAB5`. Both entry and exit with D = `$0100` and DB = `$7E`.
+
+**`vs_cars_tie`:** the two cars' high distance words are equal.
+- If their low words are `$100` or more apart, `$013C` is set to 0 and it returns with C clear.
+- Otherwise `$013C` counts up, and D+`$14` takes its value. Then it walks the ring from Y
+  (`$FACD`), each step counting D+`$14` down:
+  - a car less than `$40` sideways from X goes to the shared tail;
+  - a car `$100` or more ahead ends the walk with C set;
+  - when the count runs out, it returns with C clear. This never ran in a movie.
+
+**`vs_cars_apart`:** cars `$40` or more apart sideways return C clear. Closer ones go to the shared
+tail, which never ran in a movie.
+
+**The shared tail (`$81:F70B`)** first stores, in the direct page:
+- the two records;
+- their players' records, taken from `$81:FDEE` by record / `$35` on the CPU divider;
+- the 32-bit gap of their saved distances (`$FAC1`/`$FAC3`).
+
+Then one of two things happens:
+- **If the gap is under `$100`,** car X is put `$40` to the side of car Y, on the side away from
+  Y by their `$FAD5` words. The player's `$0206` gets the same.
+- **Otherwise the cars collide (`$81:F7A5`):**
+  - each player's `$0216`/`$0218` gets the other's `$020E`/`$0210`, doubled, divided by its own
+    `$022B`. The division is a 40-step shift-subtract loop kept literally, since steps 33-40
+    divide the quotient's own bits;
+  - car X's distance becomes Y's less `$100`, but not below its saved one (never ran);
+  - the distance X lost also comes off its player's race distance (`$0225`/`$0227`), unless that
+    player's `$0244` bit 0 is set.
+
+**Three never-decoded spots were read from the ROM by hand:**
+- `$81:F6E7` (the walk's count);
+- `$81:F709` (`PHX`, `PHY` into the tail);
+- `$81:F83C` (the clamp).
+
+**The collision block (`$81:F7A5`-`$81:F875`) was "never run" in the map but runs in the VS
+race** with the firmware DSP-4: the first test caught the original leaving its extent there.
+- So the firmware VS run's coverage is now merged into `traces/coverage.bin`. That added 218
+  bytes, and `map/` and `asm/bank_01.asm` were regenerated.
+
+**First use of delegated agents** (the owner's MCP; their output untrusted, checked here):
+- `ask_claude` (balanced, read-only, billed to the API key) drafted both routines from the
+  listing, and then the collision block. They cost US$0.47 and US$0.20.
+- The drafts were right where they had the bytes. The never-run spots, the ring walk and the
+  16-bit `DEC` were completed here.
+- The agents never get the ROM or the firmware: the bytes they needed were decoded locally.
+
+**Results:**
+- `vs_cars_tie`: 661 live samples, 500 fuzz cases, 34/34 paths.
+- `vs_cars_apart`: 6 live samples, 500 fuzz cases, 14/14 paths.
+- The fuzz reaches the walk, the push and the collision.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.
