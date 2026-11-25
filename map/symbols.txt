@@ -489,6 +489,8 @@ func    8A824B   title_sprites_place ; two title sprites placed (while D+$62 is 
 func    8A867C   rotation_from_angle ; Mode 7 rotation (cos, sin, -sin) for the angle D+$34 -> src/misc.c
 func    829BC9   race_message_request_0233 ; a race message into $0233 by priority -> src/misc.c
 func    829BE5   race_message_request_02e6 ; a race message into $02E6 by priority -> src/misc.c
+func    829C01   race_message_request_0295 ; a race message into $0295 (the third car's) by priority -> src/misc.c
+func    829C1D   race_message_request_0348 ; a race message into $0348 (the fourth car's) by priority -> src/misc.c
 func    81E7DA   track_entry_bounds  ; a track entry's x and its bounds pair -> src/misc.c
 func    80EA77   spark_step          ; the sparks: each draws and fades; new ones laid by D+$86 -> src/misc.c
 func    83FD3C   car_clear_53        ; a car's byte dp+$53 = 0 -> src/misc.c

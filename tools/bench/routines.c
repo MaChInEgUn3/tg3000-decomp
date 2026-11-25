@@ -1063,10 +1063,18 @@ static void raceMessageOut(const Regs* in, Regs* out, uint32_t slot, void (*fn)(
 }
 static void call_race_message_request_0233(const Regs* in, Regs* out) { raceMessageOut(in, out, 0x0233, race_message_request_0233); }
 static void call_race_message_request_02e6(const Regs* in, Regs* out) { raceMessageOut(in, out, 0x02E6, race_message_request_02e6); }
+static void call_race_message_request_0295(const Regs* in, Regs* out) { raceMessageOut(in, out, 0x0295, race_message_request_0295); }
+static void call_race_message_request_0348(const Regs* in, Regs* out) { raceMessageOut(in, out, 0x0348, race_message_request_0348); }
 static void fuzz_race_message_request(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->a = (uint16_t)(rnd() % 0x4F);
   wr16ram(ram, 0x0233, (uint16_t)(rnd() % 0x4F));
   wr16ram(ram, 0x02E6, (uint16_t)(rnd() % 0x4F));
+}
+// (the third and fourth cars' slots, vs-race-3)
+static void fuzz_race_message_request_34(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  r->a = (uint16_t)(rnd() % 0x4F);
+  wr16ram(ram, 0x0295, (uint16_t)(rnd() % 0x4F));
+  wr16ram(ram, 0x0348, (uint16_t)(rnd() % 0x4F));
 }
 
 // ---- track_entry_bounds ($81:E7DA) ----  A = D+$26 (N Z C V of its ADC), X = 4 * the pair
@@ -13114,6 +13122,10 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_race_message_request_0233, ALL_OUTPUTS, .fuzz = fuzz_race_message_request},
   {.name = "race_message_request_02e6", .entry = 0x829BE5, .end = 0x829C01, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_race_message_request_02e6, ALL_OUTPUTS, .fuzz = fuzz_race_message_request},
+  {.name = "race_message_request_0295", .entry = 0x829C01, .end = 0x829C1D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_race_message_request_0295, ALL_OUTPUTS, .fuzz = fuzz_race_message_request_34},
+  {.name = "race_message_request_0348", .entry = 0x829C1D, .end = 0x829C39, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_race_message_request_0348, ALL_OUTPUTS, .fuzz = fuzz_race_message_request_34},
   {.name = "track_entry_bounds", .entry = 0x81E7DA, .end = 0x81E812, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_track_entry_bounds, ALL_OUTPUTS, .fuzz = fuzz_track_entry_bounds},
   {.name = "spark_step", .entry = 0x80EA77, .end = 0x80EB66, .source = "src/misc.c", .needM16 = true,

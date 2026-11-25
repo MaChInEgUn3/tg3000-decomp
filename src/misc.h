@@ -271,6 +271,8 @@ void car_message_request(uint16_t dp, uint16_t message);
 // The same request for the race's two message slots: $82:9BC9 for $0233, $82:9BE5 for $02E6.
 void race_message_request_0233(uint16_t message);
 void race_message_request_02e6(uint16_t message);
+void race_message_request_0295(uint16_t message);
+void race_message_request_0348(uint16_t message);
 
 // $81:E7DA: the bounds of track entry D+$14: its x (the byte at $7E:8CB3 + entry, the top
 // of a signed 12-bit value) in D+$28; D+$24 = D+$2C and D+$26 = D+$2E = that plus the pair

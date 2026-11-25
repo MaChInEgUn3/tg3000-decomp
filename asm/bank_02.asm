@@ -1184,7 +1184,7 @@ CODE_829B2C:
     tya                         ; $829B3E
     clc                         ; $829B3F
     adc.w #$0006                ; $829B40
-    jsr.w $9C01                 ; $829B43
+    jsr.w race_message_request_0295; $829B43
 CODE_829B46:
     lda.w #$0315                ; $829B46
     tcd                         ; $829B49
@@ -1196,7 +1196,7 @@ CODE_829B46:
     tya                         ; $829B58
     clc                         ; $829B59
     adc.w #$0006                ; $829B5A
-    jsr.w $9C1D                 ; $829B5D
+    jsr.w race_message_request_0348; $829B5D
 CODE_829B60:
     pld                         ; $829B60
     rts                         ; $829B61
@@ -1282,6 +1282,7 @@ CODE_829BFA:
 CODE_829BFF:
     pla                         ; $829BFF
     rts                         ; $829C00
+race_message_request_0295:
     pha                         ; $829C01
     asl a                       ; $829C02
     pha                         ; $829C03
@@ -1300,6 +1301,7 @@ CODE_829C16:
 CODE_829C1B:
     pla                         ; $829C1B
     rts                         ; $829C1C
+race_message_request_0348:
     pha                         ; $829C1D
     asl a                       ; $829C1E
     pha                         ; $829C1F

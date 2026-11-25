@@ -1625,6 +1625,13 @@ void race_message_request_0233(uint16_t message) { message_request(0x0233, messa
 // TG3000_ROUTINE($82:9BE5) race_message_request_02e6
 void race_message_request_02e6(uint16_t message) { message_request(0x02E6, message); }
 
+// TG3000_ROUTINE($82:9C01) race_message_request_0295
+// (the third and fourth cars' slots: only the VS race runs them)
+void race_message_request_0295(uint16_t message) { message_request(0x0295, message); }
+
+// TG3000_ROUTINE($82:9C1D) race_message_request_0348
+void race_message_request_0348(uint16_t message) { message_request(0x0348, message); }
+
 // TG3000_ROUTINE($82:EADA) track_event_clear
 uint16_t track_event_clear(void) {
   const uint32_t x = rd16(DP + 0x1A);

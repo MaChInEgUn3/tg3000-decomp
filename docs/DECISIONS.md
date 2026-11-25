@@ -3922,6 +3922,19 @@ additions).
 
 **Check:** the incremental gate (additions only).
 
+## The third and fourth cars' race messages (vs-race-3, 2026-11-25)
+
+**`race_message_request_0295` (`$82:9C01`) and `race_message_request_0348` (`$82:9C1D`)** are
+the siblings of the first two cars' requests (`$82:9BC9`, `$82:9BE5`). Each puts a message in
+its car's slot D+$33 when the message's priority, from the table at `$83:A0A4`, is at least the
+current one's. The slots are `$0295` and `$0348`, the records at `$0262` and `$0315`.
+- **Only the VS race runs them:** 2 and 3 live samples. The fuzz takes 500 cases for each, with
+  every output compared, the flags included.
+- **The fourth car's "lower priority" exit** (`$82:9C37`, the `BCS` at `$82:9C30`) never ran in
+  a movie. The row covers it, and the fuzz reaches it.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.
