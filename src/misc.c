@@ -4651,7 +4651,7 @@ static bool sprite_parts_list(uint16_t* x, uint16_t* y, int open) {
 }
 
 // TG3000_ROUTINE($82:DDBF) sprite_parts_stream
-static bool sprite_parts_stream(uint16_t x) {
+bool sprite_parts_stream(uint16_t x) {
   uint16_t y = rd16(DP + 0x84);
   bool full = !sprite_parts_list(&x, &y, 2);  // the first list's overflow: never run
   if(!full) {

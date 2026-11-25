@@ -4898,6 +4898,18 @@ The rankings listed three more routines with C but no row:
 
 **Check:** the full gate (a new waiting row).
 
+## A row for sprite_parts_stream (vs-race-36, 2026-11-25)
+
+**`sprite_parts_stream` (`$82:DDBF`)** streams an object's two parts lists at `$7F:0000` + X to the
+DSP-4. It had C but no row: it was judged only through the rows that list it as a tail
+(`alsoIn`). It is no longer static, and it has a tape row of its own.
+- **Its fuzz:** two lists written at a random place in bank `$7F` (up to three parts each, the
+  first empty half the time), the OAM pointer and its limit, and the chip's answers scripted as
+  for `sprite_put_rows_a`.
+- **Results:** 4,000 live samples on race1, 500 fuzz cases, 109/109 paths.
+
+**Check:** the full gate (a line changed: `static` removed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

@@ -11299,6 +11299,31 @@ static void fuzz_sprite_put_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   dsp4_bridge_script(script, 40);
 }
 
+// ---- sprite_parts_stream ($82:DDBF, vs-race-36) ----  a DSP-4 tape row as sprite_parts_stream_rom
+// (C = the buffer filled): two parts lists written at a random place in bank $7F (up to three
+// parts each, the first empty half the time), X their start; the OAM pointer and its limit, the
+// answers scripted as for sprite_put_rows_a
+static void call_sprite_parts_stream(const Regs* in, Regs* out) { out->c = sprite_parts_stream(in->x); }
+static void fuzz_sprite_parts_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  uint16_t x = (uint16_t)(0x2000 + 2 * (rnd() % 0x6000));
+  r->x = x;
+  for(int list = 0; list < 2; list++) {
+    const int parts = (list == 0 && (rnd() & 1)) ? 0 : (int)(rnd() % 4);
+    for(int i = 0; i < parts; i++, x = (uint16_t)(x + 6)) {
+      wr16ram(ram, 0x10000 + (uint32_t)x, (uint16_t)(1 + rnd() % 0xFFFF));
+      wr16ram(ram, 0x10002 + (uint32_t)x, (uint16_t)rnd());
+      wr16ram(ram, 0x10004 + (uint32_t)x, (uint16_t)rnd());
+    }
+    wr16ram(ram, 0x10000 + (uint32_t)x, 0);
+    x = (uint16_t)(x + 2);
+  }
+  const uint16_t at = (uint16_t)(4 * (rnd() % 0x40));
+  wr16ram(ram, DP + 0x84, at);
+  wr16ram(ram, DP + 0x1A, (rnd() & 1) ? (uint16_t)(at + 4 * (1 + rnd() % 6)) : (uint16_t)(at + 2));
+  uint16_t script[40];
+  for(int i = 0; i < 40; i++) script[i] = (rnd() % 3 == 0) ? 0 : (uint16_t)rnd();
+  dsp4_bridge_script(script, 40);
+}
 // ---- sprite_parts_stream_rom ($82:DEA8) ----  a DSP-4 tape row: as sprite_put_rows_a (C =
 // the buffer filled; the other flags by liveness; its callers restore X and Y)
 static void call_sprite_parts_stream_rom(const Regs* in, Regs* out) { out->c = sprite_parts_stream_rom(in->x); }
@@ -14423,6 +14448,9 @@ const Routine routines[] = {
   {.name = "sprite_put_rows_b", .entry = 0x82D988, .end = 0x82D9DD, .alsoIn = {{0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_sprite_put_rows_b, .fuzz = fuzz_sprite_put_rows, .dsp4Tape = true},
+  {.name = "sprite_parts_stream", .entry = 0x82DDBF, .end = 0x82DEA8, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_parts_stream, .fuzz = fuzz_sprite_parts_stream,
+   .dsp4Tape = true},
   {.name = "sprite_parts_stream_rom", .entry = 0x82DEA8, .end = 0x82DF91, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_parts_stream_rom,
    .fuzz = fuzz_sprite_parts_stream_rom, .dsp4Tape = true},

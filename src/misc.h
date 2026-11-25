@@ -1324,6 +1324,9 @@ bool object_sprite_kind0(uint16_t x);
 // $82:DEA8: sprite_parts_stream for a parts list in ROM, at $86:0000 + `x` (D = $0100; a
 // $09 sprite stream open). Returns whether the OAM buffer filled (the original's carry).
 bool sprite_parts_stream_rom(uint16_t x);
+// $82:DDBF: an object's two parts lists at $7F:0000 + x streamed (DSP-4); true when the sprite
+// buffer filled.
+bool sprite_parts_stream(uint16_t x);
 
 // $82:D267: a car's sprite head streamed to the DSP-4 (D = $0100; a sprite stream open):
 // the row $7E:386A + `x`, $9000, the car's word $7E:FAB4 + `y`, twice its height ($0243's
