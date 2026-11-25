@@ -717,3 +717,4 @@
 83E64D vs_player2_frame_setup src/vs.c 96a4c05475d1e0e9 296 500 72/72 verified live-flags:- replayed:0
 83E706 vs_player3_frame_setup src/vs.c 96a4c05475d1e0e9 281 500 72/72 verified live-flags:- replayed:0
 83E7BF vs_player4_frame_setup src/vs.c 96a4c05475d1e0e9 126 500 72/72 verified live-flags:- replayed:0
+829AF4 vs_places_update src/vs.c 9f7d5c8cdd0312d7 239 500 48/48 verified live-flags:- replayed:0

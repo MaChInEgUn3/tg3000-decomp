@@ -4027,6 +4027,20 @@ The callers reload the registers, so they are not compared.
 
 **Check:** the incremental gate (additions only).
 
+## The VS players' places (vs-race-8, 2026-11-25)
+
+**`vs_places_update` (`$82:9AF4`)** handles the four players in turn (records `$0200`, `$02B3`,
+`$0262`, `$0315`, indices 4 to 1).
+- For each one, `vs_cars_ahead` counts the cars ahead of it.
+- When the count differs from the player's last one (`$1ED2` + 2 a player), the count is kept
+  and the place's message (6 + the count) is requested in the player's slot. The request goes
+  through that player's `race_message_request_*` (vs-race-3).
+- **Live:** 239 samples. **Fuzz:** 500 cases, with the cars' distances near each other and the
+  last counts and the slots at random. **Paths:** 48/48.
+- Its caller reloads the registers, so they are not compared.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

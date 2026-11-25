@@ -6258,6 +6258,16 @@ static void call_vs_cars_ahead(const Regs* in, Regs* out) {
   out->v = v;
   setNZ16(out, a);
 }
+// vs_places_update ($82:9AF4): its caller reloads the registers (vs-race-8)
+static void fuzz_vs_cars_ahead(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void call_vs_places_update(const Regs* in, Regs* out) { (void)in; (void)out; vs_places_update(); }
+// the four cars' distances near each other (vs_cars_ahead's), the last counts and the slots at random
+static void fuzz_vs_places_update(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_vs_cars_ahead(r, ram, rnd);
+  for(int i = 0; i < 4; i++) wr16ram(ram, (uint16_t)(0x1ED2 + 2 * i), (uint16_t)(rnd() % 5));
+  static const uint16_t slots[4] = {0x0233, 0x02E6, 0x0295, 0x0348};
+  for(int i = 0; i < 4; i++) wr16ram(ram, slots[i], (uint16_t)(rnd() % 0x4F));
+}
 static void call_vs_cars_ring(const Regs* in, Regs* out) {
   vs_cars_ring();
   out->a = rd16(0x1E6A);
@@ -12383,6 +12393,8 @@ const Routine routines[] = {
    .needX16 = true, .compareA = true, .compareY = true, .call = call_vs_cars_ahead, .fuzz = fuzz_vs_cars_ahead},
   {.name = "vs_cars_ring", .entry = 0x81F68B, .end = 0x81F6AE, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = false, .compareA = true, .call = call_vs_cars_ring},
+  {.name = "vs_places_update", .entry = 0x829AF4, .end = 0x829B62, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_vs_places_update, .fuzz = fuzz_vs_places_update},
   {.name = "vs_cars_link", .entry = 0x8297BE, .end = 0x829806, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_cars_link,
    .fuzz = fuzz_vs_cars_link},

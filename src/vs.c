@@ -725,6 +725,25 @@ void vs_cars_ring(void) {
   for(int i = 0; i < 4; i++) wr16((uint16_t)(0xFACD + rd16(order[i])), rd16(order[i + 1]));
 }
 
+// TG3000_ROUTINE($82:9AF4) vs_places_update
+// For the four players in turn (records $0200, $02B3, $0262, $0315; indices 4 to 1): the cars
+// ahead of it (vs_cars_ahead). When that differs from its last count ($1ED2 + 2 a player), the
+// count is kept and the place's message (6 + the count) requested in the player's slot.
+void vs_places_update(void) {
+  static const uint16_t recs[4] = {0x0200, 0x02B3, 0x0262, 0x0315};
+  static void (*const request[4])(uint16_t) = {race_message_request_0233, race_message_request_02e6,
+                                               race_message_request_0295, race_message_request_0348};
+  for(int i = 0; i < 4; i++) {
+    uint16_t a;
+    bool c, v;
+    const uint16_t ahead = vs_cars_ahead(recs[i], (uint16_t)(4 - i), &a, &c, &v);
+    const uint16_t last = (uint16_t)(0x1ED2 + 2 * i);
+    if(ahead == rd16(last)) continue;
+    wr16(last, ahead);
+    request[i]((uint16_t)(ahead + 6));
+  }
+}
+
 // TG3000_ROUTINE($82:97BE) vs_cars_link
 // The four cars in the order at $1E6A, $1E6C, $1E6E, $1E70, each linked to the one before it
 // ($7E:FACF + car) and the one after it ($7E:FACD + car), around the ring, car by car.

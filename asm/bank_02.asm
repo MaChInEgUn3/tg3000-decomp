@@ -891,7 +891,7 @@ CODE_82952E:
     sta.w $0317                 ; $829569
     jsr.w $DF91                 ; $82956C
     jsr.w vs_steps_share        ; $82956F
-    jsr.w $9AF4                 ; $829572
+    jsr.w vs_places_update      ; $829572
     stz.b $86                   ; $829575
     stz.b $88                   ; $829577
     stz.b $8E                   ; $829579
@@ -1148,6 +1148,7 @@ CODE_829A98:
     incbin !baserom:$11AA7..$11AF3
 CODE_829AF3:
     rts                         ; $829AF3
+vs_places_update:
     phd                         ; $829AF4
     lda.w #$0200                ; $829AF5
     tcd                         ; $829AF8
