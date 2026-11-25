@@ -11,7 +11,10 @@
 //   frame: each stream on a chip just powered on, from its frame's road command word
 //   ($000F at $85:B536, or $0001 at $85:B53B) on, everything the game sent in between
 //   included (dsp4-01a's run start);
-//   frames N: the same from the road command N frames back (N = 2, 3, 5).
+//   frames N: the same from the road command N frames back (N = 2, 3, 5);
+//   frame + $0A (dsp4-01b): the frame from its road command, after the last $000A command the
+//   game sent before it (its words and reads), and again with that $0A's near row's bit 7
+//   flipped (the one input bit found to matter).
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
@@ -95,9 +98,9 @@ int main(int argc, char** argv) {
       done++;
     }
   }
-  static const char* names[6] = {"fresh", "chained", "frame", "frames 2", "frames 3", "frames 5"};
-  static const int back[6] = {0, 0, 1, 2, 3, 5};
-  for(int mode = 0; mode < 6; mode++) {
+  static const char* names[8] = {"fresh", "chained", "frame", "frames 2", "frames 3", "frames 5", "frame + $0A", "frame + $0A, bit 7 flipped"};
+  static const int back[8] = {0, 0, 1, 2, 3, 5, 1, 1};
+  for(int mode = 0; mode < 8; mode++) {
     dsp4_lle_load_state(power.data(), size);
     long same = 0, differ = 0, bytes = 0, badBytes = 0;
     int shown = 0;
@@ -107,10 +110,12 @@ int main(int argc, char** argv) {
     std::map<uint32_t, long> byPc, examples;
     for(auto s : streams) {
       if(mode != 1) dsp4_lle_load_state(power.data(), size);
+      size_t counted = s.first;  // reads before this are replayed but not compared
       if(mode >= 2) {  // back to the frame's road command word (or N frames')
         size_t k = s.first;
         bool found = true;
         for(int n = 0; n < back[mode] && found; n++) {
+          if(n == 1) counted = k;  // (frames N: only the stream's own frame is compared)
           if(n > 0) k--;
           while(k > 0 && !(!tape[k].read && ((tape[k].pc == 0x85B536 && tape[k].v == 0x0F) || (tape[k].pc == 0x85B53B && tape[k].v == 0x01)) &&
                            k + 1 < tape.size() && tape[k + 1].v == 0x00 && !tape[k + 1].read))
@@ -118,13 +123,24 @@ int main(int argc, char** argv) {
           if(k == 0) found = false;
         }
         if(!found || s.first - k > 4000000) { noRoad++; continue; }
+        if(back[mode] == 1) counted = k;
         s.first = k;
+        if(mode >= 6) {  // the last $000A command before it (written at $81:F90E), replayed first
+          size_t a = k;
+          while(a > 0 && !(!tape[a].read && tape[a].pc == 0x81F90E && tape[a].v == 0x0A && tape[a + 1].v == 0x00)) a--;
+          if(a == 0) { noRoad++; continue; }
+          for(size_t q = a; q < a + 16; q++) {
+            if(tape[q].read) dsp4_lle_read(true);
+            else dsp4_lle_write(true, uint8_t(q == a + 4 && mode == 7 ? tape[q].v ^ 0x80 : tape[q].v));  // a+4: the near row's low byte
+          }
+        }
       }
       bool ok = true;
       size_t firstBad = 0;
       for(size_t k = s.first; k < s.second; k++) {
         if(tape[k].read) {
           const uint8_t v = dsp4_lle_read(true);
+          if(k < counted) continue;
           bytes++;
           // (the same byte of the chip's word before: a read that came before the chip's answer)
           const bool hi = k > 0 && tape[k - 1].read && tape[k - 1].pc == tape[k].pc;

@@ -3839,8 +3839,9 @@ game sent earlier in the frame.
 - On a fresh chip, 127 frames are the same and 28,603 of 5.6 million bytes differ.
 - Every difference is in the road command's own reads (`$85:B735`, `$85:B73B`, `$85:B747`,
   `$85:B74D`), and each is one more on the tape than on the fresh chip.
-- Starting 2, 3 or 5 frames back changes nothing (28,580, 28,557, 28,511). So it is not
-  the road command's state from earlier frames.
+- *(Corrected by dsp4-01b: the first count for starting 2, 3 or 5 frames back compared
+  every replayed frame, the first one included, which lacked its own history. Comparing
+  only the stream's own frame, starting one frame earlier makes all 2,151 the same.)*
 
 **What it does need, bisected for six frames.** The latest command start from which the frame
 repeats exactly lies a little before the road command:
@@ -3858,6 +3859,46 @@ That makes the shared state measured, not guessed.
 
 **Check:** the tool's runs above. This is a measurement: it adds lines to `tools/bench/` and
 changes no row or C.
+
+## The road command's one bit from `$0A` (dsp4-01b, 2026-11-25)
+
+**The shared state dsp4-09b found, measured by chosen inputs on the firmware chip, outputs only.**
+
+**One frame where the road command needs the `$0A` before it** (tape record 2,612,848; the
+`$0A` is 196 records earlier, followed by 18 multiplies and the frame's other commands).
+Replayed on a fresh chip without that `$0A`, 3 bytes differ. Then a `$0A` was put back in its
+place with one input changed:
+- **t and the far row:** any value, 0 differ.
+- **The near row:** only bit 7 matters, the sign of its third width (bits 7-4).
+  - Nibble 0-7 there gives 3 differ, the same as no `$0A` at all; 8-F gives 0.
+  - The other 12 bits make no difference.
+- **A multiply or a `$11` in the `$0A`'s place,** with random inputs, gives 3 differ, the
+  same as none.
+
+**Every frame of the capture, from its road command, after the last `$0A` before it:**
+- **all 1,979 frames that have one repeat exactly: 0 of 5,179,618 bytes differ;**
+- **with that `$0A`'s bit 7 flipped, 1,898 differ** (27,723 bytes);
+- 172 frames, at the start, have no `$0A` before them.
+- The frame alone, after no `$0A`, still gives the 28,603 bytes of dsp4-09b.
+
+**So a race frame's whole DSP-4 traffic is a function of the frame's own input plus one bit:**
+bit 7 of the near row of the last `$0A` the game sent.
+- That covers the road command, the sprites' `$09` stream and all.
+- Starting one frame earlier also makes all 2,151 frames the same, since the frame before
+  holds that `$0A`.
+- dsp4-09b's other needed starts (a `$0007` at `$85:B95F`, a `$0008` at `$81:861A`, a sprite
+  part) are probably other commands that set the same state. That is not tested yet.
+
+**What it means for the C:**
+- `dsp4_edges` (`$0A`) keeps its answers, and also leaves this bit for the road command.
+- When `src/dsp4.c` gets the road command, the bit becomes state shared between the two.
+- What the road command does with it is the road command's own measurement, still to come.
+
+**`tools/bench/dsp4_replay`** gets the two modes above ("frame + `$0A`" and "bit 7 flipped").
+Its "frames N" modes now compare only the stream's own frame.
+
+**Check:** the tool's runs above, and the full gate (`tools/bench/` changed by more than
+additions).
 
 ## The player's password shown (menu-23, 2026-11-24)
 
