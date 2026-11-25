@@ -1388,6 +1388,48 @@ void vs_race_load(void) {
   decompress_to_vram(DP, 0x87, 0x8C10, 0x57A0);
 }
 
+// TG3000_ROUTINE($82:9348) vs_race_track
+// The VS race setup's track piece, from $82:9348 (where the $047C test lands) up to the VS road
+// rows at $82:941F: the clocks and counters cleared (D = $0100: $3E and $013E are both
+// cleared; the overlapping words at $005A-$0060 in the original's order); the track
+// (track_setup_load, track_rows_build) and its objects in the four views; four announcements
+// (func_82AD12), each followed by a frame's wait; 79 colours from $7E:6A35 to CGRAM $71 and
+// colour 0 from $7E:6A33; the sizes of DMA slots 1-3 cleared.
+void vs_race_track(void) {
+  wr16(0x002E, 0x0010);
+  wr16(0x0030, 0x0000);
+  wr16(0x003E, 0);
+  wr16(0x0040, 0);
+  wr16(DP + 0x3E, 0);
+  wr16(DP + 0x40, 0);
+  wr16(0x005A, 0);
+  wr16(0x005C, 0);
+  wr16(0x005D, 0);
+  wr16(0x005F, 0);
+  wr16(DP + 0x35, 0);
+  wr16(DP + 0xE8, 0);
+  wr16(0x0060, 3);
+  wr16(0x0062, 3);
+  static const uint8_t dp_words[] = {0x56, 0x58, 0x09, 0x0B, 0x5A, 0x0D, 0x4C, 0x4E, 0x50, 0x52, 0x56, 0x58, 0x54};
+  for(unsigned i = 0; i < sizeof dp_words; i++) wr16((uint16_t)(DP + dp_words[i]), 0);
+  track_setup_load();
+  track_rows_build();
+  vs_track_objects_view0();
+  vs_track_objects_view1();
+  vs_track_objects_view2();
+  vs_track_objects_view3();
+  static const uint16_t announce[4][2] = {{0x0010, 0x4000}, {0x0011, 0x1000}, {0x0012, 0x0400}, {0x0013, 0x0100}};
+  for(int i = 0; i < 4; i++) {
+    func_82AD12(announce[i][0], announce[i][1]);
+    wait_frames(1);
+  }
+  video_upload_cgram(0x71, 0x7E6A35, 0x009E);
+  video_set_color(0x00, (uint16_t)(bus_rd8(0x7E6A33) | bus_rd8(0x7E6A34) << 8));
+  dma_stream_size(1, 0);
+  dma_stream_size(2, 0);
+  dma_stream_size(3, 0);
+}
+
 // TG3000_ROUTINE($82:BDDA) vs_step_share
 // The CPU's 16 / 8 divider gives the magnitude's quotient by the step count; a negative word
 // gives it as it is, a positive one (or 0) gives 0 less it. The sign is the caller's N flag.

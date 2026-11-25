@@ -207,6 +207,8 @@ void vs_grid_setup(uint16_t dp);
 void vs_race_reset(void);
 // $82:92BA: the VS race setup's first piece (the screen, the settings, the reset, the graphics).
 void vs_race_load(void);
+// $82:9348: the VS race setup's track piece (state cleared, the track and its objects, four waits).
+void vs_race_track(void);
 // $82:BDDA: minus `a` (signed) over the step count $1E9E, on the CPU's divider (the quotient of
 // the magnitude; $FFFF for a zero count). `negative` is the caller's N flag (its load of `a`):
 // the original branches on it, not on `a` itself.

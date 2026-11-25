@@ -677,7 +677,7 @@ vs_race_load:
     lda.w #$0087                ; $829326
     jsl.l decompress_to_vram_long; $829329
     lda.w $047C                 ; $82932D
-    bmi CODE_829348             ; $829330
+    bmi vs_race_track           ; $829330
     jsl.l wait_03e0             ; $829332
     jsl.l $84A4A3               ; $829336
     sep.b #$20                  ; $82933A
@@ -686,7 +686,7 @@ vs_race_load:
     lda.b #$00                  ; $829341
     sta.w $045F                 ; $829343
     rep.b #$20                  ; $829346
-CODE_829348:
+vs_race_track:
     lda.w #$0010                ; $829348
     sta.w $002E                 ; $82934B
     lda.w #$0000                ; $82934E

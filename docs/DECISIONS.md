@@ -4548,6 +4548,33 @@ It was written from the vs-race-23 analysis's draft (no new request).
 
 **Check:** the incremental gate (additions only).
 
+## The VS race setup's track piece; the sound loader parked again (vs-race-25, 2026-11-25)
+
+**`vs_race_track` (`$82:9348` to `$82:941F`)** is the piece after the sound loader call, up to the VS
+road rows (`$82:DF91`, not ported). It does, in order:
+1. **Clears the clocks and counters.**
+   - D is `$0100`, so `$3E` and `$013E` are both cleared.
+   - The overlapping words at `$005A`-`$0060` are kept in the original's order.
+2. **Loads the track** (`track_setup_load`, `track_rows_build`) and its objects in the four views.
+3. **Makes four announcements** (`func_82AD12`), each followed by a frame's wait.
+4. **Sets the palette:** 79 colours from `$7E:6A35` to CGRAM `$71`, and colour 0 from `$7E:6A33`.
+5. **Clears the sizes of DMA slots 1-3** (`dma_stream_size`, checked as channel registers left
+   set).
+
+**Results:**
+- It is a waiting row: one live sample in the VS movie, 78/78 paths, no fuzz.
+- The exit flags are modelled: N and Z of the colour's high byte, C of the last wait.
+
+**The sound loader stays parked (advisor).**
+- **Why it blocks:** the call before this piece (`$84:A4A3`, into `$86:DDEF`) loads the VS race's
+  music into the sound chip. Its senders are the APU scene uploads review-2 parked.
+- **What porting it would take:** a harness change that decodes port traffic into blocks. And the
+  setup would stay blocked on the VS road routines anyway.
+
+So this unit took the piece after it.
+
+**Check:** the full gate (a new waiting row).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

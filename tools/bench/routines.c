@@ -6611,6 +6611,17 @@ static void call_vs_race_load(const Regs* in, Regs* out) {
   out->n = out->z = out->v = false;
   out->c = true;
 }
+// vs_race_track ($82:9348, vs-race-25): the setup's track piece, ending at the JSR to the VS road
+// rows ($82:941F): N and Z from the colour's high byte (LDA.L $7E6A34, 8-bit), C from the last
+// frame wait (set); V is that wait's add, not modelled here, so it is left as it came
+static void call_vs_race_track(const Regs* in, Regs* out) {
+  vs_race_track();
+  restoreP(in, out);
+  const uint8_t hi = bus_rd8(0x7E6A34);
+  out->n = (hi & 0x80) != 0;
+  out->z = hi == 0;
+  out->c = true;
+}
 // track_palettes_load's inputs, $019A and $1F06 (the divide; a zero product now and then), $1F32
 static void fuzz_vs_race_reset(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_track_palettes_load(r, ram, rnd);
@@ -12875,6 +12886,9 @@ const Routine routines[] = {
    .fuzz = fuzz_vs_car_parts},
   {.name = "vs_race_load", .entry = 0x8292BA, .end = 0x82932D, .endAt = 0x82932D, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_load, .manyEffects = true},
+  {.name = "vs_race_track", .entry = 0x829348, .end = 0x82941F, .endAt = 0x82941F, .source = "src/vs.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
+   .maxInsns = 40000000, .call = call_vs_race_track, .manyEffects = true},  // no fuzz: it waits
   {.name = "vs_race_reset", .entry = 0x82BA12, .end = 0x82BD06, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_reset, .fuzz = fuzz_vs_race_reset},
   {.name = "vs_grid_setup", .entry = 0x82BD0E, .end = 0x82BDA9, .source = "src/vs.c", .needM16 = true,
