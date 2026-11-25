@@ -3933,7 +3933,7 @@ func_82B838:
     lda.w $01A0                 ; $82B88B
     sta.b $38                   ; $82B88E
     lda.w #$0100                ; $82B890
-    jsr.w $B902                 ; $82B893
+    jsr.w vs_track_objects_stream; $82B893
     lda.b $38                   ; $82B896
     sta.w $01A0                 ; $82B898
     rts                         ; $82B89B
@@ -3948,7 +3948,7 @@ func_82B838:
     lda.b $A4                   ; $82B8B0
     sta.b $38                   ; $82B8B2
     lda.w #$0180                ; $82B8B4
-    jsr.w $B902                 ; $82B8B7
+    jsr.w vs_track_objects_stream; $82B8B7
     lda.b $38                   ; $82B8BA
     sta.b $A4                   ; $82B8BC
     rts                         ; $82B8BE
@@ -3962,7 +3962,7 @@ func_82B838:
     lda.b $A8                   ; $82B8D0
     sta.b $38                   ; $82B8D2
     lda.w #$0100                ; $82B8D4
-    jsr.w $B902                 ; $82B8D7
+    jsr.w vs_track_objects_stream; $82B8D7
     lda.b $38                   ; $82B8DA
     sta.b $A8                   ; $82B8DC
     rts                         ; $82B8DE
@@ -3977,10 +3977,11 @@ func_82B838:
     lda.b $AC                   ; $82B8F3
     sta.b $38                   ; $82B8F5
     lda.w #$0180                ; $82B8F7
-    jsr.w $B902                 ; $82B8FA
+    jsr.w vs_track_objects_stream; $82B8FA
     lda.b $38                   ; $82B8FD
     sta.b $AC                   ; $82B8FF
     rts                         ; $82B901
+vs_track_objects_stream:
     ldx.b $3C                   ; $82B902
     sta.l $7E45EC,x             ; $82B904
     ldx.b $38                   ; $82B908

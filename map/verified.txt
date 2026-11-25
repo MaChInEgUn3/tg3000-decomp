@@ -732,3 +732,4 @@
 8AA67B vs_screen_loop src/vs.c 6aaf250db59f4696 1 0 37/37 verified live-flags:NVZC replayed:0
 829806 vs_car_bands src/vs.c 69a58e2aad19e815 278 500 303/303 verified live-flags:- replayed:0
 829C39 vs_hud_digits src/vs.c 235a8eae6fd09f65 303 500 461/461 verified live-flags:- replayed:0
+82B902 vs_track_objects_stream src/vs.c b633d2c6466e69de 0 500 128/128 verified live-flags:NVZC replayed:2

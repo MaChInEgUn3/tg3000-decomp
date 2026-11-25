@@ -4287,6 +4287,38 @@ The DSP-4 commands used are all `$0000`, the multiply, which the C has natively.
 
 **Check:** the incremental gate (additions only).
 
+## The VS race's track objects' graphics (vs-race-17, 2026-11-25)
+
+**`vs_track_objects_stream` (`$82:B902`)** is `track_objects_stream` for one of the VS race's four
+views. A delegated agent drafted it (US$0.49) and found its four callers, the setup wrappers at
+`$82:B87A`-`$82:B8DF`, which are not ported yet. Each wrapper sets the parameters in the direct page:
+
+| Word | What it holds |
+|---|---|
+| D+`$36` | the player's distance |
+| D+`$38` | the list index, kept as it moves |
+| D+`$3A` | the view's VRAM base |
+| D+`$3C` | its block in the slot tables, `$DC` bytes a view |
+| D+`$34` | a bias added to the slots stored |
+
+A holds the block's first word.
+
+**How it differs from the one-player routine:**
+- It does not skip a kind with no graphic.
+- Its check that the VRAM word is within `$1000`-`$2FFF` does nothing: the never-run byte the
+  check branches to is a `NOP`, decoded here.
+
+**The never-run spots, decoded here:**
+- the "no record reached" exit, a `JMP` to the RTS;
+- the kind-0 record: the block's first word becomes 2 × slot + bias.
+
+The fuzz runs both.
+
+**Results:** its 4 entries in the VS movie are all interrupted; the 2 kept replayed from their entry
+state pass. Fuzz: 500 cases. Paths: 128/128.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

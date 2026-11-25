@@ -6461,6 +6461,69 @@ static void fuzz_vs_hud_digits(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
     wr16ram(ram, (uint16_t)(0x4E4D + 2 * i), (uint16_t)rnd());
   }
 }
+// vs_track_objects_stream ($82:B902, vs-race-17): ends on the CMP that found a record not
+// reached: A = D+$36, C clear, N Z of the difference, X = that record's index; Y = the last
+// upload's VRAM word (LDY D+$18; a kind-0 record leaves Y), V of the last ADC of the bias;
+// with no record Y and V as on entry
+static void call_vs_track_objects_stream(const Regs* in, Regs* out) {
+  const uint16_t pos = rd16(DP + 0x36), bias = rd16(DP + 0x34), vram = rd16(DP + 0x3A);
+  uint16_t x = rd16(DP + 0x38);
+  while(pos >= rd16(0x5B91 + (uint32_t)x)) {
+    const uint16_t kind = rd16(0x5B94 + (uint32_t)x), slot = rd8(0x5B93 + (uint32_t)x);
+    Regs v;
+    setAdc16(&v, (uint16_t)(slot << 1), bias);
+    out->v = v.v;
+    if(kind) out->y = (uint16_t)((slot << 5) + vram);
+    x = (uint16_t)(x + 5);
+  }
+  vs_track_objects_stream(in->a);
+  out->a = pos;
+  out->x = x;
+  out->c = false;
+  setNZ16(out, (uint16_t)(pos - rd16(0x5B91 + (uint32_t)x)));
+}
+// one of the four views (the callers' parameters); records from the index on, kinds whose table
+// entry points into ROM (now and then kind 0), the source kept inside bank $7F as the one-player
+// fuzz does; the player before the first record now and then
+static void fuzz_vs_track_objects_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  static const uint16_t tabs[4] = {0x0000, 0x00DC, 0x01B8, 0x0294}, bases[4] = {0x0000, 0x0800, 0x1000, 0x1800},
+                        biases[4] = {0x0000, 0x0080, 0x0000, 0x0080}, firsts[4] = {0x0100, 0x0180, 0x0100, 0x0180};
+  const uint32_t view = rnd() % 4;
+  r->a = firsts[view];
+  wr16ram(ram, DP + 0x3C, tabs[view]);
+  wr16ram(ram, DP + 0x3A, bases[view]);
+  wr16ram(ram, DP + 0x34, biases[view]);
+  uint16_t x = (uint16_t)(5 * (rnd() % 8)), at = (uint16_t)(rnd() % 0x100);
+  const uint16_t firstAt = at;
+  wr16ram(ram, DP + 0x38, x);
+  const int n = (int)(1 + rnd() % 5);
+  for(int k = 0; k < n; k++, x = (uint16_t)(x + 5)) {
+    wr16ram(ram, (uint16_t)(0x5B91 + x), at);
+    ram[0x5B93 + x] = (uint8_t)(0x80 + rnd() % 0x60);
+    uint16_t kind = 0;
+    if(rnd() % 8) {
+      while(!kind) {  // kinds whose entry points into ROM (others would read I/O space)
+        const bool high = rnd() & 1;
+        const uint16_t kk = (uint16_t)(1 + rnd() % (high ? 0x28 : 0x30));
+        const uint16_t t = rom16((high ? 0x86AC36 : 0x86AE36) + (uint32_t)(uint16_t)((high ? (uint16_t)(kk << 8) : kk) << 1));
+        if(t >= 0x8000) kind = high ? (uint16_t)(kk << 8) : kk;
+      }
+      const bool high = (kind & 0xFF00) != 0;
+      const uint16_t t = rom16((high ? 0x86AC36 : 0x86AE36) + (uint32_t)(uint16_t)(kind << 1));
+      const uint16_t off = rom16((high ? 0x860022 : 0x86001E) + (uint32_t)t);
+      const uint16_t size = rom16((high ? 0x860024 : 0x860020) + (uint32_t)t);
+      const uint16_t base = rom16(0x860000 + (uint32_t)t);
+      const uint32_t room = size ? 0x10000u - size : 0;
+      const uint16_t src = (uint16_t)(room ? rnd() % room : 0);
+      wr16ram(ram, (uint16_t)(0x6591 + base), (uint16_t)(src - off));
+    }
+    wr16ram(ram, (uint16_t)(0x5B94 + x), kind);
+    at = (uint16_t)(at + 1 + rnd() % 0x40);
+  }
+  wr16ram(ram, (uint16_t)(0x5B91 + x), 0xFFFF);
+  const uint16_t pos = (rnd() % 8) ? (uint16_t)(firstAt + rnd() % (uint32_t)(at - firstAt)) : (uint16_t)(firstAt ? firstAt - 1 : 0);
+  wr16ram(ram, DP + 0x36, pos);
+}
 // vs_places_update ($82:9AF4): its caller reloads the registers (vs-race-8)
 static void fuzz_vs_cars_ahead(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 static void call_vs_places_update(const Regs* in, Regs* out) { (void)in; (void)out; vs_places_update(); }
@@ -12628,6 +12691,9 @@ const Routine routines[] = {
    .alsoIn = {{0x81F70B, 0x81F876}}},
   {.name = "vs_car_bands", .entry = 0x829806, .end = 0x829AF4, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_car_bands, .fuzz = fuzz_vs_car_bands},
+  {.name = "vs_track_objects_stream", .entry = 0x82B902, .end = 0x82BA12, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_track_objects_stream, ALL_OUTPUTS,
+   .fuzz = fuzz_vs_track_objects_stream},
   {.name = "vs_hud_digits", .entry = 0x829C39, .end = 0x82A0C6, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_hud_digits, .fuzz = fuzz_vs_hud_digits},
   {.name = "vs_places_update", .entry = 0x829AF4, .end = 0x829B62, .source = "src/vs.c", .needM16 = true,

@@ -170,6 +170,9 @@ void vs_places_update(void);
 void vs_car_bands(void);
 // $82:9C39: race_hud_digits' first half for the VS race's four players, then their messages.
 void vs_hud_digits(void);
+// $82:B902: track_objects_stream for one of the VS race's four views; its parameters in
+// D+$34..$3C, `first` the view's slot-table block's first word.
+void vs_track_objects_stream(uint16_t first);
 // $81:F6AE / $81:F6F2: two cars of the VS race's order (X, Y, record offsets) close in distance
 // or sideways; A and the flags as the original's RTS leaves them (X and Y are restored).
 typedef struct {

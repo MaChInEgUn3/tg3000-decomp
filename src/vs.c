@@ -1121,6 +1121,47 @@ void vs_hud_digits(void) {
   for(int i = 0; i < 4; i++) vs_hud_player(&players[i]);
 }
 
+// TG3000_ROUTINE($82:B902) vs_track_objects_stream
+// (drafted by a delegated agent; its never-run spots decoded here.) The VS race's
+// track_objects_stream for one of the four views, set up by its caller: D+$36 the player's
+// distance, D+$38 the list index (kept as it moves), D+$3A the view's VRAM word base, D+$3C its
+// block in the slot tables ($7E:45EC / $7E:495C, $DC bytes a view), D+$34 a bias added to the
+// slots stored. `first` goes to the block's first word. Then, while the player has reached the
+// record at $7E:5B91 + the index (5 bytes each: start, slot, kind):
+// - kind 0 (never run): the block's first word = 2 x slot + the bias;
+// - else the kind's graphic is uploaded to VRAM at the base + 32 x slot (upload_vram_now), and
+//   its table entry (the high byte picks the table, the low byte the entry) = 2 x slot + bias.
+// Unlike the one-player routine, a kind with no graphic (a zero table entry) is not skipped. The
+// original's check that the VRAM word is within $1000-$2FFF does nothing: its fail branch is a NOP.
+void vs_track_objects_stream(uint16_t first) {
+  wr16(0x45EC + (uint32_t)rd16(DP + 0x3C), first);
+  uint16_t x = rd16(DP + 0x38);
+  if(rd16(DP + 0x36) < rd16(0x5B91 + (uint32_t)x)) return;  // (never run)
+  for(;;) {
+    const uint16_t kind = rd16(0x5B94 + (uint32_t)x), slot = rd8(0x5B93 + (uint32_t)x);
+    if(kind == 0) {  // (never run)
+      wr16(0x45EC + (uint32_t)rd16(DP + 0x3C), (uint16_t)((slot << 1) + rd16(DP + 0x34)));
+    } else {
+      const bool high = (kind & 0xFF00) != 0;
+      const uint16_t t = bus_rd16((high ? 0x86AC36 : 0x86AE36) + (uint32_t)(uint16_t)(kind << 1));
+      wr16(DP + 0x14, bus_rd16((high ? 0x860022 : 0x86001E) + (uint32_t)t));
+      wr16(DP + 0x16, bus_rd16((high ? 0x860024 : 0x860020) + (uint32_t)t));
+      const uint16_t base = bus_rd16(0x860000 + (uint32_t)t);
+      wr16(DP + 0x14, (uint16_t)(rd16(0x6591 + (uint32_t)base) + rd16(DP + 0x14)));
+      wr16(DP + 0x18, (uint16_t)((slot << 5) + rd16(DP + 0x3A)));
+      wr16(DP + 0x1A, (uint16_t)(slot << 1));
+      wr16((high ? 0x495C : 0x45EC) + (uint32_t)(uint16_t)(((kind & 0x00FF) << 1) + rd16(DP + 0x3C)),
+           (uint16_t)(rd16(DP + 0x1A) + rd16(DP + 0x34)));
+      const uint16_t src = rd16(DP + 0x14);
+      wr16(DP + 0x14, 0x007F);
+      upload_vram_now(rd16(DP + 0x18), 0x7F, src, rd16(DP + 0x16));
+    }
+    x = (uint16_t)(x + 5);
+    wr16(DP + 0x38, x);
+    if(rd16(DP + 0x36) < rd16(0x5B91 + (uint32_t)x)) return;
+  }
+}
+
 // TG3000_ROUTINE($82:9AF4) vs_places_update
 // For the four players in turn (records $0200, $02B3, $0262, $0315; indices 4 to 1): the cars
 // ahead of it (vs_cars_ahead). When that differs from its last count ($1ED2 + 2 a player), the
