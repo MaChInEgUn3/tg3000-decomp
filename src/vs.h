@@ -222,6 +222,11 @@ void vs_race_sums_clear(void);
 // $82:9456: the VS race setup's last piece (the cars' bands, the interrupt vectors, a frame's wait),
 // up to the race loop.
 void vs_race_start(void);
+// $82:94B2: one frame of the VS race loop, from its head to the jump back.
+void vs_race_frame(void);
+// $82:94B2 up to the frame's wait ($82:95E8), and from the wait to the jump back.
+void vs_race_frame_body(void);
+void vs_race_frame_tail(void);
 // $82:BDDA: minus `a` (signed) over the step count $1E9E, on the CPU's divider (the quotient of
 // the magnitude; $FFFF for a zero count). `negative` is the caller's N flag (its load of `a`):
 // the original branches on it, not on `a` itself.

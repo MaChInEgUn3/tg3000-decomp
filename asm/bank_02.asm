@@ -812,9 +812,9 @@ vs_race_start:
     lda.w #$8004                ; $829498
     sta.w $1ECE                 ; $82949B
     bit.w $047C                 ; $82949E
-    bpl CODE_8294B2             ; $8294A1
+    bpl vs_race_frame_body      ; $8294A1
     incbin !baserom:$114A3..$114B2
-CODE_8294B2:
+vs_race_frame_body:
     jsr.w vs_hud_digits         ; $8294B2
     lda.w $1ECE                 ; $8294B5
     bmi CODE_8294BE             ; $8294B8
@@ -920,13 +920,13 @@ CODE_829589:
     incbin !baserom:$115AD..$115DB
 CODE_8295DB:
     lda.w $0146                 ; $8295DB
-    bne CODE_8295E8             ; $8295DE
+    bne vs_race_frame_tail      ; $8295DE
     lda.w $014A                 ; $8295E0
     and.w #$0F00                ; $8295E3
     db $F0,$5A ; beq            ; $8295E6
-CODE_8295E8:
+vs_race_frame_tail:
     lda.w $00B8                 ; $8295E8
-    bne CODE_8295E8             ; $8295EB
+    bne vs_race_frame_tail      ; $8295EB
     ldx.w $00BA                 ; $8295ED
     bit.w $047C                 ; $8295F0
     bpl CODE_829617             ; $8295F3
@@ -945,7 +945,7 @@ CODE_829617:
 CODE_829639:
     stz.w $00BA                 ; $829639
     stx.w $1E9E                 ; $82963C
-    jmp.w $94B2                 ; $82963F
+    jmp.w vs_race_frame_body    ; $82963F
     incbin !baserom:$11642..$117BE
 vs_cars_link:
     ldy.w #$0000                ; $8297BE

@@ -4803,14 +4803,52 @@ fuzz): 2,179 live samples, 100 fuzz cases, 24/24 paths.
 - **What passes, what fails:** 158 lagged samples pass. 145 fail past the lag point, by one in a
   value. The mid-frame NMI changed state the C reads only after its wait; the frame counter, read
   by `object_sprite_kind0`, is the likely one.
-- **Why it cannot be verified now:** the harness only accepts lagged failures when some sample
-  passed without lag (harness-15), and none does. Verifying it needs the NMI's effects served to
-  the C at the instruction where they landed: a harness unit of its own.
-- **Where the code is:** its C (the countdown, the race's end, the demo's end and the Start test
-  decoded from the ROM; the way out and the VS pause as traps) is kept outside the repository for
-  that unit.
+- **Why it could not be verified as one row:** the harness only accepts lagged failures when some
+  sample passed without lag (harness-15), and none does. vs-race-33 verifies it cut in two
+  instead, with no harness change.
 
 **Check:** the incremental gate (additions only).
+
+## The VS race loop's frame, cut at its wait (vs-race-33, 2026-11-25)
+
+**The VS race loop is now in C, as two rows (advisor).**
+
+**`vs_race_frame_body` (`$82:94B2` up to the wait at `$82:95E8`).** In order:
+- the HUD's digits;
+- the start's countdown and its messages;
+- the cars linked, moved, ordered and banded;
+- the records' sides;
+- the road rows, the steps' shares and the places;
+- the road projected and the four views' sprites;
+- the frame flagged for the NMI;
+- the test for the way out (a trap).
+
+**`vs_race_frame_tail` (`$82:95E8` up to the jump back).** It waits for the NMI to take the frame,
+then keeps the frames it took for the next one. Last come the demo's end on any button and the
+Start test.
+
+**Why the cut works.**
+- The body is not a waiting row. The NMI that lands in it (every VS frame lags) drops its live
+  sample.
+- The harness runs a dropped sample again from its entry state, with the interrupts off. So the
+  mid-frame NMI that made the one-row frame fail is out of both sides.
+- The tail starts at its own wait, so the NMI there is the one it waits for.
+- `vs_race_frame` calls the two.
+
+**Never-run paths, decoded from the ROM here and ported (untested, holes in the rows):**
+- the countdown's clamp and its first two messages;
+- the race's end (a pause, then the fade-out);
+- the demo's end;
+- the Start test.
+
+The way out of the loop (`$82:9642`) and the VS pause (`$82:9657`) are traps.
+
+**Results:**
+- **Body:** 32 replays (no live compares, no fuzz: its sample covers the whole frame), 94/94
+  paths.
+- **Tail:** 845 live samples, 16/16 paths.
+
+**Check:** the full gate (a new waiting row).
 
 **Check:** the full gate (a new waiting row).
 

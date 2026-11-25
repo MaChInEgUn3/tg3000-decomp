@@ -1665,6 +1665,121 @@ void vs_race_start(void) {
   }
 }
 
+// The countdown's message for the four players: A from the time left before (x) and now (y).
+static uint16_t vs_countdown_message(uint16_t x, uint16_t y) {
+  uint16_t a = 0;
+  if(!((uint16_t)(x - 0x0168) & 0x8000) && ((uint16_t)(y - 0x0168) & 0x8000)) a = 0x0002;  // (never run)
+  if(!((uint16_t)(x - 0x00F0) & 0x8000) && ((uint16_t)(y - 0x00F0) & 0x8000)) a = 0x0003;
+  if(!((uint16_t)(x - 0x0078) & 0x8000) && ((uint16_t)(y - 0x0078) & 0x8000)) a = 0x0004;
+  if(!((uint16_t)(x - 0x0002) & 0x8000) && ((uint16_t)(y - 0x0002) & 0x8000)) {
+    wr16(0x1ECE, 0x0001);
+    a = 0x0005;
+  }
+  return a;
+}
+
+// TG3000_ROUTINE($82:94B2) vs_race_frame_body
+// One frame of the VS race loop, from its head up to its wait ($82:95E8): the HUD's digits; the
+// start's countdown (its messages to the four players: 3, 2, 1, go; or the demo's $3F-$42); the
+// cars linked, moved, ordered and banded; the records' sides from the cars; the road rows, the
+// steps' shares, the places; the road projected and the four views' sprites; then the frame
+// flagged for the NMI. The race's end (the fade-out after $1F08 = 4) is ported from the ROM's
+// bytes (never run: the movie races on); the way out of the loop ($82:9642) is a trap.
+void vs_race_frame_body(void) {
+  vs_hud_digits();
+  const uint16_t count = rd16(0x1ECE);
+  if(count & 0x8000) {  // the demo's messages
+    if(!(rd16(0x047C) & 0x8000)) {
+      wr16(0x0233, 0x003F);
+      wr16(0x02E6, 0x0040);
+      wr16(0x0295, 0x0041);
+      wr16(0x0348, 0x0042);
+    }
+  } else if(count != 0) {
+    uint16_t left = (uint16_t)(count - rd16(0x1E9E));
+    if(left & 0x8000) left = 0;
+    wr16(0x1ECE, left);
+    const uint16_t m = vs_countdown_message(count, left);
+    wr16(0x0233, m);
+    wr16(0x02E6, m);
+    wr16(0x0295, m);
+    wr16(0x0348, m);
+  }
+  vs_cars_link();
+  vs_cars_frame();
+  vs_cars_order();
+  vs_car_bands();
+  static const uint16_t recs[4] = {0x0200, 0x02B3, 0x0262, 0x0315};
+  for(int i = 0; i < 4; i++) {
+    wr16(recs[i], rd16(recs[i] + 4));
+    wr16(recs[i] + 2, rd16(recs[i] + 6));
+  }
+  vs_road_rows();
+  vs_steps_share();
+  vs_places_update();
+  const uint16_t base = rd16(0x00B4) ? 0x0220 : 0x0000;
+  wr16(DP + 0x86, base);
+  wr16(DP + 0x88, base);
+  wr16(DP + 0x8E, base);
+  vs_road_project();
+  vs_sprites_view0();
+  vs_sprites_view1();
+  oam_high_load();
+  vs_sprites_view2();
+  vs_sprites_view3();
+  oam_high_load2();
+  wr16(0x00B8, (uint16_t)(rd16(0x00B8) | 0x0001));
+  if(rd16(0x1F08) == 0x0004) {  // the race over: a pause, then the fade-out (never run)
+    uint16_t t = rd16(0x1ED0);
+    if(t == 0) {
+      t = 0x7F10;
+      wr16(0x1ED0, t);
+    }
+    if(!(t & 0x8000)) {
+      t = (uint16_t)(rd16(0x1ED0) + rd16(0x1E9E));
+      wr16(0x1ED0, t);
+      if(t & 0x8000) {
+        wr16(0x0148, 0);
+        wr16(0x0146, 0xFF80);
+        if(!(rd16(0x047C) & 0x8000)) wr16(0x03E0, 0xFFFF);
+      }
+    }
+  }
+  if(rd16(0x0146) == 0 && !(rd16(0x014A) & 0x0F00)) tg3000_unported("$82:9642: the VS race loop's way out");
+}
+
+// TG3000_ROUTINE($82:95E8) vs_race_frame_tail
+// The VS race frame's rest: the wait for the NMI to take the frame; the frames it took ($00BA)
+// kept for the next one ($1E9E); the demo's end on any button and the Start test (both ported
+// from the ROM's bytes, never run; the VS pause, $82:9657, is a trap).
+void vs_race_frame_tail(void) {
+  while(rd16(0x00B8) != 0) platform_wait_vblank();
+  const uint16_t frames = rd16(0x00BA);
+  if(rd16(0x047C) & 0x8000) {  // the demo: any button ends it (never run)
+    if((rd16(0x000C) | rd16(0x0010) | rd16(0x0014) | rd16(0x0018)) & 0xFFF0) {
+      wr16(0x047D, (uint16_t)(rd16(0x047D) & ~0x007F));
+      wr16(0x0148, 0);
+      wr16(0x0146, 0xFF80);
+    }
+  } else {
+    static const uint16_t pads[4] = {0x000E, 0x0012, 0x0016, 0x001A};
+    bool start = false;
+    for(int i = 0; i < 4 && !start; i++) {
+      start = (rd16(pads[i]) & 0x1000) != 0;
+      wr16(pads[i], (uint16_t)(rd16(pads[i]) & ~0x1000));
+    }
+    if(start && rd16(0x014A) == 0x0F00) tg3000_unported("$82:9657: the VS race paused");
+  }
+  wr16(0x00BA, 0);
+  wr16(0x1E9E, frames);
+}
+
+// One frame of the VS race loop ($82:94B2 to its jump back).
+void vs_race_frame(void) {
+  vs_race_frame_body();
+  vs_race_frame_tail();
+}
+
 // TG3000_ROUTINE($82:BDDA) vs_step_share
 // The CPU's 16 / 8 divider gives the magnitude's quotient by the step count; a negative word
 // gives it as it is, a positive one (or 0) gives 0 less it. The sign is the caller's N flag.

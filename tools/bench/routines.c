@@ -6611,6 +6611,22 @@ static void call_vs_race_load(const Regs* in, Regs* out) {
   out->n = out->z = out->v = false;
   out->c = true;
 }
+// vs_race_frame_body ($82:94B2, vs-race-33): up to the frame's wait ($82:95E8; the NMI lands in it,
+// so it is judged by replays from its entry, interrupts off): A = $00B8's last test; V from BIT
+// $047C (the race-over path, never run, would test it again), C from CMP $1F08 with 4
+static void call_vs_race_frame_body(const Regs* in, Regs* out) {
+  (void)in;
+  vs_race_frame_body();
+  out->v = (rd16(0x047C) & 0x4000) != 0;
+  out->c = rd16(0x1F08) >= 0x0004;
+}
+// vs_race_frame_tail ($82:95E8, vs-race-33): the wait, up to the jump back ($82:963F); V from BIT
+// $047C (bit 14); C as it came
+static void call_vs_race_frame_tail(const Regs* in, Regs* out) {
+  (void)in;
+  vs_race_frame_tail();
+  out->v = (rd16(0x047C) & 0x4000) != 0;
+}
 // vs_race_start ($82:9456, vs-race-29): the setup's last piece, ending at the race loop's head
 // ($82:94B2): A = $8004 and the flags of BIT $047C, or (bit 15 set) A = $43, N and Z clear; C set
 // by the frame wait
@@ -13171,6 +13187,15 @@ const Routine routines[] = {
    .fuzz = fuzz_vs_car_parts},
   {.name = "vs_race_load", .entry = 0x8292BA, .end = 0x82932D, .endAt = 0x82932D, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_load, .manyEffects = true},
+  {.name = "vs_race_frame_body", .entry = 0x8294B2, .end = 0x8295E8, .endAt = 0x8295E8, .source = "src/vs.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_frame_body,
+   .manyEffects = true, .dsp4Tape = true, .replays = 32,  // the NMI lands in every live sample
+   .holes = {{0x8294DE, 0x8294E1}, {0x8294ED, 0x8294F5}, {0x8294FF, 0x829502}, {0x8295AD, 0x8295DB}}},
+       // never run (the countdown's clamp and its first two messages, the race's end: ported, untested)
+  {.name = "vs_race_frame_tail", .entry = 0x8295E8, .end = 0x82963F, .endAt = 0x82963F, .source = "src/vs.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
+   .maxInsns = 40000000, .call = call_vs_race_frame_tail, .manyEffects = true,  // no fuzz: it waits
+   .holes = {{0x8295F5, 0x829617}, {0x82962E, 0x829639}}},  // never run (the demo's end, the Start test)
   {.name = "vs_race_start", .entry = 0x829456, .end = 0x8294B2, .endAt = 0x8294B2, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
    .maxInsns = 40000000, .call = call_vs_race_start, .manyEffects = true,  // no fuzz: it waits
