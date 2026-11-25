@@ -203,6 +203,8 @@ uint16_t vs_cars_link(void);
 uint16_t vs_car_parts(uint16_t dp);
 // $82:BD0E: the VS race's four cars' records set for the start (D+$14-$19 its counters).
 void vs_grid_setup(uint16_t dp);
+// $82:BA12: the VS race's state reset (race_state_reset's counterpart; D = $0100).
+void vs_race_reset(void);
 // $82:BDDA: minus `a` (signed) over the step count $1E9E, on the CPU's divider (the quotient of
 // the magnitude; $FFFF for a zero count). `negative` is the caller's N flag (its load of `a`):
 // the original branches on it, not on `a` itself.

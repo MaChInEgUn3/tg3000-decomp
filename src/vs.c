@@ -1268,6 +1268,104 @@ void vs_grid_setup(uint16_t dp) {
   for(int i = 0; i < 16; i++) wr16((uint32_t)(0x1E72 + 2 * i), (uint16_t)x);
 }
 
+// TG3000_ROUTINE($82:BA12) vs_race_reset
+// (drafted by a delegated agent from the listing; checked here.) The VS race's state reset,
+// race_state_reset's counterpart: $0200-$0365 cleared; the four players' words and records'
+// fields; the objects' indices; the lap time ($019E: $B0 << 16 over the DSP-4 product of $019A
+// and $1F06, a 16-step restoring divide); track_palettes_load; the four cars' records
+// (vs_grid_setup), their sides and start places; CGRAM from colour $C1, five rows of 30 table
+// bytes ($85:A118) and the last one twice (80 colours: the index wraps past $FF).
+void vs_race_reset(void) {
+  for(uint16_t x = 0x0166; x != 0; x = (uint16_t)(x - 2)) wr16((uint16_t)(0x01FE + x), 0);
+  wr8(0x024E, 4);
+  wr8(0x0301, 4);
+  wr8(0x02B0, 4);
+  wr8(0x0363, 4);
+  static const uint16_t z1[] = {0x0231, 0x02E4, 0x0293, 0x0346, 0x0216, 0x02C9, 0x0278, 0x032B};
+  for(unsigned i = 0; i < sizeof z1 / sizeof z1[0]; i++) wr16(z1[i], 0);
+  wr16(0x02A4, 0x0020);
+  wr16(0x1F32, (uint16_t)(rd16(0x1F32) | 0x0080));
+  static const uint16_t z2[] = {0x00B4, 0x00B6, 0x00B8, 0x022D, 0x022F, 0x02E0, 0x02E2, 0x028F, 0x0291, 0x0342,
+                                0x0344, 0x0221, 0x02D4, 0x0283, 0x0336, 0x4E3D, 0x4E3F, 0x4E41, 0x4E43};
+  for(unsigned i = 0; i < sizeof z2 / sizeof z2[0]; i++) wr16(z2[i], 0);
+  static const uint16_t slots[4] = {0x0233, 0x02E6, 0x0295, 0x0348};
+  for(int i = 0; i < 4; i++) wr16(slots[i], 1);
+  wr16(0x1ED0, 0);
+  static const uint16_t flags[4] = {0x0244, 0x02F7, 0x02A6, 0x0359};
+  for(int i = 0; i < 4; i++) wr16(flags[i], 1);
+  for(int i = 0; i < 4; i++) wr16((uint16_t)(0x1ED2 + 2 * i), (uint16_t)i);
+  static const uint16_t counters[4] = {0x0235, 0x02E8, 0x0297, 0x034A};
+  for(int i = 0; i < 4; i++) wr16(counters[i], 0xFFFF);
+  static const uint16_t z3[] = {0x021F, 0x02D2, 0x0281, 0x0334, 0x021A, 0x02CD, 0x027C, 0x032F, 0x00BE, 0x01A0, 0x01A4,
+                                0x01A8, 0x01AC, 0x00BE, 0x00C0, 0x00BC, 0x0486, 0x00C4, 0x00C6, 0x00C2, 0x050E, 0x0176,
+                                0x017A, 0x0208, 0x02BB, 0x026A, 0x031D, 0x0200, 0x0202, 0x02B3, 0x02B5, 0x0262, 0x0264,
+                                0x0315, 0x0317, 0x0225, 0x0227, 0x02D8, 0x02DA, 0x0287, 0x0289, 0x033A, 0x033C};
+  for(unsigned i = 0; i < sizeof z3 / sizeof z3[0]; i++) wr16(z3[i], 0);
+  wr16(0x1F28, bus_rd16(0x85A33A + 8));
+  wr16(0x1F2A, bus_rd16(0x85A33C + 8));
+  wr16(0x0226, 0x0020);
+  static const uint16_t z4[] = {0x023E, 0x02F1, 0x0210, 0x02C3, 0x0272, 0x0325, 0x0253, 0x0306,
+                                0x0223, 0x02D6, 0x0285, 0x0338, 0x0240, 0x02F3, 0x02A2, 0x0355};
+  for(unsigned i = 0; i < sizeof z4 / sizeof z4[0]; i++) wr16(z4[i], 0);
+  wr16(0x00A4, 0x57F6);
+  wr16(0x00AC, 0x57F6);
+  wr16(0x00A6, 0x584E);
+  wr16(0x00AE, 0x584E);
+  // the lap time: $B0 << 16 over the product's low word (16 restoring steps, as the original)
+  const uint16_t d = (uint16_t)dsp4_multiply((int16_t)rd16(0x019A), (int16_t)rd16(0x1F06));
+  wr16(DP + 0x14, d);
+  uint16_t a = 0x00B0, q = rd16(DP + 0x16);
+  for(int i = 0; i < 16; i++) {
+    uint16_t bit = 0;
+    if(a >= d) {
+      a = (uint16_t)(a - d);
+      bit = 1;
+    }
+    q = (uint16_t)((q << 1) | bit);
+    a = (uint16_t)(a << 1);
+  }
+  wr16(DP + 0x16, q);
+  wr16(0x019E, q);
+  static const uint16_t z5[] = {0x003E, 0x0040, 0x0064, 0x0068, 0x00FE, 0x0100, 0x1E02, 0x1E0A, 0x1E12, 0x1E1A};
+  for(unsigned i = 0; i < sizeof z5 / sizeof z5[0]; i++) wr16(z5[i], 0);
+  track_palettes_load(DP);
+  vs_grid_setup(DP);
+  static const struct { uint16_t car, place, side0, side1, v0, v1; } cars[4] = {
+    {0x0000, 0x0226, 0x0204, 0x0206, 0x0000, 0xFF40}, {0x0035, 0x02D9, 0x02B7, 0x02B9, 0x0000, 0xFFC0},
+    {0x006A, 0x0288, 0x0266, 0x0268, 0x0000, 0x0040}, {0x009F, 0x033B, 0x0319, 0x031B, 0x0000, 0x00C0},
+  };
+  for(int i = 0; i < 4; i++) {
+    wr16(cars[i].side0, cars[i].v0);
+    wr16(cars[i].side1, cars[i].v1);
+  }
+  for(int i = 0; i < 4; i++) {
+    wr16(cars[i].place, (uint16_t)(rd16(0xFAB6 + (uint32_t)cars[i].car) - 0x0030));
+    wr16(0xFAB9 + (uint32_t)cars[i].car, rd16(cars[i].side0));
+    wr16(0xFABB + (uint32_t)cars[i].car, rd16(cars[i].side1));
+  }
+  // one SEC, then four SBC #$20 (the borrow runs on from one to the next)
+  static const uint16_t from[4] = {0x0226, 0x02D9, 0x0288, 0x033B}, to[4] = {0x023E, 0x02F1, 0x02A0, 0x0353};
+  uint32_t borrow = 0;
+  for(int i = 0; i < 4; i++) {
+    const uint32_t r = (uint32_t)rd16(from[i]) - 0x20u - borrow;
+    wr16(to[i], (uint16_t)r);
+    borrow = (r >> 31) & 1u;
+  }
+  uint16_t x = 0;
+  uint8_t colour = 0xC1;
+  for(int row = 0; row < 5; row++) {
+    uint8_t b[32];
+    for(int i = 0; i < 30; i++) b[i] = bus_rd8(0x85A118 + x++);
+    b[30] = b[31] = b[29];
+    for(int k = 0; k < 16; k++, colour++) video_set_color(colour, (uint16_t)(b[2 * k] | b[2 * k + 1] << 8));
+  }
+  wr8(DP + 0x14, 0);
+  wr8(DP + 0x16, (uint8_t)(rd8(DP + 0x16) + 10));
+  static const uint16_t z6[4] = {0x023A, 0x02ED, 0x029C, 0x034F};
+  for(int i = 0; i < 4; i++) wr16(z6[i], 0x0300);
+  wr16(0x1F08, 0);
+}
+
 // TG3000_ROUTINE($82:BDDA) vs_step_share
 // The CPU's 16 / 8 divider gives the magnitude's quotient by the step count; a negative word
 // gives it as it is, a positive one (or 0) gives 0 less it. The sign is the caller's N flag.

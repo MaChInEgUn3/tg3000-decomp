@@ -6584,6 +6584,31 @@ static void fuzz_vs_track_objects_view(Regs* r, uint8_t* ram, uint32_t (*rnd)(vo
     wr16ram(ram, (uint16_t)(0x01A0 + 4 * view), (uint16_t)(ram[DP + 0x38] | ram[DP + 0x39] << 8));
   }
 }
+// vs_race_reset ($82:BA12, vs-race-23): A = $0300 (its last LDA: N Z clear); C and V of the last of
+// the four chained SBC #$20 (on the cars' places, not changed after)
+static void call_vs_race_reset(const Regs* in, Regs* out) {
+  (void)in;
+  vs_race_reset();
+  static const uint16_t from[4] = {0x0226, 0x02D9, 0x0288, 0x033B};
+  unsigned borrow = 0;
+  for(int i = 0; i < 4; i++) {
+    const uint16_t m = rd16(from[i]);
+    const uint32_t r = (uint32_t)m - 0x20u - borrow;
+    borrow = (r >> 31) & 1u;
+    out->c = !borrow;
+    out->v = ((m ^ 0x0020) & (m ^ (uint16_t)r) & 0x8000) != 0;
+  }
+  out->a = 0x0300;
+  out->n = out->z = false;
+}
+static void fuzz_track_palettes_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+// track_palettes_load's inputs, $019A and $1F06 (the divide; a zero product now and then), $1F32
+static void fuzz_vs_race_reset(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_track_palettes_load(r, ram, rnd);
+  wr16ram(ram, 0x019A, (uint16_t)((rnd() % 8) ? 0x40 + rnd() % 0x400 : rnd()));
+  wr16ram(ram, 0x1F06, (uint16_t)((rnd() % 8) ? rnd() % 0x2000 : 0));
+  wr16ram(ram, 0x1F32, (uint16_t)rnd());
+}
 // vs_places_update ($82:9AF4): its caller reloads the registers (vs-race-8)
 static void fuzz_vs_cars_ahead(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 static void call_vs_places_update(const Regs* in, Regs* out) { (void)in; (void)out; vs_places_update(); }
@@ -12839,6 +12864,8 @@ const Routine routines[] = {
   {.name = "vs_car_parts", .entry = 0x83E878, .end = 0x83E8AB, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .compareA = true, .compareX = true, .call = call_vs_car_parts,
    .fuzz = fuzz_vs_car_parts},
+  {.name = "vs_race_reset", .entry = 0x82BA12, .end = 0x82BD06, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_reset, .fuzz = fuzz_vs_race_reset},
   {.name = "vs_grid_setup", .entry = 0x82BD0E, .end = 0x82BDA9, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_vs_grid_setup, ALL_OUTPUTS, .fuzz = fuzz_vs_grid_setup},
   {.name = "vs_player1_frame_setup", .entry = 0x83E597, .end = 0x83E64D, .source = "src/vs.c", .needM16 = true,

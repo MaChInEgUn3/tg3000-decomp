@@ -4497,6 +4497,39 @@ VS race's two halves. A delegated agent drafted it (in vs-race-21's request).
 
 **Check:** the full gate (with harness-31 and harness-32).
 
+## The VS race's state reset (vs-race-23, 2026-11-25)
+
+**`vs_race_reset` (`$82:BA12`)** is `race_state_reset`'s counterpart for the VS race. It clears and
+sets:
+- `$0200`-`$0365`;
+- the four players' words and record fields;
+- the objects' indices.
+
+Then it computes and loads:
+- **the lap time** `$019E`: `$B0` << 16 over the DSP-4 product of `$019A` and `$1F06`, a 16-step
+  restoring divide kept as the original runs it;
+- `track_palettes_load`;
+- the four cars' records (`vs_grid_setup`), their sides and start places;
+- **CGRAM from colour `$C1`:** five rows of 30 table bytes (`$85:A118`) and the last byte twice,
+  80 colours, so the index wraps past `$FF`.
+
+**Results:**
+- Its one entry in the VS movie was interrupted, and it replays from its entry state.
+- Fuzz: 500 cases. Paths: 262/262.
+- The exit flags (the last of four chained `SBC #$20`) are compared, since one return cannot
+  show the caller ignores them.
+
+**A delegated agent drafted it** inside an analysis of the whole VS race setup (`$82:92BA`, entered
+through the mode table at `$82:8418`). That analysis cost US$3.27, too much for one request; later
+requests are kept narrower.
+- The setup is not ported yet. Three unported routines lie on its live path:
+  - `$84:A4A3`, a large routine with a sound message;
+  - `$82:DF91`, the four VS road row routines (DSP-4);
+  - `$85:A471`, the VS road driver.
+- It can be cut into pieces that end before each of them.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

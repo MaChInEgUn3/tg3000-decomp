@@ -647,7 +647,7 @@ CODE_82905C:
     adc.w #$002F                ; $8292C8
     sta.w $047B                 ; $8292CB
     jsl.l track_settings_load   ; $8292CE
-    jsr.w $BA12                 ; $8292D2
+    jsr.w vs_race_reset         ; $8292D2
     ldx.w #$8125                ; $8292D5
     ldy.w #$0000                ; $8292D8
     lda.w #$009B                ; $8292DB
@@ -4110,6 +4110,7 @@ CODE_82B9F3:
     jmp.w $B915                 ; $82BA0E
 CODE_82BA11:
     rts                         ; $82BA11
+vs_race_reset:
     ldx.w #$0166                ; $82BA12
     lda.w #$0000                ; $82BA15
 CODE_82BA18:
