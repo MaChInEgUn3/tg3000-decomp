@@ -29,6 +29,8 @@ void nmi_vs_full(void);                   // $83:9777, the VS split screen's NMI
 void race_cycle_blocks(void);             // $85:9147
 void race_hud_draw(void);                 // $85:8814 (long)
 void irq_race_band(void);                 // $85:87BA, the race's raster IRQ
+void irq_vs_band(void);                   // $83:8A26, the VS race's raster IRQ (top views)
+void irq_vs_band2(void);                  // $83:8BE3, the same for the bottom views
 void nmi_race_full(void);                 // $85:83CE, the race NMI's full frame (then its tail)
 
 #endif

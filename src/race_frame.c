@@ -321,6 +321,48 @@ void irq_race_band(void) {
   }
 }
 
+// One band of the VS race's raster IRQs (irq_race_band's, with the next IRQ at dot $63): the
+// band's chunk, the slots named at masks + the cursor; then the next band's line, if any (the
+// cursor moved on). Returns that line, 0 for none.
+static uint8_t vs_band_send(uint16_t cursorAt, uint16_t masks, uint16_t lines) {
+  uint16_t band = rd16(cursorAt);
+  platform_set_irq_h_low(0xFF);
+  dma_stream_size(2, 1);
+  dma_stream_size(7, 1);
+  dma_stream_size(1, 8);
+  dma_stream_size(3, 8);
+  video_set_cgram_address(0x21);
+  dma_stream_kick(rd8((uint32_t)(masks + band)));
+  band = (uint16_t)(band + 1);
+  const uint8_t line = rd8((uint32_t)(lines + band));
+  if(line) {
+    platform_set_irq_v_low(line);
+    platform_set_irq_h_low(0x63);
+    wr16(cursorAt, band);
+  }
+  return line;
+}
+
+// TG3000_ROUTINE($83:8A26) irq_vs_band
+//
+// The VS race's raster IRQ for the top pair of views (cursor $00BC, slots $0596, lines $0486):
+// irq_race_band's, next IRQ at dot $63. After the last band, the split ($83:8A84) at line $6C,
+// dot $78. (The original waits (WAI) for dot $FF, as irq_race_band.)
+void irq_vs_band(void) {
+  if(vs_band_send(0x00BC, 0x0596, 0x0486)) return;
+  wr16(0x0005, 0x8A84);
+  platform_set_irq_v(0x006C);
+  platform_set_irq_h(0x0078);
+}
+
+// TG3000_ROUTINE($83:8BE3) irq_vs_band2
+//
+// The same for the bottom pair (cursor $00C2, slots $061E, lines $050E). After the last band the
+// IRQ line goes to 0 (none this frame) and the trampoline stays.
+void irq_vs_band2(void) {
+  if(!vs_band_send(0x00C2, 0x061E, 0x050E)) platform_set_irq_v(0x0000);
+}
+
 // A four-digit BCD add (the 65816's ADC in decimal mode, for valid BCD operands): the low
 // four digits of the sum.
 static uint16_t bcd_add(uint16_t a, uint16_t b) {

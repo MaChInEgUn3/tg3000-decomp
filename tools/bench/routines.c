@@ -5232,6 +5232,9 @@ static void fuzz_race_hud_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 
 // ---- irq_race_band ($85:87BA) ----  saves and restores DB, A, X itself; P from the frame
 static void call_irq_race_band(const Regs* in, Regs* out) { irq_race_band(); restoreP(in, out); }
+// (vs-race-21) the VS race's: as irq_race_band
+static void call_irq_vs_band(const Regs* in, Regs* out) { irq_vs_band(); restoreP(in, out); }
+static void call_irq_vs_band2(const Regs* in, Regs* out) { irq_vs_band2(); restoreP(in, out); }
 
 // Negative test: the colours one CGRAM entry off
 static void call_irq_race_band_wrong(const Regs* in, Regs* out) {
@@ -12530,6 +12533,10 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .call = call_race_hud_draw, .fuzz = fuzz_race_hud_draw},
   {.name = "irq_race_band", .entry = 0x8587BA, .end = 0x858812, .rti = true, .source = "src/race_frame.c",
    .call = call_irq_race_band, ALL_OUTPUTS},  // no fuzz: it waits (WAI) for an interrupt the fuzz never raises
+  {.name = "irq_vs_band", .entry = 0x838A26, .end = 0x838A84, .rti = true, .source = "src/race_frame.c",
+   .call = call_irq_vs_band, ALL_OUTPUTS},   // no fuzz: it waits (WAI), as irq_race_band
+  {.name = "irq_vs_band2", .entry = 0x838BE3, .end = 0x838C35, .rti = true, .source = "src/race_frame.c",
+   .call = call_irq_vs_band2, ALL_OUTPUTS},
   {.name = "race_cycle_blocks", .entry = 0x859147, .end = 0x8593A7, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .call = call_race_cycle_blocks, .fuzz = fuzz_race_cycle_blocks},
   {.name = "sound_fade_step", .entry = 0x86DFAE, .end = 0x86DFE1, .source = "src/sound.c", .needM16 = true,

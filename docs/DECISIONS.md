@@ -4420,6 +4420,29 @@ For each player it writes:
 
 **Check:** the full gate (`src/platform.h` and `platform_bench.c` changed).
 
+## The VS race's raster IRQs (vs-race-21, 2026-11-25)
+
+**`irq_vs_band` (`$83:8A26`) and `irq_vs_band2` (`$83:8BE3`)** are `irq_race_band` for the VS race's
+two pairs of views. They share one helper.
+- **Each band:** it sends the band's stream chunk, naming the slots from the mask table, then moves
+  the IRQ to the next band's line at dot `$63`.
+- **The tables:**
+  - top views: cursor `$00BC`, masks `$0596`, lines `$0486`;
+  - bottom views: cursor `$00C2`, masks `$061E`, lines `$050E`.
+- **After the last band:**
+  - the top pair hands over to the split (`$83:8A84`) at line `$6C`, dot `$78`;
+  - the bottom pair sets the IRQ line to 0 and leaves the trampoline as it is.
+- **Results:** 4,000 live samples each, paths 44/44 and 40/40. There is no fuzz, as for
+  `irq_race_band`: they wait (`WAI`) for an interrupt the fuzz never raises.
+
+A delegated agent drafted all four VS IRQ targets (US$0.52). Two are not ported:
+- **The split (`$83:8A84`):** it stores the HDMA register `$4342` (slot 4's current table address)
+  into `$7F:FFFE`, a hardware read the C has no call for yet.
+- **The first target (`$83:8B8E`):** it only acknowledges, and each NMI frame replaces it, so no
+  movie runs it.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

@@ -413,6 +413,7 @@ CODE_8389AE:
 CODE_8389D0:
     rts                         ; $8389D0
     incbin !baserom:$189D1..$18A26
+irq_vs_band:
     rep.b #$10                  ; $838A26
     sep.b #$20                  ; $838A28
     phb                         ; $838A2A
@@ -589,6 +590,7 @@ CODE_838B12:
     plb                         ; $838BA2
     rti                         ; $838BA3
     incbin !baserom:$18BA4..$18BE3
+irq_vs_band2:
     rep.b #$10                  ; $838BE3
     sep.b #$20                  ; $838BE5
     phb                         ; $838BE7
