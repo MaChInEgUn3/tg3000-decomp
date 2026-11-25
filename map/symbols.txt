@@ -689,6 +689,12 @@ func    828923   race_frame_draw     ; the race frame's drawing: road, rows, sha
 func    828961   hud_markers_write   ; the HUD's four markers and its badge in VRAM, then race_hud_digits -> src/misc.c
 func    83EAC6   player_car_frame    ; the player's car for the frame: speed, drag, engine, side, items, counters (D = record) -> src/misc.c
 func    83E241   player1_frame       ; player 1's car for the race frame: setup, player_car_frame, car_track_step (D = $0200; RTL) -> src/misc.c
+func    82BE18   vs_sprites_view0    ; VS race: player 1's view's sprites streamed to the DSP-4 (record $0200; object_sprites_stream's counterpart; a tape row) -> src/misc.c
+func    82C170   vs_sprites_view1    ; the same for player 2 (record $02B3) -> src/misc.c
+func    82C489   vs_sprites_view2    ; the same for player 3 (record $0262) -> src/misc.c
+func    82C7BA   vs_sprites_view3    ; the same for player 4 (record $0315) -> src/misc.c
+func    82DD3B   vs_object_flat      ; VS race: a flat object's sprite (object_sprite_flat with rows c; through vs_sprites) -> src/misc.c
+func    82DD69   vs_object_group     ; VS race: an object group's four sprites (rows c; through vs_sprites) -> src/misc.c
 func    82CBD4   object_sprites_stream ; the race's sprites streamed to the DSP-4: mini-map, track objects and cars row by row (a tape row) -> src/misc.c
 func    82CAE5   sprite_put_rows_c   ; an object's sprite streamed, rows $37EC/$38EC/$35EC/$37EC, part set at $84:8080 (kind 0) -> src/misc.c
 func    82DCEC   object_sprite_kind0 ; object kind 0's sprite, then its shadow (in no movie or the TAS) -> src/misc.c

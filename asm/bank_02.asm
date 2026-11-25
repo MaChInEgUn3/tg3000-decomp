@@ -906,11 +906,11 @@ CODE_82952E:
     sta.b $8E                   ; $829587
 CODE_829589:
     jsl.l vs_road_project       ; $829589
-    jsr.w $BE18                 ; $82958D
-    jsr.w $C170                 ; $829590
+    jsr.w vs_sprites_view0      ; $82958D
+    jsr.w vs_sprites_view1      ; $829590
     jsr.w oam_high_load         ; $829593
-    jsr.w $C489                 ; $829596
-    jsr.w $C7BA                 ; $829599
+    jsr.w vs_sprites_view2      ; $829596
+    jsr.w vs_sprites_view3      ; $829599
     jsr.w $AEA4                 ; $82959C
     lda.w #$0001                ; $82959F
     tsb.w $00B8                 ; $8295A2
@@ -4497,6 +4497,7 @@ CODE_82BDF8:
     sbc.w $4214                 ; $82BE0D
     rts                         ; $82BE10
     incbin !baserom:$13E11..$13E18
+vs_sprites_view0:
     pea.w $8330                 ; $82BE18
     plb                         ; $82BE1B
     lda.w $0186                 ; $82BE1C
@@ -4830,6 +4831,7 @@ CODE_82C168:
     sta.w $0186                 ; $82C16B
     plb                         ; $82C16E
     rts                         ; $82C16F
+vs_sprites_view1:
     pea.w $8330                 ; $82C170
     plb                         ; $82C173
     lda.w $0186                 ; $82C174
@@ -5164,6 +5166,7 @@ CODE_82C46E:
     sta.w $0186                 ; $82C484
     plb                         ; $82C487
     rts                         ; $82C488
+vs_sprites_view2:
     pea.w $8330                 ; $82C489
     plb                         ; $82C48C
     lda.w $0188                 ; $82C48D
@@ -5511,6 +5514,7 @@ CODE_82C79B:
     sta.w $0188                 ; $82C7B5
     plb                         ; $82C7B8
     rts                         ; $82C7B9
+vs_sprites_view3:
     pea.w $8330                 ; $82C7BA
     plb                         ; $82C7BD
     lda.w $0188                 ; $82C7BE
@@ -7100,6 +7104,7 @@ CODE_82DD07:
     sta.b $24                   ; $82DD35
     jmp.w sprite_put_rows_c     ; $82DD37
     incbin !baserom:$15D3A..$15D3B
+vs_object_flat:
     lda.l $86AF06,x             ; $82DD3B
     sta.b $24                   ; $82DD3F
     ldx.b $1C                   ; $82DD41
@@ -7121,6 +7126,7 @@ CODE_82DD62:
     sta.b $20                   ; $82DD62
     stz.b $22                   ; $82DD64
     jmp.w sprite_put_rows_c     ; $82DD66
+vs_object_group:
     lda.l $86AF06,x             ; $82DD69
     sta.b $24                   ; $82DD6D
     ldx.b $1C                   ; $82DD6F

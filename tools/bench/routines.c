@@ -12472,6 +12472,95 @@ static uint16_t car_into_view(uint8_t* ram, uint32_t (*rnd)(void), bool same) {
   return car[i];
 }
 
+// vs_sprites_view0-3 ($82:BE18, $C170, $C489, $C7BA; vs-race-30): DSP-4 tape rows. Exit as
+// object_sprites_stream's: DB = $83, N set, Z clear (PLB); C as the C returns it
+#define VS_SPRITES_CALL(V) \
+  static void call_vs_sprites_view##V(const Regs* in, Regs* out) { \
+    (void)in; \
+    out->c = vs_sprites_view##V(); \
+    out->db = 0x83; \
+    out->n = true; \
+    out->z = false; \
+  }
+VS_SPRITES_CALL(0)
+VS_SPRITES_CALL(1)
+VS_SPRITES_CALL(2)
+VS_SPRITES_CALL(3)
+// the four cars near the view's row, the race order sorted, the record's own-car fields kept out
+// of the never-run path (+$31 = 0); objects of the kinds the VS table has handlers for; the side
+// byte negative now and then; the chip's answers sparse or dense (the buffer full, the carry exits)
+static void fuzz_vs_sprites(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), unsigned view) {
+  (void)r;
+  static const uint16_t recs[4] = {0x0200, 0x02B3, 0x0262, 0x0315};
+  const uint32_t R = recs[view];
+  const uint32_t laps = (uint32_t)(ram[0x019A] | ram[0x019B] << 8);
+  ram[R + 0x44] = (uint8_t)((ram[R + 0x44] & ~1) | (rnd() & 1));
+  wr16ram(ram, R + 0x31, 0);
+  if(rnd() % 4 == 0) ram[R + 9] = (uint8_t)rnd();
+  wr16ram(ram, 0x1DF6, 0);
+  if(laps != 0 && rnd() % 3 == 0) wr16ram(ram, R + 0x26, (uint16_t)(rnd() % laps));
+  const uint32_t at = (uint32_t)(ram[R + 0x26] | ram[R + 0x27] << 8);
+  uint32_t pos[4], order[4];
+  for(unsigned c = 0; c < 4; c++) {  // the player's car on its row, the rivals on the rows after
+    // (the view's first row's place is the second's less $80: a rival there reads past its tables)
+    // (the player's own car drawn the rival way, +$44 bit 0, also from the row after)
+    const bool mine = c == view && !(ram[R + 0x44] & 1);
+    const uint32_t row = laps ? (mine ? at : (at + 1 + rnd() % 0x1D) % laps) : 0;
+    pos[c] = row << 8 | (rnd() & 0xFF);
+    ram[0xFAB5 + 0x35 * c] = (uint8_t)pos[c];
+    wr16ram(ram, 0xFAB6 + 0x35 * c, (uint16_t)row);
+    ram[0xFAB8 + 0x35 * c] = 0;
+    order[c] = c;
+  }
+  for(int i = 0; i < 4; i++)
+    for(int j = i + 1; j < 4; j++)
+      if(pos[order[j]] < pos[order[i]]) {
+        const uint32_t t = order[i];
+        order[i] = order[j];
+        order[j] = t;
+      }
+  for(unsigned c = 0; c < 4; c++) wr16ram(ram, 0x1E6A + 2 * c, (uint16_t)(0x35 * order[c]));
+  wr16ram(ram, 0x1E72, (uint16_t)(0x35 * order[3]));
+  // the record's place is its car's (drawn its own way); a car drawn the rival way keeps the
+  // record's row, its car on a row after
+  if(!(ram[R + 0x44] & 1))
+    for(unsigned i = 0; i < 4; i++) ram[R + 0x25 + i] = ram[0xFAB5 + 0x35 * view + i];
+  static uint8_t kinds[128];
+  int nk = 0;
+  for(unsigned kd = 1; kd < 0x68; kd++) {  // the VS table's kinds ($82:8000-$80CD; the one-player's follows)
+    const uint16_t h = (uint16_t)rom16(0x827FFE + 2 * kd);
+    if(h == 0xDD3B || h == 0xDD69 || h == 0xDCEC || h == 0xDA46) kinds[nk++] = (uint8_t)kd;
+  }
+  static unsigned turn;
+  for(uint32_t o = 0; o < 0x400 && nk > 0; o += 4) {
+    if(rnd() % 4 != 0) continue;
+    ram[0x8CB3 + o] = (uint8_t)(1 + rnd() % 255);
+    ram[0x8CB4 + o] = (uint8_t)(kinds[turn++ % (unsigned)nk] | (rnd() & 0x80));
+    ram[0x8CB5 + o] = (uint8_t)rnd();
+    ram[0x8CB6 + o] = (uint8_t)rnd();
+  }
+  if(rnd() % 3 == 0) {  // the view's rows' places, from $80 up (its first row is the second's less $80)
+    uint16_t p = (uint16_t)(0x0080 + 2 * (rnd() % 0x40) + 0x80 * (rnd() % 8));
+    for(uint32_t q = 0x40 * view + 2; q < 0x40 * view + 0x40 && p < 0x0E00; q += 2, p = (uint16_t)(p + 0x0080))
+      wr16ram(ram, 0x39EC + q, p);
+  }
+  const uint16_t base = (rnd() & 1) ? 0x0220 : 0x0000;
+  wr16ram(ram, DP + 0x86, base);
+  wr16ram(ram, DP + 0x8E, base);
+  static uint16_t script[4096];
+  const int n = 200 + (int)(rnd() % 600);
+  const bool sparse = (rnd() & 1) != 0;
+  int nonzero = 0;
+  for(int i = 0; i < n; i++) {
+    script[i] = (rnd() % 3 != 0 || (sparse && nonzero >= 40)) ? 0 : (uint16_t)rnd();
+    if(script[i] != 0) nonzero++;
+  }
+  dsp4_bridge_script(script, n);
+}
+static void fuzz_vs_sprites_view0(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_sprites(r, ram, rnd, 0); }
+static void fuzz_vs_sprites_view1(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_sprites(r, ram, rnd, 1); }
+static void fuzz_vs_sprites_view2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_sprites(r, ram, rnd, 2); }
+static void fuzz_vs_sprites_view3(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_sprites(r, ram, rnd, 3); }
 static void fuzz_object_sprites_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   if(rnd() & 1) wr16ram(ram, 0x021A, (uint16_t)(rnd() & 1 ? 0 : 1));
@@ -14256,6 +14345,19 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_frame_draw, .fuzz = fuzz_race_frame_draw,
    .dsp4Tape = true, .endAt = 0x828944,  // its tail jump to oam_high_load
    .fuzzStack = 0x1FF1},                // the race's stack, as its road callees' rows
+  {.name = "vs_sprites_view0", .entry = 0x82BE18, .end = 0x82C170, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_sprites_view0, .fuzz = fuzz_vs_sprites_view0,
+   .dsp4Tape = true, .replays = 32, .fuzzStack = 0x1FF3,  // the VS raster IRQs land in its live samples
+   .holes = {{0x82BF5D, 0x82BF60}, {0x82BFB1, 0x82BFC2}, {0x82C123, 0x82C168}}},  // a dead JMP; two never-run paths
+  {.name = "vs_sprites_view1", .entry = 0x82C170, .end = 0x82C489, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_sprites_view1, .fuzz = fuzz_vs_sprites_view1,
+   .dsp4Tape = true, .replays = 32, .fuzzStack = 0x1FF3, .holes = {{0x82C2B7, 0x82C2BA}, {0x82C30B, 0x82C31C}}},
+  {.name = "vs_sprites_view2", .entry = 0x82C489, .end = 0x82C7BA, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_sprites_view2, .fuzz = fuzz_vs_sprites_view2,
+   .dsp4Tape = true, .replays = 32, .fuzzStack = 0x1FF3, .holes = {{0x82C5E3, 0x82C5E6}, {0x82C637, 0x82C648}}},
+  {.name = "vs_sprites_view3", .entry = 0x82C7BA, .end = 0x82CAE5, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_sprites_view3, .fuzz = fuzz_vs_sprites_view3,
+   .dsp4Tape = true, .replays = 32, .fuzzStack = 0x1FF3, .holes = {{0x82C90E, 0x82C911}, {0x82C962, 0x82C973}}},
   {.name = "object_sprites_stream", .entry = 0x82CBD4, .end = 0x82D267, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_object_sprites_stream, .fuzz = fuzz_object_sprites_stream,
    .dsp4Tape = true, .dsp4Native = {{0x82CBD4, 0x82CC8F}},  // command $03's prologue (the mini-map's dots)

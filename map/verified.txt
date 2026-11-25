@@ -754,3 +754,7 @@
 8ABE2E password_show src/password.c b05061618ced446e 1 0 79/79 verified live-flags:NVZC replayed:0
 8AB232 password_entry src/password.c b05061618ced446e 1 0 84/84 verified live-flags:NVZC replayed:0
 8AA67B vs_screen_loop src/vs.c a22727db784ed1d8 1 0 37/37 verified live-flags:NVZC replayed:0
+82BE18 vs_sprites_view0 src/misc.c fb1925e5bcc4f01f 16 500 312/312 verified live-flags:- replayed:18
+82C170 vs_sprites_view1 src/misc.c fb1925e5bcc4f01f 2 500 315/315 verified live-flags:- replayed:1
+82C489 vs_sprites_view2 src/misc.c fb1925e5bcc4f01f 1 500 326/326 verified live-flags:- replayed:1
+82C7BA vs_sprites_view3 src/misc.c fb1925e5bcc4f01f 7 500 324/324 verified live-flags:- replayed:0

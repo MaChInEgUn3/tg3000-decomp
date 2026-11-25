@@ -4736,6 +4736,44 @@ except two pieces:
 - **The fix:** a skipped watch keeps the interrupt count.
 - **Check:** `vs_car_bands` is watched 304 times again, with its flags dead.
 
+## The VS race's four views' sprites (vs-race-30, 2026-11-25)
+
+**`vs_sprites_view0`-`3` (`$82:BE18`, `$C170`, `$C489`, `$C7BA`)** are `object_sprites_stream`'s
+counterparts for the four players. They stream the track's objects and the cars on each view's
+rows to the DSP-4 (commands `$0E`, `$05` for views 0 and 2, and `$09`, all on the tape).
+- **One C body:** the four are the same code with each view's slice of the rows, record and
+  constants.
+- **Against the one-player stream:**
+  - no mini-map, no segment jumps, no branch-road rival;
+  - a short own-car path;
+  - **the VS object handlers.** The VS table is at `$82:7FFE` + kind × 2: kinds 1-`$67`, with the
+    one-player table right after it.
+- **The VS handlers:** two of them are new here, `vs_object_flat` (`$82:DD3B`) and
+  `vs_object_group` (`$82:DD69`). They are the one-player flat and group handlers with the third
+  rows' shape.
+
+**Never-run paths, decoded from the ROM here.**
+- **Ported:** in all four views, the side byte's sign extension (`ORA #$FF00`) and the handlers'
+  carry exit (a `JMP` to the end).
+- **Traps:** two never-run paths remain.
+  - the own car with its record's `+$31` set;
+  - view 0's highlight tail. It reads `$1DF6`, which only the one-player stream sets.
+
+**Results:** every path, live samples, and 500 fuzz cases each (32 replays allowed, harness-34).
+
+**The fuzz** keeps to states the race can be in.
+- **Rivals only on the rows after the player's.** The view's first row's place is the second's
+  less `$80`, so a rival there reads past its tables, into open bus. The first fuzz runs did
+  exactly that.
+- **Object kinds only from the VS table.**
+- **The player's own car:** a car drawn its own way gives its place to the record; one drawn the
+  rival way keeps the record's row.
+
+**Delegation:** a delegated agent drafted the C and the fuzz (US$1.32). The handler table, the
+holes and the two VS handlers were checked or written here.
+
+**Check:** the incremental gate (additions only).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

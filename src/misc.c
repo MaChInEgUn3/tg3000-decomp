@@ -7538,6 +7538,203 @@ done:  // D1E7
   }
 }
 
+// ---- the VS race's four views' sprites ($82:BE18, $C170, $C489, $C7BA) ----
+// object_sprites_stream's per-player counterparts: one body, each view's slice of the road's rows
+// (D+$14 from `first` to D+`end`) and its player's record `rec`. Commands $0E, $05 (views 0 and 2)
+// and $09 go on the tape. Against the one-player's: no mini-map (command $03), no segment jumps,
+// no branch-road rival, a short own-car path, the VS object handlers ($82:7FFE + kind * 2). The
+// carry at the end is the original's. Two never-run paths stay traps: the own car with its
+// record's +$31 set, and view 0's highlight tail ($1DF6, which nothing in the VS race sets).
+typedef struct {
+  uint16_t rec, first, end, car, nearT, farT, buf, bias, limit, bump, clr;
+  bool five;  // command $05 after $0E (views 0 and 2)
+  uint16_t head[8];
+} VsSprites;
+static const VsSprites vs_sprites_tab[4] = {
+  {0x0200, 0x00, 0x90, 0x00, 0x45EC, 0x495C, 0x0186, 0x0000, 0x0100, 0x0000, 0x1DF6, true,
+   {0x0009, 0x003C, 0x0039, 0, 0x0000, 0x0078, 0x0004, 0x006C}},
+  {0x02B3, 0x40, 0x92, 0x35, 0x46C8, 0x4A38, 0x0186, 0x0000, 0x0200, 0x0192, 0x1DF8, false,
+   {0x0009, 0x00C4, 0x0039, 0, 0x0088, 0x0100, 0x0004, 0x006C}},
+  {0x0262, 0x80, 0x94, 0x6A, 0x47A4, 0x4B14, 0x0188, 0x0440, 0x0540, 0x0194, 0x1DFA, true,
+   {0x0009, 0x003C, 0x00A9, 0, 0x0000, 0x0078, 0x0074, 0x00DC}},
+  {0x0315, 0xC0, 0x96, 0x9F, 0x4880, 0x4BF0, 0x0188, 0x0440, 0x0640, 0x0196, 0x1DFC, false,
+   {0x0009, 0x00C4, 0x00A9, 0, 0x0088, 0x0100, 0x0074, 0x00DC}},
+};
+
+// TG3000_ROUTINE($82:DD3B) vs_object_flat
+// The VS race's flat object: object_sprite_flat with the third rows' shape (sprite_put_rows_c).
+static bool vs_object_flat(uint16_t x) {
+  object_sprite_setup(x);
+  wr16(DP + 0x22, 0);
+  return sprite_put_rows_c();
+}
+
+// TG3000_ROUTINE($82:DD69) vs_object_group
+// The VS race's group of four: at p, -p, -p - $80 and p + $80 (object_sprite_group's way, rows c).
+static bool vs_object_group(uint16_t x) {
+  object_sprite_setup(x);
+  wr16(DP + 0x22, 0);
+  if(sprite_put_rows_c()) return true;
+  sprite_place_negate();
+  if(sprite_put_rows_c()) return true;
+  sprite_place_back();
+  if(sprite_put_rows_c()) return true;
+  sprite_place_negate();
+  return sprite_put_rows_c();
+}
+
+// The VS object handlers by the table at $82:7FFE + kind * 2 (kind 0 reads below the table).
+static bool vs_object_handler(uint16_t kind2) {
+  if(kind2 == 0) tg3000_unported("$82:BF3D: kind 0 (JSR ($7FFE,X) below the table)");
+  switch(bus_rd16(0x827FFE + (uint32_t)kind2)) {
+    case 0xDD3B: return vs_object_flat(kind2);
+    case 0xDD69: return vs_object_group(kind2);
+    case 0xDCEC: return object_sprite_kind0(kind2);
+    case 0xDA46: clc_82DA46(); return false;
+    default: tg3000_unported("$82:7FFE: a VS object handler of no kind"); return false;
+  }
+}
+
+static uint32_t vs_car_pos(uint32_t car) { return rd16(0xFAB5 + car) | (uint32_t)rd16(0xFAB7 + car) << 16; }
+
+static bool vs_sprites(const VsSprites* v) {
+  const uint32_t R = v->rec, k = v->first;
+  wr16(0x0184, (uint16_t)(rd16(v->buf) + v->bias));
+  dsp4_port_write16(0x000E);
+  wr16(DP + 0x1A, (uint16_t)(rd16(DP + 0x8E) + v->limit));
+  wr16(DP + 0x3C, 0x1000);
+  if(v->five) dsp4_port_write16(0x0005);
+  {  // the player's place in the race order: D+$28 (0-8)
+    uint16_t y = 8;
+    const uint32_t me = rd16(R + 0x25) | (uint32_t)rd16(R + 0x27) << 16;
+    if(me < vs_car_pos(rd16(0x1E70))) {
+      for(y = 6; y != 0; y = (uint16_t)(y - 2))
+        if(me >= vs_car_pos(rd16(0x1E68 + (uint32_t)y))) break;
+    }
+    wr16(DP + 0x28, y);
+  }
+  wr16(DP + 0x2C, rd16(R + 0x26));
+  for(unsigned i = 0; i < 8; i++) dsp4_port_write16(v->head[i]);  // the $09 stream
+  wr16(DP + 0x14, v->first);
+  if(v->bump) wr16(v->bump, (uint16_t)(rd16(v->bump) + v->first));
+  wr16(DP + 0x16, (uint16_t)(rd16(R + 0x26) << 2));
+  wr16(DP + 0x18, (uint16_t)(rd16(0x019A) << 2));
+  wr16(v->clr, 0);
+  wr16((uint16_t)(v->clr + 2), 0);
+  wr16(0x34EC + k, (uint16_t)(rd16(0x34EE + k) - rd16(R + 0x0C)));
+  wr16(0x37EC + k, 0x006C);
+  wr16(0x36EC + k, (uint16_t)(rd16(0x36EE + k) - sext8(rd8(R + 9))));  // (its sign extension: never run)
+  wr16(0x39EC + k, (uint16_t)(rd16(0x39EE + k) - 0x0080));
+  goto cars;
+objects:  // the row D+$14's object, if any
+  {
+    const uint16_t x = rd16(DP + 0x16);
+    uint16_t a = (uint16_t)(x + 4);
+    if(a >= rd16(DP + 0x18)) a = (uint16_t)(a - rd16(DP + 0x18));
+    wr16(DP + 0x16, a);
+    const uint16_t w = rd16(0x8CB3 + (uint32_t)x);
+    if(w == 0) {
+      dsp4_port_write16(rd16(0x37EC + (uint32_t)rd16(DP + 0x14)));
+      dsp4_port_write16(0);
+    } else {
+      wr16(DP + 0x1C, x);
+      const uint16_t kind2 = (uint16_t)(((w >> 8) & 0x007F) << 1);
+      wr16(DP + 0x1E, kind2);
+      wr16(DP + 0x3A, rd16(DP + 0x3C));
+      const bool near = rd16(0x39EC + (uint32_t)rd16(DP + 0x14)) < 0x03C2;
+      wr16(DP + 0x26, rd16((near ? v->nearT : v->farT) + (uint32_t)bus_rd16(0x86AD66 + kind2)));
+      if(vs_object_handler(kind2)) goto done;  // the buffer full (a JMP to the end: never run)
+    }
+  }
+cars:  // the cars on this row (D+$2C), from the race order at D+$28
+  {
+    uint16_t car = rd16(0x1E6A + (uint32_t)rd16(DP + 0x28));
+    if(rd16(0xFAB6 + (uint32_t)car) != rd16(DP + 0x2C)) goto next_row;
+    for(;;) {
+      const uint32_t c = car, r14 = rd16(DP + 0x14);
+      if((uint16_t)(r14 + 2) == rd16(DP + v->end)) goto next_row;
+      const uint32_t frame = (uint16_t)(((rd16(0xFAB5 + c) >> 1) & 0x007E) + rd16(0x39EC + r14));
+      wr16(DP + 0x34, bus_rd16(0x83ACEC + frame));
+      bool full;
+      if(!(rd16(R + 0x44) & 1) && car == v->car) {  // the player's own car
+        if(rd16(R + 0x31) != 0) tg3000_unported("$82:BFB1 and its copies: the own car with its +$31 set");
+        dsp4_port_write16(rd16(0x37EC + r14));
+        dsp4_port_write16(0x9000);
+        dsp4_port_write16(rd16(0xFAB4 + c));
+        dsp4_port_write16(0x0033);
+        dsp4_port_write16(0x0033);
+        dsp4_port_write16(rd16(R + 2));
+        dsp4_port_write16(rd16(R + 2));
+        dsp4_port_write16(rd16(DP + 0x34));
+        dsp4_port_write16(rd16(R + 2));
+        wr16(DP + 0x2A, dsp4_port_read16());
+        dsp4_port_write16(rd16(0xFABF + c));
+        dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) | rd16(0xFAD1 + c)));
+        full = sprite_parts_stream(bus_rd16(0x86C89E + (uint32_t)((rd16(R + 0x3B) << 1) & 0x00FE)));
+      } else {  // a rival's way
+        dsp4_port_write16(rd16(0x37EC + r14));
+        dsp4_port_write16(0x9000);
+        dsp4_port_write16(rd16(0xFAB4 + c));
+        dsp4_port_write16(rd16(0x36EE + r14));
+        dsp4_port_write16(rd16(0x36EC + r14));
+        dsp4_port_write16(rd16(0x34EE + r14));
+        dsp4_port_write16(rd16(0x34EC + r14));
+        dsp4_port_write16(bus_rd16(0x83ACEC + frame));
+        dsp4_port_write16(rd16(0xFABB + c));
+        wr16(DP + 0x2A, dsp4_port_read16());
+        dsp4_port_write16(rd16(0xFABF + c));
+        dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) | rd16(0xFAD1 + c)));
+        const uint16_t d = (uint16_t)(rd16(0x34EC + r14) - rd16(0x34EE + r14));
+        const uint16_t a = (uint16_t)(rd16(DP + 0x2A) - (uint16_t)(d << 1));
+        static const uint16_t steps[] = {0xFFA0, 0xFFC0, 0xFFE8, 0x0018, 0x0040, 0x0060};
+        uint32_t band = 0;
+        for(unsigned i = 0; i < 6; i++, band += 2)
+          if((uint16_t)(a - steps[i]) & 0x8000) break;
+        const uint16_t parts = (uint16_t)(bus_rd16(0x86AFD8 + band) + bus_rd16(0x849180 + frame));
+        full = sprite_parts_stream(bus_rd16(0x860000 + (uint32_t)parts));
+      }
+      if(full) goto done;
+      wr16(DP + 0x28, (uint16_t)(rd16(DP + 0x28) + 2));
+      car = rd16(0x1E6A + (uint32_t)rd16(DP + 0x28));
+      if(rd16(0xFAB6 + (uint32_t)car) != rd16(DP + 0x2C)) break;
+    }
+  }
+next_row:
+  wr16(DP + 0x2C, (uint16_t)(rd16(DP + 0x2C) + 1));
+  if(rd16(DP + 0x2C) == rd16(0x019A)) {
+    wr16(DP + 0x2C, 0);
+    wr16(DP + 0x28, 0);
+  }
+  wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 2));
+  if(rd16(DP + 0x14) != rd16(DP + v->end)) goto objects;
+done:
+  dsp4_port_write16(0);
+  dsp4_port_write16(0x8000);
+  bool c = true;  // the carry at the original's exits
+  if(v->first == 0) {
+    wr16(0x1E02, 0);
+    if(rd16(0x1DF6) != 0) tg3000_unported("$82:C123-$C167: view 0's highlight tail");
+  }
+  if(v->bump) {
+    const uint16_t b = rd16(v->bump);
+    c = b >= v->first;
+    wr16(v->bump, (uint16_t)(b - v->first));
+  }
+  const uint16_t b4 = rd16(0x0184);
+  if(v->bias) c = b4 >= v->bias;
+  wr16(v->buf, (uint16_t)(b4 - v->bias));
+  return c;
+}
+
+// TG3000_ROUTINE($82:BE18) vs_sprites_view0
+bool vs_sprites_view0(void) { return vs_sprites(&vs_sprites_tab[0]); }
+// TG3000_ROUTINE($82:C170) vs_sprites_view1
+bool vs_sprites_view1(void) { return vs_sprites(&vs_sprites_tab[1]); }
+// TG3000_ROUTINE($82:C489) vs_sprites_view2
+bool vs_sprites_view2(void) { return vs_sprites(&vs_sprites_tab[2]); }
+// TG3000_ROUTINE($82:C7BA) vs_sprites_view3
+bool vs_sprites_view3(void) { return vs_sprites(&vs_sprites_tab[3]); }
+
 void race_frame_draw_body(void) {
   wr16(DP + 0x86, 0);
   wr16(DP + 0x8E, 0);
