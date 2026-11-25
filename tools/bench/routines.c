@@ -6611,6 +6611,24 @@ static void call_vs_race_load(const Regs* in, Regs* out) {
   out->n = out->z = out->v = false;
   out->c = true;
 }
+// vs_race_start ($82:9456, vs-race-29): the setup's last piece, ending at the race loop's head
+// ($82:94B2): A = $8004 and the flags of BIT $047C, or (bit 15 set) A = $43, N and Z clear; C set
+// by the frame wait
+static void call_vs_race_start(const Regs* in, Regs* out) {
+  (void)in;
+  vs_race_start();
+  out->c = true;
+  const uint16_t m = rd16(0x047C);
+  if(m & 0x8000) {
+    out->a = 0x0043;
+    out->n = out->z = false;
+  } else {
+    out->a = 0x8004;
+    out->n = false;
+    out->z = (m & 0x8004) == 0;
+  }
+  out->v = (m & 0x4000) != 0;
+}
 // vs_race_track ($82:9348, vs-race-25): the setup's track piece, ending at the JSR to the VS road
 // rows ($82:941F): N and Z from the colour's high byte (LDA.L $7E6A34, 8-bit), C and V from the
 // last frame wait (C set; V its add's overflow: the counter was $7FFF, so it now reads $8000)
@@ -13049,6 +13067,10 @@ const Routine routines[] = {
    .fuzz = fuzz_vs_car_parts},
   {.name = "vs_race_load", .entry = 0x8292BA, .end = 0x82932D, .endAt = 0x82932D, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_load, .manyEffects = true},
+  {.name = "vs_race_start", .entry = 0x829456, .end = 0x8294B2, .endAt = 0x8294B2, .source = "src/vs.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
+   .maxInsns = 40000000, .call = call_vs_race_start, .manyEffects = true,  // no fuzz: it waits
+   .holes = {{0x8294A3, 0x8294B2}}},  // never run (ported from the ROM's bytes, untested)
   {.name = "vs_race_track", .entry = 0x829348, .end = 0x82941F, .endAt = 0x82941F, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
    .maxInsns = 40000000, .call = call_vs_race_track, .manyEffects = true},  // no fuzz: it waits

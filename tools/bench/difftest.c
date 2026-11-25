@@ -1694,6 +1694,9 @@ static void watchAll(const Cpu* cpu, bool inHandler) {
   for(int j = 0; j < activeWatchCount;) {
     const int i = activeWatches[j];
     if(watches[i].active && (!inHandler || table[i].endAt)) watchStep(i, cpu, op, reads, writes);
+    // harness-35: skipped inside a recorded handler, a watch keeps the interrupt count, or its
+    // first step after the handler took the handler for one just entered and paused for good
+    else if(watches[i].active) watches[i].interrupts = cpu_interruptCount;
     if(!watches[i].active) activeWatches[j] = activeWatches[--activeWatchCount];  // done: off the list
     else j++;
   }

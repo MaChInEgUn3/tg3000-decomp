@@ -784,6 +784,7 @@ vs_race_sums_clear:
     stz.w $00DD                 ; $82944C
     stz.w $00DF                 ; $82944F
     jsl.l vs_road_project       ; $829452
+vs_race_start:
     jsr.w vs_car_bands          ; $829456
     lda.w #$9777                ; $829459
     sta.w $0008                 ; $82945C

@@ -1640,6 +1640,31 @@ void vs_race_sums_clear(void) {
   for(unsigned i = 0; i < sizeof words / sizeof words[0]; i++) wr16(words[i], 0);
 }
 
+// TG3000_ROUTINE($82:9456) vs_race_start
+// The VS race setup's last piece, after the VS road driver, up to the race loop ($82:94B2): the
+// cars' bands; the NMI ($83:9777), IRQ ($83:9721) and IRQ trampoline ($83:8B8E) vectors; then
+// the interrupts on (CLI); the race's counters; a frame's wait; $1ECE = $8004. With bit 15 of
+// $047C set (never run; decoded from the ROM), the four players' $0233-style words = $43.
+void vs_race_start(void) {
+  vs_car_bands();
+  wr16(0x0008, 0x9777);
+  wr16(0x0001, 0x9721);
+  wr16(0x0005, 0x8B8E);
+  wr8(0x0003, 0x83);
+  wr8(0x0007, 0x83);  // then CLI
+  wr16(0x00BA, 0);
+  wr16(0x1E9E, 1);
+  wr16(0x014A, 0);
+  wr16(0x0148, 0x0F00);
+  wr16(0x0146, 0x0080);
+  wait_frames(1);
+  wr16(0x1ECE, 0x8004);
+  if(rd16(0x047C) & 0x8000) {
+    static const uint16_t words[4] = {0x0233, 0x02E6, 0x0295, 0x0348};
+    for(int i = 0; i < 4; i++) wr16(words[i], 0x0043);
+  }
+}
+
 // TG3000_ROUTINE($82:BDDA) vs_step_share
 // The CPU's 16 / 8 divider gives the magnitude's quotient by the step count; a negative word
 // gives it as it is, a positive one (or 0) gives 0 less it. The sign is the caller's N flag.

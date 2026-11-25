@@ -4702,6 +4702,42 @@ VS race.
 
 **Check:** the full gate (the harness changed).
 
+## The VS race setup's last piece (vs-race-29, 2026-11-25)
+
+**`vs_race_start` (`$82:9456` to `$82:94B2`)** is the VS race setup's piece after the VS road driver,
+up to the race loop. In order:
+1. the cars' bands (`vs_car_bands`);
+2. the NMI, IRQ and IRQ trampoline vectors (`$83:9777`, `$83:9721`, `$83:8B8E`);
+3. the interrupts on (CLI, written as the earlier setups do);
+4. the race's counters;
+5. a frame's wait;
+6. `$1ECE = $8004`.
+
+**One never-run path, ported but untested.**
+- **When:** bit 15 of `$047C` is set.
+- **What:** it sets the four players' `$0233`-style words to `$43`.
+- **How:** its 15 bytes were decoded from the ROM here and ported. No movie or fuzz runs them (the
+  row waits, so it has no fuzz), and the row skips them as a hole.
+
+**Results:** one live sample, 28/28 paths.
+
+**Where the setup stands:** with this, the VS race setup is in C from its entry to the race loop,
+except two pieces:
+- the sound loader call (`$84:A4A3`, parked);
+- the two stores after it (`$82:933A`-`$9348`).
+
+**A flag watch stuck behind a recorded handler (harness-35, open to the owner's veto).**
+- **What failed:** the first full run failed `vs_car_bands`. Only one of its returns was watched,
+  so all its flags counted as live, and its adapter does not model them.
+- **The cause:** the one watched return was the one inside `vs_race_start`. The watch is skipped
+  inside a handler that a waiting sample records. So its first step after the handler took the
+  interrupt for one just entered, and paused until a stack depth that never came. The watch stayed
+  active, and no later return of the routine was watched.
+- **The fix:** a skipped watch keeps the interrupt count.
+- **Check:** `vs_car_bands` is watched 304 times again, with its flags dead.
+
+**Check:** the full gate (a new waiting row).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.
