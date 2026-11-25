@@ -4850,6 +4850,40 @@ The way out of the loop (`$82:9642`) and the VS pause (`$82:9657`) are traps.
 
 **Check:** the full gate (a new waiting row).
 
+## Rows for sprite_put_rows_c and the VS object handlers (vs-race-34, 2026-11-25)
+
+The VS movie's ranking listed three routines that had C but no row of their own: `sprite_put_rows_c`
+(`$82:CAE5`), `vs_object_flat` (`$82:DD3B`) and `vs_object_group` (`$82:DD69`). They were judged
+only inside their callers.
+
+They now have tape rows, as their one-player counterparts: the same fuzz, and C the buffer full.
+The two VS handlers are no longer static.
+
+| Row | Live samples | Fuzz cases | Paths |
+|---|---|---|---|
+| `sprite_put_rows_c` | 4,000 | 500 | 33/33 |
+| `vs_object_flat` | 619 | 500 | 20/20 |
+| `vs_object_group` | 3,386 | 500 | 39/39 |
+
+**Replay slots (harness-36, open to the owner's veto).**
+- **What failed:** the first full run failed `vs_road_project`, whose C had not changed. The 96
+  replay slots no longer covered the rows' shares, now 7 rows of 32 and the rest of 2. So
+  `vs_road_project` got 24 of its 32 replays, and one of them failed.
+- **Where the failure was:** on the original's side. In that replay it wrote into the DSP-4's
+  range at `$30:ED7A`, which only a wrong answer from the chip explains.
+- **The slots fix:** the slots are now 320, above the shares together. `vs_road_project` gets back
+  the 32 replays that passed before.
+- **Still one failure.** With 32 replays, one still failed, an entry that had passed before.
+- **The cause: a replay ran on a fuzz case's script.**
+  - A taped row's fuzz cases script the chip's answers. A reset clears the script, but loading a
+    replay's chip state (harness-29) did not.
+  - So a replay that came right after a scripted fuzz case read the script's leftovers (zeros
+    past its end) instead of the chip. The new rows changed the table's order, and with it which
+    replays followed a script.
+- **The fix:** loading a chip state now clears the script, as a reset does.
+
+**Check:** the full gate (two lines changed: `static` removed; the slots; the bridge).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

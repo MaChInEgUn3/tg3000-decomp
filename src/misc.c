@@ -7581,7 +7581,7 @@ static const VsSprites vs_sprites_tab[4] = {
 
 // TG3000_ROUTINE($82:DD3B) vs_object_flat
 // The VS race's flat object: object_sprite_flat with the third rows' shape (sprite_put_rows_c).
-static bool vs_object_flat(uint16_t x) {
+bool vs_object_flat(uint16_t x) {
   object_sprite_setup(x);
   wr16(DP + 0x22, 0);
   return sprite_put_rows_c();
@@ -7589,7 +7589,7 @@ static bool vs_object_flat(uint16_t x) {
 
 // TG3000_ROUTINE($82:DD69) vs_object_group
 // The VS race's group of four: at p, -p, -p - $80 and p + $80 (object_sprite_group's way, rows c).
-static bool vs_object_group(uint16_t x) {
+bool vs_object_group(uint16_t x) {
   object_sprite_setup(x);
   wr16(DP + 0x22, 0);
   if(sprite_put_rows_c()) return true;

@@ -11350,6 +11350,12 @@ static void fuzz_object_sprite(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // ---- object_sprite_group ($82:DB87) ----  a DSP-4 tape row: as object_sprite_flat (C = the
 // buffer filled; the other flags by liveness)
 static void call_object_sprite_group(const Regs* in, Regs* out) { out->c = object_sprite_group(in->x); }
+// sprite_put_rows_c ($82:CAE5) and the VS object handlers vs_object_flat ($82:DD3B) and
+// vs_object_group ($82:DD69), vs-race-34: tape rows as their one-player counterparts (C = the
+// buffer filled; the other flags by liveness)
+static void call_sprite_put_rows_c(const Regs* in, Regs* out) { (void)in; out->c = sprite_put_rows_c(); }
+static void call_vs_object_flat(const Regs* in, Regs* out) { out->c = vs_object_flat(in->x); }
+static void call_vs_object_group(const Regs* in, Regs* out) { out->c = vs_object_group(in->x); }
 
 // ---- object_sprite_shadowed ($82:DA48) ----  a DSP-4 tape row: C = the buffer filled; N
 // clear and Z set (every exit of the stream's tail follows a 0 word read or written); V
@@ -14412,6 +14418,15 @@ const Routine routines[] = {
   {.name = "object_sprite_raised", .entry = 0x82DAFD, .end = 0x82DB4D, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_object_sprite_raised, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
+  {.name = "sprite_put_rows_c", .entry = 0x82CAE5, .end = 0x82CB39, .alsoIn = {{0x82DDBF, 0x82DEA8}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
+   .call = call_sprite_put_rows_c, .fuzz = fuzz_sprite_put_rows, .dsp4Tape = true},
+  {.name = "vs_object_flat", .entry = 0x82DD3B, .end = 0x82DD69, .alsoIn = {{0x82CAE5, 0x82CB39}, {0x82DDBF, 0x82DEA8}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
+   .call = call_vs_object_flat, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
+  {.name = "vs_object_group", .entry = 0x82DD69, .end = 0x82DDBF, .alsoIn = {{0x82CAE5, 0x82CB39}, {0x82DDBF, 0x82DEA8}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
+   .call = call_vs_object_group, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
   {.name = "object_sprite_flat", .entry = 0x82DB4D, .end = 0x82DB87, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_object_sprite_flat, .fuzz = fuzz_object_sprite, .dsp4Tape = true},

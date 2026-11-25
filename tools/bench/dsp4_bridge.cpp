@@ -297,6 +297,10 @@ extern "C" void dsp4_bridge_save_state(uint8_t* out) {
 }
 
 extern "C" void dsp4_bridge_load_state(const uint8_t* data, int size) {
+	// harness-36: a replay's chip answers as the chip, not from a script an earlier fuzz case left
+	scripted = false;
+	routed = -1;
+	routedNOut = -1;
 #ifdef BENCH_LLE
 	if(lleOn) {
 		dsp4_lle_load_state(data, size);

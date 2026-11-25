@@ -232,7 +232,7 @@ static InputRead sampleInputs[MAX_DEPTH][MAX_INPUTS_LONG];
 // an interrupt dropped are run again in the fuzz phase, from that exact state with the
 // interrupts off, and compared like any sample. They are counted apart ("replayed"), not
 // as live samples: the original did not run them that way in the movie.
-#define MAX_REPLAYS 96
+#define MAX_REPLAYS 320  // (harness-36: above the rows' shares together, 7 rows of 32 and the rest of 2)
 #define REPLAYS_PER_ROUTINE 2
 #define REPLAY_SPREAD 24  // a row with its own `replays` keeps one entry in N (a multiple of SAMPLE_STRIDE)
 typedef struct {

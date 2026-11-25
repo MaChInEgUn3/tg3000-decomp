@@ -743,6 +743,10 @@ void oam_high_load2(void);
 // $82:BE18, $C170, $C489, $C7BA: the VS race's four views' sprites streamed to the DSP-4
 // (object_sprites_stream's counterparts); each returns the carry the original leaves.
 bool vs_sprites_view0(void);
+// $82:DD3B, $82:DD69: the VS race's flat object and group of four (sprite_put_rows_c's shape;
+// x the kind * 2); true when the sprite buffer filled.
+bool vs_object_flat(uint16_t x);
+bool vs_object_group(uint16_t x);
 bool vs_sprites_view1(void);
 bool vs_sprites_view2(void);
 bool vs_sprites_view3(void);
