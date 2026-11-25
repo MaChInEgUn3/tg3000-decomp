@@ -3273,11 +3273,12 @@ CODE_85B1C6:
     sta.w $0170                 ; $85B1EB
     lda.w $0162                 ; $85B1EE
     sta.w $0172                 ; $85B1F1
-    jsr.w $B1F9                 ; $85B1F4
+    jsr.w vs_bands_merge        ; $85B1F4
     plb                         ; $85B1F7
     rtl                         ; $85B1F8
+vs_bands_merge:
     jsr.w race_bands_merge      ; $85B1F9
-    jmp.w $B2B7                 ; $85B1FC
+    jmp.w race_bands_merge2     ; $85B1FC
 race_bands_merge:
     lda.w $0164                 ; $85B1FF
     sta.b $14                   ; $85B202
@@ -3366,6 +3367,7 @@ CODE_85B299:
 CODE_85B2B4:
     rep.b #$20                  ; $85B2B4
     rts                         ; $85B2B6
+race_bands_merge2:
     lda.w $0166                 ; $85B2B7
     sta.b $14                   ; $85B2BA
     lda.w $016A                 ; $85B2BC

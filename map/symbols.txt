@@ -535,6 +535,8 @@ func    8A8CB7   tiles_planar_upload ; packed 4-bit pixels to planar tiles in $7
 func    82A1D3   track_backdrop_load ; the track's backdrop: unpack, five VRAM uploads -> src/misc.c
 func    82AD2C   race_positions_update ; both players' positions among 20 cars; position messages -> src/misc.c
 func    85B1FF   race_bands_merge    ; the band table from the two players' line lists -> src/misc.c
+func    85B2B7   race_bands_merge2   ; VS race: race_bands_merge for the second pair of views -> src/misc.c
+func    85B1F9   vs_bands_merge      ; VS race: the two band merges in turn -> src/misc.c
 func    85817B   tiles_planar_upload_5fe0 ; tiles_planar_upload's copy in bank $85, to VRAM $5FE0 -> src/misc.c
 func    8A8F18   hdma_gradients_init ; the HDMA gradient tables: headers, three gradient builds -> src/misc.c
 func    83E2D7   player_frame_setup  ; player 1's car each frame: settings, controls, item -> src/misc.c

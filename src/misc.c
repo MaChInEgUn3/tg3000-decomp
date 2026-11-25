@@ -2139,35 +2139,47 @@ void race_positions_update(void) {
   }
 }
 
-static uint8_t band_a(void) { return rd8(0x4CFE + (uint32_t)rd16(DP + 0x14)); }
-static uint8_t band_b(void) { return rd8(0x4D4A + (uint32_t)rd16(DP + 0x16)); }
+// The band merge's two views (vs-race-10): the one-player race and the VS race's first pair
+// use the first, the VS race's second pair the second.
+typedef struct {
+  uint16_t aAt, bAt;       // the lists' start indices
+  uint32_t aList, bList;   // the two players' line lists (bank $7E)
+  uint16_t split;          // non-zero: the merged table starts at 2 (else $34)
+  uint16_t yKept;          // where the start is kept
+  uint16_t marks, lines, flags;
+} BandsView;
+static const BandsView bandsViews[2] = {
+  {0x0164, 0x0168, 0x4CFE, 0x4D4A, 0x00B4, 0x00C0, 0x047E, 0x0486, 0x0596},
+  {0x0166, 0x016A, 0x4D96, 0x4DE2, 0x00B6, 0x00C6, 0x0482, 0x050E, 0x061E},
+};
 
-// TG3000_ROUTINE($85:B1FF) race_bands_merge
-uint16_t race_bands_merge(void) {
-  wr16(DP + 0x14, rd16(0x0164));
-  wr16(DP + 0x16, rd16(0x0168));
+static uint16_t bands_merge(const BandsView* v) {
+  wr16(DP + 0x14, rd16(v->aAt));
+  wr16(DP + 0x16, rd16(v->bAt));
   wr16(DP + 0x18, 0x8080);
   uint16_t y = 0x0002, x = 0x0002;
-  if(rd16(0x00B4) == 0) {
+  if(rd16(v->split) == 0) {
     y = 0x0034;
     x = 0x0000;
   }
-  wr16(0x00C0, y);
+  wr16(v->yKept, y);
   wr16(DP + 0x1A, x);
-  uint8_t a = band_a(), b = band_b();
+#define BAND_A() rd8(v->aList + (uint32_t)rd16(DP + 0x14))
+#define BAND_B() rd8(v->bList + (uint32_t)rd16(DP + 0x16))
+  uint8_t a = BAND_A(), b = BAND_B();
   if(a == b) {
-    wr8(0x047E + (uint32_t)x, 0x39);
+    wr8(v->marks + (uint32_t)x, 0x39);
   } else {
-    wr8(0x047E + (uint32_t)x, a < b ? 0x19 : 0x29);
-    wr8(0x047F + (uint32_t)x, 0x39);
+    wr8(v->marks + (uint32_t)x, a < b ? 0x19 : 0x29);
+    wr8(v->marks + 1 + (uint32_t)x, 0x39);
   }
   for(;;) {
-    a = band_a();
-    b = band_b();
+    a = BAND_A();
+    b = BAND_B();
     if(a == b) {
-      wr8(0x0486 + (uint32_t)y, a);
+      wr8(v->lines + (uint32_t)y, a);
       if(a == 0) return y;
-      wr8(0x0596 + (uint32_t)y, (uint8_t)(0x0E | rd8(DP + 0x18) | rd8(DP + 0x19)));
+      wr8(v->flags + (uint32_t)y, (uint8_t)(0x0E | rd8(DP + 0x18) | rd8(DP + 0x19)));
       wr8(DP + 0x18, 0);
       wr8(DP + 0x19, 0);
       y = (uint16_t)(y + 1);
@@ -2179,15 +2191,15 @@ uint16_t race_bands_merge(void) {
     bool first = a < b;
     for(;;) {
       if(first) {
-        if((a = band_a()) == 0) { first = false; continue; }
-        wr8(0x0486 + (uint32_t)y, a);
-        wr8(0x0596 + (uint32_t)y, (uint8_t)(0x02 | rd8(DP + 0x19)));
+        if((a = BAND_A()) == 0) { first = false; continue; }
+        wr8(v->lines + (uint32_t)y, a);
+        wr8(v->flags + (uint32_t)y, (uint8_t)(0x02 | rd8(DP + 0x19)));
         wr8(DP + 0x19, 0);
         wr8(DP + 0x14, (uint8_t)(rd8(DP + 0x14) + 1));
       } else {
-        if((b = band_b()) == 0) { first = true; continue; }
-        wr8(0x0486 + (uint32_t)y, b);
-        wr8(0x0596 + (uint32_t)y, (uint8_t)(0x0C | rd8(DP + 0x18)));
+        if((b = BAND_B()) == 0) { first = true; continue; }
+        wr8(v->lines + (uint32_t)y, b);
+        wr8(v->flags + (uint32_t)y, (uint8_t)(0x0C | rd8(DP + 0x18)));
         wr8(DP + 0x18, 0);
         wr8(DP + 0x16, (uint8_t)(rd8(DP + 0x16) + 1));
       }
@@ -2195,6 +2207,20 @@ uint16_t race_bands_merge(void) {
       break;
     }
   }
+#undef BAND_A
+#undef BAND_B
+}
+
+// TG3000_ROUTINE($85:B1FF) race_bands_merge
+uint16_t race_bands_merge(void) { return bands_merge(&bandsViews[0]); }
+
+// TG3000_ROUTINE($85:B2B7) race_bands_merge2
+uint16_t race_bands_merge2(void) { return bands_merge(&bandsViews[1]); }
+
+// TG3000_ROUTINE($85:B1F9) vs_bands_merge
+uint16_t vs_bands_merge(void) {
+  (void)race_bands_merge();
+  return race_bands_merge2();
 }
 
 // TG3000_ROUTINE($8A:8F18) hdma_gradients_init

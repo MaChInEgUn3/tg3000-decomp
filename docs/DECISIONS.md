@@ -4086,6 +4086,29 @@ flipped, on the firmware chip. This is outputs only.
 
 **Check:** the tool's run above. It adds lines to `tools/bench/` only and changes no row or C.
 
+## The VS race's second band merge (vs-race-10, 2026-11-25)
+
+**`race_bands_merge2` (`$85:B2B7`)** is `race_bands_merge` for the VS race's second pair of views:
+- the lists come from `$7E:4D96` + `$0166` and `$7E:4DE2` + `$016A`;
+- the start depends on `$00B6`, and is kept in `$00C6`;
+- the first marks go to `$0482`;
+- the merged lines go to `$050E` + Y, with their flags at `$061E` + Y.
+
+`src/misc.c` now has one `bands_merge` over a table of the two views, and `race_bands_merge` is
+its first view.
+
+**`vs_bands_merge` (`$85:B1F9`)** is the two merges in turn: a `JSR` to the first, then a `JMP`
+into the second.
+- Its row declares that tail jump (`alsoIn`).
+- `race_bands_merge2` has no live samples of its own, since it is only reached by that `JMP`.
+  Its fuzz takes 500 cases and covers its 79 paths.
+
+**Results:**
+- `vs_bands_merge`: 222 live samples, 500 fuzz cases.
+- `race_bands_merge` keeps passing on the race and VS movies: 181 and 256 live samples.
+
+**Check:** the full gate (`src/misc.c` changed by more than additions).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

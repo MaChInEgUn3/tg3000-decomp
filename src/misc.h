@@ -727,6 +727,12 @@ void race_positions_update(void);
 // X (X = 2, or 0): $39 when the lists start on the same line, else $19 or $29 then $39.
 // Ends at the zero both lists end with (stored). Returns the final Y.
 uint16_t race_bands_merge(void);
+// $85:B2B7: race_bands_merge for the VS race's second pair of views: the lists at $7E:4D96 +
+// $0166 and $7E:4DE2 + $016A, by $00B6, the start kept in $00C6, the marks at $0482, merged
+// into $050E + Y with the flags at $061E + Y.
+uint16_t race_bands_merge2(void);
+// $85:B1F9: the VS race's two band merges in turn; returns the second's final Y.
+uint16_t vs_bands_merge(void);
 
 // $83:E2D7: player 1's car, each frame. $1EBE = $8000; $1EB2 = the byte $0395; $022B =
 // func_83EA9B(2 * $021F + the word at $86:DAD9 + 2 * ($0395 & $7F)); the car's settings

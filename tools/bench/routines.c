@@ -1733,21 +1733,23 @@ static void fuzz_race_positions_update(Regs* r, uint8_t* ram, uint32_t (*rnd)(vo
 // ---- race_bands_merge ($85:B1FF) ----  A = $00B4's high byte : 0 (the 8-bit loads keep B),
 // X = D+$16 (its last LDX), Y = the final Y; N clear, Z and C set (CMP #0 of the end);
 // V as on entry
-static void call_race_bands_merge(const Regs* in, Regs* out) {
-  (void)in;
-  uint16_t hi = (uint16_t)(rd16(0x00B4) & 0xFF00);
-  out->y = race_bands_merge();
+static void bandsMergeOut(Regs* out, uint16_t split, uint16_t (*fn)(void)) {
+  uint16_t hi = (uint16_t)(rd16(split) & 0xFF00);
+  out->y = fn();
   out->a = hi;
   out->x = rd16(DP + 0x16);
   out->n = false;
   out->z = out->c = true;
 }
+static void call_race_bands_merge(const Regs* in, Regs* out) { (void)in; bandsMergeOut(out, 0x00B4, race_bands_merge); }
+static void call_race_bands_merge2(const Regs* in, Regs* out) { (void)in; bandsMergeOut(out, 0x00B6, race_bands_merge2); }
+static void call_vs_bands_merge(const Regs* in, Regs* out) { (void)in; bandsMergeOut(out, 0x00B6, vs_bands_merge); }
 // two zero-ended ascending lists, often sharing lines, sometimes one empty; either start
-static void fuzz_race_bands_merge(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
-  (void)r;
+static void fuzzBandsMerge(uint8_t* ram, uint32_t (*rnd)(void), int view) {
   for(int list = 0; list < 2; list++) {
-    uint16_t at = (uint16_t)(rnd() % 0x40), base = list ? 0x4D4A : 0x4CFE;
-    wr16ram(ram, list ? 0x0168 : 0x0164, at);
+    static const uint16_t bases[2][2] = {{0x4CFE, 0x4D4A}, {0x4D96, 0x4DE2}}, ats[2][2] = {{0x0164, 0x0168}, {0x0166, 0x016A}};
+    uint16_t at = (uint16_t)(rnd() % 0x40), base = bases[view][list];
+    wr16ram(ram, ats[view][list], at);
     int n = (int)(rnd() % 10);
     uint8_t line = 0;
     for(int i = 0; i < n; i++) {
@@ -1758,7 +1760,20 @@ static void fuzz_race_bands_merge(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
     }
     ram[base + at + n] = 0;
   }
-  wr16ram(ram, 0x00B4, (rnd() & 1) ? 0 : (uint16_t)rnd());
+  wr16ram(ram, view ? 0x00B6 : 0x00B4, (rnd() & 1) ? 0 : (uint16_t)rnd());
+}
+static void fuzz_race_bands_merge(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  fuzzBandsMerge(ram, rnd, 0);
+}
+static void fuzz_race_bands_merge2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  fuzzBandsMerge(ram, rnd, 1);
+}
+static void fuzz_vs_bands_merge(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  fuzzBandsMerge(ram, rnd, 0);
+  fuzzBandsMerge(ram, rnd, 1);
 }
 
 // ---- hdma_gradients_init ($8A:8F18) ----  the last hdma_gradient_build's exit flags (as its
@@ -13336,6 +13351,12 @@ const Routine routines[] = {
   {.name = "race_bands_merge", .entry = 0x85B1FF, .end = 0x85B2B7, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_race_bands_merge, ALL_OUTPUTS,
    .fuzz = fuzz_race_bands_merge},
+  {.name = "race_bands_merge2", .entry = 0x85B2B7, .end = 0x85B36F, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_race_bands_merge2, ALL_OUTPUTS,
+   .fuzz = fuzz_race_bands_merge2},
+  {.name = "vs_bands_merge", .entry = 0x85B1F9, .end = 0x85B1FF, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_bands_merge, ALL_OUTPUTS,
+   .fuzz = fuzz_vs_bands_merge, .alsoIn = {{0x85B2B7, 0x85B36F}}},  // its JMP to race_bands_merge2
   {.name = "tiles_planar_upload_5fe0", .entry = 0x85817B, .end = 0x858245, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_tiles_planar_upload_5fe0, ALL_OUTPUTS,
    .fuzz = fuzz_tiles_planar_upload},
