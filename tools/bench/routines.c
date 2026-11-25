@@ -6642,6 +6642,29 @@ static void call_race_load(const Regs* in, Regs* out) {
   out->n = out->z = out->v = false;
   out->c = true;
 }
+// race_track_build ($82:856D, race-setup-2): up to the first wait ($82:85D6; an NMI lands in its
+// track map's unpacking, so it is judged by replays): A = 1 (LDA #1), N Z of it, C V by liveness
+static void call_race_track_build(const Regs* in, Regs* out) {
+  (void)in;
+  race_track_build();
+}
+// race_track_start ($82:85D6): up to the race loop's head ($82:8645): A = the message, N Z V of
+// BIT $047C (or of LDA #$43, bit 15 set: never run); C of the last frame wait (set)
+static void call_race_track_start(const Regs* in, Regs* out) {
+  (void)in;
+  race_track_start();
+  out->c = true;
+  const uint16_t m = rd16(0x047C);
+  out->v = (m & 0x4000) != 0;
+  if(m & 0x8000) {
+    out->a = 0x0043;
+    out->n = out->z = false;
+  } else {
+    out->a = 0x003D;
+    out->n = false;
+    out->z = (m & 0x003D) == 0;
+  }
+}
 // vs_race_load ($82:92BA, vs-race-24): the setup's first piece, ending at the $047C test ($82:932D);
 // the setup goes on with the registers it loads there; the flags are the last decompression's
 // (as call_decompress_to_vram: C set, N Z V clear)
@@ -13259,6 +13282,14 @@ const Routine routines[] = {
   {.name = "race_load", .entry = 0x828428, .end = 0x82854B, .endAt = 0x82854B, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_race_load, .manyEffects = true,
    .holes = {{0x8284A8, 0x8284C8}}},  // the other two cars' graphics ($01E4 0 or positive: never in the movies)
+  {.name = "race_track_build", .entry = 0x82856D, .end = 0x8285D6, .endAt = 0x8285D6, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_race_track_build,
+   .manyEffects = true, .dsp4Tape = true, .replays = 32},
+  {.name = "race_track_start", .entry = 0x8285D6, .end = 0x828645, .endAt = 0x828645, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
+   .maxInsns = 40000000, .call = call_race_track_start, .manyEffects = true,  // no fuzz: it waits
+   .dsp4Tape = true,  // the road's first frame streams the road and the sprites
+   .holes = {{0x82863F, 0x828642}}},  // the demo's message (ported from the ROM's bytes, untested)
   {.name = "vs_race_load", .entry = 0x8292BA, .end = 0x82932D, .endAt = 0x82932D, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_load, .manyEffects = true},
   {.name = "vs_names_absent", .entry = 0x8AA6F6, .end = 0x8AA721, .source = "src/vs.c", .needM16 = true,

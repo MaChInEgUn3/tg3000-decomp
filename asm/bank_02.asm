@@ -203,7 +203,7 @@ CODE_8284D5:
     lda.w #$0099                ; $828544
     jsl.l decompress_to_vram_long; $828547
     lda.w $047C                 ; $82854B
-    bmi CODE_82856D             ; $82854E
+    bmi race_track_build        ; $82854E
     jsl.l wait_03e0             ; $828550
     jsl.l $84A487               ; $828554
     sep.b #$20                  ; $828558
@@ -216,7 +216,7 @@ CODE_8284D5:
     eor.b #$01                  ; $828566
     sta.w $045F                 ; $828568
     rep.b #$20                  ; $82856B
-CODE_82856D:
+race_track_build:
     lda.w #$0010                ; $82856D
     sta.w $002E                 ; $828570
     lda.w #$0000                ; $828573
@@ -255,6 +255,7 @@ CODE_82856D:
     jsl.l track_rows_build      ; $8285CC
     jsr.w track_objects_stream  ; $8285D0
     jsr.w hud_markers_write     ; $8285D3
+race_track_start:
     lda.w #$0001                ; $8285D6
     jsr.w wait_frames_82        ; $8285D9
     stz.w $4315                 ; $8285DC

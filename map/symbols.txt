@@ -795,6 +795,8 @@ func    829AF4   vs_places_update    ; VS race: each player's place; a changed p
 func    8297BE   vs_cars_link        ; VS race: the four cars linked both ways in the order at $1E6A -> src/vs.c
 func    83E878   vs_car_parts        ; VS race: the car at D's engine and tyre words from the VS tables -> src/vs.c
 func    828428   race_load           ; the race setup's first piece, to the $047C test: screen, vectors, track, reset, graphics -> src/misc.c
+func    82856D   race_track_build    ; the race setup's track piece up to its first wait: counters, map, track, objects, HUD markers -> src/misc.c
+func    8285D6   race_track_start    ; the race setup's rest: waits, vectors, the road's first frame, CLI, up to the race loop -> src/misc.c
 func    8292BA   vs_race_load        ; VS race setup's first piece, to the $047C test: screen, settings, reset, graphics -> src/vs.c
 func    829348   vs_race_track       ; VS race setup's track piece: state cleared, track + objects, four announcements with waits, palette -> src/vs.c
 func    82BA12   vs_race_reset       ; VS race: the state reset (players' words, lap time, cars' records, palette rows from $C1) -> src/vs.c

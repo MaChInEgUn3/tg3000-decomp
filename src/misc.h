@@ -1403,6 +1403,12 @@ void race_state_reset(void);
 // $82:8428: the race setup's first piece (screen, vectors, track, reset, graphics), up to the
 // $047C test before the sound loader.
 void race_load(void);
+// $82:856D: the race setup's track piece (counters, the track, a frame's waits, the vectors, the
+// road's first frame, CLI), up to the race loop at $82:8645.
+void race_track(void);
+// $82:856D up to the first wait; $82:85D6 from that wait up to the race loop.
+void race_track_build(void);
+void race_track_start(void);
 
 // $82:DFAD: the road's rows built as the player crosses them (D = $0100; DB = $7E inside,
 // $83 after). The road's sideways place $01CE from the rows crossed ($7E:3AEE; DSP-4 bits

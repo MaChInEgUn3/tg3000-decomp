@@ -4944,6 +4944,41 @@ The C now writes it too.
 
 **Check:** the incremental gate (additions only).
 
+## The race setup's track piece, cut at its first wait (race-setup-2, 2026-11-25)
+
+**What follows the sound loader** (`$84:A487`, parked) runs up to the race loop at `$82:8645`. It
+is two rows, cut at its first frame wait, as the VS loop's frame was (vs-race-33).
+
+**`race_track_build` (`$82:856D` up to the wait at `$82:85D6`).**
+- **What it does:**
+  - clears the clocks and counters (D = `$0100`; the overlapping words at `$005A`-`$0060` in the
+    original's order);
+  - loads the map, the track and its objects, and the HUD's markers.
+- **Why it is cut there:** the race's NMI (`race_load` set its vectors) lands inside the map's
+  unpacking.
+  - As one waiting row the piece failed on WRAM that handler changed. The C sees the NMI only at
+    its wait.
+  - As a row that does not wait, it is judged by replays, interrupts off: 1 replay on race1,
+    38/38 paths.
+
+**`race_track_start` (`$82:85D6` up to the race loop).** In order:
+1. a frame's wait;
+2. the sizes of DMA slots 1-3 cleared;
+3. the race's vectors (NMI `$83:83CE`);
+4. the road's first frame;
+5. the fade in and the countdown's start;
+6. another wait;
+7. the announcement;
+8. CLI;
+9. the player's message. The demo's `$43` is never run: decoded from the ROM and ported,
+   untested, a hole.
+
+It is a waiting row: 1 live sample, 38/38 paths. Its C is the last wait's.
+
+`race_track` calls the two.
+
+**Check:** the full gate (a new waiting row).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

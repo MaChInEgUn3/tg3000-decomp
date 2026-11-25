@@ -5046,6 +5046,72 @@ void race_load(void) {
   decompress_to_vram(DP, 0x99, 0xB3D5, 0x0EE0);
 }
 
+// TG3000_ROUTINE($82:856D) race_track_build
+// The race setup's piece after the sound loader, up to its first wait ($82:85D6): the clocks and
+// counters cleared (D = $0100: $3E and $013E both; the overlapping words at $005A-$0060 in the
+// original's order); the map, the track and its objects, the HUD's markers.
+void race_track_build(void) {
+  wr16(0x002E, 0x0010);
+  wr16(0x0030, 0x0000);
+  wr16(0x0212, 0);
+  wr16(0x02C5, 0);
+  wr16(0x003E, 0);
+  wr16(0x0040, 0);
+  wr16(DP + 0x3E, 0);
+  wr16(DP + 0x40, 0);
+  wr16(0x005A, 0);
+  wr16(0x005C, 0);
+  wr16(0x005D, 0);
+  wr16(0x005F, 0);
+  wr16(0x0235, 0xFFFF);
+  wr16(0x02E8, 0xFFFF);
+  wr16(0x0060, 3);
+  wr16(0x0062, 3);
+  wr16(0x0142, 0x000C);
+  wr16(0x0144, 0x000B);
+  static const uint8_t dp_words[] = {0x5A, 0x0D, 0x4C, 0x4E, 0x50, 0x52, 0x54, 0x56, 0x58};
+  for(unsigned i = 0; i < sizeof dp_words; i++) wr16((uint16_t)(DP + dp_words[i]), 0);
+  uint16_t end;
+  track_map_load(DP, &end);
+  track_setup_load();
+  track_rows_build();
+  track_objects_stream();
+  hud_markers_write();
+}
+
+// TG3000_ROUTINE($82:85D6) race_track_start
+// The setup's rest, up to the race loop ($82:8645): a frame's wait; the sizes of DMA slots 1-3
+// cleared; the race's vectors (NMI $83:83CE); the road's first frame; the fade in and the
+// countdown's start; another frame's wait; the announcement; the interrupts on (CLI); the
+// player's message (the demo's $43: never run, decoded from the ROM).
+void race_track_start(void) {
+  wait_frames(1);
+  dma_stream_size(1, 0);
+  dma_stream_size(2, 0);
+  dma_stream_size(3, 0);
+  wr16(0x0008, 0x83CE);
+  wr16(0x0001, 0x8377);
+  wr16(0x0005, 0x95BD);
+  wr8(0x0003, 0x85);
+  wr8(0x0007, 0x85);
+  road_rows_build_call();
+  race_road_frame_alt();
+  wr16(0x0148, 0x0F00);
+  wr16(0x0146, 0x0080);
+  wr16(0x1ECE, 0x8001);
+  wr16(0x00BA, 0);
+  wr16(0x1E9E, 1);
+  wait_frames(1);
+  func_82AD12(0x0012, 0x4000);  // then CLI
+  wr16(0x0233, (rd16(0x047C) & 0x8000) ? 0x0043 : 0x003D);
+}
+
+// The race setup's track piece whole ($82:856D up to the race loop).
+void race_track(void) {
+  race_track_build();
+  race_track_start();
+}
+
 // TG3000_ROUTINE($82:A28B) race_state_reset
 void race_state_reset(void) {
   wr16(0x00B4, 0);
