@@ -5000,6 +5000,46 @@ void race_grid_setup(void) {
   wr16(0x02B9, rd16(0xFABB + 0x35));
 }
 
+// TG3000_ROUTINE($82:8342) race_wrapper_head
+// The race wrapper's head (its long entry, after SEI, PHD, PHB and DB = $83), up to the mode's call
+// ($82:83B8): NMI and the pads on, HDMA off (its 16-bit STZ $420B), a frame's wait, the IRQ vector
+// ($83:8623); $000C-$00FF and $0200-$02FF cleared; the track's settings; $0196 and $019A cleared;
+// $7E:4CD9 = 0, $7E:4CDB = $FFFF, then $7E:4CDD-$7E:4CFB cleared. Then the mode's routine by
+// $03DC & 3 (0: the race, 2: the VS race) runs.
+void race_wrapper_head(void) {
+  platform_set_interrupts(0x81);
+  video_hdma_enable(0x00);
+  wait_frames(1);
+  wr16(0x0001, 0x8623);
+  wr8(0x0003, 0x83);
+  for(uint16_t x = 0x000C; x != 0x0100; x = (uint16_t)(x + 2)) wr16(x, 0);
+  for(uint16_t x = 0x0000; x != 0x0100; x = (uint16_t)(x + 2)) wr16((uint16_t)(0x0200 + x), 0);
+  track_settings_load();
+  wr16(0x0196, 0);
+  wr16(0x019A, 0);
+  wr16(0x4CD9, 0x0000);
+  wr16(0x4CDB, 0xFFFF);
+  for(uint16_t x = 0x0020; x != 0; x = (uint16_t)(x - 2)) wr16((uint16_t)(0x4CDB + x), 0);
+}
+
+// TG3000_ROUTINE($82:83BB) race_wrapper_tail
+// The race wrapper after the mode's routine, up to its PLB, PLD and RTL ($82:8415): the two
+// players' places kept ($03AB, $03DA); a frame's wait; the race's counters and requests cleared;
+// the menus' vectors (NMI $80:8934, IRQ $80:8807, its trampoline $80:89B2).
+void race_wrapper_tail(void) {
+  wr16(0x03AB, rd16(0x027C));
+  wr16(0x03DA, rd16(0x032F));
+  wait_frames(1);
+  static const uint16_t zero[] = {0x0026, 0x0196, 0x0198, 0x019A, 0x002A, 0x0028, 0x01FB, 0x01FC, 0x02FB, 0x02FC,
+                                  0x1B24, 0x1B26};
+  for(unsigned i = 0; i < sizeof zero / sizeof zero[0]; i++) wr16(zero[i], 0);
+  wr16(0x0008, 0x8934);
+  wr16(0x0001, 0x8807);
+  wr8(0x0003, 0x80);
+  wr16(0x0005, 0x89B2);
+  wr8(0x0007, 0x80);
+}
+
 // TG3000_ROUTINE($82:8428) race_load
 // The race setup's first piece, entered from the race wrapper's mode table ($82:8418, mode 0), up to
 // the test of $047C at $82:854B: the screen image; the race's interrupt vectors (NMI $83:838A,

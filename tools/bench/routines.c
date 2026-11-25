@@ -6634,6 +6634,25 @@ static void call_vs_race_reset(const Regs* in, Regs* out) {
   out->n = out->z = false;
 }
 static void fuzz_track_palettes_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+// race_wrapper_head ($82:8342) and race_wrapper_tail ($82:83BB), race-setup-3: waiting rows (a frame's
+// wait each); the head ends at the mode's JSR (X = the mode * 2), the tail before its PLB/PLD/RTL
+static void call_race_wrapper_head(const Regs* in, Regs* out) {
+  (void)in;
+  race_wrapper_head();
+  out->x = (uint16_t)((rd16(0x03DC) & 3) << 1);
+  out->a = out->x;
+  out->n = false;
+  out->z = out->x == 0;
+  out->c = false;  // (the ASL of a 2-bit mode)
+  out->db = 0x83;
+}
+static void call_race_wrapper_tail(const Regs* in, Regs* out) {
+  (void)in;
+  race_wrapper_tail();
+  out->a = 0x0080;
+  out->n = false;
+  out->z = false;
+}
 // race_load ($82:8428, race-setup-1): the setup's first piece, ending at the $047C test ($82:854B);
 // the flags are the last decompression's (as call_decompress_to_vram: C set, N Z V clear)
 static void call_race_load(const Regs* in, Regs* out) {
@@ -13295,6 +13314,11 @@ const Routine routines[] = {
   {.name = "vs_car_parts", .entry = 0x83E878, .end = 0x83E8AB, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .compareA = true, .compareX = true, .call = call_vs_car_parts,
    .fuzz = fuzz_vs_car_parts},
+  {.name = "race_wrapper_head", .entry = 0x828342, .end = 0x8283B8, .endAt = 0x8283B8, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .waitsForInterrupts = true, .call = call_race_wrapper_head},
+  {.name = "race_wrapper_tail", .entry = 0x8283BB, .end = 0x828415, .endAt = 0x828415, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
+   .call = call_race_wrapper_tail},
   {.name = "race_load", .entry = 0x828428, .end = 0x82854B, .endAt = 0x82854B, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_race_load, .manyEffects = true,
    .holes = {{0x8284A8, 0x8284C8}}},  // the other two cars' graphics ($01E4 0 or positive: never in the movies)

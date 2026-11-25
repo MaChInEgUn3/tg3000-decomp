@@ -2,6 +2,7 @@
 org $828000
 
     incbin !baserom:$10000..$10342
+race_wrapper_head:
     sei                         ; $828342
     phd                         ; $828343
     phb                         ; $828344
@@ -56,6 +57,7 @@ CODE_8283A7:
     asl a                       ; $8283B6
     tax                         ; $8283B7
     jsr.w ($8418,x)             ; $8283B8
+race_wrapper_tail:
     lda.w $027C                 ; $8283BB
     sta.w $03AB                 ; $8283BE
     lda.w $032F                 ; $8283C1

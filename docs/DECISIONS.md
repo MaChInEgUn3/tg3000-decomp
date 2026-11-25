@@ -5030,6 +5030,37 @@ except two pieces:
 
 **Check:** the full gate (a new waiting row).
 
+## The race wrapper's two halves (race-setup-3, 2026-11-25)
+
+**What it is.** The race wrapper (`$82:8342`, a long entry) runs the mode's routine through a
+table at `$82:8418`, by `$03DC` & 3:
+- 0: the race, `$82:8428`;
+- 1: `$82:89B5`;
+- 2: the VS race, `$82:92BA`.
+
+**Why two rows:** the race itself waits on the parked sound loader, so the wrapper is ported as two
+halves around the call.
+
+**`race_wrapper_head` (`$82:8342` up to the mode's JSR):**
+- NMI and the pads on;
+- HDMA off (a 16-bit `STZ $420B`);
+- a frame's wait;
+- the IRQ vector;
+- `$000C`-`$00FF` and `$0200`-`$02FF` cleared;
+- the track's settings;
+- the course's word table at `$7E:4CD9` reset.
+
+**`race_wrapper_tail` (`$82:83BB` up to its PLB/PLD/RTL):**
+- the two players' places kept;
+- a frame's wait;
+- the race's counters and requests cleared;
+- the menus' vectors back.
+
+**Results:** both are waiting rows. On the 60k movie the head has 5 live samples (50/50 paths) and
+the tail 4 (32/32).
+
+**Check:** the full gate (new waiting rows).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

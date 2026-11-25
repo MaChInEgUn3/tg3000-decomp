@@ -1174,7 +1174,7 @@ CODE_808AB8:
     sta.l $8103E0               ; $808AC6
     lda.w $0444                 ; $808ACA
     sta.w $047B                 ; $808ACD
-    jsl.l $828342               ; $808AD0
+    jsl.l race_wrapper_head     ; $808AD0
     jsl.l wait_03e0             ; $808AD4
     lda.w #$0001                ; $808AD8
     jsl.l $84A4B7               ; $808ADB
@@ -1230,7 +1230,7 @@ CODE_808B59:
     sta.l $8103E0               ; $808B80
     lda.w $0444                 ; $808B84
     sta.w $047B                 ; $808B87
-    jsl.l $828342               ; $808B8A
+    jsl.l race_wrapper_head     ; $808B8A
     incbin !baserom:$B8E..$BC5
 shop_screen_begin:
     stz.w $019A                 ; $808BC5
