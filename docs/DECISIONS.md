@@ -4443,6 +4443,60 @@ A delegated agent drafted all four VS IRQ targets (US$0.52). Two are not ported:
 
 **Check:** the incremental gate (additions only).
 
+## A DMA register read served to the C (harness-31) and re-pointed streams (harness-32), 2026-11-25
+
+**The advisor's practice, open to the owner's veto.** The VS split screen's split IRQ (next
+section) needed two things the bench did not model.
+
+**harness-31: a DMA register read.**
+- The split stores HDMA slot 4's table address, read back from `$4342`, into `$7F:FFFE`.
+- Like harness-30's VRAM reads, a row lists its read sites (`dmaReadAt`). The words the original
+  reads there are kept in order and served to the C through a new platform call,
+  `dma_hdma_get_table`. The C must read as many.
+
+**harness-32: a stream re-pointed inside a routine.**
+- **What the split does:** it sets only the source (and on slot 7, the mode and target too) of
+  streams the NMI set up. Then it kicks them. Before, any partly set-up channel at a kick was
+  refused.
+- **The new rule:** a channel is a stream re-pointed when its kick is not an upload.
+  - Some of its mode, target or source were set in the sample, but not its bank.
+  - Or a new mode and target were set since its last kick, its bank kept. This holds even when
+    an upload set the channel up earlier: slot 7 carried the sprite table just before.
+  - A new source alone after such an upload is another upload (`race_start_frame_draw`). The
+    first full run, with a rule that took any register set since the last kick, failed it.
+  - The new registers are an effect of their own (`EFFECT_STREAM_SOURCE`), compared value for
+    value, before the stream kick.
+  - The C gets a new platform call, `dma_stream_set_source` (a stream's source address alone),
+    and uses `dma_hdma_set_mode` for the mode and target.
+- **Streams and uploads in one kick** are now modelled when no upload goes to CGRAM. Then the
+  CGRAM address the streams start from is the kick's on both sides.
+- A refusal of a partly set-up channel now names the channel and its registers.
+
+**Check:** the full gate. Every row is judged again under the new rules.
+
+## The VS split screen's split IRQ (vs-race-22, 2026-11-25)
+
+**`irq_vs_split` (`$83:8A84`)** is the IRQ at line `$6C`, after the top pair's last band, between the
+VS race's two halves. A delegated agent drafted it (in vs-race-21's request).
+
+**At dot `$10A`** (the original waits, `WAI`):
+- forced blank;
+- the bottom pair's sprite table (`$19B6`/`$1BD6` by `$00B6`);
+- colours `$21` and `$31`;
+- the streams re-pointed to the bottom pair's sources (harness-32);
+- their first chunk (`$0032`);
+- OBSEL = 8.
+
+**At line `$73`**, the black divider (it waits again):
+- the display back (`$014B`);
+- colour 7;
+- slot 4's table address to `$7F:FFFE` (harness-31);
+- the bottom pair's band IRQ: the handler word at `$0036`, line `$0034`, dot `$63`.
+
+**Results:** 1,128 live samples, 111/111 paths. There is no fuzz: it waits twice.
+
+**Check:** the full gate (with harness-31 and harness-32).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

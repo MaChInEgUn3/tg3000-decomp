@@ -49,6 +49,8 @@ void dma_hdma_set_table(int slot, uint16_t table);
 // (the parts of a setup on their own: mode and target; the table's bank)
 void dma_hdma_set_mode(int slot, uint8_t mode, uint8_t target);
 void dma_hdma_set_bank(int slot, uint8_t bank);
+// A slot's table address as last set (its $43x2/$43x3, read back; harness-31).
+uint16_t dma_hdma_get_table(int slot);
 void video_hdma_enable(uint8_t slots);
 // - Streams: a source read in chunks over the frame (the race sends a palette band per
 //   raster line this way). Setup; each slot's next chunk size; send the next chunk of
@@ -56,6 +58,8 @@ void video_hdma_enable(uint8_t slots);
 //   CGRAM data lands at the CGRAM address (set by video_set_cgram_address, advanced by
 //   each colour; a slot targeting $2121 sets it from its source byte).
 void dma_stream_setup(int slot, uint8_t mode, uint8_t target, uint32_t src);
+// A stream slot's source address alone, in the bank it has (vs-race-22).
+void dma_stream_set_source(int slot, uint16_t src);
 void dma_stream_size(int slot, uint32_t size);
 void dma_stream_kick(uint8_t slots);
 void video_set_cgram_address(uint8_t index);

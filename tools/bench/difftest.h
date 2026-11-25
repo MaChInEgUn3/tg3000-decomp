@@ -39,6 +39,8 @@ typedef struct {
   uint32_t vramLiveAt[4];  // harness-30: live VMDATA read sites (a 16-bit LDA $2139): the words
                            // the original reads there are kept, in order, and served to the C
                            // (video_read_vram_word), which must read as many
+  uint32_t dmaReadAt[4];   // harness-31: sites of a 16-bit read of a DMA register ($43xx): the
+                           // words are kept in order and served to the C (dma_hdma_get_table)
   uint32_t endAt;          // a handler's prologue: the sample ends when it reaches this
                            // instruction (its dispatch, an indirect jump to the target, which
                            // has its own row); D and DB are compared there
@@ -95,7 +97,8 @@ typedef struct {
 // Hardware effects, in canonical form: what the original did through DMA and what the C
 // asked the platform for (tools/bench/platform_bench.c) must be the same list.
 enum { EFFECT_VRAM = 1, EFFECT_CGRAM = 2, EFFECT_RAW_DMA = 3, EFFECT_VRAM_FILL = 4, EFFECT_VRAM_WORD = 5, EFFECT_APU = 6,
-       EFFECT_CGRAM_WORD = 7, EFFECT_OAM = 8, EFFECT_STREAM = 9 };
+       EFFECT_CGRAM_WORD = 7, EFFECT_OAM = 8, EFFECT_STREAM = 9,
+       EFFECT_STREAM_SOURCE = 10 };  // harness-32: a stream re-pointed in the sample (channel | written bits << 8, mode | target << 8, source)
 void difftest_effect(int kind, uint32_t target, uint32_t src, uint32_t size);
 void difftest_replay_interrupt(void);
 
@@ -109,6 +112,8 @@ uint8_t difftest_input(uint16_t reg);
 uint8_t difftest_dsp4_byte(uint8_t value, bool write);
 // harness-30: the next word the original read at its live VMDATA read sites (vramLiveAt)
 uint16_t difftest_vram_read(void);
+// harness-31: the next word the original read at its DMA register read sites (dmaReadAt)
+uint16_t difftest_reg_read(void);
 // The bench chip's scripted answers for a taped row's fuzz case (dsp4_bridge.cpp): status
 // always ready, data reads from `words` (low byte first), 0 past the end; writes are not
 // fed to the chip. Cleared by dsp4_bridge_reset.

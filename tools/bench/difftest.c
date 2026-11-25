@@ -155,6 +155,11 @@ typedef struct {
   int nVramReads;
   uint8_t vramReadLow;
   bool vramReadOverflow;
+  // harness-31: the words read at the row's DMA register read sites (dmaReadAt)
+  uint16_t regReads[8];
+  int nRegReads;
+  uint8_t regReadLow;
+  bool regReadLowSet, regReadOverflow;
   uint32_t hwAccessAdr, leftExtentPc;
   bool foreignStack;  // a handler it recorded switched to another stack (two-task screens)
   const char* hwWhy;
@@ -371,6 +376,7 @@ static bool collectingC;
 static int cTapePos;
 static char cTapeWhy[160];
 static int cVramReadPos;  // harness-30
+static int cRegReadPos;   // harness-31
 
 // Each register's reads are served in order: a cursor per register (harness-18: a long row
 // has hundreds of thousands, so no scan from the start).
@@ -438,6 +444,11 @@ static bool vramReadSite(uint32_t pc) {
   }
   return false;
 }
+// harness-31: a DMA register read site of this row
+static bool dmaReadSite(const Routine* r, uint32_t pc) {
+  for(int k = 0; k < 4; k++) if(r->dmaReadAt[k] && r->dmaReadAt[k] == pc) return true;
+  return false;
+}
 // harness-30: a live VMDATA read site of this row
 static bool vramLiveSite(const Routine* r, uint32_t pc) {
   for(int k = 0; k < 4; k++) if(r->vramLiveAt[k] && r->vramLiveAt[k] == pc) return true;
@@ -488,6 +499,18 @@ uint16_t difftest_vram_read(void) {
   return smp->vramReads[pos];
 }
 
+uint16_t difftest_reg_read(void) {
+  if(!collectingC || cSample == NULL) return 0;
+  const Sample* smp = cSample;
+  const int pos = cRegReadPos++;
+  if(pos >= smp->nRegReads) {
+    if(cTapeWhy[0] == '\0')
+      snprintf(cTapeWhy, sizeof cTapeWhy, "the C read DMA register word %d, past the original's %d", pos, smp->nRegReads);
+    return 0;
+  }
+  return smp->regReads[pos];
+}
+
 void difftest_dma_claim(int slot, int reg, uint8_t value) {
   if(!collectingC || slot < 0 || slot > 7 || reg < 0 || reg > 7) return;
   cChanClaim[slot] |= (uint8_t)(1u << reg);
@@ -531,7 +554,18 @@ void difftest_stream_kick(uint8_t mask) {
   uint8_t stream = 0;
   for(int c = 0; c < 8; c++) {
     if(!(mask & (1 << c))) continue;
-    if((cChanClaim[c] & 0x1F) != 0x1F) { stream |= (uint8_t)(1 << c); continue; }
+    const uint8_t claim = cChanClaim[c] & 0x1F;
+    if(claim != 0x1F && claim && !(claim & 0x10)) {  // harness-32: a re-pointed stream
+      const uint8_t w = claim & 0x0F;
+      const uint8_t* v = cChanVal[c];
+      Effect e = {EFFECT_STREAM_SOURCE, (uint32_t)c | (uint32_t)w << 8,
+                  (uint32_t)((w & 1) ? v[0] : 0) | (uint32_t)((w & 2) ? v[1] : 0) << 8,
+                  (uint32_t)((w & 4) ? v[2] : 0) | (uint32_t)((w & 8) ? v[3] : 0) << 8};
+      if(cEffectCount >= cEffectCap) { cEffectOverflow = true; return; }
+      cEffects[cEffectCount++] = e;
+      cChanClaim[c] = 0;
+    }
+    if(claim != 0x1F) { stream |= (uint8_t)(1 << c); continue; }
     uint8_t dmap = cChanVal[c][0], target = cChanVal[c][1];
     uint32_t src = (uint32_t)cChanVal[c][4] << 16 | (uint32_t)cChanVal[c][3] << 8 | cChanVal[c][2];
     uint32_t size = cStreamSize[c] ? cStreamSize[c] : 0x10000;
@@ -684,6 +718,7 @@ static const char* effectName(int kind) {
          kind == EFFECT_VRAM_FILL ? "VRAM fill" : kind == EFFECT_VRAM_WORD ? "VRAM word" :
          kind == EFFECT_APU ? "APU port write" : kind == EFFECT_CGRAM_WORD ? "CGRAM colour" :
          kind == EFFECT_OAM ? "OAM upload" : kind == EFFECT_STREAM ? "stream kick (mask | CGRAM address << 8, sizes)" :
+         kind == EFFECT_STREAM_SOURCE ? "stream re-pointed (channel | registers << 8, mode | target << 8, source)" :
          "other DMA";
 }
 
@@ -751,20 +786,35 @@ static void recordKick(uint8_t val) {
     Sample* smp = &samples[k];
     // per channel: set up in this sample (mode, target, source: an upload), or wholly
     // before it (a stream kick: the platform keeps the source going)
-    uint8_t stream = 0, plainMask = 0;
+    uint8_t stream = 0, plainMask = 0, repointed = 0, repointBits[8] = {0};
     for(int c = 0; c < 8; c++) {
       if(!(val & (1 << c))) continue;
-      uint8_t w = smp->chanWritten[c] & 0x1F;
+      // (harness-32: a new mode and target since the channel's last kick, but not its bank: a
+      // stream re-pointed, even when an upload set the channel up earlier in the sample; a new
+      // source alone after such an upload is another upload)
+      const uint8_t prep = smp->chanPrepared[c] & 0x1F;
+      uint8_t w = (prep && !(prep & 0x10) && (prep & 0x03)) ? prep : smp->chanWritten[c] & 0x1F;
       if(w == 0x1F) plainMask |= (uint8_t)(1 << c);
       else if(w == 0) stream |= (uint8_t)(1 << c);
-      else if(!smp->hwAccess) {
+      else if(!(w & 0x10)) {  // harness-32: mode, target or source re-pointed here, the bank before
+        stream |= (uint8_t)(1 << c);
+        repointed |= (uint8_t)(1 << c);
+        repointBits[c] = w;
+      } else if(!smp->hwAccess) {
+        static char partly[120];
+        snprintf(partly, sizeof partly, "a DMA kick on channel %d set up partly before the routine (registers %02X; not modelled)", c, w);
         smp->hwAccess = true;
-        smp->hwWhy = "a DMA kick on a channel set up partly before the routine (not modelled)";
+        smp->hwWhy = partly;
         smp->hwAccessAdr = 0x420B;
       }
       smp->chanPrepared[c] = 0;
     }
-    if(stream && plainMask && !smp->hwAccess) {
+    // (harness-32: streams and uploads in one kick are modelled when no upload goes to CGRAM:
+    // then the CGRAM address the streams start from is the kick's on both sides)
+    bool plainCg = false;
+    for(int c = 0; c < 8; c++)
+      if((plainMask & (1 << c)) && (snes->dma->channel[c].bAdr == 0x21 || snes->dma->channel[c].bAdr == 0x22)) plainCg = true;
+    if(stream && plainMask && plainCg && !smp->hwAccess) {
       smp->hwAccess = true;
       smp->hwWhy = "one kick of streams and uploads together (not modelled)";
       smp->hwAccessAdr = 0x420B;
@@ -773,6 +823,17 @@ static void recordKick(uint8_t val) {
       if(!(plainMask & (1 << c))) continue;
       if(smp->effectCount < smp->effectCap) smp->effects[smp->effectCount++] = plainEffect[c];
       else smp->effectOverflow = true;
+    }
+    for(int c = 0; c < 8; c++) {  // harness-32: each re-pointed stream's new registers, then the kick
+      if(!(repointed & (1 << c))) continue;
+      const uint8_t w = repointBits[c] & 0x0F;
+      const uint8_t* v = smp->chanVal[c];
+      Effect e = {EFFECT_STREAM_SOURCE, (uint32_t)c | (uint32_t)w << 8,
+                  (uint32_t)((w & 1) ? v[0] : 0) | (uint32_t)((w & 2) ? v[1] : 0) << 8,
+                  (uint32_t)((w & 4) ? v[2] : 0) | (uint32_t)((w & 8) ? v[3] : 0) << 8};
+      if(smp->effectCount < smp->effectCap) smp->effects[smp->effectCount++] = e;
+      else smp->effectOverflow = true;
+      smp->chanWritten[c] = 0;
     }
     if(stream) {
       for(int c = 0; c < 8; c++) {
@@ -988,6 +1049,17 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
     int c = (lo >> 4) & 7, r = lo & 0xF;
     for(int k = accessBase; k < depth; k++) {
       Sample* smp = &samples[k];
+      if(!write && dmaReadSite(&table[smp->idx], insnPc)) {  // harness-31: kept for the C, low byte then high
+        if(!smp->regReadLowSet) {
+          smp->regReadLow = val;
+          smp->regReadLowSet = true;
+        } else {
+          smp->regReadLowSet = false;
+          if(smp->nRegReads < 8) smp->regReads[smp->nRegReads++] = (uint16_t)(smp->regReadLow | val << 8);
+          else smp->regReadOverflow = true;
+        }
+        continue;
+      }
       if(!write || r >= 8) {
         if(!smp->hwAccess) {
           smp->hwAccess = true;
@@ -1208,6 +1280,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   cTapePos = 0;
   cTapeWhy[0] = '\0';
   cVramReadPos = 0;
+  cRegReadPos = 0;
   cPpuWritten = 0;
   collectingC = true;
   irqReplayed = 0;
@@ -1230,6 +1303,11 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   }
   if(r->dsp4Tape && smp->tapeOverflow) {
     snprintf(why, whyLen, "the original's DSP-4 tape overflowed (%d bytes)", smp->nTape);
+    return false;
+  }
+  if(smp->regReadOverflow || cRegReadPos != smp->nRegReads) {
+    snprintf(why, whyLen, "the C read %d DMA register words, the original %d%s", cRegReadPos, smp->nRegReads,
+      smp->regReadOverflow ? " (and more than 8)" : "");
     return false;
   }
   if(smp->vramReadOverflow || cVramReadPos != smp->nVramReads) {

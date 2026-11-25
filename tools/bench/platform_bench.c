@@ -92,6 +92,15 @@ void dma_hdma_set_table(int slot, uint16_t table) {
 void video_hdma_enable(uint8_t slots) { difftest_reg(0x420C, slots); }
 void dma_stream_setup(int slot, uint8_t mode, uint8_t target, uint32_t src) { claimSetup(slot, mode, target, src); }
 void dma_stream_size(int slot, uint32_t size) { difftest_stream_size(slot, size); }
+void dma_stream_set_source(int slot, uint16_t src) {
+  difftest_dma_claim(slot, 2, (uint8_t)src);
+  difftest_dma_claim(slot, 3, (uint8_t)(src >> 8));
+}
+// harness-31: the words the original read from the row's DMA register read sites, in order
+uint16_t dma_hdma_get_table(int slot) {
+  (void)slot;
+  return difftest_reg_read();
+}
 void dma_stream_kick(uint8_t slots) { difftest_stream_kick(slots); }
 void video_set_cgram_address(uint8_t index) { difftest_cgram_address(index); }
 void platform_set_irq_h_low(uint8_t dot) { difftest_reg(0x4207, dot); }

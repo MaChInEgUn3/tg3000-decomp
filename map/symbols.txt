@@ -140,6 +140,7 @@ func    8396D1   race_upload_queue_drain_long ; race_upload_queue_drain (long) -
 func    838989   func_838989         ; 24-bit $00D4 += $01CC (unless paused), words at $1536/$1556 -> src/race_frame.c
 func    8396D5   func_838989_long    ; func_838989 (long) -> src/race_frame.c
 func    838A26   irq_vs_band         ; VS race raster IRQ (top views): next stream chunk, next band's line, then the split -> src/race_frame.c
+func    838A84   irq_vs_split        ; VS race: the split at line $6C: forced blank, bottom sprites, streams re-pointed, display back at $73, next IRQ -> src/race_frame.c
 func    838BE3   irq_vs_band2        ; VS race raster IRQ (bottom views): irq_vs_band for the second band table -> src/race_frame.c
 func    839721   nmi_vs_prologue     ; VS race NMI up to its dispatch: saves, D = 0, DB = $83 (nothing for the C) -> src/frame.c
 func    839734   nmi_vs_tail         ; VS race NMI tail: nmi_race_tail with a short JSR to pads_read -> src/frame.c

@@ -459,6 +459,7 @@ CODE_838A6E:
     pla                         ; $838A81
     plb                         ; $838A82
     rti                         ; $838A83
+irq_vs_split:
     rep.b #$30                  ; $838A84
     phb                         ; $838A86
     pha                         ; $838A87

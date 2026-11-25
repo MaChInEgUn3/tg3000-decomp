@@ -5235,6 +5235,7 @@ static void call_irq_race_band(const Regs* in, Regs* out) { irq_race_band(); res
 // (vs-race-21) the VS race's: as irq_race_band
 static void call_irq_vs_band(const Regs* in, Regs* out) { irq_vs_band(); restoreP(in, out); }
 static void call_irq_vs_band2(const Regs* in, Regs* out) { irq_vs_band2(); restoreP(in, out); }
+static void call_irq_vs_split(const Regs* in, Regs* out) { irq_vs_split(); restoreP(in, out); }  // (vs-race-22)
 
 // Negative test: the colours one CGRAM entry off
 static void call_irq_race_band_wrong(const Regs* in, Regs* out) {
@@ -12535,6 +12536,9 @@ const Routine routines[] = {
    .call = call_irq_race_band, ALL_OUTPUTS},  // no fuzz: it waits (WAI) for an interrupt the fuzz never raises
   {.name = "irq_vs_band", .entry = 0x838A26, .end = 0x838A84, .rti = true, .source = "src/race_frame.c",
    .call = call_irq_vs_band, ALL_OUTPUTS},   // no fuzz: it waits (WAI), as irq_race_band
+  {.name = "irq_vs_split", .entry = 0x838A84, .end = 0x838B8E, .rti = true, .source = "src/race_frame.c",
+   .call = call_irq_vs_split, ALL_OUTPUTS,   // no fuzz: it waits (WAI) twice
+   .dmaReadAt = {0x838B75}},                 // slot 4's table address, read back (harness-31)
   {.name = "irq_vs_band2", .entry = 0x838BE3, .end = 0x838C35, .rti = true, .source = "src/race_frame.c",
    .call = call_irq_vs_band2, ALL_OUTPUTS},
   {.name = "race_cycle_blocks", .entry = 0x859147, .end = 0x8593A7, .source = "src/race_frame.c",
