@@ -6670,6 +6670,17 @@ static void call_race_track_start(const Regs* in, Regs* out) {
 static void call_race_frame_head(const Regs* in, Regs* out) { (void)in; (void)out; race_frame_head(); }
 static void call_race_frame_wait(const Regs* in, Regs* out) { (void)in; (void)out; race_frame_wait(); }
 static void call_race_frame_body(const Regs* in, Regs* out) { (void)in; (void)out; race_frame_body(); }
+// race_end ($82:8776, race-loop-2): the flags of the frame wait (as call_wait_frames)
+static void call_race_end(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t now = rd16(FRAME_COUNTER);
+  race_end();
+  const uint32_t sum = 1u + now;
+  out->a = (uint16_t)sum;
+  out->z = out->c = true;
+  out->n = false;
+  out->v = (~(1u ^ now) & (1u ^ sum) & 0x8000) != 0;
+}
 // vs_race_load ($82:92BA, vs-race-24): the setup's first piece, ending at the $047C test ($82:932D);
 // the setup goes on with the registers it loads there; the flags are the last decompression's
 // (as call_decompress_to_vram: C set, N Z V clear)
@@ -13307,6 +13318,8 @@ const Routine routines[] = {
    .holes = {{0x828689, 0x8286AB}, {0x8286B3, 0x8286BE}, {0x8286C6, 0x8286D1}, {0x8286F4, 0x8286FA}}},
        // never run: the demo's end, the Start button's pause, the Select button's way out (a trap),
        // a message (ported, untested)
+  {.name = "race_end", .entry = 0x828776, .end = 0x82878A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true, .call = call_race_end},
   {.name = "vs_race_load", .entry = 0x8292BA, .end = 0x82932D, .endAt = 0x82932D, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_load, .manyEffects = true},
   {.name = "vs_names_absent", .entry = 0x8AA6F6, .end = 0x8AA721, .source = "src/vs.c", .needM16 = true,

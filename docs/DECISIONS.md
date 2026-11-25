@@ -5013,6 +5013,23 @@ middle, at `$82:8656`. It is three rows.
 
 **Check:** the full gate (a new waiting row).
 
+## The race loop's way out (race-loop-2, 2026-11-25)
+
+**`race_end` (`$82:8776`)** runs when the race's fade is done:
+- the cars are ordered for the results (`race_order_sort`, not in the demo);
+- HDMA goes off: its `STZ $420B` is 16-bit, so it also clears `$420C`, which the first run caught;
+- the interrupts go off (SEI);
+- a frame's wait, then the race setup returns.
+
+**Results:** a waiting row with 4 live samples on the 60k movie, 8/8 paths.
+
+**Where the race stands:** with this, the one-player race is in C from its setup to its end,
+except two pieces:
+- the sound loader and its two stores;
+- the Select button's way out.
+
+**Check:** the full gate (a new waiting row).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

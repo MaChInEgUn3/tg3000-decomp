@@ -5192,6 +5192,18 @@ bool race_frame_body(void) {
   return rd16(0x0146) == 0 && !(rd16(0x014A) & 0x0F00);
 }
 
+// TG3000_ROUTINE($82:8776) race_end
+// The race loop's way out: the cars ordered for the results (not in the demo), HDMA off and the
+// interrupts off (SEI), a frame's wait; the race setup returns.
+void race_end(void) {
+  if(!(rd16(0x047C) & 0x8000)) {
+    uint16_t x, y;
+    race_order_sort(&x, &y);
+  }
+  video_hdma_enable(0x00);  // (its 16-bit STZ $420B: no DMA kicked, and HDMA off)
+  wait_frames(1);  // (after SEI)
+}
+
 // TG3000_ROUTINE($82:A28B) race_state_reset
 void race_state_reset(void) {
   wr16(0x00B4, 0);

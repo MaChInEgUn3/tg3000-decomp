@@ -1414,6 +1414,8 @@ void race_track_start(void);
 void race_frame_head(void);
 void race_frame_wait(void);
 bool race_frame_body(void);
+// $82:8776: the race loop's way out (the cars ordered, DMA and interrupts off, a frame's wait).
+void race_end(void);
 
 // $82:DFAD: the road's rows built as the player crosses them (D = $0100; DB = $7E inside,
 // $83 after). The road's sideways place $01CE from the rows crossed ($7E:3AEE; DSP-4 bits

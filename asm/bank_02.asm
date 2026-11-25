@@ -402,16 +402,16 @@ CODE_828759:
     bne CODE_828766             ; $82875C
     lda.w $014A                 ; $82875E
     and.w #$0F00                ; $828761
-    beq CODE_828776             ; $828764
+    beq race_end                ; $828764
 CODE_828766:
     lda.w $0146                 ; $828766
     bne CODE_828773             ; $828769
     lda.w $014A                 ; $82876B
     and.w #$0F00                ; $82876E
-    beq CODE_828776             ; $828771
+    beq race_end                ; $828771
 CODE_828773:
     jmp.w race_frame_head       ; $828773
-CODE_828776:
+race_end:
     bit.w $047C                 ; $828776
     bmi CODE_82877F             ; $828779
     jsl.l race_order_sort       ; $82877B
