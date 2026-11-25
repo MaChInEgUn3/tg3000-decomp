@@ -782,7 +782,7 @@ CODE_829348:
     stz.w $00DD                 ; $82944C
     stz.w $00DF                 ; $82944F
     jsl.l $85A471               ; $829452
-    jsr.w $9806                 ; $829456
+    jsr.w vs_car_bands          ; $829456
     lda.w #$9777                ; $829459
     sta.w $0008                 ; $82945C
     lda.w #$9721                ; $82945F
@@ -872,7 +872,7 @@ CODE_82952E:
     jsr.w vs_cars_link          ; $82952E
     jsl.l vs_cars_frame         ; $829531
     jsl.l vs_cars_order         ; $829535
-    jsr.w $9806                 ; $829539
+    jsr.w vs_car_bands          ; $829539
     lda.w $0204                 ; $82953C
     sta.w $0200                 ; $82953F
     lda.w $0206                 ; $829542
@@ -967,6 +967,7 @@ vs_cars_link:
     lda.w $1E6A                 ; $8297FE
     sta.l $7EFACD,x             ; $829801
     rts                         ; $829805
+vs_car_bands:
     lda.w #$0000                ; $829806
     sta.l $308000               ; $829809
     lda.w $0213                 ; $82980D

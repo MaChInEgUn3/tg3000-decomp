@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "misc.h"
+#include "dsp4.h"
 #include "track.h"
 #include "decompress.h"
 #include "frame.h"
@@ -998,6 +999,58 @@ VsCarsOrderExit vs_cars_order(void) {
       order_set(3, t);
     }
   }
+}
+
+// v, unless v - limit is not negative (by sign, the original's BMI): then the limit.
+static uint16_t cap_signed(uint16_t v, uint16_t limit) { return ((uint16_t)(v - limit) & 0x8000) ? v : limit; }
+
+// One player's block of vs_car_bands: its record, its car's low distance word ($FAB4 + car),
+// its speed limit, its speed and band words at $7E:4E2D.. / $4E35...
+typedef struct {
+  uint16_t rec, carLo, limit, speed, band;
+} VsBandPlayer;
+static void vs_car_band(const VsBandPlayer* p) {
+  const uint32_t product = (uint32_t)dsp4_multiply((int16_t)rd16((uint16_t)(p->rec + 0x13)), 0x0300);
+  wr16(DP + 0x14, (uint16_t)((product >> 8) & 0xFF));  // scratch: the product's byte 1
+  wr16(p->speed, cap_signed((uint16_t)((uint16_t)(product >> 8) - 0x0B00), p->limit));  // its bits 8-23
+  const uint16_t flags = rd16((uint16_t)(p->rec + 0x44));
+  if(!(flags & 1)) return;
+  // the high word of the 32-bit difference car - player ($FAB4/$FAB6 - +$24/+$26), at least 0
+  const uint32_t a = ((uint32_t)rd16((uint32_t)p->carLo + 2) << 16) | rd16(p->carLo);
+  const uint32_t b = ((uint32_t)rd16((uint16_t)(p->rec + 0x26)) << 16) | rd16((uint16_t)(p->rec + 0x24));
+  uint16_t far = (uint16_t)((a - b) >> 16);
+  if(far & 0x8000) far = 0;  // (never run)
+  wr16(DP + 0x14, far);
+  uint16_t near = (uint16_t)(0x58 - far);
+  if(near & 0x8000) near = 0;  // (never run)
+  wr16(p->band, (uint16_t)(near & 0xF8));
+  if(!(flags & 4)) return;
+  uint16_t w = (uint16_t)(rd16(p->speed) + 0x0B00);  // (never run from here)
+  if(w & 0x8000) w = 0;
+  uint16_t d = (uint16_t)(rd16((uint32_t)p->carLo + 2) - rd16((uint16_t)(p->rec + 0x26)));
+  if(d & 0x8000) d = 0;
+  d = (uint16_t)(d + 0x10);
+  if(d >= 0xD0) d = 0xD0;
+  const uint16_t q = (uint16_t)(w / (uint8_t)d);  // the CPU's 16 / 8 divider
+  wr16(p->speed, cap_signed((uint16_t)((uint16_t)(q << 4) - 0x0B00), p->limit));
+}
+
+// TG3000_ROUTINE($82:9806) vs_car_bands
+// (drafted by a delegated agent; its never-run parts decoded here.) func_82AC52 for the VS race's
+// four players in turn (records $0200, $02B3, $0262, $0315; cars 0, $35, $6A, $9F): the speed word
+// from the DSP-4 product of the player's +$13 and $0300 (bits 8-23, less $0B00), capped at the
+// player's limit ($3100, $2E00, $3100, $2D80); then, when its +$44 bit 0 is set, the band word
+// ($58 less the car's lead over the player in its high distance word, at least 0, rounded down to
+// 8), and with bit 2 the speed again from the lead (the CPU divider). The one-player race's has the
+// limit $3000 and its band from twice the lead.
+void vs_car_bands(void) {
+  static const VsBandPlayer players[4] = {
+    {0x0200, 0xFAB4, 0x3100, 0x4E2D, 0x4E35},
+    {0x02B3, 0xFAE9, 0x2E00, 0x4E2F, 0x4E37},
+    {0x0262, 0xFB1E, 0x3100, 0x4E31, 0x4E39},
+    {0x0315, 0xFB53, 0x2D80, 0x4E33, 0x4E3B},
+  };
+  for(int i = 0; i < 4; i++) vs_car_band(&players[i]);
 }
 
 // TG3000_ROUTINE($82:9AF4) vs_places_update

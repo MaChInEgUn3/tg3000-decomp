@@ -166,6 +166,8 @@ uint16_t vs_cars_ahead(uint16_t dp, uint16_t x, uint16_t* a, bool* carry, bool* 
 void vs_cars_ring(void);
 // $82:9AF4: each player's place (vs_cars_ahead); a changed place requests its message.
 void vs_places_update(void);
+// $82:9806: func_82AC52 for the VS race's four players: each one's speed word and band word.
+void vs_car_bands(void);
 // $81:F6AE / $81:F6F2: two cars of the VS race's order (X, Y, record offsets) close in distance
 // or sideways; A and the flags as the original's RTS leaves them (X and Y are restored).
 typedef struct {

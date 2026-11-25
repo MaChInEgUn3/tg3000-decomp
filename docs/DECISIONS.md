@@ -4238,6 +4238,29 @@ for ever were found one lost case at a time.
 
 **Check:** the full gate (`src/misc.c`'s `cars_handler` and `src/track.c` changed).
 
+## The VS players' speed and band words (vs-race-15, 2026-11-25)
+
+**`vs_car_bands` (`$82:9806`)** is `func_82AC52` for the VS race's four players in turn: records
+`$0200`, `$02B3`, `$0262`, `$0315`, with cars 0, `$35`, `$6A`, `$9F`. A delegated agent drafted
+it (US$0.35) and recognised it as `func_82AC52`'s sibling. Its never-run parts were decoded here
+with the listing's opcode table: a cap, two zero floors, and a `$4C`-byte block a player.
+
+For each player:
+- **The speed word** (`$7E:4E2D` + 2 a player) comes from the DSP-4 product of the player's +`$13`
+  and `$0300`: bits 8-23, less `$0B00`. It is capped at the player's limit: `$3100`, `$2E00`,
+  `$3100`, `$2D80`.
+- **The band word** (`$7E:4E35` + 2 a player) is set when the player's +`$44` bit 0 is set:
+  - it is `$58` less the car's lead over the player in its high distance word;
+  - the lead is at least 0, and the result is rounded down to 8.
+- **With bit 2 set**, the speed is worked out again from the lead on the CPU divider. This never
+  ran.
+
+The one-player race's version has a limit of `$3000` and its band from twice the lead.
+
+**Results:** 278 live samples, 500 fuzz cases, 303/303 paths. The fuzz runs every never-run part.
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.
