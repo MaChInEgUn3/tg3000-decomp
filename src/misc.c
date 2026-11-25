@@ -5848,6 +5848,181 @@ static void road_port_product32(uint16_t a, uint16_t b, uint16_t* lo, uint16_t* 
   *hi = dsp4_port_read16();
 }
 
+// The VS race's road projection ($85:A471), road_rows_project's counterpart for the four players
+// (DSP-4 command $0D, with no track-event rows): each player's pass is the same code with its
+// record, tables and constants (below; in the original's order: players 3, 1, 4, 2). Each pass
+// is followed by its HDMA list's tail, of two kinds (A: the first of a pair, B: the second).
+// Player 1's pass has never-run paths (traps).
+typedef struct {
+  uint16_t rec, tab, sky, rows, bands, x_small, x_big, k1, k2, pairs;
+  uint8_t save24;
+  uint16_t at22, at18, list, sub, base_k, edge1, edge2, e0add, fin_at;
+  bool a_type, rare;  // rare: the pass whose rare paths were never run
+} VsProjView;
+
+static const VsProjView vs_proj_views[4] = {
+  {0x0262, 0x3DEC, 0x0178, 0x356C, 0x4D95, 0x2B2B, 0x2C2B, 0x00DC, 0x01C4, 0x0AF6, 0x94, 0x0166, 0x015E, 0x00D0, 0x74, 0x6C, 0xAB28, 0xA79C, 0x1546, 0x1548, true, false},
+  {0x0200, 0x3AEC, 0x0174, 0x34EC, 0x4CFD, 0x272B, 0x282B, 0x006C, 0x01C4, 0x0796, 0x90, 0x0164, 0x015C, 0x00D0, 0x04, 0x68, 0, 0, 0x1536, 0x1538, false, true},
+  {0x0315, 0x436C, 0x0180, 0x35AC, 0x4DE1, 0x2D2B, 0x2E2B, 0x00DC, 0x013C, 0x11B6, 0x96, 0x016A, 0x0162, 0x00D2, 0x74, 0x6C, 0xAB28, 0xA79C, 0x1566, 0x1568, true, false},
+  {0x02B3, 0x406C, 0x017C, 0x352C, 0x4D49, 0x292B, 0x2A2B, 0x006C, 0x013C, 0x0E56, 0x92, 0x0168, 0x0160, 0x00D2, 0x04, 0x68, 0xA968, 0xA5DC, 0x1556, 0x1558, false, false},
+};
+
+static uint16_t vs_proj_ext(const VsProjView* c, uint8_t v) {  // BIT #$80 / BEQ / ORA #$FF00
+  if(c->rare && (v & 0x80)) tg3000_unported("$85:A94C/$A964: player 1's sign extension");
+  return sext8(v);
+}
+
+static void vs_proj_pass(const VsProjView* c) {
+  const bool small = rd16(0x00B4) != 0;
+  const uint16_t band = small ? 0x0023 : 0x0045;
+  wr16(DP + 0x18, small ? c->x_small : c->x_big);
+  wr16(DP + 0x1A, small ? 0x019C : 0x033C);
+  wr16(DP + 0x1C, small ? 0x0004 : 0x01A4);
+  wr16(DP + 0x14, (uint16_t)(0x0080 - ((rd16(c->rec + 0x25) >> 1) & 0x007E)));
+  wr16(DP + 0x16, (uint16_t)((rd16(c->rec + 0x26) << 1) & 0x003E));
+  const uint32_t x = rd16(DP + 0x16);
+  const uint16_t at = rd16(DP + 0x14);
+  const uint16_t ahead = xba16((uint16_t)((uint16_t)(0x0080 - at) >> 1)), behind = xba16((uint16_t)(at >> 1));
+  uint16_t lo, hi;
+  road_port_product32(rd16(c->tab + x), 0xFC00, &lo, &hi);
+  wr16(c->sky, (uint16_t)(hi + (lo >= 0x8000 ? 1 : 0)));
+  road_port_product32(rd16(c->tab + 0x82 + x), ahead, &lo, &hi);
+  wr16(DP + 0x1E, (uint16_t)(rd16(c->rec + 8) - (uint16_t)(hi << 2 | lo >> 14)));
+  road_port_product32(rd16(DP + 0x1E), behind, &lo, &hi);  // (its answers dropped: $20 cleared)
+  wr16(DP + 0x20, 0);
+  road_port_product32(rd16(c->tab + 2 + x), ahead, &lo, &hi);
+  wr16(DP + 0x26, (uint16_t)-(uint16_t)(hi << 2 | lo >> 14));
+  road_port_product32(rd16(DP + 0x26), behind, &lo, &hi);
+  wr16(DP + 0x28, (uint16_t)(hi << 2 | lo >> 14));
+  wr16(c->bands + band, c->k1);
+  static const uint16_t head[6] = {0x000D, 0x0000, 0x0033, 0x0033, 0xFFCB, 0x00BF};
+  for(int i = 0; i < 6; i++) dsp4_port_write16(head[i]);
+  dsp4_port_write16(c->k1);
+  dsp4_port_write16(rd16(c->rec));
+  dsp4_port_write16(rd16(c->rec + 2));
+  dsp4_port_write16(c->k2);
+  dsp4_port_write16(rd16(DP + 0x1A));
+  dsp4_port_write16(0x00C0);
+  wr16(DP + 0x22, (uint16_t)(band - 1));
+  wr16(DP + 0x24, 2);
+  dsp4_port_write16((uint16_t)(rd16(DP + 0x1D) & 0xFF00));
+  dsp4_port_write16(vs_proj_ext(c, rd8(DP + 0x1F)));
+  dsp4_port_write16((uint16_t)(rd16(DP + 0x25) & 0xFF00));
+  dsp4_port_write16(vs_proj_ext(c, rd8(DP + 0x27)));
+  bool first = true;
+  for(;;) {
+    wr16(DP + 0x30, bus_rd16(0x83ACEC + rd16(DP + 0x14)));
+    dsp4_port_write16(rd16(DP + 0x30));
+    if(first) {
+      dsp4_port_write16(rd16(DP + 0x20));
+      dsp4_port_write16(rd16(DP + 0x28));
+      first = false;
+    }
+    const uint32_t k = rd16(DP + 0x16);
+    dsp4_port_write16(rd16(c->tab + 0x82 + k));
+    dsp4_port_write16(rd16(c->tab + 2 + k));
+    dsp4_port_write16(rd16(c->tab + 0x102 + k));
+    wr16(DP + 0x16, (uint16_t)(k + 2));
+    const uint32_t r = rd16(DP + 0x24);
+    for(uint32_t col = 0; col < 4; col++) wr16(c->rows + 0x100 * col + r, dsp4_port_read16());
+    wr16(c->rows + 0x400 + r, rd16(DP + 0x30));
+    wr16(c->rows + 0x500 + r, rd16(DP + 0x14));
+    wr16(DP + 0x24, (uint16_t)(r + 2));
+    const uint16_t count = dsp4_port_read16();
+    if(count != 0) {
+      const uint32_t b = rd16(DP + 0x22);
+      wr8(c->bands + b, (uint8_t)(rd8(c->bands + 1 + b) - (uint8_t)count));
+      const uint16_t s = rd16(c->tab + 0x200 + (uint32_t)rd16(DP + 0x16));  // the object's bytes in bank $90
+      const uint16_t y = rd16(DP + 0x18);
+      for(uint16_t i = 0; i < 8; i++) wr8((uint16_t)(y - i), bus_rd8(0x900000 + (uint16_t)(s - i)));  // MVP, top down
+      wr16(DP + 0x18, (uint16_t)(y - 8));
+      uint16_t last = 0;
+      for(uint16_t n = count; n != 0; n--) {
+        last = dsp4_port_read16();
+        wr16(c->pairs + 2 + (uint32_t)last, dsp4_port_read16());  // in low WRAM (DB $30)
+        wr16(c->pairs + (uint32_t)last, dsp4_port_read16());
+      }
+      wr16(DP + 0x22, (uint16_t)(rd16(DP + 0x22) - 1));
+      if(cmp_n(last, rd16(DP + 0x1C))) return;  // CPX $1C / BMI: straight to the tail
+    }
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 0x0080));
+    if(rd16(DP + 0x14) >= 0x0E00) return;
+  }
+}
+
+static void vs_proj_tail(const VsProjView* c) {
+  dsp4_port_write16(0x8000);
+  wr16(DP + c->save24, rd16(DP + 0x24));
+  wr16(c->bands + 0x23, 0);
+  wr16(c->bands + 0x45, 0);
+  wr16(c->at22, rd16(DP + 0x22));
+  wr16(c->at18, (uint16_t)(rd16(DP + 0x18) + 1));
+  uint16_t y = rd16(c->list);
+  wr16(y, c->a_type ? 0x0000 : 0x0008);
+  y = (uint16_t)(y - 3);
+  uint16_t a = (uint16_t)(rd8(c->bands + 1 + (uint32_t)rd16(DP + 0x22)) - c->sub);
+  if(a & 0x8000) tg3000_unported("$85:A73A/$AA82/$ADED/$B135: the last band's line below the limit");
+  wr16(DP + 0x14, a);
+  wr16(y, (uint16_t)((uint16_t)(c->base_k - a) | 0x0080));
+  wr16((uint16_t)(y + 1), (uint16_t)(c->pairs + rd16(DP + 0x1A) - (uint16_t)((uint16_t)(0x0067 - a) << 2)));
+  y = (uint16_t)(y - 3);
+  const uint16_t r37 = rd16(c->rec + 0x37);
+  a = (uint16_t)(r37 + 0x0040);
+  if(a & 0x8000) {
+    if(c->rare) tg3000_unported("$85:AAB5: player 1's edge clamp");
+    a = 0;
+  }
+  wr16(DP + 0x16, a);
+  uint16_t d = (uint16_t)(a - rd16(DP + 0x14));
+  if(d & 0x8000) {
+    if(c->rare) tg3000_unported("$85:AABF-$AAD9: player 1's first edge piece");
+    wr16(y, (uint16_t)((uint16_t)-d | 0x0080));
+    wr16(DP + 0x14, a);
+    wr16((uint16_t)(y + 1), (uint16_t)((uint16_t)(a << 2) + c->edge1));
+    y = (uint16_t)(y - 3);
+  }
+  a = (r37 & 0x8000) ? 0 : r37;
+  wr16(DP + 0x16, a);
+  d = (uint16_t)(a - rd16(DP + 0x14));
+  if(d & 0x8000) {
+    wr16(y, (uint16_t)-d);
+    wr16((uint16_t)(y + 1), (uint16_t)(rd16(0x00E0) + c->e0add));
+    y = (uint16_t)(y - 3);
+    wr16(DP + 0x14, a);
+  }
+  if(rd16(DP + 0x14) != 0) {
+    if(c->rare) tg3000_unported("$85:AB04-$AB13: player 1's last edge piece");
+    wr16(y, (uint16_t)(rd16(DP + 0x14) | 0x0080));
+    wr16((uint16_t)(y + 1), c->edge2);
+    y = (uint16_t)(y - 3);
+  }
+  if(!c->a_type) wr16(y, 0x0004);
+  wr16(c->list, y);
+  wr16(c->fin_at + (uint32_t)rd16(0x00E0), (uint16_t)((c->a_type ? 0x004B : 0x00BB) - r37));
+}
+
+// TG3000_ROUTINE($85:A471) vs_road_project
+uint16_t vs_road_project(void) {
+  const bool small = rd16(0x00B4) != 0;
+  wr16(0x00E0, small ? 4 : 0);
+  wr16(0x00D0, small ? 0x06E0 : 0x06C2);
+  for(int i = 0; i < 2; i++) {
+    vs_proj_pass(&vs_proj_views[i]);
+    vs_proj_tail(&vs_proj_views[i]);
+  }
+  wr16(0x00E0, small ? 4 : 0);
+  wr16(0x00D2, small ? 0x0758 : 0x073A);
+  for(int i = 2; i < 4; i++) {
+    vs_proj_pass(&vs_proj_views[i]);
+    vs_proj_tail(&vs_proj_views[i]);
+  }
+  wr16(0x016C, rd16(0x015C));
+  wr16(0x016E, rd16(0x015E));
+  wr16(0x0170, rd16(0x0160));
+  wr16(0x0172, rd16(0x0162));
+  return vs_bands_merge();
+}
+
 // TG3000_ROUTINE($85:B3D7) road_rows_project
 void road_rows_project(void) {
   const bool small = rd16(0x00B4) != 0;

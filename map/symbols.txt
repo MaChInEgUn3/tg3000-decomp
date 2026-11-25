@@ -549,6 +549,7 @@ func    82A0C6   vs_message_update   ; VS race: race_message_update in the VS fo
 func    82A134   vs_centred_line     ; VS race: text_centred_line in the VS font -> src/text.c
 func    82A1D3   track_backdrop_load ; the track's backdrop: unpack, five VRAM uploads -> src/misc.c
 func    82AD2C   race_positions_update ; both players' positions among 20 cars; position messages -> src/misc.c
+func    85A471   vs_road_project     ; VS race: the four players' road projected by the DSP-4 (command $0D), HDMA list tails, then vs_bands_merge (RTL; a tape row) -> src/misc.c
 func    85B1FF   race_bands_merge    ; the band table from the two players' line lists -> src/misc.c
 func    85B2B7   race_bands_merge2   ; VS race: race_bands_merge for the second pair of views -> src/misc.c
 func    85B1F9   vs_bands_merge      ; VS race: the two band merges in turn -> src/misc.c

@@ -4634,6 +4634,41 @@ the bytes `$00D4`-`$00DF`, in the original's order.
 
 **Check:** the full gate (an adapter line changed).
 
+## The VS race's road projection (vs-race-28, 2026-11-25)
+
+**`vs_road_project` (`$85:A471`)** is `road_rows_project`'s counterpart for the four players of the
+VS race.
+- **Each player's pass:** projects the road through the DSP-4 (command `$0D`, with no track-event
+  rows) into the rows at `$7E:34EC`-`$3AAC` and the band bytes. Each pass is followed by its HDMA
+  list's tail.
+- **At the end:** it calls `vs_bands_merge`.
+- **One C body:** the four passes are the same code with each player's record, tables and
+  constants, in the original's order (players 3, 1, 4, 2). The tails are of two kinds, the first
+  and the second of each pair.
+- **Never-run paths:**
+  - player 1's pass has six: a sign extension, two edge pieces and the edge clamp among them;
+  - every tail has one: the last band's line below the limit.
+
+  They are traps.
+
+**Evidence: interrupted samples, so mostly fuzz.**
+- **Live samples:** every one of them (303) is interrupted: the VS race's raster IRQs land inside
+  this long routine.
+- **Replays:** only the first two entry states are kept for replay, by the harness's rule
+  (`REPLAYS_PER_ROUTINE`). Both pass.
+- **Fuzz:** it scripts the chip's answers for all four passes (500 cases, every path).
+  - It keeps each pass's count sum within 1-104, the range where the tail's never-run path
+    stays out of reach.
+  - **Why the lower bound:** the tail clears the first band's byte before it reads the last.
+    With no count at all, it reads 0. The first fuzz run hit that trap.
+  - It keeps player 1's pass out of its other never-run paths.
+- **Strengthening the real-data evidence** would need more replays per routine for rows like
+  this one. That is a harness change, left for later.
+
+**Delegation:** a delegated agent drafted the C and the fuzz (US$0.94).
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

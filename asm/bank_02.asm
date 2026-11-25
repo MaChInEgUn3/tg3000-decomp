@@ -783,7 +783,7 @@ vs_race_sums_clear:
     stz.w $00DC                 ; $829449
     stz.w $00DD                 ; $82944C
     stz.w $00DF                 ; $82944F
-    jsl.l $85A471               ; $829452
+    jsl.l vs_road_project       ; $829452
     jsr.w vs_car_bands          ; $829456
     lda.w #$9777                ; $829459
     sta.w $0008                 ; $82945C
@@ -904,7 +904,7 @@ CODE_82952E:
     sta.b $88                   ; $829585
     sta.b $8E                   ; $829587
 CODE_829589:
-    jsl.l $85A471               ; $829589
+    jsl.l vs_road_project       ; $829589
     jsr.w $BE18                 ; $82958D
     jsr.w $C170                 ; $829590
     jsr.w oam_high_load         ; $829593

@@ -1759,6 +1759,7 @@ CODE_85A10B:
 CODE_85A117:
     rtl                         ; $85A117
     incbin !baserom:$2A118..$2A471
+vs_road_project:
     pea.w $8330                 ; $85A471
     plb                         ; $85A474
     lda.w #$0000                ; $85A475

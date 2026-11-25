@@ -735,6 +735,9 @@ uint16_t race_bands_merge(void);
 uint16_t race_bands_merge2(void);
 // $85:B1F9: the VS race's two band merges in turn; returns the second's final Y.
 uint16_t vs_bands_merge(void);
+// $85:A471 (RTL): the VS race's road projection for the four players (DSP-4 command $0D; rows
+// $7E:34EC-$3AAC, bands, HDMA lists $D0/$D2), then vs_bands_merge (its Y returned).
+uint16_t vs_road_project(void);
 
 // $83:E2D7: player 1's car, each frame. $1EBE = $8000; $1EB2 = the byte $0395; $022B =
 // func_83EA9B(2 * $021F + the word at $86:DAD9 + 2 * ($0395 & $7F)); the car's settings
