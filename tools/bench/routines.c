@@ -5117,6 +5117,26 @@ static void call_race_upload_queue_drain(const Regs* in, Regs* out) { (void)in; 
 static void call_race_upload_queue_drain_long(const Regs* in, Regs* out) { (void)in; if(race_upload_queue_drain_long()) out->db = 0x83; }
 static void call_func_838989(const Regs* in, Regs* out) { (void)in; (void)out; func_838989(); }
 static void call_func_838989_long(const Regs* in, Regs* out) { (void)in; (void)out; func_838989_long(); }
+// vs_hud_draw ($83:9B49, vs-race-19): its caller goes on to vs_view_scrolls, which loads X and A
+static void call_vs_hud_draw(const Regs* in, Regs* out) { (void)in; (void)out; vs_hud_draw(); }
+// the four players: bars 0-12, counts 0-5 (with a high byte: the original masks it), the words,
+// the read-back addresses clear of every word written, accumulator pairs (negative now and
+// then), the strips' sources
+static void fuzz_vs_hud_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  static const uint16_t bar[4] = {0x003E, 0x0040, 0x0064, 0x0068}, cnt[4] = {0x024E, 0x0301, 0x02B0, 0x0363},
+                        pick[4] = {0x00A4, 0x00AC, 0x00A6, 0x00AE}, acc[4] = {0x4E4D, 0x4E4F, 0x4E51, 0x4E53},
+                        w[12] = {0x42, 0x44, 0x46, 0x4E, 0x50, 0x52, 0x48, 0x4A, 0x4C, 0x54, 0x56, 0x58};
+  (void)r;
+  for(int i = 0; i < 4; i++) {
+    wr16ram(ram, bar[i], (uint16_t)(rnd() % 13));
+    wr16ram(ram, cnt[i], (uint16_t)((rnd() & 0xFF00) | rnd() % 6));
+    wr16ram(ram, pick[i], (uint16_t)(0x7000 + rnd() % 0x0B00));
+    ram[acc[i]] = (uint8_t)rnd();
+    ram[acc[i] + 1] = (uint8_t)rnd();
+  }
+  for(int k = 0; k < 12; k++) wr16ram(ram, w[k], (uint16_t)rnd());
+  for(uint32_t a = 0x4E61; a < 0x4F31; a++) ram[a] = (uint8_t)rnd();
+}
 // (vs-race-4) its caller, the VS split screen's interrupt handler, reloads A, X and Y next
 static void call_vs_view_scrolls(const Regs* in, Regs* out) { (void)in; (void)out; vs_view_scrolls(); }
 static void fuzz_vs_view_scrolls(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -12444,6 +12464,10 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989, .fuzz = fuzz_func_838989},
   {.name = "func_838989_long", .entry = 0x8396D5, .end = 0x8396D9, .rtl = true, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_func_838989_long, .fuzz = fuzz_func_838989},
+  {.name = "vs_hud_draw", .entry = 0x839B49, .end = 0x839EEA, .source = "src/race_frame.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .db = 0x83, .call = call_vs_hud_draw, .fuzz = fuzz_vs_hud_draw,
+   .vramDeadAt = {0x839BD3, 0x839CBB, 0x839DA3, 0x839E8B},   // each player's dead read (harness-30)
+   .vramLiveAt = {0x839BD6, 0x839CBE, 0x839DA6, 0x839E8E}},  // and the read whose word is ORed and written back
   {.name = "vs_view_scrolls", .entry = 0x83886A, .end = 0x838909, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_vs_view_scrolls, .fuzz = fuzz_vs_view_scrolls},
    // (the first step negative, $83:887C, never ran in the movies: the fuzz runs it)

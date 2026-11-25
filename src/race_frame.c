@@ -227,6 +227,70 @@ void race_hud_draw(void) {
   video_upload_vram(0x7E09, strip + 0x1A, 0x1A);
 }
 
+// A VS HUD bar: 6 words at `vram`: bar / 2 full segments ($83:9F2E + y), a half one when the
+// bar is odd ($83:9F3A + y), then empty ones ($83:9F46 + y). (The original runs to y = 12
+// exactly: bars 0-12.)
+static void vs_hud_bar(uint16_t vram, uint16_t bar) {
+  hud_from(vram);
+  uint16_t y = 0;
+  for(uint16_t x = (uint16_t)(bar & 0xFFFE); x; x = (uint16_t)(x - 2)) {
+    hud_put(rom16(0x839F2E + y));
+    y = (uint16_t)(y + 2);
+  }
+  if(bar & 1) {
+    hud_put(rom16(0x839F3A + y));
+    y = (uint16_t)(y + 2);
+  }
+  for(; y != 0x000C; y = (uint16_t)(y + 2)) hud_put(rom16(0x839F46 + y));
+}
+
+// A VS HUD count: 6 words at `vram`: n of $83:9F68, then $83:9F52 to the sixth (n 0-5; the
+// original's last loop runs at least once and to 6 exactly).
+static void vs_hud_count(uint16_t vram, uint8_t n) {
+  hud_from(vram);
+  uint16_t y = n;
+  for(uint16_t i = 0; i < n; i++) hud_put(rom16(0x839F68));
+  do {
+    hud_put(rom16(0x839F52));
+    y = (uint16_t)(y + 1);
+  } while(y != 6);
+}
+
+// TG3000_ROUTINE($83:9B49) vs_hud_draw
+//
+// (drafted by a delegated agent; its never-run spans decoded here.) race_hud_draw for the VS
+// split screen's four players, run by its interrupt handler (D = 0, DB = $83). Each player's:
+// a 6-word bar from its word ($3E, $40, $64, $68), three words ($42-$46, $4E-$52, $48-$4C,
+// $54-$58), a 6-word count from the low byte of $024E, $0301, $02B0, $0363, one tilemap word
+// read back and rewritten ORed with $6000 or $0006 (at the VRAM address in $A4, $AC, $A6, $AE:
+// the second read after a dead one gives the word after it), and two 26-byte strips from
+// $7E:4E61, $4E95, $4EC9, $4EFD, or $83:A3DD when its accumulator pair ($7E:4E4D/$4E4E, ...)
+// adds up negative.
+void vs_hud_draw(void) {
+  static const struct {
+    uint16_t bar, barAt, wordsAt, words[3], countAt, count, pick, bits, acc, strip, at1, at2;
+  } p[4] = {
+    {0x003E, 0x7C21, 0x7D81, {0x0042, 0x0044, 0x0046}, 0x7C28, 0x024E, 0x00A4, 0x6000, 0x4E4D, 0x4E61, 0x7CA1, 0x7CC1},
+    {0x0040, 0x7C32, 0x7D92, {0x004E, 0x0050, 0x0052}, 0x7C39, 0x0301, 0x00AC, 0x0006, 0x4E4F, 0x4E95, 0x7CB2, 0x7CD2},
+    {0x0064, 0x7DE1, 0x7F41, {0x0048, 0x004A, 0x004C}, 0x7DE8, 0x02B0, 0x00A6, 0x6000, 0x4E51, 0x4EC9, 0x7E61, 0x7E81},
+    {0x0068, 0x7DF2, 0x7F52, {0x0054, 0x0056, 0x0058}, 0x7DF9, 0x0363, 0x00AE, 0x0006, 0x4E53, 0x4EFD, 0x7E72, 0x7E92},
+  };
+  hud_step = 1;
+  for(int i = 0; i < 4; i++) {
+    vs_hud_bar(p[i].barAt, rd16(p[i].bar));
+    hud_from(p[i].wordsAt);
+    for(int k = 0; k < 3; k++) hud_put(rd16(p[i].words[k]));
+    vs_hud_count(p[i].countAt, rd8(p[i].count));
+    const uint16_t at = rd16(p[i].pick);
+    video_write_vram_word(at, (uint16_t)(video_read_vram_word((uint16_t)(at + 1)) | p[i].bits));
+    const uint8_t acc = (uint8_t)(rd8(p[i].acc) + rd8((uint32_t)p[i].acc + 1));
+    wr8((uint32_t)p[i].acc + 1, acc);
+    const uint32_t strip = (acc & 0x80) ? 0x83A3DD : 0x7E0000u | p[i].strip;
+    video_upload_vram(p[i].at1, strip, 0x1A);
+    video_upload_vram(p[i].at2, strip + 0x1A, 0x1A);
+  }
+}
+
 // TG3000_ROUTINE($85:87BA) irq_race_band
 //
 // The race's raster IRQ, once per band of the screen: it sends the next chunk of the

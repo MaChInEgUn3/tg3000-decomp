@@ -4336,6 +4336,48 @@ They are one C function over a table.
 
 **Check:** the incremental gate (additions only).
 
+## VRAM reads served to the C (harness-30, 2026-11-25; the advisor's practice, open to the owner's veto)
+
+- **The need.** The VS HUD (next section) reads a tilemap word back from VRAM and writes it
+  back ORed with some bits. Until now the C could only write VRAM: harness-9 lets a row's dead
+  VMDATA read through, but no live one.
+- **A tape, as for the DSP-4 (harness-4).**
+  - A row lists its live read sites (`vramLiveAt`, up to 4 PCs of a 16-bit `LDA $2139`) and
+    more dead ones (`vramDeadAt`, besides `vramReadAt`).
+  - At a live site, the words the original reads are kept in order, up to 8.
+  - The C reads VRAM through a new platform call, `video_read_vram_word` (`src/platform.h`).
+    On the bench it returns those words in order. The C must read exactly as many: a short or
+    long count fails the sample.
+  - The values themselves are checked through what the C does with them: the words written
+    back are compared as effects.
+- **The negative check, done by hand and not kept as a row.** A C that read one word more failed
+  every live sample and every fuzz case: "the C read VRAM word 4, past the original's 4".
+  - It is not a negative row, because `verify_all.sh` runs those over the 60k movie only, and an
+    unreached negative row fails it.
+- **Check:** the full gate (`difftest.c` and `platform_bench.c` changed).
+
+## The VS split screen's HUD in VRAM (vs-race-19, 2026-11-25)
+
+**`vs_hud_draw` (`$83:9B49`)** is `race_hud_draw` for the VS split screen's four players. Its caller is
+the split screen's interrupt handler (D = 0, DB = `$83`). A delegated agent drafted it (US$0.63)
+and pointed out the live VRAM read that harness-30 now serves. Player 1's two never-run spans were
+decoded here: its bar's loops.
+
+For each player it writes:
+- **a 6-word bar** from its bar word (`$3E`, `$40`, `$64`, `$68`): full segments (`$83:9F2E`), a
+  half one when the bar is odd (`$83:9F3A`), then empty ones (`$83:9F46`);
+- **three words**;
+- **a 6-word count** from the low byte of `$024E`, `$0301`, `$02B0` or `$0363`: n of `$83:9F68`,
+  then `$83:9F52`;
+- **one tilemap word read back:** the second read after a dead one, at the VRAM address in `$A4`,
+  `$AC`, `$A6` or `$AE`. It is rewritten ORed with `$6000` or `$0006`;
+- **two 26-byte strips** from `$7E:4E61` + `$34` a player, or from `$83:A3DD` when its accumulator
+  pair (`$7E:4E4D`/`$4E4E`, ...) adds up negative.
+
+**Results:** 1,121 live samples, 500 fuzz cases, 377/377 paths.
+
+**Check:** the full gate (with harness-30).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

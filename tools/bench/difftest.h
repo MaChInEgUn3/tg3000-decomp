@@ -35,6 +35,10 @@ typedef struct {
                            // only its step of the VRAM address matters, which the PPU's
                            // pointer (the one VRAM word writes are recorded at) takes; at
                            // that PC, for every row, the read is not a hardware access
+  uint32_t vramDeadAt[4];  // harness-30: more dead VMDATA read sites, as vramReadAt
+  uint32_t vramLiveAt[4];  // harness-30: live VMDATA read sites (a 16-bit LDA $2139): the words
+                           // the original reads there are kept, in order, and served to the C
+                           // (video_read_vram_word), which must read as many
   uint32_t endAt;          // a handler's prologue: the sample ends when it reaches this
                            // instruction (its dispatch, an indirect jump to the target, which
                            // has its own row); D and DB are compared there
@@ -103,6 +107,8 @@ uint8_t difftest_input(uint16_t reg);
 // The C's DSP-4 data-port byte (platform_bench.c): a write is checked against the sample's
 // tape in place; a read returns the tape's byte. Outside a taped row any use fails.
 uint8_t difftest_dsp4_byte(uint8_t value, bool write);
+// harness-30: the next word the original read at its live VMDATA read sites (vramLiveAt)
+uint16_t difftest_vram_read(void);
 // The bench chip's scripted answers for a taped row's fuzz case (dsp4_bridge.cpp): status
 // always ready, data reads from `words` (low byte first), 0 past the end; writes are not
 // fed to the chip. Cleared by dsp4_bridge_reset.

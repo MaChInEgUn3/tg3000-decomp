@@ -789,7 +789,7 @@ CODE_839846:
     lda.b $FC                   ; $83989C
     cmp.w #$0800                ; $83989E
     bmi CODE_8398A6             ; $8398A1
-    jsr.w $9B49                 ; $8398A3
+    jsr.w vs_hud_draw           ; $8398A3
 CODE_8398A6:
     jsr.w vs_view_scrolls       ; $8398A6
     lda.w #$0080                ; $8398A9
@@ -1058,6 +1058,7 @@ CODE_839B37:
     rep.b #$20                  ; $839B44
 CODE_839B46:
     jmp.w $9734                 ; $839B46
+vs_hud_draw:
     lda.w #$7C21                ; $839B49
     sta.w $2116                 ; $839B4C
     ldy.w #$0000                ; $839B4F

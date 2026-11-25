@@ -150,6 +150,11 @@ typedef struct {
   // difftest_dsp4_byte); kept out of the sample, which every entry clears
   int nTape;
   bool tapeOverflow;
+  // harness-30: the words read at the row's live VMDATA sites, in order (vramLiveAt)
+  uint16_t vramReads[8];
+  int nVramReads;
+  uint8_t vramReadLow;
+  bool vramReadOverflow;
   uint32_t hwAccessAdr, leftExtentPc;
   bool foreignStack;  // a handler it recorded switched to another stack (two-task screens)
   const char* hwWhy;
@@ -365,6 +370,7 @@ static bool collectingC;
 // The C's place on the sample's DSP-4 tape, and its first mismatch.
 static int cTapePos;
 static char cTapeWhy[160];
+static int cVramReadPos;  // harness-30
 
 // Each register's reads are served in order: a cursor per register (harness-18: a long row
 // has hundreds of thousands, so no scan from the start).
@@ -424,7 +430,17 @@ static void buildNativeSites(void) {
 }
 // harness-9: the PCs of the registry's declared dead VMDATA reads (vramReadAt)
 static bool vramReadSite(uint32_t pc) {
-  for(int i = 0; i < routineCount; i++) if(routines[i].vramReadAt && routines[i].vramReadAt == pc) return true;
+  for(int i = 0; i < routineCount; i++) {
+    if(routines[i].vramReadAt && routines[i].vramReadAt == pc) return true;
+    for(int k = 0; k < 4; k++)
+      if((routines[i].vramDeadAt[k] && routines[i].vramDeadAt[k] == pc) || (routines[i].vramLiveAt[k] && routines[i].vramLiveAt[k] == pc))
+        return true;
+  }
+  return false;
+}
+// harness-30: a live VMDATA read site of this row
+static bool vramLiveSite(const Routine* r, uint32_t pc) {
+  for(int k = 0; k < 4; k++) if(r->vramLiveAt[k] && r->vramLiveAt[k] == pc) return true;
   return false;
 }
 static bool nativeAt(uint32_t pc) {
@@ -458,6 +474,18 @@ uint8_t difftest_dsp4_byte(uint8_t value, bool write) {
     return 0;
   }
   return tapes[k][pos].val;
+}
+
+uint16_t difftest_vram_read(void) {
+  if(!collectingC || cSample == NULL) return 0;
+  const Sample* smp = cSample;
+  const int pos = cVramReadPos++;
+  if(pos >= smp->nVramReads) {
+    if(cTapeWhy[0] == '\0')
+      snprintf(cTapeWhy, sizeof cTapeWhy, "the C read VRAM word %d, past the original's %d", pos, smp->nVramReads);
+    return 0;
+  }
+  return smp->vramReads[pos];
 }
 
 void difftest_dma_claim(int slot, int reg, uint8_t value) {
@@ -1024,6 +1052,11 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
       else smp->setupPending = true;
       continue;
     } else if(!write && (lo16 == 0x2139 || lo16 == 0x213A) && vramReadSite(insnPc)) {
+      if(vramLiveSite(&table[smp->idx], insnPc)) {  // harness-30: kept for the C, low byte then high
+        if(lo16 == 0x2139) smp->vramReadLow = val;
+        else if(smp->nVramReads < 8) smp->vramReads[smp->nVramReads++] = (uint16_t)(smp->vramReadLow | val << 8);
+        else smp->vramReadOverflow = true;
+      }
       continue;  // harness-9: a declared dead VMDATA read; the PPU's pointer takes its step
     } else {
       smp->hwWhy = "hardware access (not supported by this routine's C)";
@@ -1174,6 +1207,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   cInputMissing = false;
   cTapePos = 0;
   cTapeWhy[0] = '\0';
+  cVramReadPos = 0;
   cPpuWritten = 0;
   collectingC = true;
   irqReplayed = 0;
@@ -1196,6 +1230,11 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   }
   if(r->dsp4Tape && smp->tapeOverflow) {
     snprintf(why, whyLen, "the original's DSP-4 tape overflowed (%d bytes)", smp->nTape);
+    return false;
+  }
+  if(smp->vramReadOverflow || cVramReadPos != smp->nVramReads) {
+    snprintf(why, whyLen, "the C read %d VRAM words, the original %d%s", cVramReadPos, smp->nVramReads,
+      smp->vramReadOverflow ? " (and more than 8)" : "");
     return false;
   }
   if(r->dsp4Tape && cTapePos != smp->nTape) {

@@ -139,6 +139,7 @@ func    838644   race_upload_queue_drain ; send the race VRAM queue ($7E:F433..)
 func    8396D1   race_upload_queue_drain_long ; race_upload_queue_drain (long) -> src/race_frame.c
 func    838989   func_838989         ; 24-bit $00D4 += $01CC (unless paused), words at $1536/$1556 -> src/race_frame.c
 func    8396D5   func_838989_long    ; func_838989 (long) -> src/race_frame.c
+func    839B49   vs_hud_draw         ; VS split screen: race_hud_draw for the four players (bars, words, counts, a word read back, strips) -> src/race_frame.c
 func    83886A   vs_view_scrolls     ; VS split screen: four 24-bit positions += their steps, the views' words -> src/race_frame.c
 func    859147   race_cycle_blocks   ; every 4th race frame: cycle the 8-byte blocks of $7E:2000-$213F -> src/race_frame.c
 func    858814   race_hud_draw       ; race HUD tilemap words: bar, clock digits, counters, gauge, lights, two strips (long) -> src/race_frame.c

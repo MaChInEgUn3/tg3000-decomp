@@ -25,6 +25,9 @@ void video_fill_vram(uint16_t vram_word, uint8_t value, uint32_t size);
 // $2119 with VMAIN = $80; the console takes it only in vblank or under forced blank, which
 // is when the game does it.)
 void video_write_vram_word(uint16_t vram_word, uint16_t value);
+// Read one word of video RAM at word address `vram_word` (the original sets VMADD and reads
+// VMDATA, $2139/$213A, after a dead read; harness-30).
+uint16_t video_read_vram_word(uint16_t vram_word);
 
 // The VRAM address step ($2115 VMAIN, raw byte): $80 = one word, $81 = 32 words (a
 // tilemap column), after the high byte. Uploads and word writes name their addresses;

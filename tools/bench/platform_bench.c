@@ -17,6 +17,12 @@ void video_write_vram_word(uint16_t vram_word, uint16_t value) {
   difftest_effect(EFFECT_VRAM_WORD, vram_word, value, 1);
 }
 
+// harness-30: the words the original read from VMDATA at the row's live read sites, in order
+uint16_t video_read_vram_word(uint16_t vram_word) {
+  (void)vram_word;
+  return difftest_vram_read();
+}
+
 void video_upload_cgram(uint8_t index, uint32_t src, uint32_t size) {
   difftest_effect(EFFECT_CGRAM, index, src, size);
 }
