@@ -4766,6 +4766,7 @@ CODE_85BEB6:
     sta.w $1558,y               ; $85BECD
     rtl                         ; $85BED0
     incbin !baserom:$2BED1..$2BF78
+vs_road_rows_view0:
     pea.w $837E                 ; $85BF78
     plb                         ; $85BF7B
     lda.w $023E                 ; $85BF7C
@@ -5111,6 +5112,7 @@ CODE_85C300:
     sta.w $0237                 ; $85C311
     plb                         ; $85C314
     rtl                         ; $85C315
+vs_road_rows_view1:
     pea.w $837E                 ; $85C316
     plb                         ; $85C319
     lda.w $02F1                 ; $85C31A
@@ -5510,6 +5512,7 @@ CODE_85C6AC:
     sta.w $02EA                 ; $85C6BD
     plb                         ; $85C6C0
     rtl                         ; $85C6C1
+vs_road_rows_view2:
     pea.w $837E                 ; $85C6C2
     plb                         ; $85C6C5
     lda.w $02A0                 ; $85C6C6
@@ -5881,6 +5884,7 @@ CODE_85CA02:
     sta.w $0299                 ; $85CA13
     plb                         ; $85CA16
     rtl                         ; $85CA17
+vs_road_rows_view3:
     pea.w $837E                 ; $85CA18
     plb                         ; $85CA1B
     lda.w $0353                 ; $85CA1C

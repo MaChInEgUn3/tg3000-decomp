@@ -7412,10 +7412,10 @@ CODE_82DF8A:
     sty.b $84                   ; $82DF8D
     sec                         ; $82DF8F
     rts                         ; $82DF90
-    jsl.l $85BF78               ; $82DF91
-    jsl.l $85C316               ; $82DF95
-    jsl.l $85C6C2               ; $82DF99
-    jsl.l $85CA18               ; $82DF9D
+    jsl.l vs_road_rows_view0    ; $82DF91
+    jsl.l vs_road_rows_view1    ; $82DF95
+    jsl.l vs_road_rows_view2    ; $82DF99
+    jsl.l vs_road_rows_view3    ; $82DF9D
     rts                         ; $82DFA1
     incbin !baserom:$15FA2..$15FA9
 road_rows_build_call:

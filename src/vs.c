@@ -1430,6 +1430,197 @@ void vs_race_track(void) {
   dma_stream_size(3, 0);
 }
 
+// The VS race's road rows, one copy per player ($85:BF78, $85:C316, $85:C6C2, $85:CA18):
+// road_rows_build's counterpart without the segments, curves, edges and track events. Each
+// copy has its player's record and tables (below). The paths a copy never runs are traps,
+// by the flags in `holes` (the others' code is not taken for them unchecked).
+enum {
+  VS_HOLE_FLAG_CLEAR = 1, VS_HOLE_LOW_KIND = 2, VS_HOLE_LIST2 = 4, VS_HOLE_NEXT_OBJ = 8,
+  VS_HOLE_LAP_WRAP = 16, VS_HOLE_KIND_SCAN = 32, VS_HOLE_TILT = 64,
+};
+typedef struct {
+  uint16_t rec, tab, sum, height;    // the player's record, its row tables, sideways sum, height
+  uint8_t objCur, segCur;            // the D+ cursors of its object stream and segments (0: none)
+  uint16_t spawnFlag, gfx, baseLow;  // a spawned object's $F733, $F633 add, $F833 base (high kind: +$0370)
+  uint8_t f933Low, f933High;         // $F933: 0 lane << 1, 1 ((lane + $40) & $FF) << 1, 2 (lane + $40) << 1
+  uint16_t side0, side1;             // the $1EF8-style words (0: none)
+  uint16_t kindOut;                  // the road kind out ($0142/$0144; 0: no road-kind block)
+  unsigned holes;                    // the copy's never-run paths
+} VsRoadView;
+
+static const VsRoadView vs_road_views[4] = {
+  {0x0200, 0x3AEC, 0x01CE, 0x1E1E, 0xA0, 0xA2, 0x007F, 0x0000, 0x45EC, 0, 0, 0x1EF8, 0x1EFA, 0x0142, 127},
+  {0x02B3, 0x406C, 0x01D2, 0x1E20, 0xA4, 0xA6, 0x017F, 0x0800, 0x46C8, 1, 2, 0x1F02, 0x1F04, 0x0144,
+   VS_HOLE_LIST2 | VS_HOLE_NEXT_OBJ | VS_HOLE_KIND_SCAN},
+  {0x0262, 0x3DEC, 0x01D6, 0x1E22, 0xA8, 0x00, 0x027F, 0x1000, 0x47A4, 0, 0, 0, 0, 0, VS_HOLE_LIST2},
+  {0x0315, 0x436C, 0x01DA, 0x1E24, 0xAC, 0xAE, 0x037F, 0x1800, 0x4880, 1, 1, 0, 0, 0, VS_HOLE_LIST2},
+};
+
+static uint16_t vs_object_spawn(const VsRoadView* v, uint16_t ox, uint16_t y, uint16_t kind2, bool high) {
+  const uint32_t t = bus_rd16((high ? 0x86AC36 : 0x86AE36) + kind2);
+  const uint32_t field = high ? 0x22 : 0x1E;
+  wr16(0xF533 + (uint32_t)y, bus_rd16(0x860000 + field + t));
+  wr16(0xF433 + (uint32_t)y, bus_rd16(0x860002 + field + t));
+  wr16(0xF733 + (uint32_t)y, v->spawnFlag);
+  wr16(0xF533 + (uint32_t)y, (uint16_t)(rd16(0x6591 + (uint32_t)bus_rd16(0x860000 + t)) + rd16(0xF533 + (uint32_t)y)));
+  const uint16_t lane = rd8(0x5B93 + (uint32_t)ox);
+  wr16(0xF633 + (uint32_t)y, (uint16_t)((lane << 5) + v->gfx));
+  const uint8_t m = high ? v->f933High : v->f933Low;
+  wr16(0xF933 + (uint32_t)y, m == 0 ? (uint16_t)(lane << 1)
+                             : m == 1 ? (uint16_t)(((lane + 0x40) & 0xFF) << 1) : (uint16_t)((lane + 0x40) << 1));
+  wr16(0xF833 + (uint32_t)y, (uint16_t)((rd8(0x5B94 + (uint32_t)ox) << 1) + v->baseLow + (high ? 0x0370 : 0)));
+  func_85CDAF(y);
+  return (uint16_t)((y + 2) & 0x00FF);
+}
+
+static void vs_road_rows(const VsRoadView* v) {
+  const uint32_t rec = v->rec, pos = rec + 0x24, row = rec + 0x26, frac = rec + 0x3C, prev = rec + 0x3E;
+  const uint32_t acc = rec + 0x40, flag = rec + 0x44, xtab = (uint32_t)v->tab + 2;
+  // the sideways place over the rows crossed, by DSP-4 products (as road_rows_build)
+  uint32_t x = (uint16_t)(rd16(prev) << 1) & 0x003E;
+  uint16_t crossed = (uint16_t)(rd16(row) - rd16(prev));
+  if(crossed != 0) {
+    const uint16_t back = (uint16_t)(0 - rd16(frac));
+    uint32_t p = (uint32_t)dsp4_multiply((int16_t)((back >> 8) & 0x00FF), (int16_t)rd16(xtab + x));
+    wr16(DP + 0x14, (uint16_t)((p << 8) & 0xFF00));
+    wr16(DP + 0x16, (uint16_t)((p >> 8) & 0x00FF));
+    uint16_t a = (uint16_t)(p >> 8);
+    wr16(v->sum, a);
+    x += 2;
+    if(--crossed != 0) {
+      uint32_t c = rd16(frac) == 0;  // the carry of the SBC above
+      do {
+        const uint32_t sum = (uint32_t)a + rd16(xtab + x) + c;
+        a = (uint16_t)sum;
+        c = sum >> 16;
+        x += 2;
+      } while(--crossed != 0);
+      wr16(v->sum, a);
+    }
+    p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)((rd16(pos) & 0xFF00) >> 1), (int16_t)(uint16_t)(rd16(xtab + x) << 1));
+    wr16(v->sum, (uint16_t)((uint16_t)(p >> 16) + rd16(v->sum)));
+  } else {
+    const uint32_t p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)((uint16_t)((rd16(pos) & 0xFF00) - rd16(frac)) >> 1),
+                                               (int16_t)(uint16_t)(rd16(xtab + x) << 1));
+    wr16(v->sum, (uint16_t)(p >> 16));
+  }
+  uint16_t r16 = (uint16_t)(rd16(prev) + 0x0020);
+  if(r16 >= rd16(0x019A)) r16 = (uint16_t)(r16 - rd16(0x019A));
+  wr16(DP + 0x16, r16);
+  wr16(frac, (uint16_t)(rd16(pos) & 0xFF00));
+  const uint16_t rows = (uint16_t)(rd16(row) - rd16(prev));
+  if(rows != 0) {
+    wr16(DP + 0x14, rows);
+    if(!(rd16(flag) & 1)) {
+      if(v->holes & VS_HOLE_FLAG_CLEAR) tg3000_unported("$85:C05E: the rows accumulator, flag bit 0 clear");
+      wr16(acc, (uint16_t)(rows + rd16(acc)));
+    }
+    if(v->side0) {
+      x = (uint16_t)(rd16(prev) << 1) & 0x003E;
+      wr16(v->side0, (uint16_t)(rd16(0x3E6E + x) - rd16(0x3E6C + x)));
+      wr16(v->side1, (uint16_t)(rd16(0x3DEE + x) - rd16(0x3DEC + x)));
+    }
+    do {  // each new row, at D+$16
+      const uint16_t d16 = rd16(DP + 0x16);
+      wr16(DP + 0x18, (uint16_t)((uint16_t)dsp4_multiply((int16_t)((uint16_t)(d16 << 2) >> 8), 0x000A) + rd16(DP + 0x98)));
+      const uint32_t entry = rd16(DP + 0x18);
+      const uint32_t y = (uint16_t)(d16 << 1) & 0x003E;
+      wr16(DP + 0x1A, (uint16_t)y);
+      wr16(DP + 0x1C, (uint16_t)(d16 & 0x003E));
+      const uint32_t T = v->tab;
+      uint32_t at = (uint16_t)(rd16(DP + 0x1C) + bus_rd16(0x840000 + entry) + (d16 >> 15));
+      wr16(T + y, bus_rd16(0x850000 + at));
+      wr16(T + 0x40 + y, bus_rd16(0x850000 + at));
+      at = (uint16_t)(rd16(DP + 0x1C) + bus_rd16(0x840002 + entry));
+      const uint16_t up = (uint16_t)(bus_rd16(0x850000 + at) - rd16(v->height));
+      wr16(T + 0x80 + y, up);
+      wr16(T + 0xC0 + y, up);
+      if((y & 0x0006) == 0x0006) wr16(v->height, bus_rd16(0x850000 + at));
+      uint16_t a = (y & 0x0002) ? (uint16_t)(rd16(DP + 0x1C) | 0x0001) : rd16(DP + 0x1C);
+      a = (uint16_t)(a << 1);
+      if(!(a & 0x0040)) at = (uint16_t)(a + bus_rd16(0x840006 + entry));
+      else at = (uint16_t)((a & 0x003F) + bus_rd16(0x840008 + entry));
+      wr16(T + 0x200 + y, rd16(0x5391 + at));
+      wr16(T + 0x240 + y, rd16(0x5391 + at));
+      const uint32_t list = bus_rd16(0x840004 + entry);
+      if(bus_rd16(0x850002 + list) < rd16(DP + 0x1A) && (v->holes & VS_HOLE_LIST2))
+        tg3000_unported("$85:C13A and its copies: a row list's second pair");
+      wr16(T + 0x100 + y, bus_rd16(0x850000 + list));
+      wr16(T + 0x140 + y, bus_rd16(0x850000 + list));
+      wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + 1));
+      if(rd16(DP + 0x16) == rd16(0x019A)) {
+        wr16(DP + 0x16, 0);
+        if(v->segCur) wr16(DP + v->segCur, 0);
+      }
+      wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
+    } while(rd16(DP + 0x14) != 0);
+    // the road objects whose place came up
+    uint16_t ox = rd16(DP + v->objCur);
+    if(rd16(row) >= rd16(0x5B91 + (uint32_t)ox)) {
+      uint16_t slot = rd16(0x0100);
+      for(;;) {
+        const uint16_t k = rd16(0x5B94 + (uint32_t)ox);
+        const bool high = (k & 0xFF00) != 0;
+        if(!high && (v->holes & VS_HOLE_LOW_KIND)) tg3000_unported("$85:C18A: a low-kind object");
+        slot = vs_object_spawn(v, ox, slot, (uint16_t)(k << 1), high);
+        ox = (uint16_t)(ox + 5);
+        wr16(DP + v->objCur, ox);
+        if(rd16(row) < rd16(0x5B91 + (uint32_t)ox)) break;
+        if(v->holes & VS_HOLE_NEXT_OBJ) tg3000_unported("$85:C25E and its copy: a second object in one frame");
+      }
+      wr16(0x0100, slot);
+    }
+    uint16_t cur = rd16(row);
+    if(cur >= rd16(0x019A)) {  // the lap's wrap
+      if(v->holes & VS_HOLE_LAP_WRAP) tg3000_unported("$85:C26D: the lap's wrap");
+      cur = (uint16_t)(cur - rd16(0x019A));
+      wr16(DP + v->objCur, 0);
+    }
+    wr16(row, cur);
+    wr16(prev, cur);
+    if(v->kindOut) {  // the road kind at the player: only before the first segment
+      wr16(rec + 0x60, 0);
+      if(rd16(row) >= bus_rd16(0x840000 + rd16(DP + 0x9C)) && (v->holes & VS_HOLE_KIND_SCAN))
+        tg3000_unported("$85:C28D and its copy: the road-kind scan");
+      wr16(v->kindOut, (uint16_t)(rd16(rec + 0x60) & 0x00FF));
+    }
+  }
+  // the tilt from the heights a row ahead and three behind (func_82EA49 = $85:CD78)
+  uint16_t a = (uint16_t)(rd16(row) + 1);
+  if(a >= rd16(0x019A)) {
+    if(v->holes & VS_HOLE_TILT) tg3000_unported("$85:C2B6: the tilt's row ahead wraps");
+    a = (uint16_t)(a - rd16(0x019A));
+  }
+  wr16(DP + 0x14, func_82EA49(a));
+  a = rd16(row);
+  if(a < 3) {
+    if(v->holes & VS_HOLE_TILT) tg3000_unported("$85:C2C7: the tilt's row behind wraps");
+    a = (uint16_t)(a - 3 + rd16(0x019A));
+  } else {
+    a = (uint16_t)(a - 3);
+  }
+  wr16(DP + 0x16, func_82EA49(a));
+  const uint16_t d16 = rd16(DP + 0x16);
+  const uint32_t p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)(rd16(DP + 0x14) - d16),
+                                             (int16_t)(uint16_t)((rd16(rec + 0x25) + 0x0100) & 0x03FF));
+  const uint16_t r = (uint16_t)((uint16_t)(d16 << 2) | ((d16 & 0x8000) ? 3 : 0));
+  uint16_t s = (uint16_t)(((r >> 8) | (r << 8)) & 0x03FF);
+  if(s & 0x0080) {
+    if(v->holes & VS_HOLE_TILT) tg3000_unported("$85:C2FD: the tilt's sign extension");
+    s |= 0xFF00;
+  }
+  wr16(rec + 0x37, (uint16_t)-(uint16_t)((uint16_t)(s + (uint16_t)(p >> 16)) + 9));
+}
+
+// TG3000_ROUTINE($85:BF78) vs_road_rows_view0
+void vs_road_rows_view0(void) { vs_road_rows(&vs_road_views[0]); }
+// TG3000_ROUTINE($85:C316) vs_road_rows_view1
+void vs_road_rows_view1(void) { vs_road_rows(&vs_road_views[1]); }
+// TG3000_ROUTINE($85:C6C2) vs_road_rows_view2
+void vs_road_rows_view2(void) { vs_road_rows(&vs_road_views[2]); }
+// TG3000_ROUTINE($85:CA18) vs_road_rows_view3
+void vs_road_rows_view3(void) { vs_road_rows(&vs_road_views[3]); }
+
 // TG3000_ROUTINE($82:BDDA) vs_step_share
 // The CPU's 16 / 8 divider gives the magnitude's quotient by the step count; a negative word
 // gives it as it is, a positive one (or 0) gives 0 less it. The sign is the caller's N flag.

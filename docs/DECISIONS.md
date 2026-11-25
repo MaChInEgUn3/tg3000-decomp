@@ -4575,6 +4575,45 @@ So this unit took the piece after it.
 
 **Check:** the full gate (a new waiting row).
 
+## The VS race's road rows (vs-race-26, 2026-11-25)
+
+**`vs_road_rows_view0`-`3` (`$85:BF78`, `$85:C316`, `$85:C6C2`, `$85:CA18`)** are the four routines
+the VS race calls at `$82:DF91`, one per player. They are `road_rows_build`'s counterpart without
+the segments, curves, edges and track events. Each one:
+- adds up the sideways place over the rows crossed (DSP-4 products);
+- builds each new row's tables;
+- spawns the road objects that came up;
+- wraps at the end of the lap;
+- reads the road kind (players 1 and 2 only);
+- computes the tilt.
+
+**One C body, four players.**
+- The four copies are the same code with each player's record, tables and object constants.
+  The C is one function with a table of the four (`VsRoadView`).
+- **The copies differ in small ways, kept as found:**
+  - Players 3 and 4 have no road-kind block and no `$1EF8`-style side words.
+  - Player 3 does not reset its segment cursor at the lap's end.
+  - Player 2 masks one lane sum and not the other.
+- **Never-run paths.** Each copy has paths no movie runs. Player 1's copy has nine of them: the
+  low-kind object, the lap's wrap, the road-kind scan and others.
+  - They are traps in the C, by flags per copy.
+  - Another copy's code was not taken for them unchecked, though most look the same.
+
+**Harness (harness-33, open to the owner's veto):** a row may skip up to 12 never-run stretches
+(`holes`), up from 4. Player 1's copy has 9.
+
+**Results:**
+- About 260 live samples per player and 500 fuzz cases each.
+- Every path is reached.
+- **The fuzz** keeps players 1 and 2 out of their never-run paths. It drives:
+  - players 2-4 across the lap's end;
+  - players 3 and 4 to two objects in one frame.
+
+**Delegation:** a delegated agent drafted the C and the fuzz (US$0.96). The objects loop and the
+lap wrap were checked against the listing here.
+
+**Check:** the full gate (the harness changed).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

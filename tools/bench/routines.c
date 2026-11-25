@@ -6622,6 +6622,90 @@ static void call_vs_race_track(const Regs* in, Regs* out) {
   out->z = hi == 0;
   out->c = true;
 }
+// vs_road_rows_view0-3 ($85:BF78, $C316, $C6C2, $CA18; vs-race-26): RTL, DB left $83 (its second PLB)
+static void call_vs_road_rows_view0(const Regs* in, Regs* out) { (void)in; vs_road_rows_view0(); out->db = 0x83; }
+static void call_vs_road_rows_view1(const Regs* in, Regs* out) { (void)in; vs_road_rows_view1(); out->db = 0x83; }
+static void call_vs_road_rows_view2(const Regs* in, Regs* out) { (void)in; vs_road_rows_view2(); out->db = 0x83; }
+static void call_vs_road_rows_view3(const Regs* in, Regs* out) { (void)in; vs_road_rows_view3(); out->db = 0x83; }
+static uint16_t vsr_w(const uint8_t* ram, uint32_t a) { return (uint16_t)(ram[a] | ram[a + 1] << 8); }
+// func_82EA49 on the ROM tables, to know what the tilt will see
+static uint16_t vsr_height(const uint8_t* ram, uint16_t a) {
+  const uint32_t at = (uint32_t)((a >> 6) & 0xFF) * 10 + vsr_w(ram, 0x100 + 0x98);
+  const uint32_t e = (uint32_t)(a & 0x3E) + rom16(0x840002 + (uint16_t)at) + (at >> 16);
+  return rom16(0x850000 + (uint16_t)e);
+}
+// every row built (prev + $20 .. now + $20): its list's first pair must reach it (else a trap)
+static bool vsr_rows_ok(const uint8_t* ram, uint16_t prev, uint16_t now, uint16_t laps) {
+  uint16_t r = (uint16_t)(prev + 0x20);
+  if(r >= laps) r = (uint16_t)(r - laps);
+  for(uint16_t n = (uint16_t)(now - prev); n; n--) {
+    const uint16_t entry = (uint16_t)(((uint16_t)(r << 2) >> 8) * 10 + vsr_w(ram, 0x100 + 0x98));
+    if(rom16(0x850002 + rom16(0x840004 + entry)) < (uint16_t)((r << 1) & 0x3E)) return false;
+    if(++r == laps) r = 0;
+  }
+  return true;
+}
+// 0-3 rows crossed anywhere on the track; the object stream rewound to an entry (the spawns run:
+// views 2 and 3 also two in one frame); views 1-3 also at the lap's ends. Views 0 and 1 keep to
+// states that stay out of their never-run paths (checked here by the row lists and the paths'
+// conditions: view 1 one object a frame and no road-kind scan; view 0 all of its paths).
+static void fuzz_vs_road_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), int view) {
+  (void)r;
+  static const uint16_t recs[4] = {0x0200, 0x02B3, 0x0262, 0x0315};
+  static const uint8_t curs[4] = {0xA0, 0xA4, 0xA8, 0xAC};
+  const uint32_t R = recs[view];
+  const bool strict = view < 2;
+  const uint16_t laps = vsr_w(ram, 0x019A);
+  if(laps < 0x60) return;
+  const uint16_t seg0 = rom16(0x840000 + vsr_w(ram, 0x100 + 0x9C));
+  uint32_t n = 0;  // the stream's entries in order (places rising, below the lap)
+  for(uint16_t last = 0; n < 64; n++) {
+    const uint16_t place = vsr_w(ram, 0x5B91 + 5 * n);
+    if(place < last || place >= laps) break;
+    last = place;
+  }
+  for(int tries = 0; tries < 64; tries++) {
+    const uint32_t scenario = rnd() % 3;
+    uint16_t at = (uint16_t)(rnd() % (laps - 0x30)), now = (uint16_t)(at + rnd() % 4);
+    uint32_t j = 0;
+    if(scenario == 1 && n > 0) {
+      j = rnd() % n;
+      now = vsr_w(ram, 0x5B91 + 5 * j);
+      if(!strict && j + 1 < n && (rnd() & 1)) now = vsr_w(ram, 0x5B91 + 5 * (j + 1));  // two objects
+      at = (uint16_t)(now >= 3 ? now - rnd() % 4 : now);
+      if(strict && (vsr_w(ram, 0x5B91 + 5 * (j + 1)) <= now || (view == 0 && !(vsr_w(ram, 0x5B94 + 5 * j) & 0xFF00))))
+        continue;
+    } else {
+      if(scenario == 2 && view != 0) {
+        if(rnd() & 1) {
+          at = (uint16_t)(laps - 1 - rnd() % 3);
+          now = (uint16_t)(at + rnd() % 4);
+        } else {
+          at = now = (uint16_t)(rnd() % 3);
+        }
+      }
+      while(j < n && vsr_w(ram, 0x5B91 + 5 * j) <= now) j++;  // the natural cursor
+    }
+    const uint16_t wrapped = now >= laps ? (uint16_t)(now - laps) : now;
+    if(view == 1 && wrapped >= seg0) continue;
+    if(view == 0 && (now + 1 >= laps || now < 3 || now >= seg0 || (vsr_height(ram, (uint16_t)(now - 3)) & 0x2000)))
+      continue;
+    if(!vsr_rows_ok(ram, at, now, laps)) continue;
+    wr16ram(ram, R + 0x24, (uint16_t)rnd());
+    ram[R + 0x25] = (uint8_t)rnd();
+    wr16ram(ram, R + 0x26, now);
+    wr16ram(ram, R + 0x3E, at);
+    wr16ram(ram, R + 0x3C, (rnd() & 1) ? 0 : (uint16_t)rnd());
+    wr16ram(ram, R + 0x40, (uint16_t)rnd());
+    wr16ram(ram, R + 0x44, (uint16_t)(rnd() | (view == 0 ? 1 : 0)));  // view 0: bit 0 set (its never-run path)
+    wr16ram(ram, 0x100 + curs[view], (uint16_t)(5 * j));
+    return;
+  }
+}
+static void fuzz_vs_road_rows_view0(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_road_rows(r, ram, rnd, 0); }
+static void fuzz_vs_road_rows_view1(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_road_rows(r, ram, rnd, 1); }
+static void fuzz_vs_road_rows_view2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_road_rows(r, ram, rnd, 2); }
+static void fuzz_vs_road_rows_view3(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_road_rows(r, ram, rnd, 3); }
 // track_palettes_load's inputs, $019A and $1F06 (the divide; a zero product now and then), $1F32
 static void fuzz_vs_race_reset(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_track_palettes_load(r, ram, rnd);
@@ -12889,6 +12973,21 @@ const Routine routines[] = {
   {.name = "vs_race_track", .entry = 0x829348, .end = 0x82941F, .endAt = 0x82941F, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
    .maxInsns = 40000000, .call = call_vs_race_track, .manyEffects = true},  // no fuzz: it waits
+  {.name = "vs_road_rows_view0", .entry = 0x85BF78, .end = 0x85C316, .rtl = true, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_rows_view0, .fuzz = fuzz_vs_road_rows_view0,
+   .fuzzStack = 0x1FF1,
+   .holes = {{0x85C05E, 0x85C067}, {0x85C13A, 0x85C14F}, {0x85C18A, 0x85C1ED}, {0x85C25E, 0x85C261},
+             {0x85C26D, 0x85C278}, {0x85C28D, 0x85C2A1}, {0x85C2B6, 0x85C2B9}, {0x85C2C7, 0x85C2CA},
+             {0x85C2FD, 0x85C300}}},  // its never-run paths (traps in the C)
+  {.name = "vs_road_rows_view1", .entry = 0x85C316, .end = 0x85C6C2, .rtl = true, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_rows_view1, .fuzz = fuzz_vs_road_rows_view1,
+   .fuzzStack = 0x1FF1, .holes = {{0x85C4D8, 0x85C4ED}, {0x85C60A, 0x85C60D}, {0x85C639, 0x85C64D}}},
+  {.name = "vs_road_rows_view2", .entry = 0x85C6C2, .end = 0x85CA18, .rtl = true, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_rows_view2, .fuzz = fuzz_vs_road_rows_view2,
+   .fuzzStack = 0x1FF1, .holes = {{0x85C864, 0x85C879}}},
+  {.name = "vs_road_rows_view3", .entry = 0x85CA18, .end = 0x85CD78, .rtl = true, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_rows_view3, .fuzz = fuzz_vs_road_rows_view3,
+   .fuzzStack = 0x1FF1, .holes = {{0x85CBBA, 0x85CBCF}}},
   {.name = "vs_race_reset", .entry = 0x82BA12, .end = 0x82BD06, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_reset, .fuzz = fuzz_vs_race_reset},
   {.name = "vs_grid_setup", .entry = 0x82BD0E, .end = 0x82BDA9, .source = "src/vs.c", .needM16 = true,

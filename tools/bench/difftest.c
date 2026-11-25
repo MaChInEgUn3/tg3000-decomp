@@ -1229,7 +1229,7 @@ static void findStarts(const Routine* r, Stats* s) {
   bool m8 = !r->needM16, x8 = !r->needX16;
   for(uint32_t i = 0; i < n;) {
     bool skipped = false;
-    for(int h = 0; h < 4; h++) {
+    for(int h = 0; h < 12; h++) {
       if(r->holes[h][1] && r->entry + i >= r->holes[h][0] && r->entry + i < r->holes[h][1]) {
         i = r->holes[h][1] - r->entry;
         skipped = true;

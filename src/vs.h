@@ -209,6 +209,12 @@ void vs_race_reset(void);
 void vs_race_load(void);
 // $82:9348: the VS race setup's track piece (state cleared, the track and its objects, four waits).
 void vs_race_track(void);
+// $85:BF78, $85:C316, $85:C6C2, $85:CA18 (RTL): the VS race's road rows for players 1-4
+// (road_rows_build's counterpart: the rows crossed, the objects that came up, the road kind, the tilt).
+void vs_road_rows_view0(void);
+void vs_road_rows_view1(void);
+void vs_road_rows_view2(void);
+void vs_road_rows_view3(void);
 // $82:BDDA: minus `a` (signed) over the step count $1E9E, on the CPU's divider (the quotient of
 // the magnitude; $FFFF for a zero count). `negative` is the caller's N flag (its load of `a`):
 // the original branches on it, not on `a` itself.

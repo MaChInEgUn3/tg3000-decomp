@@ -102,6 +102,10 @@ func    8AA32B   func_8AA32B         ; $0D23 + table[D+$3C - 10] from the object
 func    8AA381   func_8AA381         ; bits 11/10 of $000E..$001A -> object flags, func_8AA48D -> src/misc.c
 func    8A8290   func_8A8290         ; every 8th count: D+$64 through 1,2,3,4,3,2 -> src/misc.c
 func    809DD0   func_809DD0         ; label + number sprites ($3C00 or $3E00 base) -> src/text.c
+func    85BF78   vs_road_rows_view0  ; VS race: the road's rows for player 1 (record $0200, tables $3AEC; road_rows_build's counterpart) -> src/vs.c
+func    85C316   vs_road_rows_view1  ; the same for player 2 (record $02B3, tables $406C) -> src/vs.c
+func    85C6C2   vs_road_rows_view2  ; the same for player 3 (record $0262, tables $3DEC) -> src/vs.c
+func    85CA18   vs_road_rows_view3  ; the same for player 4 (record $0315, tables $436C) -> src/vs.c
 func    85CDAF   func_85CDAF         ; mark earlier copies of an entry of $7E:F533/$F733 (long) -> src/misc.c
 func    8A869A   func_8A869A         ; $013A = $2A - ($013C >> 4) -> src/misc.c
 func    8A823D   func_8A823D         ; $014C = ($0138 >> 2) - $49 + $0164 -> src/misc.c
