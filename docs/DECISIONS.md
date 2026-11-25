@@ -3951,6 +3951,27 @@ screen. Its caller is the split screen's interrupt handler (`$83:98A6`, not port
 
 **Check:** the incremental gate (additions only).
 
+## The VS race's start grid (vs-race-5, 2026-11-25)
+
+**`vs_grid_setup` (`$82:BD0E`)** sets the four cars' records (`$7E:FAB5` + `$35` a car) for the
+start. It is the VS race's counterpart of `race_grid_setup`, which sets the one-player race's
+twenty records.
+- **Each record:**
+  - the distance and the words at +`$08`, +`$0A` and +`$10` are cleared, and +`$29` is set
+    to 2;
+  - its place on the track (+1) runs from `$019A` - 4 up, one a car;
+  - its lane (+`$1C`) runs from `$0800` by `$0200`;
+  - its kind (+`$10`) runs from 8 by 2.
+- **The record after the fourth** gets place `$7FFF` and kind 6, an end mark.
+- **The race order at `$1E6A`** is the four cars in turn; its other 16 words are that end
+  record.
+- **D+`$14`, D+`$16` and D+`$18` hold the three counters**, as the original leaves them.
+- **Live:** 1 sample, the race's start. **Fuzz:** 500 cases, with `$019A` varied. **Paths:**
+  61/61. Every output is compared.
+
+**Check:** the full gate. The last full run was 5 commits back, so the incremental gate's
+carry rule no longer holds.
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

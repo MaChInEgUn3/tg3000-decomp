@@ -6283,6 +6283,22 @@ static void call_vs_car_parts(const Regs* in, Regs* out) {
   out->a = rd16(0x1EB6);
   setNZ16(out, out->a);
 }
+// vs_grid_setup ($82:BD0E): A the end record ($D4), X $20, Y 0; DEY's Z set, its N clear, the
+// last ADC's C and V clear
+static void call_vs_grid_setup(const Regs* in, Regs* out) {
+  vs_grid_setup(in->d);
+  out->a = 0x00D4;
+  out->x = 0x0020;
+  out->y = 0;
+  out->n = false;
+  out->z = true;
+  out->c = false;
+  out->v = false;
+}
+static void fuzz_vs_grid_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x019A, (uint16_t)((rnd() & 1) ? 0x40 + rnd() % 0x200 : rnd()));
+}
 // the car's entry D+$14: one of the tables' 16 entries, sometimes any byte
 static void fuzz_vs_car_parts(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, (uint16_t)(r->d + 0x14), (uint16_t)((rnd() & 3) ? rnd() % 16 : rnd() & 0xFF));
@@ -12324,6 +12340,8 @@ const Routine routines[] = {
   {.name = "vs_car_parts", .entry = 0x83E878, .end = 0x83E8AB, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .compareA = true, .compareX = true, .call = call_vs_car_parts,
    .fuzz = fuzz_vs_car_parts},
+  {.name = "vs_grid_setup", .entry = 0x82BD0E, .end = 0x82BDA9, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_vs_grid_setup, ALL_OUTPUTS, .fuzz = fuzz_vs_grid_setup},
   {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)

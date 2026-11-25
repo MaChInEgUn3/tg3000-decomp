@@ -171,5 +171,7 @@ uint16_t vs_cars_link(void);
 // player_frame_setup takes the one player's from its parts). Returns the tyre table's index,
 // as the original leaves X.
 uint16_t vs_car_parts(uint16_t dp);
+// $82:BD0E: the VS race's four cars' records set for the start (D+$14-$19 its counters).
+void vs_grid_setup(uint16_t dp);
 
 #endif

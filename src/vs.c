@@ -750,3 +750,35 @@ uint16_t vs_car_parts(uint16_t dp) {
   wr16(0x1EB6, bus_rd16(0x86DD35 + tyres));
   return (uint16_t)tyres;
 }
+
+// TG3000_ROUTINE($82:BD0E) vs_grid_setup
+// The VS race's four cars' records ($7E:FAB5 + $35 a car) set for the start, as
+// race_grid_setup does the one-player race's twenty:
+// - the distance and the words at +$08, +$0A and +$10 cleared, +$29 = 2;
+// - the place on the track (+$01) from $019A - 4 up, one a car;
+// - the lane (+$1C) from $0800 by $0200;
+// - the kind (+$10) from 8 by 2.
+// The record after the fourth gets place $7FFF and kind 6 (an end mark). The race order at
+// $1E6A is the four cars in turn, and its other 16 words are that end record. D+$14, D+$16
+// and D+$18 hold the three counters, as the original leaves them.
+void vs_grid_setup(uint16_t dp) {
+  wr16((uint16_t)(dp + 0x14), (uint16_t)(rd16(0x019A) - 4));
+  wr16((uint16_t)(dp + 0x16), 0x0800);
+  wr16((uint16_t)(dp + 0x18), 0x0008);
+  uint32_t x = 0;
+  for(int i = 0; i < 4; i++, x += 0x35) {
+    static const uint16_t cleared[] = {0xFAB5, 0xFAB7, 0xFABD, 0xFABF, 0xFAC5};
+    for(unsigned k = 0; k < sizeof cleared / sizeof cleared[0]; k++) wr16(cleared[k] + x, 0);
+    wr16(0xFADE + x, 2);
+    wr16(0xFAB6 + x, rd16((uint16_t)(dp + 0x14)));
+    wr16((uint16_t)(dp + 0x14), (uint16_t)(rd16((uint16_t)(dp + 0x14)) + 1));
+    wr16(0xFAD1 + x, rd16((uint16_t)(dp + 0x16)));
+    wr16((uint16_t)(dp + 0x16), (uint16_t)(rd16((uint16_t)(dp + 0x16)) + 0x0200));
+    wr16(0xFAC5 + x, rd16((uint16_t)(dp + 0x18)));
+    wr16((uint16_t)(dp + 0x18), (uint16_t)(rd16((uint16_t)(dp + 0x18)) + 2));
+  }
+  wr16(0xFAB6 + x, 0x7FFF);
+  wr16(0xFAC5 + x, 0x0006);
+  for(int i = 0; i < 4; i++) wr16((uint32_t)(0x1E6A + 2 * i), (uint16_t)(0x35 * i));
+  for(int i = 0; i < 16; i++) wr16((uint32_t)(0x1E72 + 2 * i), (uint16_t)x);
+}

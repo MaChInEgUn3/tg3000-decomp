@@ -4277,7 +4277,7 @@ CODE_82BBDF:
     stz.w $1E12                 ; $82BC02
     stz.w $1E1A                 ; $82BC05
     jsr.w track_palettes_load   ; $82BC08
-    jsr.w $BD0E                 ; $82BC0B
+    jsr.w vs_grid_setup         ; $82BC0B
     lda.w #$FF40                ; $82BC0E
     stz.w $0204                 ; $82BC11
     sta.w $0206                 ; $82BC14
@@ -4368,6 +4368,7 @@ CODE_82BCD8:
     stz.w $1F08                 ; $82BD02
     rts                         ; $82BD05
     incbin !baserom:$13D06..$13D0E
+vs_grid_setup:
     ldy.w #$0004                ; $82BD0E
     ldx.w #$0000                ; $82BD11
     lda.w $019A                 ; $82BD14
