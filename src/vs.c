@@ -1366,6 +1366,28 @@ void vs_race_reset(void) {
   wr16(0x1F08, 0);
 }
 
+// TG3000_ROUTINE($82:92BA) vs_race_load
+// The VS race setup's first piece, entered from the race wrapper's mode table ($82:8418), up to
+// the test of $047C at $82:932D: the screen image; the track number moved on by $2F (to the VS
+// tracks: a 16-bit add, its carry reaches $047C); the track's settings; vs_race_reset; then the
+// graphics unpacked to VRAM and to $7F:0000, the backdrop, 32 colours from $8E:8000 and the
+// track's tiles. The rest of the setup waits on routines not ported yet.
+void vs_race_load(void) {
+  video_load_screen_long(0x839EEA);
+  wr16(0x047B, (uint16_t)(rd16(0x047B) + 0x002F));
+  track_settings_load();
+  vs_race_reset();
+  decompress_to_vram(DP, 0x9B, 0x8125, 0x0000);
+  uint16_t end;
+  decompress(DP, 0x9B, 0x8080, 0x7F, 0x0000, &end);
+  track_backdrop_load(DP);
+  upload_cgram_now(0x00, 0x8E, 0x8000, 0x0040);
+  decompress_to_vram(DP, 0x87, 0x8E04, 0x0E40);
+  track_tiles_load(rd16(0x047B));
+  decompress_to_vram(DP, 0x9B, 0x8080, 0x7C00);
+  decompress_to_vram(DP, 0x87, 0x8C10, 0x57A0);
+}
+
 // TG3000_ROUTINE($82:BDDA) vs_step_share
 // The CPU's 16 / 8 divider gives the magnitude's quotient by the step count; a negative word
 // gives it as it is, a positive one (or 0) gives 0 less it. The sign is the caller's N flag.

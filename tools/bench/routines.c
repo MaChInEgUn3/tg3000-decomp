@@ -6602,6 +6602,15 @@ static void call_vs_race_reset(const Regs* in, Regs* out) {
   out->n = out->z = false;
 }
 static void fuzz_track_palettes_load(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+// vs_race_load ($82:92BA, vs-race-24): the setup's first piece, ending at the $047C test ($82:932D);
+// the setup goes on with the registers it loads there; the flags are the last decompression's
+// (as call_decompress_to_vram: C set, N Z V clear)
+static void call_vs_race_load(const Regs* in, Regs* out) {
+  (void)in;
+  vs_race_load();
+  out->n = out->z = out->v = false;
+  out->c = true;
+}
 // track_palettes_load's inputs, $019A and $1F06 (the divide; a zero product now and then), $1F32
 static void fuzz_vs_race_reset(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_track_palettes_load(r, ram, rnd);
@@ -12864,6 +12873,8 @@ const Routine routines[] = {
   {.name = "vs_car_parts", .entry = 0x83E878, .end = 0x83E8AB, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .compareA = true, .compareX = true, .call = call_vs_car_parts,
    .fuzz = fuzz_vs_car_parts},
+  {.name = "vs_race_load", .entry = 0x8292BA, .end = 0x82932D, .endAt = 0x82932D, .source = "src/vs.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_load, .manyEffects = true},
   {.name = "vs_race_reset", .entry = 0x82BA12, .end = 0x82BD06, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_reset, .fuzz = fuzz_vs_race_reset},
   {.name = "vs_grid_setup", .entry = 0x82BD0E, .end = 0x82BDA9, .source = "src/vs.c", .needM16 = true,

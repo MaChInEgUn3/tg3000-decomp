@@ -639,6 +639,7 @@ CODE_82905C:
     sta.w $1F18                 ; $829060
     rts                         ; $829063
     incbin !baserom:$11064..$112BA
+vs_race_load:
     ldx.w #$9EEA                ; $8292BA
     lda.w #$0083                ; $8292BD
     jsl.l video_load_screen_long; $8292C0

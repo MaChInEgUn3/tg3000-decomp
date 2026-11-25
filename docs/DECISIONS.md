@@ -4530,6 +4530,24 @@ requests are kept narrower.
 
 **Check:** the incremental gate (additions only).
 
+## The VS race setup's first piece (vs-race-24, 2026-11-25)
+
+**`vs_race_load` (`$82:92BA` to `$82:932D`)** is the first piece of the VS race setup, cut at the
+test of `$047C`, where the next unported routine (`$84:A4A3`) begins. It runs, in order:
+1. the screen image (`$83:9EEA`);
+2. the track number moved on by `$2F`, to the VS tracks (a 16-bit add: its carry reaches `$047C`);
+3. the track's settings and `vs_race_reset`;
+4. the graphics, unpacked to VRAM and to `$7F:0000`;
+5. the backdrop, and 32 colours from `$8E:8000`;
+6. the track's tiles.
+
+**Results:** the row ends at the test (`.endAt`). Its one entry in the VS movie was interrupted, and
+it replays from its entry state. The flags are the last decompression's.
+
+It was written from the vs-race-23 analysis's draft (no new request).
+
+**Check:** the incremental gate (additions only).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.
