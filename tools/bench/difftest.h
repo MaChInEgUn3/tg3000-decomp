@@ -88,6 +88,10 @@ typedef struct {
   // port calls (dsp4_port_write16/read16) must reproduce the writes in place and take the
   // reads exactly, the whole tape. Its fuzz scripts the chip's answers (dsp4_bridge_script).
   bool dsp4Tape;
+  // harness-34: how many entry states to keep for replay while no live sample has completed
+  // (0: REPLAYS_PER_ROUTINE), one entry in REPLAY_SPREAD. For a routine the interrupts land in
+  // nearly every time.
+  int replays;
   // [start, end) code ranges of a taped row whose DSP-4 bytes are whole commands of
   // src/dsp4.c (its native ones: a prologue before its stream). They stay off every tape,
   // as do the bytes of any untaped row's extent, and are judged as an untaped row's.

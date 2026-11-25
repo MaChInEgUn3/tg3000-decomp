@@ -227,12 +227,14 @@ static InputRead sampleInputs[MAX_DEPTH][MAX_INPUTS_LONG];
 
 // Replays. A live sample an interrupt lands in is dropped (the handler changes memory the C
 // does not model). While a routine has no completed live sample yet, its entry states
-// (WRAM, PPU, DMA, registers) are kept, at most REPLAYS_PER_ROUTINE; the ones whose sample
+// (WRAM, PPU, DMA, registers) are kept, at most REPLAYS_PER_ROUTINE (or the row's `replays`,
+// harness-34); the ones whose sample
 // an interrupt dropped are run again in the fuzz phase, from that exact state with the
 // interrupts off, and compared like any sample. They are counted apart ("replayed"), not
 // as live samples: the original did not run them that way in the movie.
-#define MAX_REPLAYS 64
+#define MAX_REPLAYS 96
 #define REPLAYS_PER_ROUTINE 2
+#define REPLAY_SPREAD 24  // a row with its own `replays` keeps one entry in N (a multiple of SAMPLE_STRIDE)
 typedef struct {
   bool used, kept;  // taken by a sample; kept: its sample was dropped by an interrupt
   int idx;
@@ -1536,13 +1538,16 @@ static int replaySlotFor(int idx) {
     if(p->used && (p->kept || active)) { if(p->idx == idx) mine++; continue; }
     if(slot < 0) slot = q;
   }
-  return mine < REPLAYS_PER_ROUTINE ? slot : -1;
+  const int share = table[idx].replays ? table[idx].replays : REPLAYS_PER_ROUTINE;
+  return mine < share ? slot : -1;
 }
 
 static void startSample(int idx, const Cpu* cpu) {
   const Routine* r = &table[idx];
   int slot = -1;
-  if(!fuzzing && !r->waitsForInterrupts && !r->rti && stats[idx].samples == 0) slot = replaySlotFor(idx);
+  if(!fuzzing && !r->waitsForInterrupts && !r->rti && stats[idx].samples == 0 &&
+     (r->replays == 0 || (stats[idx].entries - 1) % REPLAY_SPREAD == 0))  // (harness-34: spread over the movie)
+    slot = replaySlotFor(idx);
   int k = depth++;
   Sample* smp = &samples[k];
   memcpy(sampleRam[k], snes->ram, TG3000_WRAM_SIZE);

@@ -11783,9 +11783,11 @@ static void call_vs_road_project(const Regs* in, Regs* out) {
   out->c = true;
 }
 // the chip's answers scripted for all four passes: random products and rows, objects now and
-// then; the sum of a pass's counts, 1-104, keeps its tail out of the never-run "line below the
-// limit" path (the tail clears the first band's byte before it reads the last: no count at all
-// reads 0). Player 1's pass (the second) also stays out of its other never-run paths: $1F and $27
+// then. Each pass's count sum is chosen first (0-104) and reached exactly; only the last count may
+// end the pass early (CPX $1C). The tail clears the band bytes at +$23 and +$45 before it reads
+// the last one written, +$45 (or +$23) minus the sum: a sum of 0, or 34 with the large band, reads
+// 0 and takes the never-run clamp (decoded from the ROM). Player 1's pass sums to 104 or 0 (its
+// tail's line then 0: its never-run edge pieces stay out of reach). Player 1's pass (the second) also stays out of its other never-run paths: $1F and $27
 // not negative (the products steered), the count sum exactly 104 ($14 ends 0), no early exit.
 static uint16_t vsp_hi(uint16_t t) { return (uint16_t)(t >> 2); }  // the answer pair for hi << 2 | lo >> 14 == t
 static uint16_t vsp_lo(uint16_t t, uint32_t (*rnd)(void)) { return (uint16_t)((t & 3) << 14 | (rnd() & 0x3FFF)); }
@@ -11813,22 +11815,19 @@ static void fuzz_vs_road_project(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
       script[base + 6] = vsp_lo(t4, rnd);
       script[base + 7] = vsp_hi(t4);
     }
-    int left = (b == 1) ? 104 : 1 + (int)(rnd() % 104);
-    bool any = false;
+    int left = (b == 1) ? ((rnd() % 4) ? 104 : 0) : (rnd() % 8 == 0) ? (small ? 0 : 34) * (int)(rnd() & 1) : (int)(rnd() % 105);
     for(;;) {
       k += 2;
       for(int i = 0; i < 4; i++) script[n++] = (uint16_t)rnd();
       const bool lastRow = (uint16_t)(at + 0x80) >= 0x0E00;
-      const int count = lastRow ? ((b == 1) ? left : any ? (int)(rnd() % (uint32_t)(left + 1)) : 1 + (int)(rnd() % (uint32_t)left))
-                                : (left && rnd() % 4 == 0) ? 1 + (int)(rnd() % (uint32_t)(left < 8 ? left : 8)) : 0;
+      const int count = lastRow ? left : (left && rnd() % 4 == 0) ? 1 + (int)(rnd() % (uint32_t)(left < 8 ? left : 8)) : 0;
       script[n++] = (uint16_t)count;
       if(count) {
-        any = true;
         left -= count;
         wr16ram(ram, v[b].tab + 0x200 + k, (uint16_t)(0x8100 + 2 * (rnd() % 0x3000)));
         uint16_t last = 0;
         for(int i = 0; i < count; i++) {
-          last = (uint16_t)(b == 1 ? stop + 2 * (rnd() % 0x100) : 2 * (rnd() % 0x180));
+          last = (uint16_t)(b == 1 || !lastRow ? stop + 2 * (rnd() % 0x100) : 2 * (rnd() % 0x180));
           script[n++] = last;
           script[n++] = (uint16_t)rnd();
           script[n++] = (uint16_t)rnd();
@@ -14268,9 +14267,9 @@ const Routine routines[] = {
   {.name = "vs_road_project", .entry = 0x85A471, .end = 0x85B1F9, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_project, ALL_OUTPUTS,
    .fuzz = fuzz_vs_road_project, .dsp4Tape = true, .fuzzStack = 0x1FF1,
-   .holes = {{0x85A73A, 0x85A73D}, {0x85A94C, 0x85A94F}, {0x85A964, 0x85A967}, {0x85AA82, 0x85AA85},
-             {0x85AAB5, 0x85AAB8}, {0x85AABF, 0x85AAD9}, {0x85AB04, 0x85AB13}, {0x85ADED, 0x85ADF0},
-             {0x85B135, 0x85B138}}},  // never run (traps in the C)
+   .replays = 32,  // the VS raster IRQs land in every live sample (harness-34)
+   .holes = {{0x85A94C, 0x85A94F}, {0x85A964, 0x85A967}, {0x85AAB5, 0x85AAB8}, {0x85AABF, 0x85AAD9},
+             {0x85AB04, 0x85AB13}}},  // player 1's never-run paths (traps in the C)
   {.name = "road_rows_project", .entry = 0x85B3D7, .end = 0x85B828, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project, ALL_OUTPUTS,
    .fuzz = fuzz_road_rows_project, .dsp4Tape = true, .fuzzStack = 0x1FF1},

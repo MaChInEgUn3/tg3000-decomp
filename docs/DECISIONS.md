@@ -4669,6 +4669,39 @@ VS race.
 
 **Check:** the incremental gate (additions only).
 
+## More replays, spread over the movie, for an always-interrupted row (harness-34, 2026-11-25)
+
+**The advisor's practice, open to the owner's veto.**
+
+**The problem:** `vs_road_project` (vs-race-28) had only two replays as real-data evidence.
+- The VS race's raster IRQs land in every live sample.
+- The harness keeps only two entry states per routine for replay (`REPLAYS_PER_ROUTINE`).
+
+**The change:**
+- **A per-row count:** a row may ask for more replays (`replays`). Such a row keeps one entry in
+  24 (`REPLAY_SPREAD`), so its replays are spread over the movie rather than taken from the first
+  frames, where the cars barely move.
+- **More slots in all:** 96 replay slots, up from 64.
+
+**Results:** `vs_road_project` asks for 32. All 32 replays pass, besides the 500 fuzz cases.
+
+**The projection's never-run clamp, ported.**
+- **What failed:** the full runs stopped on a trap. A run reached the tail's never-run "line below
+  the limit" path; the second run reached it in a replay, where the chip answered no objects for a
+  whole pass.
+- **Why:** the tail clears the band bytes at `+$23` and `+$45` before it reads the last one
+  written. That byte is `+$45` (or `+$23`) minus the pass's count sum. So a sum of 0, or 34 with
+  the large band, reads 0.
+- **The fix:** the four 3-byte paths (`$85:A73A`, `$AA82`, `$ADED`, `$B135`) were decoded from the
+  ROM here. Each is `LDA #$0000`, a clamp to 0. They are now ported instead of trapped, and are no
+  longer holes.
+  - The fuzz chooses each pass's sum first (0-104; now and then exactly 0 or 34) and reaches it
+    exactly. Only the last count may end the pass early.
+  - Player 1's pass sums to 104 or 0, keeping its other never-run paths out of reach.
+- **Check:** 2,000 fuzz cases pass, every path reached (1,450).
+
+**Check:** the full gate (the harness changed).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

@@ -5961,7 +5961,7 @@ static void vs_proj_tail(const VsProjView* c) {
   wr16(y, c->a_type ? 0x0000 : 0x0008);
   y = (uint16_t)(y - 3);
   uint16_t a = (uint16_t)(rd8(c->bands + 1 + (uint32_t)rd16(DP + 0x22)) - c->sub);
-  if(a & 0x8000) tg3000_unported("$85:A73A/$AA82/$ADED/$B135: the last band's line below the limit");
+  if(a & 0x8000) a = 0;  // the last band's line below the limit: 0 (never run; decoded from the ROM)
   wr16(DP + 0x14, a);
   wr16(y, (uint16_t)((uint16_t)(c->base_k - a) | 0x0080));
   wr16((uint16_t)(y + 1), (uint16_t)(c->pairs + rd16(DP + 0x1A) - (uint16_t)((uint16_t)(0x0067 - a) << 2)));
