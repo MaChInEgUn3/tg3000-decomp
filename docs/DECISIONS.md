@@ -3814,6 +3814,51 @@ password screen, a skipped track's bonus.
   - `minimap_car`: its fuzz now reaches hidden rows, 500/500.
   - The full gate (`src/dsp4.c`, `difftest.c` and the bridge changed).
 
+## What a frame's DSP-4 answers depend on (dsp4-09b, 2026-11-25)
+
+**The `$09` measurement's deferred chosen-input step (dsp4-09a), done with the firmware chip on
+the bench (harness-27) rather than built anew.**
+
+**`tools/bench/dsp4_replay`** (`make -C tools/bench probe`) replays a `refbench --dsp4-tape`
+capture into the firmware chip: the game's writes as written, the reads where it read. Every
+read is compared. This is outputs only: the tape is what the game sent and got.
+
+**The capture:** the TAS's first 8,000 frames, 2,151 `$09` streams and 7.0 million bytes read.
+
+**The whole tape, from a chip just powered on: 0 of 7,013,918 bytes differ.**
+- The bench's way of running the chip, to its next wait at each access, gives exactly what
+  bsnes's timed chip gave the game.
+- That holds even where the game reads three words in a row without looking at the chip's
+  status (`$85:B732`-`$85:B750`).
+
+**A `$09` stream alone does not repeat its answers.** All 2,151 streams differ, whether each
+runs on a fresh chip or the streams run back to back. The sprites need the road command the
+game sent earlier in the frame.
+
+**A frame from its road command on (`$000F` at `$85:B536`, or `$0001` at `$85:B53B`):**
+- On a fresh chip, 127 frames are the same and 28,603 of 5.6 million bytes differ.
+- Every difference is in the road command's own reads (`$85:B735`, `$85:B73B`, `$85:B747`,
+  `$85:B74D`), and each is one more on the tape than on the fresh chip.
+- Starting 2, 3 or 5 frames back changes nothing (28,580, 28,557, 28,511). So it is not
+  the road command's state from earlier frames.
+
+**What it does need, bisected for six frames.** The latest command start from which the frame
+repeats exactly lies a little before the road command:
+- in three of the six, the `$000A` edges command at `$81:F90E` and what follows it (a multiply
+  at `$81:FA69`), 196 records earlier;
+- once, a `$0007` command at `$85:B95F`;
+- once, a sprite stream's part, and once the `$0008` at `$81:861A`.
+
+So the road command reads chip memory that commands it does not own left behind. `src/dsp4.c`
+models `$0A` with no state, so a native road command needs that shared state.
+
+**Next (dsp4-01b):** find which earlier inputs change the road command's answers. Replay a
+recorded frame with the `$0A` before it changed one input at a time, on the firmware chip.
+That makes the shared state measured, not guessed.
+
+**Check:** the tool's runs above. This is a measurement: it adds lines to `tools/bench/` and
+changes no row or C.
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

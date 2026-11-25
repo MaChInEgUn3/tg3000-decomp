@@ -45,7 +45,11 @@ $(OUT)/dsp4_lle.o: dsp4_lle.cpp necdsp_shim/snes/snes.hpp | $(OUT)
 # dsp4-11a: src/dsp4.c against the firmware chip on chosen inputs (needs bsnes in ext/)
 $(OUT)/dsp4_probe: dsp4_probe.cpp $(OUT)/dsp4_lle.o $(OUT)/src_dsp4.o | $(OUT)
 	$(CXX) $(CXXFLAGS) -o $@ $^
+# dsp4-09b: the game's $09 streams from a refbench tape replayed alone into the firmware chip
+$(OUT)/dsp4_replay: dsp4_replay.cpp $(OUT)/dsp4_lle.o | $(OUT)
+	$(CXX) $(CXXFLAGS) -o $@ $^
 probe: $(OUT)/dsp4_probe
+probe: $(OUT)/dsp4_replay
 
 $(OUT)/png.o: png.c png.h | $(OUT)
 	$(CC) $(CFLAGS) -c $< -o $@
