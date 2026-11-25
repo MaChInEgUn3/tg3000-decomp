@@ -1409,6 +1409,11 @@ void race_track(void);
 // $82:856D up to the first wait; $82:85D6 from that wait up to the race loop.
 void race_track_build(void);
 void race_track_start(void);
+// The race loop ($82:8645): its head up to the wait, the wait ($82:8656), the body after it up to
+// the jump back ($82:865B; true when the loop ends).
+void race_frame_head(void);
+void race_frame_wait(void);
+bool race_frame_body(void);
 
 // $82:DFAD: the road's rows built as the player crosses them (D = $0100; DB = $7E inside,
 // $83 after). The road's sideways place $01CE from the rows crossed ($7E:3AEE; DSP-4 bits

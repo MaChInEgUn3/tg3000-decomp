@@ -4979,6 +4979,40 @@ It is a waiting row: 1 live sample, 38/38 paths. Its C is the last wait's.
 
 **Check:** the full gate (a new waiting row).
 
+## The race loop, cut at its wait (race-loop-1, 2026-11-25)
+
+The one-player race loop (`$82:8645` to its jump back at `$82:8773`) waits for the NMI in its
+middle, at `$82:8656`. It is three rows.
+
+**`race_frame_head` (`$82:8645` up to the wait):**
+- the countdown, the player's frame, the other cars' frame, the speed and band words;
+- an NMI may land in it, so it is judged live or by replays;
+- **results:** 2,108 live samples on the 60k movie, 5/5 paths.
+
+**`race_frame_wait` (`$82:8656`):**
+- waits until the NMI has taken the last frame;
+- a waiting row: 4,000 live samples.
+
+**`race_frame_body` (`$82:865B` up to the jump back):**
+- **what it does:**
+  - the player's segment, the road's rows and shift, the places;
+  - the HUD's digits once per drawn frame;
+  - the frame drawn and flagged;
+  - the frames it took kept;
+  - after the race: the cars' places kept for the results, and the fade out;
+  - it returns true when the loop ends (`$82:8776`, a second cut).
+- **results:** the NMI lands in every live sample, so it is judged by its 32 replays. Over the
+  movies together, every path that runs is reached.
+- **Never-run paths, ported from the ROM's bytes, untested (holes):**
+  - the demo's end;
+  - the Start button's pause (the movies never pause a race);
+  - the Select button's test;
+  - a message.
+
+  The Select button's way out (`$82:878A`) is a trap.
+
+**Check:** the full gate (a new waiting row).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

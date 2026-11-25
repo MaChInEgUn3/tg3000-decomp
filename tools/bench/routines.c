@@ -6665,6 +6665,11 @@ static void call_race_track_start(const Regs* in, Regs* out) {
     out->z = (m & 0x003D) == 0;
   }
 }
+// The race loop (race-loop-1): its head up to the wait (an NMI may land in it: judged by replays),
+// the wait (a waiting row), the body after it (judged as it comes; its way out at $82:8776)
+static void call_race_frame_head(const Regs* in, Regs* out) { (void)in; (void)out; race_frame_head(); }
+static void call_race_frame_wait(const Regs* in, Regs* out) { (void)in; (void)out; race_frame_wait(); }
+static void call_race_frame_body(const Regs* in, Regs* out) { (void)in; (void)out; race_frame_body(); }
 // vs_race_load ($82:92BA, vs-race-24): the setup's first piece, ending at the $047C test ($82:932D);
 // the setup goes on with the registers it loads there; the flags are the last decompression's
 // (as call_decompress_to_vram: C set, N Z V clear)
@@ -13290,6 +13295,18 @@ const Routine routines[] = {
    .maxInsns = 40000000, .call = call_race_track_start, .manyEffects = true,  // no fuzz: it waits
    .dsp4Tape = true,  // the road's first frame streams the road and the sprites
    .holes = {{0x82863F, 0x828642}}},  // the demo's message (ported from the ROM's bytes, untested)
+  {.name = "race_frame_head", .entry = 0x828645, .end = 0x828656, .endAt = 0x828656, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_race_frame_head,
+   .manyEffects = true, .replays = 32},
+  {.name = "race_frame_wait", .entry = 0x828656, .end = 0x82865B, .endAt = 0x82865B, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
+   .maxInsns = 40000000, .call = call_race_frame_wait},  // no fuzz: it waits
+  {.name = "race_frame_body", .entry = 0x82865B, .end = 0x828773, .endAt = 0x828773, .endAt2 = 0x828776,
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true,
+   .call = call_race_frame_body, .manyEffects = true, .dsp4Tape = true, .replays = 32,
+   .holes = {{0x828689, 0x8286AB}, {0x8286B3, 0x8286BE}, {0x8286C6, 0x8286D1}, {0x8286F4, 0x8286FA}}},
+       // never run: the demo's end, the Start button's pause, the Select button's way out (a trap),
+       // a message (ported, untested)
   {.name = "vs_race_load", .entry = 0x8292BA, .end = 0x82932D, .endAt = 0x82932D, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_load, .manyEffects = true},
   {.name = "vs_names_absent", .entry = 0x8AA6F6, .end = 0x8AA721, .source = "src/vs.c", .needM16 = true,

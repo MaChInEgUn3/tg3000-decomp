@@ -797,6 +797,9 @@ func    83E878   vs_car_parts        ; VS race: the car at D's engine and tyre w
 func    828428   race_load           ; the race setup's first piece, to the $047C test: screen, vectors, track, reset, graphics -> src/misc.c
 func    82856D   race_track_build    ; the race setup's track piece up to its first wait: counters, map, track, objects, HUD markers -> src/misc.c
 func    8285D6   race_track_start    ; the race setup's rest: waits, vectors, the road's first frame, CLI, up to the race loop -> src/misc.c
+func    828645   race_frame_head     ; the race loop's head: countdown, player, cars, speed words, up to the wait -> src/misc.c
+func    828656   race_frame_wait     ; the race loop's wait for the NMI ($00B8 bit 0) -> src/misc.c
+func    82865B   race_frame_body     ; the race loop's body: segment, road, places, HUD, frame drawn, pause, race end, fade -> src/misc.c
 func    8292BA   vs_race_load        ; VS race setup's first piece, to the $047C test: screen, settings, reset, graphics -> src/vs.c
 func    829348   vs_race_track       ; VS race setup's track piece: state cleared, track + objects, four announcements with waits, palette -> src/vs.c
 func    82BA12   vs_race_reset       ; VS race: the state reset (players' words, lap time, cars' records, palette rows from $C1) -> src/vs.c

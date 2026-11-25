@@ -5112,6 +5112,86 @@ void race_track(void) {
   race_track_start();
 }
 
+// TG3000_ROUTINE($82:8645) race_frame_head
+// The race loop's head, up to its wait ($82:8656): the countdown, the player's frame, the other
+// cars' frame, the speed and band words.
+void race_frame_head(void) {
+  race_countdown();
+  player1_frame();
+  race_cars_frame();
+  func_82AC52();
+}
+
+// TG3000_ROUTINE($82:8656) race_frame_wait
+// The race loop's wait: until the NMI has taken the last frame ($00B8 bit 0 cleared).
+void race_frame_wait(void) {
+  while(rd16(0x00B8) & 0x0001) platform_wait_vblank();
+}
+
+// TG3000_ROUTINE($82:865B) race_frame_body
+// The race loop's body after its wait, up to the jump back ($82:8773): the player's segment, the
+// road's rows and shift, the places; the HUD's digits once per drawn frame; the frame drawn and
+// flagged for the NMI; the frames it took kept ($1E9E); the demo's end on any button (never run),
+// the Start button's pause, the Select button's way out (never run: a trap, $82:878A); after the
+// race (bit 2 of $0244, or $1F08 at 10), the cars' places kept for the results and the fade out.
+// Returns true when the loop ends (the fade done: $82:8776).
+bool race_frame_body(void) {
+  player_segment_step();
+  road_rows_build_call();
+  road_shift_frame_call();
+  race_positions_update();
+  if(!(rd16(0x00B8) & 0x0004)) {
+    race_hud_digits();
+    wr16(0x00B8, (uint16_t)(rd16(0x00B8) | 0x0004));
+  }
+  race_frame_draw();
+  wr16(0x00B8, (uint16_t)(rd16(0x00B8) | 0x0001));
+  const uint16_t frames = rd16(0x00BA);
+  if(rd16(0x047C) & 0x8000) {  // the demo: any button ends it (never run)
+    if((rd16(0x000C) | rd16(0x0010) | rd16(0x0014) | rd16(0x0018)) & 0xFFF0) {
+      wr16(0x047D, (uint16_t)(rd16(0x047D) & ~0x007F));
+      wr16(0x0148, 0);
+      wr16(0x0146, 0xFF80);
+    }
+  } else {
+    const bool start = (rd16(0x000E) & 0x1000) != 0;
+    wr16(0x000E, (uint16_t)(rd16(0x000E) & ~0x1000));
+    if(start && rd16(0x014A) == 0x0F00) race_pause();
+  }
+  if(rd16(0x03E2) & 0x0004) {
+    const bool select = (rd16(0x000E) & 0x2000) != 0;
+    wr16(0x000E, (uint16_t)(rd16(0x000E) & ~0x2000));
+    if(select) tg3000_unported("$82:878A: the race left on Select");
+  }
+  wr16(0x00BA, 0);
+  wr16(0x1E9E, frames);
+  if((rd16(0x0244) & 0x0004) || rd16(0x1F08) >= 0x000A) {  // the race over
+    uint16_t t = rd16(0x1ED0);
+    if(t == 0) {
+      if(!(rd16(0x0244) & 0x0004)) wr16(0x0233, 0x003C);  // (never run)
+      for(uint32_t y = 0, x = 0; y < 0x28; y += 2, x += 0x35) {
+        wr16(0x6991 + y, rd16(0xFAB5 + x));
+        wr16(0x69B9 + y, rd16(0xFAB7 + x));
+        wr16(0x69E1 + y, rd16(0xFAD3 + x));
+        wr16(0x6A09 + y, rd16(0xFADE + x));
+      }
+      wr16(0x6A31, rd16(0x1F08));
+      t = 0x7F10;
+      wr16(0x1ED0, t);
+    }
+    if(!(t & 0x8000)) {
+      t = (uint16_t)(rd16(0x1ED0) + rd16(0x1E9E));
+      wr16(0x1ED0, t);
+      if(t & 0x8000) {
+        wr16(0x0148, 0);
+        wr16(0x0146, 0xFF80);
+        if(!(rd16(0x047C) & 0x8000)) wr16(0x03E0, 0xFFFF);
+      }
+    }
+  }
+  return rd16(0x0146) == 0 && !(rd16(0x014A) & 0x0F00);
+}
+
 // TG3000_ROUTINE($82:A28B) race_state_reset
 void race_state_reset(void) {
   wr16(0x00B4, 0);

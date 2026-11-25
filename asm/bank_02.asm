@@ -296,14 +296,16 @@ race_track_start:
     incbin !baserom:$1063F..$10642
 CODE_828642:
     sta.w $0233                 ; $828642
+race_frame_head:
     jsr.w race_countdown        ; $828645
     jsl.l player1_frame         ; $828648
     jsl.l race_cars_frame       ; $82864C
     jsr.w func_82AC52           ; $828650
     lda.w #$0001                ; $828653
-CODE_828656:
+race_frame_wait:
     bit.w $00B8                 ; $828656
-    bne CODE_828656             ; $828659
+    bne race_frame_wait         ; $828659
+race_frame_body:
     jsr.w player_segment_step   ; $82865B
     jsr.w road_rows_build_call  ; $82865E
     jsr.w road_shift_frame_call ; $828661
@@ -408,7 +410,7 @@ CODE_828766:
     and.w #$0F00                ; $82876E
     beq CODE_828776             ; $828771
 CODE_828773:
-    jmp.w $8645                 ; $828773
+    jmp.w race_frame_head       ; $828773
 CODE_828776:
     bit.w $047C                 ; $828776
     bmi CODE_82877F             ; $828779
