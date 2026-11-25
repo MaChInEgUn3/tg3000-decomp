@@ -6612,11 +6612,12 @@ static void call_vs_race_load(const Regs* in, Regs* out) {
   out->c = true;
 }
 // vs_race_track ($82:9348, vs-race-25): the setup's track piece, ending at the JSR to the VS road
-// rows ($82:941F): N and Z from the colour's high byte (LDA.L $7E6A34, 8-bit), C from the last
-// frame wait (set); V is that wait's add, not modelled here, so it is left as it came
+// rows ($82:941F): N and Z from the colour's high byte (LDA.L $7E6A34, 8-bit), C and V from the
+// last frame wait (C set; V its add's overflow: the counter was $7FFF, so it now reads $8000)
 static void call_vs_race_track(const Regs* in, Regs* out) {
+  (void)in;
   vs_race_track();
-  restoreP(in, out);
+  out->v = rd16(FRAME_COUNTER) == 0x8000;
   const uint8_t hi = bus_rd8(0x7E6A34);
   out->n = (hi & 0x80) != 0;
   out->z = hi == 0;
@@ -6703,6 +6704,14 @@ static void fuzz_vs_road_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), int 
   }
 }
 static void fuzz_vs_road_rows_view0(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_road_rows(r, ram, rnd, 0); }
+// vs_road_rows ($82:DF91, vs-race-27): the four in turn, DB left $83; each player's fuzz in turn
+static void call_vs_road_rows(const Regs* in, Regs* out) { (void)in; vs_road_rows(); out->db = 0x83; }
+static void fuzz_vs_road_rows_all(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  for(int v = 0; v < 4; v++) fuzz_vs_road_rows(r, ram, rnd, v);
+}
+// vs_race_sums_clear ($82:9422, vs-race-27): the setup's piece up to the JSL to $85:A471
+// (STZ leaves the flags and registers as they came)
+static void call_vs_race_sums_clear(const Regs* in, Regs* out) { (void)in; (void)out; vs_race_sums_clear(); }
 static void fuzz_vs_road_rows_view1(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_road_rows(r, ram, rnd, 1); }
 static void fuzz_vs_road_rows_view2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_road_rows(r, ram, rnd, 2); }
 static void fuzz_vs_road_rows_view3(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_road_rows(r, ram, rnd, 3); }
@@ -12973,6 +12982,11 @@ const Routine routines[] = {
   {.name = "vs_race_track", .entry = 0x829348, .end = 0x82941F, .endAt = 0x82941F, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
    .maxInsns = 40000000, .call = call_vs_race_track, .manyEffects = true},  // no fuzz: it waits
+  {.name = "vs_road_rows", .entry = 0x82DF91, .end = 0x82DFA2, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_rows, .fuzz = fuzz_vs_road_rows_all,
+   .fuzzStack = 0x1FF3},  // the game's stack, one JSR above the four
+  {.name = "vs_race_sums_clear", .entry = 0x829422, .end = 0x829452, .endAt = 0x829452, .source = "src/vs.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_sums_clear},
   {.name = "vs_road_rows_view0", .entry = 0x85BF78, .end = 0x85C316, .rtl = true, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_rows_view0, .fuzz = fuzz_vs_road_rows_view0,
    .fuzzStack = 0x1FF1,

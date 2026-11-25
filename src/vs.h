@@ -215,6 +215,10 @@ void vs_road_rows_view0(void);
 void vs_road_rows_view1(void);
 void vs_road_rows_view2(void);
 void vs_road_rows_view3(void);
+// $82:DF91: the four players' road rows in turn.
+void vs_road_rows(void);
+// $82:9422: the VS race setup's piece after the road rows (the sideways sums and $00D4-$00DF cleared).
+void vs_race_sums_clear(void);
 // $82:BDDA: minus `a` (signed) over the step count $1E9E, on the CPU's divider (the quotient of
 // the magnitude; $FFFF for a zero count). `negative` is the caller's N flag (its load of `a`):
 // the original branches on it, not on `a` itself.

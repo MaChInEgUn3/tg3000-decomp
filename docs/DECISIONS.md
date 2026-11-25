@@ -4614,6 +4614,26 @@ lap wrap were checked against the listing here.
 
 **Check:** the full gate (the harness changed).
 
+## The four road rows in turn; the setup's clearing piece (vs-race-27, 2026-11-25)
+
+**`vs_road_rows` (`$82:DF91`)** calls the four players' road rows in turn. It is the VS race's
+`road_rows_build_call`. Its fuzz runs each player's fuzz in turn.
+- **Results:** 217 live samples, 500 fuzz cases, 5/5 paths.
+
+**`vs_race_sums_clear` (`$82:9422` to `$82:9452`)** is the VS race setup's piece between the road
+rows and the VS road driver (`$85:A471`, not ported). It clears the words at `$01CC`-`$01DA` and
+the bytes `$00D4`-`$00DF`, in the original's order.
+- **Results:** one live sample, 16/16 paths.
+
+**An adapter fixed.**
+- **The fault:** `vs_race_track`'s adapter (vs-race-25) took its flags with `restoreP`. That helper
+  reads P from the stack, as after an RTI, which is wrong for a routine piece. The piece passed
+  because the byte there happened to match.
+- **The fix:** it now models V too, from the last frame wait's add, as `call_wait_frames` does.
+  The registers stay as they came.
+
+**Check:** the full gate (an adapter line changed).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

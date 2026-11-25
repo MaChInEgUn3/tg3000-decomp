@@ -765,7 +765,8 @@ vs_race_track:
     stz.w $4315                 ; $829416
     stz.w $4325                 ; $829419
     stz.w $4335                 ; $82941C
-    jsr.w $DF91                 ; $82941F
+    jsr.w vs_road_rows          ; $82941F
+vs_race_sums_clear:
     stz.w $01CE                 ; $829422
     stz.w $01CC                 ; $829425
     stz.w $01D2                 ; $829428
@@ -890,7 +891,7 @@ CODE_82952E:
     sta.w $0315                 ; $829563
     lda.w $031B                 ; $829566
     sta.w $0317                 ; $829569
-    jsr.w $DF91                 ; $82956C
+    jsr.w vs_road_rows          ; $82956C
     jsr.w vs_steps_share        ; $82956F
     jsr.w vs_places_update      ; $829572
     stz.b $86                   ; $829575
@@ -7412,6 +7413,7 @@ CODE_82DF8A:
     sty.b $84                   ; $82DF8D
     sec                         ; $82DF8F
     rts                         ; $82DF90
+vs_road_rows:
     jsl.l vs_road_rows_view0    ; $82DF91
     jsl.l vs_road_rows_view1    ; $82DF95
     jsl.l vs_road_rows_view2    ; $82DF99

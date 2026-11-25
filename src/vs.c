@@ -1473,7 +1473,7 @@ static uint16_t vs_object_spawn(const VsRoadView* v, uint16_t ox, uint16_t y, ui
   return (uint16_t)((y + 2) & 0x00FF);
 }
 
-static void vs_road_rows(const VsRoadView* v) {
+static void vs_road_rows_one(const VsRoadView* v) {
   const uint32_t rec = v->rec, pos = rec + 0x24, row = rec + 0x26, frac = rec + 0x3C, prev = rec + 0x3E;
   const uint32_t acc = rec + 0x40, flag = rec + 0x44, xtab = (uint32_t)v->tab + 2;
   // the sideways place over the rows crossed, by DSP-4 products (as road_rows_build)
@@ -1613,13 +1613,32 @@ static void vs_road_rows(const VsRoadView* v) {
 }
 
 // TG3000_ROUTINE($85:BF78) vs_road_rows_view0
-void vs_road_rows_view0(void) { vs_road_rows(&vs_road_views[0]); }
+void vs_road_rows_view0(void) { vs_road_rows_one(&vs_road_views[0]); }
 // TG3000_ROUTINE($85:C316) vs_road_rows_view1
-void vs_road_rows_view1(void) { vs_road_rows(&vs_road_views[1]); }
+void vs_road_rows_view1(void) { vs_road_rows_one(&vs_road_views[1]); }
 // TG3000_ROUTINE($85:C6C2) vs_road_rows_view2
-void vs_road_rows_view2(void) { vs_road_rows(&vs_road_views[2]); }
+void vs_road_rows_view2(void) { vs_road_rows_one(&vs_road_views[2]); }
 // TG3000_ROUTINE($85:CA18) vs_road_rows_view3
-void vs_road_rows_view3(void) { vs_road_rows(&vs_road_views[3]); }
+void vs_road_rows_view3(void) { vs_road_rows_one(&vs_road_views[3]); }
+
+// TG3000_ROUTINE($82:DF91) vs_road_rows
+// The four players' road rows in turn (the VS race's road_rows_build_call).
+void vs_road_rows(void) {
+  vs_road_rows_view0();
+  vs_road_rows_view1();
+  vs_road_rows_view2();
+  vs_road_rows_view3();
+}
+
+// TG3000_ROUTINE($82:9422) vs_race_sums_clear
+// The VS race setup's piece between the road rows and the VS road driver ($85:A471, not ported):
+// the words at $01CC-$01DA (the four players' sideways sums and the words below them) and the
+// bytes $00D4-$00DF cleared, in the original's order.
+void vs_race_sums_clear(void) {
+  static const uint16_t words[] = {0x01CE, 0x01CC, 0x01D2, 0x01D0, 0x01D6, 0x01D4, 0x01DA, 0x01D8,
+                                   0x00D4, 0x00D6, 0x00D7, 0x00D9, 0x00DA, 0x00DC, 0x00DD, 0x00DF};
+  for(unsigned i = 0; i < sizeof words / sizeof words[0]; i++) wr16(words[i], 0);
+}
 
 // TG3000_ROUTINE($82:BDDA) vs_step_share
 // The CPU's 16 / 8 divider gives the magnitude's quotient by the step count; a negative word
