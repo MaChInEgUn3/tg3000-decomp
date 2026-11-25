@@ -42,6 +42,8 @@ void video_set_bg1_hofs(uint16_t value) {
   difftest_ppu_field(PF_M7H, value);
 }
 
+void video_set_m7_vofs(uint16_t value) { difftest_ppu_field(PF_M7V, value); }
+
 void video_set_bg1_vofs(uint16_t value) {
   difftest_ppu_field(PF_BG1V, value);
   difftest_ppu_field(PF_M7V, value);

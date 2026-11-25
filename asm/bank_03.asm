@@ -641,6 +641,7 @@ func_838989_long:
     jsr.w func_838989           ; $8396D5
     rtl                         ; $8396D8
     incbin !baserom:$196D9..$19721
+nmi_vs_prologue:
     rep.b #$20                  ; $839721
     phb                         ; $839723
     pha                         ; $839724
@@ -653,6 +654,7 @@ func_838989_long:
     lda.w #$0000                ; $83972D
     tcd                         ; $839730
     jmp.w ($0008)               ; $839731
+nmi_vs_tail:
     lda.w $4210                 ; $839734
     cli                         ; $839737
     lda.w $0146                 ; $839738
@@ -687,6 +689,7 @@ CODE_839761:
     pla                         ; $839774
     plb                         ; $839775
     rti                         ; $839776
+nmi_vs_full:
     lda.w #$1000                ; $839777
     sta.b $FC                   ; $83977A
     lda.w $00B8                 ; $83977C
@@ -1057,7 +1060,7 @@ CODE_839B37:
     tsb.w $045B                 ; $839B41
     rep.b #$20                  ; $839B44
 CODE_839B46:
-    jmp.w $9734                 ; $839B46
+    jmp.w nmi_vs_tail           ; $839B46
 vs_hud_draw:
     lda.w #$7C21                ; $839B49
     sta.w $2116                 ; $839B4C

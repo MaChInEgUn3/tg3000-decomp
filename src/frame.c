@@ -90,6 +90,16 @@ void nmi_prologue(void) {
 // only saves the registers and sets D = 0, DB = $85, so there is nothing to do in C.
 void nmi_race_prologue(void) {}
 
+// TG3000_ROUTINE($83:9721) nmi_vs_prologue
+// The VS race's NMI up to its dispatch through $0008 ($83:9777): the original saves the
+// registers, sets D = 0 and DB = $83 (A 16-bit; X and Y as they were). Nothing for the C.
+void nmi_vs_prologue(void) {}
+
+// TG3000_ROUTINE($83:9734) nmi_vs_tail
+// The VS race's NMI tail: nmi_race_tail's (a short JSR to pads_read for its JSL). Only the
+// full frame $83:9777 jumps here.
+void nmi_vs_tail(void) { nmi_race_tail(); }
+
 // TG3000_ROUTINE($85:838A) nmi_race_tail
 //
 // The race NMI's tail, run on every race frame: the race NMI $85:8377 dispatches through

@@ -28,6 +28,9 @@ void video_write_vram_word(uint16_t vram_word, uint16_t value);
 // Read one word of video RAM at word address `vram_word` (the original sets VMADD and reads
 // VMDATA, $2139/$213A, after a dead read; harness-30).
 uint16_t video_read_vram_word(uint16_t vram_word);
+// The Mode 7 vertical offset alone (the original's byte writes to $210E leave it apart from
+// BG1's: vs-race-20).
+void video_set_m7_vofs(uint16_t value);
 
 // The VRAM address step ($2115 VMAIN, raw byte): $80 = one word, $81 = 32 words (a
 // tilemap column), after the high byte. Uploads and word writes name their addresses;

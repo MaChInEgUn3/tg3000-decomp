@@ -7297,6 +7297,53 @@ static void fuzz_nmi_race_full(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x047C, (uint16_t)rnd());
 }
 
+// ---- nmi_vs_prologue ($83:9721) / nmi_vs_full ($83:9777), vs-race-20 ----
+static void call_nmi_vs_prologue(const Regs* in, Regs* out) { (void)in; nmi_vs_prologue(); out->d = 0; out->db = 0x83; }
+static void call_nmi_vs_full(const Regs* in, Regs* out) { nmi_vs_full(); restoreNmiFrame(in, out); }
+static void fuzz_vs_view_scrolls(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+static void fuzz_vs_hud_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
+// What the VS frame reads: the request, the transfer, the queue, the HUD, the views' scrolls,
+// the two clocks (valid BCD, near the minute now and then), both views' band tables (every
+// kind of first line and entry, the never-run ones included), the sound request
+static void fuzz_nmi_vs_full(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_nmi_race_tail(r, ram, rnd);
+  fuzz_race_upload_queue(r, ram, rnd);
+  fuzz_vs_hud_draw(r, ram, rnd);
+  fuzz_vs_view_scrolls(r, ram, rnd);
+  wr16ram(ram, 0x00B8, (rnd() & 1) ? (uint16_t)rnd() : 0);
+  wr16ram(ram, 0x00B4, (uint16_t)(rnd() & 1));
+  wr16ram(ram, 0x1E02, (uint16_t)((rnd() & 3) ? 0 : (rnd() % 0x200) * 2));
+  for(uint16_t a = 0x016C; a <= 0x0182; a += 2) wr16ram(ram, a, (uint16_t)rnd());
+  wr16ram(ram, 0x5395, (uint16_t)(0x8007 + 2 * (rnd() % 0x2000)));
+  for(int c = 0; c < 2; c++) {
+    uint16_t v = 0;
+    for(int d = 0; d < 4; d++) v |= (uint16_t)((rnd() % 10) << (4 * d));
+    if((rnd() & 3) == 0) v = (uint16_t)(0x5998 + (rnd() & 1));
+    if((rnd() & 3) == 0) v = (uint16_t)(v & 0x5FFF);
+    wr16ram(ram, c ? 0x005D : 0x005A, v);
+    wr16ram(ram, c ? 0x0062 : 0x0060, (uint16_t)(1 + rnd() % 3));
+  }
+  static const uint8_t firsts[8] = {0, 1, 4, 5, 0x30, 0x6B, 0x6C, 0x90};
+  static const uint8_t seconds[8] = {0, 0x70, 0x74, 0x75, 0xB0, 0xDB, 0xDC, 0xF8};
+  static const uint8_t slots[4] = {0x02, 0x04, 0x08, 0x80};
+  for(int i = 0; i < 2; i++) {
+    const uint16_t band = (uint16_t)(2 * (rnd() % 8) + 16 * i), at = (uint16_t)(2 * (rnd() % 8) + 16 * i);
+    wr16ram(ram, i ? 0x00C0 : 0x00BE, band);
+    wr16ram(ram, i ? 0x00C6 : 0x00C4, at);
+    ram[0x0486 + band] = (rnd() & 1) ? firsts[rnd() % 8] : (uint8_t)rnd();
+    ram[0x0486 + band + 1] = (rnd() & 3) == 0 ? 0 : (uint8_t)rnd();
+    uint8_t mask = 0;
+    for(int s = 0; s < 4; s++) if(rnd() & 1) mask |= slots[s];
+    ram[0x0596 + band] = mask;
+    ram[0x050E + at] = (rnd() & 1) ? seconds[rnd() % 8] : (uint8_t)rnd();
+    ram[0x050E + at + 1] = (rnd() & 3) == 0 ? 0 : (uint8_t)rnd();
+    ram[0x061E + at] = (uint8_t)rnd();
+  }
+  wr16ram(ram, 0x0024, (uint16_t)rnd());
+  wr16ram(ram, 0x047C, (uint16_t)rnd());
+  for(uint16_t a = 0x4E2D; a <= 0x4E3C; a++) ram[a] = (uint8_t)rnd();
+}
+
 static void fuzz_nmi_tail(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   fuzz_nmi_quiet(ram, rnd);
@@ -12513,6 +12560,11 @@ const Routine routines[] = {
   {.name = "nmi_race_full", .entry = 0x8583CE, .end = 0x8587BA, .rti = true, .rtiFrame = 9, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_full, ALL_OUTPUTS, .alsoIn = {{0x85838A, 0x8583CE}},
    .fuzz = fuzz_nmi_race_full},
+  {.name = "nmi_vs_full", .entry = 0x839777, .end = 0x839B49, .rti = true, .rtiFrame = 9, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_vs_full, ALL_OUTPUTS, .alsoIn = {{0x839734, 0x839777}},
+   .fuzz = fuzz_nmi_vs_full, .holes = {{0x839AF0, 0x839AF8}},  // its jump table (by the frame count)
+   .vramDeadAt = {0x839BD3, 0x839CBB, 0x839DA3, 0x839E8B},   // vs_hud_draw's (harness-30)
+   .vramLiveAt = {0x839BD6, 0x839CBE, 0x839DA6, 0x839E8E}},
   {.name = "nmi_race_tail", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_tail, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_target_80E175", .entry = 0x80E175, .end = 0x80E28C, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
@@ -12976,6 +13028,8 @@ const Routine routines[] = {
    .call = call_irq_menu_frame},  // up to the two tasks' stack switch
   {.name = "nmi_prologue", .entry = 0x808807, .end = 0x808931, .rti = true, .endAt = 0x808931, .source = "src/frame.c",
    .call = call_nmi_prologue, .fuzz = fuzz_nmi_prologue},
+  {.name = "nmi_vs_prologue", .entry = 0x839721, .end = 0x839731, .rti = true, .endAt = 0x839731, .source = "src/frame.c",
+   .call = call_nmi_vs_prologue, .fuzz = fuzz_nmi_prologue},
   {.name = "nmi_race_prologue", .entry = 0x858377, .end = 0x858387, .rti = true, .endAt = 0x858387, .source = "src/frame.c",
    .call = call_nmi_race_prologue, .fuzz = fuzz_nmi_prologue},
   {.name = "nmi_tail", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",

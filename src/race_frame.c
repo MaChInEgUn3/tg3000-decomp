@@ -383,6 +383,180 @@ static void race_bands_start(void) {
   }
 }
 
+// The VS band IRQ: the first band's line and its stream slots ($0486/$0596 from $00BE).
+static void vs_bands_start(void) {
+  uint16_t band = rd16(0x00BE);
+  wr16(0x00BC, band);
+  const uint16_t first = rd8((uint32_t)(0x0486 + band));
+  if(first) {
+    uint16_t top = (uint16_t)(first - 4);
+    if(top & 0x0080) top = (uint16_t)(top | 0xFF00);  // (never run: a line under 4, or past $83)
+    wr16(0x002E, top);
+    video_set_bg_mode(0x09);
+    if(top == 0 || (top & 0x8000)) {  // the first band starts now: send its chunk
+      dma_stream_size(2, 1);
+      dma_stream_size(7, 1);
+      dma_stream_size(1, 8);
+      dma_stream_size(3, 8);
+      video_set_cgram_address(0x21);
+      dma_stream_kick(rd8((uint32_t)(0x0596 + band)));
+      band = (uint16_t)(band + 1);
+      wr16(0x00BC, band);
+      const uint16_t next = rd8((uint32_t)(0x0486 + band));
+      if(next) {
+        platform_set_irq_v(next);
+        wr16(0x0005, 0x8A26);
+        platform_set_irq_h(0x006B);
+      } else {  // (never run)
+        wr16(0x0005, 0x8A84);
+        platform_set_irq_v(0x006C);
+        platform_set_irq_h(0x0078);
+      }
+      return;
+    }
+    if(top < 0x0068) {  // a raster band
+      wr16(0x0005, 0x8A26);
+      platform_set_irq_v((uint16_t)(top + 4));
+      platform_set_irq_h(0x006B);
+      video_set_bg_mode(0x09);
+      return;
+    }
+  }
+  wr16(0x0005, 0x8A84);  // no raster
+  platform_set_irq_v(0x006C);
+  platform_set_irq_h(0x0078);
+  video_set_bg_mode(0x29);
+}
+
+// The second view's band words $0030-$0036 for its IRQ (the band table $050E from $00C4).
+static void vs_band_words(void) {
+  uint16_t at = rd16(0x00C4);
+  wr16(0x00C2, at);
+  const uint16_t v = rd8((uint32_t)(0x050E + at));
+  if(v) {
+    uint16_t d = (uint16_t)(v - 0x0074);
+    if(d & 0x0080) d = (uint16_t)(d | 0xFF00);  // (never run)
+    wr16(0x0030, d);
+    if(d == 0 || (d & 0x8000)) {
+      wr8(0x0032, rd8((uint32_t)(0x061E + at)));
+      at = (uint16_t)(at + 1);
+      wr16(0x00C2, at);
+      const uint16_t next = rd8((uint32_t)(0x050E + at));
+      if(next) {
+        wr16(0x0034, next);
+        wr16(0x0036, 0x8BE3);
+      } else {
+        wr16(0x0034, 0x0020);  // (never run)
+      }
+      return;
+    }
+    if(d < 0x0068) {
+      wr16(0x0034, (uint16_t)(d + 0x0074));
+      wr8(0x0032, 0);
+      wr16(0x0036, 0x8BE3);
+      return;
+    }
+  }
+  wr16(0x0032, 0);
+  wr16(0x0034, 0x0020);
+}
+
+// One of the VS race's two clocks (BCD, $5A-$5C / $5D-$5F): two a frame, one every third.
+static void vs_clock_step(uint16_t tick, uint16_t clock) {
+  const uint16_t t = (uint16_t)(rd16(tick) - 1);
+  wr16(tick, t);
+  uint16_t step = 2;
+  if(t == 0) {
+    wr16(tick, 3);
+    step = 1;
+  }
+  const uint16_t c = bcd_add(rd16(clock), step);
+  wr16(clock, c);
+  if(c >= 0x6000) {  // (never run)
+    wr16(clock, (uint16_t)(c - 0x6000));
+    wr16((uint16_t)(clock + 2), (uint16_t)(rd16((uint16_t)(clock + 2)) + 1));
+  }
+}
+
+// TG3000_ROUTINE($83:9777) nmi_vs_full
+//
+// (drafted by a delegated agent; its never-run spans decoded here.) The VS split screen's NMI
+// frame (the VS NMI $83:9721 dispatches here through $0008), then its tail. nmi_race_full's
+// counterpart, with a DMA budget ($00FC) of $1000:
+// - Every request ($00B8, cleared whole): the scroll tables (slots 5 and 6, from $00D0 / $00D2),
+//   the double buffer flipped, the per-frame values copied, and the VRAM transfer described at
+//   $1DFE-$1E04 (never run).
+// - The sprite table, colours $21 and $31 from ROM $90 (by the word at $7E:5395), the race VRAM
+//   queue, the HUD when $0800 of the budget is left (vs_hud_draw), the four views' scrolls.
+// - BG1/BG2/Mode 7 scroll: the original's interleaved byte writes leave BG1 H = M7 H = $0100,
+//   BG1 V = 0, M7 V = $0053, BG2 H = 0.
+// - Two clocks in BCD (no pause test), HDMA and the streams as the race's (the window from
+//   $83:A411, slots 5 and 6 only), the two views' band IRQs, and one of the four cars' sound
+//   request, by the frame count.
+void nmi_vs_full(void) {
+  wr16(RACE_DMA_BUDGET, 0x1000);
+  if(rd16(0x00B8)) {
+    wr16(0x00B8, 0);
+    dma_hdma_set_table(5, rd16(0x00D0));
+    dma_hdma_set_table(6, rd16(0x00D2));
+    const uint16_t buffer = (uint16_t)(rd16(0x00B4) ^ 0x0001);
+    wr16(0x00B4, buffer);
+    wr16(0x00B6, buffer);
+    static const uint16_t copies[][2] = {
+      {0x01CC, 0x01CE}, {0x01D0, 0x01D2}, {0x01D4, 0x01D6}, {0x01D8, 0x01DA}, {0x00C8, 0x016C}, {0x00CC, 0x0170},
+      {0x00CA, 0x016E}, {0x00CE, 0x0172}, {0x00BE, 0x00C0}, {0x00C4, 0x00C6}, {0x00E2, 0x00E0}, {0x00EC, 0x0174},
+      {0x00F0, 0x0178}, {0x00EE, 0x0176}, {0x00F2, 0x017A}, {0x00F4, 0x017C}, {0x00F8, 0x0180}, {0x00F6, 0x017E},
+      {0x00FA, 0x0182},
+    };
+    for(unsigned k = 0; k < sizeof copies / sizeof copies[0]; k++) wr16(copies[k][0], rd16(copies[k][1]));
+    const uint16_t size = rd16(0x1E02);
+    if(size) {  // (never run)
+      wr16(RACE_DMA_BUDGET, (uint16_t)(rd16(RACE_DMA_BUDGET) - size));
+      video_upload_vram(rd16(0x1E00), (uint32_t)rd8(0x1E04) << 16 | rd16(0x1DFE), size);
+    }
+  }
+  const uint16_t sprites = rd16(0x00B4) ? 0x1576 : 0x1796;
+  video_set_oam_address(0x0000);
+  video_upload_oam(0x0000, 0x810000 | sprites, 0x0220);
+  video_set_obj_select(0x00);
+  video_set_oam_address(0x0000);
+  const uint16_t shade = rom16(0x908000 + (uint32_t)(uint16_t)(rd16(0x5395) - 0x8007));
+  wr16(0x0038, shade);
+  video_set_color(0x21, shade);
+  video_set_color(0x31, shade);
+  race_upload_queue_drain();
+  if(!((uint16_t)(rd16(RACE_DMA_BUDGET) - 0x0800) & 0x8000)) vs_hud_draw();
+  vs_view_scrolls();
+  video_set_bg1_hofs(0x0100);
+  video_set_bg1_vofs(0x0000);
+  video_set_m7_vofs(0x0053);
+  video_set_bg2_hofs(0x0000);
+  vs_clock_step(0x0060, 0x005A);
+  vs_clock_step(0x0062, 0x005D);
+  dma_hdma_set_mode(5, 0x43, 0x0D);
+  dma_hdma_set_mode(6, 0x43, 0x0F);
+  dma_hdma_setup(4, 0x44, 0x26, 0x83A411);
+  dma_stream_setup(1, 0x00, 0x22, 0x7E0000 | rd16(0x00C8));
+  dma_stream_setup(2, 0x08, 0x21, 0x838D35);
+  dma_stream_setup(3, 0x00, 0x22, 0x7E0000 | rd16(0x00CC));
+  dma_stream_setup(7, 0x00, 0x05, rd16(0x00B4) ? 0x7E047E : 0x7E0480);
+  dma_hdma_set_bank(5, 0x83);
+  dma_hdma_set_bank(6, 0x83);
+  dma_hdma_set_indirect_bank(5, 0x83);
+  dma_hdma_set_indirect_bank(6, 0x83);
+  dma_hdma_set_indirect_bank(4, 0x83);
+  video_hdma_enable(0x60);
+  vs_bands_start();
+  vs_band_words();
+  if(!(rd16(0x047C) & 0x8000)) {  // the sound request of one of the four cars (table at $83:9AF0)
+    const unsigned i = rd16(0x0024) & 3;
+    wr16(0x0460, (uint16_t)((rd16((uint32_t)(0x4E35 + 2 * i)) & 0x00F8) | (6 - 2 * i)));
+    wr16(0x0461, rd16((uint32_t)(0x4E2D + 2 * i)));
+    wr8(0x045B, (uint8_t)(rd8(0x045B) | 0x20));
+  }
+  nmi_vs_tail();
+}
+
 // TG3000_ROUTINE($85:83CE) nmi_race_full
 //
 // The race NMI's full frame (the race NMI $85:8377 dispatches here through $0008), then

@@ -4378,6 +4378,48 @@ For each player it writes:
 
 **Check:** the full gate (with harness-30).
 
+## The VS split screen's NMI frame (vs-race-20, 2026-11-25)
+
+**`nmi_vs_full` (`$83:9777`)**, with **`nmi_vs_prologue` (`$83:9721`)** and its tail
+**`nmi_vs_tail` (`$83:9734`)**, is the VS race's NMI: `nmi_race_full`'s counterpart.
+- **Where it comes from:** `$82:945F` points the NMI trampoline at `$83:9721`, which dispatches
+  through `$0008` to `$83:9777`. That target is set at `$82:9459`.
+- **Drafting:** a delegated agent drafted it (US$1.09, the largest so far). Its never-run spans
+  were decoded here: a VRAM transfer, the two clocks' minute carries, two sign-extends, and the
+  bands' empty cases. One branch was fixed: a negative entry takes the zero path.
+
+**What the frame does:**
+- **Every request** (`$00B8`, cleared whole): it sets the scroll tables (slots 5 and 6, from
+  `$00D0`/`$00D2`), flips the double buffer, copies 19 per-frame words, and runs the VRAM
+  transfer described at `$1DFE`-`$1E04` (never run).
+- **Every frame:**
+  - the sprite table;
+  - colours `$21` and `$31` from ROM `$90`, by the word at `$7E:5395`;
+  - the race VRAM queue;
+  - the HUD, when `$0800` of the `$1000` budget is left (`vs_hud_draw`);
+  - the four views' scrolls (`vs_view_scrolls`).
+- **The scroll registers' interleaved byte writes** leave BG1 H = M7 H = `$0100`, BG1 V = 0,
+  M7 V = `$0053` and BG2 H = 0. That is worked out from the PPU's write-twice latches.
+  - BG1 V and M7 V end apart, so `src/platform.h` gains `video_set_m7_vofs` (Mode 7's vertical
+    offset alone).
+- **Two clocks** in BCD (`$5A`-`$5C`, `$5D`-`$5F`), with no pause test, unlike the race's.
+- **HDMA and the streams**, as in the race, but with the window from `$83:A411` and only slots 5
+  and 6 enabled.
+- **The two views' band IRQs:**
+  - the first view through `$0486`/`$0596`;
+  - the second view through `$050E`/`$061E` into `$0030`-`$0036`.
+
+  Their IRQ handlers (`$83:8A26`, `$83:8A84`, `$83:8BE3`) are not ported yet.
+- **One of the four cars' sound request,** picked by the frame count through the jump table at
+  `$83:9AF0`.
+
+**Results:**
+- `nmi_vs_full`: 1,128 live samples, 500 fuzz cases, 377/377 paths. The fuzz runs every never-run
+  span.
+- `nmi_vs_prologue`: 1,128 live samples, 500 fuzz cases.
+
+**Check:** the full gate (`src/platform.h` and `platform_bench.c` changed).
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.
