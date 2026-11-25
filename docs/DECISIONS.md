@@ -4063,6 +4063,29 @@ The callers reload the registers, so they are not compared.
 
 **Check:** the full gate (the scripts changed by more than additions).
 
+## What the road command does with the bit (dsp4-01c, 2026-11-25)
+
+**The bit dsp4-01b found, measured over the first 400 race frames of the TAS capture.** Each
+frame was replayed from its last `$0A`, with bit 7 of that command's near row as sent and then
+flipped, on the firmware chip. This is outputs only.
+
+- **Only the road command's first word of a row changes.** That is the word the game stores at
+  `$0798` + X: read at `$85:B735`, or at `$85:B747` for the last row.
+  - 5,299 bytes change, 4,910 at the first PC and 389 at the second.
+  - Each one is exactly 1 more with the bit set than with it clear, always in the low byte.
+  - Only the first rows of each frame change, about 13 a frame: every change is within 196
+    records of the road command. The row's other word, the X index, and everything after are
+    the same, the sprites' `$09` stream included.
+- **The game always sends the bit set here.** In the 8,000 frames, all 37,601 `$0A` commands at
+  `$81:F90E` send the near row `$C4C4`, whose bit 7 is set.
+  - So on this track the road command always gets the "+1".
+  - A native road command must still take the bit as state shared with `$0A`. A chip just
+    powered on has it clear, and other tracks may send other rows.
+- **`tools/bench/dsp4_replay`** now prints this measurement (the changes by PC and by
+  difference, and the near rows sent).
+
+**Check:** the tool's run above. It adds lines to `tools/bench/` only and changes no row or C.
+
 ## The player's password shown (menu-23, 2026-11-24)
 
 - **`$8A:BE2E` shows the player's password** after a championship race.

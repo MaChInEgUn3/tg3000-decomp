@@ -15,6 +15,8 @@
 //   frame + $0A (dsp4-01b): the frame from its road command, after the last $000A command the
 //   game sent before it (its words and reads), and again with that $0A's near row's bit 7
 //   flipped (the one input bit found to matter).
+// And the bit's effect (dsp4-01c): over the first 400 frames with a $0A, which reads change
+// when the bit flips, and by how much; and the near rows the $0A at $81:F90E sends.
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
@@ -97,6 +99,60 @@ int main(int argc, char** argv) {
       std::printf("\n");
       done++;
     }
+  }
+  {  // dsp4-01c: the bit's effect, and the near rows sent
+    auto isRoad = [&](size_t k) { return !tape[k].read && ((tape[k].pc == 0x85B536 && tape[k].v == 0x0F) || (tape[k].pc == 0x85B53B && tape[k].v == 0x01)) && k + 1 < tape.size() && tape[k + 1].v == 0x00; };
+    auto isEdges = [&](size_t k) { return !tape[k].read && tape[k].pc == 0x81F90E && tape[k].v == 0x0A && k + 1 < tape.size() && tape[k + 1].v == 0x00; };
+    auto replay = [&](size_t a, size_t f, size_t e, bool flip, std::vector<uint8_t>& out) {
+      dsp4_lle_load_state(power.data(), size);
+      for(size_t q = a; q < a + 16; q++) {
+        if(tape[q].read) dsp4_lle_read(true);
+        else dsp4_lle_write(true, uint8_t(q == a + 4 && flip ? tape[q].v ^ 0x80 : tape[q].v));
+      }
+      out.clear();
+      for(size_t k = f; k < e; k++) {
+        if(tape[k].read) out.push_back(dsp4_lle_read(true));
+        else dsp4_lle_write(true, tape[k].v);
+      }
+    };
+    std::map<uint32_t, long> byPc;
+    std::map<int, long> byDelta;
+    std::map<uint16_t, long> nearRows;
+    long frames = 0, changed = 0;
+    size_t lastRow = 0, maxRow = 0;
+    for(size_t k = 0; k + 8 < tape.size(); k++)
+      if(isEdges(k)) nearRows[uint16_t(tape[k + 4].v | tape[k + 5].v << 8)]++;
+    std::vector<uint8_t> t, u;
+    for(size_t f = 0; f < tape.size() && frames < 400; f++) {
+      if(!isRoad(f)) continue;
+      size_t e = f + 2;
+      while(e < tape.size() && !isRoad(e)) e++;
+      size_t a = f;
+      while(a > 0 && !isEdges(a)) a--;
+      if(a == 0) continue;
+      replay(a, f, e, false, t);
+      replay(a, f, e, true, u);
+      frames++;
+      size_t r = 0;
+      for(size_t k = f; k < e; k++) {
+        if(!tape[k].read) continue;
+        if(t[r] != u[r]) {
+          changed++;
+          byPc[tape[k].pc]++;
+          byDelta[int(t[r]) - int(u[r])]++;
+          lastRow = k - f;
+          if(lastRow > maxRow) maxRow = lastRow;
+        }
+        r++;
+      }
+    }
+    std::printf("bit 7 flipped, %ld frames: %ld bytes read change (the last within %zu records of the road command)\n", frames,
+                changed, maxRow);
+    for(const auto& p : byPc) std::printf("    at $%06X: %ld\n", p.first, p.second);
+    for(const auto& p : byDelta) std::printf("    as sent minus flipped: %+d: %ld\n", p.first, p.second);
+    std::printf("near rows sent with the $0A at $81:F90E:");
+    for(const auto& p : nearRows) std::printf(" $%04X x %ld", p.first, p.second);
+    std::printf("\n");
   }
   static const char* names[8] = {"fresh", "chained", "frame", "frames 2", "frames 3", "frames 5", "frame + $0A", "frame + $0A, bit 7 flipped"};
   static const int back[8] = {0, 0, 1, 2, 3, 5, 1, 1};
