@@ -6409,6 +6409,47 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road line word: the slope is header word 10 (dsp4-01k, 2026-11-26)
+
+**A correction to dsp4-01i.** Its rule, ((192 · h) >> 15) − y − 170, is right for the game's
+header. It credited the 192 to header word 4 (+1); that is wrong. The probe (firmware, chosen
+inputs, outputs only) shows:
+- **Word 4 only shifts every `$0798` word** (one for one, every line). The line words relative
+  to the camera line's are the same for every word 4 tried (0-600), except one rounding at
+  word 4 = 0.
+- **Word 10 (`$C0`, 192) is the slope.** dsp4-01i's two candidates (the +192 from word 10 or
+  from track word 2) are settled: it is word 10.
+
+**The rule, exact on 9,700 probe runs** (word 10 from 1 to 694, the first row's `h` from 600 to
+32,767). With C the camera line's word:
+- **C = word 4 − word 5.**
+- **A row's first-line word** (on the line y of the row before it) is
+  C + ((word 10 · h) >> 15) − word 10 − (y − word 1).
+
+With the game's header (word 1 = 51, word 10 = 192, C = −29) this is dsp4-01i's rule.
+
+**The lines between, measured further** (dsp4-01j's question).
+- **The table:** 23,870 probe runs, every line count n from 1 to 51, word 10 up to 3,999. They
+  give 18,114 (n, D) groups, where D is the first-line word minus C.
+- **The lines depend on (n, D) alone:** one group in 18,114 has two different line lists
+  (not yet looked at).
+- **What is ruled out:**
+  - linear interpolation from 0 to D with any rounding (round half up: 591 of the first 3,163
+    groups off);
+  - interpolation of the depth per line;
+  - interpolation toward the end before its floor;
+  - a reciprocal of the form ⌊(65,536 − e) / n⌋ with a common offset (e 0-64, signed or by
+    magnitude).
+- **What fits:** for large slopes the chip's step is a little smaller in size than D / n. For
+  several odd n the feasible step is close to 65,520 / n in 1/65,536 units, but no single
+  offset fits every D.
+
+**Next (dsp4-01l):** per line count, search the step and the offset together on the table. If
+no linear form with a fixed offset fits, test a step that depends on D's size (a reciprocal
+with fewer bits for small D), or a start fraction that comes from the camera line's product.
+
+**Check:** a measurement, recorded here. It changes no code.
+
 ## The road line word between rows: what it depends on (dsp4-01j, 2026-11-26)
 
 **Measured** on the first row's sweep (452 rows, 6,100 lines), outputs only.
