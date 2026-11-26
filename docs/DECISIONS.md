@@ -5945,6 +5945,50 @@ the port runs the championship loop.
 
 **Check:** the full gate (`src/` changed by more than additions).
 
+## The championship screen's call tree takes dp (task-5, 2026-11-26)
+
+**Port request D, step 3a.** The championship screen is the largest of the three two-task
+screens. After the fork it runs:
+- the records, the load, the map's queue and the panel;
+- on a fresh start, the race choice straight away. Otherwise the fade in, then the opening
+  (the slide, the panels cleared, the static) and the menu's loop (`$80:C2BB`), which never
+  ends by itself;
+- the menu's choices through `$80:C5D5`: the name entry (`$80:C6D4`), the controls
+  (`$80:CB4A`) and the gears (`$80:CEE2`) come back to the menu; the race (`$80:D168`) goes on
+  into the race start screen (`race_start_close`, `_bar`, `_load`, its frames, `_end`).
+
+All of it runs in both tasks.
+
+**This unit is the mechanical part.** 54 functions reached from those pieces now take the task's
+direct page in place of the fixed `DP`. The converter ran in rounds until the walker found
+none left. Among them:
+- the menus' pieces: the name entry, the controls, the gears, the menu choice;
+- the race start's load and frame drawing;
+- the HUD pieces they share: `race_hud_sprites`, `race_lights_draw`, `window_shape_a/b`,
+  `binary_to_bcd`, `sprite_number_right`, `sprite_number_point(_right)`, `scenery_build`.
+
+Callers outside the tree pass `DP`.
+
+**The menu bar's controls and panel steps now take `dp`.** So `task_frame_hook`'s two task-2
+traps for them are gone.
+
+**Slips caught by the compiler and fixed:**
+- The converter's file list left out `src/hud.c`, so three functions stayed unconverted for
+  three rounds.
+- In those rounds a call outside the tree gained one `DP` per round. It is now
+  `race_hud_sprites(DP)`.
+
+The converter now reads every `src/*.c`.
+
+**Results:**
+- **The menus' movie:** every row passes, live and fuzz (200 cases); no trap is reached.
+- **The full gate** covers the other movies.
+
+**Next:** compose the screen whole as `champ_task(dp)`: the opening, the menu's loop, the three
+choices' screens, and the race start screen. Then `game_main`'s championship trap goes.
+
+**Check:** the full gate (`src/` changed by more than additions).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

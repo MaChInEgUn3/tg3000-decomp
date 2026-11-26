@@ -381,12 +381,10 @@ void task_frame_hook(uint16_t dp) {
     case 2: menu_bar_close_step(dp); break;
     case 3: menu_bar_open_colours_step(dp); break;
     case 4:
-      if(dp != DP) tg3000_unported("$80:C68D: the controls menu's bar in task 2");
-      menu_bar_open_controls_step();
+      menu_bar_open_controls_step(dp);
       break;
     case 5:
-      if(dp != DP) tg3000_unported("$80:C6A2: the menu panel's bar in task 2");
-      menu_bar_open_panel_step();
+      menu_bar_open_panel_step(dp);
       break;
     default: tg3000_unported("$80:C636: a menu bar step past its table"); break;
     }

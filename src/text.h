@@ -39,7 +39,7 @@ void text_cursor_down3(void);
 uint16_t sprite_text(uint32_t str, uint16_t x);
 // The menus' copy ($80:8704): their own font (capitals, digits, three marks; widths from
 // $80:87B8), large sprites.
-uint16_t sprite_text_menu(uint32_t str, uint16_t x);
+uint16_t sprite_text_menu(uint16_t dp, uint32_t str, uint16_t x);
 
 // Print the zero-terminated string at bus address `str` (the original takes its low word
 // in A, also left in $0148, and the bank from DB) one tile per character with
@@ -74,7 +74,7 @@ uint32_t sprite_group(uint16_t dp, uint32_t table);
 // sprite_number, then shift its sprites by (x - end) on the low bytes, so that the number
 // ends at `x` (right-aligned). D+$16 = the value's low word, D+$14 = the shift. Returns the
 // shift (16 bits).
-uint16_t sprite_number_right(uint32_t value, uint16_t x);
+uint16_t sprite_number_right(uint16_t dp, uint32_t value, uint16_t x);
 
 // The same, centred on `x`: the shift is ((x & $FF) - (end & $FF)) >> 1 (16-bit).
 // ($80:8635)
@@ -138,17 +138,17 @@ void vs_message_update(void);
 // take_nibble16) as sprites from slot D+$74 at x `x` (kept in D+$16), tiles $34 + digit
 // + D+$14 placed by their widths ($80:85A6 + tile); one leading zero is dropped, and a
 // point (tile $41) goes before the last two digits. Returns the x after the last one.
-uint16_t sprite_number_point(uint16_t value, uint16_t x);
+uint16_t sprite_number_point(uint16_t dp, uint16_t value, uint16_t x);
 
 // $80:8667: sprite_number_point right-aligned: the number is drawn from x `x`, then every
 // sprite it added moves left by its width ((x - the x after it), low bytes, in D+$14).
 // Returns the slot after it (D+$74).
-uint16_t sprite_number_point_right(uint16_t value, uint16_t x);
+uint16_t sprite_number_point_right(uint16_t dp, uint16_t value, uint16_t x);
 
 // $80:C475: a bar of 8 sprites at slot `slot`, D+$14 wide, centred on D+$18: four left
 // pieces (tile D+$1A + $150, then + $151) 8 apart from its left edge, four right pieces
 // ($151 ..., the last mirrored $150 | $4000) from its right edge - $20 (8, 8, 6 apart).
 // Returns slot + $20.
-uint16_t sprite_bar8(uint16_t slot);
+uint16_t sprite_bar8(uint16_t dp, uint16_t slot);
 
 #endif

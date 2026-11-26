@@ -26,7 +26,7 @@ uint16_t draw_meter(uint16_t dp);
 // D+$3C is 0; else, while D+$26 is 0, D+$3C counts down (at 0, func_80D6F3 steers to
 // its place) and it blinks by bit 4 of the count (tile $25C3 when off); with D+$26 set
 // it is off. The rest are unlit (tile $25C2).
-void race_lights_draw(void);
+void race_lights_draw(uint16_t dp);
 
 // $80:D823: the race HUD, one frame (D = $0100):
 // - the two window shapes (window_shape_a with D+$37:D+$35's bytes, window_shape_b with
@@ -41,6 +41,6 @@ void race_lights_draw(void);
 // - the OAM from the slot $0174 on: two 2-tile sprites, then one-tile ones, from the
 //   8-byte entries at $0F00 (x byte at +$06 rounded to a signed column less 8), until the
 //   table or the OAM ends; $0174 = the slot after.
-void race_hud_sprites(void);
+void race_hud_sprites(uint16_t dp);
 
 #endif

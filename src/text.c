@@ -148,7 +148,7 @@ static uint16_t menu_glyph(uint8_t ch) {
 }
 
 // TG3000_ROUTINE($80:8704) sprite_text_menu
-uint16_t sprite_text_menu(uint32_t str, uint16_t x) {
+uint16_t sprite_text_menu(uint16_t dp, uint32_t str, uint16_t x) {
   wr16(SPRITE_TEXT_X, x);
   uint16_t slot = rd16(SPRITE_TEXT_SLOT);
   for(uint16_t i = 0;; i++) {
@@ -160,8 +160,8 @@ uint16_t sprite_text_menu(uint32_t str, uint16_t x) {
       continue;
     }
     const uint16_t g = menu_glyph(ch);
-    wr16(DP + 0x18, (uint16_t)((g << 1) & 0x000E));  // (its scratch: the tile's low bits)
-    wr16(0x0902 + slot, (uint16_t)((rd16(DP + 0x18) | ((g << 2) & 0xFFE0)) + rd16(SPRITE_TEXT_BASE)));
+    wr16(dp + 0x18, (uint16_t)((g << 1) & 0x000E));  // (its scratch: the tile's low bits)
+    wr16(0x0902 + slot, (uint16_t)((rd16(dp + 0x18) | ((g << 2) & 0xFFE0)) + rd16(SPRITE_TEXT_BASE)));
     wr16(0x0900 + slot, rd16(SPRITE_TEXT_X));
     wr16(0x0B01 + slot, 0x0100);
     wr8(SPRITE_TEXT_X, (uint8_t)(rom8(MENU_GLYPH_WIDTHS + g) + rd8(SPRITE_TEXT_X)));
@@ -265,10 +265,10 @@ uint32_t sprite_group(uint16_t dp, uint32_t table) {
 }
 
 // TG3000_ROUTINE($80:8698) sprite_number_right
-uint16_t sprite_number_right(uint32_t value, uint16_t x) {
+uint16_t sprite_number_right(uint16_t dp, uint32_t value, uint16_t x) {
   wr16(SPRITE_TEXT_X, (uint16_t)value);
   uint16_t first = rd16(SPRITE_TEXT_SLOT);
-  uint16_t end = sprite_number(DP, value, x);
+  uint16_t end = sprite_number(dp, value, x);
   uint16_t shift = (uint16_t)((x & 0xFF) - (end & 0xFF));
   wr16(SPRITE_TEXT_BASE, shift);
   // a do-while in the original: a number always has at least one digit
@@ -571,50 +571,50 @@ void race_message_update(void) { message_update(&centredRace); }
 void vs_message_update(void) { message_update(&centredVs); }
 
 // TG3000_ROUTINE($80:855A) sprite_number_point
-uint16_t sprite_number_point(uint16_t value, uint16_t x) {
-  wr16(DP + 0x16, x);
-  wr16(DP + 0x1A, value);
-  uint16_t slot = rd16(DP + 0x74), n = 4, digit;
+uint16_t sprite_number_point(uint16_t dp, uint16_t value, uint16_t x) {
+  wr16(dp + 0x16, x);
+  wr16(dp + 0x1A, value);
+  uint16_t slot = rd16(dp + 0x74), n = 4, digit;
   for(;;) {  // one leading zero at most is dropped
-    digit = take_nibble16();
+    digit = take_nibble16(dp);
     if(digit != 0 || n == 3) break;
     n--;
   }
   do {
     uint16_t tile = (uint16_t)(digit + 0x34);
     const uint32_t s = slot;
-    wr16(0x0902 + s, (uint16_t)(tile + rd16(DP + 0x14)));
+    wr16(0x0902 + s, (uint16_t)(tile + rd16(dp + 0x14)));
     wr16(0x0B01 + s, 0);
-    wr16(0x0900 + s, (uint16_t)(rom8(0x8085A6 + tile) + rd16(DP + 0x16)));
-    wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + 8));
+    wr16(0x0900 + s, (uint16_t)(rom8(0x8085A6 + tile) + rd16(dp + 0x16)));
+    wr16(dp + 0x16, (uint16_t)(rd16(dp + 0x16) + 8));
     slot = (uint16_t)(slot + 4);
     if(n == 3) {  // the point
       const uint32_t p = slot;
-      wr16(0x0902 + p, (uint16_t)(0x0041 + rd16(DP + 0x14)));
+      wr16(0x0902 + p, (uint16_t)(0x0041 + rd16(dp + 0x14)));
       wr16(0x0B01 + p, 0);
-      wr16(0x0900 + p, rd16(DP + 0x16));
-      wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + 3));
+      wr16(0x0900 + p, rd16(dp + 0x16));
+      wr16(dp + 0x16, (uint16_t)(rd16(dp + 0x16) + 3));
       slot = (uint16_t)(slot + 4);
     }
-    digit = take_nibble16();
+    digit = take_nibble16(dp);
   } while(--n);
-  wr16(DP + 0x74, slot);
-  return rd16(DP + 0x16);
+  wr16(dp + 0x74, slot);
+  return rd16(dp + 0x16);
 }
 
 // TG3000_ROUTINE($80:C475) sprite_bar8
-uint16_t sprite_bar8(uint16_t slot) {
+uint16_t sprite_bar8(uint16_t dp, uint16_t slot) {
   const uint32_t x = slot;
-  uint16_t half = (uint16_t)(rd16(DP + 0x14) >> 1), odd = (uint16_t)(rd16(DP + 0x14) & 1);
-  uint16_t at = (uint16_t)(rd16(DP + 0x18) - half);
+  uint16_t half = (uint16_t)(rd16(dp + 0x14) >> 1), odd = (uint16_t)(rd16(dp + 0x14) & 1);
+  uint16_t at = (uint16_t)(rd16(dp + 0x18) - half);
   for(int i = 0; i < 4; i++, at = (uint16_t)(at + 8)) wr16(0x0900 + x + 4 * (uint32_t)i, at);
-  at = (uint16_t)(half + rd16(DP + 0x18) + odd - 0x20);  // the LSR's carry goes into the ADC
+  at = (uint16_t)(half + rd16(dp + 0x18) + odd - 0x20);  // the LSR's carry goes into the ADC
   static const uint16_t gap[4] = {0, 8, 6, 8};
   for(int i = 0; i < 4; i++) {
     at = (uint16_t)(at + gap[i]);
     wr16(0x0910 + x + 4 * (uint32_t)i, at);
   }
-  uint16_t tile = (uint16_t)(rd16(DP + 0x1A) + 0x0150);
+  uint16_t tile = (uint16_t)(rd16(dp + 0x1A) + 0x0150);
   wr16(0x0902 + x, tile);
   for(int i = 1; i < 7; i++) wr16(0x0902 + x + 4 * (uint32_t)i, (uint16_t)(tile + 1));
   wr16(0x091E + x, (uint16_t)(tile | 0x4000));
@@ -623,15 +623,15 @@ uint16_t sprite_bar8(uint16_t slot) {
 }
 
 // TG3000_ROUTINE($80:8667) sprite_number_point_right
-uint16_t sprite_number_point_right(uint16_t value, uint16_t x) {
-  uint16_t first = rd16(DP + 0x74);
-  uint16_t end = sprite_number_point(value, x);
-  wr16(DP + 0x14, (uint16_t)((x & 0x00FF) - (end & 0x00FF)));
+uint16_t sprite_number_point_right(uint16_t dp, uint16_t value, uint16_t x) {
+  uint16_t first = rd16(dp + 0x74);
+  uint16_t end = sprite_number_point(dp, value, x);
+  wr16(dp + 0x14, (uint16_t)((x & 0x00FF) - (end & 0x00FF)));
   uint16_t slot = first;
   do {
     const uint32_t s = slot;
-    wr8(0x0900 + s, (uint8_t)(rd8(0x0900 + s) + rd8(DP + 0x14)));
+    wr8(0x0900 + s, (uint8_t)(rd8(0x0900 + s) + rd8(dp + 0x14)));
     slot = (uint16_t)(slot + 4);
-  } while(slot != rd16(DP + 0x74));
+  } while(slot != rd16(dp + 0x74));
   return slot;
 }

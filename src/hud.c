@@ -43,42 +43,42 @@ static void race_light_tile(uint16_t y, uint16_t n, uint16_t tile) {
 }
 
 // TG3000_ROUTINE($80:DAED) race_lights_draw
-void race_lights_draw(void) {
-  wr16(DP + 0x14, 0);
-  uint16_t y = rd16(DP + 0x74);
+void race_lights_draw(uint16_t dp) {
+  wr16(dp + 0x14, 0);
+  uint16_t y = rd16(dp + 0x74);
   do {
-    uint16_t n = rd16(DP + 0x14), lit = rd16(0x0368);
+    uint16_t n = rd16(dp + 0x14), lit = rd16(0x0368);
     if(n < lit) {
       race_light_lit(y, n);
     } else if(n != lit) {
       race_light_tile(y, n, 0x25C2);
-    } else if(rd16(DP + 0x3C) == 0) {
+    } else if(rd16(dp + 0x3C) == 0) {
       race_light_lit(y, n);
-    } else if(rd16(DP + 0x26) != 0) {
+    } else if(rd16(dp + 0x26) != 0) {
       race_light_tile(y, n, 0x25C3);
     } else {
-      uint16_t count = rd16(DP + 0x3C);
-      wr16(DP + 0x3C, (uint16_t)(count - 1));
-      if(rd16(DP + 0x3C) == 0) {
-        uint16_t keep = rd16(DP + 0x14);
+      uint16_t count = rd16(dp + 0x3C);
+      wr16(dp + 0x3C, (uint16_t)(count - 1));
+      if(rd16(dp + 0x3C) == 0) {
+        uint16_t keep = rd16(dp + 0x14);
         func_80D6F3(rom16(0x81CB14 + (uint32_t)(uint16_t)(n << 1)));
-        wr16(DP + 0x14, keep);
+        wr16(dp + 0x14, keep);
         count = 0;
       }
       if(count & 0x0010) race_light_tile(y, n, 0x25C3);
       else race_light_lit(y, n);
     }
     y = (uint16_t)(y + 4);
-    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 1));
-  } while(rd16(DP + 0x14) != 0x000C);
-  wr16(DP + 0x74, y);
+    wr16(dp + 0x14, (uint16_t)(rd16(dp + 0x14) + 1));
+  } while(rd16(dp + 0x14) != 0x000C);
+  wr16(dp + 0x74, y);
 }
 
 // D+$14 = 0 - D+$22 plus `x`; whether that lies on screen ($100 and on, or below `low`,
 // is off, each judged by the sign of the difference).
-static bool hud_on_screen(uint16_t x, uint16_t low) {
-  const uint16_t at = (uint16_t)(x - rd16(DP + 0x22));
-  wr16(DP + 0x14, at);
+static bool hud_on_screen(uint16_t dp, uint16_t x, uint16_t low) {
+  const uint16_t at = (uint16_t)(x - rd16(dp + 0x22));
+  wr16(dp + 0x14, at);
   return ((uint16_t)(at - 0x0100) & 0x8000) && !((uint16_t)(at - low) & 0x8000);
 }
 
@@ -102,58 +102,58 @@ static uint16_t hud_column(uint16_t w) {
 }
 
 // TG3000_ROUTINE($80:D823) race_hud_sprites
-void race_hud_sprites(void) {
-  window_shape_a((uint16_t)(rd8(DP + 0x37) << 8 | rd8(DP + 0x35)), 0x0000);
-  window_shape_b(rd16(DP + 0x24), 0x0100);
-  if(hud_on_screen(0, 0xFFF0)) {
-    wr16(DP + 0x16, 0x0098);
-    wr16(DP + 0x18, 0);
-    sprite_group(DP, 0x81C272);
+void race_hud_sprites(uint16_t dp) {
+  window_shape_a(dp, (uint16_t)(rd8(dp + 0x37) << 8 | rd8(dp + 0x35)), 0x0000);
+  window_shape_b(dp, rd16(dp + 0x24), 0x0100);
+  if(hud_on_screen(dp, 0, 0xFFF0)) {
+    wr16(dp + 0x16, 0x0098);
+    wr16(dp + 0x18, 0);
+    sprite_group(dp, 0x81C272);
   }
-  wr16(DP + 0x14, 0x2200);
-  sprite_number_point_right((uint16_t)binary_to_bcd(rd16(DP + 0x28)), 0x4846);
-  wr16(DP + 0x14, 0x2200);
+  wr16(dp + 0x14, 0x2200);
+  sprite_number_point_right(dp, (uint16_t)binary_to_bcd(dp, rd16(dp + 0x28)), 0x4846);
+  wr16(dp + 0x14, 0x2200);
   uint8_t low;
-  uint16_t a = hud_product(rd16(DP + 0x28), 0x4D, &low);
-  wr8(DP + 0x17, (uint8_t)(low << 1));
+  uint16_t a = hud_product(rd16(dp + 0x28), 0x4D, &low);
+  wr8(dp + 0x17, (uint8_t)(low << 1));
   a = (uint16_t)(a << 1 | (low >> 7));
-  const uint16_t w16 = rd16(DP + 0x16);
-  wr16(DP + 0x16, (uint16_t)(w16 << 1));
-  a = (uint16_t)(a + rd16(DP + 0x28) + (w16 >> 15));
-  sprite_number_point_right((uint16_t)binary_to_bcd(a), 0x5046);
-  wr16(DP + 0x14, 0x2200);
-  sprite_number(DP, binary_to_bcd(hud_product((uint16_t)(rd8(DP + 0x35) << 8), 0x63, &low)), 0x2CD2);
-  wr16(DP + 0x14, 0x2200);
-  a = hud_product((uint16_t)(rd8(DP + 0x37) << 8), 0x41, &low);
-  sprite_number_right(binary_to_bcd((uint16_t)(a << 1 | (low >> 7))), 0x7662);
-  wr16(DP + 0x14, 0x2200);
+  const uint16_t w16 = rd16(dp + 0x16);
+  wr16(dp + 0x16, (uint16_t)(w16 << 1));
+  a = (uint16_t)(a + rd16(dp + 0x28) + (w16 >> 15));
+  sprite_number_point_right(dp, (uint16_t)binary_to_bcd(dp, a), 0x5046);
+  wr16(dp + 0x14, 0x2200);
+  sprite_number(dp, binary_to_bcd(dp, hud_product((uint16_t)(rd8(dp + 0x35) << 8), 0x63, &low)), 0x2CD2);
+  wr16(dp + 0x14, 0x2200);
+  a = hud_product((uint16_t)(rd8(dp + 0x37) << 8), 0x41, &low);
+  sprite_number_right(dp, binary_to_bcd(dp, (uint16_t)(a << 1 | (low >> 7))), 0x7662);
+  wr16(dp + 0x14, 0x2200);
   sprite_text_centered(0x860000 | bus_rd16(0x86CEA7 + (uint32_t)(uint16_t)(rd16(0x0368) << 1)), 0xBDA8);
-  wr16(DP + 0x14, 0x2200);
+  wr16(dp + 0x14, 0x2200);
   sprite_text_centered(0x860000 | bus_rd16(0x86CEBF + (uint32_t)(uint16_t)(rd16(0x0444) << 1)), 0xCDA8);
-  wr16(DP + 0x14, 0x2200);
+  wr16(dp + 0x14, 0x2200);
   sprite_text_centered(0x860000 | bus_rd16(0x86D0A7 + (uint32_t)(uint16_t)(rd16(0x0444) << 1)), 0x6832);
-  race_lights_draw();
-  uint16_t d = (uint16_t)(rd16(DP + 0x32) - rd16(DP + 0x28));
+  race_lights_draw(dp);
+  uint16_t d = (uint16_t)(rd16(dp + 0x32) - rd16(dp + 0x28));
   if(!((uint16_t)(d - 0x0010) & 0x8000)) d = 0x0010;
   else if((uint16_t)(d - 0xFFF0) & 0x8000) d = 0xFFF0;  // never run
-  wr16(DP + 0x28, (uint16_t)(d + rd16(DP + 0x28)));
-  wr16(DP + 0x1C, 0);
+  wr16(dp + 0x28, (uint16_t)(d + rd16(dp + 0x28)));
+  wr16(dp + 0x1C, 0);
   if(rd16(0x070A) != 0) {
     uint16_t x = 0x000A;  // the first pass and the second both use entry $0A
     do {
-      if(hud_on_screen(rd16(0x0706 + (uint32_t)x), 0xFFE0)) {
-        wr16(DP + 0x16, 0x0098);
-        wr16(DP + 0x18, rd16(0x0708 + (uint32_t)x));
-        sprite_group(DP, 0x810000 | rd16(0x0704 + (uint32_t)x));
+      if(hud_on_screen(dp, rd16(0x0706 + (uint32_t)x), 0xFFE0)) {
+        wr16(dp + 0x16, 0x0098);
+        wr16(dp + 0x18, rd16(0x0708 + (uint32_t)x));
+        sprite_group(dp, 0x810000 | rd16(0x0704 + (uint32_t)x));
       }
-      wr16(DP + 0x1C, (uint16_t)(rd16(DP + 0x1C) + 0x000A));
-      x = rd16(DP + 0x1C);
+      wr16(dp + 0x1C, (uint16_t)(rd16(dp + 0x1C) + 0x000A));
+      x = rd16(dp + 0x1C);
     } while(rd16(0x0700 + (uint32_t)x) != 0);
   }
-  if(rd16(0x0700) != 0 && hud_on_screen(rd16(0x0706), 0xFFD0)) {  // never run
-    wr16(DP + 0x16, 0x0098);
-    wr16(DP + 0x18, 0x0800);
-    sprite_group(DP, 0x81C2F2);
+  if(rd16(0x0700) != 0 && hud_on_screen(dp, rd16(0x0706), 0xFFD0)) {  // never run
+    wr16(dp + 0x16, 0x0098);
+    wr16(dp + 0x18, 0x0800);
+    sprite_group(dp, 0x81C2F2);
   }
   uint16_t y = rd16(0x0174), x = 0;
   for(; x != 0x0010 && y < 0x01FC; x = (uint16_t)(x + 8), y = (uint16_t)(y + 8)) {

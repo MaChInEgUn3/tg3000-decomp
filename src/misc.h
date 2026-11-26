@@ -96,7 +96,7 @@ void func_80894E(void);
 
 // The 8 decimal digits of `value` as BCD, ones in the low nibble, by dividing by 10 on
 // the CPU divider; left in D+$16 (low word) and D+$18 (high word). Returns it.
-uint32_t binary_to_bcd(uint16_t value);
+uint32_t binary_to_bcd(uint16_t dp, uint16_t value);
 
 // $0156 = $0158 = 0, then func_8AA022 of the words $0018, $0014, $0010, $000C in turn.
 // Returns the final $0158.
@@ -497,7 +497,7 @@ uint16_t password_pack(void);
 void func_8ABBF4(uint16_t bits, uint16_t count);
 
 // The 16-bit sibling of take_nibble: A = the top 4 bits of $011A, which is shifted left 4.
-uint16_t take_nibble16(void);
+uint16_t take_nibble16(uint16_t dp);
 
 // Blocks of 2 rows x 5 words in a map at $7E:230C (rows $50 bytes apart).
 // func_82B78D: from the entry at $7E:4F31 + ((A >> 2) & ~3) (two bytes), $0156 = byte 0
@@ -528,8 +528,8 @@ uint32_t func_80DC5A(uint32_t table, uint16_t a);
 // names, for D+$1E / 2 + $0C lines; the rest of $1A lines are empty ($00FF), then the end
 // ($00FF, 0). The $19 lines above the start mirror those below it (one more when D+$1E is
 // odd). D+$14 and D+$16 count the lines.
-void window_shape_a(uint16_t a, uint16_t x);
-void window_shape_b(uint16_t a, uint16_t x);
+void window_shape_a(uint16_t dp, uint16_t a, uint16_t x);
+void window_shape_b(uint16_t dp, uint16_t a, uint16_t x);
 
 // Take a free slot (word 0 in $7F:7FBC + slot, slots 0..$0166 step 2) whose kind
 // ($041C + slot) is $0168; if there is none, lower $0168 and look again, down to kind 0.
@@ -1033,7 +1033,7 @@ void text_buffer_screen(void);
 //   block of map words D+$7E on at $7F:AE40 + $1310 / $19D0 + 2 * column; an entry at
 //   $0700 + D+$80 (10 bytes); D+$7A counts down.
 // At the end $0800 = D+$82 and $0880 = D+$86.
-void scenery_build(void);
+void scenery_build(uint16_t dp);
 
 // $81:F21E: object `x`'s contacts down a chain (D = $0100). Unless object `y` is $60 or
 // more ahead of x (+$00, unsigned), D+$3C counts up and, from y along the links at +$18
@@ -1092,7 +1092,7 @@ uint16_t title_fade_step(void);
 // $8000; D+$74 after them); the four labels $81:BDE0/$BDE5/$BDED/$BDF3 centred at $2080 +
 // D+$E7 and $B00 apart, item D+$48 in attribute $300 (the others $100). Last, D+$4B moves
 // one step toward item D+$48's key.
-void menu_bar_draw(void);
+void menu_bar_draw(uint16_t dp);
 
 // $85:8000: the track's tiles (long; D = $0100, DB = $83). The kind k = the byte at $83:8410
 // + `track`; its picture (the word at $83:8447 + k, doubled, picks the bank and address at
@@ -1657,8 +1657,8 @@ uint16_t menu_bar_lines(uint16_t dp);
 void menu_bar_open_step(uint16_t dp);
 void menu_bar_close_step(uint16_t dp);
 void menu_bar_open_colours_step(uint16_t dp);
-void menu_bar_open_controls_step(void);
-void menu_bar_open_panel_step(void);
+void menu_bar_open_controls_step(uint16_t dp);
+void menu_bar_open_panel_step(uint16_t dp);
 uint16_t menu_bar_lines_end(uint16_t dp);
 
 // $80:CE7F: the word of $80:CE96 for the lowest set bit of `bits`.
@@ -1666,75 +1666,75 @@ uint16_t menu_bit_word(uint16_t bits);
 
 // $80:CA97: a menu frame's corner and edge sprites, and the group of $81:BF40 (returns the
 // group's end).
-uint32_t menu_frame_sprites(void);
+uint32_t menu_frame_sprites(uint16_t dp);
 
 // $80:D026: a menu panel by D+$7C: two sprite groups, its colour, D+$7C/D+$7E stepped toward
 // their targets, a frame D+$7E high.
-void menu_panel_sprites(void);
+void menu_panel_sprites(uint16_t dp);
 
 // $80:CC7E: the controls menu's button for line D+$48 (swapped with the line that held it);
 // on line 5 a B/Y/A/X press leaves (returns true: the caller returns too).
-bool menu_button_assign(uint16_t button);
+bool menu_button_assign(uint16_t dp, uint16_t button);
 
 // $80:CCE1: the controls menu's sprites: frame, steps toward the line's targets, title, the
 // five button names, the cursor's colours.
-void menu_controls_sprites(void);
+void menu_controls_sprites(uint16_t dp);
 
 // $80:C9A6: the name entry's key D+$48: a letter typed, a delete, or the end (a few frames,
 // then it leaves the caller too: returns true).
-bool name_entry_key(void);
+bool name_entry_key(uint16_t dp);
 
 // The controls menu ($80:CB4A) in parts: its opening (returns the length the setup uses;
 // `x`, `y`: the registers rows_7f_copy8 leaves), its lines ($80:CB8D), its setup ($80:CBB0)
 // and a frame ($80:CC45; true: EXIT chosen, the menu returns).
-uint16_t menu_controls_open(uint16_t* x, uint16_t* y);
-void menu_controls_lines(void);
-void menu_controls_setup(uint16_t len);
-bool menu_controls_frame(void);
+uint16_t menu_controls_open(uint16_t dp, uint16_t* x, uint16_t* y);
+void menu_controls_lines(uint16_t dp);
+void menu_controls_setup(uint16_t dp, uint16_t len);
+bool menu_controls_frame(uint16_t dp);
 
 // The name entry ($80:C6D4) in parts: its opening (returns the length the setup uses),
 // lines ($80:C717), setup ($80:C72B), ready ($80:C7AE), frame ($80:C7E8: the cursor on the
 // key grid) and drawing ($80:C97C).
-uint16_t name_entry_open(uint16_t* x, uint16_t* y);
-void name_entry_lines(void);
-void name_entry_setup(uint16_t len);
-void name_entry_ready(void);
-void name_entry_frame(void);
-void name_entry_draw(void);
+uint16_t name_entry_open(uint16_t dp, uint16_t* x, uint16_t* y);
+void name_entry_lines(uint16_t dp);
+void name_entry_setup(uint16_t dp, uint16_t len);
+void name_entry_ready(uint16_t dp);
+void name_entry_frame(uint16_t dp);
+void name_entry_draw(uint16_t dp);
 
 // The menu's third choice ($80:CEE2) in parts: its opening (the two lengths the panels use),
 // lines ($80:CF36), first panel ($80:CF4C), setup ($80:CF63) and a frame ($80:CFDF; true: it
 // leaves, the screen returns).
-void menu_gears_open(uint16_t* len4000, uint16_t* len2000, uint16_t* x, uint16_t* y);
-void menu_gears_lines(void);
-void menu_gears_panel(uint16_t len);
-void menu_gears_setup(uint16_t len);
-bool menu_gears_frame(void);
+void menu_gears_open(uint16_t dp, uint16_t* len4000, uint16_t* len2000, uint16_t* x, uint16_t* y);
+void menu_gears_lines(uint16_t dp);
+void menu_gears_panel(uint16_t dp, uint16_t len);
+void menu_gears_setup(uint16_t dp, uint16_t len);
+bool menu_gears_frame(uint16_t dp);
 
 // The menu's choice ($80:C4F9) in parts: the dispatch's offset, the menu reloaded after a
 // choice ($80:C506; returns the length the panels use), lines ($80:C56A), panels ($80:C57E),
 // redraw ($80:C5B9) and the end ($80:C5CD).
-uint16_t menu_choice_begin(void);
-uint16_t menu_choice_back(uint16_t* x, uint16_t* y);
-void menu_choice_lines(void);
-void menu_choice_panels(uint16_t len);
-void menu_choice_redraw(void);
-void menu_choice_done(void);
+uint16_t menu_choice_begin(uint16_t dp);
+uint16_t menu_choice_back(uint16_t dp, uint16_t* x, uint16_t* y);
+void menu_choice_lines(uint16_t dp);
+void menu_choice_panels(uint16_t dp, uint16_t len);
+void menu_choice_redraw(uint16_t dp);
+void menu_choice_done(uint16_t dp);
 
 // The race choice ($80:D168) in parts: the bar's closing ($80:D16C), the bar's lines and
 // scroll ($80:D17F), the pre-race load ($80:D1B4; returns the length the setup's end uses),
 // the setup ($80:D269) and its end ($80:D3BA).
 void race_start_close(uint16_t dp);
 void race_start_bar(void);
-uint16_t race_start_load(void);
+uint16_t race_start_load(uint16_t dp);
 void race_start_setup(void);
 void race_start_setup_end(uint16_t len);
 
 // A frame of the pre-race screen ($80:D475, race_start_frame_draw; true when its fade is done
 // and it ends with race_start_end, $80:D668).
-bool race_start_frame(void);
-void race_start_frame_draw(void);
-void race_start_end(void);
+bool race_start_frame(uint16_t dp);
+void race_start_frame_draw(uint16_t dp);
+void race_start_end(uint16_t dp);
 
 // The championship menu screen ($80:BE32 / $80:BEC6) in parts: its start, its setup
 // ($80:BED8; fresh, with the clears, $80:BE44), the records ($80:BF0F), the load ($80:BF82),
@@ -1759,11 +1759,11 @@ void champ_noise_panels(uint16_t dp);
 void champ_menu_ready(uint16_t dp);
 
 // $80:C2BB: a pass of the championship menu's loop (colours, bar, sprites, the cursor).
-void champ_menu_frame(void);
+void champ_menu_frame(uint16_t dp);
 // $80:C2DD: its up/down test (a cut of its own: the pads' presses reach it through the NMI).
-void champ_menu_pads(void);
+void champ_menu_pads(uint16_t dp);
 // $80:C2BB up to $80:C2DD: its drawing.
-void champ_menu_draw(void);
+void champ_menu_draw(uint16_t dp);
 
 // The options menus' interpreter: the menu drawn up to the focused item's selection test
 // ($8A:A2AF: 1 there, 0 at the end), the rest after it ($8A:A31D), the selection's test

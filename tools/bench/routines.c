@@ -524,7 +524,7 @@ static void fuzz_hdma_table_0d00_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(voi
 // last CMP #$0C matched (N clear, Z and C set)
 static void call_race_lights_draw(const Regs* in, Regs* out) {
   (void)in;
-  race_lights_draw();
+  race_lights_draw(in->d);
   out->n = false;
   out->z = true;
   out->c = true;
@@ -898,7 +898,7 @@ static void call_empty(const Regs* in, Regs* out) { (void)in; (void)out; }
 // ---- sprite_number_point ($80:855A) ----  A = 0 (the fifth digit read: the value is all
 // shifted out), X = 0, Y = the x after the number (N Z of that LDY), C clear (take_nibble16)
 static void call_sprite_number_point(const Regs* in, Regs* out) {
-  out->y = sprite_number_point(in->a, in->y);
+  out->y = sprite_number_point(in->d, in->a, in->y);
   out->a = 0;
   out->x = 0;
   setNZ16(out, out->y);
@@ -913,7 +913,7 @@ static void fuzz_sprite_number_point(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
 
 // ---- sprite_bar8 ($80:C475) ----  A = X = slot + $20 (N Z C V of that ADC)
 static void call_sprite_bar8(const Regs* in, Regs* out) {
-  out->x = sprite_bar8(in->x);
+  out->x = sprite_bar8(in->d, in->x);
   out->a = out->x;
   setNZ16(out, out->x);
   setAdc16(out, in->x, 0x0020);
@@ -1006,14 +1006,14 @@ static void call_far_7fff_4(const Regs* in, Regs* out) {
 // ---- window_shape_a/b ($80:DB7D, $80:DBCB) ----  the mirror's last copy: A = the word, X
 // its target, Y its source; N set and Z clear by the final PLB ($81); C = D+$1E's bit 0
 // (the LSR), V of the last line's 8-bit SBC (right - width)
-static void windowShapeOut(const Regs* in, Regs* out, uint32_t widths, void (*fn)(uint16_t, uint16_t)) {
+static void windowShapeOut(const Regs* in, Regs* out, uint32_t widths, void (*fn)(uint16_t, uint16_t, uint16_t)) {
   // where the lines start (func_80DC5A, run once more here: the C writes the same bytes)
   uint16_t start = (uint16_t)((uint16_t)func_80DC5A(0x7F0000 | in->x, in->a) + 0x0033);
   uint16_t e = rd16(DP + 0x1E), row0 = rom16(0x81C852 + (uint32_t)(e & 0xFFFE)), lines = (uint16_t)((e >> 1) + 0x0C);
   uint8_t w = rom8(widths + (uint16_t)(row0 + lines - 1));
   uint8_t right = (uint8_t)((w >> 1) + rd8(DP + 0x2E) - rd8(DP + 0x20));
   uint8_t d = (uint8_t)(right - w);
-  fn(in->a, in->x);
+  fn(in->d, in->a, in->x);
   // $19 copies, or the odd one first and $18 more: the target ends $32 below either way
   uint16_t to = (uint16_t)(start - 0x32), from = (e & 1) ? (uint16_t)(start + 0x30) : (uint16_t)(start + 0x32);
   out->a = rd16(0x10000 + (uint32_t)to);
@@ -1041,7 +1041,7 @@ static void fuzz_window_shape(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // ---- sprite_number_point_right ($80:8667) ----  A = D+$14's high byte : the last moved x
 // (8-bit ADC: V), X = 0, Y = the slot after (CPY: Z and C set, N clear)
 static void call_sprite_number_point_right(const Regs* in, Regs* out) {
-  out->y = sprite_number_point_right(in->a, in->y);
+  out->y = sprite_number_point_right(in->d, in->a, in->y);
   uint16_t shift = rd16(DP + 0x14);
   uint8_t moved = rd8(0x0900 + (uint32_t)(uint16_t)(out->y - 4)), before = (uint8_t)(moved - (uint8_t)shift);
   out->a = (uint16_t)((shift & 0xFF00) | moved);
@@ -3155,7 +3155,7 @@ static void fuzz_ticker_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 static void call_race_hud_sprites(const Regs* in, Regs* out) {
   (void)in;
   (void)out;
-  race_hud_sprites();
+  race_hud_sprites(in->d);
 }
 // the window shapes' and the lights' state; the speeds, readouts and the camera around the
 // screen; names in range; the $0700 list (a few entries, then 0) and the $0F00 table
@@ -3245,7 +3245,7 @@ static void call_scenery_build(const Regs* in, Regs* out) {
     v = sceneryAdcV(y, 0x000E);
     y = (uint16_t)(y + 0x0E);
   }
-  scenery_build();
+  scenery_build(in->d);
   out->c = c;
   out->v = v;
   setNZ16(out, y);
@@ -3491,7 +3491,7 @@ static void call_title_frame_begin(const Regs* in, Regs* out) {
 static void call_menu_bar_draw(const Regs* in, Regs* out) {
   (void)in;
   (void)out;
-  menu_bar_draw();
+  menu_bar_draw(in->d);
 }
 // the bar at the keys, between them and now and then past the last; any item; the slot
 static void fuzz_menu_bar_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -4563,7 +4563,7 @@ static void fuzz_func_80894E(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // ---- binary_to_bcd ($80:86C9) ----  A = the low word (N Z from its LDA), X = the high
 // word, C = 0 (the last ROR shifts out a bit of the zeros it started with), V as on entry
 static void call_binary_to_bcd(const Regs* in, Regs* out) {
-  uint32_t bcd = binary_to_bcd(in->a);
+  uint32_t bcd = binary_to_bcd(in->d, in->a);
   out->a = (uint16_t)bcd;
   out->x = (uint16_t)(bcd >> 16);
   setNZ16(out, out->a);
@@ -5568,7 +5568,7 @@ static void call_menu_button_assign(const Regs* in, Regs* out) {
   }
   const uint16_t old = rd16((uint16_t)(0x039D + mine));
   const uint16_t ret = rd16((uint16_t)(in->sp + 1));
-  const bool leave = menu_button_assign(button);
+  const bool leave = menu_button_assign(in->d, button);
   if(line == 5) {
     out->c = true;
     if(leave) {
@@ -5600,7 +5600,7 @@ static void call_menu_button_assign(const Regs* in, Regs* out) {
 // (N Z of it), X = D+$40, C and V oam_finish_near's
 static void call_name_entry_key(const Regs* in, Regs* out) {
   const uint16_t key = rd16(DP + 0x48), ret = rd16((uint16_t)(in->sp + 1));
-  const bool leave = name_entry_key();
+  const bool leave = name_entry_key(in->d);
   if(key == 0x001F || key == 0x0020) {
     out->c = true;
     if(leave) {
@@ -5630,7 +5630,7 @@ static void call_name_entry_key(const Regs* in, Regs* out) {
 // JSR's word menu_button_assign pulled: N set, Z clear; C set; X the buttons)
 static void call_menu_controls_open(const Regs* in, Regs* out) {
   uint16_t x, y;
-  const uint16_t len = menu_controls_open(&x, &y);
+  const uint16_t len = menu_controls_open(in->d, &x, &y);
   wr16((uint16_t)(in->sp - 1), len);
   out->x = x;
   out->y = y;
@@ -5644,14 +5644,14 @@ static void call_menu_controls_open(const Regs* in, Regs* out) {
 }
 static void call_menu_controls_lines(const Regs* in, Regs* out) {
   (void)in;
-  menu_controls_lines();
+  menu_controls_lines(in->d);
   out->a = out->x = (uint16_t)(rd16(DP + 0x5E) + 0x2000);
   out->y = (uint16_t)(rd16(DP + 0x5C) + 0x1200);
   setNZ16(out, out->x);
   setAdc16(out, rd16(DP + 0x5E), 0x2000);
 }
 static void call_menu_controls_setup(const Regs* in, Regs* out) {
-  menu_controls_setup(in->a);
+  menu_controls_setup(in->d, in->a);
   out->a = rom16(0x81C1C3);
   setNZ16(out, out->a);
   setSbc16(out, rd16(DP + 0x6C), 0x0900);
@@ -5660,7 +5660,7 @@ static void call_menu_controls_frame(const Regs* in, Regs* out) {
   (void)in;
   const uint16_t buttons = rd16(DP + 0x0E);
   const uint16_t other = rd16(DP + 0x6E);
-  if(!menu_controls_frame()) {
+  if(!menu_controls_frame(in->d)) {
     out->a = other;  // (oam_finish_near's A: the other buffer's end)
   } else {
     out->a = 0xCC75;
@@ -5678,7 +5678,7 @@ static void call_menu_controls_frame(const Regs* in, Regs* out) {
 // handler's test (A = D+$4A, X = the key * 2, Y = D+$C4); the drawing at the loop's wait
 static void call_name_entry_open(const Regs* in, Regs* out) {
   uint16_t x, y;
-  const uint16_t len = name_entry_open(&x, &y);
+  const uint16_t len = name_entry_open(in->d, &x, &y);
   wr16((uint16_t)(in->sp - 1), len);
   out->x = x;
   out->y = y;
@@ -5692,14 +5692,14 @@ static void call_name_entry_open(const Regs* in, Regs* out) {
 }
 static void call_name_entry_lines(const Regs* in, Regs* out) {
   (void)in;
-  name_entry_lines();
+  name_entry_lines(in->d);
   out->a = out->x = (uint16_t)(rd16(DP + 0x5E) + 0x2000);
   out->y = (uint16_t)(rd16(DP + 0x5C) + 0x1200);
   setNZ16(out, out->x);
   setAdc16(out, rd16(DP + 0x5E), 0x2000);
 }
 static void call_name_entry_setup(const Regs* in, Regs* out) {
-  name_entry_setup(in->a);
+  name_entry_setup(in->d, in->a);
   out->a = 0x0100;
   out->x = rd16(DP + 0x40);
   out->y = rd16(DP + 0x42);
@@ -5709,19 +5709,19 @@ static void call_name_entry_setup(const Regs* in, Regs* out) {
 }
 static void call_name_entry_ready(const Regs* in, Regs* out) {
   (void)in;
-  name_entry_ready();
+  name_entry_ready(in->d);
   out->a = 0x0020;
   out->y = rd16(DP + 0xC4);
   out->n = out->z = false;
 }
 static void call_name_entry_frame(const Regs* in, Regs* out) {
   (void)in;
-  name_entry_frame();
+  name_entry_frame(in->d);
   out->a = rd16(DP + 0x4A);
   out->x = (uint16_t)(rd16(DP + 0x48) << 1);
   out->y = rd16(DP + 0xC4);
 }
-static void call_name_entry_draw(const Regs* in, Regs* out) { (void)in; (void)out; name_entry_draw(); }
+static void call_name_entry_draw(const Regs* in, Regs* out) { (void)in; (void)out; name_entry_draw(in->d); }
 
 // the championship screen's parts: the start ends at its wait (flags dead after the cut); the
 // setups at split_screen_setup (A = $0C; the fresh one's X = 0 from its clear's DEX: Z set);
@@ -7138,14 +7138,14 @@ static void call_champ_menu_pads(const Regs* in, Regs* out) {
   (void)in;
   const bool down = rd16(DP + 0x0E) & 0x0400;
   const uint16_t line = rd16(DP + 0x48);
-  champ_menu_pads();
+  champ_menu_pads(in->d);
   setSbc16(out, rd16(DP + 0x6C), 0x0900);
   if(down) out->c = line >= 0x0003;
 }
 static void call_champ_menu_draw(const Regs* in, Regs* out) {
   (void)in;
   (void)out;
-  champ_menu_draw();
+  champ_menu_draw(in->d);
 }
 
 // the championship screen's opening animation: the slide step returns its offset in X
@@ -7172,11 +7172,11 @@ static void call_champ_menu_ready(const Regs* in, Regs* out) { (void)out; champ_
 static void call_race_start_frame(const Regs* in, Regs* out) {
   (void)in;
   (void)out;
-  race_start_frame_draw();
+  race_start_frame_draw(in->d);
 }
 static void call_race_start_end(const Regs* in, Regs* out) {
   (void)in;
-  race_start_end();
+  race_start_end(in->d);
   const uint16_t bits = rd16((uint16_t)(0x0808 + rd16(DP + 0x2C)));
   uint16_t a = 1, n = 0;
   while(!(bits & a)) {
@@ -7205,7 +7205,7 @@ static void call_race_start_bar(const Regs* in, Regs* out) {
   out->n = out->z = false;
 }
 static void call_race_start_load(const Regs* in, Regs* out) {
-  const uint16_t len = race_start_load();
+  const uint16_t len = race_start_load(in->d);
   wr16((uint16_t)(in->sp - 1), len);
   out->a = 0xE0E0;
   out->x = 0;
@@ -7242,7 +7242,7 @@ static void call_race_start_setup_end(const Regs* in, Regs* out) {
 // oam_finish_near's); the end after LDA #2 (C set by the poll's CMP)
 static void call_menu_choice_begin(const Regs* in, Regs* out) {
   const uint16_t p48 = rd16(DP + 0x48), p4A = rd16(DP + 0x4A);
-  out->x = menu_choice_begin();
+  out->x = menu_choice_begin(in->d);
   wr16((uint16_t)(in->sp - 1), p48);
   wr16((uint16_t)(in->sp - 3), p4A);
   out->a = p4A;
@@ -7251,7 +7251,7 @@ static void call_menu_choice_begin(const Regs* in, Regs* out) {
 }
 static void call_menu_choice_back(const Regs* in, Regs* out) {
   uint16_t x, y;
-  const uint16_t len = menu_choice_back(&x, &y);
+  const uint16_t len = menu_choice_back(in->d, &x, &y);
   wr16((uint16_t)(in->sp - 1), len);
   Regs t;
   setAdc16(&t, (uint16_t)(y - 0x38 - 8), 0x0008);
@@ -7265,14 +7265,14 @@ static void call_menu_choice_back(const Regs* in, Regs* out) {
 }
 static void call_menu_choice_lines(const Regs* in, Regs* out) {
   (void)in;
-  menu_choice_lines();
+  menu_choice_lines(in->d);
   out->a = out->x = (uint16_t)(rd16(DP + 0x5E) + 0x2800);
   out->y = (uint16_t)(rd16(DP + 0x5C) + 0x1200);
   setNZ16(out, out->x);
   setAdc16(out, rd16(DP + 0x5E), 0x2800);
 }
 static void call_menu_choice_panels(const Regs* in, Regs* out) {
-  menu_choice_panels(in->a);
+  menu_choice_panels(in->d, in->a);
   const uint16_t off = rom16(0x81BE08);
   out->a = 0x0200;
   out->x = (uint16_t)(rd16(DP + 0x5E) + off);
@@ -7283,14 +7283,14 @@ static void call_menu_choice_panels(const Regs* in, Regs* out) {
 static void call_menu_choice_redraw(const Regs* in, Regs* out) {
   (void)in;
   const uint16_t other = rd16(DP + 0x6E);
-  menu_choice_redraw();
+  menu_choice_redraw(in->d);
   out->a = other;
   setNZ16(out, other);
   setSbc16(out, rd16(DP + 0x6C), 0x0900);
 }
 static void call_menu_choice_done(const Regs* in, Regs* out) {
   (void)in;
-  menu_choice_done();
+  menu_choice_done(in->d);
   out->a = 0x0002;
   out->n = out->z = false;
   out->c = true;
@@ -7304,7 +7304,7 @@ static void call_menu_choice_done(const Regs* in, Regs* out) {
 // returns, the returns' watches keep every flag live)
 static void call_menu_gears_open(const Regs* in, Regs* out) {
   uint16_t a, b, x, y;
-  menu_gears_open(&a, &b, &x, &y);
+  menu_gears_open(in->d, &a, &b, &x, &y);
   wr16((uint16_t)(in->sp - 1), a);
   wr16((uint16_t)(in->sp - 3), b);
   out->x = x;
@@ -7325,22 +7325,22 @@ static void gearsLinesOut(Regs* out, uint16_t xoff, uint16_t yoff) {
 }
 static void call_menu_gears_lines(const Regs* in, Regs* out) {
   (void)in;
-  menu_gears_lines();
+  menu_gears_lines(in->d);
   gearsLinesOut(out, 0x2000, 0x1200);
 }
 static void call_menu_gears_panel(const Regs* in, Regs* out) {
-  menu_gears_panel(in->a);
+  menu_gears_panel(in->d, in->a);
   gearsLinesOut(out, 0x4000, 0x2D00);
 }
 static void call_menu_gears_setup(const Regs* in, Regs* out) {
-  menu_gears_setup(in->a);
+  menu_gears_setup(in->d, in->a);
   out->a = rd16(DP + 0x6C);
   setSbc16(out, rd16(DP + 0x6C), 0x0900);
 }
 static void call_menu_gears_frame(const Regs* in, Regs* out) {
   (void)in;
   const bool pressed = (rd16(DP + 0x0E) & 0xC0C0) != 0;
-  const bool leave = menu_gears_frame();
+  const bool leave = menu_gears_frame(in->d);
   setSbc16(out, rd16(DP + 0x6C), 0x0900);
   if(leave) {
     out->a = 0x0005;
@@ -7358,7 +7358,7 @@ static void call_menu_gears_frame(const Regs* in, Regs* out) {
 // (D+$4C / 2, even: C its LSR's), Y = D+$C4
 static void call_menu_controls_sprites(const Regs* in, Regs* out) {
   (void)in;
-  menu_controls_sprites();
+  menu_controls_sprites(in->d);
   const uint16_t k = (uint16_t)((rd16(DP + 0x4C) >> 1) & 0xFFFE);
   out->x = k;
   out->y = rd16(DP + 0xC4);
@@ -7403,8 +7403,8 @@ static void call_menu_bar_lines(const Regs* in, Regs* out) {
 static void call_menu_bar_open_step(const Regs* in, Regs* out) { (void)out; menu_bar_open_step(in->d); }
 static void call_menu_bar_close_step(const Regs* in, Regs* out) { (void)out; menu_bar_close_step(in->d); }
 static void call_menu_bar_open_colours_step(const Regs* in, Regs* out) { (void)out; menu_bar_open_colours_step(in->d); }
-static void call_menu_bar_open_controls_step(const Regs* in, Regs* out) { (void)in; (void)out; menu_bar_open_controls_step(); }
-static void call_menu_bar_open_panel_step(const Regs* in, Regs* out) { (void)in; (void)out; menu_bar_open_panel_step(); }
+static void call_menu_bar_open_controls_step(const Regs* in, Regs* out) { (void)in; (void)out; menu_bar_open_controls_step(in->d); }
+static void call_menu_bar_open_panel_step(const Regs* in, Regs* out) { (void)in; (void)out; menu_bar_open_panel_step(in->d); }
 static void call_menu_bar_lines_end(const Regs* in, Regs* out) {
   const uint16_t first = (uint16_t)(0xFFFF - rd16((uint16_t)(in->d + 0xE8)));
   out->a = menu_bar_lines_end(in->d);
@@ -8135,7 +8135,7 @@ static void fuzz_func_83FE9A(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 static void call_sprite_text_menu(const Regs* in, Regs* out) {
   uint32_t str = ((uint32_t)(in->a & 0xFF) << 16) | in->x;
   uint16_t slot = rd16(DP + 0x74);
-  out->y = sprite_text_menu(str, in->y);
+  out->y = sprite_text_menu(in->d, str, in->y);
   uint16_t n = 0;
   while(bus_rd8((str & 0xFF0000) | (uint16_t)(str + n)) != 0) n++;
   out->x = (uint16_t)(in->x + n);
@@ -8214,7 +8214,7 @@ static void call_sprite_number(const Regs* in, Regs* out) {
 // A = high byte of the shift : the last shifted byte, V of that 8-bit ADC.
 static void call_sprite_number_right(const Regs* in, Regs* out) {
   uint32_t value = ((uint32_t)in->x << 16) | in->a;
-  uint16_t shift = sprite_number_right(value, in->y);
+  uint16_t shift = sprite_number_right(in->d, value, in->y);
   uint16_t end = rd16(DP + 0x74);
   uint8_t post = rd8((uint16_t)(0x0900 + end - 4)), pre = (uint8_t)(post - (uint8_t)shift);
   out->y = end;
@@ -8314,7 +8314,7 @@ static void call_sprite_group(const Regs* in, Regs* out) {
 // edge)
 static void call_menu_panel_sprites(const Regs* in, Regs* out) {
   (void)in;
-  menu_panel_sprites();
+  menu_panel_sprites(in->d);
   const uint16_t half = (uint16_t)(rd16(DP + 0x7E) >> 1);
   const uint16_t prev = half < 8 ? half : (uint16_t)(rd16(DP + 0x80) + 8);
   out->x = rd16(DP + 0x74);
@@ -8326,7 +8326,7 @@ static void call_menu_panel_sprites(const Regs* in, Regs* out) {
 // menu_frame_sprites ends in sprite_group's JSR, then RTS: its outputs
 static void call_menu_frame_sprites(const Regs* in, Regs* out) {
   const GroupWalk w = sprite_group_walk(0x81BF40);
-  sprite_group_outputs(out, in, w, menu_frame_sprites());
+  sprite_group_outputs(out, in, w, menu_frame_sprites(in->d));
 }
 
 // ---- func_80EB66 ----  sprite_group's exit registers (its table at $81:CBB8)
@@ -10124,7 +10124,7 @@ static void fuzz_shop_sprite_block(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
 // ---- take_nibble16 ($80:85CA) ----  A = the nibble (N/Z from the last ROL), C = 0.
 static void call_take_nibble16(const Regs* in, Regs* out) {
   (void)in;
-  out->a = take_nibble16();
+  out->a = take_nibble16(in->d);
   setNZ16(out, out->a);
   out->c = false;
 }

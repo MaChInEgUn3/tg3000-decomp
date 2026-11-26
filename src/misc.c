@@ -337,9 +337,9 @@ void func_8ABBF4(uint16_t bits, uint16_t count) {
 }
 
 // TG3000_ROUTINE($80:85CA) take_nibble16
-uint16_t take_nibble16(void) {
-  uint16_t v = rd16(DP + 0x1A);
-  wr16(DP + 0x1A, (uint16_t)(v << 4));
+uint16_t take_nibble16(uint16_t dp) {
+  uint16_t v = rd16(dp + 0x1A);
+  wr16(dp + 0x1A, (uint16_t)(v << 4));
   return (uint16_t)(v >> 12);
 }
 
@@ -758,14 +758,14 @@ void func_80894E(void) {
 }
 
 // TG3000_ROUTINE($80:86C9) binary_to_bcd
-uint32_t binary_to_bcd(uint16_t value) {
+uint32_t binary_to_bcd(uint16_t dp, uint16_t value) {
   uint32_t bcd = 0;
   for(int i = 0; i < 8; i++) {
     bcd = bcd >> 4 | (uint32_t)(value % 10) << 28;
     value = (uint16_t)(value / 10);
   }
-  wr16(DP + 0x16, (uint16_t)bcd);
-  wr16(DP + 0x18, (uint16_t)(bcd >> 16));
+  wr16(dp + 0x16, (uint16_t)bcd);
+  wr16(dp + 0x18, (uint16_t)(bcd >> 16));
   return bcd;
 }
 
@@ -1571,45 +1571,45 @@ void empty_80F225(void) {}
 
 #define WINDOW_BANK 0x10000  // $7F:0000
 
-static void window_shape(uint16_t a, uint16_t x, uint32_t widths) {
+static void window_shape(uint16_t dp, uint16_t a, uint16_t x, uint32_t widths) {
   uint16_t y = (uint16_t)((uint16_t)func_80DC5A(0x7F0000 | x, a) + 0x0033);
   const uint16_t start = y;
-  wr16(DP + 0x14, 0x001A);
-  uint16_t row = rom16(0x81C852 + (uint32_t)(rd16(DP + 0x1E) & 0xFFFE));
-  wr16(DP + 0x16, (uint16_t)((rd16(DP + 0x1E) >> 1) + 0x000C));
+  wr16(dp + 0x14, 0x001A);
+  uint16_t row = rom16(0x81C852 + (uint32_t)(rd16(dp + 0x1E) & 0xFFFE));
+  wr16(dp + 0x16, (uint16_t)((rd16(dp + 0x1E) >> 1) + 0x000C));
   do {
     uint8_t w = rom8(widths + row);
-    uint8_t right = (uint8_t)((w >> 1) + rd8(DP + 0x2E) - rd8(DP + 0x20));
+    uint8_t right = (uint8_t)((w >> 1) + rd8(dp + 0x2E) - rd8(dp + 0x20));
     wr8(WINDOW_BANK + (uint16_t)(y + 1), right);
     wr8(WINDOW_BANK + y, (uint8_t)(right - w + 1));
     y = (uint16_t)(y + 2);
     row = (uint16_t)(row + 1);
-    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
-    wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) - 1));
-  } while(rd16(DP + 0x16) != 0);
-  for(uint16_t n = rd16(DP + 0x14); n; n--, y = (uint16_t)(y + 2)) wr16(WINDOW_BANK + y, 0x00FF);
+    wr16(dp + 0x14, (uint16_t)(rd16(dp + 0x14) - 1));
+    wr16(dp + 0x16, (uint16_t)(rd16(dp + 0x16) - 1));
+  } while(rd16(dp + 0x16) != 0);
+  for(uint16_t n = rd16(dp + 0x14); n; n--, y = (uint16_t)(y + 2)) wr16(WINDOW_BANK + y, 0x00FF);
   wr16(WINDOW_BANK + y, 0x00FF);
   wr16(WINDOW_BANK + (uint16_t)(y + 2), 0);
   uint16_t to = start, from = start;  // the mirror above the start
-  wr16(DP + 0x14, 0x0019);
-  if(rd16(DP + 0x1E) & 1) {
+  wr16(dp + 0x14, 0x0019);
+  if(rd16(dp + 0x1E) & 1) {
     to = (uint16_t)(to - 2);
     wr16(WINDOW_BANK + to, rd16(WINDOW_BANK + from));
-    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
+    wr16(dp + 0x14, (uint16_t)(rd16(dp + 0x14) - 1));
   }
   do {
     to = (uint16_t)(to - 2);
     from = (uint16_t)(from + 2);
     wr16(WINDOW_BANK + to, rd16(WINDOW_BANK + from));
-    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
-  } while(rd16(DP + 0x14) != 0);
+    wr16(dp + 0x14, (uint16_t)(rd16(dp + 0x14) - 1));
+  } while(rd16(dp + 0x14) != 0);
 }
 
 // TG3000_ROUTINE($80:DB7D) window_shape_a
-void window_shape_a(uint16_t a, uint16_t x) { window_shape(a, x, 0x81C872); }
+void window_shape_a(uint16_t dp, uint16_t a, uint16_t x) { window_shape(dp, a, x, 0x81C872); }
 
 // TG3000_ROUTINE($80:DBCB) window_shape_b
-void window_shape_b(uint16_t a, uint16_t x) { window_shape(a, x, 0x81C9AA); }
+void window_shape_b(uint16_t dp, uint16_t a, uint16_t x) { window_shape(dp, a, x, 0x81C9AA); }
 
 // A message `message` replaces the one at `slot` when its priority ($83:A0A4 + 2 * message)
 // is at least the current one's.
@@ -3323,11 +3323,11 @@ static void scenery_row(uint16_t from, uint16_t to) {
 
 // A block of `rows` x `cols` words copied from $7F:`from` to the map at $7F:`at` (rows $40
 // bytes apart), each plus D+$84 with the carry of the add before (one CLC first).
-static void scenery_block(uint16_t from, uint16_t at, int rows, int cols) {
+static void scenery_block(uint16_t dp, uint16_t from, uint16_t at, int rows, int cols) {
   uint32_t carry = 0;
   for(int r = 0; r < rows; r++)
     for(int c = 0; c < cols; c++) {
-      const uint32_t sum = (uint32_t)rd16(0x10000 + (uint32_t)from) + rd16(DP + 0x84) + carry;
+      const uint32_t sum = (uint32_t)rd16(0x10000 + (uint32_t)from) + rd16(dp + 0x84) + carry;
       carry = sum >> 16;
       wr16(0x10000 + (uint32_t)(uint16_t)(at + r * 0x40 + c * 2), (uint16_t)sum);
       from = (uint16_t)(from + 2);
@@ -3335,34 +3335,34 @@ static void scenery_block(uint16_t from, uint16_t at, int rows, int cols) {
 }
 
 // TG3000_ROUTINE($80:DCBB) scenery_build
-void scenery_build(void) {
+void scenery_build(uint16_t dp) {
   uint16_t y = bus_rd16(0x81C3D0 + (uint32_t)(uint16_t)(bus_rd8(0x84A240 + (uint32_t)rd16(0x0444)) << 1));
-  wr16(DP + 0x7C, 0x8000);
-  wr16(DP + 0x7E, 0x2002);
-  wr16(DP + 0x7A, 0x000F);
-  wr16(DP + 0x80, 0x000A);
-  wr16(DP + 0x82, 0);
-  wr16(DP + 0x86, 0);
-  wr16(DP + 0x88, 0x0001);
+  wr16(dp + 0x7C, 0x8000);
+  wr16(dp + 0x7E, 0x2002);
+  wr16(dp + 0x7A, 0x000F);
+  wr16(dp + 0x80, 0x000A);
+  wr16(dp + 0x82, 0);
+  wr16(dp + 0x86, 0);
+  wr16(dp + 0x88, 0x0001);
   for(;; y = (uint16_t)(y + 0x0E)) {
     const uint32_t rec = 0x810000 | y;
     const uint16_t kind = bus_rd16(rec + 0xC3E8);
     if(kind == 0) break;
     const uint16_t column = bus_rd16(rec + 0xC3EA);
-    uint16_t x = rd16(DP + 0x86);
+    uint16_t x = rd16(dp + 0x86);
     wr16(0x0882 + (uint32_t)x, (uint16_t)(kind & 0x7FFF));
     wr16(0x0884 + (uint32_t)x, (uint16_t)((uint16_t)(column << 3) + bus_rd16(0x81CAE2 + (uint32_t)(kind & 0x7FFF))));
-    wr16(DP + 0x86, (uint16_t)(x + 4));
+    wr16(dp + 0x86, (uint16_t)(x + 4));
     if(kind & 0x8000) {
-      if(!(rd16(DP + 0x88) & rd16(0x036A))) {
-        x = rd16(DP + 0x82);
+      if(!(rd16(dp + 0x88) & rd16(0x036A))) {
+        x = rd16(dp + 0x82);
         wr16(0x0802 + (uint32_t)x, (uint16_t)(kind & 0x7FFF));
         wr16(0x0804 + (uint32_t)x, (uint16_t)((uint16_t)(column << 3) + bus_rd16(0x81CAE2 + (uint32_t)(kind & 0x7FFF))));
         wr16(0x0806 + (uint32_t)x, bus_rd16(rec + 0xC3F4));
-        wr16(0x0808 + (uint32_t)x, rd16(DP + 0x88));
-        wr16(DP + 0x82, (uint16_t)(x + 8));
+        wr16(0x0808 + (uint32_t)x, rd16(dp + 0x88));
+        wr16(dp + 0x82, (uint16_t)(x + 8));
       }
-      wr16(DP + 0x88, (uint16_t)(rd16(DP + 0x88) << 1));
+      wr16(dp + 0x88, (uint16_t)(rd16(dp + 0x88) << 1));
     }
     const uint16_t k = (uint16_t)(kind & 0x7FFF);
     if(k == 0) break;  // the table's first handler is the end
@@ -3381,38 +3381,38 @@ void scenery_build(void) {
       continue;
     }
     static const uint16_t from[4][2] = {{0xBC50, 0xBC70}, {0xBC90, 0xBCB0}, {0xBCD0, 0xBCE8}, {0xBD00, 0xBD08}};
-    const uint16_t a7a = rd16(DP + 0x7A);
-    wr16(DP + 0x84, (uint16_t)(((a7a << 1) & 0x001C) << 8));
+    const uint16_t a7a = rd16(dp + 0x7A);
+    wr16(dp + 0x84, (uint16_t)(((a7a << 1) & 0x001C) << 8));
     const uint16_t src = from[k / 2 - 2][a7a & 1];
     const uint16_t at = func_80E0C8(column);
-    if(k == 4 || k == 6) scenery_block(src, at, 4, 4);
-    else if(k == 8) scenery_block(src, at, 4, 3);
-    else scenery_block(src, (uint16_t)(at + 0x40), 2, 2);
-    const uint16_t row = (uint16_t)((uint16_t)(rd16(DP + 0x7A) << 4) + 0x0500);
-    wr16(DP + 0x84, row);
+    if(k == 4 || k == 6) scenery_block(dp, src, at, 4, 4);
+    else if(k == 8) scenery_block(dp, src, at, 4, 3);
+    else scenery_block(dp, src, (uint16_t)(at + 0x40), 2, 2);
+    const uint16_t row = (uint16_t)((uint16_t)(rd16(dp + 0x7A) << 4) + 0x0500);
+    wr16(dp + 0x84, row);
     scenery_row(bus_rd16(rec + 0xC3EC), row);
     scenery_row(bus_rd16(rec + 0xC3F2), (uint16_t)(row + 0x0100));
     uint16_t end;
-    const uint16_t len = decompress_near(DP, 0x91, bus_rd16(rec + 0xC3EE), 0x7E, rd16(DP + 0x7C), &end);
-    wr16(DP + 0x7C, (uint16_t)(len + rd16(DP + 0x7C)));
+    const uint16_t len = decompress_near(dp, 0x91, bus_rd16(rec + 0xC3EE), 0x7E, rd16(dp + 0x7C), &end);
+    wr16(dp + 0x7C, (uint16_t)(len + rd16(dp + 0x7C)));
     const uint16_t v = (uint16_t)(column << 1);
     const uint16_t mx = (uint16_t)(v + (v < 0x40 ? 0x1310 : 0x19D0));
-    uint16_t w = rd16(DP + 0x7E);
+    uint16_t w = rd16(dp + 0x7E);
     for(int r = 0; r < 4; r++)
       for(int c = 0; c < 4; c++) wr16(0x1AE40 + (uint32_t)(uint16_t)(mx + r * 0x40 + c * 2), w++);
-    wr16(DP + 0x7E, w);
-    x = rd16(DP + 0x80);
+    wr16(dp + 0x7E, w);
+    x = rd16(dp + 0x80);
     wr16(0x0700 + (uint32_t)x, bus_rd16(rec + 0xC3F0));
     wr16(0x0702 + (uint32_t)x, 0);
-    wr16(0x0704 + (uint32_t)x, bus_rd16(0x81C2DA + (uint32_t)(uint16_t)(((rd16(DP + 0x7A) & 1) | kind) << 1)));
+    wr16(0x0704 + (uint32_t)x, bus_rd16(0x81C2DA + (uint32_t)(uint16_t)(((rd16(dp + 0x7A) & 1) | kind) << 1)));
     wr16(0x0706 + (uint32_t)x, (uint16_t)(column << 3));
-    wr16(0x0708 + (uint32_t)x, (uint16_t)((rd16(DP + 0x7A) << 8) & 0xFE00));
+    wr16(0x0708 + (uint32_t)x, (uint16_t)((rd16(dp + 0x7A) << 8) & 0xFE00));
     wr16(0x070A + (uint32_t)x, 0);
-    wr16(DP + 0x80, (uint16_t)(x + 0x0A));
-    wr16(DP + 0x7A, (uint16_t)(rd16(DP + 0x7A) - 1));
+    wr16(dp + 0x80, (uint16_t)(x + 0x0A));
+    wr16(dp + 0x7A, (uint16_t)(rd16(dp + 0x7A) - 1));
   }
-  wr16(0x0800, rd16(DP + 0x82));
-  wr16(0x0880, rd16(DP + 0x86));
+  wr16(0x0800, rd16(dp + 0x82));
+  wr16(0x0880, rd16(dp + 0x86));
 }
 
 // TG3000_ROUTINE($81:F21E) car_contacts_chain
@@ -3598,8 +3598,8 @@ uint16_t title_frame_begin(void) {
 }
 
 // TG3000_ROUTINE($80:C35E) menu_bar_draw
-void menu_bar_draw(void) {
-  const uint16_t at = (uint16_t)(rd16(DP + 0x4A) & 0xFF00);
+void menu_bar_draw(uint16_t dp) {
+  const uint16_t at = (uint16_t)(rd16(dp + 0x4A) & 0xFF00);
   for(uint16_t x = 0;; x = (uint16_t)(x + 2)) {
     const uint16_t key = bus_rd16(0x81BE0A + (uint32_t)x), d = (uint16_t)(at - key);
     if(d & 0x8000) {
@@ -3609,34 +3609,34 @@ void menu_bar_draw(void) {
       video_set_m7a((int16_t)q);
       video_set_m7b((int16_t)(m << 8 | q >> 8));
       const uint16_t mid = (uint16_t)((uint32_t)((int32_t)(int16_t)q * (int8_t)m) >> 8);
-      wr16(DP + 0x14, (uint16_t)(bus_rd16(0x81BE12 + (uint32_t)x) - mid));
+      wr16(dp + 0x14, (uint16_t)(bus_rd16(0x81BE12 + (uint32_t)x) - mid));
       break;
     }
     if(d == 0) {
-      wr16(DP + 0x14, bus_rd16(0x81BE12 + (uint32_t)x));
+      wr16(dp + 0x14, bus_rd16(0x81BE12 + (uint32_t)x));
       break;
     }
   }
-  uint16_t slot = rd16(DP + 0x74);
-  wr16(DP + 0x18, (uint16_t)(rd16(DP + 0x4A) + 0x1D80 + rd16(DP + 0xE7)));
-  wr16(DP + 0x1A, 0);
-  slot = sprite_bar8(slot);
-  wr16(DP + 0x18, (uint16_t)(rd16(DP + 0x18) + 0x0600));
-  wr16(DP + 0x1A, 0x8000);
-  slot = sprite_bar8(slot);
-  wr16(DP + 0x74, slot);
-  wr16(DP + 0x18, (uint16_t)(0x2080 + rd16(DP + 0xE7)));
-  wr16(DP + 0x1A, (uint16_t)(rd16(DP + 0x48) + 1));
+  uint16_t slot = rd16(dp + 0x74);
+  wr16(dp + 0x18, (uint16_t)(rd16(dp + 0x4A) + 0x1D80 + rd16(dp + 0xE7)));
+  wr16(dp + 0x1A, 0);
+  slot = sprite_bar8(dp, slot);
+  wr16(dp + 0x18, (uint16_t)(rd16(dp + 0x18) + 0x0600));
+  wr16(dp + 0x1A, 0x8000);
+  slot = sprite_bar8(dp, slot);
+  wr16(dp + 0x74, slot);
+  wr16(dp + 0x18, (uint16_t)(0x2080 + rd16(dp + 0xE7)));
+  wr16(dp + 0x1A, (uint16_t)(rd16(dp + 0x48) + 1));
   static const uint16_t label[4] = {0xBDE0, 0xBDE5, 0xBDED, 0xBDF3};
   for(int i = 0; i < 4; i++) {
-    wr16(DP + 0x14, 0x0100);
-    wr16(DP + 0x1A, (uint16_t)(rd16(DP + 0x1A) - 1));
-    if(rd16(DP + 0x1A) == 0) wr16(DP + 0x14, 0x0300);
-    sprite_text_centered(0x810000 | label[i], (uint16_t)(rd16(DP + 0x18) + 0x0B00 * i));
+    wr16(dp + 0x14, 0x0100);
+    wr16(dp + 0x1A, (uint16_t)(rd16(dp + 0x1A) - 1));
+    if(rd16(dp + 0x1A) == 0) wr16(dp + 0x14, 0x0300);
+    sprite_text_centered(0x810000 | label[i], (uint16_t)(rd16(dp + 0x18) + 0x0B00 * i));
   }
-  const uint16_t key = bus_rd16(0x81BE0A + (uint32_t)(uint16_t)(rd16(DP + 0x48) << 1));
+  const uint16_t key = bus_rd16(0x81BE0A + (uint32_t)(uint16_t)(rd16(dp + 0x48) << 1));
   const uint16_t d = (uint16_t)(at - key);
-  if(d != 0) wr16(DP + 0x4B, (uint16_t)(rd16(DP + 0x4B) + ((d & 0x8000) ? 1 : (uint16_t)-1)));
+  if(d != 0) wr16(dp + 0x4B, (uint16_t)(rd16(dp + 0x4B) + ((d & 0x8000) ? 1 : (uint16_t)-1)));
 }
 
 // TG3000_ROUTINE($85:8000) track_tiles_load
@@ -8650,18 +8650,18 @@ void menu_bar_open_colours_step(uint16_t dp) {
 
 // TG3000_ROUTINE($80:C68D) menu_bar_open_controls_step
 // Step 4: with the controls menu's sprites.
-void menu_bar_open_controls_step(void) {
-  if(!menu_bar_open_more(DP)) return;
-  menu_controls_sprites();
-  oam_finish_near(DP);
+void menu_bar_open_controls_step(uint16_t dp) {
+  if(!menu_bar_open_more(dp)) return;
+  menu_controls_sprites(dp);
+  oam_finish_near(dp);
 }
 
 // TG3000_ROUTINE($80:C6A2) menu_bar_open_panel_step
 // Step 5: with the menu panel's sprites.
-void menu_bar_open_panel_step(void) {
-  if(!menu_bar_open_more(DP)) return;
-  menu_panel_sprites();
-  oam_finish_near(DP);
+void menu_bar_open_panel_step(uint16_t dp) {
+  if(!menu_bar_open_more(dp)) return;
+  menu_panel_sprites(dp);
+  oam_finish_near(dp);
 }
 
 // TG3000_ROUTINE($80:C6B9) menu_bar_lines_end
@@ -8694,12 +8694,12 @@ uint16_t menu_bit_word(uint16_t bits) {
 // around a box D+$4A wide, centred on (D+$7A, D+$7C) + $1E19 + D+$E7; then its top and
 // bottom edges, two tiles $151 every 8 pixels while the width allows; then the group of
 // $81:BF40 at (D+$E8 + $18, $11). Returns the group's end (sprite_group).
-uint32_t menu_frame_sprites(void) {
-  const uint16_t w = rd16(DP + 0x4A);
-  wr16(DP + 0x14, (uint16_t)(w >> 1));
-  uint16_t x = rd16(DP + 0x74);
-  const uint16_t at = (uint16_t)(((rd8(DP + 0x7C) << 8) | rd8(DP + 0x7A)) + 0x1E19 + rd16(DP + 0xE7) - rd16(DP + 0x14));
-  wr16(DP + 0x14, at);
+uint32_t menu_frame_sprites(uint16_t dp) {
+  const uint16_t w = rd16(dp + 0x4A);
+  wr16(dp + 0x14, (uint16_t)(w >> 1));
+  uint16_t x = rd16(dp + 0x74);
+  const uint16_t at = (uint16_t)(((rd8(dp + 0x7C) << 8) | rd8(dp + 0x7A)) + 0x1E19 + rd16(dp + 0xE7) - rd16(dp + 0x14));
+  wr16(dp + 0x14, at);
   wr16((uint16_t)(0x0900 + x), at);
   wr16((uint16_t)(0x0904 + x), (uint16_t)(at + w));
   wr16((uint16_t)(0x0908 + x), (uint16_t)(at + w + 0x0400));
@@ -8712,21 +8712,21 @@ uint32_t menu_frame_sprites(void) {
   x = (uint16_t)(x + 0x10);
   for(uint16_t left = w; left >= 8; ) {
     left = (uint16_t)(left - 8);
-    wr16(DP + 0x16, left);
-    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 8));
-    wr16((uint16_t)(0x0900 + x), rd16(DP + 0x14));
-    wr16((uint16_t)(0x0904 + x), (uint16_t)(rd16(DP + 0x14) + 0x0400));
+    wr16(dp + 0x16, left);
+    wr16(dp + 0x14, (uint16_t)(rd16(dp + 0x14) + 8));
+    wr16((uint16_t)(0x0900 + x), rd16(dp + 0x14));
+    wr16((uint16_t)(0x0904 + x), (uint16_t)(rd16(dp + 0x14) + 0x0400));
     wr16((uint16_t)(0x0902 + x), 0x2151);
     wr16((uint16_t)(0x0906 + x), 0xA151);
     wr16((uint16_t)(0x0B01 + x), 0);
     wr16((uint16_t)(0x0B05 + x), 0);
     x = (uint16_t)(x + 8);
   }
-  wr16(DP + 0x74, x);
-  wr16(DP + 0x14, 0x0011);
-  wr16(DP + 0x16, (uint16_t)(rd16(DP + 0xE8) + 0x0018));
-  wr16(DP + 0x18, 0);
-  return sprite_group(DP, 0x81BF40);
+  wr16(dp + 0x74, x);
+  wr16(dp + 0x14, 0x0011);
+  wr16(dp + 0x16, (uint16_t)(rd16(dp + 0xE8) + 0x0018));
+  wr16(dp + 0x18, 0);
+  return sprite_group(dp, 0x81BF40);
 }
 
 // TG3000_ROUTINE($80:D026) menu_panel_sprites
@@ -8736,34 +8736,34 @@ uint32_t menu_frame_sprites(void) {
 // choice's colour word ($81:C254 at D+$C4 + $150); D+$7C and D+$7E step one toward the
 // targets the car's $03A7 picks ($81:C20E, $81:C212); then a frame D+$7E high: six corner and
 // side tiles ($2550-$2552) and its edges every 8 pixels (tile $2551).
-void menu_panel_sprites(void) {
-  const uint16_t choice = rd16(DP + 0x7C);
-  wr16(DP + 0x14, rom16(0x81C216 + (uint32_t)(uint16_t)(choice << 1)));
-  wr16(DP + 0x16, (uint16_t)(rd16(DP + 0xE8) + 0x0024));
-  wr16(DP + 0x18, 0x00D0);
-  sprite_group(DP, choice < 0x000E ? 0x81BE5A : 0x81BEAC);
-  wr16(DP + 0x14, 0x0080);
-  wr16(DP + 0x16, (uint16_t)(rd16(DP + 0xE8) + 0x0025));
-  wr16(DP + 0x18, 0x00D0);
-  sprite_group(DP, rd16(DP + 0x7C) < 0x000E ? 0x81BEFE : 0x81BF14);
-  wr16((uint16_t)(rd16(DP + 0xC4) + 0x0150), rom16(0x81C254 + (uint32_t)(rd16(DP + 0x7C) & 0xFFFE)));
-  const uint32_t t = (uint32_t)((rd16((uint16_t)(0x03A7 + rd16(DP + 0x94))) & 0x00FF) << 1);
+void menu_panel_sprites(uint16_t dp) {
+  const uint16_t choice = rd16(dp + 0x7C);
+  wr16(dp + 0x14, rom16(0x81C216 + (uint32_t)(uint16_t)(choice << 1)));
+  wr16(dp + 0x16, (uint16_t)(rd16(dp + 0xE8) + 0x0024));
+  wr16(dp + 0x18, 0x00D0);
+  sprite_group(dp, choice < 0x000E ? 0x81BE5A : 0x81BEAC);
+  wr16(dp + 0x14, 0x0080);
+  wr16(dp + 0x16, (uint16_t)(rd16(dp + 0xE8) + 0x0025));
+  wr16(dp + 0x18, 0x00D0);
+  sprite_group(dp, rd16(dp + 0x7C) < 0x000E ? 0x81BEFE : 0x81BF14);
+  wr16((uint16_t)(rd16(dp + 0xC4) + 0x0150), rom16(0x81C254 + (uint32_t)(rd16(dp + 0x7C) & 0xFFFE)));
+  const uint32_t t = (uint32_t)((rd16((uint16_t)(0x03A7 + rd16(dp + 0x94))) & 0x00FF) << 1);
   for(int k = 0; k < 2; k++) {  // D+$7C toward $81:C20E, D+$7E toward $81:C212 (never off)
-    const uint16_t adr = k ? (uint16_t)(DP + 0x7E) : (uint16_t)(DP + 0x7C);
+    const uint16_t adr = k ? (uint16_t)(dp + 0x7E) : (uint16_t)(dp + 0x7C);
     const uint16_t v = rd16(adr), target = rom16((k ? 0x81C212 : 0x81C20E) + t);
     if(v != target) wr16(adr, (uint16_t)((uint16_t)(v - target) & 0x8000 ? v + 1 : v - 1));
   }
-  const uint16_t h = rd16(DP + 0x7E);
-  wr16(DP + 0x16, (uint16_t)(h >> 1));
-  wr16(DP + 0x14, (uint16_t)(h >> 2));
-  const uint16_t at = (uint16_t)(((rd16(DP + 0x7C) << 8) & 0xFF00) + rd16(DP + 0xE7) + 0x1CC2 - rd16(DP + 0x14));
-  wr16(DP + 0x14, at);
-  uint16_t x = rd16(DP + 0x74);
+  const uint16_t h = rd16(dp + 0x7E);
+  wr16(dp + 0x16, (uint16_t)(h >> 1));
+  wr16(dp + 0x14, (uint16_t)(h >> 2));
+  const uint16_t at = (uint16_t)(((rd16(dp + 0x7C) << 8) & 0xFF00) + rd16(dp + 0xE7) + 0x1CC2 - rd16(dp + 0x14));
+  wr16(dp + 0x14, at);
+  uint16_t x = rd16(dp + 0x74);
   static const uint16_t tiles[6][2] = {
     {0x0902, 0x2550}, {0x0906, 0xA550}, {0x090A, 0xE550}, {0x090E, 0x6550}, {0x0912, 0x2552}, {0x0916, 0x6552},
   };
   for(int i = 0; i < 6; i++) wr16((uint16_t)(tiles[i][0] + x), tiles[i][1]);
-  const uint16_t half = rd16(DP + 0x16);
+  const uint16_t half = rd16(dp + 0x16);
   wr16((uint16_t)(0x0900 + x), at);
   wr16((uint16_t)(0x0910 + x), (uint16_t)(at + 0x0700));
   wr16((uint16_t)(0x0904 + x), (uint16_t)(at + 0x0F00));
@@ -8775,22 +8775,22 @@ void menu_panel_sprites(void) {
   if((h >> 1) >= 8) {
     uint16_t left = (uint16_t)((h >> 1) - 8);
     for(;;) {
-      wr16(DP + 0x80, left);
+      wr16(dp + 0x80, left);
       wr16((uint16_t)(0x0902 + x), 0x2551);
       wr16((uint16_t)(0x0906 + x), 0x2551);
-      wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 8));
-      wr16((uint16_t)(0x0900 + x), rd16(DP + 0x14));
-      wr16((uint16_t)(0x0904 + x), (uint16_t)(rd16(DP + 0x14) + 0x1400));
+      wr16(dp + 0x14, (uint16_t)(rd16(dp + 0x14) + 8));
+      wr16((uint16_t)(0x0900 + x), rd16(dp + 0x14));
+      wr16((uint16_t)(0x0904 + x), (uint16_t)(rd16(dp + 0x14) + 0x1400));
       wr16((uint16_t)(0x0B01 + x), 0);
       wr16((uint16_t)(0x0B05 + x), 0);
       x = (uint16_t)(x + 8);
-      const bool more = rd16(DP + 0x80) >= 8;
-      wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) - 8));
+      const bool more = rd16(dp + 0x80) >= 8;
+      wr16(dp + 0x80, (uint16_t)(rd16(dp + 0x80) - 8));
       if(!more) break;
-      left = rd16(DP + 0x80);
+      left = rd16(dp + 0x80);
     }
   }
-  wr16(DP + 0x74, x);
+  wr16(dp + 0x74, x);
 }
 
 // TG3000_ROUTINE($80:CC7E) menu_button_assign
@@ -8799,14 +8799,14 @@ void menu_panel_sprites(void) {
 // player's five ($039D + D+$94, a word each). One button only (none or two: ignored). The
 // line that held it gets the line's old button. On line 5 (EXIT) a B/Y/A/X press sets
 // D+$4E = 4 and leaves the caller too (its PLA, RTS): returns true then.
-bool menu_button_assign(uint16_t button) {
-  if(rd16(DP + 0x48) == 0x0005) {
+bool menu_button_assign(uint16_t dp, uint16_t button) {
+  if(rd16(dp + 0x48) == 0x0005) {
     if(!(button & 0xC0C0)) return false;
-    if(rd16(DP + 0x4C) != 0) {  // never run
+    if(rd16(dp + 0x4C) != 0) {  // never run
       func_80E4DB();
       return false;
     }
-    wr16(DP + 0x4E, 0x0004);
+    wr16(dp + 0x4E, 0x0004);
     return true;
   }
   func_80E4C5();
@@ -8823,8 +8823,8 @@ bool menu_button_assign(uint16_t button) {
     if(bit) return false;
     if(--n == 0) break;
   }
-  const uint16_t mine = (uint16_t)((rd16(DP + 0x48) << 1) + rd16(DP + 0x94));
-  for(uint16_t y = rd16(DP + 0x94); y != 0x000A; y = (uint16_t)(y + 2)) {
+  const uint16_t mine = (uint16_t)((rd16(dp + 0x48) << 1) + rd16(dp + 0x94));
+  for(uint16_t y = rd16(dp + 0x94); y != 0x000A; y = (uint16_t)(y + 2)) {
     if(bus_rd16(0x810000 | (uint16_t)(0x039D + y)) == button) {  // held by line y: swapped
       const uint16_t old = rd16((uint16_t)(0x039D + mine));
       wr16((uint16_t)(0x039D + mine), button);
@@ -8842,13 +8842,13 @@ bool menu_button_assign(uint16_t button) {
 // wide at height D+$4A - D+$4C; D+$4A stepped 2 and D+$7A 8 toward line D+$48's targets
 // ($81:C189, $81:C195); the title ($80:CE91) and each line's button name
 // (menu_bit_word of $039D-$03A5 + D+$94); the cursor's colours by D+$4C ($81:C1A1...).
-void menu_controls_sprites(void) {
-  const uint16_t w = rd16(DP + 0x7A);
-  wr16(DP + 0x14, (uint16_t)(w >> 1));
-  const uint16_t rise = (uint16_t)(rd16(DP + 0x4A) - rd16(DP + 0x4C));
-  const uint16_t at = (uint16_t)(((rise << 8) & 0xFF00) + rd16(DP + 0xE7) + 0x1C7C - rd16(DP + 0x14));
-  wr16(DP + 0x14, at);
-  uint16_t x = rd16(DP + 0x74);
+void menu_controls_sprites(uint16_t dp) {
+  const uint16_t w = rd16(dp + 0x7A);
+  wr16(dp + 0x14, (uint16_t)(w >> 1));
+  const uint16_t rise = (uint16_t)(rd16(dp + 0x4A) - rd16(dp + 0x4C));
+  const uint16_t at = (uint16_t)(((rise << 8) & 0xFF00) + rd16(dp + 0xE7) + 0x1C7C - rd16(dp + 0x14));
+  wr16(dp + 0x14, at);
+  uint16_t x = rd16(dp + 0x74);
   wr16((uint16_t)(0x0902 + x), 0x3350);
   wr16((uint16_t)(0x0906 + x), 0xB350);
   wr16((uint16_t)(0x090A + x), 0xF350);
@@ -8860,26 +8860,26 @@ void menu_controls_sprites(void) {
   for(uint16_t k = 1; k < 0x10; k += 4) wr16((uint16_t)(0x0B00 + k + x), 0);
   x = (uint16_t)(x + 0x10);
   if(w >= 8) {
-    wr16(DP + 0x7C, (uint16_t)(w - 8));
+    wr16(dp + 0x7C, (uint16_t)(w - 8));
     for(;;) {
       wr16((uint16_t)(0x0902 + x), 0x3351);
       wr16((uint16_t)(0x0906 + x), 0x3351);
-      wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 8));
-      wr16((uint16_t)(0x0900 + x), rd16(DP + 0x14));
-      wr16((uint16_t)(0x0904 + x), (uint16_t)(rd16(DP + 0x14) + 0x0900));
+      wr16(dp + 0x14, (uint16_t)(rd16(dp + 0x14) + 8));
+      wr16((uint16_t)(0x0900 + x), rd16(dp + 0x14));
+      wr16((uint16_t)(0x0904 + x), (uint16_t)(rd16(dp + 0x14) + 0x0900));
       wr16((uint16_t)(0x0B01 + x), 0);
       wr16((uint16_t)(0x0B05 + x), 0);
       x = (uint16_t)(x + 8);
-      const bool more = rd16(DP + 0x7C) >= 8;
-      wr16(DP + 0x7C, (uint16_t)(rd16(DP + 0x7C) - 8));
+      const bool more = rd16(dp + 0x7C) >= 8;
+      wr16(dp + 0x7C, (uint16_t)(rd16(dp + 0x7C) - 8));
       if(!more) break;
     }
   }
-  wr16(DP + 0x74, x);
-  const uint32_t line = (uint32_t)(rd16(DP + 0x48) << 1);
-  uint16_t h = rd16(DP + 0x4A), target = rom16(0x81C189 + line);
-  if(h != target) wr16(DP + 0x4A, (uint16_t)((uint16_t)(h - target) & 0x8000 ? h + 2 : h - 2));
-  uint16_t v = rd16(DP + 0x7A);
+  wr16(dp + 0x74, x);
+  const uint32_t line = (uint32_t)(rd16(dp + 0x48) << 1);
+  uint16_t h = rd16(dp + 0x4A), target = rom16(0x81C189 + line);
+  if(h != target) wr16(dp + 0x4A, (uint16_t)((uint16_t)(h - target) & 0x8000 ? h + 2 : h - 2));
+  uint16_t v = rd16(dp + 0x7A);
   target = rom16(0x81C195 + line);
   if(v != target) {
     if(!((uint16_t)(v - target) & 0x8000)) {
@@ -8887,21 +8887,21 @@ void menu_controls_sprites(void) {
       if((uint16_t)(v - target) & 0x8000) v = target;
     } else {
       v = (uint16_t)(v + 8);
-      wr16(DP + 0x7A, v);
+      wr16(dp + 0x7A, v);
       if(!((uint16_t)(v - target) & 0x8000)) v = target;
     }
-    wr16(DP + 0x7A, v);
+    wr16(dp + 0x7A, v);
   }
-  wr16(DP + 0x14, 0x3354);
-  const uint16_t t = (uint16_t)(0x735B - rd16(DP + 0x4C));
-  sprite_text_menu(0x80CE91, (uint16_t)((uint16_t)(t << 8 | t >> 8) + rd16(DP + 0xE7)));
+  wr16(dp + 0x14, 0x3354);
+  const uint16_t t = (uint16_t)(0x735B - rd16(dp + 0x4C));
+  sprite_text_menu(dp, 0x80CE91, (uint16_t)((uint16_t)(t << 8 | t >> 8) + rd16(dp + 0xE7)));
   static const uint16_t rows[5] = {0x1DAE, 0x27AE, 0x31AE, 0x3BAE, 0x45AE};
   for(int i = 0; i < 5; i++) {
-    const uint16_t name = menu_bit_word(rd16((uint16_t)(0x039D + 2 * i + rd16(DP + 0x94))));
-    wr16(DP + 0x14, 0x2154);
-    sprite_text_menu(0x800000 | name, (uint16_t)(rows[i] + rd16(DP + 0xE7)));
+    const uint16_t name = menu_bit_word(rd16((uint16_t)(0x039D + 2 * i + rd16(dp + 0x94))));
+    wr16(dp + 0x14, 0x2154);
+    sprite_text_menu(dp, 0x800000 | name, (uint16_t)(rows[i] + rd16(dp + 0xE7)));
   }
-  const uint16_t c4 = rd16(DP + 0xC4), k = (uint16_t)((rd16(DP + 0x4C) >> 1) & 0xFFFE);
+  const uint16_t c4 = rd16(dp + 0xC4), k = (uint16_t)((rd16(dp + 0x4C) >> 1) & 0xFFFE);
   wr16((uint16_t)(c4 + 0x0122), rom16(0x81C1A1 + (uint32_t)k));
   wr16((uint16_t)(c4 + 0x0124), rom16(0x81C1C5 + (uint32_t)k));
   wr16((uint16_t)(c4 + 0x0126), rom16(0x81C1D7 + (uint32_t)k));
@@ -8916,19 +8916,19 @@ void menu_controls_sprites(void) {
 // the frame and the name redrawn a frame at a time while its colours run through $81:C124...
 // (from D+$3E), then D+$4E = 3, the cursor taken off; it leaves the caller too (PLA, RTS):
 // returns true then. A full name or an empty delete: sound $12 (shop_flag_fb, $80:E4D0; never run).
-bool name_entry_key(void) {
-  const uint16_t key = rd16(DP + 0x48);
+bool name_entry_key(uint16_t dp) {
+  const uint16_t key = rd16(dp + 0x48);
   if(key == 0x001F || key == 0x0020) {
-    if(rd16(DP + 0x4C) != 0) return false;
+    if(rd16(dp + 0x4C) != 0) return false;
     func_80E4DB();
-    for(uint16_t x = rd16(DP + 0x3E);;) {
+    for(uint16_t x = rd16(dp + 0x3E);;) {
       wait_frames(1);
-      menu_frame_sprites();
-      wr16(DP + 0x14, 0x3354);
-      const uint16_t at = (uint16_t)(0x495C + rd16(DP + 0xE8) - rd16(DP + 0x4C));
-      uint16_t y = sprite_text_menu((uint16_t)(0x037E + rd16(DP + 0x94)), (uint16_t)(at << 8 | at >> 8));
-      if(rd16(DP + 0x74) < rd16(DP + 0x72)) y = 0;  // (oam_finish_near's Y: 0 when it clears)
-      oam_finish_near(DP);
+      menu_frame_sprites(dp);
+      wr16(dp + 0x14, 0x3354);
+      const uint16_t at = (uint16_t)(0x495C + rd16(dp + 0xE8) - rd16(dp + 0x4C));
+      uint16_t y = sprite_text_menu(dp, (uint16_t)(0x037E + rd16(dp + 0x94)), (uint16_t)(at << 8 | at >> 8));
+      if(rd16(dp + 0x74) < rd16(dp + 0x72)) y = 0;  // (oam_finish_near's Y: 0 when it clears)
+      oam_finish_near(dp);
       x = (uint16_t)(x + 2);
       // the colours go where Y points, through DB = $81 (as the original: Y is not reloaded;
       // past $1FFF that is no memory, and the writes are lost)
@@ -8938,47 +8938,47 @@ bool name_entry_key(void) {
       bus_wr16(0x810000 | (uint16_t)(0x0128 + y), rom16(0x81C112 + (uint32_t)x));
       if(x == 0x000E) break;
     }
-    menu_frame_sprites();
-    oam_finish_near(DP);
-    wr16(DP + 0x4E, 0x0003);
-    wr16((uint16_t)(0x037E + rd16(DP + 0x40)), 0);
+    menu_frame_sprites(dp);
+    oam_finish_near(dp);
+    wr16(dp + 0x4E, 0x0003);
+    wr16((uint16_t)(0x037E + rd16(dp + 0x40)), 0);
     return true;
   }
-  const uint16_t me = rd16(DP + 0x94), fresh = rd16((uint16_t)(0x03A9 + me));
+  const uint16_t me = rd16(dp + 0x94), fresh = rd16((uint16_t)(0x03A9 + me));
   if(fresh & 0x8000) {
     wr16((uint16_t)(0x03A9 + me), (uint16_t)(fresh & 0x7FFF));
-    wr16(DP + 0x42, 0);
-    wr16(DP + 0x40, me);
+    wr16(dp + 0x42, 0);
+    wr16(dp + 0x40, me);
     wr16((uint16_t)(0x037E + me), 0x005F);
-    wr16(DP + 0x44, 0x0020);
+    wr16(dp + 0x44, 0x0020);
   }
   if(key == 0x001D || key == 0x001E) {
-    if(rd16(DP + 0x42) == 0) {  // never run
-      shop_flag_fb(DP);
+    if(rd16(dp + 0x42) == 0) {  // never run
+      shop_flag_fb(dp);
       return false;
     }
     func_80E4C5();
-    const uint16_t x = (uint16_t)(rd16(DP + 0x40) - 1);
+    const uint16_t x = (uint16_t)(rd16(dp + 0x40) - 1);
     wr8((uint16_t)(0x037E + x), 0x5F);
     wr8((uint16_t)(0x037F + x), 0x00);
-    wr16(DP + 0x40, x);
-    wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) - 1));
-    wr16(DP + 0x44, 0x0020);
+    wr16(dp + 0x40, x);
+    wr16(dp + 0x42, (uint16_t)(rd16(dp + 0x42) - 1));
+    wr16(dp + 0x44, 0x0020);
     return false;
   }
-  if(rd16(DP + 0x42) == 0x000D) {  // never run
-    shop_flag_fb(DP);
+  if(rd16(dp + 0x42) == 0x000D) {  // never run
+    shop_flag_fb(dp);
     return false;
   }
-  wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 1));
+  wr16(dp + 0x42, (uint16_t)(rd16(dp + 0x42) + 1));
   func_80E4C5();
-  uint16_t x = rd16(DP + 0x40);
+  uint16_t x = rd16(dp + 0x40);
   wr8((uint16_t)(0x037E + x), rom8(0x81C16C + (uint32_t)key));
   x = (uint16_t)(x + 1);
   wr8((uint16_t)(0x037E + x), 0x5F);
-  wr16(DP + 0x40, x);
+  wr16(dp + 0x40, x);
   wr8((uint16_t)(0x037F + x), 0x00);
-  wr16(DP + 0x44, 0x0020);
+  wr16(dp + 0x44, 0x0020);
   return false;
 }
 
@@ -8989,15 +8989,15 @@ bool name_entry_key(void) {
 // The bar's window opening (D+$4E = 1, the callback $C5E0), two graphics to $7F (D+$5E +
 // $1000 and + $2000), the rows copied. Returns the second one's length (the original keeps it
 // on the stack for the setup). `x`, `y`: rows_7f_copy8's registers after it.
-uint16_t menu_controls_open(uint16_t* x, uint16_t* y) {
+uint16_t menu_controls_open(uint16_t dp, uint16_t* x, uint16_t* y) {
   uint16_t end;
-  wr16(DP + 0x4C, 0);
-  wr16(DP + 0x4E, 0x0001);
-  wr16(DP + 0xEC, 0xC5E0);
-  decompress_near(DP, 0x8C, 0x8A95, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x1000), &end);
-  const uint16_t len = decompress_near(DP, 0x9F, 0x8000, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x2000), &end);
-  *x = (uint16_t)(rd16(DP + 0x5E) + 0x1000);
-  *y = (uint16_t)(rd16(DP + 0x5E) + 0x08C4);
+  wr16(dp + 0x4C, 0);
+  wr16(dp + 0x4E, 0x0001);
+  wr16(dp + 0xEC, 0xC5E0);
+  decompress_near(dp, 0x8C, 0x8A95, 0x7F, (uint16_t)(rd16(dp + 0x5E) + 0x1000), &end);
+  const uint16_t len = decompress_near(dp, 0x9F, 0x8000, 0x7F, (uint16_t)(rd16(dp + 0x5E) + 0x2000), &end);
+  *x = (uint16_t)(rd16(dp + 0x5E) + 0x1000);
+  *y = (uint16_t)(rd16(dp + 0x5E) + 0x08C4);
   rows_7f_copy8(x, y);
   return len;
 }
@@ -9005,27 +9005,27 @@ uint16_t menu_controls_open(uint16_t* x, uint16_t* y) {
 // TG3000_ROUTINE($80:CB8D) menu_controls_lines
 // Once the window is open: the cursor on line 5 (EXIT), the frame's height and width
 // ($81:C193, $81:C19F).
-void menu_controls_lines(void) {
-  wr16(DP + 0x48, 0x0005);
-  wr16(DP + 0x4A, rom16(0x81C193));
-  wr16(DP + 0x7A, rom16(0x81C19F));
-  wr16(DP + 0x14, 0x007F);
+void menu_controls_lines(uint16_t dp) {
+  wr16(dp + 0x48, 0x0005);
+  wr16(dp + 0x4A, rom16(0x81C193));
+  wr16(dp + 0x7A, rom16(0x81C19F));
+  wr16(dp + 0x14, 0x007F);
 }
 
 // TG3000_ROUTINE($80:CBB0) menu_controls_setup
 // The three panels (`len` bytes from D+$5E + $2000, then two of $200), the palette's $20
 // bytes from $98:9FCB (MVN into bank $81), the sprites, the colours.
-void menu_controls_setup(uint16_t len) {
-  func_80B537(DP, len, (uint16_t)(rd16(DP + 0x5E) + 0x2000), (uint16_t)(rd16(DP + 0x5C) + 0x1200));
-  wr16(DP + 0x14, 0x007F);
-  func_80B537(DP, 0x0200, (uint16_t)(rd16(DP + 0x5E) + 0x08C4), (uint16_t)(rd16(DP + 0x5C) + 0x0462));
-  wr16(DP + 0x14, 0x007F);
-  func_80B537(DP, 0x0200, (uint16_t)(rd16(DP + 0x5E) + 0x11C0), (uint16_t)(rd16(DP + 0x5C) + 0x0060));
-  wr16(DP + 0xBC, 0x0013);
-  const uint16_t c4 = rd16(DP + 0xC4);
+void menu_controls_setup(uint16_t dp, uint16_t len) {
+  func_80B537(dp, len, (uint16_t)(rd16(dp + 0x5E) + 0x2000), (uint16_t)(rd16(dp + 0x5C) + 0x1200));
+  wr16(dp + 0x14, 0x007F);
+  func_80B537(dp, 0x0200, (uint16_t)(rd16(dp + 0x5E) + 0x08C4), (uint16_t)(rd16(dp + 0x5C) + 0x0462));
+  wr16(dp + 0x14, 0x007F);
+  func_80B537(dp, 0x0200, (uint16_t)(rd16(dp + 0x5E) + 0x11C0), (uint16_t)(rd16(dp + 0x5C) + 0x0060));
+  wr16(dp + 0xBC, 0x0013);
+  const uint16_t c4 = rd16(dp + 0xC4);
   for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0020 + i), rom8(0x989FCB + i));
-  menu_controls_sprites();
-  oam_finish_near(DP);
+  menu_controls_sprites(dp);
+  oam_finish_near(dp);
   static const uint16_t words[4][2] = {{0x0102, 0x0FFF}, {0x0104, 0x0042}, {0x0106, 0x14BF}, {0x0108, 0x0000}};
   for(int i = 0; i < 4; i++) wr16((uint16_t)(c4 + words[i][0]), words[i][1]);
   wr16((uint16_t)(c4 + 0x0122), rom16(0x81C1B1));
@@ -9038,24 +9038,24 @@ void menu_controls_setup(uint16_t len) {
 // A frame (after its wait): up/down move the cursor (0-5), a button press goes to the line
 // (menu_button_assign); the sprites. True when EXIT was chosen: the controls menu returns
 // (menu_button_assign's PLA, RTS).
-bool menu_controls_frame(void) {
-  uint16_t p = rd16(DP + 0x0E);
-  wr16(DP + 0x0E, (uint16_t)(p & ~0x0800));
-  if((p & 0x0800) && rd16(DP + 0x48) != 0) {
-    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) - 1));
+bool menu_controls_frame(uint16_t dp) {
+  uint16_t p = rd16(dp + 0x0E);
+  wr16(dp + 0x0E, (uint16_t)(p & ~0x0800));
+  if((p & 0x0800) && rd16(dp + 0x48) != 0) {
+    wr16(dp + 0x48, (uint16_t)(rd16(dp + 0x48) - 1));
     func_80E4C5();
   }
-  p = rd16(DP + 0x0E);
-  wr16(DP + 0x0E, (uint16_t)(p & ~0x0400));
-  if((p & 0x0400) && rd16(DP + 0x48) != 0x0005) {
-    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) + 1));
+  p = rd16(dp + 0x0E);
+  wr16(dp + 0x0E, (uint16_t)(p & ~0x0400));
+  if((p & 0x0400) && rd16(dp + 0x48) != 0x0005) {
+    wr16(dp + 0x48, (uint16_t)(rd16(dp + 0x48) + 1));
     func_80E4C5();
   }
-  p = rd16(DP + 0x0E);
-  wr16(DP + 0x0E, (uint16_t)(p & ~0xC0F0));
-  if((p & 0xC0F0) && menu_button_assign(p)) return true;
-  menu_controls_sprites();
-  oam_finish_near(DP);
+  p = rd16(dp + 0x0E);
+  wr16(dp + 0x0E, (uint16_t)(p & ~0xC0F0));
+  if((p & 0xC0F0) && menu_button_assign(dp, p)) return true;
+  menu_controls_sprites(dp);
+  oam_finish_near(dp);
   return false;
 }
 
@@ -9066,68 +9066,68 @@ bool menu_controls_frame(void) {
 // TG3000_ROUTINE($80:C6D4) name_entry_open
 // The window opening, two graphics to $7F, the rows copied; returns the second's length (the
 // original keeps it on the stack). `x`, `y`: rows_7f_copy8's registers after it.
-uint16_t name_entry_open(uint16_t* x, uint16_t* y) {
+uint16_t name_entry_open(uint16_t dp, uint16_t* x, uint16_t* y) {
   uint16_t end;
-  wr16(DP + 0x4C, 0);
-  wr16(DP + 0x4E, 0x0001);
-  wr16(DP + 0xEC, 0xC5E0);
-  decompress_near(DP, 0x9E, 0x8D11, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x1000), &end);
-  const uint16_t len = decompress_near(DP, 0x8C, 0x8000, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x2000), &end);
-  *x = (uint16_t)(rd16(DP + 0x5E) + 0x1000);
-  *y = (uint16_t)(rd16(DP + 0x5E) + 0x08C4);
+  wr16(dp + 0x4C, 0);
+  wr16(dp + 0x4E, 0x0001);
+  wr16(dp + 0xEC, 0xC5E0);
+  decompress_near(dp, 0x9E, 0x8D11, 0x7F, (uint16_t)(rd16(dp + 0x5E) + 0x1000), &end);
+  const uint16_t len = decompress_near(dp, 0x8C, 0x8000, 0x7F, (uint16_t)(rd16(dp + 0x5E) + 0x2000), &end);
+  *x = (uint16_t)(rd16(dp + 0x5E) + 0x1000);
+  *y = (uint16_t)(rd16(dp + 0x5E) + 0x08C4);
   rows_7f_copy8(x, y);
   return len;
 }
 
 // TG3000_ROUTINE($80:C717) name_entry_lines
-void name_entry_lines(void) { wr16(DP + 0x14, 0x007F); }
+void name_entry_lines(uint16_t dp) { wr16(dp + 0x14, 0x007F); }
 
 // TG3000_ROUTINE($80:C72B) name_entry_setup
 // Two panels (`len` bytes, $200), the palette's $20 bytes from $96:8000 (MVN into bank $81),
 // the cursor on END ($1F) with the frame's place and size ($81:C054, C096, C0D8), the sprites,
 // four colour words; D+$40/D+$42 at the name's end (the cursor, the length).
-void name_entry_setup(uint16_t len) {
-  func_80B537(DP, len, (uint16_t)(rd16(DP + 0x5E) + 0x2000), (uint16_t)(rd16(DP + 0x5C) + 0x1200));
-  wr16(DP + 0x14, 0x007F);
-  func_80B537(DP, 0x0200, (uint16_t)(rd16(DP + 0x5E) + 0x08C4), (uint16_t)(rd16(DP + 0x5C) + 0x0462));
-  wr16(DP + 0xBC, 0x0012);
-  const uint16_t c4 = rd16(DP + 0xC4);
+void name_entry_setup(uint16_t dp, uint16_t len) {
+  func_80B537(dp, len, (uint16_t)(rd16(dp + 0x5E) + 0x2000), (uint16_t)(rd16(dp + 0x5C) + 0x1200));
+  wr16(dp + 0x14, 0x007F);
+  func_80B537(dp, 0x0200, (uint16_t)(rd16(dp + 0x5E) + 0x08C4), (uint16_t)(rd16(dp + 0x5C) + 0x0462));
+  wr16(dp + 0xBC, 0x0012);
+  const uint16_t c4 = rd16(dp + 0xC4);
   for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0020 + i), rom8(0x968000 + i));
-  wr16(DP + 0x48, 0x001F);
-  wr16(DP + 0x7A, rom16(0x81C054));
-  wr16(DP + 0x7C, rom16(0x81C096));
-  wr16(DP + 0x4A, rom16(0x81C0D8));
-  menu_frame_sprites();
-  oam_finish_near(DP);
+  wr16(dp + 0x48, 0x001F);
+  wr16(dp + 0x7A, rom16(0x81C054));
+  wr16(dp + 0x7C, rom16(0x81C096));
+  wr16(dp + 0x4A, rom16(0x81C0D8));
+  menu_frame_sprites(dp);
+  oam_finish_near(dp);
   wr16((uint16_t)(c4 + 0x0102), 0x0FFF);
   wr16((uint16_t)(c4 + 0x0104), 0x018C);
   wr16((uint16_t)(c4 + 0x0122), 0x0FFF);
   wr16((uint16_t)(c4 + 0x0124), 0x018C);
-  uint16_t x = rd16(DP + 0x94), n = 0;
+  uint16_t x = rd16(dp + 0x94), n = 0;
   while(rd8((uint16_t)(0x037E + x)) != 0) {
     x = (uint16_t)(x + 1);
     n = (uint16_t)(n + 1);
   }
-  wr16(DP + 0x40, x);
-  wr16(DP + 0x42, n);
+  wr16(dp + 0x40, x);
+  wr16(dp + 0x42, n);
 }
 
 // TG3000_ROUTINE($80:C7AE) name_entry_ready
 // Once the text is typed: the bar's step 2, the key repeats cleared, the colour run from
 // $0E, four colour words, the cursor's blink.
-void name_entry_ready(void) {
-  wr16(DP + 0x4E, 0x0002);
-  wr16(DP + 0x7E, 0);
-  wr16(DP + 0x80, 0);
-  wr16(DP + 0x82, 0);
-  wr16(DP + 0x84, 0);
-  const uint16_t c4 = rd16(DP + 0xC4);
-  wr16(DP + 0x3E, 0x000E);
+void name_entry_ready(uint16_t dp) {
+  wr16(dp + 0x4E, 0x0002);
+  wr16(dp + 0x7E, 0);
+  wr16(dp + 0x80, 0);
+  wr16(dp + 0x82, 0);
+  wr16(dp + 0x84, 0);
+  const uint16_t c4 = rd16(dp + 0xC4);
+  wr16(dp + 0x3E, 0x000E);
   wr16((uint16_t)(c4 + 0x0122), rom16(0x81C132));
   wr16((uint16_t)(c4 + 0x0124), rom16(0x81C144));
   wr16((uint16_t)(c4 + 0x0126), rom16(0x81C156));
   wr16((uint16_t)(c4 + 0x0128), rom16(0x81C120));
-  wr16(DP + 0x44, 0x0020);
+  wr16(dp + 0x44, 0x0020);
 }
 
 // A step of `adr` toward `target` by 2 (no clamp).
@@ -9141,79 +9141,79 @@ static void name_entry_step(uint16_t adr, uint16_t target) {
 // blinking at D+$40 (D+$44 counting); once open, the colour run; the cursor on the 13-wide
 // key grid moved by the pad's up/down/left/right with their repeats (D+$7E, $80, $82, $84);
 // the frame's place and height stepped toward the key's ($81:C016, C058, C09A).
-void name_entry_frame(void) {
-  const uint16_t c4 = rd16(DP + 0xC4);
-  uint32_t k = (uint32_t)((rd16(DP + 0x4C) >> 1) & 0xFFFE);
+void name_entry_frame(uint16_t dp) {
+  const uint16_t c4 = rd16(dp + 0xC4);
+  uint32_t k = (uint32_t)((rd16(dp + 0x4C) >> 1) & 0xFFFE);
   wr16((uint16_t)(c4 + 0x0018), rom16(0x81C0DC + k));
   wr16((uint16_t)(c4 + 0x001A), rom16(0x81C0EE + k));
   wr16((uint16_t)(c4 + 0x001C), rom16(0x81C100 + k));
   wr16((uint16_t)(c4 + 0x001E), rom16(0x81C112 + k));
-  wr16(DP + 0x44, (uint16_t)(rd16(DP + 0x44) - 1));
-  if(rd16(DP + 0x44) == 0xFFE0) wr16(DP + 0x44, 0x0020);
-  wr8((uint16_t)(0x037E + rd16(DP + 0x40)), (rd16(DP + 0x44) & 0x8000) ? 0x00 : 0x5F);
-  if(rd16(DP + 0x4C) == 0 && !(rd16(DP + 0x3E) & 0x8000)) {
-    k = rd16(DP + 0x3E);
+  wr16(dp + 0x44, (uint16_t)(rd16(dp + 0x44) - 1));
+  if(rd16(dp + 0x44) == 0xFFE0) wr16(dp + 0x44, 0x0020);
+  wr8((uint16_t)(0x037E + rd16(dp + 0x40)), (rd16(dp + 0x44) & 0x8000) ? 0x00 : 0x5F);
+  if(rd16(dp + 0x4C) == 0 && !(rd16(dp + 0x3E) & 0x8000)) {
+    k = rd16(dp + 0x3E);
     wr16((uint16_t)(c4 + 0x0122), rom16(0x81C124 + k));
     wr16((uint16_t)(c4 + 0x0124), rom16(0x81C136 + k));
     wr16((uint16_t)(c4 + 0x0126), rom16(0x81C148 + k));
     wr16((uint16_t)(c4 + 0x0128), rom16(0x81C112 + k));
-    wr16(DP + 0x3E, (uint16_t)(rd16(DP + 0x3E) - 2));
+    wr16(dp + 0x3E, (uint16_t)(rd16(dp + 0x3E) - 2));
   }
-  const uint16_t pad = rd16(DP + 0x0C);
+  const uint16_t pad = rd16(dp + 0x0C);
   // up: a row back (13 keys)
   bool look = true;
-  if(rd16(DP + 0x7E) != 0) {
-    wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x7E) - 1));
-    look = rd16(DP + 0x7E) == 0;
+  if(rd16(dp + 0x7E) != 0) {
+    wr16(dp + 0x7E, (uint16_t)(rd16(dp + 0x7E) - 1));
+    look = rd16(dp + 0x7E) == 0;
   }
-  if(look && (pad & 0x0800) && rd16(DP + 0x48) >= 0x000D) {
-    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) - 0x000D));
-    wr16(DP + 0x7E, (uint16_t)(8 - rd16(DP + 0x80)));
-    wr16(DP + 0x80, 0);
+  if(look && (pad & 0x0800) && rd16(dp + 0x48) >= 0x000D) {
+    wr16(dp + 0x48, (uint16_t)(rd16(dp + 0x48) - 0x000D));
+    wr16(dp + 0x7E, (uint16_t)(8 - rd16(dp + 0x80)));
+    wr16(dp + 0x80, 0);
   }
   // down
   look = true;
-  if(rd16(DP + 0x80) != 0) {
-    wr16(DP + 0x80, (uint16_t)(rd16(DP + 0x80) - 1));
-    look = rd16(DP + 0x80) == 0;
+  if(rd16(dp + 0x80) != 0) {
+    wr16(dp + 0x80, (uint16_t)(rd16(dp + 0x80) - 1));
+    look = rd16(dp + 0x80) == 0;
   }
-  if(look && (pad & 0x0400) && rd16(DP + 0x48) < 0x0014) {
-    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) + 0x000D));
-    wr16(DP + 0x80, (uint16_t)(8 - rd16(DP + 0x7E)));
-    wr16(DP + 0x7E, 0);
+  if(look && (pad & 0x0400) && rd16(dp + 0x48) < 0x0014) {
+    wr16(dp + 0x48, (uint16_t)(rd16(dp + 0x48) + 0x000D));
+    wr16(dp + 0x80, (uint16_t)(8 - rd16(dp + 0x7E)));
+    wr16(dp + 0x7E, 0);
   }
   // left: not past a row's first key; the wide keys ($1E, $20: never run) step two
   look = true;
-  if(rd16(DP + 0x82) != 0) {
-    wr16(DP + 0x82, (uint16_t)(rd16(DP + 0x82) - 1));
-    look = rd16(DP + 0x82) == 0;
+  if(rd16(dp + 0x82) != 0) {
+    wr16(dp + 0x82, (uint16_t)(rd16(dp + 0x82) - 1));
+    look = rd16(dp + 0x82) == 0;
   }
   if(look && (pad & 0x0200)) {
-    const uint16_t key = rd16(DP + 0x48);
+    const uint16_t key = rd16(dp + 0x48);
     if(key != 0 && key != 0x000D && key != 0x001A) {
-      wr16(DP + 0x48, (uint16_t)(key - ((key == 0x001E || key == 0x0020) ? 2 : 1)));
-      wr16(DP + 0x82, (uint16_t)((rd16(DP + 0x48) == 0x001E ? 0x0010 : 0x0008) - rd16(DP + 0x84)));
-      wr16(DP + 0x84, 0);
+      wr16(dp + 0x48, (uint16_t)(key - ((key == 0x001E || key == 0x0020) ? 2 : 1)));
+      wr16(dp + 0x82, (uint16_t)((rd16(dp + 0x48) == 0x001E ? 0x0010 : 0x0008) - rd16(dp + 0x84)));
+      wr16(dp + 0x84, 0);
     }
   }
   // right: not past a row's last key; the wide key $1D (never run) steps two
   look = true;
-  if(rd16(DP + 0x84) != 0) {
-    wr16(DP + 0x84, (uint16_t)(rd16(DP + 0x84) - 1));
-    look = rd16(DP + 0x84) == 0;
+  if(rd16(dp + 0x84) != 0) {
+    wr16(dp + 0x84, (uint16_t)(rd16(dp + 0x84) - 1));
+    look = rd16(dp + 0x84) == 0;
   }
   if(look && (pad & 0x0100)) {
-    const uint16_t key = rd16(DP + 0x48);
+    const uint16_t key = rd16(dp + 0x48);
     if(key != 0x000C && key != 0x0019 && key != 0x001F && key != 0x0020) {
-      wr16(DP + 0x48, (uint16_t)(key + (key == 0x001D ? 2 : 1)));
-      wr16(DP + 0x84, (uint16_t)((rd16(DP + 0x48) == 0x001F ? 0x0010 : 0x0008) - rd16(DP + 0x82)));
-      wr16(DP + 0x82, 0);
+      wr16(dp + 0x48, (uint16_t)(key + (key == 0x001D ? 2 : 1)));
+      wr16(dp + 0x84, (uint16_t)((rd16(dp + 0x48) == 0x001F ? 0x0010 : 0x0008) - rd16(dp + 0x82)));
+      wr16(dp + 0x82, 0);
     }
   }
-  const uint32_t line = (uint32_t)(rd16(DP + 0x48) << 1);
-  name_entry_step(DP + 0x7A, rom16(0x81C016 + line));
-  name_entry_step(DP + 0x7C, rom16(0x81C058 + line));
-  const uint16_t h = rd16(DP + 0x4A), target = rom16(0x81C09A + line);
+  const uint32_t line = (uint32_t)(rd16(dp + 0x48) << 1);
+  name_entry_step(dp + 0x7A, rom16(0x81C016 + line));
+  name_entry_step(dp + 0x7C, rom16(0x81C058 + line));
+  const uint16_t h = rd16(dp + 0x4A), target = rom16(0x81C09A + line);
   if(h != target) {
     uint16_t v;
     if((uint16_t)(h - target) & 0x8000) {
@@ -9223,20 +9223,20 @@ void name_entry_frame(void) {
       v = (uint16_t)(h - 2);
       if((uint16_t)(v - target) & 0x8000) v = target;
     }
-    wr16(DP + 0x4A, v);
+    wr16(dp + 0x4A, v);
   }
 }
 
 // TG3000_ROUTINE($80:C97C) name_entry_draw
 // The frame's end: its sprites, and once open the name (sprite_text_menu at $037E + D+$94).
-void name_entry_draw(void) {
-  menu_frame_sprites();
-  if(rd16(DP + 0x4C) == 0) {
-    const uint16_t at = (uint16_t)(0x495C + rd16(DP + 0xE8) - rd16(DP + 0x4C));
-    wr16(DP + 0x14, 0x3354);
-    sprite_text_menu((uint16_t)(0x037E + rd16(DP + 0x94)), (uint16_t)(at << 8 | at >> 8));
+void name_entry_draw(uint16_t dp) {
+  menu_frame_sprites(dp);
+  if(rd16(dp + 0x4C) == 0) {
+    const uint16_t at = (uint16_t)(0x495C + rd16(dp + 0xE8) - rd16(dp + 0x4C));
+    wr16(dp + 0x14, 0x3354);
+    sprite_text_menu(dp, (uint16_t)(0x037E + rd16(dp + 0x94)), (uint16_t)(at << 8 | at >> 8));
   }
-  oam_finish_near(DP);
+  oam_finish_near(dp);
 }
 
 // The menu's third choice ($80:CEE2, the car's transmission: D+$7C/$7E by the player's
@@ -9245,76 +9245,76 @@ void name_entry_draw(void) {
 // TG3000_ROUTINE($80:CEE2) menu_gears_open
 // The window opening, three graphics to $7F (D+$5E + $1000, + $4000, + $2000), the rows copied.
 // Returns the second and third lengths (the original pushes both). `x`, `y`: rows_7f_copy8's.
-void menu_gears_open(uint16_t* len4000, uint16_t* len2000, uint16_t* x, uint16_t* y) {
+void menu_gears_open(uint16_t dp, uint16_t* len4000, uint16_t* len2000, uint16_t* x, uint16_t* y) {
   uint16_t end;
-  wr16(DP + 0x4C, 0);
-  wr16(DP + 0x4E, 0x0001);
-  wr16(DP + 0xEC, 0xC5E0);
-  decompress_near(DP, 0x9E, 0x8D6B, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x1000), &end);
-  *len4000 = decompress_near(DP, 0x87, 0x898E, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x4000), &end);
-  *len2000 = decompress_near(DP, 0x8C, 0x8B54, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x2000), &end);
-  *x = (uint16_t)(rd16(DP + 0x5E) + 0x1000);
-  *y = (uint16_t)(rd16(DP + 0x5E) + 0x08C4);
+  wr16(dp + 0x4C, 0);
+  wr16(dp + 0x4E, 0x0001);
+  wr16(dp + 0xEC, 0xC5E0);
+  decompress_near(dp, 0x9E, 0x8D6B, 0x7F, (uint16_t)(rd16(dp + 0x5E) + 0x1000), &end);
+  *len4000 = decompress_near(dp, 0x87, 0x898E, 0x7F, (uint16_t)(rd16(dp + 0x5E) + 0x4000), &end);
+  *len2000 = decompress_near(dp, 0x8C, 0x8B54, 0x7F, (uint16_t)(rd16(dp + 0x5E) + 0x2000), &end);
+  *x = (uint16_t)(rd16(dp + 0x5E) + 0x1000);
+  *y = (uint16_t)(rd16(dp + 0x5E) + 0x08C4);
   rows_7f_copy8(x, y);
 }
 
 // TG3000_ROUTINE($80:CF36) menu_gears_lines
-void menu_gears_lines(void) {
-  wr16(DP + 0x7A, 0);
-  wr16(DP + 0x14, 0x007F);
+void menu_gears_lines(uint16_t dp) {
+  wr16(dp + 0x7A, 0);
+  wr16(dp + 0x14, 0x007F);
 }
 
 // TG3000_ROUTINE($80:CF4C) menu_gears_panel
 // The first panel (`len` bytes from D+$5E + $2000).
-void menu_gears_panel(uint16_t len) {
-  func_80B537(DP, len, (uint16_t)(rd16(DP + 0x5E) + 0x2000), (uint16_t)(rd16(DP + 0x5C) + 0x1200));
-  wr16(DP + 0x14, 0x007F);
+void menu_gears_panel(uint16_t dp, uint16_t len) {
+  func_80B537(dp, len, (uint16_t)(rd16(dp + 0x5E) + 0x2000), (uint16_t)(rd16(dp + 0x5C) + 0x1200));
+  wr16(dp + 0x14, 0x007F);
 }
 
 // TG3000_ROUTINE($80:CF63) menu_gears_setup
 // The second panel (`len` bytes from D+$5E + $4000) and a third of $200, the palette's $20 bytes
 // from $9B:8060 twice (MVN into bank $81, at D+$C4 + $20 and + $120), two colour words, the
 // panel's targets for the player's choice ($81:C20E, $81:C212), its sprites.
-void menu_gears_setup(uint16_t len) {
-  func_80B537(DP, len, (uint16_t)(rd16(DP + 0x5E) + 0x4000), (uint16_t)(rd16(DP + 0x5C) + 0x2D00));
-  wr16(DP + 0x14, 0x007F);
-  func_80B537(DP, 0x0200, (uint16_t)(rd16(DP + 0x5E) + 0x08C4), (uint16_t)(rd16(DP + 0x5C) + 0x0462));
-  wr16(DP + 0xBC, 0x0012);
-  const uint16_t c4 = rd16(DP + 0xC4);
+void menu_gears_setup(uint16_t dp, uint16_t len) {
+  func_80B537(dp, len, (uint16_t)(rd16(dp + 0x5E) + 0x4000), (uint16_t)(rd16(dp + 0x5C) + 0x2D00));
+  wr16(dp + 0x14, 0x007F);
+  func_80B537(dp, 0x0200, (uint16_t)(rd16(dp + 0x5E) + 0x08C4), (uint16_t)(rd16(dp + 0x5C) + 0x0462));
+  wr16(dp + 0xBC, 0x0012);
+  const uint16_t c4 = rd16(dp + 0xC4);
   for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0020 + i), rom8(0x9B8060 + i));
   for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0120 + i), rom8(0x9B8060 + i));
   wr16((uint16_t)(c4 + 0x0146), 0x14BF);
   wr16((uint16_t)(c4 + 0x0148), 0x0000);
-  const uint32_t k = (uint32_t)((rd16((uint16_t)(0x03A7 + rd16(DP + 0x94))) & 0x00FF) << 1);
-  wr16(DP + 0x7C, rom16(0x81C20E + k));
-  wr16(DP + 0x7E, rom16(0x81C212 + k));
-  menu_panel_sprites();
-  oam_finish_near(DP);
+  const uint32_t k = (uint32_t)((rd16((uint16_t)(0x03A7 + rd16(dp + 0x94))) & 0x00FF) << 1);
+  wr16(dp + 0x7C, rom16(0x81C20E + k));
+  wr16(dp + 0x7E, rom16(0x81C212 + k));
+  menu_panel_sprites(dp);
+  oam_finish_near(dp);
 }
 
 // TG3000_ROUTINE($80:CFDF) menu_gears_frame
 // A frame (after its wait): the panel; down/up pick the choice ($03A7 + D+$94 = 1, 0); B/Y/A/X
 // with the window open leave (D+$4E = 5): true then, the screen returns.
-bool menu_gears_frame(void) {
-  menu_panel_sprites();
-  oam_finish_near(DP);
-  const uint16_t me = rd16(DP + 0x94);
-  uint16_t p = rd16(DP + 0x0E);
-  wr16(DP + 0x0E, (uint16_t)(p & ~0x0400));
+bool menu_gears_frame(uint16_t dp) {
+  menu_panel_sprites(dp);
+  oam_finish_near(dp);
+  const uint16_t me = rd16(dp + 0x94);
+  uint16_t p = rd16(dp + 0x0E);
+  wr16(dp + 0x0E, (uint16_t)(p & ~0x0400));
   if(p & 0x0400) {
     wr8((uint16_t)(0x03A7 + me), 0x01);
     func_80E4C5();
   }
-  p = rd16(DP + 0x0E);
-  wr16(DP + 0x0E, (uint16_t)(p & ~0x0800));
+  p = rd16(dp + 0x0E);
+  wr16(dp + 0x0E, (uint16_t)(p & ~0x0800));
   if(p & 0x0800) {
     wr8((uint16_t)(0x03A7 + me), 0x00);
     func_80E4C5();
   }
-  p = rd16(DP + 0x0E);
-  wr16(DP + 0x0E, (uint16_t)(p & ~0xC0C0));
-  if((p & 0xC0C0) && rd16(DP + 0x4C) == 0) {
-    wr16(DP + 0x4E, 0x0005);
+  p = rd16(dp + 0x0E);
+  wr16(dp + 0x0E, (uint16_t)(p & ~0xC0C0));
+  if((p & 0xC0C0) && rd16(dp + 0x4C) == 0) {
+    wr16(dp + 0x4E, 0x0005);
     func_80E4DB();
     return true;
   }
@@ -9327,50 +9327,50 @@ bool menu_gears_frame(void) {
 
 // TG3000_ROUTINE($80:C4F9) menu_choice_begin
 // Returns the table offset of the choice (D+$48 * 2); the original pushes D+$48 and D+$4A.
-uint16_t menu_choice_begin(void) { return (uint16_t)(rd16(DP + 0x48) << 1); }
+uint16_t menu_choice_begin(uint16_t dp) { return (uint16_t)(rd16(dp + 0x48) << 1); }
 
 // TG3000_ROUTINE($80:C506) menu_choice_back
 // Back from a choice: the menu's graphics (`$98:8000` to D+$5E + $2800, `$87:8404` to + $1000),
 // the rows copied, eight rows of 12 words cleared in the map at $7F:08D4 + D+$5E. Returns the
 // first length (the original pushes it). `x`, `y`: rows_7f_copy8's.
-uint16_t menu_choice_back(uint16_t* x, uint16_t* y) {
+uint16_t menu_choice_back(uint16_t dp, uint16_t* x, uint16_t* y) {
   uint16_t end;
-  const uint16_t len = decompress_near(DP, 0x98, 0x8000, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x2800), &end);
-  decompress_near(DP, 0x87, 0x8404, 0x7F, (uint16_t)(rd16(DP + 0x5E) + 0x1000), &end);
-  *x = (uint16_t)(rd16(DP + 0x5E) + 0x1000);
-  *y = (uint16_t)(rd16(DP + 0x5E) + 0x08C4);
+  const uint16_t len = decompress_near(dp, 0x98, 0x8000, 0x7F, (uint16_t)(rd16(dp + 0x5E) + 0x2800), &end);
+  decompress_near(dp, 0x87, 0x8404, 0x7F, (uint16_t)(rd16(dp + 0x5E) + 0x1000), &end);
+  *x = (uint16_t)(rd16(dp + 0x5E) + 0x1000);
+  *y = (uint16_t)(rd16(dp + 0x5E) + 0x08C4);
   rows_7f_copy8(x, y);
-  for(uint16_t i = 0, at = rd16(DP + 0x5E); i < 12; i++, at = (uint16_t)(at + 2))
+  for(uint16_t i = 0, at = rd16(dp + 0x5E); i < 12; i++, at = (uint16_t)(at + 2))
     for(uint16_t r = 0; r < 8; r++) wr16(0x7F08D4 + (uint32_t)(uint16_t)(at + 0x40 * r), 0);
   return len;
 }
 
 // TG3000_ROUTINE($80:C56A) menu_choice_lines
-void menu_choice_lines(void) { wr16(DP + 0x14, 0x007F); }
+void menu_choice_lines(uint16_t dp) { wr16(dp + 0x14, 0x007F); }
 
 // TG3000_ROUTINE($80:C57E) menu_choice_panels
 // Two of the menu's panels (`len` bytes from D+$5E + $2800, then $200); its third is the
 // func_80B537 call that follows (with D+$14 = $7F).
-void menu_choice_panels(uint16_t len) {
-  func_80B537(DP, len, (uint16_t)(rd16(DP + 0x5E) + 0x2800), (uint16_t)(rd16(DP + 0x5C) + 0x1200));
-  wr16(DP + 0x14, 0x007F);
-  func_80B537(DP, 0x0200, (uint16_t)(rd16(DP + 0x5E) + 0x08C4), (uint16_t)(rd16(DP + 0x5C) + 0x0462));
-  wr16(DP + 0x14, 0x007F);
+void menu_choice_panels(uint16_t dp, uint16_t len) {
+  func_80B537(dp, len, (uint16_t)(rd16(dp + 0x5E) + 0x2800), (uint16_t)(rd16(dp + 0x5C) + 0x1200));
+  wr16(dp + 0x14, 0x007F);
+  func_80B537(dp, 0x0200, (uint16_t)(rd16(dp + 0x5E) + 0x08C4), (uint16_t)(rd16(dp + 0x5C) + 0x0462));
+  wr16(dp + 0x14, 0x007F);
 }
 
 // TG3000_ROUTINE($80:C5B9) menu_choice_redraw
 // After D+$4A and D+$48 are pulled back: the bar's block, the bar, the sprites.
-void menu_choice_redraw(void) {
-  wr16(DP + 0xBC, 0x0013);
-  block_c4_build(DP);
-  menu_bar_draw();
-  oam_finish_near(DP);
+void menu_choice_redraw(uint16_t dp) {
+  wr16(dp + 0xBC, 0x0013);
+  block_c4_build(dp);
+  menu_bar_draw(dp);
+  oam_finish_near(dp);
 }
 
 // TG3000_ROUTINE($80:C5CD) menu_choice_done
-void menu_choice_done(void) {
-  wr16(DP + 0x1E, 0);
-  wr16(DP + 0x4E, 0x0002);
+void menu_choice_done(uint16_t dp) {
+  wr16(dp + 0x1E, 0);
+  wr16(dp + 0x4E, 0x0002);
 }
 
 // The race choice ($80:D168): the menu task leaves (its four PLAs drop two returns), the
@@ -9400,21 +9400,21 @@ void race_start_bar(void) {
 // graphics to $7F ($0000, $1000, $2700), the map at $7F:2000 filled with $0048, eight
 // columns at $7F:C410... cleared, the scenery, the star layers, the sprites cleared. Returns
 // the second graphic's length (the original pushes it).
-uint16_t race_start_load(void) {
+uint16_t race_start_load(uint16_t dp) {
   uint16_t end;
   wr16(0x0008, 0x8934);
   wr16(0x0005, 0x89B2);
-  wr16(DP + 0x14, (rd16(0x0176) & 0x0040) ? 0x003A : 0x0008);
-  wr16(DP + 0x16, 0);
+  wr16(dp + 0x14, (rd16(0x0176) & 0x0040) ? 0x003A : 0x0008);
+  wr16(dp + 0x16, 0);
   wr16(0x0008, 0xE175);
-  decompress_near(DP, 0x9C, 0x8FC3, 0x7F, 0x0000, &end);
-  const uint16_t len = decompress_near(DP, 0x87, 0x8190, 0x7F, 0x1000, &end);
-  decompress_near(DP, 0x92, 0x80B2, 0x7F, 0x2700, &end);
+  decompress_near(dp, 0x9C, 0x8FC3, 0x7F, 0x0000, &end);
+  const uint16_t len = decompress_near(dp, 0x87, 0x8190, 0x7F, 0x1000, &end);
+  decompress_near(dp, 0x92, 0x80B2, 0x7F, 0x2700, &end);
   for(uint32_t x = 0x0700; x != 0; x -= 2) wr16(0x7F1FFE + x, 0x0048);
   static const uint32_t cols[8] = {0x7FC40E, 0x7FC68E, 0x7FC90E, 0x7FCB8E, 0x7FCE0E, 0x7FD08E, 0x7FD30E, 0x7FD58E};
   for(uint32_t x = 0x0280; x != 0; x -= 2)
     for(int c = 0; c < 8; c++) wr16(cols[c] + x, 0);
-  scenery_build();
+  scenery_build(dp);
   star_layers_init();
   oam_clear();
   return len;
@@ -9472,7 +9472,7 @@ void race_start_setup_end(uint16_t len) {
   wr16(DP + 0x7A, 0x0072);
   steer_state_init();
   draw_meter(DP);
-  race_hud_sprites();
+  race_hud_sprites(DP);
   oam_finish_0b00_near(DP);
   wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
   func_80D6F3(rom16(0x81CB14 + (uint32_t)(uint16_t)(rd16(0x0368) << 1)));
@@ -9490,10 +9490,10 @@ static void star_layers_add(void) {
 }
 
 // A frame of the pre-race screen, and its end when the fade is done.
-bool race_start_frame(void) {
-  race_start_frame_draw();
+bool race_start_frame(uint16_t dp) {
+  race_start_frame_draw(dp);
   if(rd16(0x019A) & 0x0F00) return false;
-  race_start_end();
+  race_start_end(dp);
   return true;
 }
 
@@ -9507,19 +9507,19 @@ bool race_start_frame(void) {
 // view rises; the text colour D+$1E between the course's markers (by the CPU divider and the
 // PPU multiplier); a button starts the fade out; the course's slide (D+$34/D+$36); the HUD's
 // sprites; D+$30 counting the colour cycle ($81:CAFA).
-void race_start_frame_draw(void) {
-  draw_meter(DP);
-  wr16(DP + 0x20, rd16(DP + 0x22));
-  wr16(DP + 0x2E, rd16(DP + 0x2A));
-  wr16(DP + 0x14, 0x8000);
+void race_start_frame_draw(uint16_t dp) {
+  draw_meter(dp);
+  wr16(dp + 0x20, rd16(dp + 0x22));
+  wr16(dp + 0x2E, rd16(dp + 0x2A));
+  wr16(dp + 0x14, 0x8000);
   video_set_vram_address(0x3010);
   for(uint16_t x = 0x000A; rd16((uint16_t)(0x0700 + x)) != 0; x = (uint16_t)(x + 0x000A)) {
     const uint16_t phase = (uint16_t)(rd16((uint16_t)(0x0700 + x)) + rd16((uint16_t)(0x0702 + x)));
     wr16((uint16_t)(0x0702 + x), phase);
-    dma_stream_setup(0, 0x02, 0x19, 0x7E0000 | (uint16_t)(((phase & 0x0F00) >> 1) + rd16(DP + 0x14)));
+    dma_stream_setup(0, 0x02, 0x19, 0x7E0000 | (uint16_t)(((phase & 0x0F00) >> 1) + rd16(dp + 0x14)));
     dma_stream_size(0, 0x0080);
     dma_stream_kick(0x01);
-    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 0x0800));
+    wr16(dp + 0x14, (uint16_t)(rd16(dp + 0x14) + 0x0800));
   }
   if(rd16(0x0700) != 0) {
     wr16(0x0702, (uint16_t)(rd16(0x0700) + rd16(0x0702)));
@@ -9532,29 +9532,29 @@ void race_start_frame_draw(void) {
     dma_stream_kick(0x01);
   }
   const uint16_t rec = rom8(0x81C7B8 + (uint32_t)rd16(0x0444));
-  wr16(DP + 0x2C, rec);
-  wr16(DP + 0x32, rom16(0x81C7E8 + (uint32_t)rd16((uint16_t)(0x0806 + rec))));
-  uint16_t d = (uint16_t)(rd16((uint16_t)(0x0804 + rec)) - rd16(DP + 0x2A));
+  wr16(dp + 0x2C, rec);
+  wr16(dp + 0x32, rom16(0x81C7E8 + (uint32_t)rd16((uint16_t)(0x0806 + rec))));
+  uint16_t d = (uint16_t)(rd16((uint16_t)(0x0804 + rec)) - rd16(dp + 0x2A));
   if(!((uint16_t)(d - 0x0008) & 0x8000)) d = 0x0008;
   else if((uint16_t)(d - 0xFFF8) & 0x8000) d = 0xFFF8;  // (never run)
   const bool odd = d & 1;
   d = (uint16_t)((d >> 1) | (d & 0x8000));  // (CMP #$8000 / ROR: halved, rounded up when positive)
   if(!(d & 0x8000)) d = (uint16_t)(d + odd);
-  wr16(DP + 0x2A, (uint16_t)(d + rd16(DP + 0x2A)));
-  const uint16_t rise = (uint16_t)(rd16(DP + 0x2A) - rd16(DP + 0x20) - 0x0080);
+  wr16(dp + 0x2A, (uint16_t)(d + rd16(dp + 0x2A)));
+  const uint16_t rise = (uint16_t)(rd16(dp + 0x2A) - rd16(dp + 0x20) - 0x0080);
   if(!(rise & 0x8000)) {
-    if(!((uint16_t)(rise - 0x0003) & 0x8000) && rd16(DP + 0x22) != 0x00FF) {
-      wr16(DP + 0x22, (uint16_t)(rd16(DP + 0x22) + 3));
+    if(!((uint16_t)(rise - 0x0003) & 0x8000) && rd16(dp + 0x22) != 0x00FF) {
+      wr16(dp + 0x22, (uint16_t)(rd16(dp + 0x22) + 3));
       star_layers_move();
     }
-  } else if((uint16_t)(rise - 0xFFFD) & 0x8000 && rd16(DP + 0x22) != 0) {  // never run
-    wr16(DP + 0x22, (uint16_t)(rd16(DP + 0x22) - 3));
+  } else if((uint16_t)(rise - 0xFFFD) & 0x8000 && rd16(dp + 0x22) != 0) {  // never run
+    wr16(dp + 0x22, (uint16_t)(rd16(dp + 0x22) - 3));
     star_layers_add();
   }
   for(uint16_t x = 0;; x = (uint16_t)(x + 4)) {
-    const uint16_t at = rd16(DP + 0x2E), mark = rd16((uint16_t)(0x0884 + x));
+    const uint16_t at = rd16(dp + 0x2E), mark = rd16((uint16_t)(0x0884 + x));
     if(at == mark) {
-      wr16(DP + 0x1E, rom16(0x81CAEE + (uint32_t)rd16((uint16_t)(0x0882 + x))));
+      wr16(dp + 0x1E, rom16(0x81CAEE + (uint32_t)rd16((uint16_t)(0x0882 + x))));
       break;
     }
     if(at < mark) {  // between two markers: the colour interpolated
@@ -9567,7 +9567,7 @@ void race_start_frame_draw(void) {
       video_set_m7a((int16_t)q);
       video_set_m7b((int16_t)(b << 8 | q >> 8));
       const uint32_t p = (uint32_t)((int32_t)(int16_t)q * (int8_t)b);
-      wr16(DP + 0x1E, (uint16_t)(rom16(0x81CAEE + (uint32_t)y0) + (uint16_t)(p >> 8)));
+      wr16(dp + 0x1E, (uint16_t)(rom16(0x81CAEE + (uint32_t)y0) + (uint16_t)(p >> 8)));
       break;
     }
     if((uint16_t)(x + 4) == rd16(0x0880)) break;  // (never run: past the last marker)
@@ -9583,33 +9583,33 @@ void race_start_frame_draw(void) {
     wr16(0x0196, 0xFF80);
     func_80E4DB();
   }
-  if(rd16(DP + 0x30) < 0x000D && rd16(DP + 0x26) != 0) {
-    wr16(DP + 0x34, (uint16_t)(rd16(DP + 0x34) + rd16(DP + 0x38)));
-    wr16(DP + 0x36, (uint16_t)(rd16(DP + 0x36) + rd16(DP + 0x3A)));
-    wr16(DP + 0x26, (uint16_t)(rd16(DP + 0x26) - 1));
+  if(rd16(dp + 0x30) < 0x000D && rd16(dp + 0x26) != 0) {
+    wr16(dp + 0x34, (uint16_t)(rd16(dp + 0x34) + rd16(dp + 0x38)));
+    wr16(dp + 0x36, (uint16_t)(rd16(dp + 0x36) + rd16(dp + 0x3A)));
+    wr16(dp + 0x26, (uint16_t)(rd16(dp + 0x26) - 1));
   }
-  race_hud_sprites();
-  oam_finish_0b00_near(DP);
+  race_hud_sprites(dp);
+  oam_finish_0b00_near(dp);
   wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
-  wr16(DP + 0x30, (uint16_t)(rd16(DP + 0x30) - 1));
-  if(rd16(DP + 0x30) & 0x8000) {
-    wr16(DP + 0x30, 0x000C);
-    wr16(DP + 0x24, (uint16_t)(rd8(DP + 0x37) << 8 | rd8(DP + 0x35)));
+  wr16(dp + 0x30, (uint16_t)(rd16(dp + 0x30) - 1));
+  if(rd16(dp + 0x30) & 0x8000) {
+    wr16(dp + 0x30, 0x000C);
+    wr16(dp + 0x24, (uint16_t)(rd8(dp + 0x37) << 8 | rd8(dp + 0x35)));
   }
-  const uint16_t k = rd16(DP + 0x30) < 0x000C ? rd16(DP + 0x30) : 0;
-  wr16(DP + 0x7C, rom16(0x81CAFA + (uint32_t)(uint16_t)(k << 1)));
+  const uint16_t k = rd16(dp + 0x30) < 0x000C ? rd16(dp + 0x30) : 0;
+  wr16(dp + 0x7C, rom16(0x81CAFA + (uint32_t)(uint16_t)(k << 1)));
 }
 
 // TG3000_ROUTINE($80:D668) race_start_end
 // The pre-race screen's end (its fade done): the race's NMI and IRQ targets back (SEI: a
 // comment), HDMA off, the track's bit in $036A and its number in $036B.
-void race_start_end(void) {
+void race_start_end(uint16_t dp) {
   wr16(0x019A, 0);
   wr16(0x0005, 0x89B2);
   video_hdma_enable(0x00);  // (a 16-bit store at $420B)
   wr16(0x0008, 0x8934);
   wr16(0x0196, 0);
-  const uint16_t bits = rd16((uint16_t)(0x0808 + rd16(DP + 0x2C)));
+  const uint16_t bits = rd16((uint16_t)(0x0808 + rd16(dp + 0x2C)));
   wr16(0x036A, (uint16_t)(bits | rd16(0x036A)));
   uint16_t a = 1, n = 0;
   while(!(bits & a)) {
@@ -9788,7 +9788,7 @@ void champ_menu_ready(uint16_t dp) {
   champ_clear_rows(dp);
   wr16((uint16_t)(dp + 0x48), 0);
   wr16((uint16_t)(dp + 0x4A), 0);
-  menu_bar_draw();
+  menu_bar_draw(dp);
   oam_finish_near(dp);
   champ_big_panel(dp);
 }
@@ -9800,38 +9800,38 @@ void champ_menu_ready(uint16_t dp) {
 // counting, the menu bar and the sprites, up/down moving the cursor (0-3; up never run).
 // A/B/X/Y then opens the choice (menu_choice_begin, not in this part). Its drawing up to $80:C2DD,
 // then its up/down test (champ_menu_pads).
-void champ_menu_draw(void) {
-  const uint32_t k = (uint32_t)(rd16(DP + 0x1F) & 0x001E);
-  const uint16_t c4 = rd16(DP + 0xC4);
+void champ_menu_draw(uint16_t dp) {
+  const uint32_t k = (uint32_t)(rd16(dp + 0x1F) & 0x001E);
+  const uint16_t c4 = rd16(dp + 0xC4);
   wr16((uint16_t)(c4 + 0x0122), rom16(0x81BE1A + k));
   wr16((uint16_t)(c4 + 0x0124), rom16(0x81BE3A + k));
-  wr16(DP + 0x1E, (uint16_t)(rd16(DP + 0x1E) + 0x0020));
-  menu_bar_draw();
-  oam_finish_near(DP);
+  wr16(dp + 0x1E, (uint16_t)(rd16(dp + 0x1E) + 0x0020));
+  menu_bar_draw(dp);
+  oam_finish_near(dp);
 }
 
 // The championship menu's pass whole ($80:C2BB up to $80:C306).
-void champ_menu_frame(void) {
-  champ_menu_draw();
-  champ_menu_pads();
+void champ_menu_frame(uint16_t dp) {
+  champ_menu_draw(dp);
+  champ_menu_pads(dp);
 }
 
 // TG3000_ROUTINE($80:C2DD) champ_menu_pads
 // The championship menu pass's up/down test (up never run): the cursor moved, D+$1E reset, the
 // move's sound (func_80E4C5).
-void champ_menu_pads(void) {
-  uint16_t p = rd16(DP + 0x0E);
-  wr16(DP + 0x0E, (uint16_t)(p & ~0x0800));
-  if((p & 0x0800) && rd16(DP + 0x48) != 0) {  // never run
-    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) - 1));
-    wr16(DP + 0x1E, 0);
+void champ_menu_pads(uint16_t dp) {
+  uint16_t p = rd16(dp + 0x0E);
+  wr16(dp + 0x0E, (uint16_t)(p & ~0x0800));
+  if((p & 0x0800) && rd16(dp + 0x48) != 0) {  // never run
+    wr16(dp + 0x48, (uint16_t)(rd16(dp + 0x48) - 1));
+    wr16(dp + 0x1E, 0);
     func_80E4C5();
   }
-  p = rd16(DP + 0x0E);
-  wr16(DP + 0x0E, (uint16_t)(p & ~0x0400));
-  if((p & 0x0400) && rd16(DP + 0x48) != 0x0003) {
-    wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) + 1));
-    wr16(DP + 0x1E, 0);
+  p = rd16(dp + 0x0E);
+  wr16(dp + 0x0E, (uint16_t)(p & ~0x0400));
+  if((p & 0x0400) && rd16(dp + 0x48) != 0x0003) {
+    wr16(dp + 0x48, (uint16_t)(rd16(dp + 0x48) + 1));
+    wr16(dp + 0x1E, 0);
     func_80E4C5();
   }
 }
