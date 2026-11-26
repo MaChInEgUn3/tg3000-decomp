@@ -6409,6 +6409,47 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road's window command `$08`: its grammar (dsp4-08a, 2026-11-26)
+
+**Request A's next command.** `road_rows_stream` (`$81:8564`) sends it at `$81:861D`, after the
+two roads. It is the next byte-protocol call a port meets in a race.
+
+**Its grammar** (from the C and `race1`'s tape: 584 runs, all at `$81:861D`):
+- **The word `$0008`, then a header of 45 words:**
+  - 20 constants: `$FF` ×4, 0 ×4, `$A6` ×4, `$A5`, `$A5`, `$A7`, `$A7`, `$81`, `$7F`, `$81`, `$7F`;
+  - each road's table address, twice (the buffer + `$035C` and + `$035E`; lower when `$0242` or
+    `$1EF2` is negative);
+  - each road's line limit, twice (`$33`, or `$0242`/`$1EF2` + `$33`);
+  - `$FF5B` ×4, `$2FC8`, `$0034`, `$FF5C`, `$0035`, `$7FFF`;
+  - `$0202`, `$0242` + `$33`, `$1EF6`, `$1EF2` + `$33` (each road's start x and camera line);
+  - the camera row's two edge words, twice (`$3C6C`/`$3F6C`, interpolated by the place in the
+    row).
+- **One answer word** (`$3F41` in every `race1` run). The C uses it only when `$0242` is
+  negative, as a fill value.
+- **Then per row:**
+  - 5 words: the ROM height and both roads' screen x and line (`$01`'s `$35EC`/`$37EC`, `$07`'s
+    `$366C`/`$386C`);
+  - the row's two edge words, twice (`$3C6C`/`$3F6C`);
+  - two answer runs, one a road: a count n, then n pairs (a WRAM address, a word). The C writes
+    each word at its address.
+  - **The addresses fall by 4,** in the window table the C filled with `$00FF`/`$FF00` before
+    (`$2E2C` or `$318C`). The words hold two bytes, likely a line's window edges.
+  - **A row with bit 0 of `$3D6E` set** is sent again with the next edge words, and answered
+    again.
+- **`$8000` ends it,** and one last answer word, "far" (0 in every `race1` run), picks the window
+  HDMA's settings.
+
+**What varies on `race1`:** only the header's four table-address words. The first answer and
+"far" never change.
+
+**Next (dsp4-08b):**
+- the probe (a `$08` mode, outputs only), and the runs of the 60k movie's tape;
+- then the window words' rule.
+
+The C still streams `$08`.
+
+**Check:** a measurement, recorded here. It changes no code.
+
 ## The road rows' products, native (dsp4-00a, 2026-11-26)
 
 **The port's request:**
