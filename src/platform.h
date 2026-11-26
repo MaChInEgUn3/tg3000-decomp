@@ -27,6 +27,11 @@ void video_fill_vram(uint16_t vram_word, uint8_t value, uint32_t size);
 void video_write_vram_word(uint16_t vram_word, uint16_t value);
 // Read one word of video RAM at word address `vram_word` (the original sets VMADD and reads
 // VMDATA, $2139/$213A, after a dead read; harness-30).
+// (Port request H: the game reads back only words it wrote itself, once a frame per VS player:
+// the race's progress strip, VRAM words $57C0-$585F, holding tile $0006 with the players' bits
+// ORed in: $0006 or $6006 on the movies. A port answers with the last word it was given at that
+// address, through video_write_vram_word, video_upload_vram or video_fill_vram: a copy of what
+// the game wrote, not a model of the video chip.)
 uint16_t video_read_vram_word(uint16_t vram_word);
 // The Mode 7 vertical offset alone (the original's byte writes to $210E leave it apart from
 // BG1's: vs-race-20).
@@ -50,6 +55,10 @@ void dma_hdma_set_table(int slot, uint16_t table);
 void dma_hdma_set_mode(int slot, uint8_t mode, uint8_t target);
 void dma_hdma_set_bank(int slot, uint8_t bank);
 // A slot's table address as last set (its $43x2/$43x3, read back; harness-31).
+// (Port request H: the HDMA never moves this word, only its own pointer; the game reads it once
+// a VS frame for slot 4, always $A411, the table the race's setup gave it, and stores it at
+// $7F:FFFE, which nothing reads. A port answers with the low word of the table address it was
+// last given for the slot by dma_hdma_setup or dma_hdma_set_table.)
 uint16_t dma_hdma_get_table(int slot);
 void video_hdma_enable(uint8_t slots);
 // - Streams: a source read in chunks over the frame (the race sends a palette band per

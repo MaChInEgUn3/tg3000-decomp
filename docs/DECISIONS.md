@@ -6092,6 +6092,35 @@ tasks. `game_main` now has traps only on the paths the movies never took.
 
 **Check:** the full gate (`src/misc.c` changed by more than additions).
 
+## The chip read-backs named (port request H, 2026-11-26)
+
+**The port's request:** a port without a video chip or HDMA cannot answer the two read-backs
+the C makes. It asked to keep a copy of the value or to name it. Both were measured on the VS
+movie with a temporary bench, and both turn out to be values the game itself gave.
+
+**`video_read_vram_word`** (`vs_hud_draw`, once a frame per VS player):
+- **What is read:** the word after each player's marker in the race's progress strip, VRAM
+  words `$57C0`-`$585F`. It is always tile `$0006` with the players' bits ORed in: `$0006` or
+  `$6006` (1,337 reads at `$57F7` alone, all `$6006`).
+- **Where it came from:** the game wrote it, with the race's map upload, then with this same
+  loop's writes (word | `$6000` or `$0006`).
+- **A port's answer:** the last word it was given at that address, through
+  `video_write_vram_word`, `video_upload_vram` or `video_fill_vram`. That is a copy of what the
+  game wrote, not a model of the video chip.
+
+**`dma_hdma_get_table`** (`irq_vs_split`):
+- **What is read:** `$4342`, slot 4's table address. The HDMA never moves it; only its own
+  pointer `$4348` moves. All 1,128 reads were `$A411`, the table the race's setup gave slot 4
+  (`dma_hdma_setup(4, ..., 0x83A411)`).
+- **Where it goes:** `$7F:FFFE`, which nothing in the game reads.
+- **A port's answer:** the low word of the table address it was last given for the slot.
+
+**What changed:** only the contract's comments in `platform.h`, added lines. The C and the
+bench are unchanged. The bench still serves both reads from the original's own state, so the
+rows keep checking that the C's writes match.
+
+**Check:** the selftest and the progress check (additions only).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
