@@ -42,7 +42,9 @@ void top_volumes(void);
 // $80:8A2B: after the options' main menu: the results reset unless $03DC & $5000, its bits 15
 // (a trap when set) and 14 cleared, bit 13 (a trap), $047D's low byte cleared. Returns whether
 // the game is the two-player one ($03DC & $0F == 2).
-bool top_after_options(void);
+bool top_after_options(void);  // true: the title's demo race
+void top_demo_head(void);
+bool top_pick_mode(void);  // true: the two-player game
 // $80:8A9B: the results counters and slots stepped for each track before $0444.
 void top_tallies(void);
 // $80:8AC3: before the race: $03E0 = $FFFF, $047B = $0444.

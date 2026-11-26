@@ -212,6 +212,8 @@ void vs_race_load(void);
 void vs_race_sound(void);
 // $82:9348: the VS race setup's track piece (state cleared, the track and its objects, four waits).
 void vs_race_track(void);
+void vs_race_track_head(void);  // $82:9348
+void vs_race_track_tail(void);  // $82:9394
 // $85:BF78, $85:C316, $85:C6C2, $85:CA18 (RTL): the VS race's road rows for players 1-4
 // (road_rows_build's counterpart: the rows crossed, the objects that came up, the road kind, the tilt).
 void vs_road_rows_view0(void);

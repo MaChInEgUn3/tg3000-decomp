@@ -30,6 +30,7 @@ shopframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/
 buyframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_buy.txt)
 pwframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_pw.txt)
 infoframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/code_infodata.txt)
+demoframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/demo_race.txt)
 menuframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_menu.txt)
 optframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_options.txt)
 vsframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/vs_race.txt)
@@ -68,6 +69,11 @@ job pw1 "$rom" "$pwframes" --movie tools/bench/movies/explore_pw.txt --difftest-
   --fuzz-skip "$pwfuzzskip" --difftest "$tmp/pw1.txt" --fuzz 500
 # the INFODATA movie (explore-4): short, one slice
 job info "$rom" "$infoframes" --movie tools/bench/movies/code_infodata.txt --difftest "$tmp/info.txt" --fuzz 500
+# the title's demo race (port-trap-1): a four-player VS race, so the firmware DSP-4 and the VS
+# race's skips; also vs_sprites_view1, whose fuzz from the demo's last state makes the C read
+# $86:7CE6, below bank $86's ROM (its fuzz runs in the VS movie)
+job demo "$rom" "$demoframes" --movie tools/bench/movies/demo_race.txt --dsp4-firmware "$firmware" \
+  --fuzz-skip "$vsfuzzskip,vs_sprites_view1" --difftest "$tmp/demo.txt" --fuzz 500
 # the VS race's movie (verify-vs): the firmware DSP-4; its last state is a race, which is no
 # base for the VS screen's frame's fuzz (harness-28: skipped there)
 job vs "$rom" "$vsframes" --movie tools/bench/movies/vs_race.txt --dsp4-firmware "$firmware" \
@@ -121,7 +127,7 @@ for row in $composed; do
 done
 # the queue longest first, by the slices' wall times measured at 8 at once (verify-speed-1); a
 # slice not named here (a new composed row) runs after them
-longest="buy1 main4 pw1 info main3 vs main2 main0 main1 neg shop1 comp_password_show_autopilot_60k pw0 buy0 shop0 menu opt"
+longest="buy1 main4 pw1 info main3 vs main2 main0 main1 neg shop1 comp_password_show_autopilot_60k pw0 buy0 shop0 menu opt demo"
 : > "$tmp/queue2"
 for n in $longest; do grep "/$n\.sh\$" "$tmp/queue" >> "$tmp/queue2" || true; done
 grep -v -x -F -f "$tmp/queue2" "$tmp/queue" >> "$tmp/queue2" || true
@@ -135,7 +141,7 @@ for n in shop buy pw; do
   k=0
   while [ $k -lt 2 ]; do names="$names $n$k"; k=$((k + 1)); done
 done
-for name in $names info menu opt vs $compnames; do
+for name in $names info menu opt vs demo $compnames; do
   s=$(cat "$tmp/$name.st" 2>/dev/null || echo 98)
   [ "$name" = neg ] && continue
   # harness-8: a routine that fails on one movie by the flag or path rule alone may pass on
@@ -162,15 +168,15 @@ while [ $k -lt $buyshards ]; do tail -n +2 "$tmp/buy$k.txt" >> "$tmp/buy.txt"; k
 head -n 1 "$tmp/pw0.txt" > "$tmp/pw.txt"
 k=0
 while [ $k -lt $pwshards ]; do tail -n +2 "$tmp/pw$k.txt" >> "$tmp/pw.txt"; k=$((k + 1)); done
-python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt" "$tmp/vs.txt" $compfiles
+python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt" "$tmp/vs.txt" "$tmp/demo.txt" $compfiles
 # harness-24: a row a slice's waiting row hid entries from (and with no hard failure) runs
 # again alone over that movie, its line replacing the slice's; then the movies merge again
 python3 -I tools/rerun_hidden.py "$tmp" "$rom"
-python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt" "$tmp/vs.txt" $compfiles
+python3 -I tools/merge_verified.py map/verified.txt "$tmp/main.txt" "$tmp/shop.txt" "$tmp/buy.txt" "$tmp/pw.txt" "$tmp/info.txt" "$tmp/menu.txt" "$tmp/opt.txt" "$tmp/vs.txt" "$tmp/demo.txt" $compfiles
 # the verdict: a routine the merge failed (its per-movie lines show why)
 failed=$(awk '!/^#/ && $8 == "failed" {print $2}' map/verified.txt)
 if [ -n "$failed" ]; then
-  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp"/main*.log "$tmp"/shop*.log "$tmp"/buy*.log "$tmp"/pw*.log "$tmp"/info.log "$tmp"/menu.log "$tmp"/opt.log "$tmp"/vs.log "$tmp"/comp_*.log >&2 || true; done
+  for name in $failed; do grep -h -A6 "^difftest $name .*: FAIL" "$tmp"/main*.log "$tmp"/shop*.log "$tmp"/buy*.log "$tmp"/pw*.log "$tmp"/info.log "$tmp"/menu.log "$tmp"/opt.log "$tmp"/vs.log "$tmp"/demo.log "$tmp"/comp_*.log >&2 || true; done
   echo "verify_all: failed after pooling the movies: $(echo $failed | tr ' ' ',')" >&2
   status=4
 fi

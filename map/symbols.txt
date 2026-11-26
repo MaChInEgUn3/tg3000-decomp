@@ -833,7 +833,8 @@ func    82865B   race_frame_body     ; the race loop's body: segment, road, plac
 func    82867B   race_frame_rest     ; the race loop's rest: flags, frames counted, buttons, the race's end and fade -> src/misc.c
 func    828776   race_end            ; the race loop's way out: cars ordered, DMA and IRQs off, a frame's wait -> src/misc.c
 func    8292BA   vs_race_load        ; VS race setup's first piece, to the $047C test: screen, settings, reset, graphics -> src/vs.c
-func    829348   vs_race_track       ; VS race setup's track piece: state cleared, track + objects, four announcements with waits, palette -> src/vs.c
+func    829348   vs_race_track       ; VS race setup's track piece (whole in the C; its row: the head, clocks and counters cleared, up to track_setup_load) -> src/vs.c
+func    829394   vs_race_track_tail  ; VS race setup's track piece, after track_setup_load: rows, objects, four announcements with waits, palette -> src/vs.c
 func    82BA12   vs_race_reset       ; VS race: the state reset (players' words, lap time, cars' records, palette rows from $C1) -> src/vs.c
 func    82BD0E   vs_grid_setup       ; VS race: the four cars' records set for the start, the race order -> src/vs.c
 func    82BDDA   vs_step_share       ; VS race: minus a signed word over the step count $1E9E (CPU divider) -> src/vs.c

@@ -1407,8 +1407,17 @@ void vs_race_load(void) {
 // cleared; the overlapping words at $005A-$0060 in the original's order); the track
 // (track_setup_load, track_rows_build) and its objects in the four views; four announcements
 // (func_82AD12), each followed by a frame's wait; 79 colours from $7E:6A35 to CGRAM $71 and
-// colour 0 from $7E:6A33; the sizes of DMA slots 1-3 cleared.
+// colour 0 from $7E:6A33; the sizes of DMA slots 1-3 cleared. Its rows are cut at the call to
+// track_setup_load (port-trap-1): the head, that call's own row, the tail.
 void vs_race_track(void) {
+  vs_race_track_head();
+  track_setup_load();
+  vs_race_track_tail();
+}
+
+// (vs_race_track's row runs this head alone)
+// The clocks and counters cleared, up to the JSR to track_setup_load ($82:9391).
+void vs_race_track_head(void) {
   wr16(0x002E, 0x0010);
   wr16(0x0030, 0x0000);
   wr16(0x003E, 0);
@@ -1425,7 +1434,12 @@ void vs_race_track(void) {
   wr16(0x0062, 3);
   static const uint8_t dp_words[] = {0x56, 0x58, 0x09, 0x0B, 0x5A, 0x0D, 0x4C, 0x4E, 0x50, 0x52, 0x56, 0x58, 0x54};
   for(unsigned i = 0; i < sizeof dp_words; i++) wr16((uint16_t)(DP + dp_words[i]), 0);
-  track_setup_load();
+}
+
+// TG3000_ROUTINE($82:9394) vs_race_track_tail
+// After track_setup_load: the track's rows, its objects in the four views, the announcements
+// with their waits, the palette, the DMA slots' sizes.
+void vs_race_track_tail(void) {
   track_rows_build();
   vs_track_objects_view0();
   vs_track_objects_view1();
@@ -1462,7 +1476,8 @@ typedef struct {
 } VsRoadView;
 
 static const VsRoadView vs_road_views[4] = {
-  {0x0200, 0x3AEC, 0x01CE, 0x1E1E, 0xA0, 0xA2, 0x007F, 0x0000, 0x45EC, 0, 0, 0x1EF8, 0x1EFA, 0x0142, 127},
+  {0x0200, 0x3AEC, 0x01CE, 0x1E1E, 0xA0, 0xA2, 0x007F, 0x0000, 0x45EC, 0, 0, 0x1EF8, 0x1EFA, 0x0142,
+   VS_HOLE_LIST2 | VS_HOLE_KIND_SCAN},
   {0x02B3, 0x406C, 0x01D2, 0x1E20, 0xA4, 0xA6, 0x017F, 0x0800, 0x46C8, 1, 2, 0x1F02, 0x1F04, 0x0144,
    VS_HOLE_LIST2 | VS_HOLE_NEXT_OBJ | VS_HOLE_KIND_SCAN},
   {0x0262, 0x3DEC, 0x01D6, 0x1E22, 0xA8, 0x00, 0x027F, 0x1000, 0x47A4, 0, 0, 0, 0, 0, VS_HOLE_LIST2},

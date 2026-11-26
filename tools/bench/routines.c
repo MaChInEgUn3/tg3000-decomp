@@ -5108,11 +5108,47 @@ static void call_options_entry_tail(const Regs* in, Regs* out) {
 static void call_top_volumes(const Regs* in, Regs* out) { (void)in; (void)out; top_volumes(); }
 static void call_top_after_options(const Regs* in, Regs* out) {
   (void)in;
-  out->atEnd2 = top_after_options();
+  out->atEnd2 = !top_after_options();  // its BIT #$2000: clear goes on to $80:8A71
+  out->a = rd16(0x03DC);
+  out->n = (out->a & 0x8000) != 0;  // its LDA $03DC (BIT # sets Z alone)
+  out->z = (out->a & 0x2000) == 0;
+}
+static void call_top_demo_head(const Regs* in, Regs* out) {
+  const uint16_t was = rd16(0x047D);
+  (void)in;
+  top_demo_head();
+  out->a = 0x00FF;
+  out->n = false;
+  out->z = (was & 0x00FF) == 0;  // its TSB
+}
+static void call_top_pick_mode(const Regs* in, Regs* out) {
+  (void)in;
+  out->atEnd2 = top_pick_mode();
   const uint16_t mode = rd16(0x03DC) & 0x000F;  // its last CMP #$0002
+  out->a = mode;
   out->c = mode >= 2;
   out->z = mode == 2;
   out->n = ((uint16_t)(mode - 2) & 0x8000) != 0;
+}
+static void fuzz_demo_track_pick(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x03DC, (uint16_t)rnd());  // both branches: its mode bits
+  wr16ram(ram, RNG_STATE, (uint16_t)rnd());
+  wr16ram(ram, RNG_STATE + 2, (uint16_t)rnd());
+}
+static void call_demo_track_pick(const Regs* in, Regs* out) {
+  (void)in;
+  const bool top = (rd16(RNG_STATE + 2) & 0x8000) != 0;  // the generator's carry (its ASL)
+  demo_track_pick();
+  const uint16_t t = rd16(0x047B);
+  out->a = t;
+  out->n = (t & 0x8000) != 0;
+  out->z = t == 0;
+  out->c = top;
+  if((rd16(0x03DC) & 3) != 2) {
+    out->x = (uint16_t)(rd16(RNG_STATE) >> 1);  // its TAX of the value >> 1
+    out->c = (rd16(RNG_STATE) & 1) != 0;          // its LSR
+  }
 }
 static void call_top_tallies(const Regs* in, Regs* out) { (void)in; (void)out; top_tallies(); }
 static void call_top_race_prep(const Regs* in, Regs* out) { (void)in; (void)out; top_race_prep(); }
@@ -6895,12 +6931,19 @@ static void call_vs_race_start(const Regs* in, Regs* out) {
   }
   out->v = (m & 0x4000) != 0;
 }
-// vs_race_track ($82:9348, vs-race-25): the setup's track piece, ending at the JSR to the VS road
-// rows ($82:941F): N and Z from the colour's high byte (LDA.L $7E6A34, 8-bit), C and V from the
+// vs_race_track_head/_tail ($82:9348, $82:9394; vs-race-25, cut at track_setup_load in port-trap-1):
+// the head ends at that JSR; the tail at the JSR to the VS road rows ($82:941F): N and Z from the colour's high byte (LDA.L $7E6A34, 8-bit), C and V from the
 // last frame wait (C set; V its add's overflow: the counter was $7FFF, so it now reads $8000)
-static void call_vs_race_track(const Regs* in, Regs* out) {
+static void call_vs_race_track_head(const Regs* in, Regs* out) {
   (void)in;
-  vs_race_track();
+  vs_race_track_head();
+  out->a = 0x0003;  // its LDA #$0003 (the STZs keep the flags)
+  out->n = false;
+  out->z = false;
+}
+static void call_vs_race_track_tail(const Regs* in, Regs* out) {
+  (void)in;
+  vs_race_track_tail();
   out->v = rd16(FRAME_COUNTER) == 0x8000;
   const uint8_t hi = bus_rd8(0x7E6A34);
   out->n = (hi & 0x80) != 0;
@@ -6913,12 +6956,6 @@ static void call_vs_road_rows_view1(const Regs* in, Regs* out) { (void)in; vs_ro
 static void call_vs_road_rows_view2(const Regs* in, Regs* out) { (void)in; vs_road_rows_view2(); out->db = 0x83; }
 static void call_vs_road_rows_view3(const Regs* in, Regs* out) { (void)in; vs_road_rows_view3(); out->db = 0x83; }
 static uint16_t vsr_w(const uint8_t* ram, uint32_t a) { return (uint16_t)(ram[a] | ram[a + 1] << 8); }
-// func_82EA49 on the ROM tables, to know what the tilt will see
-static uint16_t vsr_height(const uint8_t* ram, uint16_t a) {
-  const uint32_t at = (uint32_t)((a >> 6) & 0xFF) * 10 + vsr_w(ram, 0x100 + 0x98);
-  const uint32_t e = (uint32_t)(a & 0x3E) + rom16(0x840002 + (uint16_t)at) + (at >> 16);
-  return rom16(0x850000 + (uint16_t)e);
-}
 // every row built (prev + $20 .. now + $20): its list's first pair must reach it (else a trap)
 static bool vsr_rows_ok(const uint8_t* ram, uint16_t prev, uint16_t now, uint16_t laps) {
   uint16_t r = (uint16_t)(prev + 0x20);
@@ -6931,15 +6968,15 @@ static bool vsr_rows_ok(const uint8_t* ram, uint16_t prev, uint16_t now, uint16_
   return true;
 }
 // 0-3 rows crossed anywhere on the track; the object stream rewound to an entry (the spawns run:
-// views 2 and 3 also two in one frame); views 1-3 also at the lap's ends. Views 0 and 1 keep to
-// states that stay out of their never-run paths (checked here by the row lists and the paths'
-// conditions: view 1 one object a frame and no road-kind scan; view 0 all of its paths).
+// views 0, 2 and 3 also two in one frame); every view also at the lap's ends. Views 0 and 1 keep
+// to states that stay out of their never-run paths (the road-kind scan; view 1 also one object a
+// frame).
 static void fuzz_vs_road_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), int view) {
   (void)r;
   static const uint16_t recs[4] = {0x0200, 0x02B3, 0x0262, 0x0315};
   static const uint8_t curs[4] = {0xA0, 0xA4, 0xA8, 0xAC};
   const uint32_t R = recs[view];
-  const bool strict = view < 2;
+  const bool strict = view == 1;
   const uint16_t laps = vsr_w(ram, 0x019A);
   if(laps < 0x60) return;
   const uint16_t seg0 = rom16(0x840000 + vsr_w(ram, 0x100 + 0x9C));
@@ -6958,10 +6995,9 @@ static void fuzz_vs_road_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), int 
       now = vsr_w(ram, 0x5B91 + 5 * j);
       if(!strict && j + 1 < n && (rnd() & 1)) now = vsr_w(ram, 0x5B91 + 5 * (j + 1));  // two objects
       at = (uint16_t)(now >= 3 ? now - rnd() % 4 : now);
-      if(strict && (vsr_w(ram, 0x5B91 + 5 * (j + 1)) <= now || (view == 0 && !(vsr_w(ram, 0x5B94 + 5 * j) & 0xFF00))))
-        continue;
+      if(strict && vsr_w(ram, 0x5B91 + 5 * (j + 1)) <= now) continue;
     } else {
-      if(scenario == 2 && view != 0) {
+      if(scenario == 2) {
         if(rnd() & 1) {
           at = (uint16_t)(laps - 1 - rnd() % 3);
           now = (uint16_t)(at + rnd() % 4);
@@ -6972,9 +7008,7 @@ static void fuzz_vs_road_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), int 
       while(j < n && vsr_w(ram, 0x5B91 + 5 * j) <= now) j++;  // the natural cursor
     }
     const uint16_t wrapped = now >= laps ? (uint16_t)(now - laps) : now;
-    if(view == 1 && wrapped >= seg0) continue;
-    if(view == 0 && (now + 1 >= laps || now < 3 || now >= seg0 || (vsr_height(ram, (uint16_t)(now - 3)) & 0x2000)))
-      continue;
+    if(view <= 1 && wrapped >= seg0) continue;
     if(!vsr_rows_ok(ram, at, now, laps)) continue;
     wr16ram(ram, R + 0x24, (uint16_t)rnd());
     ram[R + 0x25] = (uint8_t)rnd();
@@ -6982,7 +7016,7 @@ static void fuzz_vs_road_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void), int 
     wr16ram(ram, R + 0x3E, at);
     wr16ram(ram, R + 0x3C, (rnd() & 1) ? 0 : (uint16_t)rnd());
     wr16ram(ram, R + 0x40, (uint16_t)rnd());
-    wr16ram(ram, R + 0x44, (uint16_t)(rnd() | (view == 0 ? 1 : 0)));  // view 0: bit 0 set (its never-run path)
+    wr16ram(ram, R + 0x44, (uint16_t)rnd());
     wr16ram(ram, 0x100 + curs[view], (uint16_t)(5 * j));
     return;
   }
@@ -12128,11 +12162,8 @@ static void call_vs_road_project(const Regs* in, Regs* out) {
 // then. Each pass's count sum is chosen first (0-104) and reached exactly; only the last count may
 // end the pass early (CPX $1C). The tail clears the band bytes at +$23 and +$45 before it reads
 // the last one written, +$45 (or +$23) minus the sum: a sum of 0, or 34 with the large band, reads
-// 0 and takes the never-run clamp (decoded from the ROM). Player 1's pass sums to 104 or 0 (its
-// tail's line then 0: its never-run edge pieces stay out of reach). Player 1's pass (the second) also stays out of its other never-run paths: $1F and $27
-// not negative (the products steered), the count sum exactly 104 ($14 ends 0), no early exit.
-static uint16_t vsp_hi(uint16_t t) { return (uint16_t)(t >> 2); }  // the answer pair for hi << 2 | lo >> 14 == t
-static uint16_t vsp_lo(uint16_t t, uint32_t (*rnd)(void)) { return (uint16_t)((t & 3) << 14 | (rnd() & 0x3FFF)); }
+// 0 and takes the never-run clamp (decoded from the ROM). Every pass alike (player 1's edge
+// pieces and sign extensions, once never run, now run in the demo race: port-trap-1).
 static void fuzz_vs_road_project(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   static const struct { uint16_t rec, tab; } v[4] = {{0x0262, 0x3DEC}, {0x0200, 0x3AEC}, {0x0315, 0x436C}, {0x02B3, 0x406C}};
@@ -12144,20 +12175,11 @@ static void fuzz_vs_road_project(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(int b = 0; b < 4; b++) {
     const uint16_t R = v[b].rec;
     ram[R + 0x25] = (uint8_t)rnd();
-    wr16ram(ram, R + 0x37, (uint16_t)(b == 1 ? (int)(rnd() % 0x100) - 0x40 : (int)(rnd() % 0x180) - 0xC0));
+    wr16ram(ram, R + 0x37, (uint16_t)((int)(rnd() % 0x180) - 0xC0));
     uint16_t at = (uint16_t)(0x0080 - ((ram[R + 0x25] >> 1) & 0x7E));
     uint32_t k = (uint32_t)((ram[R + 0x26] << 1) & 0x3E);
-    const int base = n;
     for(int i = 0; i < 10; i++) script[n++] = (uint16_t)rnd();  // five products, low word then high
-    if(b == 1) {
-      const uint16_t t2 = (uint16_t)((ram[R + 8] | ram[R + 9] << 8) - (rnd() & 0x7FFF));
-      script[base + 2] = vsp_lo(t2, rnd);
-      script[base + 3] = vsp_hi(t2);
-      const uint16_t t4 = (uint16_t)(0x8001 + rnd() % 0x7FFF);
-      script[base + 6] = vsp_lo(t4, rnd);
-      script[base + 7] = vsp_hi(t4);
-    }
-    int left = (b == 1) ? ((rnd() % 4) ? 104 : 0) : (rnd() % 8 == 0) ? (small ? 0 : 34) * (int)(rnd() & 1) : (int)(rnd() % 105);
+    int left = (rnd() % 8 == 0) ? (small ? 0 : 34) * (int)(rnd() & 1) : (int)(rnd() % 105);
     for(;;) {
       k += 2;
       for(int i = 0; i < 4; i++) script[n++] = (uint16_t)rnd();
@@ -12169,7 +12191,7 @@ static void fuzz_vs_road_project(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
         wr16ram(ram, v[b].tab + 0x200 + k, (uint16_t)(0x8100 + 2 * (rnd() % 0x3000)));
         uint16_t last = 0;
         for(int i = 0; i < count; i++) {
-          last = (uint16_t)(b == 1 || !lastRow ? stop + 2 * (rnd() % 0x100) : 2 * (rnd() % 0x180));
+          last = (uint16_t)(!lastRow ? stop + 2 * (rnd() % 0x100) : 2 * (rnd() % 0x180));
           script[n++] = last;
           script[n++] = (uint16_t)rnd();
           script[n++] = (uint16_t)rnd();
@@ -13206,9 +13228,13 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .call = call_options_entry_tail},
   {.name = "top_volumes", .entry = 0x8089EB, .end = 0x8089FF, .endAt = 0x8089FF, .source = "src/boot.c",
    .call = call_top_volumes},
-  {.name = "top_after_options", .entry = 0x808A2B, .end = 0x808A82, .endAt = 0x808A82, .endAt2 = 0x808A87,
+  {.name = "top_after_options", .entry = 0x808A2B, .end = 0x808A61, .endAt = 0x808A61, .endAt2 = 0x808A71,
    .source = "src/boot.c", .needM16 = true, .needX16 = true, .call = call_top_after_options,
-   .holes = {{0x808A3F, 0x808A53}, {0x808A61, 0x808A71}}},  // never run: bits 15 and 13 of $03DC (traps)
+   .holes = {{0x808A3F, 0x808A53}}},  // never run: bit 15 of $03DC (a trap)
+  {.name = "top_demo_head", .entry = 0x808A61, .end = 0x808A67, .endAt = 0x808A67, .source = "src/boot.c",
+   .needM16 = true, .needX16 = true, .call = call_top_demo_head},
+  {.name = "top_pick_mode", .entry = 0x808A71, .end = 0x808A82, .endAt = 0x808A82, .endAt2 = 0x808A87,
+   .source = "src/boot.c", .needM16 = true, .needX16 = true, .call = call_top_pick_mode},
   {.name = "top_tallies", .entry = 0x808A9B, .end = 0x808AB8, .endAt = 0x808AB8, .source = "src/boot.c",
    .needM16 = true, .needX16 = true, .call = call_top_tallies},
   {.name = "top_race_prep", .entry = 0x808AC3, .end = 0x808AD0, .endAt = 0x808AD0, .source = "src/boot.c",
@@ -13586,9 +13612,14 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
    .maxInsns = 40000000, .call = call_vs_race_start, .manyEffects = true,  // no fuzz: it waits
    .holes = {{0x8294A3, 0x8294B2}}},  // never run (ported from the ROM's bytes, untested)
-  {.name = "vs_race_track", .entry = 0x829348, .end = 0x82941F, .endAt = 0x82941F, .source = "src/vs.c",
+  // vs_race_track cut at its JSR to track_setup_load (port-trap-1): the demo's sample had a lag
+  // frame inside that call's decompression, and the whole row had no sample without lag. The
+  // head keeps the row's name (as title_screen's load did in screen-2); its adapter runs the head
+  {.name = "vs_race_track", .entry = 0x829348, .end = 0x829391, .endAt = 0x829391, .source = "src/vs.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_track_head},
+  {.name = "vs_race_track_tail", .entry = 0x829394, .end = 0x82941F, .endAt = 0x82941F, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
-   .maxInsns = 40000000, .call = call_vs_race_track, .manyEffects = true},  // no fuzz: it waits
+   .maxInsns = 40000000, .call = call_vs_race_track_tail, .manyEffects = true},  // no fuzz: it waits
   {.name = "vs_road_rows", .entry = 0x82DF91, .end = 0x82DFA2, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_rows, .fuzz = fuzz_vs_road_rows_all,
    .fuzzStack = 0x1FF3},  // the game's stack, one JSR above the four
@@ -13597,9 +13628,8 @@ const Routine routines[] = {
   {.name = "vs_road_rows_view0", .entry = 0x85BF78, .end = 0x85C316, .rtl = true, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_rows_view0, .fuzz = fuzz_vs_road_rows_view0,
    .fuzzStack = 0x1FF1,
-   .holes = {{0x85C05E, 0x85C067}, {0x85C13A, 0x85C14F}, {0x85C18A, 0x85C1ED}, {0x85C25E, 0x85C261},
-             {0x85C26D, 0x85C278}, {0x85C28D, 0x85C2A1}, {0x85C2B6, 0x85C2B9}, {0x85C2C7, 0x85C2CA},
-             {0x85C2FD, 0x85C300}}},  // its never-run paths (traps in the C)
+   .holes = {{0x85C13A, 0x85C14F}, {0x85C28D, 0x85C2A1}}},  // never run: a row list's second pair, the
+                                                           // road-kind scan (traps in the C)
   {.name = "vs_road_rows_view1", .entry = 0x85C316, .end = 0x85C6C2, .rtl = true, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_rows_view1, .fuzz = fuzz_vs_road_rows_view1,
    .fuzzStack = 0x1FF1, .holes = {{0x85C4D8, 0x85C4ED}, {0x85C60A, 0x85C60D}, {0x85C639, 0x85C64D}}},
@@ -14589,6 +14619,8 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_track_next, ALL_OUTPUTS, .fuzz = fuzz_track_next},
   {.name = "results_init", .entry = 0x84A4ED, .end = 0x84A553, .rtl = true, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_results_init, ALL_OUTPUTS, .fuzz = fuzz_results_init},
+  {.name = "demo_track_pick", .entry = 0x84A553, .end = 0x84A590, .rtl = true, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .call = call_demo_track_pick, .fuzz = fuzz_demo_track_pick},
   {.name = "prize_money_award", .entry = 0x84A388, .end = 0x84A41B, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_prize_money_award, ALL_OUTPUTS,
    .fuzz = fuzz_prize_money_award},
@@ -14845,9 +14877,7 @@ const Routine routines[] = {
   {.name = "vs_road_project", .entry = 0x85A471, .end = 0x85B1F9, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_project, ALL_OUTPUTS,
    .fuzz = fuzz_vs_road_project, .dsp4Tape = true, .fuzzStack = 0x1FF1,
-   .replays = 32,  // the VS raster IRQs land in every live sample (harness-34)
-   .holes = {{0x85A94C, 0x85A94F}, {0x85A964, 0x85A967}, {0x85AAB5, 0x85AAB8}, {0x85AABF, 0x85AAD9},
-             {0x85AB04, 0x85AB13}}},  // player 1's never-run paths (traps in the C)
+   .replays = 32},  // the VS raster IRQs land in every live sample (harness-34)
   {.name = "road_rows_project", .entry = 0x85B3D7, .end = 0x85B828, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project, ALL_OUTPUTS,
    .fuzz = fuzz_road_rows_project, .dsp4Tape = true, .fuzzStack = 0x1FF1},

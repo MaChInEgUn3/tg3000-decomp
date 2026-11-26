@@ -73,13 +73,24 @@ void top_volumes(void) {
 }
 
 // TG3000_ROUTINE($80:8A2B) top_after_options
+// After the options' main menu, up to the test of bit 13 of $03DC: true when it is set (the title
+// screen, left alone, asks for its demo race; $80:8A61), false otherwise ($80:8A71).
 bool top_after_options(void) {
   if(!(rd16(0x03DC) & 0x5000)) results_init();
   const uint16_t v = rd16(0x03DC);
   wr16(0x03DC, (uint16_t)(v & ~0x8000));
   if(v & 0x8000) tg3000_unported("$80:8A3F: the top loop's bit 15 of $03DC");
   wr16(0x03DC, (uint16_t)(rd16(0x03DC) & ~0x4000));
-  if(rd16(0x03DC) & 0x2000) tg3000_unported("$80:8A61: the top loop's bit 13 of $03DC");
+  return (rd16(0x03DC) & 0x2000) != 0;
+}
+
+// TG3000_ROUTINE($80:8A61) top_demo_head
+// The demo race's flag: the low byte of $047D set (cleared for a game, $80:8A71).
+void top_demo_head(void) { wr16(0x047D, (uint16_t)(rd16(0x047D) | 0x00FF)); }
+
+// TG3000_ROUTINE($80:8A71) top_pick_mode
+// A game: the low byte of $047D cleared; true for the two-player game ($03DC & $F == 2).
+bool top_pick_mode(void) {
   wr16(0x047D, (uint16_t)(rd16(0x047D) & 0xFF00));
   return (rd16(0x03DC) & 0x000F) == 2;
 }
@@ -209,7 +220,11 @@ void game_main(void) {
     results_init();
     options_entry(0);
     save_data_seal();
-    if(top_after_options()) two_player_game();  // $80:8B79
+    if(top_after_options()) {  // $80:8A61: the title's demo race, then the top again
+      top_demo_head();
+      demo_track_pick();
+      race_wrapper();
+    } else if(top_pick_mode()) two_player_game();  // $80:8B79
     else championship();
   }
 }

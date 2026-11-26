@@ -6409,6 +6409,86 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The title's demo race, the port's first trap (port-trap-1, 2026-11-26)
+
+**The trap.** The port runs `game_main` from power-on. In `start_taps.txt` and `to_race.txt`
+(at its `--movie-offset 150`), its first trap is `$80:8A61`, at port frame 5,582: the top
+loop's bit 13 of `$03DC`.
+
+**What it is.** The title screen, left alone, sets the bit and asks for its demo race. The top
+loop then:
+1. sets the low byte of `$047D` (the demo's flag; a game clears it, `$80:8A71`);
+2. picks the track (`$84:A553`, `demo_track_pick`);
+3. runs the race wrapper;
+4. goes back to the top (`$80:8A1F`).
+
+**The demo is a four-player VS race,** "DEMO" over the four views, with every car driven by the
+game.
+
+**The track pick** takes a value from the random generator.
+- **In the VS mode** (`$03DC & 3 == 2`), its low three bits.
+- **Otherwise,** the high word of (value >> 1) × 94, by the DSP-4's multiply (0-46).
+
+**The C.**
+- **`top_after_options`** now ends at the bit-13 test and returns whether it is set.
+- **`top_demo_head`** (`$80:8A61`) sets the flag.
+- **`top_pick_mode`** (`$80:8A71`) clears it and says whether this is the two-player game.
+
+`game_main` runs the demo, then the top again.
+
+**The demo's paths, once never run.** The demo's track and players reach VS road paths the VS
+movie never ran. Their C was written but kept behind traps; they run now, so the traps are gone.
+Each was a copy of a path another player's pass already runs:
+- **`vs_road_rows_view0`:** the rows accumulator with flag bit 0 clear, a low-kind object, a
+  second object in one frame, the lap's wrap, and the tilt's three paths (the row ahead wraps,
+  the row behind wraps, the sign extension). The road-kind scan stays a trap.
+- **`vs_road_project`, player 1's pass:**
+  - the edge clamp, both edge pieces, and the two sign extensions;
+  - its edge constants, `$A968` and `$A5DC`, read from the ROM (`$85:AAD0`, `$85:AB0A`); they
+    were 0, unused.
+
+The fuzzes of both rows no longer steer away from these paths.
+
+**A row list's second pair (`$85:C13A`) stays a trap.**
+- **On the firmware run,** no player of the demo reaches it.
+- **The first try** ran the demo without `--dsp4-firmware`. The VS race then stalls, and its
+  broken state reached it once.
+- **`road_rows_build`'s row** already notes that the ROM's lists never need it.
+
+**A new movie for the gates.** None of the gates' movies reached the demo: each one starts a
+game first.
+- **`tools/bench/movies/demo_race.txt`** is `start_taps.txt`'s taps (they stop at frame 3,560),
+  run for 7,800 frames. The demo starts near frame 5,750.
+- **In both gates,** it runs with `--dsp4-firmware` and the VS movie's fuzz skips. It is one
+  slice in `verify_all.sh` and one of `verify_new.sh`'s movies.
+- **`vs_sprites_view1`'s fuzz is also skipped on this movie.** From the demo's last state, 407
+  of its 500 cases fail: the C reads `$86:7CE6`, below bank `$86`'s ROM. Its fuzz still runs
+  in the VS movie. What its fuzz should change for the demo's state is open.
+
+**`vs_race_track` cut at its call to `track_setup_load`.**
+- **The failure:** in the demo, its one sample had a lag frame (harness-15). The NMI fell inside
+  `track_setup_load`'s decompression (`$82:FF79`), and two bytes came out 38 where the C makes
+  36: `$7E:5EB1` and `$7E:5F47`, written by `track_setup_load`.
+- **Why it failed the row:** the VS movie's sample is lagged too, so the row had no clean pass.
+- **Not a C bug:** `track_setup_load`'s own row, replayed from its entry state without the NMI,
+  gives the C's 36. Which word the NMI handler changes is not yet named.
+- **The rows now:** `vs_race_track` (`$82:9348` up to the call: the head,
+  `vs_race_track_head` in the C; the row keeps its name, as `title_screen`'s load did in
+  screen-2), `track_setup_load` (its own row, as before), and `vs_race_track_tail` (`$82:9394`,
+  a waiting row). The tail starts
+  after the lag frame, and both parts pass clean on both movies. `vs_race_track` stays as the
+  whole in the C.
+- **For the port:** with no lag frames, its demo has 36 in those two bytes, as the C makes them.
+
+**The rows.**
+- **`top_after_options`:** two cuts, `$80:8A61` and `$80:8A71`.
+- **`top_demo_head`.**
+- **`top_pick_mode`** takes the old row's two cuts, `$80:8A82` and `$80:8A87`.
+- **`demo_track_pick`:** live in the demo. Its fuzz varies `$03DC` and the generator's state,
+  which also reaches the DSP-4 multiply branch the demo never takes.
+
+**Check:** the full gate (changes beyond additions, and a new gate movie).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

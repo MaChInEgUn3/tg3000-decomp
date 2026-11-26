@@ -2576,6 +2576,19 @@ void results_init(void) {
   }
 }
 
+// TG3000_ROUTINE($84:A553) demo_track_pick
+// The demo race's track into $047B, from the random generator: in the two-player mode
+// ($03DC & 3 == 2) its low three bits; otherwise the high word of (its value >> 1) times 94,
+// by the DSP-4's multiply (0-46).
+void demo_track_pick(void) {
+  if((rd16(0x03DC) & 3) == 2) {
+    wr16(0x047B, (uint16_t)(rng_next_long(NULL) & 7));
+    return;
+  }
+  const uint16_t r = (uint16_t)(rng_next_long(NULL) >> 1);
+  wr16(0x047B, (uint16_t)((uint32_t)dsp4_multiply((int16_t)r, 0x005E) >> 16));
+}
+
 // The 65816's 16-bit ADC in decimal mode, a digit at a time as the CPU does it (also for
 // digits above 9, as in the unused $FFFF bonus entries); *carry in and out; *overflow =
 // its V (taken before the last digit's adjustment, as the CPU does).
@@ -6158,23 +6171,22 @@ static void road_port_product32(uint16_t a, uint16_t b, uint16_t* lo, uint16_t* 
 // (DSP-4 command $0D, with no track-event rows): each player's pass is the same code with its
 // record, tables and constants (below; in the original's order: players 3, 1, 4, 2). Each pass
 // is followed by its HDMA list's tail, of two kinds (A: the first of a pair, B: the second).
-// Player 1's pass has never-run paths (traps).
 typedef struct {
   uint16_t rec, tab, sky, rows, bands, x_small, x_big, k1, k2, pairs;
   uint8_t save24;
   uint16_t at22, at18, list, sub, base_k, edge1, edge2, e0add, fin_at;
-  bool a_type, rare;  // rare: the pass whose rare paths were never run
+  bool a_type;
 } VsProjView;
 
 static const VsProjView vs_proj_views[4] = {
-  {0x0262, 0x3DEC, 0x0178, 0x356C, 0x4D95, 0x2B2B, 0x2C2B, 0x00DC, 0x01C4, 0x0AF6, 0x94, 0x0166, 0x015E, 0x00D0, 0x74, 0x6C, 0xAB28, 0xA79C, 0x1546, 0x1548, true, false},
-  {0x0200, 0x3AEC, 0x0174, 0x34EC, 0x4CFD, 0x272B, 0x282B, 0x006C, 0x01C4, 0x0796, 0x90, 0x0164, 0x015C, 0x00D0, 0x04, 0x68, 0, 0, 0x1536, 0x1538, false, true},
-  {0x0315, 0x436C, 0x0180, 0x35AC, 0x4DE1, 0x2D2B, 0x2E2B, 0x00DC, 0x013C, 0x11B6, 0x96, 0x016A, 0x0162, 0x00D2, 0x74, 0x6C, 0xAB28, 0xA79C, 0x1566, 0x1568, true, false},
-  {0x02B3, 0x406C, 0x017C, 0x352C, 0x4D49, 0x292B, 0x2A2B, 0x006C, 0x013C, 0x0E56, 0x92, 0x0168, 0x0160, 0x00D2, 0x04, 0x68, 0xA968, 0xA5DC, 0x1556, 0x1558, false, false},
+  {0x0262, 0x3DEC, 0x0178, 0x356C, 0x4D95, 0x2B2B, 0x2C2B, 0x00DC, 0x01C4, 0x0AF6, 0x94, 0x0166, 0x015E, 0x00D0, 0x74, 0x6C, 0xAB28, 0xA79C, 0x1546, 0x1548, true},
+  {0x0200, 0x3AEC, 0x0174, 0x34EC, 0x4CFD, 0x272B, 0x282B, 0x006C, 0x01C4, 0x0796, 0x90, 0x0164, 0x015C, 0x00D0, 0x04, 0x68, 0xA968, 0xA5DC, 0x1536, 0x1538, false},
+  {0x0315, 0x436C, 0x0180, 0x35AC, 0x4DE1, 0x2D2B, 0x2E2B, 0x00DC, 0x013C, 0x11B6, 0x96, 0x016A, 0x0162, 0x00D2, 0x74, 0x6C, 0xAB28, 0xA79C, 0x1566, 0x1568, true},
+  {0x02B3, 0x406C, 0x017C, 0x352C, 0x4D49, 0x292B, 0x2A2B, 0x006C, 0x013C, 0x0E56, 0x92, 0x0168, 0x0160, 0x00D2, 0x04, 0x68, 0xA968, 0xA5DC, 0x1556, 0x1558, false},
 };
 
 static uint16_t vs_proj_ext(const VsProjView* c, uint8_t v) {  // BIT #$80 / BEQ / ORA #$FF00
-  if(c->rare && (v & 0x80)) tg3000_unported("$85:A94C/$A964: player 1's sign extension");
+  (void)c;
   return sext8(v);
 }
 
@@ -6275,13 +6287,11 @@ static void vs_proj_tail(const VsProjView* c) {
   const uint16_t r37 = rd16(c->rec + 0x37);
   a = (uint16_t)(r37 + 0x0040);
   if(a & 0x8000) {
-    if(c->rare) tg3000_unported("$85:AAB5: player 1's edge clamp");
     a = 0;
   }
   wr16(DP + 0x16, a);
   uint16_t d = (uint16_t)(a - rd16(DP + 0x14));
   if(d & 0x8000) {
-    if(c->rare) tg3000_unported("$85:AABF-$AAD9: player 1's first edge piece");
     wr16(y, (uint16_t)((uint16_t)-d | 0x0080));
     wr16(DP + 0x14, a);
     wr16((uint16_t)(y + 1), (uint16_t)((uint16_t)(a << 2) + c->edge1));
@@ -6297,7 +6307,6 @@ static void vs_proj_tail(const VsProjView* c) {
     wr16(DP + 0x14, a);
   }
   if(rd16(DP + 0x14) != 0) {
-    if(c->rare) tg3000_unported("$85:AB04-$AB13: player 1's last edge piece");
     wr16(y, (uint16_t)(rd16(DP + 0x14) | 0x0080));
     wr16((uint16_t)(y + 1), c->edge2);
     y = (uint16_t)(y - 3);

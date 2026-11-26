@@ -819,6 +819,7 @@ uint16_t track_next(void);
 // $0302, ... (+$202 each); $036C = 0. With bit 1 of $03E2 (never run): the bytes $0398,
 // $0399, $039A, $039C, $03C7, $03C8, $03C9, $03CB = 1.
 void results_init(void);
+void demo_track_pick(void);  // $84:A553
 
 // $84:A388: the prize money, in decimal (BCD, eight digits: low word, high word), for both
 // players (place $03A8, money $038E/$0390, bonus bits $03AB; player 2: $03D7, $03BD/$03BF,

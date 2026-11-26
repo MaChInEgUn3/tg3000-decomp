@@ -727,6 +727,7 @@ vs_race_track:
     stz.b $58                   ; $82938D
     stz.b $54                   ; $82938F
     jsr.w track_setup_load      ; $829391
+vs_race_track_tail:
     jsl.l track_rows_build      ; $829394
     jsr.w vs_track_objects_view0; $829398
     jsr.w vs_track_objects_view1; $82939B
