@@ -5102,6 +5102,32 @@ were not found, so the gate stopped before the merge. It now has its own variabl
 **Check:** its own full gate. The rows' results must not change (status and paths), and the
 negative rows must still fail.
 
+## Tails in their rows' extents (verify-cover-1, 2026-11-26)
+
+**The problem.** A row's `alsoIn` ranges are code its samples run and compare by their effects,
+but their paths are not counted, and `progress.py` does not count their bytes either. Among the
+verified rows, 648 code bytes lay only in such ranges.
+
+**The fix.** Where a range is the routine's own tail, right after its extent or across a stretch
+that a hole skips, the extent now covers it. Then its paths count like the rest. Seven rows:
+
+| Row | Its tail |
+|---|---|
+| `text_type_step` | its jump targets `$80:B6CA`-`$B7D9`, with the jump table and another routine as holes |
+| `vs_cars_apart` | the shared tail `$81:F70B`-`$F876`, 351 bytes |
+| `window_shape_b` | `$80:DC19`-`$DC5A` |
+| `track_object_test` | `$83:FA63`-`$FA6A` |
+| `vs_car_confirm` | `$8A:A8A1`-`$A8E5`; `vs_ready_draw`'s own row between them is a hole |
+| `fade_out_on_confirm_once` | `$8A:81B0`-`$81BA` |
+| `password_code_infodata` | `$8A:C020`-`$C024` |
+
+**Results:** each reaches every path of its new extent on its movie.
+
+**Left as they are:** tails reached only through another row's extent, or behind pushed
+registers. The rest of `$80:DC19`'s callers and the track events' tail are examples.
+
+**Check:** the full gate (rows changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

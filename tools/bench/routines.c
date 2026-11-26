@@ -12948,9 +12948,9 @@ const Routine routines[] = {
   {.name = "password_code_find", .entry = 0x8AB35B, .end = 0x8AB3A2, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_code_find, .fuzz = fuzz_password_code_find,
    .endAt = 0x8AB3A4},  // its JMP ($0182) into the handler
-  {.name = "password_code_infodata", .entry = 0x8AC013, .end = 0x8AC018, .source = "src/password.c", .needM16 = true,
-   .lowWramDb = true, .call = call_password_code_infodata, .alsoIn = {{0x8AC020, 0x8AC024}},
-   .fuzz = fuzz_password_code_infodata},
+  {.name = "password_code_infodata", .entry = 0x8AC013, .end = 0x8AC024, .source = "src/password.c", .needM16 = true,
+   .lowWramDb = true, .call = call_password_code_infodata, .fuzz = fuzz_password_code_infodata,
+   .holes = {{0x8AC018, 0x8AC020}}},  // (verify-cover-1: its tail; between, another routine)
   {.name = "password_lines_print", .entry = 0x8AB612, .end = 0x8AB644, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_password_lines_print, ALL_OUTPUTS,
    .fuzz = fuzz_password_lines_print},
@@ -13230,8 +13230,9 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_grid_draw},
   {.name = "vs_panel_name_draw", .entry = 0x8AAAC1, .end = 0x8AAB6B, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .compareA = true, .compareX = true, .compareY = true, .call = call_vs_panel_name_draw, .fuzz = fuzz_vs_panel},
-  {.name = "vs_car_confirm", .entry = 0x8AA852, .end = 0x8AA869, .alsoIn = {{0x8AA8A1, 0x8AA8E5}}, .source = "src/vs.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_car_confirm, .fuzz = fuzz_vs_entry},
+  {.name = "vs_car_confirm", .entry = 0x8AA852, .end = 0x8AA8E5, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_car_confirm, .fuzz = fuzz_vs_entry,
+   .holes = {{0x8AA869, 0x8AA8A1}}},  // (verify-cover-1: its tail; between, vs_ready_draw's own row)
   {.name = "vs_ready_draw", .entry = 0x8AA869, .end = 0x8AA8A1, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_ready_draw},
   {.name = "vs_car_info", .entry = 0x8AA9A7, .end = 0x8AA9F2, .source = "src/vs.c", .needM16 = true,
@@ -13284,9 +13285,9 @@ const Routine routines[] = {
   {.name = "vs_cars_tie", .entry = 0x81F6AE, .end = 0x81F6F2, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_vs_cars_tie, ALL_OUTPUTS, .fuzz = fuzz_vs_cars_pair,
    .alsoIn = {{0x81F70B, 0x81F876}}},       // the shared tail and the collision
-  {.name = "vs_cars_apart", .entry = 0x81F6F2, .end = 0x81F70B, .source = "src/vs.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_vs_cars_apart, ALL_OUTPUTS, .fuzz = fuzz_vs_cars_pair,
-   .alsoIn = {{0x81F70B, 0x81F876}}},
+  {.name = "vs_cars_apart", .entry = 0x81F6F2, .end = 0x81F876, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_vs_cars_apart, ALL_OUTPUTS, .fuzz = fuzz_vs_cars_pair},
+       // (verify-cover-1: the shared tail in its extent, right after it, so its paths count)
   {.name = "vs_car_bands", .entry = 0x829806, .end = 0x829AF4, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_car_bands, .fuzz = fuzz_vs_car_bands},
   {.name = "vs_track_objects_view0", .entry = 0x82B87A, .end = 0x82B89C, .source = "src/vs.c", .needM16 = true,
@@ -14023,8 +14024,9 @@ const Routine routines[] = {
    .lowWramDb = true, .waitsForInterrupts = true, .call = call_fade_out_wait, ALL_OUTPUTS},
   {.name = "fade_out_on_confirm", .entry = 0x8A9675, .end = 0x8A968E, .source = "src/misc.c", .needM16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_fade_out_on_confirm, ALL_OUTPUTS, .fuzz = fuzz_fade_out_on_confirm},
-  {.name = "fade_out_on_confirm_once", .entry = 0x8A8181, .end = 0x8A8196, .alsoIn = {{0x8A81B0, 0x8A81BA}}, .source = "src/misc.c", .needM16 = true,
-   .lowWramDb = true, .fixedD = true, .call = call_fade_out_on_confirm_once, ALL_OUTPUTS, .fuzz = fuzz_fade_out_on_confirm},
+  {.name = "fade_out_on_confirm_once", .entry = 0x8A8181, .end = 0x8A81BA, .source = "src/misc.c", .needM16 = true,
+   .lowWramDb = true, .fixedD = true, .call = call_fade_out_on_confirm_once, ALL_OUTPUTS, .fuzz = fuzz_fade_out_on_confirm,
+   .holes = {{0x8A8196, 0x8A81B0}}},  // (verify-cover-1: its tail; between, not its code)
   {.name = "func_8A99D0", .entry = 0x8A99D0, .end = 0x8A99D6, .source = "src/misc.c", .needM16 = true,
    .fixedD = true, .call = call_func_8A99D0, ALL_OUTPUTS, .fuzz = fuzz_dp_40_66},
   {.name = "func_8A96C2", .entry = 0x8A96C2, .end = 0x8A96C8, .source = "src/misc.c", .needM16 = true,
@@ -14115,9 +14117,11 @@ const Routine routines[] = {
   {.name = "shop_gauge_line", .entry = 0x80ADD9, .end = 0x80AE4E, .source = "src/shop.c", .needM16 = true, .needX16 = true,
    .fixedD = true, .db = 0x7E, .call = call_shop_gauge_line},
   // the control codes' handlers follow the code table ($80:B6BC-B6C9, data)
-  {.name = "text_type_step", .entry = 0x80B59D, .end = 0x80B6BC, .alsoIn = {{0x80B6CA, 0x80B7BB}, {0x80B7CE, 0x80B7D9}},
-   .source = "src/text.c", .needM16 = true, .needX16 = true, .fixedD = true, .call = call_text_type_step,
-   .fuzz = fuzz_text_type_step, .m8At = {0x80B645, 0x80B65E}},
+  {.name = "text_type_step", .entry = 0x80B59D, .end = 0x80B7D9, .source = "src/text.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_text_type_step, .fuzz = fuzz_text_type_step,
+   .m8At = {0x80B645, 0x80B65E},
+   .holes = {{0x80B6BC, 0x80B6CA}, {0x80B7BB, 0x80B7CE}}},  // (verify-cover-1: its tail jumps' targets
+       // in its extent, so their paths count; between them another routine and the gap before it)
   {.name = "password_pack", .entry = 0x8ABB99, .end = 0x8ABBD7, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .fixedD = true, .db = 0x8A, .call = call_password_pack, ALL_OUTPUTS,
    .fuzz = fuzz_password_pack},
@@ -14196,7 +14200,7 @@ const Routine routines[] = {
   {.name = "window_shape_a", .entry = 0x80DB7D, .end = 0x80DBCB, .alsoIn = {{0x80DC19, 0x80DC5A}}, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_window_shape_a, ALL_OUTPUTS,
    .fuzz = fuzz_window_shape},
-  {.name = "window_shape_b", .entry = 0x80DBCB, .end = 0x80DC19, .alsoIn = {{0x80DC19, 0x80DC5A}}, .source = "src/misc.c",
+  {.name = "window_shape_b", .entry = 0x80DBCB, .end = 0x80DC5A, .source = "src/misc.c",  // (verify-cover-1: its tail)
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_window_shape_b, ALL_OUTPUTS,
    .fuzz = fuzz_window_shape},
   {.name = "sprite_number_point_right", .entry = 0x808667, .end = 0x808698, .source = "src/text.c", .needM16 = true,
@@ -14239,7 +14243,7 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_block_copy_7f2000, ALL_OUTPUTS, .fuzz = fuzz_block_copy_7f2000},
   {.name = "text_line_push", .entry = 0x8A99E2, .end = 0x8A99FC, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_text_line_push, .compareX = true, .fuzz = fuzz_text_line_push},
-  {.name = "track_object_test", .entry = 0x83FA34, .end = 0x83FA63, .alsoIn = {{0x83FA63, 0x83FA6A}},
+  {.name = "track_object_test", .entry = 0x83FA34, .end = 0x83FA6A,  // (verify-cover-1: its tail)
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_track_object_test,
    .fuzz = fuzz_track_object},
   {.name = "track_object_bump", .entry = 0x83FA6A, .end = 0x83FAD7, .source = "src/misc.c", .needM16 = true,
