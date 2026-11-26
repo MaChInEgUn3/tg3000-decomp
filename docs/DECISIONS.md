@@ -6372,6 +6372,43 @@ line, the `$0798` word (head 4 − head 5); and the `$0796` word's base (head 8)
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road line word: a row's first line, exact (dsp4-01i, 2026-11-26)
+
+**A new exact output field, so the stop rule does not fire.** This was measured on the probe
+(the firmware chip, chosen inputs, outputs only), on the flat straight run from the TAS's first
+30,000 frames.
+
+**The rule:** the `$0798` word of a row's first line, which sits on the line y of the row before
+it, is
+
+    ((192 · h) >> 15) − y − 170
+
+where h is that row's ROM height.
+- **Measured exact** on all 452 boundaries of the first row's sweep (`h` 16,074-32,946).
+- **The search:** for every whole slope, the constant that put every point inside its
+  rounding. Only 192/32768 with a constant in [−170, −170 + 64/32768) fits; the same holds in
+  16-bit units.
+- **What the constants are:** 192 is head 4 + 1, and 170 is head 5 − head 1 + 1. The header
+  sweep agrees: head 4 adds one per unit, and head 5 takes one away.
+- **At the camera's line** (h = 32,768, y = 51) the rule gives 192 − 51 − 170 = −29, which is
+  head 4 − head 5.
+
+**The lines between two rows, close:** a linear interpolation between the two rows' first-line
+words.
+- **To the nearest, in exact fractions:** off by one in 39 of 6,100 lines on the first row.
+  Each miss is a fraction just past one half (0.48 below), which the chip rounds the other way.
+- **A fixed-point step searched** (4-16 fraction bits, the step truncated, floored or by its
+  magnitude, the start offset swept): at best 24 lines off.
+- **So the chip's step is likely taken from the exact boundary** (E·h/32768 before flooring),
+  not from the whole line count. That is next.
+
+**Not yet looked at:** curves and hills (track words 0 and 1, head 3), the alternate band (the
++192 from track word 2 or head 10), and the frame's `$0A` `+1`.
+
+**Next (dsp4-01j):** the interpolation from the exact boundary; then a hill and a curve.
+
+**Check:** a measurement, recorded here. It changes no code.
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
