@@ -6300,6 +6300,55 @@ to port when a run reaches it:
 
 **Check:** the full gate (`src/boot.c` changed by more than additions).
 
+## The road command unparked; the header's roles measured (dsp4-01g, 2026-11-26)
+
+**`$01` is back to measuring, on the advisor's call.** The 2026-11-15 note on outside sources
+does not cover this case:
+- **The later decision governs.** The 2026-11-21 rule says to stop and ask when measuring is
+  not enough, and the owner has not answered. No answer is not a yes.
+- **Measuring was not exhausted.** dsp4-01f varied one input only, while seven header words
+  never change in any tape, so no tape can reveal what they do.
+
+The sources question stays open; it is needed only if the new stop rule fires.
+- **The new stop rule:** park only when a whole unit with the probe, the header sweep done,
+  gives no new exact output field.
+- **The earlier "an outside source would be faster"** had no evidence behind it, and is
+  dropped.
+
+**The sweep.** `build/bench/dsp4_road_probe` was run on chosen inputs, outputs only: a recorded
+flat run on a fresh chip, with header words 1, 2, 3, 4, 5, 8 and 10 changed one at a time, by +1
+and by +8.
+
+| Header word | Value | What changing it does |
+|---|---|---|
+| 1 | `$33` | the starting line: E's start and the lines move |
+| 2 | `$33` | a line limit: one more line, and that row's line words become garbage. In every tape it equals word 1 |
+| 3 | `$FF5B` | nothing on a flat straight road |
+| 4 | `$BF`, 191 | the `$0798` word: +1 for each +1 |
+| 5 | `$DC`, 220 | the `$0798` word: −1 for each +1 |
+| 8 | `$180` | the `$0796` word: +1 for each +1 (the base of the line's screen x) |
+| 10 | `$C0` | +8 moved the next row's first `$0798` word by one, so it is not simply the +192 |
+
+**Exact now:**
+- **At the camera's line,** the `$0798` word is head 4 − head 5: 191 − 220 = −29, the value
+  seen on every run.
+- **The `$0796` word's base** is head 8.
+
+**Close, not exact yet:**
+- **A row's boundary value** is ((head 4 − E) · h >> 15) − (head 5 − head 1), that is
+  (140 · h >> 15) − 169 on the flat run. It is right in 303 of 452 boundaries; the others are
+  off by one, both ways.
+- **The lines between two boundaries** interpolate. Steps in 16.16, rounded to nearest, are
+  right in 5,175 of 6,100 lines on the first row. The rest likely come from the boundary
+  value's own rounding.
+
+**Next (dsp4-01h):**
+- **The boundary's exact rounding.** Vary E (head 1) and h together, then curves (head 3 and
+  track word 0) and the frame's `$0A` (near row `$C4C4`) before.
+- **Then the interpolation, exactly.**
+
+**Check:** a measurement, recorded here. It changes no code.
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
