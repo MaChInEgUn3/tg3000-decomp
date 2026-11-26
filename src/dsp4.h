@@ -42,4 +42,29 @@ uint16_t dsp4_row(const int16_t edge[4]);
 // 235, 236 and 238 depend on its history (the C gives the fresh chip's answer).
 uint16_t dsp4_sprite(uint16_t x, uint16_t y, uint16_t attr, uint16_t out[2]);
 
+// Command $0001, the road: a header, then row after row, each answered with four words and the
+// screen lines it draws. A row's lines are (an index, the word for $0798, the word for $0796).
+// Measured on the firmware from outputs only (tools/bench/dsp4_road_probe; docs/DECISIONS.md
+// dsp4-01e and dsp4-01k to dsp4-01p): exact on recorded and random runs, for rows of fewer
+// than 88 lines and header word 2 equal to word 1, as the game sends.
+// The first row's rounding comes from the chip's last $0A: `edge2` and `edge3` are that
+// command's last two edges (the multiplies in between leave them), $8000 for none since
+// power-on. Measured for $0A runs whose two rows are equal, which is every one the game
+// sends before the road.
+typedef struct {
+  int32_t x, g, e, s;       // the road's sideways place, its turn rate, the height, the slope (16.16)
+  uint16_t head[15];
+  int16_t m;                // the lowest line drawn so far
+  int16_t yPrev;            // the previous row's line
+  int32_t endA, endB;       // the previous row's ends for the two words
+  uint16_t round[2];        // the first row's rounding (from the last $0A), then $2000
+  uint16_t index;           // the next line's index
+  int row;
+} Dsp4Road;
+void dsp4_road_begin(Dsp4Road* r, const uint16_t head[15], int16_t edge2, int16_t edge3);
+// One row: its ROM height `h`; `first` (the first row only: three words, else NULL); its three
+// track words. `out` gets the four answers; up to `max` lines go to `lines`; returns the count.
+unsigned dsp4_road_row(Dsp4Road* r, uint16_t h, const uint16_t first[3], const uint16_t track[3], uint16_t out[4],
+                       uint16_t (*lines)[3], unsigned max);
+
 #endif

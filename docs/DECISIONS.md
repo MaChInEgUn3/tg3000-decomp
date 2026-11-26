@@ -6409,6 +6409,59 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road command, native (dsp4-01p, 2026-11-26)
+
+**`src/dsp4.c` now has the road, `$01`.** It is the first stream command:
+- **`dsp4_road_begin(r, head, edge2, edge3)`** takes the header and the last `$0A`'s last two
+  edges.
+- **`dsp4_road_row(r, h, first, track, out, lines, max)`** takes one row. It gives the row's four
+  answers and its drawn lines (the index, the `$0798` word, the `$0796` word), and returns the
+  count.
+
+It is the rules of dsp4-01e and 01k-01o. Fitting it to the firmware turned up four more facts,
+all outputs only:
+- **The first row's words.** Word 0 adds to the height E as 8.8. Word 1 is used whole as X's
+  fraction: dsp4-01e had `& $FF00`, but its runs always had a 0 low byte.
+- **Header words 11 and 13** (the slope's and the turn's fractions) are whole words too, not
+  `& $FF00`.
+- **The first drawn row's rounding comes from the last `$0A`.**
+  - The offset added before the >> 14 is (edge >> 2) & `$3FFF`: edge 2 for `$0798`, edge 3 for
+    `$0796`. Every later row uses `$2000`.
+  - Multiplies in between leave it as it is.
+  - A fresh chip has edge `$8000`, giving `$2000`: the "½" of dsp4-01l and dsp4-01m.
+  - It applies to the first row that draws lines, not to row 0 when row 0 is hidden.
+  - **What the game sends:** in every `$0A` before the road (TAS and `race1`) the two rows are
+    equal (`$C4C4`, `$E2E2`, `$E1E2`, `$C3C4`), so the edges are multiples of 48. Measured for
+    equal rows only. dsp4-01c's "+1" (bit 7 of the near row) is likely this offset's sign; not
+    re-measured.
+- **The fresh chip's first run** (dsp4-01m) is the same rule with power-on state: not modelled.
+
+**`tools/dsp4_road_check.py`** (with `make -C tools/bench probe`) checks it. The firmware
+answers through `dsp4_road_probe`, which now also takes leading `$0A` and `$00` commands per
+case; the C answers through `dsp4_road_native`.
+- **6,000 random game-like runs:** eight rows; curves, hills and crests; the `$0A` the game
+  sends and 0-3 multiplies, or none. Every answer and line agrees.
+- **`race1.tape`'s 585 road runs:** the 393 after a `$0A` agree in every byte.
+  - **The other 192 are the race's first frames, before any `$0A`.** Their first rounding
+    differs run to run, so it comes from the commands before: the previous frame's sprite
+    streams (`$07`, `$09`), which are not done yet. Counted apart: 191 differ, by one in a
+    first row's lines.
+  - The TAS also has 173 such runs out of 9,604.
+- **The bench's chip model** (`tools/bench/dsp4_chip.c`) now has `$01` (rows until `$8000`) and
+  keeps the last `$0A`'s edges. `dsp4_compare` knows it.
+  - The `$01` bytes that differ on `race1` are exactly those 192 runs.
+  - The TAS tape (refbench, its own PCs) does not resync in `dsp4_compare`; `dsp4_road_check.py`
+    reads tapes by command words instead.
+
+**Not done:**
+- the road's objects (`$0F`) and edges (`$8001`), which none of the tapes has;
+- the first rounding after the sprite streams;
+- wiring it into `road_rows_project`'s C, which streams through `dsp4_port_write16`/`read16`
+  today. That is the next unit, the one the port needs.
+
+**Check:** `tools/dsp4_road_check.py` (exit 0), then the full gate (`tools/bench/dsp4_chip.c`
+changed by more than additions).
+
 ## The road command's line words with curves, hills and crests: exact (dsp4-01o, 2026-11-26)
 
 **Measured** on the probe (firmware, chosen inputs, outputs only).

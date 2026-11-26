@@ -2,13 +2,18 @@
 // dsp4-01f (port request A): the road command $01 on chosen inputs, sent to the firmware DSP-4
 // (harness-27's chip) as road_rows_project sends it ($85:B3D7, with D+$E4 negative: the
 // objects copied, none sent). Outputs only: what the chip answers.
-//   build/bench/dsp4_road_probe ext/firmware/dsp4.rom < spec
+//   build/bench/dsp4_road_probe ext/firmware/dsp4.rom [--edges NEAR] < spec
+// --edges NEAR (hex): before each case, a $0A with that near row (t = 0, far = NEAR), its
+// answer read, as the game's frame does before the road (dsp4-01c's bit 7). A case line may
+// instead start with its own commands, "E T NEAR FAR" ($0A) and "M A B" ($00) in any order;
+// their answers are printed first, then '#'.
 // The spec, one case a line: 15 header words, the first row's 3 words, then per row its
 // height and 3 track words (all hex). Per case it prints one line: per row the 4 answers,
 // the count and the count lines' 3 words, rows separated by '|'.
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
+#include <cstdlib>
 #include <vector>
 #include <sstream>
 #include <string>
@@ -30,15 +35,43 @@ static void wr(uint16_t v) {
 }
 
 int main(int argc, char** argv) {
-  if(argc < 2 || !dsp4_lle_load(argv[1])) { std::fprintf(stderr, "usage: %s dsp4.rom < spec\n", argv[0]); return 2; }
+  if(argc < 2 || !dsp4_lle_load(argv[1])) { std::fprintf(stderr, "usage: %s dsp4.rom [--edges NEAR] < spec\n", argv[0]); return 2; }
+  const bool edges = argc >= 4 && std::strcmp(argv[2], "--edges") == 0;
+  const uint16_t near = edges ? uint16_t(std::strtoul(argv[3], nullptr, 16)) : 0;
   std::string line;
   while(std::getline(std::cin, line)) {
     std::istringstream in(line);
     std::vector<unsigned> w;
     unsigned v;
+    // leading commands, each a letter and its hex words: "E T NEAR FAR" ($0A, 4 answers) or
+    // "M A B" ($00, 2 answers); their answers are printed, then '#'
+    std::vector<std::vector<unsigned>> pre;
+    while(true) {
+      in >> std::ws;
+      const int c = in.peek();
+      if(c != 'E' && c != 'M') break;
+      in.get();
+      std::vector<unsigned> p{unsigned(c)};
+      for(int i = 0; i < (c == 'E' ? 3 : 2); i++) { in >> std::hex >> v; p.push_back(v); }
+      pre.push_back(p);
+    }
     while(in >> std::hex >> v) w.push_back(v);
     if(w.size() < 18 || (w.size() - 18) % 4 != 0) { std::printf("bad case\n"); continue; }
     dsp4_lle_reset();
+    if(!pre.empty()) {
+      for(const auto& p : pre) {
+        wr(p[0] == 'E' ? 0x000A : 0x0000);
+        for(size_t i = 1; i < p.size(); i++) wr(uint16_t(p[i]));
+        for(int i = 0; i < (p[0] == 'E' ? 4 : 2); i++) std::printf("%04X ", rd());
+      }
+      std::printf("# ");
+    } else if(edges) {
+      wr(0x000A);
+      wr(0x0000);
+      wr(near);
+      wr(near);
+      for(int i = 0; i < 4; i++) (void)rd();
+    }
     wr(0x0001);
     for(int i = 0; i < 15; i++) wr(uint16_t(w[i]));
     for(size_t r = 0; 18 + 4 * r < w.size(); r++) {

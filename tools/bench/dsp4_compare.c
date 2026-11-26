@@ -23,7 +23,7 @@
 typedef struct { unsigned long runs, read, bad, lostBytes; unsigned firstBadPc; } Count;
 static Count counts[257];
 
-static int known(unsigned v) { return v == 0x00 || v == 0x0A || v == 0x11 || v == 0x03 || v == 0x0B; }
+static int known(unsigned v) { return v == 0x00 || v == 0x01 || v == 0x0A || v == 0x11 || v == 0x03 || v == 0x0B; }
 
 #define SITES 4096
 static unsigned sitePc[SITES], siteCmd[SITES];
@@ -43,8 +43,12 @@ static unsigned valAt(long i) { return t[5 * i + 3]; }
 static int shapeAt(long i) {
   const unsigned c = valAt(i);
   if(!known(c) || !isSite(pcAt(i), c) || (i > 0 && !isRead(i - 1)) || i + 1 >= n || isRead(i) || isRead(i + 1) || valAt(i + 1) != 0 || pcAt(i + 1) != pcAt(i)) return 0;
-  const int in = c == 0x00 ? 4 : c == 0x0A ? 6 : c == 0x11 ? 8 : c == 0x03 ? 10 : 6;
   long k = i + 2;
+  if(c == 0x01) {  // the road: its header's 15 words (the rows follow as they come)
+    for(int j = 0; j < 30; j++, k++) if(k >= n || isRead(k)) return 0;
+    return 1;
+  }
+  const int in = c == 0x00 ? 4 : c == 0x0A ? 6 : c == 0x11 ? 8 : c == 0x03 ? 10 : 6;
   for(int j = 0; j < in; j++, k++) if(k >= n || isRead(k)) return 0;
   if(c == 0x00) {
     for(int j = 0; j < 4; j++, k++) if(k >= n || (j >= 2 && !isRead(k))) return 0;
