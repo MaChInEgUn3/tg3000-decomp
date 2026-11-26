@@ -5169,13 +5169,9 @@ void race_frame_wait(void) {
 }
 
 // TG3000_ROUTINE($82:865B) race_frame_body
-// The race loop's body after its wait, up to the jump back ($82:8773): the player's segment, the
-// road's rows and shift, the places; the HUD's digits once per drawn frame; the frame drawn and
-// flagged for the NMI; the frames it took kept ($1E9E); the demo's end on any button (never run),
-// the Start button's pause, the Select button's way out (never run: a trap, $82:878A); after the
-// race (bit 2 of $0244, or $1F08 at 10), the cars' places kept for the results and the fade out.
-// Returns true when the loop ends (the fade done: $82:8776).
-bool race_frame_body(void) {
+// The race loop's body after its wait, up to the frame drawn ($82:867B): the player's segment, the
+// road's rows and shift, the places; the HUD's digits once per drawn frame; the frame drawn.
+void race_frame_body(void) {
   player_segment_step();
   road_rows_build_call();
   road_shift_frame_call();
@@ -5185,6 +5181,15 @@ bool race_frame_body(void) {
     wr16(0x00B8, (uint16_t)(rd16(0x00B8) | 0x0004));
   }
   race_frame_draw();
+}
+
+// TG3000_ROUTINE($82:867B) race_frame_rest
+// The race loop's rest, up to the jump back ($82:8773): the frame flagged for the NMI; the frames
+// it took kept ($1E9E); the demo's end on any button (never run),
+// the Start button's pause, the Select button's way out (never run: a trap, $82:878A); after the
+// race (bit 2 of $0244, or $1F08 at 10), the cars' places kept for the results and the fade out.
+// Returns true when the loop ends (the fade done: $82:8776).
+bool race_frame_rest(void) {
   wr16(0x00B8, (uint16_t)(rd16(0x00B8) | 0x0001));
   const uint16_t frames = rd16(0x00BA);
   if(rd16(0x047C) & 0x8000) {  // the demo: any button ends it (never run)
@@ -9750,8 +9755,9 @@ void champ_menu_ready(uint16_t dp) {
 // A pass of the championship menu's loop (it has no wait: the task runs while the other
 // one's frames switch to it): the cursor's colours by D+$1F ($81:BE1A, $81:BE3A), D+$1E
 // counting, the menu bar and the sprites, up/down moving the cursor (0-3; up never run).
-// A/B/X/Y then opens the choice (menu_choice_begin, not in this part).
-void champ_menu_frame(void) {
+// A/B/X/Y then opens the choice (menu_choice_begin, not in this part). Its drawing up to $80:C2DD,
+// then its up/down test (champ_menu_pads).
+void champ_menu_draw(void) {
   const uint32_t k = (uint32_t)(rd16(DP + 0x1F) & 0x001E);
   const uint16_t c4 = rd16(DP + 0xC4);
   wr16((uint16_t)(c4 + 0x0122), rom16(0x81BE1A + k));
@@ -9759,6 +9765,18 @@ void champ_menu_frame(void) {
   wr16(DP + 0x1E, (uint16_t)(rd16(DP + 0x1E) + 0x0020));
   menu_bar_draw();
   oam_finish_near(DP);
+}
+
+// The championship menu's pass whole ($80:C2BB up to $80:C306).
+void champ_menu_frame(void) {
+  champ_menu_draw();
+  champ_menu_pads();
+}
+
+// TG3000_ROUTINE($80:C2DD) champ_menu_pads
+// The championship menu pass's up/down test (up never run): the cursor moved, D+$1E reset, the
+// move's sound (func_80E4C5).
+void champ_menu_pads(void) {
   uint16_t p = rd16(DP + 0x0E);
   wr16(DP + 0x0E, (uint16_t)(p & ~0x0800));
   if((p & 0x0800) && rd16(DP + 0x48) != 0) {  // never run

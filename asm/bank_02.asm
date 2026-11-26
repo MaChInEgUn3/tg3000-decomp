@@ -320,6 +320,7 @@ race_frame_body:
     tsb.w $00B8                 ; $828675
 CODE_828678:
     jsr.w race_frame_draw       ; $828678
+race_frame_rest:
     lda.w #$0001                ; $82867B
     tsb.w $00B8                 ; $82867E
     ldx.w $00BA                 ; $828681

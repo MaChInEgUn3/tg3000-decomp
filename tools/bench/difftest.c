@@ -57,6 +57,10 @@ typedef struct {
   Contract contracts[MAX_CONTRACTS];
   int contractCount;
   bool starts[MAX_EXTENT], visited[MAX_EXTENT];
+  // harness-37: the paths of compared samples (live, replayed, fuzz), which alone are credited,
+  // and those of the interrupted samples kept for a replay
+  bool visitedCmp[MAX_EXTENT], visitedKept[MAX_EXTENT];
+  int keptSpread;  // a `replays` row's replays kept by the spread rule (the rest: by a new path)
   char firstFailure[400];
   // flags: compared separately; a mismatch only fails the routine if the flag is live
   unsigned long watched, live[4], dead[4], flagMismatch[4];
@@ -218,7 +222,8 @@ static bool atWaitSite(uint32_t pc) {
     if(pc >= waitSites[i].lo && pc <= waitSites[i].hi) return true;
   return false;
 }
-static bool visitedAtStart[MAX_DEPTH][MAX_EXTENT];  // a waiting row's paths before the sample
+static bool visitedAtStart[MAX_DEPTH][MAX_EXTENT];
+static bool sampVisited[MAX_DEPTH][MAX_EXTENT];  // (harness-37: the paths a sample ran)  // a waiting row's paths before the sample
 static uint32_t prevInsnPc;  // the instruction before the current one (a handler's first: the stopped one)
 
 static Sample samples[MAX_DEPTH];
@@ -1438,7 +1443,24 @@ static void finishSample(int k, const Cpu* cpu) {
     if(!owner || irqOverflow || irqActive) { s->abandoned++; return; }
   } else if(cpu_interruptCount != smp->interruptsAtEntry) {
     s->interrupted++;
-    if(smp->replaySlot >= 0) replays[smp->replaySlot].kept = true;  // run it again later
+    if(smp->replaySlot >= 0) {  // run it again later
+      const Routine* rr = &table[idx];
+      bool keep = true;
+      if(rr->replays) {
+        // harness-37: a `replays` row keeps half its share spread over the movie (harness-34),
+        // the rest for samples that ran a path no compared or kept sample has
+        bool fresh = false;
+        for(int q = 0; q < MAX_EXTENT && !fresh; q++)
+          if(sampVisited[k][q] && !s->visitedCmp[q] && !s->visitedKept[q]) fresh = true;
+        const bool spread = (s->interrupted - 1) % (REPLAY_SPREAD / SAMPLE_STRIDE) == 0 && s->keptSpread < rr->replays / 2;
+        keep = fresh || spread;
+        if(keep && !fresh) s->keptSpread++;
+      }
+      if(keep) {
+        replays[smp->replaySlot].kept = true;
+        for(int q = 0; q < MAX_EXTENT; q++) if(sampVisited[k][q]) s->visitedKept[q] = true;
+      }
+    }
     // not compared, but its caller's use of the flags is the same (harness-6): watch it
     Watch* w = &watches[idx];
     if(!fuzzing && !w->active) {
@@ -1516,6 +1538,7 @@ static void finishSample(int k, const Cpu* cpu) {
     watchStart(idx);
     s->watched++;
   }
+  for(int q = 0; q < MAX_EXTENT; q++) if(sampVisited[k][q]) s->visitedCmp[q] = true;  // (harness-37)
   if(replaying) { if(ok) s->replayPass++; else s->replayFail++; }
   else if(fuzzing) { if(ok) s->fuzzPass++; else s->fuzzFail++; }
   else { s->samples++; if(ok) s->pass++; else s->fail++; if(ok && smp->foreignStack) s->foreignStack++; }
@@ -1545,13 +1568,15 @@ static int replaySlotFor(int idx) {
 static void startSample(int idx, const Cpu* cpu) {
   const Routine* r = &table[idx];
   int slot = -1;
-  if(!fuzzing && !r->waitsForInterrupts && !r->rti && stats[idx].samples == 0 &&
-     (r->replays == 0 || (stats[idx].entries - 1) % REPLAY_SPREAD == 0))  // (harness-34: spread over the movie)
-    slot = replaySlotFor(idx);
+  // (harness-37: a `replays` row keeps taking slots after its live samples: its paths may run
+  // only in interrupted ones)
+  if(!fuzzing && !r->waitsForInterrupts && !r->rti && (stats[idx].samples == 0 || r->replays)) slot = replaySlotFor(idx);
   int k = depth++;
   Sample* smp = &samples[k];
   memcpy(sampleRam[k], snes->ram, TG3000_WRAM_SIZE);
   if(r->waitsForInterrupts) memcpy(visitedAtStart[k], stats[idx].visited, MAX_EXTENT);  // (harness-15)
+  memset(sampVisited[k], 0, MAX_EXTENT);
+  sampVisited[k][0] = true;
   uint16_t sp = cpu->sp;
   *smp = (Sample){
     .idx = idx, .entryRegs = readRegs(cpu), .entrySp = sp, .minSp = sp,
@@ -1721,7 +1746,11 @@ static void checkEntries(Cpu* cpu, uint32_t pc, bool inHandler) {
     Regs in = readRegs(cpu);
     noteContract(s, &table[i], &in);
     unsigned long e = s->entries++;
-    if((e >= SAMPLE_ALL_FIRST && e % SAMPLE_STRIDE != 0) || s->samples >= MAX_SAMPLES || depth >= MAX_DEPTH) return;
+    // (harness-37: a `replays` row samples every entry: a path that runs on one frame of a race,
+    // in an interrupted sample, can only be kept for a replay if that entry is sampled)
+    if((e >= SAMPLE_ALL_FIRST && e % SAMPLE_STRIDE != 0 && !table[i].replays) || s->samples >= MAX_SAMPLES ||
+       depth >= MAX_DEPTH)
+      return;
     if(table[i].waitsForInterrupts && irqOwner >= 0) return;  // one interrupt recorder at a time
     // an entry reached in a stack frame that is already being sampled is a branch back to
     // the entry (a loop) or a tail jump, not a call: it would steal the real sample's return
@@ -1816,7 +1845,10 @@ void difftest_on_insn(Cpu* cpu) {
       depth = k;
       break;
     }
-    if(pc >= r->entry && pc < r->end) stats[smp->idx].visited[pc - r->entry] = true;
+    if(pc >= r->entry && pc < r->end) {
+      stats[smp->idx].visited[pc - r->entry] = true;
+      sampVisited[k][pc - r->entry] = true;
+    }
     if(cpu->sp < smp->minSp) smp->minSp = cpu->sp;
     // at the routine's own stack depth, every instruction must lie inside its extent (or a
     // range it tail-jumps into)
@@ -2060,7 +2092,7 @@ bool difftest_report(const char* resultsPath) {
     const Routine* r = &table[i];
     Stats* s = &stats[i];
     int need = 0, seen = 0;
-    for(int k = 0; k < MAX_EXTENT; k++) if(s->starts[k]) { need++; if(s->visited[k]) seen++; }
+    for(int k = 0; k < MAX_EXTENT; k++) if(s->starts[k]) { need++; if(s->visitedCmp[k]) seen++; }  // (harness-37)
     bool reached = s->entries > 0 || s->fuzzPass + s->fuzzFail > 0;
     char liveFlags[5] = "", flagNote[64] = "";
     bool flagsOk = true;
@@ -2112,7 +2144,7 @@ bool difftest_report(const char* resultsPath) {
     if(reached && seen < need) {  // which instruction starts no sample reached
       printf("    paths not reached:");
       for(int k = 0, shown = 0; k < MAX_EXTENT && shown < 8; k++)
-        if(s->starts[k] && !s->visited[k]) { printf(" $%06X", (unsigned)(r->entry + k)); shown++; }
+        if(s->starts[k] && !s->visitedCmp[k]) { printf(" $%06X", (unsigned)(r->entry + k)); shown++; }
       printf("\n");
     }
     for(int f = 0; f < 4; f++) {
@@ -2146,7 +2178,7 @@ bool difftest_report(const char* resultsPath) {
         int bit = 0, nib = 0, at = 0;
         for(int k = 0; k < MAX_EXTENT; k++) {
           if(!s->starts[k]) continue;
-          if(s->visited[k]) nib |= 8 >> bit;
+          if(s->visitedCmp[k]) nib |= 8 >> bit;
           if(++bit == 4) { vis[at++] = "0123456789abcdef"[nib]; bit = nib = 0; }
         }
         if(bit) vis[at++] = "0123456789abcdef"[nib];

@@ -6689,6 +6689,10 @@ static void call_race_track_start(const Regs* in, Regs* out) {
 static void call_race_frame_head(const Regs* in, Regs* out) { (void)in; (void)out; race_frame_head(); }
 static void call_race_frame_wait(const Regs* in, Regs* out) { (void)in; (void)out; race_frame_wait(); }
 static void call_race_frame_body(const Regs* in, Regs* out) { (void)in; (void)out; race_frame_body(); }
+// race_frame_rest ($82:867B, harness-37): the body's short rest, after the frame drawn: the NMI
+// rarely lands in it, so its race-end paths (one frame a race, timed by the NMI's frame count)
+// are compared live
+static void call_race_frame_rest(const Regs* in, Regs* out) { (void)in; (void)out; race_frame_rest(); }
 // race_end ($82:8776, race-loop-2): the flags of the frame wait (as call_wait_frames)
 static void call_race_end(const Regs* in, Regs* out) {
   (void)in;
@@ -6991,13 +6995,21 @@ static void fuzz_vs_letter(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 
 // the championship menu's pass ends at its button test: C V oam_finish_near's, or with down
 // pressed its CMP #3's C (the cursor at the bottom)
-static void call_champ_menu_frame(const Regs* in, Regs* out) {
+// champ_menu_pads ($80:C2DD, harness-37): the pass's up/down test, cut apart from its drawing: the
+// presses reach D+$0E through the NMI, so a replay of the whole pass (interrupts off) never sees
+// one; the short test is compared live. Its flags as the whole pass's
+static void call_champ_menu_pads(const Regs* in, Regs* out) {
   (void)in;
   const bool down = rd16(DP + 0x0E) & 0x0400;
   const uint16_t line = rd16(DP + 0x48);
-  champ_menu_frame();
+  champ_menu_pads();
   setSbc16(out, rd16(DP + 0x6C), 0x0900);
   if(down) out->c = line >= 0x0003;
+}
+static void call_champ_menu_draw(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  champ_menu_draw();
 }
 
 // the championship screen's opening animation: the slide step returns its offset in X
@@ -13340,9 +13352,12 @@ const Routine routines[] = {
   {.name = "race_frame_wait", .entry = 0x828656, .end = 0x82865B, .endAt = 0x82865B, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
    .maxInsns = 40000000, .call = call_race_frame_wait},  // no fuzz: it waits
-  {.name = "race_frame_body", .entry = 0x82865B, .end = 0x828773, .endAt = 0x828773, .endAt2 = 0x828776,
+  {.name = "race_frame_body", .entry = 0x82865B, .end = 0x82867B, .endAt = 0x82867B, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_race_frame_body,
+   .manyEffects = true, .dsp4Tape = true, .replays = 32},
+  {.name = "race_frame_rest", .entry = 0x82867B, .end = 0x828773, .endAt = 0x828773, .endAt2 = 0x828776,
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true,
-   .call = call_race_frame_body, .manyEffects = true, .dsp4Tape = true, .replays = 32,
+   .call = call_race_frame_rest, .manyEffects = true,
    .holes = {{0x828689, 0x8286AB}, {0x8286B3, 0x8286BE}, {0x8286C6, 0x8286D1}, {0x8286F4, 0x8286FA}}},
        // never run: the demo's end, the Start button's pause, the Select button's way out (a trap),
        // a message (ported, untested)
@@ -13389,7 +13404,7 @@ const Routine routines[] = {
    .fuzzStack = 0x1FF1, .holes = {{0x85C864, 0x85C879}}},
   {.name = "vs_road_rows_view3", .entry = 0x85CA18, .end = 0x85CD78, .rtl = true, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_rows_view3, .fuzz = fuzz_vs_road_rows_view3,
-   .fuzzStack = 0x1FF1, .holes = {{0x85CBBA, 0x85CBCF}}},
+   .fuzzStack = 0x1FF1, .replays = 32, .holes = {{0x85CBBA, 0x85CBCF}}},
   {.name = "vs_race_reset", .entry = 0x82BA12, .end = 0x82BD06, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_reset, .fuzz = fuzz_vs_race_reset},
   {.name = "vs_grid_setup", .entry = 0x82BD0E, .end = 0x82BDA9, .source = "src/vs.c", .needM16 = true,
@@ -13409,8 +13424,11 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_vs_step_share, ALL_OUTPUTS, .fuzz = fuzz_vs_steps_share},
   {.name = "vs_steps_share", .entry = 0x82BDA9, .end = 0x82BDDA, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_vs_steps_share, ALL_OUTPUTS, .fuzz = fuzz_vs_steps_share},
-  {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
-   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_frame,
+  {.name = "champ_menu_frame", .entry = 0x80C2BB, .end = 0x80C2DD, .endAt = 0x80C2DD, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_draw},
+       // (harness-37: its drawing; the up/down test is champ_menu_pads)
+  {.name = "champ_menu_pads", .entry = 0x80C2DD, .end = 0x80C306, .endAt = 0x80C306, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .call = call_champ_menu_pads,
    .holes = {{0x80C2E4, 0x80C2F0}}},  // up pressed (never in the movies)
   {.name = "champ_slide_step", .entry = 0x80C05C, .end = 0x80C091, .endAt = 0x80C091, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .db = 0x81, .compareX = true, .call = call_champ_slide_step},
@@ -13894,10 +13912,10 @@ const Routine routines[] = {
    // lists 1-3: the money short, after a refund or not: no movie runs it (holes; as list 4's)
    .holes = {{0x809088, 0x809090}, {0x809095, 0x80909A}}},
   {.name = "shop_buy_list2", .entry = 0x809100, .end = 0x8091AE, .source = "src/shop.c", .needM16 = true, .needX16 = true,
-   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list2,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .maxInsns = 40000000, .call = call_shop_buy_list2,
    .holes = {{0x809135, 0x80913D}, {0x809142, 0x809147}}},  // as list 1's
   {.name = "shop_buy_list3", .entry = 0x8091AE, .end = 0x80925C, .source = "src/shop.c", .needM16 = true, .needX16 = true,
-   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list3,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .maxInsns = 40000000, .call = call_shop_buy_list3,
    .holes = {{0x8091E3, 0x8091EB}, {0x8091F0, 0x8091F5}}},  // as list 1's
   // lists 6-8: the password movie buys a first part from each (and owns one in lists 6 and 8).
   // Never run on a movie, and a waiting row has no fuzz: a part bought here sold back
@@ -13921,7 +13939,7 @@ const Routine routines[] = {
    .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list6,
    .holes = {{0x809509, 0x809522}, {0x809536, 0x809572}}},
   {.name = "shop_buy_list4", .entry = 0x80925C, .end = 0x80930A, .source = "src/shop.c", .needM16 = true, .needX16 = true,
-   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .call = call_shop_buy_list4,
+   .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .maxInsns = 40000000, .call = call_shop_buy_list4,
    .holes = {{0x80929E, 0x8092A3}}},  // the money short with no refund (JSL shop_flag_fb, RTS): no
                                       // movie runs it and a waiting row has no fuzz: unchecked
   {.name = "shop_buy_colour", .entry = 0x80930A, .end = 0x80931A, .source = "src/shop.c", .needM16 = true, .needX16 = true,

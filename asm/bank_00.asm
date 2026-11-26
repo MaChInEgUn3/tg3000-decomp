@@ -7525,6 +7525,7 @@ champ_menu_frame:
     sta.b $1E                   ; $80C2D5
     jsr.w menu_bar_draw         ; $80C2D7
     jsr.w oam_finish_near       ; $80C2DA
+champ_menu_pads:
     lda.w #$0800                ; $80C2DD
     trb.b $0E                   ; $80C2E0
     beq CODE_80C2F0             ; $80C2E2

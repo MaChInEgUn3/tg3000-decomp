@@ -5001,8 +5001,11 @@ middle, at `$82:8656`. It is three rows.
   - the frames it took kept;
   - after the race: the cars' places kept for the results, and the fade out;
   - it returns true when the loop ends (`$82:8776`, a second cut).
-- **results:** the NMI lands in every live sample, so it is judged by its 32 replays. Over the
-  movies together, every path that runs is reached.
+- **results:** the NMI lands in every live sample, so it is judged by its replays.
+  - **Corrected by harness-37:** the claim was wrong. Its replays all came from race starts, and
+    the race-end paths were credited from dropped samples only.
+  - The body is now cut after the frame is drawn: `race_frame_rest` (`$82:867B`), the flags, the
+    buttons, the race's end and the fade, compared live.
 - **Never-run paths, ported from the ROM's bytes, untested (holes):**
   - the demo's end;
   - the Start button's pause (the movies never pause a race);
@@ -5137,6 +5140,46 @@ registers. The rest of `$80:DC19`'s callers and the track events' tail are examp
 - **Results:** 1,353 live samples on the VS movie, 500 fuzz cases, 34/34 paths.
 
 **Check:** the incremental gate (additions only).
+
+## Paths credited only from compared samples; replays kept by new paths (harness-37, 2026-11-26)
+
+**The advisor's call, open to the owner's veto.**
+
+**The fault.** A row's paths were marked by every sample of it, including the ones an interrupt
+dropped without any comparison with the C.
+- **How it was found:** a scratch build counted, for each row, the paths that compared samples
+  reached.
+- **What it showed:** on the 60k and VS movies, six rows had paths credited only from dropped
+  samples. `race_frame_body` had 35 of 83 compared (no replay covered the race's end), and
+  `vs_sprites_view2` had 286 of 326.
+
+**The changes:**
+- **Crediting:** a row's paths come only from its compared samples (live, replayed and fuzz), not
+  from dropped or abandoned ones, nor from lagged ones set apart.
+- **Replays kept by new paths:** a row with a `replays` share now samples every entry, and takes a
+  replay slot at every sample, also after its live samples.
+  - An interrupted sample is kept when it ran a path that no compared or kept sample has.
+  - Half the share is still kept spread over the movie (harness-34).
+- **The race loop's body, cut once more:**
+  - **The cause:** its race-end paths start the fade when the NMI's frame count, taken mid-body,
+    passes the timer. A replay, with the interrupts off, never takes it there.
+  - **The cut:** after the frame is drawn, into `race_frame_body` (`$82:865B`-`$867B`, replays)
+    and `race_frame_rest` (`$82:867B` to the jump back).
+  - **Why it works:** the NMI rarely lands in the short rest, so it is compared live: 4,000
+    samples, 72/72 paths.
+- **`vs_road_rows_view3`** gets a share of 32: two of its paths ran only in interrupted samples.
+
+**What the first full run under the new crediting failed:** four rows. They now pass:
+- **`shop_buy_list2`, `3` and `4`:** their long samples (the shop's lists, many frames) were
+  abandoned when they recorded more than 64 interrupts, the cap for a row with no budget. They
+  now have the long-sample budget (`maxInsns`), so those samples are compared. Every path is
+  reached on the password or shop-buy movie.
+- **`champ_menu_frame`:** its down presses reach D+`$0E` through the NMI, so its replays (with
+  the interrupts off) never saw one. It is cut before its up/down test, into
+  `champ_menu_frame` (its drawing) and `champ_menu_pads` (`$80:C2DD`). The test is compared
+  live: 1,079 samples, 12/12 paths.
+
+**Check:** the full gate. Under the new crediting, every row is judged again.
 
 **Check:** the full gate (a new waiting row).
 

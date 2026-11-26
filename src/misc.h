@@ -1416,7 +1416,10 @@ void race_track_start(void);
 // the jump back ($82:865B; true when the loop ends).
 void race_frame_head(void);
 void race_frame_wait(void);
-bool race_frame_body(void);
+void race_frame_body(void);
+// $82:867B: the race loop's rest after the frame drawn (flags, buttons, the race's end; true when the
+// loop ends).
+bool race_frame_rest(void);
 // $82:8776: the race loop's way out (the cars ordered, DMA and interrupts off, a frame's wait).
 void race_end(void);
 
@@ -1749,6 +1752,10 @@ void champ_menu_ready(uint16_t dp);
 
 // $80:C2BB: a pass of the championship menu's loop (colours, bar, sprites, the cursor).
 void champ_menu_frame(void);
+// $80:C2DD: its up/down test (a cut of its own: the pads' presses reach it through the NMI).
+void champ_menu_pads(void);
+// $80:C2BB up to $80:C2DD: its drawing.
+void champ_menu_draw(void);
 
 // The options menus' interpreter: the menu drawn up to the focused item's selection test
 // ($8A:A2AF: 1 there, 0 at the end), the rest after it ($8A:A31D), the selection's test
