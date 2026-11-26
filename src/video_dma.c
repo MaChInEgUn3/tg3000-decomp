@@ -61,6 +61,7 @@ void upload_tiles_c680(uint16_t entry, uint16_t offset) { upload_tiles(TILE_OFFS
 // TG3000_ROUTINE($80:837D) decompress_to_vram (long call)
 uint16_t decompress_to_vram(uint16_t dp, uint8_t src_bank, uint16_t src, uint16_t vram_word) {
   uint16_t end;
+  video_note_source((uint32_t)src_bank << 16 | src, vram_word);  // (port request I)
   uint16_t len = decompress_near(dp, src_bank, src, 0x7F, 0x0000, &end);
   video_upload_vram(vram_word, 0x7F0000, len ? len : 0x10000);
   return end;

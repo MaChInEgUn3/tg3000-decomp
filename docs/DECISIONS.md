@@ -6224,6 +6224,25 @@ target. Without it, the port's ticker never lit, and it returned after 3 frames 
 
 **Check:** the full gate (`platform.h`'s contract text changed).
 
+## The ROM source of unpacked uploads named (port request I, 2026-11-26)
+
+**A new platform call, `video_note_source(rom, vram_word)`.** It says that the next upload to
+`vram_word` is the game's unpacking of the compressed stream at the ROM bus address `rom`. A
+port may then convert that graphic from the cartridge once, instead of recognising the bytes it
+is given. The bench ignores the call; the uploads themselves are still compared as before.
+
+**Where it is called:** the two helpers that unpack and then upload.
+- **`decompress_to_vram`:** at once, to the given VRAM word.
+- **`queue_unpacked_upload`:** through its task's slot, `$1C00` bytes a frame, from the queued
+  VRAM word.
+
+**Not named yet:** the other 45 direct calls of `decompress`/`decompress_near`. They unpack into
+`$7F` buffers that the game then builds from, as maps, built words and later uploads, so their
+VRAM word is not known at the unpacking. They can be named one by one if the port needs them.
+
+**Check:** the full gate. `platform_bench.c` belongs to the harness, which needs a full run on
+any change. Otherwise only lines were added, and no row changed.
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

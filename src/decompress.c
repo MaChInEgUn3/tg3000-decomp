@@ -174,6 +174,7 @@ uint16_t decompress_near(uint16_t dp, uint8_t src_bank, uint16_t src, uint8_t ds
 // TG3000_ROUTINE($80:B95D) queue_unpacked_upload
 uint16_t queue_unpacked_upload(uint16_t dp, uint8_t src_bank, uint16_t src, uint16_t vram, uint16_t* src_end) {
   while(rd16(dp + 0x64) != 0) platform_wait_vblank();
+  video_note_source((uint32_t)src_bank << 16 | src, vram);  // (port request I)
   uint16_t len = decompress_near(dp, src_bank, src, 0x7F, rd16(dp + 0x5E), src_end);
   wr16(dp + 0x6A, vram);
   wr16(dp + 0x66, rd16(dp + 0x5E));

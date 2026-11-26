@@ -25,6 +25,11 @@ void video_fill_vram(uint16_t vram_word, uint8_t value, uint32_t size);
 // $2119 with VMAIN = $80; the console takes it only in vblank or under forced blank, which
 // is when the game does it.)
 void video_write_vram_word(uint16_t vram_word, uint16_t value);
+// Port request I: the next upload to VRAM word `vram_word` is the game's unpacking of the
+// compressed stream at the ROM bus address `rom` (decompress_to_vram uploads it at once;
+// queue_unpacked_upload through its task's slot, $1C00 bytes a frame). A port may convert that
+// graphic from the cartridge once instead of reading the bytes it is given; the bench ignores it.
+void video_note_source(uint32_t rom, uint16_t vram_word);
 // The Mode 7 vertical offset alone (the original's byte writes to $210E leave it apart from
 // BG1's: vs-race-20).
 void video_set_m7_vofs(uint16_t value);
