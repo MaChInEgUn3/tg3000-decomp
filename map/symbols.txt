@@ -136,6 +136,7 @@ func    808934   nmi_tail            ; NMI common tail: pads, sound queue, sound
 func    8A8E1B   oam_from_objects    ; the 128-slot object table to sprites (long) -> src/sprites.c
 func    8AA050   func_8AA050         ; upload + oam_from_objects + counters, then func_8AA005 (long) -> src/misc.c
 func    80FBD1   nmi_target_80FBD1   ; NMI target: func_8A8000, nmi_tail -> src/frame.c
+func    80FC14   nmi_target_80FC14   ; NMI target (results screen): $0026 |= 2, func_8A987F, nmi_tail -> src/frame.c
 func    80FC5F   nmi_target_80FC5F   ; NMI target: $0026 |= 2, func_8AA050, nmi_tail -> src/frame.c
 func    80E48A   irq_split_bottom    ; IRQ: the screen's lower part (scroll 0, layers, colour math) -> src/frame.c
 func    80E3F7   irq_split_top       ; IRQ: the screen's upper split (scroll, layers, colour 0, next IRQ) -> src/frame.c

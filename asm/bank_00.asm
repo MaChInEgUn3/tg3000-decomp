@@ -14226,6 +14226,7 @@ results_screen_run_close:
     rep.b #$20                  ; $80FBF5
     rtl                         ; $80FBF7
     incbin !baserom:$7BF8..$7C14
+nmi_target_80FC14:
     jml.l $8A968E               ; $80FC14
     jmp.w nmi_tail              ; $80FC18
     incbin !baserom:$7C1B..$7C20

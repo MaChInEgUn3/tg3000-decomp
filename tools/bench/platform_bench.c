@@ -3,7 +3,13 @@
 // call as an effect for the differential test to compare with the original's DMA.
 #include "platform.h"
 
+#include <stdio.h>
+
 #include "difftest.h"
+#include "tg3000.h"
+
+// port request 2: the trap names the code hit (the bench then stops, as a port may)
+void platform_unported(const char* what) { fprintf(stderr, "unported: %s\n", what); }
 
 void video_upload_vram(uint16_t vram_word, uint32_t src, uint32_t size) {
   difftest_effect(EFFECT_VRAM, vram_word, src, size);

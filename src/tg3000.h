@@ -16,10 +16,13 @@
 extern uint8_t g_ram[TG3000_WRAM_SIZE];  // $7E:0000-$7F:FFFF
 extern const uint8_t* g_rom;              // the 1 MB ROM image, as file offsets
 
+// The platform is told first (port request 2: a player sees what was hit; it may not return).
+void platform_unported(const char* what);
+
 // Code the movies never run and that is not ported yet: reaching it in C stops the program
-// (`what` names it).
+// (`what` names it), after platform_unported.
 static inline void tg3000_unported(const char* what) {
-  (void)what;
+  platform_unported(what);
   __builtin_trap();
 }
 

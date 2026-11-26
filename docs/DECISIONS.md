@@ -5225,6 +5225,43 @@ tail.
 
 **Check:** the incremental gate (additions only).
 
+## The port's requests; requests 8 and 2 done (port-req-1, 2026-11-26)
+
+**Where the port's requests live.** The port session (TopGear3000-Recompiled) keeps them in its
+repository: `docs/decomp-requests.md`, the source of truth, with the sound design in
+`docs/proposals/sound.md`.
+- **Why they were missed:** until now they were in a claude-mem list this session never saw, so
+  the decomp's recent work followed its own plan. The owner noticed.
+
+**Their order, for the port:**
+
+| Priority | Item | Request |
+|---|---|---|
+| High | A | the race's DSP-4 commands `$01`/`$06`/`$07`/`$08`/`$09` as native C (today streamed as byte tapes) |
+| High | B | sound loading in C (request 4) |
+| High | C | boot and the top-level dispatcher (request 1) |
+| Then | D | the two-task kernel's tails (request 7) |
+| Then | E | the results screen's NMI target (request 8) |
+| Then | F | a platform hook before a trap (request 2) |
+| Then | G | a per-voice sound report (request 5) |
+| Then | H | alternatives to reading chip state back (request 9) |
+| Low | I, J | requests 3 and 6 |
+
+**The owner on the code only the TAS runs:** the port needs it, so it stays in scope. It is not
+chased now.
+
+**Request 8: `nmi_target_80FC14` (`$80:FC14`).**
+- **What it is:** the results screen's NMI target. It sets `$0026` |= 2, calls `func_8A987F`
+  (empty) and then `nmi_tail`; the original's body is at `$8A:968E`.
+- **Results:** 247 live samples on the 60k movie, 500 fuzz cases, 2/2 paths.
+
+**Request 2: the platform hook.**
+- **What it is:** `tg3000_unported` now calls `platform_unported(what)` before it traps, so a
+  port can show which never-run code was hit.
+- **On the bench:** it prints the name to stderr.
+
+**Check:** the full gate (`src/tg3000.h` changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

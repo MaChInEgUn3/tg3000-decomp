@@ -5147,6 +5147,7 @@ static void call_nmi_tail_wrong(const Regs* in, Regs* out) {
 // ---- nmi_target_80FBD1 / nmi_target_80FC5F ----  as nmi_tail
 static void call_nmi_target_80FBD1(const Regs* in, Regs* out) { nmi_target_80FBD1(); restoreNmiFrame(in, out); }
 static void call_nmi_target_80FC5F(const Regs* in, Regs* out) { nmi_target_80FC5F(); restoreNmiFrame(in, out); }
+static void call_nmi_target_80FC14(const Regs* in, Regs* out) { nmi_target_80FC14(); restoreNmiFrame(in, out); }
 static void call_nmi_target_80E28C(const Regs* in, Regs* out) { nmi_target_80E28C(); restoreNmiFrame(in, out); }
 static void call_nmi_target_80E175(const Regs* in, Regs* out) { nmi_target_80E175(); restoreNmiFrame(in, out); }
 static void call_nmi_target_80D784(const Regs* in, Regs* out) { nmi_target_80D784(); restoreNmiFrame(in, out); }
@@ -13058,6 +13059,9 @@ const Routine routines[] = {
   {.name = "nmi_target_80FBD1", .entry = 0x80FBD1, .end = 0x80FBD8, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80FBD1, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
    .fuzz = fuzz_nmi_tail},
+  {.name = "nmi_target_80FC14", .entry = 0x80FC14, .end = 0x80FC1B, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_target_80FC14, ALL_OUTPUTS,
+   .alsoIn = {{0x8A968E, 0x8A96AD}, {0x808934, 0x80894E}}, .fuzz = fuzz_nmi_target_80FC5F},  // (port request 8)
   {.name = "nmi_target_80FC5F", .entry = 0x80FC5F, .end = 0x80FC7D, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_target_80FC5F, ALL_OUTPUTS, .alsoIn = {{0x808934, 0x80894E}},
    .fuzz = fuzz_nmi_target_80FC5F},

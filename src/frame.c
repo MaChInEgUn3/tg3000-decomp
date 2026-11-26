@@ -131,6 +131,15 @@ void nmi_target_80FBD1(void) {
   nmi_tail();
 }
 
+// TG3000_ROUTINE($80:FC14) nmi_target_80FC14
+// The results screen's NMI target (port request 8): $0026 |= 2, func_8A987F (empty), then the
+// common tail. The original jumps to $8A:968E for its body and back to $80:FC18.
+void nmi_target_80FC14(void) {
+  wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
+  func_8A987F();
+  nmi_tail();
+}
+
 // TG3000_ROUTINE($80:FC5F) nmi_target_80FC5F
 void nmi_target_80FC5F(void) {
   wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
