@@ -6409,6 +6409,45 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road's first rounding: what a road run leaves (dsp4-01r, 2026-11-26)
+
+**Measured** with pairs of road runs on one probe chip (firmware, outputs only). The probe
+resets only the chip's interface between cases, so the second run of a pair sees what the
+first left. The second run has no `$0A` before it.
+
+**The results** (800 pairs, the first run random and game-like, with a `$0A` of `$C4C4`,
+`$4444` or `$0000` before it):
+
+| The first run | The second run | Pairs |
+|---|---|---|
+| draws a line | as a fresh chip: rounding `$2000` (`src/dsp4.c`, `$8000` edges) | 738 of 738 |
+| draws nothing | the first run's `$0A` rounding, still unused | 62 of 62 |
+
+**So the rounding is chip state, used once:**
+- a `$0A` sets it from its edges 2 and 3;
+- the first road row that draws uses it, and leaves `$2000`;
+- multiplies, `$0B` and road runs that draw nothing leave it as it is.
+
+`src/dsp4.c` already does this inside one run. Across runs, its caller passes the state:
+- the last `$0A`'s edges when it came after the last road run that drew;
+- `$8000` otherwise.
+
+**What changes it in the race's first frames.** There, the windows are not `$2000` (dsp4-01q:
+`0-1,759`, `1,760-3,519`, …). The previous frame's road drew lines, so `$2000` was left. In
+between came only `$07`, `$08`, `$03`, `$0B` (ruled out), `$09`, `$06` and multiplies (ruled
+out). So one of the sprite commands (`$07`, `$08`, `$09`, or `$03`) sets it. It is not
+modelled until they are (request A's remaining commands).
+
+**For the wiring of `road_rows_project`:**
+- **After a `$0A`** (every frame once the race runs), the state is the `$0A`'s edges: exact.
+- **The race's first frames** (no `$0A`; about 192 at each race start in `race1`) need the
+  sprite commands. Until then a line word may be off by 1 there.
+- **So the row's samples with no `$0A` since the last drawing road run are set apart** (the
+  advisor's fallback, as harness-15 does for lag). This needs a harness rule and the full
+  gate.
+
+**Check:** a measurement, recorded here. It changes no code.
+
 ## The road command: the line limit, and the rounding without a `$0A` (dsp4-01q, 2026-11-26)
 
 **The advisor's two measurements before wiring the native road into `road_rows_project`.**

@@ -53,6 +53,10 @@ uint16_t dsp4_sprite(uint16_t x, uint16_t y, uint16_t attr, uint16_t out[2]);
 // power-on. Measured for $0A runs whose two rows are equal, which is every one the game
 // sends before the road. Without a $0A since the last road run (the race's first frames), the
 // chip's rounding is what the commands since left: not modelled (a line word may be 1 off).
+// (dsp4-01r: the rounding is used once: the first row that draws leaves $2000, edges $8000, for
+// the next run, and a run that draws nothing leaves it unused. So pass the last $0A's edges if
+// it came after the last run that drew, else $8000; the sprite commands, $07/$08/$09 or $03,
+// change it too.)
 typedef struct {
   int32_t x, g, e, s;       // the road's sideways place, its turn rate, the height, the slope (16.16)
   uint16_t head[15];
