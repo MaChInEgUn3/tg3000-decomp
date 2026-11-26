@@ -6409,6 +6409,43 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road command's per-line words on a flat road: exact (dsp4-01n, 2026-11-26)
+
+**Measured** on the probe (firmware, chosen inputs, outputs only), with the track words at 0:
+a flat, straight road.
+
+**The rule, for every row k** (k = 0 is the first, from the camera's line). Row k covers
+n_k = y_{k−1} − y_k lines, with y_{−1} = word 1 (the camera's line). Line j runs from 0 to
+n_k − 1. With R = ⌊16,384 / n_k⌋, and the interpolation of a change d being
+I(d, j) = (j · d · R + 8,192) >> 14:
+
+- **The `$0798` word:** S_k + j + I(A_k − A_{k−1}, j)
+  - A_k = ((word 10 · h_k) >> 15) − word 10, with A_{−1} = 0;
+  - S_0 = C = word 4 − word 5;
+  - S_k = C + A_{k−1} + (word 1 − y_{k−1}): the previous row's end, as in dsp4-01k.
+- **The `$0796` word:** clamp(T_k + I(B_k − B_{k−1}, j), −128, 896)
+  - B_k = ((word 7 · h_k) >> 15) − word 7, with B_{−1} = 0;
+  - T_k = word 8 + word 7 + B_{k−1}.
+
+  It is the same scheme with word 7 (63) in place of word 10, no line term, and kept within
+  −128..896.
+
+**Checked:**
+- **6,000 random runs of four rows:** words 1 = 2 from 10 to 80, words 4 and 5 0-400, word 10
+  1-2,000, words 7 and 8 −300 to 1,100, the heights random and falling.
+- **Both words exact on all 21,910 rows.** Rows with no line (n_k = 0) are left out.
+- **Earlier checks:** 4,000 runs of three rows for the `$0798` word, all exact.
+
+**Also seen** (to check next): each line's first word is word 9 (1,724) minus 4 a line.
+
+**Not yet:**
+- a hill or a curve: track words 0 and 1, word 3, and the `in` words per row;
+- the frame's `$0A` `+1`;
+- word 2 (the line limit) different from word 1. dsp4-01g saw garbage there, and the game
+  keeps them equal.
+
+**Check:** a measurement, recorded here. It changes no code.
+
 ## The road line word, first row: exact (dsp4-01m, 2026-11-26)
 
 **The rule.** The `$0798` word of line j of the first row is
