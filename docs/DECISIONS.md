@@ -6349,6 +6349,29 @@ and by +8.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The line word's interpolation, narrowed (dsp4-01h, 2026-11-26)
+
+**Two hypotheses ruled out, on the probe (the firmware chip, chosen inputs; outputs only):**
+- **That the depth `h` is interpolated per line, then put through the boundary formula.** It
+  misses 2,108-2,247 of 6,100 lines, worse than the value's own interpolation (925).
+- **That a row's first line is a single fixed-point product of the row above's `h`.**
+  - **The sweep:** the first row's `h` from 20,000 to 20,640 in steps of 40, all of them
+    ending on line 31. The next row's first `$0798` word steps by one: −84, −83, −82, −81.
+  - **The steps are uneven:** about 148, then 185, then 185 of `h` per step (with the earlier
+    run's points between them).
+  - **So it is an interpolation** between the two rows' values, by where the line falls
+    between them, not a product of `h` alone.
+
+**Exact so far** (dsp4-01e/01g): every row's four answers and its line count; at the camera's
+line, the `$0798` word (head 4 − head 5); and the `$0796` word's base (head 8).
+
+**Next (dsp4-01i):** isolate the interpolation.
+- **The design:** rows of two or three lines each. Vary one boundary's `h` at a time, and record
+  every line's word and the rows' exact `y` (E·h/32768 before flooring).
+- **The fit:** to the value's step (in 16.16 or 8.8) and its start, from the exact `y`.
+
+**Check:** a measurement, recorded here. It changes no code.
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
