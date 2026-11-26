@@ -5505,6 +5505,57 @@ Once a command is native, the routines that stream it today call its function in
 **Check:** the comparator on both tapes, then the selftest. `src/` is identical to
 `b67f44e`, the last full run.
 
+## The road command's runs read in the game's grammar (dsp4-01d, 2026-11-26)
+
+**Request A, step 2a: the road command `$01`, the measurement before any fit** (the
+advisor's order: the grammar first, then the lengths, then the values).
+
+**`tools/dsp4_road.py TAPE OUT.jsonl [--ref]`** reads each run of the command in
+`road_rows_project`'s grammar (`$85:B3D7`, `src/misc.c`) and writes one JSON line a run:
+- **The header:** 15 words after the command word.
+- **Then 28 rows (or 27),** each with:
+  - **sent:** its ROM height (`$83:ACEC`); the first row's 3 extra words; 3 words of the
+    track (`$3B6E`/`$3AEE`/`$3BEC` + k);
+  - **answered:** 4 words (stored at `$34EC`-`$37EC`); a count; then that many lines of 3
+    words (an index into the line buffer, and the words for `$0798` and `$0796`);
+  - **only when present:** an object's words, and an edge's 3 words after `$8001`.
+- **The tapes:** a bench `--dsp4-tape-out` tape, or a refbench `--dsp4-tape` tape with
+  `--ref`, whose records carry the instruction's own PC.
+
+**Measured on the firmware's answers (outputs only).**
+
+| Tape | Runs | Rows | Lines | Answer words |
+|---|---|---|---|---|
+| `race1.txt` | 585 | 16,380 | 29,100 | 169,200 |
+| The TAS's first 30,000 frames | 9,604 | 268,392 | 494,477 | 2,825,391 |
+
+- **Every run reads whole.** All are `$01` (D+$E4 negative). `$0F` never ran, and nor did
+  the chip's object words or the `$8001` edges: these runs copy the objects from bank `$90`
+  themselves.
+- **The rows:** 9,084 runs have 28 and 520 have 27.
+- **The lines are the answer's length:** a run's lines are consecutive, the index falling by 4
+  from the top of the line buffer (`$0D7C` or `$06BC`, header word 9).
+  - The TAS has 80 distinct totals; 6,645 runs give 49.
+  - Over a crest the lines stop early: one run's are 19, 11, 3, 1, then 0 for the last 24
+    rows.
+- **What varies, over the TAS's runs:**
+  - **The header:** words 0-5, 8 and 10 never change. Word 6 (`$0200`) takes 4,547 values,
+    word 7 403, and words 11-14 take 64, 12, 128 and 34.
+  - **The track words:** 13, 17 and 2 values.
+- **`race1.txt` is too uniform to fit:** 573 of its 585 runs give 49 lines. The fit uses the
+  TAS tape.
+
+**Next (dsp4-01e):** the lengths.
+- **What to fit:** each row's count as a function of its inputs, exact on all 9,604 TAS runs
+  and 585 `race1` runs; then the line's first word.
+- **How:** change one input at a time on the firmware chip (chosen inputs, noted at first
+  use).
+- **The stop rule** (the advisor's): if two units leave the lengths and that word inexact,
+  park with the numbers and ask the owner.
+
+**Check:** the tool reads every run of both tapes whole (exit status 0). This is a
+measurement: it adds a tool, and no row or C changes.
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
