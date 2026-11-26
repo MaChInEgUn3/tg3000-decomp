@@ -6409,6 +6409,42 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The window command `$08`: the rule for one row, exact (dsp4-08d, 2026-11-26)
+
+**Measured on the probe** (firmware, chosen inputs, outputs only). X is header word 39
+(`$1EF6`), P a row's word 3 (`$07`'s x), h its height, and e its edge words.
+
+**Each line's word** is (left << 8) | right, both clamped to 0..`$FF`.
+- **The camera window (the first answer):**
+  - left = `$80` − X − 1 + (s(c1) · `$7FFF` >> 15);
+  - right = `$80` − X + 1 + (s(c0) · `$7FFF` >> 15);
+  - c0..c3 are the camera row's edge words: c0/c1 for road 1's table, c2/c3 for road 2's.
+- **A row's ends:**
+  - left = `$80` − X − 1 + (((X − P) · 32,768 + s(e1) · h) >> 15);
+  - right = `$80` − X + 1 + (((X − P) · 32,768 + s(e0) · h) >> 15);
+  - e2/e3 do the same for road 2's table.
+- **The lines between:** prev + ((j · (end − prev) · ⌊16,384 / n⌋) >> 14), j = 1..n.
+  - **No rounding offset,** unlike `$01`'s `$2000`. That is why the last line sits one below
+    the end for a positive change unless n is a power of two. dsp4-08c's "−1 / −2" and its
+    "63/64" were that, not separate rules.
+- **Road 1's x (row word 1) changes nothing.** Both tables use word 3's x.
+
+**Checked:**
+- **The row's ends, as the last line:** 4,000 random one-row runs (X and P −`$40`..`$C0`, h
+  `$400`-`$7FFF`, e ±80), exact.
+- **Every line:** 3,000 random one-row runs (lines 1-49), exact.
+- **Several rows and both tables** (`tools`-less scratch model; the line limit and crests as
+  `$01`'s): 781 of 1,500 random runs exact. Every miss is in road 2's table.
+  - **The pattern:** at a row's start, the right byte sometimes holds the previous row's end
+    for a few lines, then joins the interpolation. For example, `$77`, `$77`, then `$60` where
+    the rule gives `$6F`, `$67`, `$60`.
+  - **Ruled out:** it is neither road 1's window on the same line nor simply a crossed window.
+
+**Next (dsp4-08e):** road 2's held edge, then the header's constants as clamps; then the
+native function.
+
+**Check:** a measurement, recorded here. It changes no code.
+
 ## The window command `$08`: the edges' shape (dsp4-08c, 2026-11-26)
 
 **Measured on the probe** with one row, all edge words 0, one input at a time (outputs only).
