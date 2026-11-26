@@ -7,7 +7,6 @@
 #ifndef TG3000_DSP4_H
 #define TG3000_DSP4_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 // Command $0000: the signed 16 x 16 -> 32-bit product (results read low word first).
@@ -42,28 +41,5 @@ uint16_t dsp4_row(const int16_t edge[4]);
 // the 34th entry of a list on one row and after (the game sends two a list), and rows 233,
 // 235, 236 and 238 depend on its history (the C gives the fresh chip's answer).
 uint16_t dsp4_sprite(uint16_t x, uint16_t y, uint16_t attr, uint16_t out[2]);
-
-// The chip as the game talks to it (port request A, dsp4-chip-1): a byte stream, the command
-// word first (low byte, then 0), then its parameters, then its answer, read low byte first. A
-// port puts it behind dsp4_port_write16/read16 (two bytes each). In the multiply's answer a
-// write skips a byte, as on the chip. The commands it has: $00, $0A, $11, $03 and $0B. Any
-// other one (the road and sprite streams, $01/$06/$07/$08/$09/$0F, not done yet) leaves it
-// lost: it answers 0 and takes no more commands until reset. Idle, it reads $FF.
-typedef struct {
-  uint8_t phase;      // 0, 1: the command word's bytes; 2: its parameters; 3: its answer; 4: lost
-  uint8_t cmd;
-  uint8_t count;      // bytes taken in this phase
-  uint8_t in[10];
-  uint8_t out[8];
-  uint8_t inSize, outSize;
-  bool flagEnds;
-  bool roadBit;       // bit 7 of the last $0A's near row: the road command reads it (dsp4-01b/c)
-} Dsp4Chip;
-
-void dsp4_chip_reset(Dsp4Chip* chip);
-void dsp4_chip_write(Dsp4Chip* chip, uint8_t value);
-uint8_t dsp4_chip_read(Dsp4Chip* chip);
-// Whether it met a command it does not have (or an access its commands do not allow).
-bool dsp4_chip_lost(const Dsp4Chip* chip);
 
 #endif

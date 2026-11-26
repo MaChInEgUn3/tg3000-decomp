@@ -5419,7 +5419,8 @@ dispatcher).
 A moves neither the rows nor the percentage, so this comparator is the check for every
 later A unit.
 
-**`src/dsp4.c` now has the chip as the game talks to it.** `Dsp4Chip`, with:
+**`src/dsp4.c` now has the chip as the game talks to it** (moved to the bench by
+dsp4-chip-2). `Dsp4Chip`, with:
 - `dsp4_chip_reset`;
 - `dsp4_chip_write`, a byte;
 - `dsp4_chip_read`, a byte;
@@ -5471,6 +5472,38 @@ How the comparator restarts after a command the C chip does not have yet:
 **Check:** the comparator's exit status on both tapes (1 when a command the chip has
 differs), recorded fresh, then the selftest. Only lines were added to `src/` and
 `tools/bench/`, and no row changed.
+
+## The chip model moved to the bench; native functions for the streamed commands (dsp4-chip-2, 2026-11-26)
+
+**The port session's objection, and it is right.** The Scope rule is "no CPU/PPU/SPC700/DSP-4
+model in any port: DSP-4 commands become native game functions". A byte-stream state machine
+behind `dsp4_port_write16`/`read16` is such a model, since it reproduces the chip's
+interface:
+- its command word;
+- its phases;
+- a write skipping a byte of the multiply's answer.
+
+The 2026-11-21 plan ("the native chip goes behind `dsp4_port_write16`/`read16`") broke that
+rule and is superseded.
+
+**Moved.** `Dsp4Chip` now lives in `tools/bench/dsp4_chip.c`/`.h`. It is the comparator's scorer,
+built from `src/dsp4.c`'s functions. `src/dsp4.c` and `src/dsp4.h` are back as they were
+(`b67f44e`). The comparator's results are unchanged.
+
+**The plan for request A from here.** Each streamed command becomes a function in
+`src/dsp4.c` with arguments and results, as `$0A`, `$11`, `$03` and `$0B` already are:
+- `$01`, the road, first;
+- `$09`, the sprites;
+- `$06`, the high sprite table;
+- `$0D`, the VS road.
+
+Once a command is native, the routines that stream it today call its function instead. No
+`dsp4_port_*` exchange stays in the shipped path. Two checks:
+- the comparator scores each function against the firmware tapes;
+- the routines' rows are verified on the firmware movies.
+
+**Check:** the comparator on both tapes, then the selftest. `src/` is identical to
+`b67f44e`, the last full run.
 
 **Check:** the full gate (a new waiting row).
 

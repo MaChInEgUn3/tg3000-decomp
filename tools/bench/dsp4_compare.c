@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "dsp4.h"
+#include "dsp4_chip.h"
 
 typedef struct { unsigned long runs, read, bad, lostBytes; unsigned firstBadPc; } Count;
 static Count counts[257];
