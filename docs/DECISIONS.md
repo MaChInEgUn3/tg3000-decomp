@@ -6409,6 +6409,53 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road command's line words with curves, hills and crests: exact (dsp4-01o, 2026-11-26)
+
+**Measured** on the probe (firmware, chosen inputs, outputs only).
+
+**The input:** 10,000 random runs of six rows.
+- Curves and hills: header words 6, 11-14, the first row's three words, the rows' words 0-2.
+- Words 1 = 2 from 20 to 80, words 4, 5, 7, 8 and 10 random.
+- Heights random and falling.
+
+**Every line of every row is exact,** with these rules on top of dsp4-01n.
+
+**What the per-row answers give.** Each row's four answers X, P, E, y (dsp4-01e's model, exact
+already) set its ends:
+- **The `$0798` end:** A_k = C + ((word 10 · h_k) >> 15) − word 10 + (word 1 − y_k).
+- **The `$0796` end:** B_k = word 8 + P_k, the row's screen x plus word 8.
+
+Before row 0 the ends are C and word 8 + word 7, at line word 1.
+
+**The segment.** Row k interpolates from row k − 1's ends (at line y_{k−1}) to its own (at
+y_k), over n = y_{k−1} − y_k lines, with R = ⌊16,384 / n⌋.
+- **The `$0798` word:** A_{k−1} + j + ((j · (A_k − A_{k−1} − n) · R + 8,192) >> 14) + s(the
+  row's word 2).
+- **The `$0796` word:** clamp(B_{k−1} + ((j · (B_k − B_{k−1}) · R + 8,192) >> 14), −128, 896).
+
+**Which lines are drawn.** Only those below m, the lowest line so far: j from y_{k−1} −
+min(m, y_{k−1}), for max(0, m − y_k) lines (dsp4-01e's count). Then m = min(m, y_k).
+- **A row hidden behind a crest** draws nothing.
+- **It still sets the ends the next row starts from.** The next row's first drawn line is
+  part-way along the segment from the hidden row's ends (dsp4-01n missed this: with no crest,
+  j starts at 0).
+
+**The row's word 2** is added to every `$0798` word of that row (16-bit).
+
+**Each line's first word** is word 9 (1,724) minus 4 times the line's number, counted over all
+the drawn lines. Exact on 2,000 runs.
+
+**What is left of `$01`:**
+- the frame's `$0A` `+1` (the fresh chip's first run differs; the game's frame sends `$0A`
+  near row `$C4C4` before);
+- word 2 different from word 1, which the game never does;
+- rows of 88 lines or more, which the game never has.
+
+**Next (dsp4-01p):** the native function in `src/dsp4.c`, checked against the firmware on the
+recorded tapes (`dsp4_compare`), then against random probe runs.
+
+**Check:** a measurement, recorded here. It changes no code.
+
 ## The road command's per-line words on a flat road: exact (dsp4-01n, 2026-11-26)
 
 **Measured** on the probe (firmware, chosen inputs, outputs only), with the track words at 0:
