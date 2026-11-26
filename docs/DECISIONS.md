@@ -6409,6 +6409,47 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road line word, first row: exact (dsp4-01m, 2026-11-26)
+
+**The rule.** The `$0798` word of line j of the first row is
+
+    C + j + ((j · D' · ⌊16,384 / n⌋ + 8,192) >> 14)
+
+- j runs from 0 at the camera's line (header word 1) down to n − 1.
+- n = word 1 − y, where y is the row's line.
+- C = word 4 − word 5, the camera's word.
+- D' = ((word 10 · h) >> 15) − word 10, the row's projected change without the line term.
+
+The first line of the next row (dsp4-01k) is C + D' + n.
+
+**How it was found.**
+- **dsp4-01l's "bias"** was exactly 16,384 − n · ⌊16,384 / n⌋, the remainder, in every line count
+  measured. So the step is 1 + D' · ⌊2^14 / n⌋ / 2^14. The line term (+1 a line) is not part of
+  what is interpolated; only the projection D' is.
+- **The offset of ½** is the + 8,192.
+
+**Checked:**
+- **dsp4-01k/01l's data:** 21,113 of 21,114 runs.
+- **6,000 new random runs:** camera line (word 1 = word 2) 10-120, word 4 and word 5 0-400,
+  word 10 1-2,000, `h` 200-32,767. Exact on every run with n ≤ 87, 5,750 runs. The first-line
+  word of the next row is exact on all of them.
+
+**Two exceptions, outside the game's range:**
+- **The fresh chip's first run.** The miss in dsp4-01k's data (n = 38, D = −13) was the first
+  case of its probe process. Any case run first on a fresh chip gives other line words; the
+  same case run again is exact. It fits the fresh chip's known `+1` (dsp4-01g's note on `$0A`).
+  The game never sends `$01` to a fresh chip.
+- **Rows of 88 lines or more.** From n = 88 the chip differs: from n = 96 every line is C + j,
+  the projection term gone. The game's camera line is 51, so n ≤ 51.
+
+**Next:**
+- **The rows after the first** (the interpolation between two rows' first-line words).
+- **The `$0796` word.**
+- **A hill or a curve** (track words 0 and 1, word 3).
+- **The frame's `$0A` `+1`.**
+
+**Check:** a measurement, recorded here. It changes no code.
+
 ## The road line word between rows: the offset and the step's size (dsp4-01l, 2026-11-26)
 
 **Measured** on dsp4-01k's table: 18,114 (n, D) groups plus 3,000 random probe runs; firmware,
