@@ -23,8 +23,28 @@ int main(void) {
       break;
     }
     if(p != line) printf("# ");
+    while(*p == ' ') p++;
+    const int r7 = p[0] == 'R' && p[1] == '7';  // dsp4-07a: the road command $07
+    if(r7) p += 2;
     char* tok = strtok(p, " \n");
     while(tok) { w[nw++] = (unsigned)strtoul(tok, NULL, 16); tok = strtok(NULL, " \n"); }
+    if(r7) {
+      uint16_t head11[11];
+      for(int i = 0; i < 11; i++) head11[i] = (uint16_t)w[i];
+      dsp4_round_set(e2, e3);
+      Dsp4Road r;
+      dsp4_road2_start(&r, head11);
+      for(int k = 0; 11 + 6 * k < nw; k++) {
+        uint16_t words[6], out[2];
+        static uint16_t lines[512][3];
+        for(int i = 0; i < 6; i++) words[i] = (uint16_t)w[11 + 6 * k + i];
+        const unsigned c = dsp4_road2_row(&r, words, out, lines, 512);
+        printf("%s%04X %04X %u:", k ? " | " : "", out[0], out[1], c);
+        for(unsigned i = 0; i < c && i < 512; i++) printf(" %04X,%04X,%04X", lines[i][0], lines[i][1], lines[i][2]);
+      }
+      printf("\n");
+      continue;
+    }
     uint16_t head[15]; for(int i = 0; i < 15; i++) head[i] = (uint16_t)w[i];
     Dsp4Road r; dsp4_road_begin(&r, head, e2, e3);
     for(int k = 0; 18 + 4 * k < nw; k++) {

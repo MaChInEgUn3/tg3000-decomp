@@ -81,6 +81,14 @@ unsigned dsp4_road_row(Dsp4Road* r, uint16_t h, const uint16_t first[3], const u
 // done: a port gets the race's first frames (before any $0A) up to 1 off in a line word.
 void dsp4_road_start(Dsp4Road* r, const uint16_t head[15]);
 void dsp4_round_get(int16_t* edge2, int16_t* edge3);
+
+// Command $0007, the second road (dsp4-07a): $01's lines from rows the caller places itself.
+// Its header is $01's first 11 words (word 6 and 7: the start's fine and whole x). Each row is
+// 6 words: its height h, a screen line and an offset, a screen x and an offset, a word added to
+// its $0798 words; its answers are x + offset * h >> 15, then line + offset * h >> 15, and its
+// lines are $01's from those. The rounding is the chip's state, as $01's.
+void dsp4_road2_start(Dsp4Road* r, const uint16_t head[11]);
+unsigned dsp4_road2_row(Dsp4Road* r, const uint16_t words[6], uint16_t out[2], uint16_t (*lines)[3], unsigned max);
 void dsp4_round_set(int16_t edge2, int16_t edge3);
 
 #endif

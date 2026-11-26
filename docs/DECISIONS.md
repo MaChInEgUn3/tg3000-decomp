@@ -6409,6 +6409,49 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The second road, `$07`, native (dsp4-07a, 2026-11-26)
+
+**Request A's next command.** `road_rows_project2` (`$85:B828`) sends it right after the road;
+it is the next byte-protocol call a port meets in a race.
+
+**Its grammar** (from the C and `race1`'s tape: 585 runs, 28 rows each):
+- the word `$0007`, then 11 header words. They are `$01`'s first 11, with words 6 and 7 from
+  `$1EF4`/`$1EF6` (the start's fine and whole x);
+- per row, 6 words: the ROM height h, a screen line (`$01`'s answer y for the row, `$37EC`), an
+  offset (`$3E6E`), a screen x (`$01`'s answer P, `$35EC`), an offset (`$3DEE`), and a word
+  (`$3BEC`);
+- 2 answers, a count, then the lines (index, `$0E58` word, `$0E56` word);
+- `$8000` ends it.
+- `$10` (D+$E4 positive) is its object variant, never run.
+
+**Measured on the firmware** (`dsp4_road_probe` now takes an `R7` case; outputs only):
+- **The answers:** x' = x + (s(x offset) · h >> 15) and y' = line + (s(line offset) · h >> 15).
+  On `race1` the offsets are always 0, so the answers are the inputs.
+- **The lines are `$01`'s,** with the row's ends taken from (x', y') instead of the
+  accumulators: the same `$0798`/`$0796` words, the line limit and crests, word 2 added to every
+  `$0798` word, the clamp, and the rounding state.
+- **A row whose segment is 88 lines or more** is the chip's other regime, as for `$01`. One
+  probe case had y' = 253, making a 229-line segment.
+
+**`src/dsp4.c`:**
+- `dsp4_road2_start(r, head11)` and `dsp4_road2_row(r, words6, out2, lines, max)`.
+- `$01`'s line machinery is now one function shared by both (`dsp4_road_lines`).
+
+**Checked** (`tools/dsp4_road_check.py`, which now covers `$07`):
+- 3,000 random game-like runs after a `$0A`: exact;
+- `race1`'s 585 `$07` runs: exact. They follow a `$01` that drew, so the rounding is `$8000`.
+- `$01`'s results are unchanged.
+
+**Not done:**
+- `$10`;
+- the bench's chip model and `dsp4_compare` for `$07`;
+- the wiring of `road_rows_project2`, with the harness's grammar and tracker for `$07`.
+
+The wiring is the next unit; the C still streams `$07` today.
+
+**Check:** `tools/dsp4_road_check.py` (exit 0), then the full gate (`src/dsp4.c` changed by more
+than additions).
+
 ## The race's road on the native road command (dsp4-01t, 2026-11-26)
 
 **`road_rows_project` (`$85:B3D7`) now calls `src/dsp4.c`'s road instead of streaming it.** It

@@ -56,8 +56,20 @@ int main(int argc, char** argv) {
       for(int i = 0; i < (c == 'M' ? 2 : 3); i++) { in >> std::hex >> v; p.push_back(v); }
       pre.push_back(p);
     }
+    // dsp4-07a: "R7" first: the road command $07 instead, 11 header words, then per row its
+    // height and 5 words; per row it prints 2 answers, the count and the lines
+    bool r7 = false;
+    in >> std::ws;
+    if(in.peek() == 'R') {
+      std::string tag;
+      in >> tag;
+      r7 = tag == "R7";
+    }
     while(in >> std::hex >> v) w.push_back(v);
-    if(w.size() < 18 || (w.size() - 18) % 4 != 0) { std::printf("bad case\n"); continue; }
+    if(r7 ? (w.size() < 11 || (w.size() - 11) % 6 != 0) : (w.size() < 18 || (w.size() - 18) % 4 != 0)) {
+      std::printf("bad case\n");
+      continue;
+    }
     dsp4_lle_reset();
     if(!pre.empty()) {
       for(const auto& p : pre) {
@@ -78,6 +90,24 @@ int main(int argc, char** argv) {
       wr(near);
       wr(near);
       for(int i = 0; i < 4; i++) (void)rd();
+    }
+    if(r7) {  // dsp4-07a: the road command $07
+      wr(0x0007);
+      for(int i = 0; i < 11; i++) wr(uint16_t(w[i]));
+      for(size_t r = 0; 11 + 6 * r < w.size(); r++) {
+        for(int i = 0; i < 6; i++) wr(uint16_t(w[11 + 6 * r + i]));
+        uint16_t out[2];
+        for(int i = 0; i < 2; i++) out[i] = rd();
+        const uint16_t count = rd();
+        std::printf("%s%04X %04X %u:", r ? " | " : "", out[0], out[1], count);
+        for(unsigned k = 0; k < count && k < 512; k++) {
+          const uint16_t a = rd(), b = rd(), c = rd();
+          std::printf(" %04X,%04X,%04X", a, b, c);
+        }
+      }
+      wr(0x8000);
+      std::printf("\n");
+      continue;
     }
     wr(0x0001);
     for(int i = 0; i < 15; i++) wr(uint16_t(w[i]));

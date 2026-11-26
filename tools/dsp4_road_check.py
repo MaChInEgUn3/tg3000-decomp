@@ -16,7 +16,10 @@
 #    take their first rounding from the sprite streams, not modelled yet: counted apart, with
 #    the largest difference in a line word). A $0F run, an edge ($8001) or a header whose
 #    words 1 and 2 are not $33 (a nonzero $0242) fails: never seen, not checked.
-# Exit status 0 when both agree.
+# 3. dsp4-07a: the second road, $07: N random runs as road_rows_project2 builds them (rows it
+#    places itself: lines falling 0-12 a row, offsets and a $0798 addend), on both; and every
+#    $07 run of TAPE, which follows a $01 that drew (the rounding then $8000, as fresh).
+# Exit status 0 when all agree.
 import os
 import random
 import subprocess
@@ -130,6 +133,75 @@ def tape_runs(path):
     return runs
 
 
+def random_cases7(n, rnd):
+    cases = []
+    for _ in range(n):
+        hd = [0, 0x33, 0x33, 0xFF5B, 0xBF, 0xDC, 0, 0x40, 0x180, 0x35C, 0xC0]
+        hd[2] = rnd.randint(15, 80)
+        hd[1] = hd[2] + rnd.choice([0, 0, rnd.randint(1, 40)])
+        hd[4], hd[5] = rnd.randint(0, 400), rnd.randint(0, 400)
+        hd[6], hd[7], hd[8] = rnd.randint(0, 0xFFFF), rnd.randint(-200, 800), rnd.randint(-200, 800)
+        hd[9] = rnd.choice([0x35C, 0x50C])
+        hd[10] = rnd.randint(1, 1500)
+        rows, y = [], hd[1]
+        for _ in range(8):
+            y -= rnd.randint(0, 12)
+            rows += [rnd.randint(1000, 32767), y, rnd.randint(-40, 40), rnd.randint(-200, 200), rnd.randint(-60, 60),
+                     rnd.randint(-100, 100)]
+        row = rnd.choice([0xC4C4, 0x4444, 0x0000])
+        cases.append('E 0 %X %X R7 ' % (row, row) + spec(hd + rows))
+    return cases
+
+
+def long_segment7(line, head1):
+    prev = head1
+    for part in line.split('#')[-1].split(' | '):
+        y = int(part.split(':')[0].split()[1], 16)
+        y = y - 0x10000 if y & 0x8000 else y
+        if prev - y >= 88:
+            return True
+        prev = y
+    return False
+
+
+def tape_runs7(path):
+    t = open(path, 'rb').read()
+    n = len(t) // 5
+    val = t[3::5]
+    rd = [b & 1 for b in t[4::5]]
+
+    def w(i):
+        return val[i] | val[i + 1] << 8
+    runs, i = [], 0
+    while i < n - 1:
+        start = not rd[i] and val[i + 1] == 0 and not rd[i + 1] and (i == 0 or rd[i - 1])
+        if start and val[i] == 0x10:
+            raise SystemExit('%s: a $10 run at record %d: not checked' % (path, i))
+        if start and val[i] == 0x07:
+            j = i + 2
+            words = [w(j + 2 * k) for k in range(11)]
+            j += 22
+            expect = []
+            while True:
+                h = w(j)
+                if h == 0x8000:
+                    j += 2
+                    break
+                words += [w(j + 2 * q) for q in range(6)]
+                j += 12
+                ans = [w(j + 2 * q) for q in range(3)]
+                j += 6
+                lines = [w(j + 2 * q) for q in range(3 * ans[2])]
+                j += 6 * ans[2]
+                expect.append('%04X %04X %d:' % tuple(ans) + ''.join(
+                    ' %04X,%04X,%04X' % tuple(lines[3 * q:3 * q + 3]) for q in range(ans[2])))
+            runs.append(('R7 ' + spec(words), ' | '.join(expect)))
+            i = j
+            continue
+        i += 1
+    return runs
+
+
 def main():
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 6000
     tape = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'build', 'cache', 'race1.tape')
@@ -152,6 +224,17 @@ def main():
     print('random runs: %d after a $0A, differ %d; apart (not modelled): %d without a $0A, differ %d; %d with a '
           'segment of 88+ lines, differ %d' % (n - long - none, bad, none, nonebad, long, longbad))
     ok = bad == 0 and len(fw) == len(nat) == n
+    cases7 = random_cases7(n, random.Random(2027))
+    fw7 = run(PROBE, cases7[:1] + cases7)[1:]
+    nat7 = run(NATIVE, cases7)
+    bad7 = long7 = 0
+    for c, a, b in zip(cases7, fw7, nat7):
+        if long_segment7(a, int(c.split('R7')[1].split()[1], 16)):
+            long7 += 1
+        else:
+            bad7 += a.split() != b.split()
+    print('$07 random runs: %d, differ %d; %d with a segment of 88+ lines (not modelled)' % (n - long7, bad7, long7))
+    ok = ok and bad7 == 0 and len(fw7) == len(nat7) == n
     if os.path.exists(tape):
         runs = tape_runs(tape)
         got = run(NATIVE, [r[1] for r in runs])
@@ -169,6 +252,11 @@ def main():
         print('%s: %d runs after a $0A, differ %d; %d before any (not modelled), differ %d, by at most %d' % (
             os.path.basename(tape), len(after), after.count(False), len(before), before.count(False), worst))
         ok = ok and after.count(False) == 0 and len(after) > 0
+        runs7 = tape_runs7(tape)
+        got7 = run(NATIVE, [r[0] for r in runs7])
+        bad7 = sum(1 for g, r in zip(got7, runs7) if g.split() != r[1].split())
+        print('%s: %d $07 runs, differ %d' % (os.path.basename(tape), len(runs7), bad7))
+        ok = ok and bad7 == 0
     return 0 if ok else 1
 
 

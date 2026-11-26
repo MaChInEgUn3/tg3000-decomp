@@ -87,18 +87,10 @@ void dsp4_road_start(Dsp4Road* r, const uint16_t head[15]) {
   r->fromState = true;
 }
 
-unsigned dsp4_road_row(Dsp4Road* r, uint16_t h, const uint16_t first[3], const uint16_t track[3], uint16_t out[4],
-                       uint16_t (*lines)[3], unsigned max) {
-  if(r->row == 0 && first != NULL) {  // the first row's words: the sideways place's fine part, the height's
-    r->x += (int32_t)((uint32_t)s16x(first[2]) << 16 | first[1]);
-    r->e += (int32_t)((uint32_t)s16x(first[0]) << 8);
-  }
-  const int32_t xi = floor_shift(r->x, 16), ei = floor_shift(r->e, 16);
-  const int32_t p = floor_shift((int64_t)xi * h, 15), y = floor_shift((int64_t)ei * h, 15);
-  out[0] = (uint16_t)xi;
-  out[1] = (uint16_t)p;
-  out[2] = (uint16_t)ei;
-  out[3] = (uint16_t)y;
+// a row's lines, from the previous row's ends to this one's (screen x p, line y), shared by the
+// roads $01 and $07 (dsp4-01n/o, dsp4-07a); `add` goes on every $0798 word
+static unsigned dsp4_road_lines(Dsp4Road* r, uint16_t h, int32_t p, int32_t y, uint16_t add, uint16_t (*lines)[3],
+                                unsigned max) {
   const int32_t c = s16x(r->head[4]) - s16x(r->head[5]);
   const int32_t endA = c + floor_shift((int64_t)s16x(r->head[10]) * h, 15) - s16x(r->head[10]) + (s16x(r->head[2]) - y);
   const int32_t endB = s16x(r->head[8]) + p;
@@ -110,7 +102,7 @@ unsigned dsp4_road_row(Dsp4Road* r, uint16_t h, const uint16_t first[3], const u
     const int32_t dA = endA - r->endA - n, dB = endB - r->endB;
     for(int32_t k = 0; k < cnt; k++) {
       const int32_t j = j0 + k;
-      const int32_t a = r->endA + j + floor_shift((int64_t)j * dA * rec + r->round[0], 14) + s16x(track[2]);
+      const int32_t a = r->endA + j + floor_shift((int64_t)j * dA * rec + r->round[0], 14) + s16x(add);
       int32_t b = r->endB + floor_shift((int64_t)j * dB * rec + r->round[1], 14);
       if(b < -128) b = -128;
       if(b > 896) b = 896;
@@ -131,10 +123,41 @@ unsigned dsp4_road_row(Dsp4Road* r, uint16_t h, const uint16_t first[3], const u
     if(r->fromState) dsp4_round_set((int16_t)0x8000, (int16_t)0x8000);
     r->fromState = false;
   }
+  r->row++;
+  return (unsigned)cnt;
+}
+
+unsigned dsp4_road_row(Dsp4Road* r, uint16_t h, const uint16_t first[3], const uint16_t track[3], uint16_t out[4],
+                       uint16_t (*lines)[3], unsigned max) {
+  if(r->row == 0 && first != NULL) {  // the first row's words: the sideways place's fine part, the height's
+    r->x += (int32_t)((uint32_t)s16x(first[2]) << 16 | first[1]);
+    r->e += (int32_t)((uint32_t)s16x(first[0]) << 8);
+  }
+  const int32_t xi = floor_shift(r->x, 16), ei = floor_shift(r->e, 16);
+  const int32_t p = floor_shift((int64_t)xi * h, 15), y = floor_shift((int64_t)ei * h, 15);
+  out[0] = (uint16_t)xi;
+  out[1] = (uint16_t)p;
+  out[2] = (uint16_t)ei;
+  out[3] = (uint16_t)y;
+  const unsigned cnt = dsp4_road_lines(r, h, p, y, track[2], lines, max);
   r->g += (int32_t)((uint32_t)s16x(track[1]) << 8);
   r->s += (int32_t)((uint32_t)s16x(track[0]) << 8);
   r->x += r->g;
   r->e += r->s;
-  r->row++;
-  return (unsigned)cnt;
+  return cnt;
+}
+
+void dsp4_road2_start(Dsp4Road* r, const uint16_t head[11]) {
+  uint16_t h15[15] = {0};
+  for(int i = 0; i < 11; i++) h15[i] = head[i];
+  dsp4_road_start(r, h15);
+}
+
+unsigned dsp4_road2_row(Dsp4Road* r, const uint16_t words[6], uint16_t out[2], uint16_t (*lines)[3], unsigned max) {
+  const uint16_t h = words[0];
+  const int32_t y = s16x(words[1]) + floor_shift((int64_t)s16x(words[2]) * h, 15);
+  const int32_t p = s16x(words[3]) + floor_shift((int64_t)s16x(words[4]) * h, 15);
+  out[0] = (uint16_t)p;
+  out[1] = (uint16_t)y;
+  return dsp4_road_lines(r, h, p, y, words[5], lines, max);
 }
