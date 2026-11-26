@@ -24,9 +24,9 @@ void game_boot_tail(void);
 
 // The game whole (port request C): game_boot, then the top loop ($80:89DB), which never returns:
 // the title card, the intro, the options' main menu, then the championship's loop (its screen,
-// the shop, the race, the ticker, the prizes, the results, the next track's title). Its paths the
-// movies never took are traps (tg3000_unported), and so is the championship screen's session
-// until its two tasks are in C (port request D).
+// the shop, the race, the ticker, the prizes, the results, the next track's title) or the
+// two-player game, and back to the options. The screens no movie reached are traps
+// (tg3000_unported, named): the ending, the two-player game's last screen, the options' choice 3.
 void game_main(void);
 
 // $80:FC2D (from $80:FC2A, $80:FC25, $80:FC20 with X = 0, 1, 2): the options screens' entry from
@@ -47,12 +47,16 @@ bool top_after_options(void);
 void top_tallies(void);
 // $80:8AC3: before the race: $03E0 = $FFFF, $047B = $0444.
 void top_race_prep(void);
-// $80:8ADF: after the race: $03E0 = 1; no ticker ($0446 = $FFFF) ends the championship (a trap).
-void top_after_race(void);
-// $80:8AF1: after the ticker: no place for the player(s) ends the championship (a trap).
-void top_after_ticker(void);
-// $80:8B25: after the next track's title: the last track done (a trap); $047B = $0444; returns
-// whether the options' password screen comes next (the track's group, $84:A240, changed).
-bool top_after_title(void);
+// $80:8ADF: after the race: $03E0 = 1; returns whether there is no ticker ($0446 = $FFFF): the
+// championship is over.
+bool top_after_race(void);
+// $80:8AF1: after the ticker: returns whether the player(s) have no place: the championship is over.
+bool top_after_ticker(void);
+// $80:8B25: after the next track's title. The last track done: the game's ending, the next
+// difficulty, the championship over. Else $047B = $0444; then the next championship screen,
+// after the options' password screen when the track's group ($84:A240) changed, unless the
+// player is not in the first five (the options' choice 3, the championship over).
+enum { TOP_NEXT, TOP_PASSWORD, TOP_OVER };
+int top_after_title(void);
 
 #endif

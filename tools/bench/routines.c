@@ -5116,13 +5116,13 @@ static void call_top_after_options(const Regs* in, Regs* out) {
 }
 static void call_top_tallies(const Regs* in, Regs* out) { (void)in; (void)out; top_tallies(); }
 static void call_top_race_prep(const Regs* in, Regs* out) { (void)in; (void)out; top_race_prep(); }
-static void call_top_after_race(const Regs* in, Regs* out) { (void)in; (void)out; top_after_race(); }
-static void call_top_after_ticker(const Regs* in, Regs* out) { (void)in; (void)out; top_after_ticker(); }
+static void call_top_after_race(const Regs* in, Regs* out) { (void)in; (void)out; (void)top_after_race(); }
+static void call_top_after_ticker(const Regs* in, Regs* out) { (void)in; (void)out; (void)top_after_ticker(); }
 static void call_top_after_title(const Regs* in, Regs* out) {
   (void)in;
   const uint16_t group = rom8(0x84A240 + (uint32_t)rd16(0x0444)), was = rd16(0x0368);
   const bool two = rd16(0x03E2) & 0x0001;
-  out->atEnd2 = !top_after_title();
+  out->atEnd2 = top_after_title() == TOP_NEXT;
   // C: the CMP's (the same group, or $03E2 bit 0 skipping the test), else player_in_top5's (clear)
   out->c = (out->atEnd2 || two) ? group >= was : false;
 }

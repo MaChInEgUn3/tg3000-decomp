@@ -6261,6 +6261,45 @@ commands. Its road command `$01` is parked on the owner's question (dsp4-01f).
 
 **Check:** the full gate (`platform_bench.c` changed).
 
+## The top loop's ends, decoded (top-loop-2, 2026-11-26)
+
+**Port request C's leftovers: the named traps on the paths the movies never took.** The port
+session asked for them in the order a real game reaches them. Each was decoded from the ROM (a
+local decoder; no movie runs these bytes) and ported where it is glue.
+
+**The championship is over** (`$80:8B11`, an RTS): `top_after_race` (no ticker) and
+`top_after_ticker` (no place) now return true, and the loop returns to the top loop's
+`$80:8A1F` (`$80:8A85` is its BRA). Before, both were traps.
+
+**`top_after_title` now returns one of three outcomes:**
+- `TOP_NEXT`: the next championship screen;
+- `TOP_PASSWORD`: the options' password screen first;
+- `TOP_OVER`, in two cases:
+  - **The last track done** (`$80:8B5F`): the game's ending (`$80:FC82`), then the next
+    difficulty (`$03DC` += `$0100` unless its bits 8-9 are 2).
+  - **The player not in the first five** (`$80:8B50`): the options' choice 3 (`$80:FC1B`:
+    `options_entry(3)`).
+
+**The two-player game** (`$80:8B79`-`$80:8BC4`), in a loop:
+1. the race;
+2. the fade awaited, sound set 1, `$03E0` = 1;
+3. no ticker ends it;
+4. after track 7, `$0444` = 0, its last screen (`$80:FBF8`) and the slots' order;
+5. otherwise the results screen and the next track.
+
+**Still traps, now named one level down.** Each is a screen no movie reached, a body of its own
+to port when a run reaches it:
+- **`$8A:D017`:** the game's ending (with `$8A:8001` after it);
+- **`$8A:96AD`:** the two-player game's last screen;
+- **`$8A:C379`:** the options' choice 3;
+- **the top loop's `$80:8A04`** (no title card) and **`$03DC` bits 15/13** (`$80:8A3F`,
+  `$80:8A61`), which call `$84:A4D4`, `$80:FC7D` and `$84:A553`.
+
+**Results:** the top loop's rows still pass on the 60k movie: `top_after_race`, `_ticker` and
+`_title`, 4/4 each. The decoded paths have no movie and are not rows.
+
+**Check:** the full gate (`src/boot.c` changed by more than additions).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

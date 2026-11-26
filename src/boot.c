@@ -103,30 +103,44 @@ void top_race_prep(void) {
 }
 
 // TG3000_ROUTINE($80:8ADF) top_after_race
-void top_after_race(void) {
+bool top_after_race(void) {
   wr16(0x03E0, 0x0001);
-  if(rd16(0x0446) == 0xFFFF) tg3000_unported("$80:8B11: the championship's end (no ticker)");
+  return rd16(0x0446) == 0xFFFF;  // no ticker: the championship is over ($80:8B11, never run)
 }
 
 // TG3000_ROUTINE($80:8AF1) top_after_ticker
 // (the two players' test at $80:8B09 never ran; decoded from the ROM)
-void top_after_ticker(void) {
-  if(rd16(0x03E2) & 0x0001) return;
+bool top_after_ticker(void) {
+  if(rd16(0x03E2) & 0x0001) return false;
   uint16_t v = rd16(0x03A8);
   if((rd16(0x03DC) & 0x00F0) == 0x0030) v &= rd16(0x03D7);
-  if(v & 0x8000) tg3000_unported("$80:8B11: the championship's end (no place)");
+  return (v & 0x8000) != 0;  // no place: the championship is over ($80:8B11, never run)
 }
 
 // TG3000_ROUTINE($80:8B25) top_after_title
-bool top_after_title(void) {
-  if(rd16(0x0444) == 0x00FF) tg3000_unported("$80:8B5F: the championship's last track done");
-  wr16(0x047B, rd16(0x0444));
-  if((uint16_t)rom8(0x84A240 + (uint32_t)rd16(0x0444)) == rd16(0x0368)) return false;
-  if(!(rd16(0x03E2) & 0x0001) && player_in_top5()) tg3000_unported("$80:8B50: the player not in the first five");
-  return true;
+// $80:FC82 (never run): the game's ending, between HDMA off and on again ($8A:D017, then $8A:8001).
+static void game_ending(void) {
+  video_hdma_enable(0x00);
+  tg3000_unported("$8A:D017: the game's ending");
 }
 
-// $80:8A8C: the championship's loop (it never returns: its ways out are traps)
+int top_after_title(void) {
+  if(rd16(0x0444) == 0x00FF) {  // $80:8B5F (never run): the last track done
+    game_ending();
+    const uint16_t v = rd16(0x03DC);
+    if((v & 0x0300) != 0x0200) wr16(0x03DC, (uint16_t)(v + 0x0100));  // the next difficulty
+    return TOP_OVER;
+  }
+  wr16(0x047B, rd16(0x0444));
+  if((uint16_t)rom8(0x84A240 + (uint32_t)rd16(0x0444)) == rd16(0x0368)) return TOP_NEXT;
+  if(!(rd16(0x03E2) & 0x0001) && player_in_top5()) {  // $80:8B50 (never run): not in the first five
+    options_entry(3);
+    return TOP_OVER;
+  }
+  return TOP_PASSWORD;
+}
+
+// $80:8A8C: the championship's loop, until the championship is over (back to $80:8A1F)
 static void championship(void) {
   champ_screen(true);
   save_data_seal();
@@ -142,15 +156,45 @@ static void championship(void) {
     race_wrapper();
     wait_03e0();
     sound_load_menu(DP, 1);
-    top_after_race();
+    if(top_after_race()) return;
     ticker_screen();
-    top_after_ticker();
+    if(top_after_ticker()) return;
     prize_money_award(false, &overflow);
     results_screen_run();
     title_screen_run(rd16(0x047B));
     track_next();
-    if(top_after_title()) options_entry(1);
+    const int next = top_after_title();
+    if(next == TOP_OVER) return;
+    if(next == TOP_PASSWORD) options_entry(1);
     champ_screen(false);
+  }
+}
+
+// $80:FBF8 (never run): the two-player game's last screen ($8A:96AD), then HDMA off.
+static void two_player_final(void) {
+  tg3000_unported("$8A:96AD: the two-player game's last screen");
+  video_hdma_enable(0x00);
+}
+
+// $80:8B79-$80:8BC4: the two-player game: races (and their results) up to track 7, then its last
+// screen and the slots' order. Its race end and results are never run in the movies.
+static void two_player_game(void) {
+  player_in_top5();
+  for(;;) {
+    top_race_prep();  // $80:8B7D
+    race_wrapper();
+    wait_03e0();
+    sound_load_menu(DP, 1);
+    wr16(0x03E0, 0x0001);
+    if(rd16(0x0446) == 0xFFFF) return;
+    if(rd16(0x0444) == 0x0007) {
+      wr16(0x0444, 0);
+      two_player_final();
+      player_in_top5();
+      return;
+    }
+    results_screen_run();
+    wr16(0x0444, (uint16_t)(rd16(0x0444) + 1));
   }
 }
 
@@ -165,12 +209,7 @@ void game_main(void) {
     results_init();
     options_entry(0);
     save_data_seal();
-    if(top_after_options()) {  // $80:8B79: the two-player game
-      player_in_top5();
-      top_race_prep();
-      race_wrapper();
-      tg3000_unported("$80:8B8E: after the two-player race");
-    }
-    championship();
+    if(top_after_options()) two_player_game();  // $80:8B79
+    else championship();
   }
 }
