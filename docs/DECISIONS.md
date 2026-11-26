@@ -5556,6 +5556,65 @@ advisor's order: the grammar first, then the lengths, then the values).
 **Check:** the tool reads every run of both tapes whole (exit status 0). This is a
 measurement: it adds a tool, and no row or C changes.
 
+## The road command's rows and lengths, exact (dsp4-01e, 2026-11-26)
+
+**Request A, step 2b: the first of the stop rule's two units.**
+
+**Found:** every per-row answer of `$01`, and so the answer's length, is exact on every
+recorded row:
+- 284,772 rows: 268,392 from the TAS's first 30,000 frames and 16,380 from `race1`;
+- no chosen inputs were needed.
+
+`tools/dsp4_road_fit.py RUNS.jsonl...` checks it, exit status 0 when every row is exact.
+
+**The model.** It runs in 16.16 fixed point; s() is a signed word and `>>` floors. Header
+words are counted from 0.
+
+The four accumulators, set from the header and the first row's words:
+
+| Accumulator | Starts at |
+|---|---|
+| X, the road's sideways place | s(head 7).head 6, plus the first row's s(first 2).(first 1 & `$FF00`) |
+| G, its turn rate | s(head 14).(head 13 & `$FF00`) |
+| E, the height above the road | s(head 1), which is `$0033` in every run |
+| S, the slope | s(head 12).(head 11 & `$FF00`) |
+
+**Each row, with h its ROM height:**
+- **The four answers:** X >> 16, then (X >> 16) · h >> 15 (its screen x), then E >> 16, then
+  (E >> 16) · h >> 15 (its screen line y).
+- **The count of lines:** max(0, m − y), where m is the lowest y so far (it starts at head 1).
+  Then m = min(m, y). A crest therefore hides the rows behind it.
+- **Then the accumulators step:** G += s(track word 1) << 8 (the curve), S += s(track word
+  0) << 8 (the hill), X += G, E += S.
+
+**What it means for the header.** It matches what `road_rows_project`'s C sends:
+- head 6/7 come from `$0200`/`$0202`;
+- head 11/12 are D+$1E as 8.8 (`$0208` less the player's row slope times the part of the row
+  ahead);
+- head 13/14 are D+$26/D+$28.
+
+**Not measured yet:**
+- **`$0F`:** the variant with D+$E4.
+- **A negative `$0242`,** where head 1-5 change.
+- **The objects' and edges' traffic.** None ran in these tapes.
+
+**Still open: the lines' words.**
+- **The line's index:** the buffer's top less 4 per line, exact by construction.
+- **The word for `$0796`:** close to the line's screen x + 384 (head 8) on a flat straight road,
+  off by up to 3.
+- **The word for `$0798`,** the stop rule's "first word": close to −165 (head 3) + 2.76 · y.
+  But on flat straight roads it differs by up to 4 between frames at the same line. So it
+  depends on more than y, probably on where the camera sits in its row, through the rows'
+  heights.
+
+**Next (dsp4-01f), the stop rule's second unit:** the two line words.
+- **If they are exact:** the native function in `src/dsp4.c`.
+- **If not:** park with the numbers, and ask the owner whether a licence-checked source may
+  inform the C.
+
+**Check:** `tools/dsp4_road_fit.py` on both tapes' runs (0 rows differ). This is a
+measurement tool: no row or C changes.
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
