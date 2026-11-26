@@ -207,6 +207,9 @@ void vs_grid_setup(uint16_t dp);
 void vs_race_reset(void);
 // $82:92BA: the VS race setup's first piece (the screen, the settings, the reset, the graphics).
 void vs_race_load(void);
+// $82:932D: the VS race setup's sound piece, unless $047C's bit 15: wait for the fade, set 7,
+// master volume $7F, $045F = 0.
+void vs_race_sound(void);
 // $82:9348: the VS race setup's track piece (state cleared, the track and its objects, four waits).
 void vs_race_track(void);
 // $85:BF78, $85:C316, $85:C6C2, $85:CA18 (RTL): the VS race's road rows for players 1-4

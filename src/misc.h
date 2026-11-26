@@ -1403,6 +1403,9 @@ void race_state_reset(void);
 // $82:8428: the race setup's first piece (screen, vectors, track, reset, graphics), up to the
 // $047C test before the sound loader.
 void race_load(void);
+// $82:854B: the race setup's sound piece, unless $047C's bit 15 (a demo): wait for the fade
+// (wait_03e0), the race's sound set, master volume $7F, $045F = 1 unless bit 2 of $03DD.
+void race_sound(void);
 // $82:8342 up to the mode's call; $82:83BB after it, up to the RTL (the race wrapper's two halves).
 void race_wrapper_head(void);
 void race_wrapper_tail(void);

@@ -166,6 +166,30 @@ void sound_load_set(uint16_t dp, uint16_t set) {
   wr16(SOUND_ENABLE, 0xFFFF);
 }
 
+static void sound_volumes_full(void) {
+  wr8(0x045D, 0x7F);
+  wr8(0x045E, 0x7F);
+}
+
+// TG3000_ROUTINE($84:A487) sound_load_race (long)
+void sound_load_race(uint16_t dp) {
+  sound_load_set(dp, (uint16_t)((rd16(0x047B) & 3) + 3));
+  sound_volumes_full();
+}
+
+// TG3000_ROUTINE($84:A4A3) sound_load_vs (long)
+void sound_load_vs(uint16_t dp) {
+  sound_load_set(dp, 7);
+  sound_volumes_full();
+}
+
+// TG3000_ROUTINE($84:A4B7) sound_load_menu (long)
+void sound_load_menu(uint16_t dp, uint16_t set) {
+  sound_load_set(dp, set);
+  wr8(0x045F, 1);
+  sound_volumes_full();
+}
+
 // TG3000_ROUTINE($86:DD85) sound_boot (long)
 void sound_boot(uint16_t dp) {
   static const uint16_t cleared[] = {SOUND_VOLUME, 0x045D, 0x045F, SOUND_REQUEST_A, 0x0464, SOUND_REQUEST_B, 0x0469, SOUND_FLAGS};

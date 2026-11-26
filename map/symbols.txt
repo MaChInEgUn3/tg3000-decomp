@@ -127,6 +127,11 @@ func    85BC20   scroll_tables_build ; the race's two per-line scroll HDMA table
 func    8595BD   irq_ack_only        ; IRQ handler: acknowledge, RTI -> src/frame.c
 func    86DFAE   sound_fade_step     ; master volume fade ($045C by $03E0) -> src/sound.c
 func    86DFFB   sound_send_message  ; the 16-byte message to the sound driver -> src/sound.c
+func    82854B   race_sound          ; the race setup's sound piece (wait, set, volumes) -> src/misc.c
+func    82932D   vs_race_sound       ; the VS race setup's sound piece -> src/vs.c
+func    84A487   sound_load_race     ; the race's sound set (3 + track group) and volumes (long) -> src/sound.c
+func    84A4A3   sound_load_vs       ; the VS race's sound set (7) and volumes (long) -> src/sound.c
+func    84A4B7   sound_load_menu     ; a sound set, $045F = 1 and volumes (long) -> src/sound.c
 func    86DD85   sound_boot          ; sound start-up: unpack the driver, send it, wait for its ready -> src/sound.c
 func    86DDEF   sound_load_set      ; a sound set: its blocks, samples and directory, uploaded (long) -> src/sound.c
 func    86E0F0   sound_upload_list   ; a list of blocks to the driver (platform sound_upload_*) -> src/sound.c

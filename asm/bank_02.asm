@@ -204,10 +204,11 @@ CODE_8284D5:
     ldy.w #$0EE0                ; $828541
     lda.w #$0099                ; $828544
     jsl.l decompress_to_vram_long; $828547
+race_sound:
     lda.w $047C                 ; $82854B
     bmi race_track_build        ; $82854E
     jsl.l wait_03e0             ; $828550
-    jsl.l $84A487               ; $828554
+    jsl.l sound_load_race       ; $828554
     sep.b #$20                  ; $828558
     lda.b #$7F                  ; $82855A
     sta.w $045C                 ; $82855C
@@ -683,10 +684,11 @@ vs_race_load:
     ldy.w #$57A0                ; $829323
     lda.w #$0087                ; $829326
     jsl.l decompress_to_vram_long; $829329
+vs_race_sound:
     lda.w $047C                 ; $82932D
     bmi vs_race_track           ; $829330
     jsl.l wait_03e0             ; $829332
-    jsl.l $84A4A3               ; $829336
+    jsl.l sound_load_vs         ; $829336
     sep.b #$20                  ; $82933A
     lda.b #$7F                  ; $82933C
     sta.w $045C                 ; $82933E

@@ -5040,6 +5040,34 @@ static void call_sound_load_set(const Regs* in, Regs* out) {
   out->z = in->db == 0;
   out->c = 1;
 }
+// sound_load_menu ($84:A4B7): its last LDA #$7F (N, Z clear); C from the loader. (The race's
+// and the VS race's helpers, $84:A487 and $84:A4A3, run only inside the race pieces below,
+// whose rows hold them: a waiting row inside another gets no samples.)
+static void soundHelperFlags(Regs* out) {
+  out->n = false;
+  out->z = false;
+  out->c = 1;
+}
+static void call_sound_load_menu(const Regs* in, Regs* out) { sound_load_menu(in->d, in->a); soundHelperFlags(out); }
+// the race pieces ($82:854B, $82:932D): a demo skips them (N from LDA $047C); else the last
+// store's value sets N and Z, C from the loader
+static void call_race_sound(const Regs* in, Regs* out) {
+  const bool demo = rd16(0x047C) & 0x8000;
+  race_sound();
+  if(demo) { out->n = true; out->z = false; return; }
+  out->n = false;  // the EOR #$01 result, 0 or 1
+  out->z = rd8(0x045F) == 0;
+  out->c = 0;  // its two LSRs
+}
+static void call_vs_race_sound(const Regs* in, Regs* out) {
+  (void)in;
+  const bool demo = rd16(0x047C) & 0x8000;
+  vs_race_sound();
+  if(demo) { out->n = true; out->z = false; return; }
+  out->n = false;
+  out->z = true;
+  out->c = 1;
+}
 static void call_sound_boot(const Regs* in, Regs* out) {
   sound_boot(in->d);
   setNZ16(out, in->d);  // its last PLD; C from the ready test, V clear from the upload's end
@@ -13080,6 +13108,8 @@ const Routine routines[] = {
        // never run: a list of uncompressed blocks (a trap)
        // its senders (port request 4); never run there: the driver's time-out (a BRK), blocks
        // under three bytes, a sample not a multiple of three
+  {.name = "sound_load_menu", .entry = 0x84A4B7, .end = 0x84A4CD, .rtl = true, .source = "src/sound.c",
+   .waitsForInterrupts = true, .maxInsns = 200000000, .manyEffects = true, .call = call_sound_load_menu},
   {.name = "sound_boot", .entry = 0x86DD85, .end = 0x86DDEF, .rtl = true, .source = "src/sound.c", .manyEffects = true,
    .call = call_sound_boot},
   {.name = "sound_frame", .entry = 0x86DFE1, .end = 0x86DFFB, .rtl = true, .source = "src/sound.c", .needM16 = true,
@@ -13410,6 +13440,12 @@ const Routine routines[] = {
        // a message (ported, untested)
   {.name = "race_end", .entry = 0x828776, .end = 0x82878A, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true, .call = call_race_end},
+  {.name = "race_sound", .entry = 0x82854B, .end = 0x82856D, .endAt = 0x82856D, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
+   .maxInsns = 200000000, .manyEffects = true, .call = call_race_sound, .alsoIn = {{0x84A487, 0x84A4A3}}},
+  {.name = "vs_race_sound", .entry = 0x82932D, .end = 0x829348, .endAt = 0x829348, .source = "src/vs.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
+   .maxInsns = 200000000, .manyEffects = true, .call = call_vs_race_sound, .alsoIn = {{0x84A4A3, 0x84A4B7}}},
   {.name = "vs_race_load", .entry = 0x8292BA, .end = 0x82932D, .endAt = 0x82932D, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_load, .manyEffects = true},
   {.name = "vs_names_absent", .entry = 0x8AA6F6, .end = 0x8AA721, .source = "src/vs.c", .needM16 = true,

@@ -181,6 +181,7 @@ CODE_84A47B:
     and.w #$00FF                ; $84A480
     sta.w $0444                 ; $84A483
     rtl                         ; $84A486
+sound_load_race:
     lda.l $81047B               ; $84A487
     and.w #$0003                ; $84A48B
     clc                         ; $84A48E
@@ -192,6 +193,7 @@ CODE_84A47B:
     sta.w $045E                 ; $84A49D
     rep.b #$20                  ; $84A4A0
     rtl                         ; $84A4A2
+sound_load_vs:
     lda.w #$0007                ; $84A4A3
     jsl.l sound_load_set        ; $84A4A6
     sep.b #$20                  ; $84A4AA
@@ -200,6 +202,7 @@ CODE_84A47B:
     sta.w $045E                 ; $84A4B1
     rep.b #$20                  ; $84A4B4
     rtl                         ; $84A4B6
+sound_load_menu:
     jsl.l sound_load_set        ; $84A4B7
     sep.b #$20                  ; $84A4BB
     lda.b #$01                  ; $84A4BD

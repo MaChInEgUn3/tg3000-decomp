@@ -1177,7 +1177,7 @@ CODE_808AB8:
     jsl.l race_wrapper_head     ; $808AD0
     jsl.l wait_03e0             ; $808AD4
     lda.w #$0001                ; $808AD8
-    jsl.l $84A4B7               ; $808ADB
+    jsl.l sound_load_menu       ; $808ADB
     lda.w #$0001                ; $808ADF
     sta.l $8103E0               ; $808AE2
     lda.w #$FFFF                ; $808AE6

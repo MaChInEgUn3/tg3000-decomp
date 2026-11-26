@@ -11,6 +11,7 @@
 #include "frame.h"
 #include "platform.h"
 #include "rng.h"
+#include "sound.h"
 #include "util.h"
 #include "video_dma.h"
 #include "tg3000.h"
@@ -1372,6 +1373,15 @@ void vs_race_reset(void) {
 // tracks: a 16-bit add, its carry reaches $047C); the track's settings; vs_race_reset; then the
 // graphics unpacked to VRAM and to $7F:0000, the backdrop, 32 colours from $8E:8000 and the
 // track's tiles. The rest of the setup waits on routines not ported yet.
+// TG3000_ROUTINE($82:932D) vs_race_sound
+void vs_race_sound(void) {
+  if(rd16(0x047C) & 0x8000) return;
+  wait_03e0();
+  sound_load_vs(DP);
+  wr8(SOUND_VOLUME, 0x7F);
+  wr8(0x045F, 0);
+}
+
 void vs_race_load(void) {
   video_load_screen_long(0x839EEA);
   wr16(0x047B, (uint16_t)(rd16(0x047B) + 0x002F));

@@ -42,6 +42,14 @@ void sound_upload_list(uint32_t src);
 // direct page the original runs with.
 void sound_load_set(uint16_t dp, uint16_t set);
 
+// $84:A487 (long): a race's sound set (3 + the track group, $047B & 3), then music and
+// effects volume ($045D, $045E) at $7F.
+void sound_load_race(uint16_t dp);
+// $84:A4A3 (long): the VS race's set (7), then the same volumes.
+void sound_load_vs(uint16_t dp);
+// $84:A4B7 (long): set `set` (the shop's way back: 1), then $045F = 1 and the same volumes.
+void sound_load_menu(uint16_t dp, uint16_t set);
+
 // $86:DD85 (long): the sound start-up. Clear the sound state, unpack the driver to
 // $7F:0000 ($86:E478), send it, clear the ports, wait for the driver's ready, and set
 // SOUND_ENABLE. `dp` is the direct page the original runs with (decompress's scratch and

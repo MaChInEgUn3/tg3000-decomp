@@ -5371,6 +5371,45 @@ block, plus one for each three bytes.
 
 **Check:** the full gate (`difftest.c` changed).
 
+## Sound loading, step 3: the race setups' and the menu's callers (sound-load-3, 2026-11-26)
+
+**What is in C.**
+- `race_sound` (`$82:854B`): the race setup's piece between `race_load` and
+  `race_track_build`.
+- `vs_race_sound` (`$82:932D`): the VS race's piece between `vs_race_load` and
+  `vs_race_track`.
+- Their helpers:
+  - `sound_load_race` (`$84:A487`): set 3 + the track group;
+  - `sound_load_vs` (`$84:A4A3`): set 7.
+- `sound_load_menu` (`$84:A4B7`): the top loop's set 1, after the shop.
+
+**What a race piece does.** Unless `$047C` bit 15 is set (a demo), it:
+- waits for the fade;
+- loads the set;
+- sets the music and effects volumes and the master volume to `$7F`;
+- sets `$045F`: in the race, 1 unless bit 2 of `$03DD`; in the VS race, 0.
+
+**The helpers are folded into the pieces' rows.** `sound_load_race` and `sound_load_vs` have
+no rows of their own: their extents are in the race pieces' rows (`alsoIn`). They run only
+inside those pieces, and a waiting row inside another gets no samples (seen: 5 entries,
+none sampled). For the same reason `sound_load_set` now has live samples only where no
+other row encloses it: 1 on the 60k movie, still 166 of 166 paths.
+
+**Results.**
+
+| Row | Live samples | Movie |
+|---|---|---|
+| `race_sound` | 5 of 5 | 60k |
+| `vs_race_sound` | 1 | VS race |
+| `sound_load_menu` | 4 of 4 | 60k |
+
+No fuzz: they wait for the driver.
+
+**Still not C:** the top loop's call at `$80:89E7` (request C, boot and the top-level
+dispatcher).
+
+**Check:** the full gate (new waiting rows).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

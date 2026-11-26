@@ -9,6 +9,7 @@
 #include "pads.h"
 #include "rng.h"
 #include "scale.h"
+#include "sound.h"
 #include "platform.h"
 #include "scroll_tables.h"
 #include "shop.h"
@@ -5086,6 +5087,15 @@ void race_load(void) {
   upload_vram_now(0x5868, 0x7E, 0x217C, 0x0190);
   upload_cgram_now(0x00, 0x8D, 0x8B70, 0x0040);
   decompress_to_vram(DP, 0x99, 0xB3D5, 0x0EE0);
+}
+
+// TG3000_ROUTINE($82:854B) race_sound
+void race_sound(void) {
+  if(rd16(0x047C) & 0x8000) return;
+  wait_03e0();
+  sound_load_race(DP);
+  wr8(SOUND_VOLUME, 0x7F);
+  wr8(0x045F, (uint8_t)(((rd8(0x03DD) & 0x04) >> 2) ^ 1));
 }
 
 // TG3000_ROUTINE($82:856D) race_track_build
