@@ -267,9 +267,28 @@ static void vs_hud_count(uint16_t vram, uint8_t n) {
 // a 6-word bar from its word ($3E, $40, $64, $68), three words ($42-$46, $4E-$52, $48-$4C,
 // $54-$58), a 6-word count from the low byte of $024E, $0301, $02B0, $0363, one tilemap word
 // read back and rewritten ORed with $6000 or $0006 (at the VRAM address in $A4, $AC, $A6, $AE:
-// the second read after a dead one gives the word after it), and two 26-byte strips from
+// the player's place on the race's progress strip), and two 26-byte strips from
 // $7E:4E61, $4E95, $4EC9, $4EFD, or $83:A3DD when its accumulator pair ($7E:4E4D/$4E4E, ...)
 // adds up negative.
+#define VS_STRIP_FIRST 0x57C0
+#define VS_STRIP_WORDS 0xA0
+static uint16_t vs_strip[VS_STRIP_WORDS];
+
+void vs_strip_load(uint32_t src) {
+  for(uint16_t i = 0; i < VS_STRIP_WORDS; i++) vs_strip[i] = bus_rd16(src + 2u * i);
+}
+
+uint16_t vs_strip_word(uint16_t vram_word) {
+  const uint16_t i = (uint16_t)(vram_word - VS_STRIP_FIRST);
+  if(i >= VS_STRIP_WORDS) tg3000_unported("vs_hud_draw: a word outside the progress strip ($57C0-$585F)");
+  return vs_strip[i];
+}
+
+void vs_strip_set(uint16_t vram_word, uint16_t value) {
+  const uint16_t i = (uint16_t)(vram_word - VS_STRIP_FIRST);
+  if(i < VS_STRIP_WORDS) vs_strip[i] = value;
+}
+
 void vs_hud_draw(void) {
   static const struct {
     uint16_t bar, barAt, wordsAt, words[3], countAt, count, pick, bits, acc, strip, at1, at2;
@@ -286,7 +305,11 @@ void vs_hud_draw(void) {
     for(int k = 0; k < 3; k++) hud_put(rd16(p[i].words[k]));
     vs_hud_count(p[i].countAt, rd8(p[i].count));
     const uint16_t at = rd16(p[i].pick);
-    video_write_vram_word(at, (uint16_t)(video_read_vram_word((uint16_t)(at + 1)) | p[i].bits));
+    // (the original reads the word at `at` back from VRAM, VMADD set and a dead read first; the
+    // C has its own copy)
+    const uint16_t word = (uint16_t)(vs_strip_word(at) | p[i].bits);
+    video_write_vram_word(at, word);
+    vs_strip_set(at, word);
     const uint8_t acc = (uint8_t)(rd8(p[i].acc) + rd8((uint32_t)p[i].acc + 1));
     wr8((uint32_t)p[i].acc + 1, acc);
     const uint32_t strip = (acc & 0x80) ? 0x83A3DD : 0x7E0000u | p[i].strip;

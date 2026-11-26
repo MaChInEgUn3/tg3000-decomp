@@ -6154,6 +6154,45 @@ positions alone.
 
 **Check:** the full gate (`difftest.c` changed).
 
+## The strip's read-back gone: the C keeps its own copy (port-req-H3, 2026-11-26)
+
+**Port request H, step 2; no read-back is left in `platform.h`.** `video_read_vram_word` is
+gone from `platform.h` and the bench's platform.
+
+**The C keeps the VS race's progress strip itself** (`src/race_frame.c`): VRAM words
+`$57C0`-`$585F` in `vs_strip`.
+- **`vs_strip_load`:** fills it from the race's graphics buffer (`$7F:2F80`) right after
+  `vs_graphics_load` uploads it, before the buffer is reused.
+- **`vs_hud_draw`:** ORs each player's bits into the word at its place, writes it, and keeps
+  it.
+
+**Found on the way: the place read is the player's own.** The drafted C read at `at + 1`. The
+first VS frame shows otherwise:
+- player 0 read `$0000` at its place;
+- player 1, at the same place, read `$6000` right after player 0 wrote it.
+
+The original's dead read then real read return the word at `at` itself. On the bench the
+address never mattered, because the read was served by order.
+
+**So each player only marks its own cell.** Players 0 and 1 share the `$57xx` strip and 2 and
+3 the `$58xx` one. Their places only move down.
+
+**Results** (the VS movie):
+- **Seeded:** the adapter gives the copy the words the original read, as it gives WRAM. 1,121
+  of 1,121 live samples, 500 of 500 fuzz cases, 377/377 paths.
+  - The fuzz now keeps the places inside the strip, as in play.
+- **Unseeded,** with the copy kept by the C alone from the real load: 1,113 of 1,121 pass. The
+  bench runs the C only in its sampled frames, about a third of the draws, so the copy misses
+  the others' marks. A port draws every frame.
+
+- **The first full gate failed `nmi_vs_full`,** which draws the HUD inside it when its DMA
+  budget allows. Its adapter did not seed the copy, so the C read no VRAM word where the
+  original read 4. Both adapters now seed through one helper, which seeds only when the original
+  made the four reads (`difftest_vram_reads_left`, new in the harness). `nmi_vs_full`: 1,128 of
+  1,128 live samples, 500 of 500 fuzz cases.
+
+**Check:** the full gate (the bench's platform and `difftest.c` changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

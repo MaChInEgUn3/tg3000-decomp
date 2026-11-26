@@ -10,6 +10,7 @@
 #include "decompress.h"
 #include "frame.h"
 #include "platform.h"
+#include "race_frame.h"
 #include "rng.h"
 #include "sound.h"
 #include "util.h"
@@ -572,6 +573,7 @@ void vs_panel_frame(uint16_t x) {
 // TG3000_ROUTINE($8A:B9AF) vs_graphics_load
 void vs_graphics_load(void) {
   decompress_to_vram(DP, 0x8D, 0xF696, 0x4000);
+  vs_strip_load(0x7F0000 + 2u * (0x57C0 - 0x4000));  // the progress strip, before the buffer is reused
   uint16_t end;
   decompress(DP, 0x8A, 0xC86C, 0x7F, 0x0000, &end);
   uint16_t at = 0x7000;

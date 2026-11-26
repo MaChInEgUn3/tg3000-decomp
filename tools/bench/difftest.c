@@ -494,6 +494,12 @@ uint8_t difftest_dsp4_byte(uint8_t value, bool write) {
   return tapes[k][pos].val;
 }
 
+// how many of the original's VRAM read words the C side has not taken yet (port-req-H3)
+int difftest_vram_reads_left(void) {
+  if(!collectingC || cSample == NULL) return 0;
+  return ((const Sample*)cSample)->nVramReads - cVramReadPos;
+}
+
 uint16_t difftest_vram_read(void) {
   if(!collectingC || cSample == NULL) return 0;
   const Sample* smp = cSample;

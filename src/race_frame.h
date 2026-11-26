@@ -3,6 +3,8 @@
 #ifndef TG3000_RACE_FRAME_H
 #define TG3000_RACE_FRAME_H
 
+#include <stdint.h>
+
 #include <stdbool.h>
 
 // The race's VRAM upload queue: a ring of 128 transfers in parallel word tables in
@@ -25,6 +27,12 @@ void func_838989(void);
 void func_838989_long(void);              // $83:96D5
 void vs_view_scrolls(void);               // $83:886A, the VS split screen's func_838989
 void vs_hud_draw(void);                   // $83:9B49, race_hud_draw for the VS split screen's four players
+// The VS race's progress strip, VRAM words $57C0-$585F, as the game wrote them: the C's own copy
+// (port request H; the original reads VRAM back). Loaded from the race's graphics buffer right
+// after their upload (`src`: the words for $57C0), then kept by vs_hud_draw's writes.
+void vs_strip_load(uint32_t src);
+uint16_t vs_strip_word(uint16_t vram_word);
+void vs_strip_set(uint16_t vram_word, uint16_t value);
 void nmi_vs_full(void);                   // $83:9777, the VS split screen's NMI frame (then its tail)
 void race_cycle_blocks(void);             // $85:9147
 void race_hud_draw(void);                 // $85:8814 (long)

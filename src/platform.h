@@ -25,12 +25,6 @@ void video_fill_vram(uint16_t vram_word, uint8_t value, uint32_t size);
 // $2119 with VMAIN = $80; the console takes it only in vblank or under forced blank, which
 // is when the game does it.)
 void video_write_vram_word(uint16_t vram_word, uint16_t value);
-// Read one word of video RAM at word address `vram_word` (the original sets VMADD and reads
-// VMDATA, $2139/$213A, after a dead read; harness-30).
-// (Port request H: the game reads back only words of the VS race's progress strip, VRAM words
-// $57C0-$585F, once a frame per player: tile $0006 with the players' bits. The C is to keep its own
-// copy of that strip; until then this call stays, for vs_hud_draw alone.)
-uint16_t video_read_vram_word(uint16_t vram_word);
 // The Mode 7 vertical offset alone (the original's byte writes to $210E leave it apart from
 // BG1's: vs-race-20).
 void video_set_m7_vofs(uint16_t value);

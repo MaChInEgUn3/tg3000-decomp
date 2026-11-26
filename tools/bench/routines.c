@@ -5281,7 +5281,19 @@ static void call_race_upload_queue_drain_long(const Regs* in, Regs* out) { (void
 static void call_func_838989(const Regs* in, Regs* out) { (void)in; (void)out; func_838989(); }
 static void call_func_838989_long(const Regs* in, Regs* out) { (void)in; (void)out; func_838989_long(); }
 // vs_hud_draw ($83:9B49, vs-race-19): its caller goes on to vs_view_scrolls, which loads X and A
-static void call_vs_hud_draw(const Regs* in, Regs* out) { (void)in; (void)out; vs_hud_draw(); }
+// the C's strip copy seeded with the words the original read back, in its order (port request H),
+// when the original drew the HUD (four reads)
+static void vsStripSeed(void) {
+  static const uint16_t pick[4] = {0x00A4, 0x00AC, 0x00A6, 0x00AE};
+  if(difftest_vram_reads_left() < 4) return;
+  for(int i = 0; i < 4; i++) vs_strip_set(rd16(pick[i]), difftest_vram_read());
+}
+static void call_vs_hud_draw(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  vsStripSeed();
+  vs_hud_draw();
+}
 // the four players: bars 0-12, counts 0-5 (with a high byte: the original masks it), the words,
 // the read-back addresses clear of every word written, accumulator pairs (negative now and
 // then), the strips' sources
@@ -5293,7 +5305,7 @@ static void fuzz_vs_hud_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(int i = 0; i < 4; i++) {
     wr16ram(ram, bar[i], (uint16_t)(rnd() % 13));
     wr16ram(ram, cnt[i], (uint16_t)((rnd() & 0xFF00) | rnd() % 6));
-    wr16ram(ram, pick[i], (uint16_t)(0x7000 + rnd() % 0x0B00));
+    wr16ram(ram, pick[i], (uint16_t)(0x57C0 + rnd() % 0xA0));  // in the progress strip, as in play (port request H)
     ram[acc[i]] = (uint8_t)rnd();
     ram[acc[i] + 1] = (uint8_t)rnd();
   }
@@ -7721,7 +7733,8 @@ static void fuzz_nmi_race_full(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 
 // ---- nmi_vs_prologue ($83:9721) / nmi_vs_full ($83:9777), vs-race-20 ----
 static void call_nmi_vs_prologue(const Regs* in, Regs* out) { (void)in; nmi_vs_prologue(); out->d = 0; out->db = 0x83; }
-static void call_nmi_vs_full(const Regs* in, Regs* out) { nmi_vs_full(); restoreNmiFrame(in, out); }
+static void vsStripSeed(void);
+static void call_nmi_vs_full(const Regs* in, Regs* out) { vsStripSeed(); nmi_vs_full(); restoreNmiFrame(in, out); }
 static void fuzz_vs_view_scrolls(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 static void fuzz_vs_hud_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 // What the VS frame reads: the request, the transfer, the queue, the HUD, the views' scrolls,

@@ -39,7 +39,7 @@ typedef struct {
   uint32_t vramDeadAt[4];  // harness-30: more dead VMDATA read sites, as vramReadAt
   uint32_t vramLiveAt[4];  // harness-30: live VMDATA read sites (a 16-bit LDA $2139): the words
                            // the original reads there are kept, in order, and served to the C
-                           // (video_read_vram_word), which must read as many
+                           // (the adapter, through difftest_vram_read), which must read as many
   uint32_t dmaReadAt[4];   // harness-31: sites of a 16-bit read of a DMA register ($43xx): the
                            // words are kept in order (harness-41: dmaReadsFree, the C has them)
   uint32_t endAt;          // a handler's prologue: the sample ends when it reaches this
@@ -119,6 +119,7 @@ uint8_t difftest_input(uint16_t reg);
 uint8_t difftest_dsp4_byte(uint8_t value, bool write);
 // harness-30: the next word the original read at its live VMDATA read sites (vramLiveAt)
 uint16_t difftest_vram_read(void);
+int difftest_vram_reads_left(void);
 // harness-31: the next word the original read at its DMA register read sites (dmaReadAt)
 uint16_t difftest_reg_read(void);
 // The bench chip's scripted answers for a taped row's fuzz case (dsp4_bridge.cpp): status
