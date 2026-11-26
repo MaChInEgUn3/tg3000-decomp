@@ -377,6 +377,15 @@ func    80ABF6   shop_item_view_g    ; item view of list 0 (Paintshop): two grou
 func    808002   game_boot_head      ; the reset vector's code: interrupts off, two vblank waits, HDMA off, forced blank -> src/boot.c
 func    80803C   game_boot_body      ; start-up after the CPU set-up: WRAM cleared, screen, sound, vectors, NMI on, save check -> src/boot.c
 func    80807A   game_boot_tail      ; start-up's end: the saved data checked, the DSP-4's start awaited -> src/boot.c
+func    8089EB   top_volumes         ; top loop: the sound volumes after set 0 -> src/boot.c
+func    808A2B   top_after_options   ; top loop: after the options' main menu ($03DC bits, $047D) -> src/boot.c
+func    808A9B   top_tallies         ; top loop: the results stepped for each track before $0444 -> src/boot.c
+func    808AC3   top_race_prep       ; top loop: $03E0 = $FFFF, $047B = $0444 before the race -> src/boot.c
+func    808ADF   top_after_race      ; top loop: $03E0 = 1; no ticker ends the championship -> src/boot.c
+func    808AF1   top_after_ticker    ; top loop: no place ends the championship -> src/boot.c
+func    808B25   top_after_title     ; top loop: after the next track's title; the password screen next? -> src/boot.c
+func    80FC2D   options_entry_head  ; the options screens' entry from the top loop: HDMA off -> src/boot.c
+func    80FC45   options_entry_tail  ; after the options screens: scratch and $0D00-$0DFF cleared, HDMA off -> src/boot.c
 func    8080E4   interrupt_vectors_init ; JML vectors at $0000/$0004, NMI target $0008 -> src/frame.c
 func    8A9C86   hdma_table_0d00_init ; HDMA table at $0D00 -> src/misc.c
 func    8ABF2A   string_space_fours  ; copy $0D40 to $0D60 with a space every 4 bytes -> src/misc.c

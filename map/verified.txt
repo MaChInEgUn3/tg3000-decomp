@@ -792,3 +792,12 @@
 8ABE2E password_show src/password.c 6bf07971a3972791 1 0 79/79 verified live-flags:NVZC replayed:0
 8AB232 password_entry src/password.c 6bf07971a3972791 1 0 84/84 verified live-flags:NVZC replayed:0
 8AA67B vs_screen_loop src/vs.c 9a1a73decba59670 1 0 37/37 verified live-flags:NVZC replayed:0
+80FC2D options_entry_head src/boot.c 5727293511f17e38 3 0 10/10 verified live-flags:VC replayed:0
+80FC45 options_entry_tail src/boot.c 5727293511f17e38 3 0 11/11 verified live-flags:NVZC replayed:0
+8089EB top_volumes src/boot.c 5727293511f17e38 1 0 8/8 verified live-flags:VC replayed:0
+808A2B top_after_options src/boot.c 5727293511f17e38 1 0 18/18 verified live-flags:VC replayed:0
+808A9B top_tallies src/boot.c 5727293511f17e38 1 0 12/12 verified live-flags:VC replayed:0
+808AC3 top_race_prep src/boot.c 5727293511f17e38 5 0 4/4 verified live-flags:- replayed:0
+808ADF top_after_race src/boot.c 5727293511f17e38 4 0 5/5 verified live-flags:VC replayed:0
+808AF1 top_after_ticker src/boot.c 5727293511f17e38 4 0 10/10 verified live-flags:VC replayed:0
+808B25 top_after_title src/boot.c 5727293511f17e38 4 0 15/15 verified live-flags:VC replayed:0

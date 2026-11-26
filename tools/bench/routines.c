@@ -5093,6 +5093,39 @@ static void call_game_boot_body(const Regs* in, Regs* out) {
   out->n = true;   // its last LDA #$81 (the value for $4200)
   out->z = false;
 }
+// the top loop's pieces between its calls (port request C)
+static void call_options_entry_head(const Regs* in, Regs* out) {
+  (void)in;
+  options_entry_head();
+  out->db = 0x8A;  // the CPU's (PEA/PLB, TCD)
+  out->d = 0x0100;
+}
+static void call_options_entry_tail(const Regs* in, Regs* out) {
+  out->db = rd8((uint16_t)(in->sp + 1));  // its PLB: the data bank pushed at $80:FC37
+  options_entry_tail();
+  wr8((uint16_t)(in->sp + 1), 0x80);  // its JSL's bank byte lands where that was (the CPU's)
+}
+static void call_top_volumes(const Regs* in, Regs* out) { (void)in; (void)out; top_volumes(); }
+static void call_top_after_options(const Regs* in, Regs* out) {
+  (void)in;
+  out->atEnd2 = top_after_options();
+  const uint16_t mode = rd16(0x03DC) & 0x000F;  // its last CMP #$0002
+  out->c = mode >= 2;
+  out->z = mode == 2;
+  out->n = ((uint16_t)(mode - 2) & 0x8000) != 0;
+}
+static void call_top_tallies(const Regs* in, Regs* out) { (void)in; (void)out; top_tallies(); }
+static void call_top_race_prep(const Regs* in, Regs* out) { (void)in; (void)out; top_race_prep(); }
+static void call_top_after_race(const Regs* in, Regs* out) { (void)in; (void)out; top_after_race(); }
+static void call_top_after_ticker(const Regs* in, Regs* out) { (void)in; (void)out; top_after_ticker(); }
+static void call_top_after_title(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t group = rom8(0x84A240 + (uint32_t)rd16(0x0444)), was = rd16(0x0368);
+  const bool two = rd16(0x03E2) & 0x0001;
+  out->atEnd2 = !top_after_title();
+  // C: the CMP's (the same group, or $03E2 bit 0 skipping the test), else player_in_top5's (clear)
+  out->c = (out->atEnd2 || two) ? group >= was : false;
+}
 static void call_sound_boot(const Regs* in, Regs* out) {
   sound_boot(in->d);
   setNZ16(out, in->d);  // its last PLD; C from the ready test, V clear from the upload's end
@@ -13140,6 +13173,27 @@ const Routine routines[] = {
        // under three bytes, a sample not a multiple of three
   {.name = "sound_load_menu", .entry = 0x84A4B7, .end = 0x84A4CD, .rtl = true, .source = "src/sound.c",
    .waitsForInterrupts = true, .maxInsns = 200000000, .manyEffects = true, .call = call_sound_load_menu},
+  {.name = "options_entry_head", .entry = 0x80FC2D, .end = 0x80FC41, .endAt = 0x80FC41, .source = "src/boot.c",
+   .call = call_options_entry_head},
+  {.name = "options_entry_tail", .entry = 0x80FC45, .end = 0x80FC5E, .endAt = 0x80FC5E, .source = "src/boot.c",
+   .needM16 = true, .needX16 = true, .call = call_options_entry_tail},
+  {.name = "top_volumes", .entry = 0x8089EB, .end = 0x8089FF, .endAt = 0x8089FF, .source = "src/boot.c",
+   .call = call_top_volumes},
+  {.name = "top_after_options", .entry = 0x808A2B, .end = 0x808A82, .endAt = 0x808A82, .endAt2 = 0x808A87,
+   .source = "src/boot.c", .needM16 = true, .needX16 = true, .call = call_top_after_options,
+   .holes = {{0x808A3F, 0x808A53}, {0x808A61, 0x808A71}}},  // never run: bits 15 and 13 of $03DC (traps)
+  {.name = "top_tallies", .entry = 0x808A9B, .end = 0x808AB8, .endAt = 0x808AB8, .source = "src/boot.c",
+   .needM16 = true, .needX16 = true, .call = call_top_tallies},
+  {.name = "top_race_prep", .entry = 0x808AC3, .end = 0x808AD0, .endAt = 0x808AD0, .source = "src/boot.c",
+   .needM16 = true, .needX16 = true, .call = call_top_race_prep},
+  {.name = "top_after_race", .entry = 0x808ADF, .end = 0x808AEE, .endAt = 0x808AEE, .source = "src/boot.c",
+   .needM16 = true, .needX16 = true, .call = call_top_after_race},
+  {.name = "top_after_ticker", .entry = 0x808AF1, .end = 0x808B12, .endAt = 0x808B12, .source = "src/boot.c",
+   .needM16 = true, .needX16 = true, .call = call_top_after_ticker,
+   .holes = {{0x808B09, 0x808B0F}, {0x808B11, 0x808B12}}},  // never run: the two players' test, the RTS
+  {.name = "top_after_title", .entry = 0x808B25, .end = 0x808B55, .endAt = 0x808B55, .endAt2 = 0x808B59,
+   .source = "src/boot.c", .needM16 = true, .needX16 = true, .call = call_top_after_title,
+   .holes = {{0x808B50, 0x808B55}}},  // never run: the player not in the first five
   {.name = "game_boot_head", .entry = 0x808002, .end = 0x80802E, .endAt = 0x80802E, .source = "src/boot.c",
    .emuEntry = true, .call = call_game_boot_head},  // once per movie: live only
   {.name = "game_boot_body", .entry = 0x80803C, .end = 0x80807A, .endAt = 0x80807A, .source = "src/boot.c",

@@ -5751,6 +5751,82 @@ original's rows meet: each row ends at the next one's entry (`endAt`).
 
 **Check:** the full gate (`difftest.c` changed).
 
+## The game whole: game_main (top-loop-1, 2026-11-26)
+
+**Port request C, step 3.** `game_main` (`src/boot.c`) is the game's one entry for a port: it
+calls `game_boot`, then runs the top loop (`$80:89DB`), which never returns. In order:
+- the title card (`options_entry(2)`);
+- sound set 0 and its volumes;
+- the intro;
+- then, from `$80:8A1F` on, again and again:
+  - the results reset;
+  - the options' main menu (`options_entry(0)`);
+  - the saved data sealed;
+  - then the two-player game (`$80:8B79`) or the championship's loop (`$80:8A8C`).
+
+**The championship's loop:**
+- **Once:** its screen; the saved data sealed; the slots ordered; the track snapped; the
+  results stepped for the tracks before.
+- **Then, each round:**
+  1. the results counter;
+  2. the shop (`shop_screen`);
+  3. the results slot;
+  4. the race (`race_wrapper`);
+  5. the sound set back (`sound_load_menu`);
+  6. the ticker;
+  7. the prizes;
+  8. the results screen;
+  9. the next track's title;
+  10. the next track;
+  11. the password screen when the track's group changed (`options_entry(1)`);
+  12. its screen again.
+
+**Traps** (`tg3000_unported`, named):
+- every way the movies never took: the top loop without the title card (`$80:8A04`); bits
+  15 and 13 of `$03DC` (`$80:8A3F`, `$80:8A61`); the end of the championship (`$80:8B11`,
+  no ticker or no place); its last track done (`$80:8B5F`); the player not in the first five
+  (`$80:8B50`); after the two-player race (`$80:8B8E`);
+- **the championship screen's session**, whose two tasks are not in C yet. That is port
+  request D, the next one.
+
+**Rows for the glue between its calls.** These verify the top loop's own work:
+
+| Row | Range | Cut |
+|---|---|---|
+| `top_volumes` | `$80:89EB`-`$80:89FE` | |
+| `top_after_options` | `$80:8A2B`-`$80:8A81` | its second cut is the two-player game |
+| `top_tallies` | `$80:8A9B`-`$80:8AB7` | |
+| `top_race_prep` | `$80:8AC3`-`$80:8ACF` | |
+| `top_after_race` | `$80:8ADF`-`$80:8AED` | |
+| `top_after_ticker` | `$80:8AF1`-`$80:8B11` | |
+| `top_after_title` | `$80:8B25`-`$80:8B54` | its second cut is no password screen |
+| `options_entry_head` | `$80:FC2D`-`$80:FC40` | |
+| `options_entry_tail` | `$80:FC45`-`$80:FC5D` | |
+
+- **Never-run bytes are holes:** `top_after_ticker`'s two-player test at `$80:8B09` was
+  decoded from the ROM and ported anyway.
+- **The adapters set what is the CPU's:** the data bank, D, and the JSL's bank byte that
+  lands on the stack slot the PLB freed.
+
+**Results.** They pool the 60k and password movies; each row passes, live only.
+
+| Row | Live samples | Paths |
+|---|---|---|
+| `options_entry_head` | 3 | 10/10 |
+| `options_entry_tail` | 3 | 11/11 |
+| `top_volumes` | 1 | 8/8 |
+| `top_after_options` | 1 | 18/18 |
+| `top_tallies` | 1 | 12/12, the password movie's |
+| `top_race_prep` | 5 | 4/4 |
+| `top_after_race` | 4 | 5/5 |
+| `top_after_ticker` | 4 | 10/10 |
+| `top_after_title` | 4 | 15/15 |
+
+`game_main` itself never returns, so it is not a sample. It is composed of these rows and the
+screens' verified C.
+
+**Check:** the incremental gate (additions only).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

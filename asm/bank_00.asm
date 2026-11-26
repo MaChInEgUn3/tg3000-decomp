@@ -1109,6 +1109,7 @@ oam_finish_near:
     jsl.l $80FC20               ; $8089E0
     lda.w #$0000                ; $8089E4
     jsl.l sound_load_set        ; $8089E7
+top_volumes:
     sep.b #$20                  ; $8089EB
     lda.b #$01                  ; $8089ED
     sta.w $045F                 ; $8089EF
@@ -1124,6 +1125,7 @@ CODE_808A1F:
     jsl.l results_init          ; $808A1F
     jsl.l $80FC2A               ; $808A23
     jsl.l save_data_seal        ; $808A27
+top_after_options:
     lda.w $03DC                 ; $808A2B
     bit.w #$5000                ; $808A2E
     bne CODE_808A37             ; $808A31
@@ -1156,6 +1158,7 @@ CODE_808A87:
     jsl.l save_data_seal        ; $808A8F
     jsl.l player_in_top5        ; $808A93
     jsl.l track_snap            ; $808A97
+top_tallies:
     lda.w $0444                 ; $808A9B
     beq CODE_808AB8             ; $808A9E
     stz.b $14                   ; $808AA0
@@ -1173,6 +1176,7 @@ CODE_808AB8:
     jsl.l result_tally          ; $808AB8
     jsr.w shop_screen_begin     ; $808ABC
     jsl.l result_slot_step      ; $808ABF
+top_race_prep:
     lda.w #$FFFF                ; $808AC3
     sta.l $8103E0               ; $808AC6
     lda.w $0444                 ; $808ACA
@@ -1181,12 +1185,14 @@ CODE_808AB8:
     jsl.l wait_03e0             ; $808AD4
     lda.w #$0001                ; $808AD8
     jsl.l sound_load_menu       ; $808ADB
+top_after_race:
     lda.w #$0001                ; $808ADF
     sta.l $8103E0               ; $808AE2
     lda.w #$FFFF                ; $808AE6
     cmp.w $0446                 ; $808AE9
     db $F0,$23 ; beq            ; $808AEC
     jsr.w ticker_screen         ; $808AEE
+top_after_ticker:
     lda.w $03E2                 ; $808AF1
     bit.w #$0001                ; $808AF4
     bne CODE_808B12             ; $808AF7
@@ -1206,6 +1212,7 @@ CODE_808B12:
     lda.w $047B                 ; $808B1A
     jsl.l title_screen_run      ; $808B1D
     jsl.l track_next            ; $808B21
+top_after_title:
     lda.w $0444                 ; $808B25
     cmp.w #$00FF                ; $808B28
     db $F0,$32 ; beq            ; $808B2B
@@ -14234,11 +14241,11 @@ nmi_target_80FC14:
     jmp.w nmi_tail              ; $80FC18
     incbin !baserom:$7C1B..$7C20
     ldx.w #$0002                ; $80FC20
-    bra CODE_80FC2D             ; $80FC23
+    bra options_entry_head      ; $80FC23
     ldx.w #$0001                ; $80FC25
-    bra CODE_80FC2D             ; $80FC28
+    bra options_entry_head      ; $80FC28
     ldx.w #$0000                ; $80FC2A
-CODE_80FC2D:
+options_entry_head:
     sep.b #$20                  ; $80FC2D
     stz.w $420C                 ; $80FC2F
     stz.w $420B                 ; $80FC32
@@ -14250,6 +14257,7 @@ CODE_80FC2D:
     lda.w #$0100                ; $80FC3D
     tcd                         ; $80FC40
     jsl.l options_state_clear   ; $80FC41
+options_entry_tail:
     plb                         ; $80FC45
     jsl.l clear_dp_scratch      ; $80FC46
     ldx.w #$00FE                ; $80FC4A
