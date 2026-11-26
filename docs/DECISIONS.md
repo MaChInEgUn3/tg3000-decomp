@@ -6409,6 +6409,36 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The window command `$08`: exact for the game's runs (dsp4-08e, 2026-11-26)
+
+**Two findings this unit, both outputs only.**
+
+**1. dsp4-08d's multi-row misses were mostly my scratch model's.** It read negative lines as
+large positive ones (a missing 16-bit mask). With that fixed, the remaining misses all came
+from rows where the two roads' lines differ.
+
+**2. In the game the two roads' lines are always equal.**
+- **Why:** road 2's line is `$07`'s answer: road 1's line + (its offset · h >> 15). The offset
+  (`$3E6E`) is 0 in every `$07` run of `race1` (16,380 rows), and of the other gate movies (all
+  `$07` runs matched with offsets 0 in dsp4-07b's check).
+- **With equal lines, the dsp4-08d rule is exact:** 6,000 random multi-row runs of up to 8 rows
+  (lines down past 0, both tables, camera edges, crests, the line limit as `$01`'s), and all
+  584 `$08` runs of `race1`.
+
+**Not modelled, outside the game:**
+- **Rows whose two lines differ.** In road 2's table, the first lines of a row then hold road 2's
+  previous end (in 96% of such misses) for a number of lines not yet pinned. It relates to road
+  1's previous line, but is not a simple function of it.
+  - A native `$08` will take one line for both roads, or trap when they differ.
+- **The header's 20 constants** (`$FF`, 0, `$A6`, `$A5`, `$A7`, `$81`, `$7F`) are never varied by
+  the game and were not swept further. Header word 0 at `$80` moved road 1's right byte to
+  `$81` (dsp4-08b), so they are likely limits.
+
+**Next (dsp4-08f):** the native `$08` in `src/dsp4.c`, then `road_rows_stream`'s wiring (its two
+products too, the port's request).
+
+**Check:** a measurement, recorded here. It changes no code.
+
 ## The window command `$08`: the rule for one row, exact (dsp4-08d, 2026-11-26)
 
 **Measured on the probe** (firmware, chosen inputs, outputs only). X is header word 39
