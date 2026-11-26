@@ -278,6 +278,7 @@ race_track_start:
     rep.b #$20                  ; $828603
     jsr.w road_rows_build_call  ; $828605
     jsl.l race_road_frame_alt   ; $828608
+race_track_start_tail:
     lda.w #$0F00                ; $82860C
     sta.w $0148                 ; $82860F
     lda.w #$0080                ; $828612

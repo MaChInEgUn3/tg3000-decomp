@@ -1421,6 +1421,8 @@ void race_track(void);
 // $82:856D up to the first wait; $82:85D6 from that wait up to the race loop.
 void race_track_build(void);
 void race_track_start(void);
+void race_track_start_head(void);  // $82:85D6 up to the road's first frame
+void race_track_start_tail(void);  // $82:860C
 // The race loop ($82:8645): its head up to the wait, the wait ($82:8656), the body after it up to
 // the jump back ($82:865B; true when the loop ends).
 void race_frame_head(void);

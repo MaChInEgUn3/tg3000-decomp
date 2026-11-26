@@ -6850,9 +6850,15 @@ static void call_race_track_build(const Regs* in, Regs* out) {
 }
 // race_track_start ($82:85D6): up to the race loop's head ($82:8645): A = the message, N Z V of
 // BIT $047C (or of LDA #$43, bit 15 set: never run); C of the last frame wait (set)
+// race_track_start's head (dsp4-01t: cut at its JSL to race_road_frame_alt, $82:8608)
+static void call_race_track_start_head(const Regs* in, Regs* out) {
+  (void)in;
+  (void)out;
+  race_track_start_head();
+}
 static void call_race_track_start(const Regs* in, Regs* out) {
   (void)in;
-  race_track_start();
+  race_track_start_tail();
   out->c = true;
   const uint16_t m = rd16(0x047C);
   out->v = (m & 0x4000) != 0;
@@ -12217,55 +12223,12 @@ static void call_road_rows_project(const Regs* in, Regs* out) {
   out->v = false;
   out->db = 0x83;
 }
-// the race's road, then the buffer ($00B4), the place in the row ($0225's byte), $0242
-// negative now and then, $0202, D+$E4's sign (objects from the chip or copied from bank
-// $90), each row's edge flags ($7E:3D6A bits 15 and 1) and edge bytes, $020D. The chip is scripted in the order
-// the routine reads: six products, then each row's four answers and object count (mostly
-// 0; an object's four answers unless copied, and 1-2 (index, word, word) entries in low
-// WRAM); an object's bytes in bank $90 come from ROM
-static void fuzz_road_rows_project(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
-  (void)r;
-  wr16ram(ram, 0x00B4, (rnd() & 1) ? 0 : 1);
-  ram[0x0225] = (uint8_t)rnd();
-  if(rnd() % 3 == 0) wr16ram(ram, 0x0242, (uint16_t)(0 - (1 + rnd() % 0xE0)));
-  else if(rnd() & 1) wr16ram(ram, 0x0242, (uint16_t)(rnd() % 0x40));
-  if(rnd() & 1) wr16ram(ram, 0x0202, (rnd() % 4 == 0) ? 0 : (uint16_t)rnd());
-  if(rnd() & 1) ram[0x020D] = (uint8_t)rnd();  // the side's high byte, negative too
-  const bool copied = (rnd() & 1) != 0;
-  wr16ram(ram, DP + 0xE4, (uint16_t)(copied ? 0x8000 | rnd() : rnd() & 0x7FFF));
-  uint16_t at = (uint16_t)(0x0080 - ((ram[0x0225] >> 1) & 0x7E));
-  uint32_t k = (uint32_t)(((ram[0x0226] | ram[0x0227] << 8) << 1) & 0x3E);
-  uint16_t script[256];
-  int n = 0;
-  for(int i = 0; i < 12; i++) script[n++] = (uint16_t)rnd();
-  int objects = 0;
-  do {
-    k += 2;
-    if(rnd() % 3 == 0) {
-      ram[0x3D6B + k] = (uint8_t)((ram[0x3D6B + k] & 0x7F) | (rnd() & 0x80));
-      ram[0x3D6A + k] = (uint8_t)((ram[0x3D6A + k] & 0xFD) | (rnd() & 0x02));
-      ram[0x3AEB + k] = (uint8_t)rnd();  // the edges' bytes, negative too
-      ram[0x3AED + k] = (uint8_t)rnd();
-    }
-    for(int i = 0; i < 4; i++) script[n++] = (uint16_t)rnd();
-    const int pairs = (objects < 8 && rnd() % 5 == 0) ? 1 + (int)(rnd() % 2) : 0;
-    script[n++] = (uint16_t)pairs;
-    if(pairs) {
-      objects++;
-      wr16ram(ram, 0x3CEA + k, (uint16_t)(0x8100 + 2 * (rnd() % 0x3000)));
-      if(!copied)
-        for(int i = 0; i < 4; i++) script[n++] = (uint16_t)rnd();
-      for(int i = 0; i < pairs; i++) {
-        script[n++] = (uint16_t)(2 * (rnd() % 0x180));
-        script[n++] = (uint16_t)rnd();
-        script[n++] = (uint16_t)rnd();
-      }
-    }
-    at = (uint16_t)(at + 0x0080);
-  } while(at < 0x0E00);
-  dsp4_bridge_script(script, n);
+// dsp4-01t's negative row: the same, with the road's rounding taken as $8000 whatever the last
+// $0A left (it must fail on the samples after a $0A: the clean ones test the state)
+static void call_road_rows_project_wrong_round(const Regs* in, Regs* out) {
+  dsp4_round_set((int16_t)0x8000, (int16_t)0x8000);
+  call_road_rows_project(in, out);
 }
-
 // ---- road_rows_project2 ($85:B828) ----  a DSP-4 tape row (RTL); outputs as
 // road_rows_project's: A = D+$1A, X = the band, Y = $0160, N set, Z clear, C of the CMP #4
 // ($1EF2 negative, as it computed it) or of the rows' CMP #$0E00, V clear, DB = $83
@@ -13565,10 +13528,14 @@ const Routine routines[] = {
   {.name = "race_track_build", .entry = 0x82856D, .end = 0x8285D6, .endAt = 0x8285D6, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_race_track_build,
    .manyEffects = true, .dsp4Tape = true, .replays = 32},
-  {.name = "race_track_start", .entry = 0x8285D6, .end = 0x828645, .endAt = 0x828645, .source = "src/misc.c",
+  // dsp4-01t: cut at the JSL to race_road_frame_alt (its own row): the road's first frame runs on
+  // an unknown rounding. The head keeps the row's name
+  {.name = "race_track_start", .entry = 0x8285D6, .end = 0x828608, .endAt = 0x828608, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
+   .maxInsns = 40000000, .call = call_race_track_start_head, .manyEffects = true},  // no fuzz: it waits
+  {.name = "race_track_start_tail", .entry = 0x82860C, .end = 0x828645, .endAt = 0x828645, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .waitsForInterrupts = true,
    .maxInsns = 40000000, .call = call_race_track_start, .manyEffects = true,  // no fuzz: it waits
-   .dsp4Tape = true,  // the road's first frame streams the road and the sprites
    .holes = {{0x82863F, 0x828642}}},  // the demo's message (ported from the ROM's bytes, untested)
   {.name = "race_frame_head", .entry = 0x828645, .end = 0x828656, .endAt = 0x828656, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_race_frame_head,
@@ -14880,7 +14847,14 @@ const Routine routines[] = {
    .replays = 32},  // the VS raster IRQs land in every live sample (harness-34)
   {.name = "road_rows_project", .entry = 0x85B3D7, .end = 0x85B828, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project, ALL_OUTPUTS,
-   .fuzz = fuzz_road_rows_project, .dsp4Tape = true, .fuzzStack = 0x1FF1},
+   .dsp4Tape = true,
+   .dsp4Native = {{0x85B52C, 0x85B7ED}},  // dsp4-01t: the road, $01, native (its products stay taped)
+   // dsp4-01t: no fuzz (its cases run the road on the bench's own DSP-4, whose rounding after a reset
+   // and whose clamps are not the firmware's). Never run live: $0F (the chip's objects: a trap),
+   // the edges ($8001: a trap), $0242 negative (a trap), $020D negative (a sign extension, unchecked)
+   .holes = {{0x85B533, 0x85B53B}, {0x85B75D, 0x85B7D6}, {0x85B4D4, 0x85B4D7}, {0x85B54B, 0x85B558},
+             {0x85B56C, 0x85B572}, {0x85B589, 0x85B58F}, {0x85B5B3, 0x85B5BA}, {0x85B694, 0x85B716},
+             {0x85B804, 0x85B811}}},
   {.name = "road_rows_stream", .entry = 0x818564, .end = 0x8189F5, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_stream, ALL_OUTPUTS,
    .fuzz = fuzz_road_rows_stream, .dsp4Tape = true, .fuzzStack = 0x1FF1},
@@ -15000,6 +14974,12 @@ const Routine routines[] = {
 const int routineCount = sizeof routines / sizeof routines[0];
 
 const Routine negativeRoutines[] = {
+  {.name = "road_rows_project_wrong_round", .entry = 0x85B3D7, .end = 0x85B828, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project_wrong_round, ALL_OUTPUTS,
+   .dsp4Tape = true, .dsp4Native = {{0x85B52C, 0x85B7ED}},
+   .holes = {{0x85B533, 0x85B53B}, {0x85B75D, 0x85B7D6}, {0x85B4D4, 0x85B4D7}, {0x85B54B, 0x85B558},
+             {0x85B56C, 0x85B572}, {0x85B589, 0x85B58F}, {0x85B5B3, 0x85B5BA}, {0x85B694, 0x85B716},
+             {0x85B804, 0x85B811}}},
   // harness-17: a cut whose carry the code after it does not overwrite before its first
   // branch (split_screen_setup's), given wrong: it must still fail on its few samples
   {.name = "ticker_screen_wrong_carry", .entry = 0x80E4E6, .end = 0x80E5F7, .endAt = 0x80E5F7, .source = "src/misc.c",

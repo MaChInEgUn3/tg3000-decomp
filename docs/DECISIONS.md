@@ -6409,6 +6409,90 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The race's road on the native road command (dsp4-01t, 2026-11-26)
+
+**`road_rows_project` (`$85:B3D7`) now calls `src/dsp4.c`'s road instead of streaming it.** It
+builds the header and each row's words as before, then calls `dsp4_road_start` and
+`dsp4_road_row`. It writes the answers, the lines and the copied objects to WRAM as the
+original does. Its six products stay on the port (taped).
+
+**Never run in any movie, now named traps:**
+- `$0F` (D+$E4 positive: the chip's own objects);
+- a row's edge (`$8001`: in the TAS only, past its first 30,000 frames);
+- `$0242` negative (the native road was never measured there).
+
+**The rounding as chip state** (dsp4-01r). `src/dsp4.c` keeps it:
+- `dsp4_edges` sets it;
+- `dsp4_road_start` begins with it, and the first row that draws uses it up;
+- `dsp4_round_get`/`_set` read and write it.
+
+`car_road_step`'s C already computes its `$0A` with `dsp4_edges`, so a port gets the state
+without doing anything.
+
+**The harness** (FROZEN `difftest.c`; the full gate):
+- **The grammar of whole commands** now has the road: its header, rows of 14 then 8 bytes,
+  answers of 10 + 6 a line (the count in bytes 8-9), then the next height or `$8000`. An edge
+  (`$8001`) is not native.
+- **A tracker follows the original's whole DSP-4 traffic,** from power-on.
+  - **Known:** after a `$0A` (its edges 2 and 3) or a road that drew (`$8000`).
+  - **Left as it was:** multiplies and `$0B`.
+  - **Unknown:** any other command (`$07`, `$08`, `$09`, `$06`; `$11` and `$03`, unmeasured).
+    The parser, lost in a command it does not have, waits for the next `$0A` at one of the
+    listing's twelve `$0A` sites.
+  - **At power-on:** unknown, unless the firmware runs (its fresh `$8000`). The bench's own
+    chip's fresh rounding is unmeasured.
+- **Each sample takes the tracker's state at entry,** and the C starts from it
+  (`dsp4_round_set`).
+- **A live sample whose original runs a road while the state is unknown** is set apart.
+  - It fails the routine only when no movie has a clean live pass, a fuzz pass or a replayed
+    pass.
+  - The evidence counts it (`roadapart:`); the report prints how many passed and failed.
+  - `merge_verified.py` applies the same rule.
+- **Fuzz cases and replays prime the bench's chip.** Their chip is reset (and a row's script
+  resets it again), so after the row's script the harness sends a `$0A` with rows `$C4C4`
+  (edges −192, 192) straight to the chip (`dsp4_bridge_direct`). That sets a known rounding:
+  a `$0A` setting it is what 25,000 live roads show on the bench's chip.
+  - A fuzz case or replay that still runs a road on an unknown rounding is counted as lost,
+    which fails the row.
+  - A replay restored mid-command (the firmware's state) is not primed: unknown.
+
+**The cuts:**
+- **`race_track_start` is cut at its `JSL` to `race_road_frame_alt`** (`$82:8608`). Every live
+  sample of the road's first frame comes before any `$0A`, so a whole row would have no clean
+  sample. The head keeps the row's name; `race_track_start_tail` (`$82:860C`) is new; the road
+  frame keeps its own row.
+- **`road_rows_project`'s row:**
+  - The road's code (`$85:B52C`-`$85:B7ED`) is `dsp4Native`; the products stay on the tape.
+  - **No fuzz any more.** Its cases run the road on the bench's own chip, which does not clamp
+    the `$0796` words at −128 and 896 as the firmware does. With random products or places it
+    gave, for example, `$0575` and `$0423` where the firmware gives `$0380`. Realistic ranges
+    still left 191 of 500 passing.
+  - `tools/dsp4_road_check.py` checks the native road against the firmware instead; the row
+    checks the wiring on the movies' live samples.
+  - **Holes (never run live; the fuzz reached them through the tape before):**
+    - the three traps' code;
+    - `$020D` negative (`$85:B4D4`, a sign extension, now unchecked);
+    - `$0242` negative (`$85:B54B`-`$85:B5BA`, `$85:B804`-`$85:B811`);
+    - `$0F`'s objects (`$85:B694`-`$85:B716`).
+  - **On `race1`:** 131 of 131 clean live samples pass; 85 of the race's first frames are set
+    apart (84 differ by 1 in a line word, as dsp4-01q measured).
+  - **On `autopilot_60k`:** 4,000 of 4,000.
+- **The rows that call the road keep their fuzz and replays, primed.** On `race1` all pass:
+  - `race_frame_body`: 17 of 17 replays;
+  - `race_frame_draw`: 200 of 200;
+  - `race_road_frame`: 59 live, 200 fuzz;
+  - `race_road_frame_alt`: 200 fuzz;
+  - `road_rows_project2`: 142 live, 200 fuzz;
+  - `road_rows_stream`: 39 live, 200 fuzz.
+- **The negative row `road_rows_project_wrong_round`** (the rounding always `$8000`) passes 1 of
+  131 on `race1`. So the clean samples do test the state.
+
+**What it changes for the port:** a race still stops right after the road, at `$07`
+(`road_rows_project2`), the next command still on the byte protocol (dsp4-01s).
+
+**Check:** the full gate (the harness, `src/misc.c` and `src/dsp4.c` changed by more than
+additions); every negative row fails.
+
 ## The road's check over the gate's movies, before the wiring (dsp4-01s, 2026-11-26)
 
 **The advisor's blocking check before `road_rows_project` calls the native road.**

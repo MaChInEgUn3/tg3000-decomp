@@ -12,6 +12,17 @@ static int16_t dsp4_width(uint16_t row, int j) {
   return (int16_t)(n * 48);
 }
 
+// the road's rounding, as the chip keeps it (dsp4-01r): the last $0A's edges 2 and 3
+static int16_t dsp4_round[2] = {(int16_t)0x8000, (int16_t)0x8000};
+void dsp4_round_get(int16_t* edge2, int16_t* edge3) {
+  *edge2 = dsp4_round[0];
+  *edge3 = dsp4_round[1];
+}
+void dsp4_round_set(int16_t edge2, int16_t edge3) {
+  dsp4_round[0] = edge2;
+  dsp4_round[1] = edge3;
+}
+
 void dsp4_edges(uint16_t t, uint16_t near, uint16_t far, int16_t out[4]) {
   for(int j = 0; j < 4; j++) {
     int32_t a = dsp4_width(near, j), b = dsp4_width(far, j);
@@ -19,6 +30,7 @@ void dsp4_edges(uint16_t t, uint16_t near, uint16_t far, int16_t out[4]) {
     int32_t step = p >= 0 ? p / 32768 : -((-p + 32767) / 32768);  // floor(p / 2^15)
     out[j] = (int16_t)(a + step);
   }
+  dsp4_round_set(out[2], out[3]);
 }
 
 // (dsp4-11a: measured on the firmware, every edge alike: the edge times 1364 / 65536, rounded
@@ -67,6 +79,12 @@ void dsp4_road_begin(Dsp4Road* r, const uint16_t head[15], int16_t edge2, int16_
   r->round[1] = (uint16_t)(((uint16_t)edge3 >> 2) & 0x3FFF);
   r->index = head[9];
   r->row = 0;
+  r->fromState = false;
+}
+
+void dsp4_road_start(Dsp4Road* r, const uint16_t head[15]) {
+  dsp4_road_begin(r, head, dsp4_round[0], dsp4_round[1]);
+  r->fromState = true;
 }
 
 unsigned dsp4_road_row(Dsp4Road* r, uint16_t h, const uint16_t first[3], const uint16_t track[3], uint16_t out[4],
@@ -108,7 +126,11 @@ unsigned dsp4_road_row(Dsp4Road* r, uint16_t h, const uint16_t first[3], const u
   r->endB = endB;
   r->yPrev = (int16_t)y;
   if(y < r->m) r->m = (int16_t)y;
-  if(cnt > 0) r->round[0] = r->round[1] = 0x2000;  // the last $0A's rounding: the first row that draws
+  if(cnt > 0) {  // the last $0A's rounding: the first row that draws uses it up
+    r->round[0] = r->round[1] = 0x2000;
+    if(r->fromState) dsp4_round_set((int16_t)0x8000, (int16_t)0x8000);
+    r->fromState = false;
+  }
   r->g += (int32_t)((uint32_t)s16x(track[1]) << 8);
   r->s += (int32_t)((uint32_t)s16x(track[0]) << 8);
   r->x += r->g;

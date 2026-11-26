@@ -22,7 +22,9 @@ vis:) are judged on the evidence pooled over the movies instead:
 - harness-17: a flag every watch of every movie found written in the straight-line code
   after a cut (sdead:, endAt rows) is dead there even below MIN_WATCHED;
 - harness-15: lagged samples that failed (lagfail:) fail the routine only when no movie has a
-  sample without lag that passed (cleanpass:).
+  sample without lag that passed (cleanpass:). dsp4-01t: samples whose road ran on an unknown
+  rounding (roadapart:) fail it only when no movie has a clean pass, a fuzz pass or a replayed
+  pass (the fuzz cases and replays run on a primed chip).
 
 --update (tools/verify_new.sh): NEW's rows, already merged over the movies, replace
 FILE's rows of the same entry; new entries go at the end; FILE's other rows stay.
@@ -77,8 +79,11 @@ def pooled(rows):
     base[6] = f"{seen}/{need}"
     base[8] = "live-flags:" + ("".join(c for c in "NVZC" if c in live) or "-")
     lagfail = sum(int(e.get("lagfail", "0")) for _, e in evs)
+    roadapart = sum(int(e.get("roadapart", "0")) for _, e in evs)  # dsp4-01t
     cleanpass = sum(int(e.get("cleanpass", "0")) for _, e in evs)
-    ok = bool(compared) and paths_ok and not (live & mism) and (lagfail == 0 or cleanpass > 0)
+    primed = sum(int(r[5]) + int(e.get("replayed", "0")) for r, e in evs)  # fuzz and replayed passes
+    ok = (bool(compared) and paths_ok and not (live & mism) and (lagfail == 0 or cleanpass > 0) and
+          (roadapart == 0 or cleanpass + primed > 0))
     base[7] = "verified" if ok else "failed"
     return base[:10]  # the committed columns (entry .. replayed), without the raw evidence
 

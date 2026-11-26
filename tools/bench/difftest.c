@@ -10,7 +10,9 @@
 // its extent ran in a compared sample.
 #include "difftest.h"
 #include "dsp4_bridge.h"
+#include "dsp4.h"
 bool dsp4_bridge_firmware_on(void);  // (tools/bench/dsp4_bridge.cpp, harness-29)
+void dsp4_bridge_direct(const uint8_t* bytes, int nWrite, int nRead);  // (dsp4-01t)
 
 #include <setjmp.h>
 #include <stdio.h>
@@ -78,6 +80,9 @@ typedef struct {
   // harness-15: waiting samples an interrupt stopped outside a wait (a lag frame), failing
   // ones (not a failure while some sample without lag passes), and passes without lag
   unsigned long lagFail, cleanPass;
+  unsigned long apartFail, apartPass;  // dsp4-01t: samples whose road ran on an unknown rounding
+  unsigned long fuzzApart, replayApart;  // and fuzz cases and replays, not counted
+  char firstApartFailure[400];
   char firstLagFailure[400];
   uint8_t ppuModes;
   uint8_t ppuHdma[32];  // B-bus addresses ($21xx) of HDMA channels active at the writes
@@ -150,6 +155,15 @@ typedef struct {
   // command word, 2 parameters, 3 results; the command and the bytes of the phase so far
   uint8_t dsp4Phase, dsp4Cmd, dsp4Count;
   uint16_t dsp4Flag;  // the result's first word so far (dsp4-03c)
+  // the road, $01 (dsp4-01t): bytes this row needs, whether it is the first, whether a row drew;
+  // a $0A's parameters (the tracker computes its edges)
+  uint16_t dsp4RoadNeed, dsp4RoadCount;
+  bool dsp4RoadFirst, dsp4RoadDrew;
+  uint8_t dsp4Param[6];
+  // dsp4-01t: the road's rounding when the sample began (roundKnown: the tracker knew it), and
+  // whether the original ran a road while it did not (the sample is then set apart)
+  bool roundKnown, roadUnknown;
+  int16_t roundE2, roundE3;
   // a taped row's DSP-4 data-port bytes, in order, in tapes[depth] (the C consumes them:
   // difftest_dsp4_byte); kept out of the sample, which every entry clears
   int nTape;
@@ -936,6 +950,7 @@ static const struct { uint8_t cmd, in, out; bool writeSkips, flagEnds; } dsp4Com
   {0x11, 8, 2, false, false},  // dsp4_row
   {0x03, 10, 6, false, true},  // dsp4_sprite: its word, then a sprite entry
   {0x0B, 6, 6, false, true},   // dsp4_sprite
+  {0x01, 30, 0, false, false},  // the road (dsp4-01t): its header here; its rows in dsp4Step
 };
 static bool isDsp4(uint32_t adr) {
   uint8_t bank = (adr >> 16) & 0x7F;
@@ -973,9 +988,48 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
   case 2: {  // the parameters
     if(!write) return false;
     const int i = dsp4CommandIndex(smp->dsp4Cmd);
-    if(++smp->dsp4Count == dsp4Commands[i].in) { smp->dsp4Phase = 3; smp->dsp4Count = 0; smp->dsp4Flag = 0; }
+    if(smp->dsp4Count < 6) smp->dsp4Param[smp->dsp4Count] = val;
+    if(++smp->dsp4Count == dsp4Commands[i].in) {
+      smp->dsp4Phase = smp->dsp4Cmd == 0x01 ? 4 : 3;
+      smp->dsp4Count = 0;
+      smp->dsp4Flag = 0;
+      smp->dsp4RoadFirst = true;
+      smp->dsp4RoadDrew = false;
+      smp->dsp4RoadCount = 0;
+    }
     break;
   }
+  // the road's rows (dsp4-01t): a row's words (14 bytes for the first, 8 after), its answer (10
+  // bytes, then 6 a line, the line count in bytes 8-9), then the next row's height or $8000
+  case 4:
+    if(!write) return false;
+    if(smp->dsp4RoadCount == 0) smp->dsp4Flag = val;
+    if(smp->dsp4RoadCount == 1 && (uint16_t)(smp->dsp4Flag | val << 8) == 0x8000) {  // the end
+      smp->dsp4Phase = 0;
+      smp->dsp4Count = 0;
+      break;
+    }
+    if(smp->dsp4RoadCount == 1 && (uint16_t)(smp->dsp4Flag | val << 8) == 0x8001) return false;  // an edge: not native
+    if(++smp->dsp4RoadCount == (smp->dsp4RoadFirst ? 14 : 8)) {
+      smp->dsp4Phase = 5;
+      smp->dsp4RoadCount = 0;
+      smp->dsp4RoadNeed = 10;
+      smp->dsp4RoadFirst = false;
+    }
+    break;
+  case 5:
+    if(write) return false;
+    if(smp->dsp4RoadCount == 8) smp->dsp4Flag = val;
+    if(smp->dsp4RoadCount == 9) {
+      const uint16_t n = (uint16_t)(smp->dsp4Flag | val << 8);
+      smp->dsp4RoadNeed = (uint16_t)(10 + 6 * n);
+      if(n) smp->dsp4RoadDrew = true;
+    }
+    if(++smp->dsp4RoadCount == smp->dsp4RoadNeed) {
+      smp->dsp4Phase = 4;
+      smp->dsp4RoadCount = 0;
+    }
+    break;
   default: {  // the results: a read takes one (a write skips one, for the multiply)
     const int i = dsp4CommandIndex(smp->dsp4Cmd);
     if(write && !dsp4Commands[i].writeSkips) return false;
@@ -990,6 +1044,61 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
   return true;
 }
 
+// dsp4-01t: the road's rounding, tracked over the original's whole DSP-4 traffic (not per
+// sample). Known only after a $0A (its edges 2 and 3) or a road that drew ($8000): multiplies
+// and $0B leave it; any other command (the sprite and road streams $07/$08/$09/$06, and $11 and
+// $03, unmeasured) makes it unknown, and the parser, lost in a command it does not have, waits
+// for the next $0A at one of the listing's $0A sites.
+static Sample trackSmp;
+static bool trackLost = false, trackKnown = false;  // power-on: idle; the rounding $8000 with the firmware only
+static int16_t trackE2 = (int16_t)0x8000, trackE3 = (int16_t)0x8000;
+static const uint32_t dsp4EdgeSites[] = {0x81E663, 0x81F90E, 0x82902F, 0x82E0E8, 0x82EA5F, 0x83E8B2,
+                                         0x83E8F7, 0x85C09D, 0x85C43B, 0x85C7C7, 0x85CB1D, 0x85CD8E};
+static void trackDsp4(uint32_t adr, uint8_t val, bool write) {
+  if((adr & 0xFFFF) >= 0xC000) return;  // status
+  if(trackLost) {
+    bool site = false;
+    for(unsigned i = 0; i < sizeof dsp4EdgeSites / sizeof dsp4EdgeSites[0]; i++) site |= insnPc == dsp4EdgeSites[i];
+    if(!write || val != 0x0A || !site) return;
+    trackLost = false;
+    trackSmp.dsp4Phase = 0;
+  }
+  const uint8_t phase = trackSmp.dsp4Phase, cmd = trackSmp.dsp4Cmd;
+  if(phase == 0 && write) {
+    if(val != 0x00 && val != 0x0A && val != 0x0B && val != 0x01) trackKnown = false;
+  }
+  if(!dsp4Step(&trackSmp, adr, val, write)) {
+    trackLost = true;
+    trackKnown = false;
+    return;
+  }
+  if(trackSmp.dsp4Phase == 0 && phase != 0) {  // a command just ended
+    if(cmd == 0x0A) {
+      int16_t e[4];
+      const uint8_t* q = trackSmp.dsp4Param;
+      dsp4_edges((uint16_t)(q[0] | q[1] << 8), (uint16_t)(q[2] | q[3] << 8), (uint16_t)(q[4] | q[5] << 8), e);
+      trackE2 = e[2];
+      trackE3 = e[3];
+      trackKnown = true;
+    } else if(cmd == 0x01 && trackSmp.dsp4RoadDrew) {
+      trackE2 = trackE3 = (int16_t)0x8000;
+      trackKnown = true;
+    }
+  }
+}
+
+// dsp4-01t: a fuzz case or replay resets the bench's chip, whose rounding is then unmeasured: a
+// $0A with equal rows ($C4C4, edges -192 and 192), sent to the chip itself, sets a known one
+static void primeDsp4(void) {
+  static const uint8_t command[] = {0x0A, 0x00, 0x00, 0x00, 0xC4, 0xC4, 0xC4, 0xC4};
+  dsp4_bridge_direct(command, (int)sizeof command, 8);
+  memset(&trackSmp, 0, sizeof trackSmp);
+  trackLost = false;
+  trackKnown = true;
+  trackE2 = -192;
+  trackE3 = 192;
+}
+
 void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   // a CGRAM access right after a kick: the check must see the address before it moves
   if(cgPtrAfterKick >= 0 && ((adr >> 16) & 0x7F) < 0x40 && ((adr & 0xFFFF) == 0x2121 || (adr & 0xFFFF) == 0x2122 ||
@@ -998,6 +1107,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   // a handler recorded for a waiting sample: its hardware is its own, and only the samples
   // that began inside it see it
   accessBase = (irqOwner >= 0 && irqActive) ? irqBaseDepth : 0;
+  if(isDsp4(adr) && !(!write && insnPc >= 0x808085 && insnPc < 0x80809A)) trackDsp4(adr, val, write);  // (dsp4-01t)
   if(depth <= accessBase) return;
   // harness-39: the start-up's wait for the DSP-4 ($80:8085-$80:8099) is the platform's
   if(isDsp4(adr) && !write && insnPc >= 0x808085 && insnPc < 0x80809A) return;
@@ -1016,6 +1126,8 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
           continue;
         }
       }
+      if(write && smp->dsp4Phase == 0 && val == 0x01 && (adr & 0xFFFF) < 0xC000 && (!trackKnown || trackLost))
+        smp->roadUnknown = true;  // dsp4-01t: a road on an unknown rounding
       if(smp->hwAccess || dsp4Step(smp, adr, val, write)) continue;
       smp->hwWhy = "DSP-4 traffic other than whole commands of src/dsp4.c";
       smp->hwAccess = true;
@@ -1306,6 +1418,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   irqReplayed = 0;
   irqLimit = irqOwner == k ? irqCount : 0;
   cWaitedTooLong = false;
+  dsp4_round_set(smp->roundKnown ? smp->roundE2 : (int16_t)0x8000, smp->roundKnown ? smp->roundE3 : (int16_t)0x8000);  // dsp4-01t
   if(setjmp(cAbort) == 0) r->call(&smp->entryRegs, &out);
   collectingC = false;
   if(cWaitedTooLong) {
@@ -1537,7 +1650,24 @@ static void finishSample(int k, const Cpu* cpu) {
         smp->entryRegs.d, smp->entryRegs.a, smp->lagPc, why);
     return;
   }
-  if(ok && !smp->lagged && !fuzzing && !replaying) s->cleanPass++;
+  // dsp4-01t: a sample whose original ran a road while the tracker did not know its rounding (the
+  // race's first frames, after the sprite streams) is set apart the same way
+  if(smp->roadUnknown && (fuzzing || replaying)) {  // (dsp4-01t: a road the primed chip did not cover)
+    if(replaying) s->replayApart++; else s->fuzzApart++;  // counted as lost: it fails the row
+    return;
+  }
+  if(smp->roadUnknown && !fuzzing && !replaying) {
+    if(!ok) {
+      s->apartFail++;
+      if(table[idx].waitsForInterrupts) memcpy(s->visited, visitedAtStart[k], MAX_EXTENT);
+      if(s->firstApartFailure[0] == '\0')
+        snprintf(s->firstApartFailure, sizeof s->firstApartFailure, "%s at D=%04X A=%04X: %s", table[idx].name,
+          smp->entryRegs.d, smp->entryRegs.a, why);
+      return;
+    }
+    s->apartPass++;
+  }
+  if(ok && !smp->lagged && !smp->roadUnknown && !fuzzing && !replaying) s->cleanPass++;
   for(int f = 0; f < 4; f++) {
     if(!(flagDiff & flagBits[f])) continue;
     s->flagMismatch[f]++;
@@ -1601,6 +1731,9 @@ static void startSample(int idx, const Cpu* cpu) {
     .interruptsAtEntry = cpu_interruptCount,
   };
   smp->replaySlot = slot;
+  smp->roundKnown = trackKnown && !trackLost;  // dsp4-01t
+  smp->roundE2 = trackE2;
+  smp->roundE3 = trackE3;
   smp->effects = sampleEffects[k];
   smp->inputs = sampleInputs[k];
   smp->effectCap = (r->manyEffects || (r->waitsForInterrupts && r->maxInsns)) ? MAX_EFFECTS_LONG : MAX_EFFECTS;
@@ -1933,6 +2066,7 @@ void difftest_init(Snes* s, const uint8_t* rom, bool negative) {
   entryBits = calloc(1u << 21, 1);
   for(int i = 0; i < tableCount; i++) entryBits[(table[i].entry & 0xFFFFFF) >> 3] |= (uint8_t)(1u << (table[i].entry & 7));
   buildNativeSites();
+  trackKnown = dsp4_bridge_firmware_on();  // (dsp4-01t: the firmware's fresh rounding is $8000; the bench's own chip's is unmeasured)
   for(int i = 0; i < tableCount; i++) findStarts(&table[i], &stats[i]);
 }
 
@@ -1978,7 +2112,10 @@ void difftest_fuzz(int iterations) {
       for(int ch = 0; ch < 8; ch++) snes->dma->channel[ch].hdmaActive = false;
       snes->dma->hdmaInitRequested = snes->dma->hdmaRunRequested = false;
       if(p->dsp4Size > 0) dsp4_bridge_load_state(p->dsp4, p->dsp4Size);  // (harness-29)
-      else dsp4_bridge_reset();
+      else {
+        dsp4_bridge_reset();
+        primeDsp4();  // (dsp4-01t)
+      }
       s->replayRequested++;
       Cpu* cpu = snes->cpu;
       cpu->nmiWanted = cpu->irqWanted = cpu->intWanted = false;
@@ -1992,6 +2129,10 @@ void difftest_fuzz(int iterations) {
       cpu->k = r->entry >> 16;
       cpu->pc = r->entry & 0xFFFF;
       replaying = true;
+      if(p->dsp4Size > 0) {  // (dsp4-01t: a chip restored mid-command cannot be primed: unknown)
+        trackKnown = false;
+        trackLost = true;
+      }
       startSample(i, cpu);
       s->visited[0] = true;
       for(int n = 0; n < MAX_INSNS && depth > 0; n++) cpu_runOpcode(cpu);
@@ -2026,6 +2167,7 @@ void difftest_fuzz(int iterations) {
                  fuzzRandom() & 1, fuzzRandom() & 1, fuzzRandom() & 1, fuzzRandom() & 1, c.m8, c.x8, false};
       if(in.x8) { in.x &= 0xFF; in.y &= 0xFF; }
       r->fuzz(&in, snes->ram, fuzzRandom);
+      primeDsp4();  // (dsp4-01t: after the row's script, which resets the chip)
       Cpu* cpu = snes->cpu;
       cpu->nmiWanted = cpu->irqWanted = cpu->intWanted = false;
       cpu->i = true;
@@ -2125,7 +2267,8 @@ bool difftest_report(const char* resultsPath) {
     unsigned long replayLost = s->replayRequested - (s->replayPass + s->replayFail);
     bool ok = flagsOk && s->fail == 0 && s->fuzzFail == 0 && fuzzLost == 0 && s->replayFail == 0 && replayLost == 0 &&
               (s->pass + s->fuzzPass + s->replayPass) > 0 && seen == need && !s->contractBroken &&
-              (s->lagFail == 0 || s->cleanPass > 0);  // harness-15
+              (s->lagFail == 0 || s->cleanPass > 0) &&  // harness-15
+              (s->apartFail == 0 || s->cleanPass + s->fuzzPass + s->replayPass > 0);  // dsp4-01t: primed cases count
     const char* status = !reached ? "unreached" : ok ? "verified" : "failed";
     if(reached) allOk &= ok;  // a routine this run never reached is reported, not failed
     printf("difftest %-16s $%06X: %s  live %lu/%lu pass (%lu entries, %lu interrupted, %lu abandoned), fuzz %lu/%lu (%lu lost), paths %d/%d%s\n",
@@ -2143,6 +2286,12 @@ bool difftest_report(const char* resultsPath) {
     if(s->lagFail)
       printf("    %lu lagged sample(s) failed, set apart (harness-15; %lu passed without lag): %s\n", s->lagFail, s->cleanPass,
         s->firstLagFailure);
+    if(s->fuzzApart + s->replayApart)
+      printf("    %lu fuzz case(s) and %lu replay(s) ran a road on an unknown rounding (dsp4-01t), lost\n", s->fuzzApart,
+        s->replayApart);
+    if(s->apartFail + s->apartPass)
+      printf("    %lu sample(s) ran a road on an unknown rounding (dsp4-01t), set apart: %lu passed, %lu failed%s%s\n",
+        s->apartFail + s->apartPass, s->apartPass, s->apartFail, s->apartFail ? ": " : "", s->firstApartFailure);
     if(s->hidden)
       printf("    %lu entries inside interrupt handlers a waiting sample recorded (not sampled)\n", s->hidden);
     if(s->foreignStack)
@@ -2202,9 +2351,9 @@ bool difftest_report(const char* resultsPath) {
       }
       const bool hard = s->fail > 0 || s->fuzzFail > 0 || fuzzLostOf(s) > 0 || s->replayFail > 0 ||
                         (s->replayRequested - (s->replayPass + s->replayFail)) > 0 || s->contractBroken;
-      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s replayed:%lu watched:%lu read:%s mism:%s hard:%d compared:%lu vis:%s lagfail:%lu cleanpass:%lu sdead:%s\n",
+      fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s replayed:%lu watched:%lu read:%s mism:%s hard:%d compared:%lu vis:%s lagfail:%lu cleanpass:%lu sdead:%s roadapart:%lu\n",
         r->entry, r->name, r->source, (unsigned long long)verificationHash(r->source), s->pass, s->fuzzPass, seen, need,
-        status, liveFlags, s->replayPass, s->watched, readSet, mismSet, hard ? 1 : 0, s->pass + s->fuzzPass + s->replayPass, vis, s->lagFail, s->cleanPass, sdeadSet);
+        status, liveFlags, s->replayPass, s->watched, readSet, mismSet, hard ? 1 : 0, s->pass + s->fuzzPass + s->replayPass, vis, s->lagFail, s->cleanPass, sdeadSet, s->apartFail);
     }
   }
   if(out != NULL) fclose(out);

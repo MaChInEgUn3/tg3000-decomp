@@ -278,6 +278,16 @@ extern "C" void dsp4_bridge_write(uint8_t bank, uint16_t adr, uint8_t val) {
 	bench_log_dsp4(true, data, bank, adr, val);
 }
 
+// dsp4-01t: bytes sent to the chip itself, a scripted case or not (the difftest's priming of
+// the road's rounding: a script resets the chip, and its writes would be dropped)
+extern "C" void dsp4_bridge_direct(const uint8_t* bytes, int nWrite, int nRead) {
+	const bool was = scripted;
+	scripted = false;
+	for(int i = 0; i < nWrite; i++) dsp4_bridge_write(0x30, 0x8000, bytes[i]);
+	for(int i = 0; i < nRead; i++) (void)dsp4_bridge_read(0x30, 0x8000);
+	scripted = was;
+}
+
 extern "C" int dsp4_bridge_state_size(void) {
 #ifdef BENCH_LLE
 	if(lleOn) return dsp4_lle_state_size();

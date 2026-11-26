@@ -7,6 +7,7 @@
 #ifndef TG3000_DSP4_H
 #define TG3000_DSP4_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // Command $0000: the signed 16 x 16 -> 32-bit product (results read low word first).
@@ -66,11 +67,20 @@ typedef struct {
   uint16_t round[2];        // the first row's rounding (from the last $0A), then $2000
   uint16_t index;           // the next line's index
   int row;
+  bool fromState;           // begun by dsp4_road_start, its rounding not used yet
 } Dsp4Road;
 void dsp4_road_begin(Dsp4Road* r, const uint16_t head[15], int16_t edge2, int16_t edge3);
 // One row: its ROM height `h`; `first` (the first row only: three words, else NULL); its three
 // track words. `out` gets the four answers; up to `max` lines go to `lines`; returns the count.
 unsigned dsp4_road_row(Dsp4Road* r, uint16_t h, const uint16_t first[3], const uint16_t track[3], uint16_t out[4],
                        uint16_t (*lines)[3], unsigned max);
+
+// The chip's road rounding as state (dsp4-01r/01t): dsp4_edges sets it from its edges 2 and 3;
+// dsp4_road_start begins a road with it, and the run's first row that draws uses it up
+// (back to $8000, $8000, the power-on value). The sprite commands change it too and are not
+// done: a port gets the race's first frames (before any $0A) up to 1 off in a line word.
+void dsp4_road_start(Dsp4Road* r, const uint16_t head[15]);
+void dsp4_round_get(int16_t* edge2, int16_t* edge3);
+void dsp4_round_set(int16_t edge2, int16_t edge3);
 
 #endif
