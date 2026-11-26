@@ -1295,6 +1295,8 @@ static void carSet53Out(const Regs* in, Regs* out, uint8_t value) {
 }
 static void call_car_set_53_1(const Regs* in, Regs* out) { carSet53Out(in, out, 1); }
 static void call_car_set_53_2(const Regs* in, Regs* out) { carSet53Out(in, out, 2); }
+// the two's shared tail ($83:FD45, measure-2): D+$53 already set (rewritten unchanged)
+static void call_car_set_53_tail(const Regs* in, Regs* out) { carSet53Out(in, out, rd8((uint16_t)(in->d + 0x53))); }
 static void fuzz_car_set_53(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   uint16_t x = (uint16_t)(rnd() % 0x200);
@@ -3753,11 +3755,18 @@ static void call_track_event_2047(const Regs* in, Regs* out) { trackEventSetOut(
 static void call_track_event_2087(const Regs* in, Regs* out) { trackEventSetOut(in, out, 0x2087); }
 static void call_track_event_2107(const Regs* in, Regs* out) { trackEventSetOut(in, out, 0x2107); }
 static void call_track_event_c2e7(const Regs* in, Regs* out) { trackEventSetOut(in, out, 0xC2E7); }
+// the five's shared tail ($82:EB1A, measure-2): entered by their JMP with the pattern in A
+static void call_track_event_tail(const Regs* in, Regs* out) { trackEventSetOut(in, out, in->a); }
 static void fuzz_func_82EC09(Regs* r, uint8_t* ram, uint32_t (*rnd)(void));
 static void fuzz_track_event_set(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   fuzz_func_82EC09(r, ram, rnd);
   r->y = r->x;
   fuzz_track_event_clear(r, ram, rnd);
+}
+// the tail's: the pattern any word
+static void fuzz_track_event_tail(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_track_event_set(r, ram, rnd);
+  r->a = (uint16_t)rnd();
 }
 
 // ---- title_sprites_place ($8A:824B) ----  placed: A = $070A (N Z), C V of $060A + $10;
@@ -14232,6 +14241,8 @@ const Routine routines[] = {
   {.name = "track_event_clear", .entry = 0x82EADA, .end = 0x82EAFE, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_clear, ALL_OUTPUTS,
    .fuzz = fuzz_track_event_clear},
+  {.name = "track_event_tail", .entry = 0x82EB1A, .end = 0x82EB45, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_tail, ALL_OUTPUTS, .fuzz = fuzz_track_event_tail},
   {.name = "track_event_2007", .entry = 0x82EA81, .end = 0x82EA87, .alsoIn = {{0x82EB1A, 0x82EB45}}, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_2007, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
   {.name = "track_event_2047", .entry = 0x82EA87, .end = 0x82EA8D, .alsoIn = {{0x82EB1A, 0x82EB45}}, .source = "src/misc.c",
@@ -14271,6 +14282,8 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_track_object_bump, .fuzz = fuzz_track_object},
   {.name = "track_object_money", .entry = 0x83FAD7, .end = 0x83FB15, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_track_object_money, .fuzz = fuzz_track_object},
+  {.name = "car_set_53_tail", .entry = 0x83FD45, .end = 0x83FD5D, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_car_set_53_tail, ALL_OUTPUTS, .fuzz = fuzz_car_set_53},
   {.name = "car_set_53_1", .entry = 0x83FD26, .end = 0x83FD31, .alsoIn = {{0x83FD45, 0x83FD5D}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_car_set_53_1,
    ALL_OUTPUTS, .fuzz = fuzz_car_set_53},

@@ -4235,19 +4235,20 @@ car_set_53_1:
     lda.b #$01                  ; $83FD28
     sta.b $53                   ; $83FD2A
     rep.b #$20                  ; $83FD2C
-    jmp.w $FD45                 ; $83FD2E
+    jmp.w car_set_53_tail       ; $83FD2E
 car_set_53_2:
     sep.b #$20                  ; $83FD31
     lda.b #$02                  ; $83FD33
     sta.b $53                   ; $83FD35
     rep.b #$20                  ; $83FD37
-    jmp.w $FD45                 ; $83FD39
+    jmp.w car_set_53_tail       ; $83FD39
 car_clear_53:
     sep.b #$20                  ; $83FD3C
     lda.b #$00                  ; $83FD3E
     sta.b $53                   ; $83FD40
     rep.b #$20                  ; $83FD42
     rts                         ; $83FD44
+car_set_53_tail:
     ldx.w $011A                 ; $83FD45
     lda.l $7E8CB3,x             ; $83FD48
     and.w #$00FF                ; $83FD4C
@@ -4261,7 +4262,7 @@ car_clear_53:
     lda.b #$03                  ; $83FD5F
     sta.b $53                   ; $83FD61
     rep.b #$20                  ; $83FD63
-    jmp.w $FD45                 ; $83FD65
+    jmp.w car_set_53_tail       ; $83FD65
 car_object_stop:
     lda.b $44                   ; $83FD68
     bit.w #$0020                ; $83FD6A

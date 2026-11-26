@@ -1653,6 +1653,7 @@ uint16_t track_event_clear(void) {
 // TG3000_ROUTINE($82:EA8D) track_event_set ($2087)
 // TG3000_ROUTINE($82:EACE) track_event_set ($2107)
 // TG3000_ROUTINE($82:EAD4) track_event_set ($C2E7)
+// TG3000_ROUTINE($82:EB1A) track_event_set (their shared tail: the pattern in A)
 uint16_t track_event_set(uint16_t pattern, uint16_t y) {
   wr16(0x1F0A, pattern);
   uint16_t at = func_82EC09(y);
@@ -1826,6 +1827,7 @@ bool track_object_money(uint16_t dp) {
 
 // TG3000_ROUTINE($83:FD26) car_set_53 (value 1)
 // TG3000_ROUTINE($83:FD31) car_set_53 (value 2)
+// TG3000_ROUTINE($83:FD45) car_set_53 (their shared tail: D+$53 as set)
 void car_set_53(uint16_t dp, uint8_t value) {
   wr8(dp + 0x53, value);
   const uint32_t x = rd16(0x011A);

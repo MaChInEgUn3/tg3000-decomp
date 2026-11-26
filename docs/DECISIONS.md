@@ -5212,6 +5212,19 @@ Today's 94.46% is 3.5 points below it.
 
 **Check:** none needed (a measurement; nothing in `src/` or `tools/` changed).
 
+## Rows for two shared tails (measure-2, 2026-11-26)
+
+Two tails that our movies run were judged only through their callers' `alsoIn`. They now have rows
+of their own. Their callers reach them by JMP, with nothing pushed, so a sample can start at the
+tail.
+
+| Row | What it is | Callers | Results (60k movie) |
+|---|---|---|---|
+| `track_event_tail` (`$82:EB1A`) | pattern A at the object's place | the five track-event setters | 42 live, 500 fuzz, 17/17 paths |
+| `car_set_53_tail` (`$83:FD45`) | D+`$B1` from the object's bytes | `car_set_53`'s two entries | 33 live, 500 fuzz, 9/9 paths |
+
+**Check:** the incremental gate (additions only).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

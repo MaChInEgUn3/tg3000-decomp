@@ -780,3 +780,5 @@
 8ABE2E password_show src/password.c e0cf49918952c424 1 0 79/79 verified live-flags:NVZC replayed:0
 8AB232 password_entry src/password.c e0cf49918952c424 1 0 84/84 verified live-flags:NVZC replayed:0
 8AA67B vs_screen_loop src/vs.c 2dc2fb662a7ebf2e 1 0 37/37 verified live-flags:NVZC replayed:0
+82EB1A track_event_tail src/misc.c 8cea09cac2817201 42 500 17/17 verified live-flags:NVZC replayed:0
+83FD45 car_set_53_tail src/misc.c 8cea09cac2817201 33 500 9/9 verified live-flags:NVZC replayed:0
