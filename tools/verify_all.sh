@@ -37,88 +37,116 @@ vsframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/vs
 firmware="${TG3000_DSP4_FIRMWARE:-ext/firmware/dsp4.rom}"
 vsfuzzskip=vs_screen_frame,player_car_frame,car_sprite_head,vs_cars_frame
 pwfuzzskip=car_sprite_head  # (dsp4-11a: the password movie's last RAM)
-# every deliberately wrong C must fail over the same movie (in parallel): the selftest's
-# short movie does not reach them all
-build/bench/bench "$rom" 60000 --movie tools/bench/movies/autopilot_60k.txt \
-  --difftest-negative --fuzz 50 > "$tmp/neg" 2>/dev/null &
-negpid=$!
-pids=""
-k=0
-while [ $k -lt "$shards" ]; do
-  build/bench/bench "$rom" 60000 --movie tools/bench/movies/autopilot_60k.txt --difftest-shard "$k/$shards" \
-    --difftest "$tmp/main$k.txt" --fuzz 500 > "$tmp/main$k.log" 2>&1 &
-  pids="$pids $!:main$k"
-  k=$((k + 1))
-done
+# The slices run from a queue, at most TG3000_JOBS at once (default: the cores), the longest first
+# (by their measured CPU: verify-speed-1), instead of all at once: the same slices and checks, less
+# time lost to more processes than cores. A slice that crashes (a status other than 0 and 4)
+# skips the slices not yet started.
+jobs="${TG3000_JOBS:-$(nproc 2>/dev/null || echo 8)}"
+: > "$tmp/queue"
+job() {  # name, then the bench's arguments (its output to $tmp/name.log, its status to $tmp/name.st)
+  jn=$1  # (not `name`: sh has no local variables, and the composed rows' loop uses it)
+  shift
+  {
+    echo "if [ -e '$tmp/crashed' ]; then echo 99 > '$tmp/$jn.st'; exit 0; fi"
+    echo "t0=\$(date +%s)"
+    printf 'build/bench/bench'
+    for a in "$@"; do printf " '%s'" "$a"; done
+    echo " > '$tmp/$jn.log' 2>&1"
+    echo "s=\$?; echo \$s > '$tmp/$jn.st'; echo \$((\$(date +%s) - t0)) > '$tmp/$jn.time'"
+    echo "if [ \$s -ne 0 ] && [ \$s -ne 4 ] && [ '$jn' != neg ]; then : > '$tmp/crashed'; fi"
+  } > "$tmp/$jn.sh"
+  echo "$tmp/$jn.sh" >> "$tmp/queue"
+}
+main() { job "main$1" "$rom" 60000 --movie tools/bench/movies/autopilot_60k.txt --difftest-shard "$1/$shards" \
+  --difftest "$tmp/main$1.txt" --fuzz 500; }
+# (the queue's order is set below, the longest first)
+k=$((shards - 1))
+while [ $k -ge $((shards - 2)) ] && [ $k -ge 0 ]; do main $k; k=$((k - 1)); done
+job buy1 "$rom" "$buyframes" --movie tools/bench/movies/explore_buy.txt --difftest-shard "1/$buyshards" \
+  --difftest "$tmp/buy1.txt" --fuzz 500
+job pw1 "$rom" "$pwframes" --movie tools/bench/movies/explore_pw.txt --difftest-shard "1/$pwshards" \
+  --fuzz-skip "$pwfuzzskip" --difftest "$tmp/pw1.txt" --fuzz 500
+# the INFODATA movie (explore-4): short, one slice
+job info "$rom" "$infoframes" --movie tools/bench/movies/code_infodata.txt --difftest "$tmp/info.txt" --fuzz 500
+# the VS race's movie (verify-vs): the firmware DSP-4; its last state is a race, which is no
+# base for the VS screen's frame's fuzz (harness-28: skipped there)
+job vs "$rom" "$vsframes" --movie tools/bench/movies/vs_race.txt --dsp4-firmware "$firmware" \
+  --fuzz-skip "$vsfuzzskip" --difftest "$tmp/vs.txt" --fuzz 500
+while [ $k -ge 0 ]; do main $k; k=$((k - 1)); done
+# every deliberately wrong C must fail over the same movie: the selftest's short movie does not
+# reach them all
+job neg "$rom" 60000 --movie tools/bench/movies/autopilot_60k.txt --difftest-negative --fuzz 50
 k=0
 while [ $k -lt $shopshards ]; do
-  build/bench/bench "$rom" "$shopframes" --movie tools/bench/movies/explore_shop.txt --difftest-shard "$k/$shopshards" \
-    --difftest "$tmp/shop$k.txt" --fuzz 500 > "$tmp/shop$k.log" 2>&1 &
-  pids="$pids $!:shop$k"
+  job "shop$k" "$rom" "$shopframes" --movie tools/bench/movies/explore_shop.txt --difftest-shard "$k/$shopshards" \
+    --difftest "$tmp/shop$k.txt" --fuzz 500
   k=$((k + 1))
 done
 k=0
 while [ $k -lt $buyshards ]; do
-  build/bench/bench "$rom" "$buyframes" --movie tools/bench/movies/explore_buy.txt --difftest-shard "$k/$buyshards" \
-    --difftest "$tmp/buy$k.txt" --fuzz 500 > "$tmp/buy$k.log" 2>&1 &
-  pids="$pids $!:buy$k"
+  [ $k -eq 1 ] || job "buy$k" "$rom" "$buyframes" --movie tools/bench/movies/explore_buy.txt \
+    --difftest-shard "$k/$buyshards" --difftest "$tmp/buy$k.txt" --fuzz 500
   k=$((k + 1))
 done
 k=0
 while [ $k -lt $pwshards ]; do
-  build/bench/bench "$rom" "$pwframes" --movie tools/bench/movies/explore_pw.txt --difftest-shard "$k/$pwshards" \
-    --fuzz-skip "$pwfuzzskip" --difftest "$tmp/pw$k.txt" --fuzz 500 > "$tmp/pw$k.log" 2>&1 &
-  pids="$pids $!:pw$k"
+  [ $k -eq 1 ] || job "pw$k" "$rom" "$pwframes" --movie tools/bench/movies/explore_pw.txt \
+    --difftest-shard "$k/$pwshards" --fuzz-skip "$pwfuzzskip" --difftest "$tmp/pw$k.txt" --fuzz 500
   k=$((k + 1))
 done
-# the INFODATA movie (explore-4): short, one slice
-build/bench/bench "$rom" "$infoframes" --movie tools/bench/movies/code_infodata.txt \
-  --difftest "$tmp/info.txt" --fuzz 500 > "$tmp/info.log" 2>&1 &
-pids="$pids $!:info"
-# the menus' movie (explore-5): short, one slice
-build/bench/bench "$rom" "$menuframes" --movie tools/bench/movies/explore_menu.txt \
-  --difftest "$tmp/menu.txt" --fuzz 500 > "$tmp/menu.log" 2>&1 &
-pids="$pids $!:menu"
-# the options submenu's movie (explore-7): short, one slice
-build/bench/bench "$rom" "$optframes" --movie tools/bench/movies/explore_options.txt \
-  --difftest "$tmp/opt.txt" --fuzz 500 > "$tmp/opt.log" 2>&1 &
-pids="$pids $!:opt"
+# the menus' movie (explore-5) and the options submenu's (explore-7): short, one slice each
+job menu "$rom" "$menuframes" --movie tools/bench/movies/explore_menu.txt --difftest "$tmp/menu.txt" --fuzz 500
+job opt "$rom" "$optframes" --movie tools/bench/movies/explore_options.txt --difftest "$tmp/opt.txt" --fuzz 500
 # glue-1: the composed rows (a screen whole, its parts' rows inside it), one per process and
 # movie, live samples only (each encloses waiting rows, so apart from the slices), over the
 # movies its "// movies:" comment in tools/bench/routines.c names
 composed=$(awk '/^const Routine composedRoutines\[\]/ {p = 1} p && /\/\/ movies:/ {m = $0; sub(/.*movies: */, "", m)} p && /\.name = "/ {match($0, /\.name = "[^"]+"/); print substr($0, RSTART + 9, RLENGTH - 10) ":" m; gsub(/ /, "", m)} p && /^};/ {exit}' tools/bench/routines.c | tr ' ' ',')
 compfiles=""
+compnames=""
 for row in $composed; do
   name=${row%%:*}
   for movie in $(echo "${row#*:}" | tr ',' ' '); do
     frames=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' "tools/bench/movies/$movie.txt")
     [ -n "$frames" ] || frames=60000  # (the 60k movie has no such line)
-    extra=""
-    if [ "$movie" = vs_race ]; then extra="--dsp4-firmware $firmware"; fi
-    build/bench/bench "$rom" "$frames" --movie "tools/bench/movies/$movie.txt" $extra --difftest-composed \
-      --difftest-only "$name" --difftest "$tmp/comp_${name}_$movie.txt" --fuzz 0 > "$tmp/comp_${name}_$movie.log" 2>&1 &
-    pids="$pids $!:comp_${name}_$movie"
+    if [ "$movie" = vs_race ]; then
+      job "comp_${name}_$movie" "$rom" "$frames" --movie "tools/bench/movies/$movie.txt" --dsp4-firmware "$firmware" \
+        --difftest-composed --difftest-only "$name" --difftest "$tmp/comp_${name}_$movie.txt" --fuzz 0
+    else
+      job "comp_${name}_$movie" "$rom" "$frames" --movie "tools/bench/movies/$movie.txt" \
+        --difftest-composed --difftest-only "$name" --difftest "$tmp/comp_${name}_$movie.txt" --fuzz 0
+    fi
     compfiles="$compfiles $tmp/comp_${name}_$movie.txt"
+    compnames="$compnames comp_${name}_$movie"
   done
 done
-# the VS race's movie (verify-vs): the firmware DSP-4; its last state is a race, which is no
-# base for the VS screen's frame's fuzz (harness-28: skipped there)
-build/bench/bench "$rom" "$vsframes" --movie tools/bench/movies/vs_race.txt --dsp4-firmware "$firmware" \
-  --fuzz-skip "$vsfuzzskip" --difftest "$tmp/vs.txt" --fuzz 500 > "$tmp/vs.log" 2>&1 &
-pids="$pids $!:vs"
-for p in $pids; do
-  pid=${p%%:*}
-  name=${p#*:}
-  s=0
-  wait "$pid" || s=$?   # the bench's own status (4 = a routine failed on that movie)
+# the queue longest first, by the slices' wall times measured at 8 at once (verify-speed-1); a
+# slice not named here (a new composed row) runs after them
+longest="buy1 main4 pw1 info main3 vs main2 main0 main1 neg shop1 comp_password_show_autopilot_60k pw0 buy0 shop0 menu opt"
+: > "$tmp/queue2"
+for n in $longest; do grep "/$n\.sh\$" "$tmp/queue" >> "$tmp/queue2" || true; done
+grep -v -x -F -f "$tmp/queue2" "$tmp/queue" >> "$tmp/queue2" || true
+started=$(date +%s)
+xargs -P "$jobs" -n 1 sh < "$tmp/queue2"
+echo "verify_all: $(wc -l < "$tmp/queue") slices, $jobs at a time, $(( $(date +%s) - started )) s:$(for f in "$tmp"/*.time; do printf ' %s %ss' "$(basename "$f" .time)" "$(cat "$f")"; done)"
+names="neg"
+k=0
+while [ $k -lt "$shards" ]; do names="$names main$k"; k=$((k + 1)); done
+for n in shop buy pw; do
+  k=0
+  while [ $k -lt 2 ]; do names="$names $n$k"; k=$((k + 1)); done
+done
+for name in $names info menu opt vs $compnames; do
+  s=$(cat "$tmp/$name.st" 2>/dev/null || echo 98)
+  [ "$name" = neg ] && continue
   # harness-8: a routine that fails on one movie by the flag or path rule alone may pass on
   # the evidence pooled over the movies; the merge below decides (other statuses fail)
-  if [ $s -ne 0 ] && [ $s -ne 4 ]; then
+  if [ "$s" -ne 0 ] && [ "$s" -ne 4 ]; then
     echo "verify_all: slice $name failed (bench status $s)" >&2
     status=$s
   fi
 done
-wait $negpid || true
+cp "$tmp/neg.log" "$tmp/neg"
+if [ $status -ne 0 ]; then echo "verify_all: FAILED (a slice crashed; the merge is skipped)" >&2; exit $status; fi
 # the 60k slices in order, then the shop slices: one row each per movie
 mains=""
 k=0

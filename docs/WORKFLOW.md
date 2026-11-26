@@ -82,8 +82,8 @@ about three times faster and gives the same per-frame WRAM hashes.
      It refuses a new waiting row (`waitsForInterrupts`): such a row can enclose older rows'
      samples, so it needs the full run.
    - `tools/verify_all.sh` otherwise. It re-verifies every routine from the full autopilot
-     movie (in parallel slices: `TG3000_SHARDS`, default 5, plus two each for the explored movies;
-     about 14 minutes on 8 cores), and checks that every negative row (deliberately wrong
+     movie (in parallel slices: `TG3000_SHARDS`, default 5, plus two each for the explored movies,
+     run from a queue of at most `TG3000_JOBS` at once, the longest first), and checks that every negative row (deliberately wrong
      C) fails over that movie too.
 
    Both scripts judge each routine on the evidence pooled over the movies

@@ -5061,6 +5061,47 @@ the tail 4 (32/32).
 
 **Check:** the full gate (new waiting rows).
 
+## The full gate's slices from a queue (verify-speed-1, 2026-11-25)
+
+**Why:** the owner asked whether the full gate's 17 minutes were too slow. The advisor's call:
+measure first, then change only how the work is scheduled, never what it checks.
+
+**The measurement:** one full run with a sampler of every bench process.
+- **20 processes ran at once on 8 cores.** Every slice still runs its whole movie, because slices
+  are cut by rows.
+- **Bench phase: 14.6 minutes.** The merge and the reruns after it took seconds.
+- **The CPU added up to 91 minutes,** so the floor on 8 cores is about 11.4 minutes.
+- **The longest single slice took 9.9 minutes of CPU** (the shop-buy movie's second slice). Next
+  came the 60k movie's last slice and the password movie's second one. The VS movie's slice was
+  not the long pole.
+- **The time lost** was to running more processes than cores. Every slice crawled, and the
+  longest ones finished last.
+
+**The change:**
+- **`verify_all.sh` runs the same slices from a queue,** at most `TG3000_JOBS` at once (default:
+  the cores), the longest first (by the measured CPU).
+- **A slice that crashes** (a status other than 0 and 4) skips the slices not yet started, and
+  the gate fails before the merge. Before, a trap waited out the whole run.
+- **Each slice's wall time** is printed after the queue.
+
+**Unchanged:** the rows, the movies, the slices and the merge.
+
+**The first try failed on the script itself.** Its queue function used the variable `name`,
+which the composed rows' loop uses too (sh has no local variables). Those four slices' results
+were not found, so the gate stopped before the merge. It now has its own variable.
+
+**What the queue gains:**
+- **The first queued run:** 13.9 minutes for the bench phase, against 14.6.
+- **Why so little:** with 8 slices at once on 8 cores, each slice still runs slower than alone.
+  The sum of the slices' wall times divided by 8 is about 12.5 minutes, so scheduling is close
+  to exhausted.
+- **The order:** the queue now follows the slices' measured times, the longest first.
+- **Going further** means checking less, for example fewer fuzz cases or fewer movies per
+  change. That is a decision for the owner.
+
+**Check:** its own full gate. The rows' results must not change (status and paths), and the
+negative rows must still fail.
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
