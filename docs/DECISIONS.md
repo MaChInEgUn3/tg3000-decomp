@@ -5181,6 +5181,37 @@ dropped without any comparison with the C.
 
 **Check:** the full gate. Under the new crediting, every row is judged again.
 
+## The ceiling of what the movies can verify (measure-1, 2026-11-26)
+
+**How it was measured:**
+- Each of the 8 movies was run once with `--coverage` into new files under `build/cache`.
+  `traces/coverage.bin` was not touched: it also holds the TAS and firmware runs.
+- Their executed bytes were joined and intersected with the code still outside every verified
+  row's extent.
+
+**Of the 5,059 code bytes with no verified C:**
+- **3,359 are run by our movies:**
+  - about 1,270 are sound. These are the senders to the sound chip in bank `$86`, the loader's
+    callers (`$84:A487`) and the stores after them in the two race setups;
+  - about 500 are the outer glue: the reset (`$80:8002`) and the game's main loop (`$80:89DB`,
+    `$80:8A8C` and the pieces around it), which never return;
+  - the rest are smaller pieces. Among them: the two-task screen's switch (`$80:BDC1`,
+    `$80:BC54`-`$BC9B`), the screens opened by X (`$80:FC20`), the VS NMI's prologue inside
+    `nmi_vs_full`'s `alsoIn` (`$83:9731`), the track events' shared tail, and short shop and
+    menu pieces.
+- **About 1,700 run only in the TAS:** later stages of the game, such as the shop's late items,
+  which no movie from the first visit reaches.
+
+**The ceiling:** with the current movies, 98.0% of the code (about 96.6% without the sound).
+Today's 94.46% is 3.5 points below it.
+
+**What it leaves to the owner:**
+- the sound senders, the next track unless vetoed;
+- whether to chase the TAS-only code with new movies, or to call the C phase done at this
+  ceiling.
+
+**Check:** none needed (a measurement; nothing in `src/` or `tools/` changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
