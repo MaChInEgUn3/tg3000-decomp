@@ -6416,8 +6416,11 @@ words.
   included. So `road_rows_project`'s six products and `road_rows_project2`'s five would stop a
   race's first frame as surely as a command.
 - **The goal:** no DSP-4 port call on a race path.
-- **Tracking:** the port follows `grep -c dsp4_port_ src/*.c`. It was 191, all in
-  `src/misc.c`; it is now 180.
+- **Tracking:** the port follows `grep -c dsp4_port_ src/*.c`, 191 lines, all in
+  `src/misc.c`. It stays 191 here: the helper `road_port_product32` (5 of those lines) is still
+  there for the VS road, and the road rows only stopped calling it. A line count does not show
+  what a race path calls, so the reports to the port name the routines left on the port as
+  well.
 
 **The change:**
 - **A new helper, `road_product32`,** takes the product from `dsp4_multiply` (command `$00`,
