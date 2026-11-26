@@ -5707,6 +5707,50 @@ whole after `game_boot`.
 
 **Check:** the full gate (`difftest.c` changed).
 
+## A whole race in C; the exits of two-cut rows compared (race-compose-1, harness-40, 2026-11-26)
+
+**Port request C, step 2, which the top loop needs.** `race_wrapper` (`$82:8342` whole) runs a
+race by the mode in `$03DC`'s low two bits. These are the entries of the table at `$82:8418`:
+
+| Mode | Entry | What it is |
+|---|---|---|
+| 0 | `race_mode_one` (`$82:8428`) | the one-player race |
+| 2 | `race_mode_vs` (`$82:92BA`) | the VS race |
+| 1 | `$82:89B5` | never ran: a trap |
+| 3 | past the table | a trap |
+
+**`race_mode_one`:**
+- the setup's pieces: `race_load`, `race_sound`, `race_track_build`, `race_track_start`;
+- then the race loop: `race_frame_head`, `race_frame_wait`, `race_frame_body`, until
+  `race_frame_rest` says the race is over;
+- then `race_end`.
+
+**`race_mode_vs`:**
+- the setup's pieces: `vs_race_load`, `vs_race_sound`, `vs_race_track`, `vs_road_rows`,
+  `vs_race_sums_clear`, `vs_road_project`, `vs_race_start`;
+- then its frames. Its way out (the pause's menu, `$82:9657` on) never ran in a movie, and is
+  a trap in `vs_race_frame_tail`.
+
+**How it is checked.** Each piece is a verified row, and the pieces are joined where the
+original's rows meet: each row ends at the next one's entry (`endAt`).
+- **The loop's way out is now checked too (harness-40).** A row with two cuts (`endAt2`) now has
+  the cut it ended at compared with what the C says (`Regs.atEnd2`). Before, a C that returned
+  the wrong way still passed.
+  - **`race_frame_rest`:** its bool, the race over. Live: 4,000 on the 60k movie and 213 on
+    `race1`, all passing.
+  - **`options_screen_tick`:** the menus left. 81 live samples and 100 fuzz cases pass.
+  - **`menu_submenu_chosen`:** none chosen. 49 live samples pass.
+- **A whole race is not one sample.** It exceeds the harness's limits per sample:
+  - 16,384 DSP-4 tape bytes, against about 3.9 million for `race1`;
+  - 8,192 recorded interrupts.
+
+  So the composition is checked through its verified parts and their joins, not as a whole.
+
+**Next:** the top loop itself (`game_main`). It is built from the screens' C and this
+`race_wrapper`; the paths the movies never took become traps.
+
+**Check:** the full gate (`difftest.c` changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

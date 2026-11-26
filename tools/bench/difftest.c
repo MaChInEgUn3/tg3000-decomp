@@ -1419,6 +1419,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   }
   CHECK(a, r->compareA) CHECK(x, r->compareX) CHECK(y, r->compareY) CHECK(d, true) CHECK(db, true)
   CHECK(leftCaller, r->mayLeaveCaller)
+  CHECK(atEnd2, r->endAt2 != 0)  // (harness-40: which cut it ended at)
 #undef CHECK
   *flagDiff = (out.n != after->n ? FN : 0) | (out.v != after->v ? FV : 0) |
               (out.z != after->z ? FZ : 0) | (out.c != after->c ? FC : 0);
@@ -1446,6 +1447,7 @@ static void finishSample(int k, const Cpu* cpu) {
   }
   Regs after = readRegs(cpu);
   after.leftCaller = smp->leftCaller;
+  after.atEnd2 = table[idx].endAt2 != 0 && ((uint32_t)cpu->k << 16 | cpu->pc) == table[idx].endAt2;
   if(table[idx].waitsForInterrupts) {
     if(!owner || irqOverflow || irqActive) { s->abandoned++; return; }
   } else if(cpu_interruptCount != smp->interruptsAtEntry) {

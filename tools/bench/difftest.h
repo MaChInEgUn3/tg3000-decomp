@@ -16,6 +16,7 @@ typedef struct {
   bool n, v, z, c, m8, x8, e;
   uint16_t sp;  // at entry (an interrupt handler's adapter reads the pushed P through it)
   bool leftCaller;  // returned to its caller's caller (PLA, RTS): see mayLeaveCaller
+  bool atEnd2;      // harness-40: a row with two cuts ended at endAt2 (the adapter says which)
 } Regs;
 
 // A ported routine: where the original lives and how to call the C for it.

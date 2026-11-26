@@ -1790,6 +1790,17 @@ void vs_race_frame(void) {
   vs_race_frame_tail();
 }
 
+void race_mode_vs(void) {
+  vs_race_load();
+  vs_race_sound();
+  vs_race_track();
+  vs_road_rows();
+  vs_race_sums_clear();
+  vs_road_project();
+  vs_race_start();
+  for(;;) vs_race_frame();
+}
+
 // TG3000_ROUTINE($82:BDDA) vs_step_share
 // The CPU's 16 / 8 divider gives the magnitude's quotient by the step count; a negative word
 // gives it as it is, a positive one (or 0) gives 0 less it. The sign is the caller's N flag.

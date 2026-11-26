@@ -227,6 +227,9 @@ void vs_race_sums_clear(void);
 void vs_race_start(void);
 // $82:94B2: one frame of the VS race loop, from its head to the jump back.
 void vs_race_frame(void);
+// $82:92BA (the race wrapper's mode 2): the VS race whole, its setup's pieces then its frames.
+// Its way out (the pause's menu, $82:9657 on) never ran: a trap in vs_race_frame_tail.
+void race_mode_vs(void);
 // $82:94B2 up to the frame's wait ($82:95E8), and from the wait to the jump back.
 void vs_race_frame_body(void);
 void vs_race_frame_tail(void);

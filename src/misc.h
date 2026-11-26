@@ -1409,6 +1409,11 @@ void race_sound(void);
 // $82:8342 up to the mode's call; $82:83BB after it, up to the RTL (the race wrapper's two halves).
 void race_wrapper_head(void);
 void race_wrapper_tail(void);
+// $82:8342 whole (port request C): a race, by the mode in $03DC's low two bits (0: the one-player
+// race; 2: the VS race; 1, $82:89B5, never ran). Composed of verified rows joined at their cuts.
+void race_wrapper(void);
+// $82:8428 (mode 0): the one-player race whole, from its setup to race_end.
+void race_mode_one(void);
 // $82:856D: the race setup's track piece (counters, the track, a frame's waits, the vectors, the
 // road's first frame, CLI), up to the race loop at $82:8645.
 void race_track(void);

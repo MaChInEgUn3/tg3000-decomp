@@ -5025,6 +5025,33 @@ void race_wrapper_head(void) {
   for(uint16_t x = 0x0020; x != 0; x = (uint16_t)(x - 2)) wr16((uint16_t)(0x4CDB + x), 0);
 }
 
+// $82:8428, the race wrapper's mode 0: the setup's pieces, then the race loop ($82:8645) until
+// race_frame_rest says the race is over, then its way out.
+void race_mode_one(void) {
+  race_load();
+  race_sound();
+  race_track_build();
+  race_track_start();
+  do {
+    race_frame_head();
+    race_frame_wait();
+    race_frame_body();
+  } while(!race_frame_rest());
+  race_end();
+}
+
+// $82:8342 whole: the mode's routine from the table at $82:8418 (three entries).
+void race_wrapper(void) {
+  race_wrapper_head();
+  switch(rd16(0x03DC) & 3) {
+  case 0: race_mode_one(); break;
+  case 2: race_mode_vs(); break;
+  case 1: tg3000_unported("$82:89B5: the race wrapper's mode 1"); break;
+  default: tg3000_unported("$82:8418: the race wrapper's mode 3 (past its table)"); break;
+  }
+  race_wrapper_tail();
+}
+
 // TG3000_ROUTINE($82:83BB) race_wrapper_tail
 // The race wrapper after the mode's routine, up to its PLB, PLD and RTL ($82:8415): the two
 // players' places kept ($03AB, $03DA); a frame's wait; the race's counters and requests cleared;

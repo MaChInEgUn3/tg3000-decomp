@@ -5872,6 +5872,7 @@ static void call_menu_submenu_chosen(const Regs* in, Regs* out) {
   (void)in;
   out->a = rd16(DP + 0x5E);
   setNZ16(out, out->a);
+  out->atEnd2 = out->a == 0;  // none chosen: on to the submenu's tick ($8A:B65E)
   menu_submenu_chosen();
 }
 static void call_menu_select_restore(const Regs* in, Regs* out) {
@@ -6389,7 +6390,8 @@ static void fuzz_options_screen_tick(Regs* r, uint8_t* ram, uint32_t (*rnd)(void
 }
 static void call_options_screen_tick(const Regs* in, Regs* out) {
   (void)in;
-  out->a = options_screen_tick() ? 0xFFC0 : 0x0001;
+  out->atEnd2 = options_screen_tick();  // the menus left: the fade out ($8A:9F5A)
+  out->a = out->atEnd2 ? 0xFFC0 : 0x0001;
   setNZ16(out, out->a);
 }
 // the password shown: its opening ends at the fade out (the pushed handler above the cut);
@@ -6776,7 +6778,10 @@ static void call_race_frame_body(const Regs* in, Regs* out) { (void)in; (void)ou
 // race_frame_rest ($82:867B, harness-37): the body's short rest, after the frame drawn: the NMI
 // rarely lands in it, so its race-end paths (one frame a race, timed by the NMI's frame count)
 // are compared live
-static void call_race_frame_rest(const Regs* in, Regs* out) { (void)in; (void)out; race_frame_rest(); }
+static void call_race_frame_rest(const Regs* in, Regs* out) {
+  (void)in;
+  out->atEnd2 = race_frame_rest();  // the race over: on to race_end ($82:8776)
+}
 // race_end ($82:8776, race-loop-2): the flags of the frame wait (as call_wait_frames)
 static void call_race_end(const Regs* in, Regs* out) {
   (void)in;
