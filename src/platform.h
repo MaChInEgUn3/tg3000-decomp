@@ -248,7 +248,8 @@ void platform_wait_dsp4_start(void);
 // - From then on, when task 1 calls platform_wait_vblank, the platform: runs irq_menu_frame
 //   then irq_menu_frame_tail; runs task 2 until its next platform_wait_vblank (or until its
 //   function returns: then task 2 ends, with no more turns); presents the frame; runs
-//   nmi_menu_frame then nmi_menu_frame_tail then nmi_tail; and resumes task 1. (On the console:
+//   nmi_prologue (the fade, on every NMI before its $0008 target), nmi_menu_frame,
+//   nmi_menu_frame_tail, then nmi_tail; and resumes task 1. (On the console:
 //   the IRQ at line 108 switches to task 2, the NMI at vblank back to task 1.)
 // - platform_task_join(): called by task 1 only, at the screen's end; task 2 ends if it still
 //   runs. One split at a time: a split inside a split is a trap.

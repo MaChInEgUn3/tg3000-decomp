@@ -6193,6 +6193,37 @@ address never mattered, because the read was served by order.
 
 **Check:** the full gate (the bench's platform and `difftest.c` changed).
 
+## The sound driver's output per voice (port request G, 2026-11-26)
+
+**`bench --voice-report FILE`** writes every S-DSP register write the sound driver makes, in
+order. Each line holds:
+- the frame;
+- the APU cycle;
+- the register and its value;
+- the voice (`-` for a global register);
+- the register's name.
+
+The names cover each voice's VOL L/R, PITCH L/H, SRCN, ADSR1/2, GAIN, ENVX and OUTX, the
+globals (MVOL, EVOL, KON, KOFF, FLG, ENDX, EFB, PMON, NON, EON, DIR, ESA, EDL) and the FIR
+taps. The port's native sequencer is checked against it, event by event.
+
+**How it is wired:** a one-line hook at the start of LakeSnes's `dsp_write`
+(`bench_log_sdsp`), saved into `tools/bench/patches/lakesnes-dsp4.patch` by `export-patch.sh`.
+The bench writes nothing unless the option is given.
+
+**First run** (the 60k movie's first 3,000 frames: the intro and the menus): 200,553 writes.
+- **The driver rewrites the voices' settings every tick:** about 23,000 each of VOL L/R,
+  SRCN, PITCH and ADSR1.
+- **The notes:** 2,925 KON and 3,826 KOFF.
+- **Its globals,** about 2,900 times each.
+
+**The two-task contract, corrected (the port session's finding).** The NMI part of each frame
+must begin with `nmi_prologue`, the brightness fade that runs on every NMI before its `$0008`
+target. Without it, the port's ticker never lit, and it returned after 3 frames instead of
+625. `platform.h` now lists it.
+
+**Check:** the full gate (`platform.h`'s contract text changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

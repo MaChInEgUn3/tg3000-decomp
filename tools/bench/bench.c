@@ -45,6 +45,24 @@
 static Snes* snes;
 static FILE* dsp4Log;
 static FILE* dsp4TapeOut;  // dsp4-chip-1: the data bytes as a tape (refbench --dsp4-tape's records)
+static FILE* voiceReport;  // port request G: --voice-report
+
+// The S-DSP's registers by name: $x0-$x9 a voice's (x the voice), $xC/$xD/$xF the globals.
+void bench_log_sdsp(uint8_t adr, uint8_t val, uint64_t apuCycles) {
+  if(voiceReport == NULL) return;
+  static const char* voiceRegs[10] = {"VOLL", "VOLR", "PITCHL", "PITCHH", "SRCN", "ADSR1", "ADSR2", "GAIN", "ENVX", "OUTX"};
+  static const char* globalC[8] = {"MVOLL", "MVOLR", "EVOLL", "EVOLR", "KON", "KOFF", "FLG", "ENDX"};
+  static const char* globalD[8] = {"EFB", "-", "PMON", "NON", "EON", "DIR", "ESA", "EDL"};
+  const int lo = adr & 0x0F, hi = adr >> 4;
+  const char* name = "?";
+  char voice = '-';
+  if(adr & 0x80) name = "(mirror)";
+  else if(lo <= 9) { name = voiceRegs[lo]; voice = (char)('0' + hi); }
+  else if(lo == 0xC) name = globalC[hi];
+  else if(lo == 0xD) name = globalD[hi];
+  else if(lo == 0xF) { name = "FIR"; voice = (char)('0' + hi); }
+  fprintf(voiceReport, "%u %llu %02X %02X %c %s\n", snes->frames, (unsigned long long)apuCycles, adr, val, voice, name);
+}  // dsp4-chip-1: the data bytes as a tape (refbench --dsp4-tape's records)
 
 // --dsp4-report: each data access to the chip attributed to the command running around it
 // (a write that starts a run belongs to the new command, the read that ends one to the
@@ -456,6 +474,11 @@ int main(int argc, char** argv) {
       hdmaPath = argv[++i];
     } else if(strcmp(argv[i], "--apu-report") == 0 && i + 1 < argc) {
       apuPath = argv[++i];
+    } else if(strcmp(argv[i], "--voice-report") == 0 && i + 1 < argc) {
+      voiceReport = fopen(argv[++i], "w");
+      if(voiceReport == NULL) { perror(argv[i]); return 1; }
+      fprintf(voiceReport, "# the sound driver's output (port request G): every S-DSP register write, in order\n"
+                           "# frame, APU cycle, register (hex), value (hex), voice (- for a global register), name\n");
     } else if(strcmp(argv[i], "--difftest-shard") == 0 && i + 1 < argc) {
       int k = 0, n = 0;
       if(sscanf(argv[++i], "%d/%d", &k, &n) != 2 || n < 1 || k < 0 || k >= n) {
@@ -669,6 +692,7 @@ int main(int argc, char** argv) {
   if(dsp4ReportPath != NULL) dsp4Report();
   if(dsp4Log != NULL) fclose(dsp4Log);
   if(dsp4TapeOut != NULL) fclose(dsp4TapeOut);
+  if(voiceReport != NULL) fclose(voiceReport);
   if(hashes != NULL) fclose(hashes);
   if(wramDump != NULL) fclose(wramDump);
   if(record != NULL) fclose(record);

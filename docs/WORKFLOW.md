@@ -29,6 +29,7 @@ build/bench/bench TG3000.sfc 7650 --movie tools/bench/movies/race1.txt --coverag
 python3 -I tools/map.py && python3 -I tools/progress.py   # -> map/*.txt, README numbers
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --hdma-report /tmp/hdma.txt   # HDMA setup and writers, handlers, two-task screens
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --apu-report /tmp/apu.txt     # APU port traffic
+build/bench/bench TG3000.sfc 3000 --movie tools/bench/movies/autopilot_60k.txt --voice-report /tmp/voices.txt  # every S-DSP write, by voice and name (the driver's output)
 build/bench/bench TG3000.sfc 60000 --movie tools/bench/movies/autopilot_60k.txt --dsp4-report /tmp/d4.txt    # DSP-4 commands by site, bytes per run
 build/bench/bench TG3000.sfc 9000 --movie tools/bench/movies/vs_race.txt --dsp4-firmware ext/firmware/dsp4.rom   # the DSP-4 run from its firmware (needs tools/refbench/fetch.sh)
 make -C tools/bench probe && build/bench/dsp4_probe ext/firmware/dsp4.rom 50000 32768   # src/dsp4.c's $11/$0A/$03 against the firmware on chosen inputs
