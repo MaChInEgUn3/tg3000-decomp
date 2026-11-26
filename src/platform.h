@@ -187,6 +187,18 @@ void sound_send_frame(const uint8_t msg[16]);
 // Whether the sound driver is ready for a message (the original: $77 on $2141).
 bool sound_is_ready(void);
 
+// The sound driver's upload at start-up (port request 4), through the console's standard
+// loader: wait for the loader, send each block of the driver (`size` bytes at the WRAM
+// address `src`, to `spc_dest` in the sound chip's memory), then start it at `spc_entry`.
+// The original's handshakes and the loader's counters are the platform's. A port that plays
+// sound its own way has no driver to run and may ignore all three.
+void sound_boot_begin(void);
+void sound_boot_block(uint16_t spc_dest, uint32_t src, uint16_t size);
+void sound_boot_start(uint16_t spc_entry);
+
+// Clear the four sound ports, once the driver started (its first message is all zero).
+void sound_clear_ports(void);
+
 // Whether the console runs at 50 Hz (the original: bit 4 of $213F).
 bool video_is_pal(void);
 

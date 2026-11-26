@@ -127,6 +127,8 @@ func    85BC20   scroll_tables_build ; the race's two per-line scroll HDMA table
 func    8595BD   irq_ack_only        ; IRQ handler: acknowledge, RTI -> src/frame.c
 func    86DFAE   sound_fade_step     ; master volume fade ($045C by $03E0) -> src/sound.c
 func    86DFFB   sound_send_message  ; the 16-byte message to the sound driver -> src/sound.c
+func    86DD85   sound_boot          ; sound start-up: unpack the driver, send it, wait for its ready -> src/sound.c
+func    86E096   sound_boot_upload   ; the driver's blocks through the start-up loader (platform sound_boot_*) -> src/sound.c
 func    86DFE1   sound_frame         ; fade, then the message when enabled and ready (long) -> src/sound.c
 func    8387C1   pads_read_pair      ; read a multitap pair into $0020/$0022 -> src/pads.c
 func    8386FF   pads_read           ; read the five pads into their (held, pressed) pairs -> src/pads.c

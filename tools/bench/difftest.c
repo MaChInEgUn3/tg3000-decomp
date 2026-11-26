@@ -1030,6 +1030,8 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   if(write && isJoypadProtocolWrite(adr)) return;
   uint16_t lo = adr & 0xFFFF;
   bool apuPort = lo >= 0x2140 && lo <= 0x217F && ((adr >> 16) & 0x7F) < 0x40;
+  // harness-38: the sound loaders' handshakes are the platform's (their polls are not inputs)
+  if(!write && apuPort && insnPc >= 0x86E096 && insnPc < 0x86E0F0) return;
   if((write && apuPort) || (!write && isInputReg(adr))) {
     // APU port writes are effects (port, value) in order; input reads are recorded
     for(int k = accessBase; k < depth; k++) {

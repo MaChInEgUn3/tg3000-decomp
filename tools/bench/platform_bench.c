@@ -159,6 +159,31 @@ void sound_send_frame(const uint8_t msg[16]) {
   for(int i = 0; i < 16; i++) difftest_effect(EFFECT_APU, port[i & 3], msg[i], 1);
 }
 
+// The start-up loader ($86:E096): each block's header (destination, "more", the kick) and
+// its bytes, as the original's port writes; its waits are the platform's (their reads are not
+// recorded, harness-38). The kick is $CC first, then the last count + 4, never 0.
+static uint8_t bootKick;
+static void bootHeader(uint16_t dest, uint8_t more) {
+  difftest_effect(EFFECT_APU, 2, dest & 0xFF, 1);
+  difftest_effect(EFFECT_APU, 3, dest >> 8, 1);
+  difftest_effect(EFFECT_APU, 1, more, 1);
+  difftest_effect(EFFECT_APU, 0, bootKick, 1);
+}
+void sound_boot_begin(void) { bootKick = 0xCC; }
+void sound_boot_block(uint16_t spc_dest, uint32_t src, uint16_t size) {
+  bootHeader(spc_dest, 1);
+  for(uint32_t i = 0; i < size; i++) {
+    difftest_effect(EFFECT_APU, 0, i & 0xFF, 1);
+    difftest_effect(EFFECT_APU, 1, rd8(src + i), 1);
+  }
+  bootKick = (uint8_t)(size + 4);
+  if(bootKick == 0) bootKick = 4;
+}
+void sound_boot_start(uint16_t spc_entry) { bootHeader(spc_entry, 0); }
+void sound_clear_ports(void) {
+  for(int p = 0; p < 4; p++) difftest_effect(EFFECT_APU, p, 0, 1);
+}
+
 // Inputs come from what the original read (difftest_input replays it in order).
 bool sound_is_ready(void) { return difftest_input(0x2141) == 0x77; }
 bool video_is_pal(void) { return (difftest_input(0x213F) & 0x10) != 0; }

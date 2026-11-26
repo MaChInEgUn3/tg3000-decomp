@@ -51,6 +51,7 @@ rows_7f_copy8:
     plb                         ; $86CEA5
     rtl                         ; $86CEA6
     incbin !baserom:$34EA7..$35D85
+sound_boot:
     rep.b #$30                  ; $86DD85
     phd                         ; $86DD87
     lda.w #$0000                ; $86DD88
@@ -75,7 +76,7 @@ rows_7f_copy8:
     sta.b $E0                   ; $86DDC5
     lda.w #$007F                ; $86DDC7
     sta.b $E2                   ; $86DDCA
-    jsr.w $E096                 ; $86DDCC
+    jsr.w sound_boot_upload     ; $86DDCC
     stz.w $2140                 ; $86DDCF
     stz.w $2142                 ; $86DDD2
     ldx.w #$07D0                ; $86DDD5
@@ -380,6 +381,7 @@ CODE_86E084:
     sta.w $045F                 ; $86E091
     plp                         ; $86E094
     rts                         ; $86E095
+sound_boot_upload:
     rep.b #$30                  ; $86E096
     phd                         ; $86E098
     ldy.w #$0000                ; $86E099

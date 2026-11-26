@@ -59,7 +59,7 @@ CODE_808058:
     ldx.w #$80A0                ; $808063
     lda.w #$0080                ; $808066
     jsr.w video_load_screen     ; $808069
-    jsl.l $86DD85               ; $80806C
+    jsl.l sound_boot            ; $80806C
     jsr.w interrupt_vectors_init; $808070
     sep.b #$20                  ; $808073
     lda.b #$81                  ; $808075

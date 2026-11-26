@@ -26,4 +26,15 @@ void sound_send_message(void);
 // the driver is ready. Returns whether it was sent.
 bool sound_frame(void);
 
+// $86:E096: send the sound driver to the sound chip at start-up. `src` (a WRAM address) holds
+// its blocks as [size][destination][bytes], words little-endian, ended by a size of 0 whose
+// destination is where the driver starts (sound_boot_begin/block/start).
+void sound_boot_upload(uint32_t src);
+
+// $86:DD85 (long): the sound start-up. Clear the sound state, unpack the driver to
+// $7F:0000 ($86:E478), send it, clear the ports, wait for the driver's ready, and set
+// SOUND_ENABLE. `dp` is the direct page the original runs with (decompress's scratch and
+// the pointer at $E0).
+void sound_boot(uint16_t dp);
+
 #endif

@@ -5026,6 +5026,20 @@ static void call_sound_send_message(const Regs* in, Regs* out) {
 // ---- sound_frame ($86:DFE1, long) ----  PHP/PLP: flags as on entry. A = the word $046D;
 // with bit 15 set, its high byte : $77 (the readiness test), or : $FF and X, Y as
 // sound_send_message when it sent
+// ---- sound_boot_upload ($86:E096) / sound_boot ($86:DD85): the driver's upload at start-up ----
+// (port request 4) its pointer is the long one at D+$E0; no register outputs (the callers set
+// theirs)
+static void call_sound_boot_upload(const Regs* in, Regs* out) {
+  (void)out;
+  sound_boot_upload((uint32_t)(rd8(in->d + 0xE0) | rd8(in->d + 0xE1) << 8 | rd8(in->d + 0xE2) << 16));
+}
+static void call_sound_boot(const Regs* in, Regs* out) {
+  sound_boot(in->d);
+  setNZ16(out, in->d);  // its last PLD; C from the ready test, V clear from the upload's end
+  out->c = 1;
+  out->v = 0;
+}
+
 static void call_sound_frame(const Regs* in, Regs* out) {
   (void)in;
   uint16_t en = rd16(SOUND_ENABLE);
@@ -13048,6 +13062,11 @@ const Routine routines[] = {
   // no fuzz: the fuzz runs the CPU alone, so the sound CPU never answers the handshake
   {.name = "sound_send_message", .entry = 0x86DFFB, .end = 0x86E096, .source = "src/sound.c", .lowWramDb = true,
    .call = call_sound_send_message, ALL_OUTPUTS},
+  {.name = "sound_boot_upload", .entry = 0x86E096, .end = 0x86E0F0, .source = "src/sound.c", .manyEffects = true,
+   .call = call_sound_boot_upload, .holes = {{0x86E0EA, 0x86E0EC}}},  // once per movie, at start-up: live only
+   // (the hole: a kick of 0 made 4, which this driver's block sizes never need)
+  {.name = "sound_boot", .entry = 0x86DD85, .end = 0x86DDEF, .rtl = true, .source = "src/sound.c", .manyEffects = true,
+   .call = call_sound_boot},
   {.name = "sound_frame", .entry = 0x86DFE1, .end = 0x86DFFB, .rtl = true, .source = "src/sound.c", .needM16 = true,
    .lowWramDb = true, .call = call_sound_frame, ALL_OUTPUTS},
   {.name = "oam_from_objects", .entry = 0x8A8E1B, .end = 0x8A8EEF, .rtl = true, .source = "src/sprites.c",

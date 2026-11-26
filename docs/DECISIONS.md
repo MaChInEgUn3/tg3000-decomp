@@ -5262,6 +5262,53 @@ chased now.
 
 **Check:** the full gate (`src/tg3000.h` changed).
 
+## Sound loading, step 1: the driver's upload at start-up (sound-load-1, 2026-11-26)
+
+**What is in C.** `sound_boot` (`$86:DD85`) and `sound_boot_upload` (`$86:E096`), the first
+part of port request B (request 4). At start-up the game:
+- clears the sound state;
+- unpacks the driver to `$7F:0000`;
+- sends its blocks with the console's standard start-up loader;
+- clears the four ports;
+- waits for the driver's ready (`$77` on port 1);
+- sets `SOUND_ENABLE`.
+
+**The interface: the port's accepted design, with the framing left to the platform.** It
+follows `docs/proposals/sound.md` Part A in the port's repository; the names changed, as the
+port allowed. Four new calls in `platform.h`:
+- `sound_boot_begin`;
+- `sound_boot_block(spc_dest, src, size)`, once per block;
+- `sound_boot_start(spc_entry)`;
+- `sound_clear_ports`.
+
+The C walks the block list (`[size][destination][bytes]`), which is the game's data. The
+loader's protocol is the platform's: its headers, its counters, its kick (`$CC` first, then
+the last count + 4, never 0) and its waits.
+- **On the bench:** the platform frames each block back into the original's port writes,
+  and the harness compares every write in place: about 9,100 for the driver.
+- **In a port with its own player:** there is no driver to run, so it may ignore the calls.
+- **Every argument is on the wire:** destination, bytes and entry.
+- **The owner may veto it,** like any interface choice.
+
+**harness-38.** Reads of the sound ports inside the loader (`$86:E096`-`$86:E0EF`) are not
+recorded as inputs: they are the platform's waits. Before this, about 4,600 changing echo
+values overflowed a short row's 256 inputs. The waits of the per-frame message were already
+the platform's; the ready test after the upload is still an input, read through
+`sound_is_ready`.
+
+**Results.**
+- **Live samples:** one per movie (it runs once, at start-up), which matched.
+- **Fuzz:** none. The original needs the sound chip waiting in its start-up loader.
+- **Negative check:** one wrong data byte fails at that write.
+- **Not covered:** `$86:E0EA` (the kick of 0 made 4) never runs, because this driver's
+  block sizes never need it. It is ported but untested, and left as a hole.
+
+**Next:** the per-scene set loader `$86:DDEF` and its senders (`$86:E0F0` blocks, `$86:E2B4`
+samples). Before the samples' call shape is fixed, find which bytes carry each sample's
+slot and loop point: the header words, or only the directory sent after.
+
+**Check:** the full gate (`difftest.c` changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
