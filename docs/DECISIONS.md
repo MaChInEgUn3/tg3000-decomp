@@ -6409,6 +6409,42 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road line word between rows: the offset and the step's size (dsp4-01l, 2026-11-26)
+
+**Measured** on dsp4-01k's table: 18,114 (n, D) groups plus 3,000 random probe runs; firmware,
+chosen inputs, outputs only.
+
+**Exact:**
+- **Linear with an offset of exactly ½.** Line j of a row (j from 0 at the camera's line) is
+  ⌊j · s + ½⌋ relative to the camera's word C, for a step s per (n, D).
+  - Every line count tested (13, 20, 30, 40, 50) admits offset ½ for every D, with s free per
+    D.
+  - No common offset fits with s = D · x for one x per n, so s is not simply proportional
+    to D.
+- **The step's size, for steep rows, is D · ⌊16,384 / n⌋ / 16,384.** From the six steepest D of
+  each n (the most precise), the feasible step pins the reciprocal to ⌊2^14 / n⌋. Examples:
+  - n = 17: 963 (×4 in 2^16 units: 3,852);
+  - n = 49: 334 (1,336);
+  - n = 50: 327 (1,308);
+  - n = 51: 321 (1,284).
+
+  Not 2^16 / n, and not (65,536 − e) / n.
+
+**Not exact yet: a small bias in the step.**
+- **Its size:** s · 2^16 − D · 4 · ⌊2^14 / n⌋ is about +150 for n = 50 at every D (+130 to +210
+  from the feasible ranges; D = 21 gives +87 to +180). That is about 0.0023 per line, upward,
+  for both signs of D.
+- **Ruled out for it:**
+  - the step rounded up or toward zero to 4-14 fraction bits;
+  - a fixed fraction added to D (k / q for q up to 256);
+  - a truncated step with any offset.
+
+**Next (dsp4-01m):** pin the bias with longer rows. Header word 1 (the camera's line) and word 2
+(the line limit) give rows of more than 51 lines, so each step is measured over more lines. Then
+fit the bias against n and D.
+
+**Check:** a measurement, recorded here. It changes no code.
+
 ## The road line word: the slope is header word 10 (dsp4-01k, 2026-11-26)
 
 **A correction to dsp4-01i.** Its rule, ((192 · h) >> 15) − y − 170, is right for the game's
