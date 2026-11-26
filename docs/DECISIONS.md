@@ -6409,6 +6409,40 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The window command `$08` on the probe: first sweeps (dsp4-08b, 2026-11-26)
+
+**`dsp4_road_probe` now takes an `R8` case:**
+- the input: 45 header words, then rows of 9 words (a row the game sends again is, to the chip,
+  just another row);
+- the output: the first answer, each row's two runs (count: address,word …), then the last
+  answer.
+- **Checked:** all 584 `$08` runs of `race1`, replayed into the firmware, give the tape's
+  answers byte for byte.
+
+**First sweeps** (one input at a time from a `race1` row; outputs only):
+- **The counts:** a row's lines between its line and the previous one's, as `$01`'s.
+- **The addresses:** each road's table address, less 4 a line.
+- **The camera row's edge words** (after the header) move the first answer and every line's
+  word:
+  - its first word, `$10`, sets the first answer's high byte to `$50` and every line's low
+    byte to about `$4F`;
+  - its second, `$10`, sets the first answer to `$4E41` and every line's high byte to about
+    `$4D`.
+- **A row's edge words** spread over its lines, growing line by line:
+  - +`$10` on the first adds 1, 3, 5 … to each line's low byte;
+  - +`$10` on the second adds the same to the high byte;
+  - `$100` saturates the byte at `$FF`.
+- **Road 1's screen x does not change the words; road 2's does, in both runs.**
+- **Header word 0** (`$FF` → `$80`) changes the first answer's low byte and road 1's lines' low
+  bytes to `$81`. So the 20 constants look like limits or defaults per road and edge.
+
+**Next (dsp4-08c):** fit the words. Likely each byte is an edge, interpolated line by line
+between rows as `$01`'s words are, from the edge words and a projection, and clamped by the
+header's constants.
+
+**Check:** the probe's replay of `race1` (584 of 584 identical). A measurement and a probe mode;
+no game C changes.
+
 ## The road's window command `$08`: its grammar (dsp4-08a, 2026-11-26)
 
 **Request A's next command.** `road_rows_stream` (`$81:8564`) sends it at `$81:861D`, after the
