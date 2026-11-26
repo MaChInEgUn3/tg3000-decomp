@@ -126,13 +126,6 @@ bool top_after_title(void) {
   return true;
 }
 
-// The championship screen whole ($80:BE32, or $80:BEC6 the first time): its pieces are in C,
-// its session's two tasks are not yet (port request D).
-static void champ_screen(bool first) {
-  (void)first;
-  tg3000_unported("the championship screen's two tasks ($80:BE32/$80:BEC6; port request D)");
-}
-
 // $80:8A8C: the championship's loop (it never returns: its ways out are traps)
 static void championship(void) {
   champ_screen(true);

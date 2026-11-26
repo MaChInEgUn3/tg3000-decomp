@@ -1764,6 +1764,10 @@ void champ_menu_frame(uint16_t dp);
 void champ_menu_pads(uint16_t dp);
 // $80:C2BB up to $80:C2DD: its drawing.
 void champ_menu_draw(uint16_t dp);
+// The championship screen whole (port request D): $80:BEC6 the first time (`first`: its menu),
+// $80:BE32 after (straight to the race). Both players' tasks from the records on; the race's
+// start alone. Returns to the top loop. The menu's choices other than the race are traps.
+void champ_screen(bool first);
 
 // The options menus' interpreter: the menu drawn up to the focused item's selection test
 // ($8A:A2AF: 1 there, 0 at the end), the rest after it ($8A:A31D), the selection's test

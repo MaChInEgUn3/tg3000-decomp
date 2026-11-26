@@ -5989,6 +5989,72 @@ choices' screens, and the race start screen. Then `game_main`'s championship tra
 
 **Check:** the full gate (`src/` changed by more than additions).
 
+## The championship screen whole (task-6, 2026-11-26)
+
+**Port request D, step 3b.** `champ_screen(first)` (`src/misc.c`) is the screen from the top
+loop. With it, `game_main`'s championship trap is gone.
+
+**The two entries:**
+- `$80:BEC6` the first time (`first`), with its menu;
+- `$80:BE32` after each race, with the clears. Its tasks mark their start fresh (D+$76 bit 6,
+  at `$80:BEBE`), so they go straight to the race.
+
+**Both run** `champ_begin`, a frame, then their setup and `split_screen_setup`, then
+`platform_task_split`.
+
+**Each task's half, `champ_task(dp)`, the original's glue between the rows:**
+- **The records,** then the five queued uploads (`$80:BF2E`-`$80:BF7B`), each followed by its
+  slot's wait.
+- **The load, the map's queue and the panel.**
+- **On a fresh start, straight on.** Otherwise:
+  1. the fade in and 16 frames;
+  2. unless D+$76 bit 5 (task 2 in a one-player game), the opening and the menu's loop until
+     the race is chosen;
+  3. the bar's closing, waiting for its hook to finish.
+- **Then `wait_flag_76`,** where the NMI's tail releases both.
+- **Task 2's function then returns.** On the console it is never switched in again: the race's
+  start replaces the NMI target, and the hdma report saw neither task switched inside
+  `$80:D17F`-`$80:D69F`. Task 1 joins and runs the race's start alone.
+
+**The opening** (`$80:C053`-`$80:C2B9`):
+- the slide, a step a frame until its offset is 16;
+- the panels cleared, then the VRAM queue drained;
+- the static, with its panels, until D+$16 counts down to 0;
+- the menu ready, then a frame.
+
+**The menu's loop** (`$80:C2BB`-`$80:C318`): the drawing, the up/down test, then a press with
+the bar still. It dispatches the choice.
+- **The race returns.**
+- **The name entry, the controls and the gears are traps for now.** Their pieces are in C,
+  but not yet composed.
+- **One deviation, recorded:** the original loops without a wait and is switched out by the
+  interrupts. The C makes one pass a frame. A pass only draws state and tests the frame's
+  presses.
+
+**The race's start** (`$80:D17F`-`$80:D668`):
+- the bar;
+- the load;
+- its waits (D+$16; D+$2A and D+$28; the NMI target `$80:D784` for a frame, then the common
+  one);
+- the setup and its end;
+- the queue drained, the main/sub screens and window masks, `$80:E28C` as the NMI target;
+- on a fresh start, the three vertical scrolls at `$FFFF` and the fade's words;
+- then a frame at a time, `race_start_frame` until its fade is done (`race_start_end`).
+
+**Not ported:** `$80:D1A1`-`$80:D1B3`, which waits for HDMA channel 1's line counter and pokes
+it. It is a raster detail with no state in WRAM.
+
+**How it is checked.** A whole screen is not one sample: it is two tasks over hundreds of
+frames, and the poke is hardware. So the composition rests on:
+- the verified rows;
+- the glue, transcribed from the listing;
+- the full gate below.
+
+**Next:** the menu's three other choices (the name entry, the controls, the gears), composed
+from their rows. Then the port's request H.
+
+**Check:** the full gate (`src/misc.c` and `src/boot.c` changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

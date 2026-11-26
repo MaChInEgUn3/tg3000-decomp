@@ -9655,6 +9655,156 @@ void champ_setup_fresh(void) {
   }
 }
 
+// The championship screen whole (port request D), composed of its rows; the glue between them
+// is the original's ($80:BE32-$80:D668).
+
+// Wait until the task's VRAM queue is drained ($80:C13E, $80:C227: D+$8E reaches D+$8C).
+static void champ_queue_wait(uint16_t dp) {
+  const uint16_t head = rd16((uint16_t)(dp + 0x8C));
+  while(rd16((uint16_t)(dp + 0x8E)) != head) platform_wait_vblank();
+}
+
+// Wait until the task's upload slot is free ($80:BF7E, $80:BFE9, $80:BFFF).
+static void champ_slot_wait(uint16_t dp) {
+  while(rd16((uint16_t)(dp + 0x64)) != 0) platform_wait_vblank();
+}
+
+// $80:C053-$80:C2B9: the opening (the slide, the panels cleared, the static until D+$16 counts
+// down to 0, the menu ready).
+static void champ_opening(uint16_t dp) {
+  uint16_t x = 0;
+  do {
+    wait_frames(1);
+    x = champ_slide_step(dp, x);
+  } while(x != 0x0010);
+  champ_clear_panels(dp);
+  champ_queue_wait(dp);
+  for(;;) {
+    champ_noise(dp);
+    champ_queue_wait(dp);
+    champ_noise_panels(dp);
+    wr16((uint16_t)(dp + 0x16), (uint16_t)(rd16((uint16_t)(dp + 0x16)) - 1));
+    if(rd16((uint16_t)(dp + 0x16)) == 0) break;
+  }
+  champ_menu_ready(dp);
+  wait_frames(1);
+  wr16((uint16_t)(dp + 0x1E), 0);
+  wr16((uint16_t)(dp + 0x4C), 0);
+}
+
+// $80:C2BB-$80:C318: the menu's loop, until the race is chosen. The original loops without a
+// wait (its task is switched out by the interrupts); here one pass a frame.
+static void champ_menu(uint16_t dp) {
+  for(;;) {
+    champ_menu_draw(dp);
+    champ_menu_pads(dp);
+    const uint16_t press = rd16((uint16_t)(dp + 0x0E));
+    wr16((uint16_t)(dp + 0x0E), (uint16_t)(press & ~0xC0C0));
+    if((press & 0xC0C0) && rd16((uint16_t)(dp + 0x4C)) == 0) {
+      func_80E4DB();
+      const uint16_t choice = menu_choice_begin(dp);  // $80:C5D5's entry (its two pushes: the race drops them)
+      if(choice == 6) return;  // the race ($80:D168)
+      if(choice == 0) tg3000_unported("$80:C6D4: the championship menu's name entry");
+      else if(choice == 2) tg3000_unported("$80:CB4A: the championship menu's controls");
+      else if(choice == 4) tg3000_unported("$80:CEE2: the championship menu's gears");
+      else tg3000_unported("$80:C5D5: a championship menu choice past its table");
+    }
+    platform_wait_vblank();
+  }
+}
+
+// $80:D17F-$80:D668: the race's start screen, task 1 alone (its NMI is its own from the load on).
+static void race_start_screen(void) {
+  race_start_bar();
+  // ($80:D1A1-$80:D1B3: past hblank, the HDMA's line counter for channel 1 awaited at $10 and set
+  // to $14, a raster detail with no state in WRAM: a port has no HDMA to adjust)
+  const uint16_t len = race_start_load(DP);
+  while(rd16(DP + 0x16) == 0) platform_wait_vblank();
+  wait_frames(1);
+  while(rd16(DP + 0x2A) != rd16(DP + 0x28)) platform_wait_vblank();
+  wr16(0x0008, 0xD784);
+  wait_frames(1);
+  wr16(0x0008, 0x8934);
+  wait_frames(1);
+  race_start_setup();
+  race_start_setup_end(len);
+  const uint16_t queued = rd16(0x0028);
+  while(rd16(0x002A) != queued) platform_wait_vblank();
+  video_set_main_screen(0x17);
+  video_set_sub_screen(0x10);
+  video_set_main_window_mask(0x17);
+  video_set_sub_window_mask(0x00);
+  wr16(DP + 0x7C, 0x5FA6);
+  wr16(0x0008, 0xE28C);
+  wr16(DP + 0x16, 0);
+  if(rd16(0x0176) & 0x0040) {
+    video_set_bg3_vofs(0xFFFF);
+    video_set_bg1_vofs(0xFFFF);
+    video_set_bg2_vofs(0xFFFF);
+    wr16(0x0198, 0x0F00);
+    wr16(0x0196, 0x0100);
+    wr16(0x019A, 0x0100);
+  }
+  do {
+    wait_frames(1);
+  } while(!race_start_frame(DP));
+}
+
+// $80:BF0F on: a player's half. Returns in task 2 once both are released at $80:D17C; task 1
+// then runs the race's start alone.
+static void champ_task(uint16_t dp) {
+  uint16_t end;
+  champ_records(dp);
+  const uint16_t at = rd16((uint16_t)(dp + 0x5C));
+  queue_unpacked_upload(dp, 0x87, 0x8190, (uint16_t)(at + 0x3000), &end);
+  queue_unpacked_upload(dp, 0x90, 0xC320, (uint16_t)(at + 0x3500), &end);
+  queue_unpacked_upload(dp, 0x87, 0x86BE, (uint16_t)(at + 0x3540), &end);
+  queue_unpacked_upload(dp, 0x8F, 0x83CC, (uint16_t)(at + 0x1000), &end);
+  queue_unpacked_upload(dp, 0x98, 0x8000, (uint16_t)(at + 0x1200), &end);
+  champ_slot_wait(dp);
+  champ_load(dp);
+  champ_slot_wait(dp);
+  champ_queue_map(dp);
+  champ_slot_wait(dp);
+  champ_panel(dp);
+  if(!(rd16((uint16_t)(dp + 0x76)) & 0x0040)) {
+    champ_fade_in(dp);
+    wait_frames(0x0010);
+    if(!(rd16((uint16_t)(dp + 0x76)) & 0x0020)) {
+      champ_opening(dp);
+      champ_menu(dp);
+    }
+    race_start_close(dp);
+    while(rd16((uint16_t)(dp + 0x4E)) != 0) platform_wait_vblank();
+  }
+  wait_flag_76(dp);
+  if(dp != DP) return;
+  platform_task_join();
+  race_start_screen();
+}
+
+// ($80:BEBE: after a fresh setup, both tasks mark their start fresh)
+static void champ_task_fresh(uint16_t dp) {
+  wr16((uint16_t)(dp + 0x76), (uint16_t)(rd16((uint16_t)(dp + 0x76)) | 0x0040));
+  champ_task(dp);
+}
+
+void champ_screen(bool first) {
+  champ_begin();
+  wait_frames(1);
+  if(first) {  // $80:BEC6
+    champ_setup();
+    split_screen_setup(0xBF0E, 0x81);
+    platform_task_split(champ_task);
+    champ_task(DP);
+  } else {  // $80:BE32
+    champ_setup_fresh();
+    split_screen_setup(0xBEBD, 0x81);
+    platform_task_split(champ_task_fresh);
+    champ_task_fresh(DP);
+  }
+}
+
 // TG3000_ROUTINE($80:BF0F) champ_records
 // After split_screen_setup: the car's record by D+$92 ($81:8B2C). These parts run in both
 // players' tasks (`dp`: the task's D).
