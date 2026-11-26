@@ -26,6 +26,7 @@ LLE_CXX := $(CXX) -std=gnu++11 -include vector -include algorithm -include type_
 
 .PHONY: all clean probe
 all: $(OUT)/bench
+all: $(OUT)/dsp4_compare
 
 $(OUT)/bench: $(OBJ)
 	$(CXX) -o $@ $^
@@ -49,6 +50,9 @@ $(OUT)/dsp4_probe: dsp4_probe.cpp $(OUT)/dsp4_lle.o $(OUT)/src_dsp4.o | $(OUT)
 $(OUT)/dsp4_replay: dsp4_replay.cpp $(OUT)/dsp4_lle.o | $(OUT)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 probe: $(OUT)/dsp4_probe
+# dsp4-chip-1: src/dsp4.c's chip against a recording of the firmware chip (needs no bsnes)
+$(OUT)/dsp4_compare: dsp4_compare.c $(OUT)/src_dsp4.o | $(OUT)
+	$(CC) $(CFLAGS) -o $@ $^
 probe: $(OUT)/dsp4_replay
 
 $(OUT)/png.o: png.c png.h | $(OUT)

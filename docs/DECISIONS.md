@@ -5410,6 +5410,68 @@ dispatcher).
 
 **Check:** the full gate (new waiting rows).
 
+## The DSP-4 as a chip in C, and its comparator (dsp4-chip-1, 2026-11-26)
+
+**Port request A, step 1, by the advisor's plan.** The advisor's order:
+- **First:** the chip's home in `src/` and a way to score it.
+- **Then** the road command `$01`, with a stop rule.
+
+A moves neither the rows nor the percentage, so this comparator is the check for every
+later A unit.
+
+**`src/dsp4.c` now has the chip as the game talks to it.** `Dsp4Chip`, with:
+- `dsp4_chip_reset`;
+- `dsp4_chip_write`, a byte;
+- `dsp4_chip_read`, a byte;
+- `dsp4_chip_lost`.
+
+How it behaves:
+- **The stream:** the command word (low byte, then 0), its parameters, then its answer read
+  low byte first.
+- **The commands it has:** `$00`, `$0A`, `$11`, `$03` and `$0B`, through the existing
+  functions.
+- **Skips:** in the multiply's answer a write skips a byte, so the word-level port calls
+  (`dsp4_port_write16`/`read16`, two bytes each) fit it.
+- **Idle:** it reads `$FF`. Seen at start-up, where the game waits for `$FFFF` 257 times
+  (`$80:8088`).
+- **Any other command** leaves it lost until a reset.
+- **State:** it keeps bit 7 of the last `$0A`'s near row, the one input the road command
+  shares (dsp4-01b/c).
+
+A port puts it behind `dsp4_port_write16`/`read16`.
+
+**The instrument.**
+- **`bench --dsp4-tape-out FILE`:** writes the data bytes as a tape, in refbench
+  `--dsp4-tape`'s 5-byte records. With `--dsp4-firmware`, the answers are the firmware's.
+- **`tools/dsp4_sites.py`:** lists the places in the listing that write a constant command
+  word to the chip (`LDA #$00cc` then a store to `$30:8000`): 235 stores.
+- **`build/bench/dsp4_compare TAPE SITES`:** feeds every write to the C chip and compares
+  every read with the firmware's byte, per command.
+
+How the comparator restarts after a command the C chip does not have yet:
+- It restarts only at a listed site, right after a read, where the records ahead have the
+  command's exact shape: its word at one PC, its parameters, its answer, then a write.
+- **Why so strict:** looser rules restarted inside the streams, on zeros written as data.
+- **It uses the game's code, not the chip's.** The C chip itself must find command ends
+  from the stream alone, since a port has no PCs.
+
+**Results.** These are outputs only: the tapes hold what the game sent and got.
+
+| Movie | Records | Commands that match (bytes) | Differ | Not in C yet |
+|---|---|---|---|---|
+| `race1.txt`, 9,450 frames | 3,875,820 | `$00` (205,682), `$0A` (59,736), `$03` and `$0B` (3,504 each), `$11` (1,280), idle (514) | 0 | `$01`, `$09`, `$06` |
+| VS race, 9,000 frames | 8,835,144 | `$00` (590,112), `$0A` (40,608), `$11` (2,432), idle (514) | 0 | `$0D` |
+
+- **`race1.txt`:** the bytes left to the commands not in C are 1,690,213 for `$01`, 1,497,690
+  for `$09` and 14,373 for `$06`.
+- **The VS race's road command is `$0D`, not `$08`.** Each frame's `$0D` (four sites,
+  `$85:A59F`...) leaves the chip lost to the frame's end, 7,231,355 bytes. So its sprite
+  commands are not reached in step yet.
+
+**Check:** the comparator's exit status on both tapes (1 when a command the chip has
+differs), recorded fresh, then the selftest. Only lines were added to `src/` and
+`tools/bench/`, and no row changed.
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

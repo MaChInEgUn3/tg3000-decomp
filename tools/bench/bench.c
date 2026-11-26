@@ -44,6 +44,7 @@
 
 static Snes* snes;
 static FILE* dsp4Log;
+static FILE* dsp4TapeOut;  // dsp4-chip-1: the data bytes as a tape (refbench --dsp4-tape's records)
 
 // --dsp4-report: each data access to the chip attributed to the command running around it
 // (a write that starts a run belongs to the new command, the read that ends one to the
@@ -105,6 +106,11 @@ void bench_log_dsp4(bool write, bool data, uint8_t bank, uint16_t adr, uint8_t v
   dsp4Counts[write][data]++;
   if(write) dsp4WritesByFrame[snes->frames & 0xFFFF]++;
   if(dsp4ReportPath != NULL && data) dsp4Note(write, (uint32_t)snes->cpu->k << 16 | snes->cpu->pc);
+  if(dsp4TapeOut != NULL && data) {
+    const uint32_t pc = (uint32_t)snes->cpu->k << 16 | snes->cpu->pc;
+    const uint8_t rec[5] = {(uint8_t)pc, (uint8_t)(pc >> 8), (uint8_t)(pc >> 16), val, (uint8_t)(write ? 0 : 1)};
+    fwrite(rec, 1, 5, dsp4TapeOut);
+  }
   if(dsp4Log != NULL) {
     // frame, cpu PB:PC (points into the accessing instruction), access, address, value
     fprintf(dsp4Log, "%u %02X:%04X %c%c %02X:%04X %02X\n", snes->frames, snes->cpu->k, snes->cpu->pc,
@@ -432,6 +438,10 @@ int main(int argc, char** argv) {
     } else if(strcmp(argv[i], "--dsp4-firmware") == 0 && i + 1 < argc) {
       dsp4FirmwarePath = argv[++i];
     } else
+    if(strcmp(argv[i], "--dsp4-tape-out") == 0 && i + 1 < argc) {
+      dsp4TapeOut = fopen(argv[++i], "wb");
+      if(dsp4TapeOut == NULL) { perror(argv[i]); return 1; }
+    } else
     if(strcmp(argv[i], "--dsp4-log") == 0 && i + 1 < argc) {
       dsp4Log = fopen(argv[++i], "w");
       if(dsp4Log == NULL) { perror(argv[i]); return 1; }
@@ -658,6 +668,7 @@ int main(int argc, char** argv) {
     snes->frames, dsp4Counts[0][1], dsp4Counts[1][1], dsp4Counts[0][0], dsp4Counts[1][0], firstWrite);
   if(dsp4ReportPath != NULL) dsp4Report();
   if(dsp4Log != NULL) fclose(dsp4Log);
+  if(dsp4TapeOut != NULL) fclose(dsp4TapeOut);
   if(hashes != NULL) fclose(hashes);
   if(wramDump != NULL) fclose(wramDump);
   if(record != NULL) fclose(record);
