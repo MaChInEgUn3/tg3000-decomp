@@ -6409,6 +6409,41 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road rows' products, native (dsp4-00a, 2026-11-26)
+
+**The port's request:**
+- **The problem:** in the port, every `dsp4_port_write16`/`read16` stops the game, products
+  included. So `road_rows_project`'s six products and `road_rows_project2`'s five would stop a
+  race's first frame as surely as a command.
+- **The goal:** no DSP-4 port call on a race path.
+- **Tracking:** the port follows `grep -c dsp4_port_ src/*.c`. It was 191, all in
+  `src/misc.c`; it is now 180.
+
+**The change:**
+- **A new helper, `road_product32`,** takes the product from `dsp4_multiply` (command `$00`,
+  native since dsp4-chip-1). Both road rows now use it.
+- **`road_port_product32` stays for the VS road's passes** (`vs_proj_pass`), whose `$0D` stream
+  is still on the port. It goes with `$0D`.
+
+**The rows:**
+- **No tape left:** neither row has DSP-4 traffic on the port any more. They lose `dsp4Tape`
+  and their `dsp4Native` ranges, and their whole extent counts as native sites, as for any
+  untaped row.
+- **`road_rows_project2`'s fuzz no longer scripts the chip.** It keeps `$1EF2` at 0 through RAM
+  instead (`$0242`, `$3E6C` and the first product's factor `$3E6E` − `$3E6C` all 0), since the
+  first product now comes from the primed chip.
+- **The negative row `road_rows_project_wrong_round`** loses its tape too, and still fails
+  (1 of 131 on `race1`).
+
+**Results on `race1`:**
+- `road_rows_project`: 131 of 131;
+- `road_rows_project2`: 142 of 142, fuzz 200 of 200;
+- `race_road_frame`, `race_road_frame_alt`, `race_frame_draw`, `race_frame_body` and
+  `road_rows_stream`: all pass, their tapes now without the products.
+
+**Check:** the full gate (`src/misc.c` and `tools/bench/routines.c` changed by more than
+additions).
+
 ## The second road wired: `road_rows_project2` on the native `$07` (dsp4-07b, 2026-11-26)
 
 **`road_rows_project2` (`$85:B828`) now calls `dsp4_road2_start`/`dsp4_road2_row`** instead of

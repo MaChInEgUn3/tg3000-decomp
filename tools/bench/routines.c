@@ -12250,24 +12250,20 @@ static void call_road_rows_project2(const Regs* in, Regs* out) {
 // count (objects from bank $7E below $7000 or from ROM in bank $90; entries in low WRAM)
 static void fuzz_road_rows_project2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
-  // dsp4-07b: the second road ($07) native, on the bench's chip primed with a $0A; D+$E4 negative
-  // (the objects copied, from bank $7E or $90), $1EF2 0-$3F (negative: a trap); its five
-  // products scripted
+  // dsp4-07b/00a: the second road ($07) and its products native, on the bench's chip primed with
+  // a $0A; D+$E4 negative (the objects copied, from bank $7E or $90); $1EF2 = $0242 + the first
+  // product's high word + $3E6C kept 0 (negative: a trap; above 0 the bench's chip draws word 1
+  // above word 2 unlike the firmware): $0242 = $3E6C = 0 and the first product's factor 0
   wr16ram(ram, 0x00B4, (rnd() & 1) ? 0 : 1);
   ram[0x0225] = (uint8_t)rnd();
   wr16ram(ram, DP + 0xE4, (uint16_t)(0x8000 | rnd()));
-  uint32_t k = (uint32_t)(((ram[0x0226] | ram[0x0227] << 8) << 1) & 0x3E);
-  const uint16_t base = (uint16_t)((ram[0x0242] | ram[0x0243] << 8) + (ram[0x3E6C + k] | ram[0x3E6D + k] << 8));
-  const uint16_t q = 0;  // (0: the bench's own chip draws word 1 above word 2 unlike the firmware)
+  const uint32_t k = (uint32_t)(((ram[0x0226] | ram[0x0227] << 8) << 1) & 0x3E);
+  wr16ram(ram, 0x0242, 0);
+  wr16ram(ram, 0x3E6C + k, 0);
+  wr16ram(ram, 0x3E6E + k, 0);
   for(uint32_t i = 2; i < 0x42; i += 2)
     if(rnd() % 5 == 0)
       wr16ram(ram, 0x3FEC + k + i, (rnd() & 1) ? (uint16_t)(0x2010 + 2 * (rnd() % 0x2800)) : (uint16_t)(0x8110 + 2 * (rnd() % 0x3000)));
-  uint16_t script[16];
-  int n = 0;
-  script[n++] = (uint16_t)rnd();
-  script[n++] = (uint16_t)(q - base);  // $1EF2 = $0242 + this + $3E6C
-  for(int i = 0; i < 8; i++) script[n++] = (uint16_t)rnd();
-  dsp4_bridge_script(script, n);
 }
 
 // ---- race_road_frame ($85:B3A9) / race_road_frame_alt ($85:B36F) ----  DSP-4 tape rows (RTL):
@@ -14825,8 +14821,8 @@ const Routine routines[] = {
    .fuzz = fuzz_race_road_frame, .dsp4Tape = true, .fuzzStack = 0x1FF1},
   {.name = "road_rows_project2", .entry = 0x85B828, .end = 0x85BC20, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project2, ALL_OUTPUTS,
-   .fuzz = fuzz_road_rows_project2, .dsp4Tape = true, .fuzzStack = 0x1FF1,
-   .dsp4Native = {{0x85B950, 0x85BBE5}},  // dsp4-07b: the second road, $07, native (its products stay taped)
+   .fuzz = fuzz_road_rows_project2, .fuzzStack = 0x1FF1,
+   // dsp4-07b: the second road, $07, native; dsp4-00a: its products too (no tape left)
    // never run live: $10 and its objects' words (traps), $1EF2 negative (a trap)
    .holes = {{0x85B957, 0x85B95F}, {0x85B96F, 0x85B97C}, {0x85B990, 0x85B996}, {0x85B9AD, 0x85B9B3},
              {0x85B9D0, 0x85B9D7}, {0x85BA8C, 0x85BB7F}, {0x85BBFC, 0x85BC09}}},
@@ -14836,8 +14832,7 @@ const Routine routines[] = {
    .replays = 32},  // the VS raster IRQs land in every live sample (harness-34)
   {.name = "road_rows_project", .entry = 0x85B3D7, .end = 0x85B828, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project, ALL_OUTPUTS,
-   .dsp4Tape = true,
-   .dsp4Native = {{0x85B52C, 0x85B7ED}},  // dsp4-01t: the road, $01, native (its products stay taped)
+   // dsp4-01t: the road, $01, native; dsp4-00a: its products too (no tape left: its whole extent native)
    // dsp4-01t: no fuzz (its cases run the road on the bench's own DSP-4, whose rounding after a reset
    // and whose clamps are not the firmware's). Never run live: $0F (the chip's objects: a trap),
    // the edges ($8001: a trap), $0242 negative (a trap), $020D negative (a sign extension, unchecked)
@@ -14965,7 +14960,6 @@ const int routineCount = sizeof routines / sizeof routines[0];
 const Routine negativeRoutines[] = {
   {.name = "road_rows_project_wrong_round", .entry = 0x85B3D7, .end = 0x85B828, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project_wrong_round, ALL_OUTPUTS,
-   .dsp4Tape = true, .dsp4Native = {{0x85B52C, 0x85B7ED}},
    .holes = {{0x85B533, 0x85B53B}, {0x85B75D, 0x85B7D6}, {0x85B4D4, 0x85B4D7}, {0x85B54B, 0x85B558},
              {0x85B56C, 0x85B572}, {0x85B589, 0x85B58F}, {0x85B5B3, 0x85B5BA}, {0x85B694, 0x85B716},
              {0x85B804, 0x85B811}}},

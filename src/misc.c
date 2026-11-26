@@ -6180,6 +6180,14 @@ static void road_port_product32(uint16_t a, uint16_t b, uint16_t* lo, uint16_t* 
   *hi = dsp4_port_read16();
 }
 
+// The same product by the native multiply (dsp4-00a, the port's request: no DSP-4 port on a race
+// path): road_rows_project and road_rows_project2. The VS road's passes keep the port until $0D.
+static void road_product32(uint16_t a, uint16_t b, uint16_t* lo, uint16_t* hi) {
+  const uint32_t p = (uint32_t)dsp4_multiply((int16_t)a, (int16_t)b);
+  *lo = (uint16_t)p;
+  *hi = (uint16_t)(p >> 16);
+}
+
 // The VS race's road projection ($85:A471), road_rows_project's counterpart for the four players
 // (DSP-4 command $0D, with no track-event rows): each player's pass is the same code with its
 // record, tables and constants (below; in the original's order: players 3, 1, 4, 2). Each pass
@@ -6364,13 +6372,13 @@ void road_rows_project(void) {
   const uint16_t at = rd16(DP + 0x14);
   const uint16_t ahead = xba16((uint16_t)((uint16_t)(0x0080 - at) >> 1)), behind = xba16((uint16_t)(at >> 1));
   uint16_t lo, hi;
-  road_port_product32(rd16(0x3AEC + x), 0xFC00, &lo, &hi);
+  road_product32(rd16(0x3AEC + x), 0xFC00, &lo, &hi);
   wr16(0x0174, (uint16_t)(hi + (lo >= 0x8000 ? 1 : 0)));
-  road_port_product32(rd16(0x3B6E + x), ahead, &lo, &hi);
+  road_product32(rd16(0x3B6E + x), ahead, &lo, &hi);
   wr16(DP + 0x1E, (uint16_t)(rd16(0x0208) - (uint16_t)(hi << 2 | lo >> 14)));
-  road_port_product32(rd16(0x0208), behind, &lo, &hi);
+  road_product32(rd16(0x0208), behind, &lo, &hi);
   wr16(DP + 0x20, (uint16_t)(hi << 2 | lo >> 14));
-  road_port_product32(rd16(0x3AEE + x), ahead, &lo, &hi);
+  road_product32(rd16(0x3AEE + x), ahead, &lo, &hi);
   {
     const uint16_t d = (uint16_t)-(uint16_t)(hi << 2 | lo >> 14);
     const uint32_t c1 = (hi >> 14) & 1;  // the second ROL's carry, into the ADC
@@ -6378,12 +6386,12 @@ void road_rows_project(void) {
     wr16(DP + 0x26, (uint16_t)s);
     wr16(DP + 0x28, (uint16_t)(sext8(rd8(0x020D)) + ((d & 0x8000) ? 0xFFFF : 0) + (s >> 16)));
   }
-  road_port_product32(rd16(DP + 0x26), behind, &lo, &hi);
+  road_product32(rd16(DP + 0x26), behind, &lo, &hi);
   wr16(DP + 0x2A, hi);
   wr16(DP + 0x2C, (hi & 0x8000) ? 0xFFFF : 0);
   {
     const uint16_t top = (uint16_t)(rd16(DP + 0x28) + ((rd16(DP + 0x26) & 0x8000) ? 1 : 0));
-    road_port_product32(top, behind, &lo, &hi);
+    road_product32(top, behind, &lo, &hi);
     const uint32_t s = (uint32_t)lo + rd16(DP + 0x2A);
     const uint16_t h = (uint16_t)(hi + rd16(DP + 0x2C) + (s >> 16));
     wr16(DP + 0x2A, (uint16_t)(s << 2));
@@ -6495,15 +6503,15 @@ void road_rows_project2(void) {
   wr16(0x376C, rd16(0x3E6C + x));
   wr16(0x356C, rd16(0x3DEC + x));
   uint16_t lo, hi;
-  road_port_product32((uint16_t)((rd16(0x3E6E + x) - rd16(0x3E6C + x)) << 1), (uint16_t)((rd16(0x0224) >> 1) & 0xFF00), &lo, &hi);
+  road_product32((uint16_t)((rd16(0x3E6E + x) - rd16(0x3E6C + x)) << 1), (uint16_t)((rd16(0x0224) >> 1) & 0xFF00), &lo, &hi);
   wr16(0x1EF2, (uint16_t)(rd16(0x0242) + hi + rd16(0x3E6C + x)));
-  road_port_product32(rd16(0x3AEC + x), 0xFC00, &lo, &hi);
+  road_product32(rd16(0x3AEC + x), 0xFC00, &lo, &hi);
   wr16(0x017C, (uint16_t)(hi + (lo >= 0x8000 ? 1 : 0)));
-  road_port_product32(rd16(0x3B6E + x), ahead, &lo, &hi);
+  road_product32(rd16(0x3B6E + x), ahead, &lo, &hi);
   wr16(DP + 0x1E, (uint16_t)(rd16(0x1EDA) - (uint16_t)(hi << 2 | lo >> 14)));
-  road_port_product32(rd16(0x3AEE + x), ahead, &lo, &hi);
+  road_product32(rd16(0x3AEE + x), ahead, &lo, &hi);
   wr16(DP + 0x26, (uint16_t)-(uint16_t)(hi << 2 | lo >> 14));
-  road_port_product32(rd16(DP + 0x26), behind, &lo, &hi);
+  road_product32(rd16(DP + 0x26), behind, &lo, &hi);
   wr16(DP + 0x2A, (uint16_t)(hi << 2 | lo >> 14));
   wr16(0x4D49 + (uint32_t)band, 0);
   // the second road, DSP-4 command $07, native (dsp4-07b; $10, with the chip's own objects, never ran)
