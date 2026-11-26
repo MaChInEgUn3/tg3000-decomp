@@ -5,6 +5,10 @@
 #include "platform.h"
 #include "tg3000.h"
 
+// HDMA slot 4's table in the VS race, set each frame by nmi_vs_full; the split saves its address
+// at $7F:FFFE (port request H: the original reads it back from $4342, which HDMA never moves).
+#define VS_SLOT4_TABLE 0x83A411u
+
 // TG3000_ROUTINE($83:8644) race_upload_queue_drain
 //
 // Sends queued transfers while the frame's DMA budget lasts. Each whole transfer costs its
@@ -401,7 +405,7 @@ void irq_vs_split(void) {
   wr16(0x0005, rd16(0x0036));
   video_set_display(rd8(0x014B));
   video_set_color(0x07, rd16(0x00A2));
-  wr16(0x1FFFE, dma_hdma_get_table(4));  // $7F:FFFE
+  wr16(0x1FFFE, (uint16_t)VS_SLOT4_TABLE);  // $7F:FFFE: the table nmi_vs_full gave slot 4
   platform_set_irq_h(0x0063);
   platform_set_irq_v(rd16(0x0034));
 }
@@ -620,7 +624,7 @@ void nmi_vs_full(void) {
   vs_clock_step(0x0062, 0x005D);
   dma_hdma_set_mode(5, 0x43, 0x0D);
   dma_hdma_set_mode(6, 0x43, 0x0F);
-  dma_hdma_setup(4, 0x44, 0x26, 0x83A411);
+  dma_hdma_setup(4, 0x44, 0x26, VS_SLOT4_TABLE);
   dma_stream_setup(1, 0x00, 0x22, 0x7E0000 | rd16(0x00C8));
   dma_stream_setup(2, 0x08, 0x21, 0x838D35);
   dma_stream_setup(3, 0x00, 0x22, 0x7E0000 | rd16(0x00CC));

@@ -1319,7 +1319,7 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
     snprintf(why, whyLen, "the original's DSP-4 tape overflowed (%d bytes)", smp->nTape);
     return false;
   }
-  if(smp->regReadOverflow || cRegReadPos != smp->nRegReads) {
+  if(smp->regReadOverflow || (cRegReadPos != smp->nRegReads && !r->dmaReadsFree)) {
     snprintf(why, whyLen, "the C read %d DMA register words, the original %d%s", cRegReadPos, smp->nRegReads,
       smp->regReadOverflow ? " (and more than 8)" : "");
     return false;

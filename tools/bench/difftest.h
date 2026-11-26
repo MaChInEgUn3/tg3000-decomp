@@ -41,7 +41,7 @@ typedef struct {
                            // the original reads there are kept, in order, and served to the C
                            // (video_read_vram_word), which must read as many
   uint32_t dmaReadAt[4];   // harness-31: sites of a 16-bit read of a DMA register ($43xx): the
-                           // words are kept in order and served to the C (dma_hdma_get_table)
+                           // words are kept in order (harness-41: dmaReadsFree, the C has them)
   uint32_t endAt;          // a handler's prologue: the sample ends when it reaches this
                            // instruction (its dispatch, an indirect jump to the target, which
                            // has its own row); D and DB are compared there
@@ -80,6 +80,7 @@ typedef struct {
   // harness-25: the long effect log (MAX_EFFECTS_LONG) for a routine that does not wait but
   // writes more than MAX_EFFECTS hardware effects (a tilemap written word by word).
   bool manyEffects;
+  bool dmaReadsFree;       // harness-41: the dmaReadAt reads are recorded but the C need not read them
   bool emuEntry;           // harness-39: entered in emulation mode (the reset vector's code)
   // The fuzz's stack: the highest byte of the sentinel frame (0: $1F00, the fuzz's usual
   // place). A routine whose callees write the game's words $1EEE-$1EFD needs the game's own

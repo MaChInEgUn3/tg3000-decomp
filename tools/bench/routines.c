@@ -13164,7 +13164,7 @@ const Routine routines[] = {
    .call = call_irq_vs_band, ALL_OUTPUTS},   // no fuzz: it waits (WAI), as irq_race_band
   {.name = "irq_vs_split", .entry = 0x838A84, .end = 0x838B8E, .rti = true, .source = "src/race_frame.c",
    .call = call_irq_vs_split, ALL_OUTPUTS,   // no fuzz: it waits (WAI) twice
-   .dmaReadAt = {0x838B75}},                 // slot 4's table address, read back (harness-31)
+   .dmaReadAt = {0x838B75}, .dmaReadsFree = true},  // slot 4's table address: the C has it (harness-41)
   {.name = "irq_vs_band2", .entry = 0x838BE3, .end = 0x838C35, .rti = true, .source = "src/race_frame.c",
    .call = call_irq_vs_band2, ALL_OUTPUTS},
   {.name = "race_cycle_blocks", .entry = 0x859147, .end = 0x8593A7, .source = "src/race_frame.c",

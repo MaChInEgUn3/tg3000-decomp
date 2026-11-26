@@ -6121,6 +6121,39 @@ rows keep checking that the C's writes match.
 
 **Check:** the selftest and the progress check (additions only).
 
+## The HDMA read-back gone; the strip's read-back left (port-req-H2, harness-41, 2026-11-26)
+
+**The port's answer to port-req-H.** Keeping the last words written by address, or a slot's last
+table, is video memory or chip register state, and the Scope rule forbids it in the shipped
+game. The C must keep what it needs itself.
+
+**`dma_hdma_get_table` is gone** from `platform.h` and the bench.
+- **What replaces it:** `irq_vs_split` stores the table `nmi_vs_full` gives HDMA slot 4 each VS
+  frame, `VS_SLOT4_TABLE` (`$83:A411`), shared by both.
+- **harness-41:** a row may declare its `dmaReadAt` reads free (`dmaReadsFree`). They are still
+  recorded, but the C need not read them. The value is checked anyway, by the WRAM comparison at
+  `$7F:FFFE`.
+- **Results:** `irq_vs_split` passes on 1,128 of 1,128 live samples on the VS movie, 111/111
+  paths.
+
+**`video_read_vram_word` stays for now.** The strip's words cannot be derived from the players'
+positions alone.
+- **The rule tried:** "the word has `$6000` once the strip's `$6000` player has been there".
+  It misses 126 of 4,484 reads on the VS movie: the first frame reads `$0000` and `$6000`, and a
+  few frames later read `$0006` where the rule says `$6006`.
+- **The likely cause:** the console drops VRAM writes made outside blanking, and these come from
+  an interrupt handler.
+- **The positions:** all four only move down, one word at a time. Players 0 and 1 share the
+  `$57xx` strip and 2 and 3 the `$58xx` one; 0 and 2 OR in `$6000`, 1 and 3 OR in `$0006`.
+
+**Next (H, step 2):** the C keeps its own copy of the strip.
+- **The copy:** its own writes, and the race map's words at load.
+- **On the bench:** the adapter seeds it with what the original read, so the C's logic stays
+  checked.
+- **Then** `video_read_vram_word` leaves `platform.h` too.
+
+**Check:** the full gate (`difftest.c` changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
