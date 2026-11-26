@@ -5615,6 +5615,54 @@ The four accumulators, set from the header and the first row's words:
 **Check:** `tools/dsp4_road_fit.py` on both tapes' runs (0 rows differ). This is a
 measurement tool: no row or C changes.
 
+## The road command's line words: parked at the stop rule (dsp4-01f, 2026-11-26)
+
+**Request A, step 2c: the stop rule's second unit, and the rule fires.**
+- **Exact after two units:** the lengths (dsp4-01e, every row's answers and line count).
+- **Not exact:** the line's first word (for `$0798`).
+- **So:** `$01` is parked with the numbers below, and the owner is asked whether a
+  licence-checked source may inform the C (the 2026-11-15 decision allows it, provided the
+  licence is checked first and the source credited).
+- **Meanwhile:** the port's other requests go on (C, boot and the top dispatcher, next).
+
+**The instrument: `build/bench/dsp4_road_probe ROM < spec`** (`make -C tools/bench probe`).
+- It sends `$01` to the firmware chip as `road_rows_project` sends it (objects copied):
+  - the 15 header words;
+  - the first row's 3 words;
+  - each row's height and 3 track words.
+- It prints the answers: each row's 4 words and count, and each line's 3 words.
+- These are chosen inputs to the chip (first use for `$01`), outputs only.
+- **Replaying a recorded flat run reproduces it.** The exception is the `+1` dsp4-01c found:
+  the probe starts on a fresh chip, without the frame's `$0A` before it.
+
+**What is known of the two line words.** Line j of a row is at screen line y = m − j, where
+m is the lowest line so far.
+- **The second (for `$0796`):** close to 384 (head 8) plus the road's screen x at that line.
+  It is exact at the camera's line (447 = 384 + 63 on the runs looked at).
+- **The first (for `$0798`):**
+  - **Within a row** it steps evenly, `−3`/`−2` per line (a fixed-point interpolation,
+    rounded).
+  - **At the camera's line (51)** it is −29 on every run.
+  - **When the track's third word is `$00C0`** it is 192 (head 10) higher: the road's
+    alternate band.
+  - **The rows' boundary values:** on 19,170 recorded boundaries (h, y), 1,100 have two
+    values, those +192 apart.
+  - **On chosen inputs** (two rows, flat and straight, the first row's height h from 16,074
+    to 32,946 in steps of 37): the value at the row's end is round(381.458 · h/65536 −
+    0.97531 · y − 170.477). It is right in 450 of 452 cases, not yet an exact fixed-point
+    form. The lines between interpolate from −29, with rounding still not settled (3,105 of
+    9,172 lines off).
+- **Not yet looked at:** curves and hills (track words 0 and 1) and the frame's `$0A` bit.
+
+**Owner's question (2026-11-26).** Measuring the chip from outside got the road's geometry
+exact. Its per-line texture word is still open after two units.
+- **Option 1:** keep measuring. That is research of unknown length.
+- **Option 2:** let a licence-checked, credited source inform the C, checked against the
+  firmware as everything else is.
+
+**Check:** the probe builds (`make -C tools/bench probe`) and reproduces a recorded flat
+run's rows. This adds lines to `tools/bench/` only; no row or C changes.
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

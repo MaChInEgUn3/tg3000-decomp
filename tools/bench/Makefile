@@ -50,6 +50,10 @@ $(OUT)/dsp4_probe: dsp4_probe.cpp $(OUT)/dsp4_lle.o $(OUT)/src_dsp4.o | $(OUT)
 $(OUT)/dsp4_replay: dsp4_replay.cpp $(OUT)/dsp4_lle.o | $(OUT)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 probe: $(OUT)/dsp4_probe
+# dsp4-01f: the road command on chosen inputs, on the firmware chip
+$(OUT)/dsp4_road_probe: dsp4_road_probe.cpp $(OUT)/dsp4_lle.o | $(OUT)
+	$(CXX) $(CXXFLAGS) -o $@ $^
+probe: $(OUT)/dsp4_road_probe
 # dsp4-chip-1: src/dsp4.c's chip against a recording of the firmware chip (needs no bsnes)
 $(OUT)/dsp4_compare: dsp4_compare.c dsp4_chip.c dsp4_chip.h $(OUT)/src_dsp4.o | $(OUT)
 	$(CC) $(CFLAGS) -o $@ dsp4_compare.c dsp4_chip.c $(OUT)/src_dsp4.o
