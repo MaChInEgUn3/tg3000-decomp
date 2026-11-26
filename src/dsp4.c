@@ -59,9 +59,9 @@ void dsp4_road_begin(Dsp4Road* r, const uint16_t head[15], int16_t edge2, int16_
   r->g = (int32_t)((uint32_t)s16x(head[14]) << 16 | head[13]);
   r->e = (int32_t)((uint32_t)s16x(head[1]) << 16);
   r->s = (int32_t)((uint32_t)s16x(head[12]) << 16 | head[11]);
-  r->m = (int16_t)head[1];
-  r->yPrev = (int16_t)head[1];
-  r->endA = s16x(head[4]) - s16x(head[5]);
+  r->m = (int16_t)head[2];      // lines are drawn below word 2, the line limit
+  r->yPrev = (int16_t)head[1];  // the camera's line, where the first segment starts
+  r->endA = s16x(head[4]) - s16x(head[5]) - (s16x(head[1]) - s16x(head[2]));
   r->endB = s16x(head[8]) + s16x(head[7]);
   r->round[0] = (uint16_t)(((uint16_t)edge2 >> 2) & 0x3FFF);
   r->round[1] = (uint16_t)(((uint16_t)edge3 >> 2) & 0x3FFF);
@@ -82,7 +82,7 @@ unsigned dsp4_road_row(Dsp4Road* r, uint16_t h, const uint16_t first[3], const u
   out[2] = (uint16_t)ei;
   out[3] = (uint16_t)y;
   const int32_t c = s16x(r->head[4]) - s16x(r->head[5]);
-  const int32_t endA = c + floor_shift((int64_t)s16x(r->head[10]) * h, 15) - s16x(r->head[10]) + (s16x(r->head[1]) - y);
+  const int32_t endA = c + floor_shift((int64_t)s16x(r->head[10]) * h, 15) - s16x(r->head[10]) + (s16x(r->head[2]) - y);
   const int32_t endB = s16x(r->head[8]) + p;
   const int32_t cnt = r->m - y > 0 ? r->m - y : 0;
   if(cnt > 0) {

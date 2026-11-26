@@ -5,7 +5,8 @@
 //   build/bench/dsp4_road_probe ext/firmware/dsp4.rom [--edges NEAR] < spec
 // --edges NEAR (hex): before each case, a $0A with that near row (t = 0, far = NEAR), its
 // answer read, as the game's frame does before the road (dsp4-01c's bit 7). A case line may
-// instead start with its own commands, "E T NEAR FAR" ($0A) and "M A B" ($00) in any order;
+// instead start with its own commands, "E T NEAR FAR" ($0A), "M A B" ($00) and "B X Y ATTR"
+// ($0B, a sprite) in any order;
 // their answers are printed first, then '#'.
 // The spec, one case a line: 15 header words, the first row's 3 words, then per row its
 // height and 3 track words (all hex). Per case it prints one line: per row the 4 answers,
@@ -49,10 +50,10 @@ int main(int argc, char** argv) {
     while(true) {
       in >> std::ws;
       const int c = in.peek();
-      if(c != 'E' && c != 'M') break;
+      if(c != 'E' && c != 'M' && c != 'B') break;
       in.get();
       std::vector<unsigned> p{unsigned(c)};
-      for(int i = 0; i < (c == 'E' ? 3 : 2); i++) { in >> std::hex >> v; p.push_back(v); }
+      for(int i = 0; i < (c == 'M' ? 2 : 3); i++) { in >> std::hex >> v; p.push_back(v); }
       pre.push_back(p);
     }
     while(in >> std::hex >> v) w.push_back(v);
@@ -60,8 +61,14 @@ int main(int argc, char** argv) {
     dsp4_lle_reset();
     if(!pre.empty()) {
       for(const auto& p : pre) {
-        wr(p[0] == 'E' ? 0x000A : 0x0000);
+        wr(p[0] == 'E' ? 0x000A : p[0] == 'B' ? 0x000B : 0x0000);
         for(size_t i = 1; i < p.size(); i++) wr(uint16_t(p[i]));
+        if(p[0] == 'B') {  // a sprite: its flag, then two words when shown
+          const uint16_t f = rd();
+          std::printf("%04X ", f);
+          if(f) for(int i = 0; i < 2; i++) std::printf("%04X ", rd());
+          continue;
+        }
         for(int i = 0; i < (p[0] == 'E' ? 4 : 2); i++) std::printf("%04X ", rd());
       }
       std::printf("# ");

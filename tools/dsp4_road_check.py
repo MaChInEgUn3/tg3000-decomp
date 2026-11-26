@@ -2,15 +2,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # dsp4-01p (port request A): src/dsp4.c's road ($01) against the firmware DSP-4, outputs only.
 #   make -C tools/bench probe && python3 -I tools/dsp4_road_check.py [N] [TAPE]
-# 1. N random runs (default 6,000) as the game builds them (header words 1 = 2, 15-80 lines of
-#    camera; eight rows of falling heights; curves, hills, crests; the $0A the game sends
-#    before, with its two rows equal, and 0-3 multiplies in between; one run in ten without
-#    a $0A), on the firmware (build/bench/dsp4_road_probe) and on src/dsp4.c
-#    (build/bench/dsp4_road_native): every answer and line must agree. The first run of the
-#    probe's process is sent twice and its first copy dropped (the fresh chip's first run).
+# 1. N random runs (default 6,000) as the game builds them (header word 2, the line limit,
+#    15-80; word 1, the camera's line, equal to it or up to 60 above, as road_rows_project
+#    sends for $0242 >= 0; eight rows of falling heights; curves, hills, crests; the $0A the
+#    game sends before, with its two rows equal, and 0-3 multiplies in between; one run in ten
+#    without a $0A, counted apart: its first rounding is what the run before left), on the firmware (build/bench/dsp4_road_probe) and on src/dsp4.c
+#    (build/bench/dsp4_road_native): every answer and line must agree. Runs with a segment of
+#    88 lines or more (the chip's other regime, dsp4-01m; the game's are under 52) are counted
+#    apart. The first run of the probe's process is sent twice and its first copy dropped
+#    (the fresh chip's first run).
 # 2. TAPE (default build/cache/race1.tape: bench --dsp4-firmware --dsp4-tape-out over
 #    race1.txt): every $01 run after a $0A must agree (the runs before the race's first $0A
-#    take their first rounding from the sprite streams, not modelled yet: counted apart).
+#    take their first rounding from the sprite streams, not modelled yet: counted apart, with
+#    the largest difference in a line word). A $0F run, an edge ($8001) or a header whose
+#    words 1 and 2 are not $33 (a nonzero $0242) fails: never seen, not checked.
 # Exit status 0 when both agree.
 import os
 import random
@@ -32,7 +37,8 @@ def random_cases(n, rnd):
     cases = []
     for _ in range(n):
         hd = list(HEAD)
-        hd[1] = hd[2] = rnd.randint(15, 80)
+        hd[2] = rnd.randint(15, 80)
+        hd[1] = hd[2] + rnd.choice([0, 0, rnd.randint(1, 60)])
         hd[4], hd[5] = rnd.randint(0, 400), rnd.randint(0, 400)
         hd[6] = rnd.randint(0, 0xFFFF)
         hd[7], hd[8] = rnd.randint(-200, 800), rnd.randint(-200, 800)
@@ -59,6 +65,18 @@ def run(tool, cases):
     return out.splitlines()
 
 
+def long_segment(line, head1):
+    """Whether the firmware's answer has a segment of 88 lines or more."""
+    prev = head1
+    for part in line.split('#')[-1].split(' | '):
+        y = int(part.split(':')[0].split()[3], 16)
+        y = y - 0x10000 if y & 0x8000 else y
+        if prev - y >= 88:
+            return True
+        prev = y
+    return False
+
+
 def tape_runs(path):
     t = open(path, 'rb').read()
     n = len(t) // 5
@@ -74,9 +92,13 @@ def tape_runs(path):
             edges = (w(i + 2), w(i + 4), w(i + 6))
             i += 16
             continue
+        if start and val[i] == 0x0F:
+            raise SystemExit('%s: a $0F run at record %d: not checked' % (path, i))
         if start and val[i] == 0x01:
             j = i + 2
             words = [w(j + 2 * k) for k in range(15)]
+            if words[1] != 0x33 or words[2] != 0x33:
+                raise SystemExit('%s: a header with words 1, 2 = %X, %X at record %d: not checked' % (path, words[1], words[2], i))
             j += 30
             expect, first = [], True
             while True:
@@ -84,6 +106,8 @@ def tape_runs(path):
                 j += 2
                 if h == 0x8000:
                     break
+                if h == 0x8001:
+                    raise SystemExit('%s: an edge ($8001) at record %d: not checked' % (path, j))
                 k = 6 if first else 3
                 words += [h] + [w(j + 2 * q) for q in range(k)]
                 j += 2 * k
@@ -112,16 +136,38 @@ def main():
     cases = random_cases(n, random.Random(2026))
     fw = run(PROBE, cases[:1] + cases)[1:]
     nat = run(NATIVE, cases)
-    bad = sum(1 for a, b in zip(fw, nat) if a.split() != b.split())
-    print('random runs: %d, differ %d' % (n, bad))
+    bad = long = longbad = none = nonebad = 0
+    for c, a, b in zip(cases, fw, nat):
+        words = [x for x in c.split() if x not in ('E', 'M')]
+        pre = 3 * c.split().count('E') + 2 * c.split().count('M')
+        head1 = int(words[pre + 1], 16)
+        if long_segment(a, head1):
+            long += 1
+            longbad += a.split() != b.split()
+        elif 'E' not in c.split():  # the rounding the previous run left: not modelled
+            none += 1
+            nonebad += a.split() != b.split()
+        else:
+            bad += a.split() != b.split()
+    print('random runs: %d after a $0A, differ %d; apart (not modelled): %d without a $0A, differ %d; %d with a '
+          'segment of 88+ lines, differ %d' % (n - long - none, bad, none, nonebad, long, longbad))
     ok = bad == 0 and len(fw) == len(nat) == n
     if os.path.exists(tape):
         runs = tape_runs(tape)
         got = run(NATIVE, [r[1] for r in runs])
         after = [g.split('#')[-1].split() == r[2].split() for g, r in zip(got, runs) if r[0]]
         before = [g.split('#')[-1].split() == r[2].split() for g, r in zip(got, runs) if not r[0]]
-        print('%s: %d runs after a $0A, differ %d; %d before any (not modelled), differ %d' % (
-            os.path.basename(tape), len(after), after.count(False), len(before), before.count(False)))
+        worst = 0
+        for g, r in zip(got, runs):
+            if r[0]:
+                continue
+            for x, y in zip(g.split('#')[-1].split(), r[2].split()):
+                if ',' in x and ',' in y:
+                    for u, v in zip(x.split(','), y.split(',')):
+                        d = (int(u, 16) - int(v, 16)) & 0xFFFF
+                        worst = max(worst, min(d, 0x10000 - d))
+        print('%s: %d runs after a $0A, differ %d; %d before any (not modelled), differ %d, by at most %d' % (
+            os.path.basename(tape), len(after), after.count(False), len(before), before.count(False), worst))
         ok = ok and after.count(False) == 0 and len(after) > 0
     return 0 if ok else 1
 

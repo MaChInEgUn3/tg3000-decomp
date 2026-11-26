@@ -45,12 +45,14 @@ uint16_t dsp4_sprite(uint16_t x, uint16_t y, uint16_t attr, uint16_t out[2]);
 // Command $0001, the road: a header, then row after row, each answered with four words and the
 // screen lines it draws. A row's lines are (an index, the word for $0798, the word for $0796).
 // Measured on the firmware from outputs only (tools/bench/dsp4_road_probe; docs/DECISIONS.md
-// dsp4-01e and dsp4-01k to dsp4-01p): exact on recorded and random runs, for rows of fewer
-// than 88 lines and header word 2 equal to word 1, as the game sends.
+// dsp4-01e and dsp4-01k to dsp4-01q): exact on recorded and random runs, for segments of fewer
+// than 88 lines (the game's are under 52) and header word 1 (the camera's line) at or above
+// word 2 (the line limit), as road_rows_project sends.
 // The first row's rounding comes from the chip's last $0A: `edge2` and `edge3` are that
 // command's last two edges (the multiplies in between leave them), $8000 for none since
 // power-on. Measured for $0A runs whose two rows are equal, which is every one the game
-// sends before the road.
+// sends before the road. Without a $0A since the last road run (the race's first frames), the
+// chip's rounding is what the commands since left: not modelled (a line word may be 1 off).
 typedef struct {
   int32_t x, g, e, s;       // the road's sideways place, its turn rate, the height, the slope (16.16)
   uint16_t head[15];

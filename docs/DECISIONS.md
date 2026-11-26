@@ -6409,6 +6409,51 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road command: the line limit, and the rounding without a `$0A` (dsp4-01q, 2026-11-26)
+
+**The advisor's two measurements before wiring the native road into `road_rows_project`.**
+
+**1. Header word 2 is the line limit.** `road_rows_project` sends word 1 = `$0242` + `$33` and
+word 2 = `$33` when `$0242` ≥ 0. dsp4-01p assumed they are equal; the recordings always have
+both at `$33`.
+- **Measured** (probe, word 1 above word 2): lines are drawn only below word 2 (m starts
+  there). The first segment still starts at word 1 (y₋₁ = word 1).
+- **The `$0798` line term** counts from word 2, and the camera's word shifts to match:
+  - A_k = C + ((word 10 · h) >> 15) − word 10 + (word 2 − y_k);
+  - A₋₁ = C − (word 1 − word 2).
+- **`src/dsp4.c` fixed.** 3,000 random runs (word 2 10-90, word 1 equal or up to 60 above) are
+  exact in every run whose segments are under 88 lines. Every miss is a segment of 88 or more,
+  the chip's other regime (dsp4-01m).
+- **Word 1 below word 2** is garbage on the chip; the C never sends it.
+- **`tools/dsp4_road_check.py`'s random runs** now set word 1 at or above word 2.
+
+**2. What sets the first rounding without a `$0A`.**
+- **The commands between two road runs** in `race1`'s first frames, in order: the road; four
+  multiplies; `$07`; a multiply; `$08`; `$03`; `$0B`; `$09`; about 60 multiplies; `$06` (the
+  sprites' high table, `oam_high_load`); about 20 multiplies; the next road. There is no `$0A`:
+  `car_road_step`'s `$0A` (`$81:F90E`) is not sent then.
+- **Ruled out on the firmware** (outputs only): a `$0B` (a sprite) before the road leaves the
+  rounding as it was. Multiplies leave it too (dsp4-01p).
+- **The candidate:** the previous road run itself. The probe resets only the chip's interface
+  between cases, and its random runs without a `$0A` (one in ten) miss 2 of 590. A `$01`
+  probably leaves the rounding from its last computation. The sprite streams `$07`/`$09` are
+  the other candidate.
+- **`tools/dsp4_road_check.py`** counts runs without a `$0A` apart, in the random runs and on the
+  tape. It now also prints the largest difference (1, on `race1`), and fails on a `$0F` run, an
+  edge (`$8001`) or a header word 1 or 2 other than `$33`.
+
+**Check:** `tools/dsp4_road_check.py` (exit 0):
+- 5,184 random runs after a `$0A`, exact;
+- `race1`'s 393 runs after a `$0A`, exact;
+- apart: 590 random runs without a `$0A` (2 differ), 226 with long segments (0 differ),
+  `race1`'s first 192 runs (191 differ, by 1).
+
+Then the full gate (`src/dsp4.c` changed by more than additions).
+
+**Next (dsp4-01r):** the rounding a road run leaves. Two road runs on one probe chip, the second
+without a `$0A`; then `race1`'s first frames replayed into the firmware (`dsp4_replay`) with the
+earlier commands altered one at a time.
+
 ## The road command, native (dsp4-01p, 2026-11-26)
 
 **`src/dsp4.c` now has the road, `$01`.** It is the first stream command:
