@@ -6409,6 +6409,43 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The window command `$08`: the edges' shape (dsp4-08c, 2026-11-26)
+
+**Measured on the probe** with one row, all edge words 0, one input at a time (outputs only).
+
+**Each line's word holds two bytes:** the high byte is a left edge, the low byte a right edge,
+2 apart when the edge words are 0. Over a row's lines both edges move from the previous row's
+ends to this row's, with `$01`'s interpolation:
+- **The step:** (j + 1) · d · ⌊16,384 / n⌋, plus `$2000`, >> 14.
+- **The check:** with P = 0 the left edge runs `$46`, `$4D`, … `$7E`. That is `$3F` + that rule
+  with d = 63 and n = 9 (`$3F` + 7, +14, … +63), exact on all nine lines.
+
+**The camera's window (the first answer)** is centred on `$80` − the header's word 39
+(`$1EF6`): `$3F`/`$41` for `$40`, `$5F`/`$61` for `$20`.
+
+**A row's end window** comes from the row's word 3 (`$07`'s answer x, `$366C`) alone:
+- **Not from word 1** (`$01`'s x), nor the height, nor header words 28-36.
+- **The left end** is `$80` − x − 2 for x below `$40`, and `$80` − x − 1 from `$40` on. Over
+  x = 0, 1, 2, 8, `$10`, `$30`, `$3F`, `$41`, `$50` and −`$40` it gives `$7E`, `$7D`, `$7C`,
+  `$76`, `$6E`, `$4E`, `$3F`, `$3E`, `$2F` and `$BE`.
+  - So the `$40` is likely the header's x (word 39), not a constant. To be checked.
+- **The right end** is the left end + 2.
+- **Both clamp** at 0 (x = `$7F`, `$100`, `$200`) and likely at `$FF`.
+- **Both runs** (both roads' tables) get the same words in these cases. Each run's count is its
+  road's lines (word 2 for run 0, word 4 for run 1).
+
+**Header word 38** (road 1's camera line, `$0242` + `$33`) changes run 0's words, not its count.
+It is the segment's start line, as `$01`'s word 1 is, while the count stops at the line limit.
+
+**Next (dsp4-08d):**
+- the `$40` threshold against word 39;
+- the edge words' scale and the camera edge words;
+- road 1's x (word 1), whose effect is not yet seen;
+- the header's constants as clamps;
+- then a random-run fit.
+
+**Check:** a measurement, recorded here. It changes no code.
+
 ## The window command `$08` on the probe: first sweeps (dsp4-08b, 2026-11-26)
 
 **`dsp4_road_probe` now takes an `R8` case:**
