@@ -165,10 +165,13 @@ def long_segment7(line, head1):
 
 
 def tape_runs7(path):
+    """$07 runs, written by road_rows_project2 (the record's PC after the store: $85:B962; a
+    07 00 elsewhere, as at $83:ED76 on explore_buy, is data in another command)."""
     t = open(path, 'rb').read()
     n = len(t) // 5
     val = t[3::5]
     rd = [b & 1 for b in t[4::5]]
+    pc = [t[5 * i] | t[5 * i + 1] << 8 | t[5 * i + 2] << 16 for i in range(n)]
 
     def w(i):
         return val[i] | val[i + 1] << 8
@@ -177,7 +180,7 @@ def tape_runs7(path):
         start = not rd[i] and val[i + 1] == 0 and not rd[i + 1] and (i == 0 or rd[i - 1])
         if start and val[i] == 0x10:
             raise SystemExit('%s: a $10 run at record %d: not checked' % (path, i))
-        if start and val[i] == 0x07:
+        if start and val[i] == 0x07 and pc[i] == 0x85B962:
             j = i + 2
             words = [w(j + 2 * k) for k in range(11)]
             j += 22

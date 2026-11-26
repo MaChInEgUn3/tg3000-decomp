@@ -12250,38 +12250,23 @@ static void call_road_rows_project2(const Regs* in, Regs* out) {
 // count (objects from bank $7E below $7000 or from ROM in bank $90; entries in low WRAM)
 static void fuzz_road_rows_project2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
+  // dsp4-07b: the second road ($07) native, on the bench's chip primed with a $0A; D+$E4 negative
+  // (the objects copied, from bank $7E or $90), $1EF2 0-$3F (negative: a trap); its five
+  // products scripted
   wr16ram(ram, 0x00B4, (rnd() & 1) ? 0 : 1);
   ram[0x0225] = (uint8_t)rnd();
-  const bool copied = (rnd() & 1) != 0;
-  wr16ram(ram, DP + 0xE4, (uint16_t)(copied ? 0x8000 | rnd() : rnd() & 0x7FFF));
-  uint16_t at = (uint16_t)(0x0080 - ((ram[0x0225] >> 1) & 0x7E));
+  wr16ram(ram, DP + 0xE4, (uint16_t)(0x8000 | rnd()));
   uint32_t k = (uint32_t)(((ram[0x0226] | ram[0x0227] << 8) << 1) & 0x3E);
   const uint16_t base = (uint16_t)((ram[0x0242] | ram[0x0243] << 8) + (ram[0x3E6C + k] | ram[0x3E6D + k] << 8));
-  const uint16_t q = rnd() % 3 == 0 ? (uint16_t)(0 - (1 + rnd() % 0xE0)) : (uint16_t)(rnd() % 0x40);
-  uint16_t script[256];
+  const uint16_t q = 0;  // (0: the bench's own chip draws word 1 above word 2 unlike the firmware)
+  for(uint32_t i = 2; i < 0x42; i += 2)
+    if(rnd() % 5 == 0)
+      wr16ram(ram, 0x3FEC + k + i, (rnd() & 1) ? (uint16_t)(0x2010 + 2 * (rnd() % 0x2800)) : (uint16_t)(0x8110 + 2 * (rnd() % 0x3000)));
+  uint16_t script[16];
   int n = 0;
   script[n++] = (uint16_t)rnd();
   script[n++] = (uint16_t)(q - base);  // $1EF2 = $0242 + this + $3E6C
   for(int i = 0; i < 8; i++) script[n++] = (uint16_t)rnd();
-  int objects = 0;
-  do {
-    k += 2;
-    for(int i = 0; i < 2; i++) script[n++] = (uint16_t)rnd();
-    const int pairs = (objects < 8 && rnd() % 5 == 0) ? 1 + (int)(rnd() % 2) : 0;
-    script[n++] = (uint16_t)pairs;
-    if(pairs) {
-      objects++;
-      wr16ram(ram, 0x3FEC + k, (rnd() & 1) ? (uint16_t)(0x2010 + 2 * (rnd() % 0x2800)) : (uint16_t)(0x8110 + 2 * (rnd() % 0x3000)));
-      if(!copied)
-        for(int i = 0; i < 4; i++) script[n++] = (uint16_t)rnd();
-      for(int i = 0; i < pairs; i++) {
-        script[n++] = (uint16_t)(2 * (rnd() % 0x300));
-        script[n++] = (uint16_t)rnd();
-        script[n++] = (uint16_t)rnd();
-      }
-    }
-    at = (uint16_t)(at + 0x0080);
-  } while(at < 0x0E00);
   dsp4_bridge_script(script, n);
 }
 
@@ -14840,7 +14825,11 @@ const Routine routines[] = {
    .fuzz = fuzz_race_road_frame, .dsp4Tape = true, .fuzzStack = 0x1FF1},
   {.name = "road_rows_project2", .entry = 0x85B828, .end = 0x85BC20, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project2, ALL_OUTPUTS,
-   .fuzz = fuzz_road_rows_project2, .dsp4Tape = true, .fuzzStack = 0x1FF1},
+   .fuzz = fuzz_road_rows_project2, .dsp4Tape = true, .fuzzStack = 0x1FF1,
+   .dsp4Native = {{0x85B950, 0x85BBE5}},  // dsp4-07b: the second road, $07, native (its products stay taped)
+   // never run live: $10 and its objects' words (traps), $1EF2 negative (a trap)
+   .holes = {{0x85B957, 0x85B95F}, {0x85B96F, 0x85B97C}, {0x85B990, 0x85B996}, {0x85B9AD, 0x85B9B3},
+             {0x85B9D0, 0x85B9D7}, {0x85BA8C, 0x85BB7F}, {0x85BBFC, 0x85BC09}}},
   {.name = "vs_road_project", .entry = 0x85A471, .end = 0x85B1F9, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_project, ALL_OUTPUTS,
    .fuzz = fuzz_vs_road_project, .dsp4Tape = true, .fuzzStack = 0x1FF1,

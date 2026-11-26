@@ -951,6 +951,7 @@ static const struct { uint8_t cmd, in, out; bool writeSkips, flagEnds; } dsp4Com
   {0x03, 10, 6, false, true},  // dsp4_sprite: its word, then a sprite entry
   {0x0B, 6, 6, false, true},   // dsp4_sprite
   {0x01, 30, 0, false, false},  // the road (dsp4-01t): its header here; its rows in dsp4Step
+  {0x07, 22, 0, false, false},  // the second road (dsp4-07b): likewise
 };
 static bool isDsp4(uint32_t adr) {
   uint8_t bank = (adr >> 16) & 0x7F;
@@ -990,7 +991,7 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
     const int i = dsp4CommandIndex(smp->dsp4Cmd);
     if(smp->dsp4Count < 6) smp->dsp4Param[smp->dsp4Count] = val;
     if(++smp->dsp4Count == dsp4Commands[i].in) {
-      smp->dsp4Phase = smp->dsp4Cmd == 0x01 ? 4 : 3;
+      smp->dsp4Phase = smp->dsp4Cmd == 0x01 || smp->dsp4Cmd == 0x07 ? 4 : 3;
       smp->dsp4Count = 0;
       smp->dsp4Flag = 0;
       smp->dsp4RoadFirst = true;
@@ -1000,7 +1001,8 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
     break;
   }
   // the road's rows (dsp4-01t): a row's words (14 bytes for the first, 8 after), its answer (10
-  // bytes, then 6 a line, the line count in bytes 8-9), then the next row's height or $8000
+  // bytes, then 6 a line, the line count in bytes 8-9), then the next row's height or $8000. The
+  // second road, $07 (dsp4-07b): rows of 12 bytes, answers of 6 (the count in bytes 4-5)
   case 4:
     if(!write) return false;
     if(smp->dsp4RoadCount == 0) smp->dsp4Flag = val;
@@ -1010,20 +1012,33 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
       break;
     }
     if(smp->dsp4RoadCount == 1 && (uint16_t)(smp->dsp4Flag | val << 8) == 0x8001) return false;  // an edge: not native
-    if(++smp->dsp4RoadCount == (smp->dsp4RoadFirst ? 14 : 8)) {
+    if(++smp->dsp4RoadCount == (smp->dsp4Cmd == 0x07 ? 12 : smp->dsp4RoadFirst ? 14 : 8)) {
       smp->dsp4Phase = 5;
       smp->dsp4RoadCount = 0;
-      smp->dsp4RoadNeed = 10;
+      smp->dsp4RoadNeed = smp->dsp4Cmd == 0x07 ? 6 : 10;
       smp->dsp4RoadFirst = false;
     }
     break;
   case 5:
     if(write) return false;
-    if(smp->dsp4RoadCount == 8) smp->dsp4Flag = val;
-    if(smp->dsp4RoadCount == 9) {
-      const uint16_t n = (uint16_t)(smp->dsp4Flag | val << 8);
-      smp->dsp4RoadNeed = (uint16_t)(10 + 6 * n);
-      if(n) smp->dsp4RoadDrew = true;
+    {
+      const int at = smp->dsp4Cmd == 0x07 ? 4 : 8;  // the count's bytes
+      // dsp4-07b: a line's $0796 word (its bytes 4-5) outside -128..896, which the firmware never
+      // gives (it clamps, dsp4-01n), is the bench's own chip's: the sample is set apart
+      if(smp->dsp4RoadCount >= at + 2) {
+        const int b = (smp->dsp4RoadCount - at - 2) % 6;
+        if(b == 4) smp->dsp4Param[0] = val;
+        if(b == 5) {
+          const int16_t w = (int16_t)(smp->dsp4Param[0] | val << 8);
+          if(w < -128 || w > 896) smp->roadUnknown = true;
+        }
+      }
+      if(smp->dsp4RoadCount == at) smp->dsp4Flag = val;
+      if(smp->dsp4RoadCount == at + 1) {
+        const uint16_t n = (uint16_t)(smp->dsp4Flag | val << 8);
+        smp->dsp4RoadNeed = (uint16_t)(at + 2 + 6 * n);
+        if(n) smp->dsp4RoadDrew = true;
+      }
     }
     if(++smp->dsp4RoadCount == smp->dsp4RoadNeed) {
       smp->dsp4Phase = 4;
@@ -1065,7 +1080,7 @@ static void trackDsp4(uint32_t adr, uint8_t val, bool write) {
   }
   const uint8_t phase = trackSmp.dsp4Phase, cmd = trackSmp.dsp4Cmd;
   if(phase == 0 && write) {
-    if(val != 0x00 && val != 0x0A && val != 0x0B && val != 0x01) trackKnown = false;
+    if(val != 0x00 && val != 0x0A && val != 0x0B && val != 0x01 && val != 0x07) trackKnown = false;
   }
   if(!dsp4Step(&trackSmp, adr, val, write)) {
     trackLost = true;
@@ -1080,7 +1095,7 @@ static void trackDsp4(uint32_t adr, uint8_t val, bool write) {
       trackE2 = e[2];
       trackE3 = e[3];
       trackKnown = true;
-    } else if(cmd == 0x01 && trackSmp.dsp4RoadDrew) {
+    } else if((cmd == 0x01 || cmd == 0x07) && trackSmp.dsp4RoadDrew) {
       trackE2 = trackE3 = (int16_t)0x8000;
       trackKnown = true;
     }
@@ -1126,7 +1141,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
           continue;
         }
       }
-      if(write && smp->dsp4Phase == 0 && val == 0x01 && (adr & 0xFFFF) < 0xC000 && (!trackKnown || trackLost))
+      if(write && smp->dsp4Phase == 0 && (val == 0x01 || val == 0x07) && (adr & 0xFFFF) < 0xC000 && (!trackKnown || trackLost))
         smp->roadUnknown = true;  // dsp4-01t: a road on an unknown rounding
       if(smp->hwAccess || dsp4Step(smp, adr, val, write)) continue;
       smp->hwWhy = "DSP-4 traffic other than whole commands of src/dsp4.c";
@@ -1651,7 +1666,8 @@ static void finishSample(int k, const Cpu* cpu) {
     return;
   }
   // dsp4-01t: a sample whose original ran a road while the tracker did not know its rounding (the
-  // race's first frames, after the sprite streams) is set apart the same way
+  // race's first frames, after the sprite streams) is set apart the same way; so is one whose
+  // bench chip gave an unclamped $0796 word (dsp4-07b)
   if(smp->roadUnknown && (fuzzing || replaying)) {  // (dsp4-01t: a road the primed chip did not cover)
     if(replaying) s->replayApart++; else s->fuzzApart++;  // counted as lost: it fails the row
     return;
@@ -2290,7 +2306,7 @@ bool difftest_report(const char* resultsPath) {
       printf("    %lu fuzz case(s) and %lu replay(s) ran a road on an unknown rounding (dsp4-01t), lost\n", s->fuzzApart,
         s->replayApart);
     if(s->apartFail + s->apartPass)
-      printf("    %lu sample(s) ran a road on an unknown rounding (dsp4-01t), set apart: %lu passed, %lu failed%s%s\n",
+      printf("    %lu sample(s) ran a road on an unknown rounding or an unclamped bench chip (dsp4-01t/07b), set apart: %lu passed, %lu failed%s%s\n",
         s->apartFail + s->apartPass, s->apartPass, s->apartFail, s->apartFail ? ": " : "", s->firstApartFailure);
     if(s->hidden)
       printf("    %lu entries inside interrupt handlers a waiting sample recorded (not sampled)\n", s->hidden);

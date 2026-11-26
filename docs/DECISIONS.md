@@ -6409,6 +6409,57 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The second road wired: `road_rows_project2` on the native `$07` (dsp4-07b, 2026-11-26)
+
+**`road_rows_project2` (`$85:B828`) now calls `dsp4_road2_start`/`dsp4_road2_row`** instead of
+streaming `$07`. It writes the answers, lines and copied objects to WRAM as the original does;
+its five products stay on the port (taped).
+
+**Never run in any movie, now named traps:**
+- `$10` (D+$E4 positive: the chip's own objects);
+- `$1EF2` negative.
+
+`road_object_word` (the objects' words for the chip) went with `$0F` and `$10`.
+
+**Checked first, over every gate movie that runs it** (`tools/dsp4_road_check.py`):
+- `race1`: 585 `$07` runs; `explore_buy`: 4,413; `explore_pw`: 3,506; `code_infodata`: 541. All
+  exact.
+- **The check now takes a `$07` only at `road_rows_project2`'s store** (the record's PC
+  `$85:B962`). A `07 00` at `$83:ED76` on `explore_buy` was data inside another command, and
+  had hidden 47 real runs behind it.
+- **`autopilot_60k`: 87 of 18,564 runs differ from the bench's tape.** Their header starts the
+  road far to the side (word 7 = `$FDDA`), so the `$0796` words go below −128. Run on the
+  firmware (the probe), all 87 equal the native road, and none equals the tape: the bench's own
+  DSP-4 does not clamp those words, the firmware does.
+
+**The harness:**
+- **The grammar** has `$07`: 11 header words, rows of 12 bytes, answers of 6 (the count in
+  bytes 4-5), then 6 a line, and `$8000`. `$10` is not native.
+- **The tracker** treats `$07` as it treats `$01`: a run that draws leaves `$8000`.
+- **A new set-apart rule:** a sample whose bench chip answers a `$0796` word outside −128..896,
+  which the firmware never does, is set apart with the unknown-rounding samples. The report
+  names both.
+
+**`road_rows_project2`'s row:**
+- **`$85:B950`-`$85:BBE5` is `dsp4Native`.**
+- **Its fuzz now scripts only the five products.** The road runs on the primed chip, with
+  D+$E4 negative and `$1EF2` = 0: the bench's chip draws word 1 above word 2 unlike the firmware,
+  as dsp4-01t found for `$0242`.
+- **Holes:** `$10` and its objects' words (`$85:B957`-`$85:B95F`, `$85:BA8C`-`$85:BB7F`);
+  `$1EF2` negative (`$85:B96F`-`$85:B97C`, `$85:B990`-`$85:B996`, `$85:B9AD`-`$85:B9B3`,
+  `$85:B9D0`-`$85:B9D7`, `$85:BBFC`-`$85:BC09`).
+- **Results:**
+  - `race1`: 142 of 142 live, 200 of 200 fuzz;
+  - `autopilot_60k`: 3,288 of 3,288 live, 300 of 300 fuzz; 361 set apart (8 of them fail, the
+    bench's unclamped words).
+- **The rows around it pass as before** on `race1`: `race_road_frame`, `race_road_frame_alt`,
+  `race_frame_draw`.
+
+**For the port:** a race now runs both roads natively. The next byte-protocol call is `$08`
+(`road_rows_stream`, `$81:861D`).
+
+**Check:** the full gate (the harness and `src/misc.c` changed by more than additions).
+
 ## The second road, `$07`, native (dsp4-07a, 2026-11-26)
 
 **Request A's next command.** `road_rows_project2` (`$85:B828`) sends it right after the road;
