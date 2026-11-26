@@ -161,3 +161,57 @@ unsigned dsp4_road2_row(Dsp4Road* r, const uint16_t words[6], uint16_t out[2], u
   out[1] = (uint16_t)y;
   return dsp4_road_lines(r, h, p, y, words[5], lines, max);
 }
+
+// ---- the road's windows, $0008 ----
+static int32_t dsp4_clamp_byte(int32_t v) { return v < 0 ? 0 : v > 0xFF ? 0xFF : v; }
+
+uint16_t dsp4_window_begin(Dsp4Window* w, const uint16_t head[45]) {
+  w->x = s16x(head[39]);
+  w->base = 0x80 - w->x - 1;
+  for(int k = 0; k < 2; k++) {
+    const int32_t right = s16x(head[41 + 2 * k]), left = s16x(head[42 + 2 * k]);  // the camera row's edge words
+    w->prevL[k] = w->base + floor_shift((int64_t)left * 0x7FFF, 15);
+    w->prevR[k] = w->base + 2 + floor_shift((int64_t)right * 0x7FFF, 15);
+    w->yPrev[k] = (int16_t)head[38 + 2 * k];
+    w->m[k] = (int16_t)head[24 + 2 * k];
+    w->addr[k] = head[20 + 2 * k];
+  }
+  return (uint16_t)(dsp4_clamp_byte(w->prevL[0]) << 8 | dsp4_clamp_byte(w->prevR[0]));
+}
+
+void dsp4_window_row(Dsp4Window* w, const uint16_t words[9], uint16_t (*runs[2])[2], unsigned n[2], unsigned max) {
+  const uint16_t h = words[0];
+  const int64_t side = (int64_t)(w->x - s16x(words[3])) * 32768;
+  for(int k = 0; k < 2; k++) {
+    const int32_t y = s16x(words[2 + 2 * k]);
+    const int32_t endL = w->base + floor_shift(side + (int64_t)s16x(words[6 + 2 * k]) * h, 15);
+    const int32_t endR = w->base + 2 + floor_shift(side + (int64_t)s16x(words[5 + 2 * k]) * h, 15);
+    const int32_t cnt = w->m[k] - y > 0 ? w->m[k] - y : 0;
+    n[k] = 0;
+    if(cnt > 0) {
+      const int32_t span = w->yPrev[k] - y;
+      const int32_t rec = 16384 / span;
+      const int32_t j0 = w->yPrev[k] - (w->m[k] < w->yPrev[k] ? w->m[k] : w->yPrev[k]);
+      for(int32_t c = 0; c < cnt; c++) {
+        const int32_t j = j0 + c + 1;
+        const int32_t left = w->prevL[k] + floor_shift((int64_t)j * (endL - w->prevL[k]) * rec, 14);
+        const int32_t right = w->prevR[k] + floor_shift((int64_t)j * (endR - w->prevR[k]) * rec, 14);
+        if((unsigned)c < max) {
+          runs[k][c][0] = w->addr[k];
+          runs[k][c][1] = (uint16_t)(dsp4_clamp_byte(left) << 8 | dsp4_clamp_byte(right));
+        }
+        w->addr[k] = (uint16_t)(w->addr[k] - 4);
+      }
+      n[k] = (unsigned)cnt;
+    }
+    w->prevL[k] = endL;
+    w->prevR[k] = endR;
+    w->yPrev[k] = (int16_t)y;
+    if(y < w->m[k]) w->m[k] = (int16_t)y;
+  }
+}
+
+uint16_t dsp4_window_end(const Dsp4Window* w) {
+  (void)w;
+  return 0;
+}

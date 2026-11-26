@@ -19,6 +19,9 @@
 # 3. dsp4-07a: the second road, $07: N random runs as road_rows_project2 builds them (rows it
 #    places itself: lines falling 0-12 a row, offsets and a $0798 addend), on both; and every
 #    $07 run of TAPE, which follows a $01 that drew (the rounding then $8000, as fresh).
+# 4. dsp4-08f: the window command $08: N random runs (both roads on one line each row, as the
+#    game sends: road 2's line is road 1's + a zero offset), on both; and every $08 run of TAPE
+#    (written by road_rows_stream: the record's PC $81:861D).
 # Exit status 0 when all agree.
 import os
 import random
@@ -205,6 +208,72 @@ def tape_runs7(path):
     return runs
 
 
+HEAD8 = [0xFF, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0, 0xA6, 0xA6, 0xA6, 0xA6, 0xA5, 0xA5, 0xA7, 0xA7, 0x81, 0x7F, 0x81, 0x7F,
+         0x34E8, 0x34E8, 0x34EA, 0x34EA, 0x33, 0x33, 0x33, 0x33, 0xFF5B, 0xFF5B, 0xFF5B, 0xFF5B, 0x2FC8, 0x34, 0xFF5C,
+         0x35, 0x7FFF, 0x40, 0x33, 0x40, 0x33]
+
+
+def random_cases8(n, rnd):
+    cases = []
+    for _ in range(n):
+        hd = list(HEAD8)
+        hd[39] = rnd.randint(-0x20, 0xA0)
+        cam = [rnd.randint(-30, 30) for _ in range(4)]
+        rows, y = [], 0x33
+        for _ in range(rnd.randint(1, 8)):
+            y -= rnd.randint(0, 10)
+            rows += [rnd.randint(0x1000, 0x7FFF), rnd.randint(0, 0x80), y, rnd.randint(-0x40, 0xC0), y]
+            rows += [rnd.randint(-60, 60) for _ in range(4)]
+        cases.append('R8 ' + spec(hd + cam + rows))
+    return cases
+
+
+def tape_runs8(path):
+    t = open(path, 'rb').read()
+    n = len(t) // 5
+    val = t[3::5]
+    rd = [b & 1 for b in t[4::5]]
+    pc = [t[5 * i] | t[5 * i + 1] << 8 | t[5 * i + 2] << 16 for i in range(n)]
+
+    def w(i):
+        if i + 1 >= n:
+            raise EOFError  # a run cut off by the tape's end
+        return val[i] | val[i + 1] << 8
+    runs, i = [], 0
+    while i < n - 1:
+        start = not rd[i] and val[i + 1] == 0 and not rd[i + 1] and (i == 0 or rd[i - 1])
+        if start and val[i] == 0x08 and pc[i] == 0x81861D:
+            try:
+                j = i + 2
+                words = [w(j + 2 * k) for k in range(45)]
+                j += 90
+                expect = ['%04X' % w(j)]
+                j += 2
+                while True:
+                    h = w(j)
+                    if h == 0x8000:
+                        expect += ['|', '%04X' % w(j + 2)]
+                        j += 4
+                        break
+                    words += [w(j + 2 * q) for q in range(9)]
+                    j += 18
+                    expect.append('|')
+                    for _ in range(2):
+                        cnt = w(j)
+                        j += 2
+                        expect.append('%d:' % cnt)
+                        for _ in range(cnt):
+                            expect.append('%04X,%04X' % (w(j), w(j + 2)))
+                            j += 4
+                runs.append(('R8 ' + spec(words), ' '.join(expect)))
+                i = j
+                continue
+            except EOFError:
+                break
+        i += 1
+    return runs
+
+
 def main():
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 6000
     tape = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'build', 'cache', 'race1.tape')
@@ -238,6 +307,12 @@ def main():
             bad7 += a.split() != b.split()
     print('$07 random runs: %d, differ %d; %d with a segment of 88+ lines (not modelled)' % (n - long7, bad7, long7))
     ok = ok and bad7 == 0 and len(fw7) == len(nat7) == n
+    cases8 = random_cases8(n, random.Random(2028))
+    fw8 = run(PROBE, cases8[:1] + cases8)[1:]
+    nat8 = run(NATIVE, cases8)
+    bad8 = sum(1 for a, b in zip(fw8, nat8) if a.split() != b.split())
+    print('$08 random runs: %d, differ %d' % (n, bad8))
+    ok = ok and bad8 == 0 and len(fw8) == len(nat8) == n
     if os.path.exists(tape):
         runs = tape_runs(tape)
         got = run(NATIVE, [r[1] for r in runs])
@@ -260,6 +335,11 @@ def main():
         bad7 = sum(1 for g, r in zip(got7, runs7) if g.split() != r[1].split())
         print('%s: %d $07 runs, differ %d' % (os.path.basename(tape), len(runs7), bad7))
         ok = ok and bad7 == 0
+        runs8 = tape_runs8(tape)
+        got8 = run(NATIVE, [r[0] for r in runs8])
+        bad8 = sum(1 for g, r in zip(got8, runs8) if g.split() != r[1].split())
+        print('%s: %d $08 runs, differ %d' % (os.path.basename(tape), len(runs8), bad8))
+        ok = ok and bad8 == 0
     return 0 if ok else 1
 
 

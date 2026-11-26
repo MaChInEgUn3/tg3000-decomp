@@ -25,9 +25,31 @@ int main(void) {
     if(p != line) printf("# ");
     while(*p == ' ') p++;
     const int r7 = p[0] == 'R' && p[1] == '7';  // dsp4-07a: the road command $07
-    if(r7) p += 2;
+    const int r8 = p[0] == 'R' && p[1] == '8';  // dsp4-08f: the window command $08
+    if(r7 || r8) p += 2;
     char* tok = strtok(p, " \n");
     while(tok) { w[nw++] = (unsigned)strtoul(tok, NULL, 16); tok = strtok(NULL, " \n"); }
+    if(r8) {
+      uint16_t head45[45];
+      for(int i = 0; i < 45; i++) head45[i] = (uint16_t)w[i];
+      Dsp4Window win;
+      printf("%04X", dsp4_window_begin(&win, head45));
+      for(int k = 0; 45 + 9 * k < nw; k++) {
+        uint16_t words[9];
+        static uint16_t run0[512][2], run1[512][2];
+        uint16_t (*runs[2])[2] = {run0, run1};
+        unsigned n[2];
+        for(int i = 0; i < 9; i++) words[i] = (uint16_t)w[45 + 9 * k + i];
+        dsp4_window_row(&win, words, runs, n, 512);
+        printf(" |");
+        for(int r = 0; r < 2; r++) {
+          printf(" %u:", n[r]);
+          for(unsigned i = 0; i < n[r] && i < 512; i++) printf(" %04X,%04X", runs[r][i][0], runs[r][i][1]);
+        }
+      }
+      printf(" | %04X\n", dsp4_window_end(&win));
+      continue;
+    }
     if(r7) {
       uint16_t head11[11];
       for(int i = 0; i < 11; i++) head11[i] = (uint16_t)w[i];

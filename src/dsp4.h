@@ -88,7 +88,29 @@ void dsp4_round_get(int16_t* edge2, int16_t* edge3);
 // its $0798 words; its answers are x + offset * h >> 15, then line + offset * h >> 15, and its
 // lines are $01's from those. The rounding is the chip's state, as $01's.
 void dsp4_road2_start(Dsp4Road* r, const uint16_t head[11]);
+
 unsigned dsp4_road2_row(Dsp4Road* r, const uint16_t words[6], uint16_t out[2], uint16_t (*lines)[3], unsigned max);
 void dsp4_round_set(int16_t edge2, int16_t edge3);
 
+// Command $0008, the road's windows (dsp4-08a to dsp4-08f): per screen line of each road, a
+// window's left and right edges as one word (left << 8 | right, each 0..$FF), written by the
+// caller at the address the chip gives (each road's table address, less 4 a line). Its header
+// is 45 words; then per row 9 words (h, road 1's x and line, road 2's x and line, the four edge
+// words: road 1's right and left, road 2's right and left). The windows come from road 2's x
+// alone (word 3) and header word 39; road 1's x is unused. Measured on the firmware from
+// outputs only: exact when both roads' lines are equal, which is every run the game makes
+// (road 2's line is road 1's + a zero offset); with different lines, road 2's table differs.
+typedef struct {
+  int32_t x, base;
+  int32_t prevL[2], prevR[2];
+  int16_t yPrev[2], m[2];
+  uint16_t addr[2];
+} Dsp4Window;
+// Returns the first answer (road 1's camera window, which the game uses only as a fill value).
+uint16_t dsp4_window_begin(Dsp4Window* w, const uint16_t head[45]);
+// One row: its 9 words; each road's (address, word) pairs into `runs[k]` (up to `max`), their
+// counts into `n`.
+void dsp4_window_row(Dsp4Window* w, const uint16_t words[9], uint16_t (*runs[2])[2], unsigned n[2], unsigned max);
+// The last answer, after $8000: 0 in every run measured (the game's "far" windows never run).
+uint16_t dsp4_window_end(const Dsp4Window* w);
 #endif

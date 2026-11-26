@@ -6409,6 +6409,39 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The window command `$08`, native (dsp4-08f, 2026-11-26)
+
+**`src/dsp4.c`:** `dsp4_window_begin(w, head45)` (returns the first answer),
+`dsp4_window_row(w, words9, runs, n, max)` (each road's address/word pairs), and
+`dsp4_window_end(w)` (the last answer, 0). It is dsp4-08d's rule.
+
+**Checked** (`tools/dsp4_road_check.py`, now covering `$08`; the native side through
+`dsp4_road_native`'s new `R8` mode):
+- **Random runs:** 2,000 game-like runs on the firmware (both roads on one line per row, header
+  word 39 −`$20`..`$A0`, x −`$40`..`$C0`, edge words ±60, up to 8 rows), exact; 4,000 more on
+  their own, exact.
+- **Tapes:** `race1`'s 584 runs and `code_infodata`'s 539, exact.
+- **`explore_buy` (3,540 of 4,411 differ) and `explore_pw` (933 of 3,504) disagree with their
+  bench tapes.** The tapes come from the bench's own chip.
+  - 400 differing runs of each were run on the firmware: all 800 equal the native `$08`, and
+    none equals its tape.
+  - So the bench's chip gets `$08` wrong on these movies, as it gets `$01`/`$07`'s clamps wrong
+    (dsp4-07b).
+- **The last answer** ("far") is 0 in every run measured: `race1`'s and 7,000 random ones.
+- **The tape parser** now drops a run cut off by the tape's end (`code_infodata`'s last).
+
+**What it means for the wiring.**
+- **The problem:** the gate's main slices run the bench's own chip, and `road_rows_stream`'s
+  live samples would be judged against its wrong `$08` answers.
+- **The project's rule:** a command proved against the firmware is routed in the bridge to
+  `src/dsp4.c` (the plan since the bench began; `$0A`, `$11`, `$03` and `$0B` are routed today).
+- **So `$01`, `$07` and `$08` should be routed too.** That is a harness change of its own (stream
+  commands, kept in step with the chip), and the next unit. It also makes dsp4-07b's
+  unclamped-words rule unneeded.
+
+**Check:** `tools/dsp4_road_check.py` (exit 0), then the full gate (`src/dsp4.c` and the bench
+tools changed by more than additions).
+
 ## The window command `$08`: exact for the game's runs (dsp4-08e, 2026-11-26)
 
 **Two findings this unit, both outputs only.**
