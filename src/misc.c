@@ -9692,6 +9692,76 @@ static void champ_opening(uint16_t dp) {
   wr16((uint16_t)(dp + 0x4C), 0);
 }
 
+// Wait until the menu bar's step D+$4E is over ($80:C566, $80:C713, $80:CB89, $80:CF32).
+static void champ_bar_wait(uint16_t dp) {
+  while(rd16((uint16_t)(dp + 0x4E)) != 0) platform_wait_vblank();
+}
+
+// $80:C6D4: the name entry, until its key leaves.
+static void champ_name_entry(uint16_t dp) {
+  uint16_t x, y;
+  const uint16_t len = name_entry_open(dp, &x, &y);
+  champ_bar_wait(dp);
+  name_entry_lines(dp);
+  name_entry_setup(dp, len);
+  champ_queue_wait(dp);
+  name_entry_ready(dp);
+  for(;;) {  // $80:C7E2
+    wait_frames(1);
+    name_entry_frame(dp);
+    const uint16_t press = rd16((uint16_t)(dp + 0x0E));
+    wr16((uint16_t)(dp + 0x0E), (uint16_t)(press & ~0xC0C0));
+    if((press & 0xC0C0) && name_entry_key(dp)) return;
+    name_entry_draw(dp);
+  }
+}
+
+// $80:CB4A: the controls menu, until EXIT.
+static void champ_controls(uint16_t dp) {
+  uint16_t x, y;
+  const uint16_t len = menu_controls_open(dp, &x, &y);
+  champ_bar_wait(dp);
+  menu_controls_lines(dp);
+  menu_controls_setup(dp, len);
+  champ_queue_wait(dp);
+  wr16((uint16_t)(dp + 0x4E), 0x0002);
+  do {  // $80:CC3F
+    wait_frames(1);
+  } while(!menu_controls_frame(dp));
+}
+
+// $80:CEE2: the gears, until a press leaves (its two lengths pushed: the panel pulls the
+// second, the setup the first).
+static void champ_gears(uint16_t dp) {
+  uint16_t len4000, len2000, x, y;
+  menu_gears_open(dp, &len4000, &len2000, &x, &y);
+  champ_bar_wait(dp);
+  menu_gears_lines(dp);
+  menu_gears_panel(dp, len2000);
+  menu_gears_setup(dp, len4000);
+  champ_queue_wait(dp);
+  wr16((uint16_t)(dp + 0x4E), 0x0002);
+  do {  // $80:CFD9
+    wait_frames(1);
+  } while(!menu_gears_frame(dp));
+}
+
+// $80:C506-$80:C5D4: back from a choice: the menu reloaded, its three panels, D+$4A and D+$48
+// as the dispatch pushed them, the redraw, the queue drained, the bar's step 2.
+static void champ_menu_back(uint16_t dp, uint16_t at48, uint16_t at4a) {
+  uint16_t x, y;
+  const uint16_t len = menu_choice_back(dp, &x, &y);
+  champ_bar_wait(dp);
+  menu_choice_lines(dp);
+  menu_choice_panels(dp, len);
+  func_80B537(dp, 0x0200, (uint16_t)(rd16((uint16_t)(dp + 0x5E)) + rom16(0x81BE08)), (uint16_t)(rd16((uint16_t)(dp + 0x5C)) + 0x0060));
+  wr16((uint16_t)(dp + 0x4A), at4a);
+  wr16((uint16_t)(dp + 0x48), at48);
+  menu_choice_redraw(dp);
+  champ_queue_wait(dp);
+  menu_choice_done(dp);
+}
+
 // $80:C2BB-$80:C318: the menu's loop, until the race is chosen. The original loops without a
 // wait (its task is switched out by the interrupts); here one pass a frame.
 static void champ_menu(uint16_t dp) {
@@ -9702,12 +9772,16 @@ static void champ_menu(uint16_t dp) {
     wr16((uint16_t)(dp + 0x0E), (uint16_t)(press & ~0xC0C0));
     if((press & 0xC0C0) && rd16((uint16_t)(dp + 0x4C)) == 0) {
       func_80E4DB();
-      const uint16_t choice = menu_choice_begin(dp);  // $80:C5D5's entry (its two pushes: the race drops them)
-      if(choice == 6) return;  // the race ($80:D168)
-      if(choice == 0) tg3000_unported("$80:C6D4: the championship menu's name entry");
-      else if(choice == 2) tg3000_unported("$80:CB4A: the championship menu's controls");
-      else if(choice == 4) tg3000_unported("$80:CEE2: the championship menu's gears");
-      else tg3000_unported("$80:C5D5: a championship menu choice past its table");
+      const uint16_t at48 = rd16((uint16_t)(dp + 0x48)), at4a = rd16((uint16_t)(dp + 0x4A));  // its two PHAs
+      switch(menu_choice_begin(dp)) {  // through $80:C5D5
+      case 0: champ_name_entry(dp); break;
+      case 2: champ_controls(dp); break;
+      case 4: champ_gears(dp); break;
+      case 6: return;  // the race ($80:D168: the pushes dropped)
+      default: tg3000_unported("$80:C5D5: a championship menu choice past its table"); break;
+      }
+      champ_menu_back(dp, at48, at4a);
+      continue;  // (its RTS: the loop's BRA)
     }
     platform_wait_vblank();
   }

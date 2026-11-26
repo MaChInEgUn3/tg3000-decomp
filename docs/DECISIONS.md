@@ -6055,6 +6055,43 @@ from their rows. Then the port's request H.
 
 **Check:** the full gate (`src/misc.c` and `src/boot.c` changed).
 
+## The championship menu's three other choices (task-7, 2026-11-26)
+
+**Port request D, step 3c.** `champ_menu` now runs every choice of `$80:C5D5`; its three traps
+are gone. Each choice is composed of its rows, with the original's glue:
+- **The name entry** (`$80:C6D4`):
+  1. the opening (its length pushed), then the bar's step awaited;
+  2. the lines, then the setup with the pulled length;
+  3. the queue drained, then the ready;
+  4. then, a frame at a time: the frame, a press tested (`name_entry_key`, which leaves when
+     it returns true), the drawing.
+- **The controls** (`$80:CB4A`):
+  1. the opening, the bar awaited, the lines, the setup;
+  2. the queue drained, the bar's step 2;
+  3. then a frame at a time until `menu_controls_frame` says EXIT.
+- **The gears** (`$80:CEE2`):
+  1. the opening (two lengths pushed), the bar awaited, the lines;
+  2. the panel with the second length (the first pulled), the setup with the first;
+  3. the queue drained, the bar's step 2;
+  4. then a frame at a time until `menu_gears_frame` leaves.
+- **Back to the menu** (`$80:C506`-`$80:C5D4`):
+  1. the menu reloaded, the bar awaited, the lines, the panels with the pulled length;
+  2. the third panel (`func_80B537` with `$0200`, D+$5E + `$81:BE08`, D+$5C + `$60`);
+  3. D+$4A and D+$48 restored as the dispatch pushed them;
+  4. the redraw, the queue drained, the end (the bar's step 2), and the loop again.
+
+**How it is checked:** as task-6. Every piece is a verified row, and the glue is transcribed
+from the listing. The menus' movie runs each choice through its rows: 13 dispatches, 12
+returns.
+
+**Port request D is done:** the ticker, the shop and the championship screen, whole, as two
+tasks. `game_main` now has traps only on the paths the movies never took.
+
+**Next:** port request H, the chip read-backs (`video_read_vram_word` in `vs_hud_draw`,
+`dma_hdma_get_table` in `irq_vs_split`).
+
+**Check:** the full gate (`src/misc.c` changed by more than additions).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
