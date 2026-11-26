@@ -6409,6 +6409,39 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road line word between rows: what it depends on (dsp4-01j, 2026-11-26)
+
+**Measured** on the first row's sweep (452 rows, 6,100 lines), outputs only.
+
+**What the lines depend on.** Between the camera's line (word −29) and the row's first line, the
+`$0798` words depend only on:
+- the row's line count n (51 − y);
+- the change d (the row's first-line word + 29).
+
+They do not depend on the row's height `h` beyond these: the 452 rows fall into 116 (n, d)
+groups, and every group's lines are identical.
+
+**The closest form.** Line j's word is −29 − ((j · S + C) >> k), with S = |d| · ⌊2^k / n⌋
+(the step through a truncated reciprocal of n).
+- **With k = 14 and C ≈ 0.4912 · 2^14:** right on 115 of the 116 groups.
+- **The miss:** n = 22, d = −59, line 14. Its product lands exactly on a whole number (38),
+  where the chip gives 37.
+- **No single C fits all** at k = 14, 15 or 16.
+- **Also ruled out:**
+  - exact rounding to the nearest (39 lines off);
+  - truncated or floored fixed-point steps of d / n (4-16 fraction bits; at best 24 off);
+  - the walk run from the far end up.
+
+**Why more data, not more fitting.** 116 groups leave too much room: per line count, the
+reciprocal's feasible range is wide for small n and empty only at n = 22, 23, 25 for some
+offsets.
+
+**Next (dsp4-01k):** the probe, on chosen rows that give every n from 1 to 50 with many d each
+(rows of one chosen height after the camera's). This gives the (n, d) table directly. The form
+is then fitted on it, or shown to need a table.
+
+**Check:** a measurement, recorded here. It changes no code.
+
 ## The title's demo race, the port's first trap (port-trap-1, 2026-11-26)
 
 **The trap.** The port runs `game_main` from power-on. In `start_taps.txt` and `to_race.txt`
