@@ -5309,6 +5309,68 @@ slot and loop point: the header words, or only the directory sent after.
 
 **Check:** the full gate (`difftest.c` changed).
 
+## Sound loading, step 2: a scene's sound set (sound-load-2, 2026-11-26)
+
+**What is in C.** `sound_load_set` (`$86:DDEF`) with its senders:
+- `sound_upload_list` (`$86:E0F0`);
+- `sound_upload_one` (`$86:E2B4`).
+
+**What a set load does.** For set *n*:
+- The set table at `$86:EFAB` points into bank `$86`.
+- **Each compressed block:** unpacked to `$7F:0000` and sent as a list of
+  `[size][destination][bytes]`. These are the songs, and the instruments and settings.
+- **Each sample:** sent alone. It sits right after the directory, and its first word, its
+  loop offset, is not sent.
+- **The directory** is sent last. It is built in `$7F:0000` from the samples: 4 bytes a
+  slot, the address and the loop point.
+- **Before each upload** it waits a frame and sends the frame's message.
+- **At the end** it waits for the driver's ready, clears the sound state, and sets
+  `SOUND_ENABLE`.
+- **Never run (left as holes):**
+  - a list of uncompressed blocks (`$86:DE6F`, a trap);
+  - the driver's time-out (a BRK);
+  - blocks under three bytes;
+  - a sample whose size is not a multiple of three.
+
+**The interface.** Four new calls in `platform.h`:
+- `sound_upload_begin`;
+- `sound_upload_block(spc_dest, src, size)`;
+- `sound_upload_sample(slot, spc_dest, src, size, spc_loop)`;
+- `sound_upload_end`.
+
+The port asked for each upload's role and bytes. A block's role is its destination in the
+sound chip's memory; a sample comes with its slot and loop point.
+
+**The protocol is the platform's.** On the bench:
+- **The handshakes:** `$AB` to start, then the size and the destination, then the bytes in
+  threes, each step flagged by toggling port 3, and `$BC` at the end.
+- **Comparison:** every port write is compared in place, about 200,000 for a race's set.
+- **A sample's slot and loop point** are not on the wire with the sample. The bench checks
+  them against the directory sent after it: a mismatch adds a write the original never made.
+
+**The original keeps the toggle in WRAM (`$0479`).** So the C keeps it too: two steps per
+block, plus one for each three bytes.
+
+**harness-38, widened.**
+- **The polls:** the sound ports' polls from `$86:DFFB` to `$86:E3A9` are not inputs. That
+  covers the frame's message and both loaders. Before this, the message's polls of port 1
+  were served to the C's ready test after a load.
+- **The effect cap:** a long row may keep up to 2^19 effects (it was 65,536).
+
+**Results.**
+- **The 60k movie:** 10 live loads (sets 0, 1, 3-7), with no interrupted ones; 166 of 166
+  paths.
+- **Fuzz:** none, because the original needs the driver.
+- **Negative check:** a wrong loop point for one slot fails at the directory.
+
+**Next.** The callers still are not C:
+- the race's set (`$84:A487`, set 3 + track group);
+- the quiet set 7 (`$84:A4A3`);
+- `$84:A4B7`;
+- the top loop's `$80:89E7`.
+
+**Check:** the full gate (`difftest.c` changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

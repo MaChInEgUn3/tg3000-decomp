@@ -199,6 +199,20 @@ void sound_boot_start(uint16_t spc_entry);
 // Clear the four sound ports, once the driver started (its first message is all zero).
 void sound_clear_ports(void);
 
+// A sound set's uploads to the running driver (port request 4), each between
+// sound_upload_begin and sound_upload_end:
+// - sound_upload_block: `size` bytes at the WRAM address `src`, to `spc_dest` in the sound
+//   chip's memory. The game sends, per set, its songs and its instruments and settings this
+//   way, and last the sample directory (4 bytes a slot: the sample's address, its loop point).
+// - sound_upload_sample: sample `slot` (`size` bytes of the chip's compressed audio at the
+//   bus address `src`, to `spc_dest`), whose loop point is `spc_loop`. The directory sent
+//   after holds the same slot, address and loop point (the bench checks it).
+// The driver's protocol (handshakes, three bytes at a time) is the platform's.
+void sound_upload_begin(void);
+void sound_upload_block(uint16_t spc_dest, uint32_t src, uint16_t size);
+void sound_upload_sample(uint8_t slot, uint16_t spc_dest, uint32_t src, uint16_t size, uint16_t spc_loop);
+void sound_upload_end(void);
+
 // Whether the console runs at 50 Hz (the original: bit 4 of $213F).
 bool video_is_pal(void);
 

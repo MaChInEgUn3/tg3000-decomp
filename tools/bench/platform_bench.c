@@ -184,6 +184,56 @@ void sound_clear_ports(void) {
   for(int p = 0; p < 4; p++) difftest_effect(EFFECT_APU, p, 0, 1);
 }
 
+// A set's uploads ($86:E0F0, $86:E2B4): the driver's protocol as the original's port writes.
+// $AB on port 3 to start; then per block its size and its destination (ports 0-1), the bytes
+// three at a time (ports 0-2; the last one or two alone), each step flagged by toggling port 3;
+// at the end a size of 0, $BC, and the ports cleared. Its waits are the platform's (harness-38).
+static uint8_t uploadToggle;
+static struct { uint8_t slot; uint16_t dest, loop; } pendingSamples[64];
+static int pendingCount;
+static void uploadStep(void) {
+  uploadToggle ^= 0xFF;
+  difftest_effect(EFFECT_APU, 3, uploadToggle, 1);
+}
+static void uploadBytes(uint16_t spc_dest, uint32_t src, uint16_t size) {
+  difftest_effect(EFFECT_APU, 0, size & 0xFF, 1);
+  difftest_effect(EFFECT_APU, 1, size >> 8, 1);
+  uploadStep();
+  difftest_effect(EFFECT_APU, 0, spc_dest & 0xFF, 1);
+  difftest_effect(EFFECT_APU, 1, spc_dest >> 8, 1);
+  uploadStep();
+  for(uint32_t i = 0; i < size;) {
+    for(int p = 0; p < 3 && i < size; p++, i++) difftest_effect(EFFECT_APU, p, bus_rd8(src + i), 1);
+    uploadStep();
+  }
+}
+void sound_upload_begin(void) {
+  difftest_effect(EFFECT_APU, 3, 0xAB, 1);
+  uploadToggle = 0;
+}
+// The directory: each sample sent before it must sit in its slot with its loop point (a
+// mismatch adds a write the original never made).
+void sound_upload_block(uint16_t spc_dest, uint32_t src, uint16_t size) {
+  for(int i = 0; i < pendingCount; i++) {
+    uint32_t o = pendingSamples[i].slot * 4u;
+    if(o + 4 > size || bus_rd16(src + o) != pendingSamples[i].dest || bus_rd16(src + o + 2) != pendingSamples[i].loop)
+      difftest_effect(EFFECT_APU, 7, 0xEE, 1);
+  }
+  pendingCount = 0;
+  uploadBytes(spc_dest, src, size);
+}
+void sound_upload_sample(uint8_t slot, uint16_t spc_dest, uint32_t src, uint16_t size, uint16_t spc_loop) {
+  if(pendingCount < 64) pendingSamples[pendingCount++] = (typeof(pendingSamples[0])){slot, spc_dest, spc_loop};
+  uploadBytes(spc_dest, src, size);
+}
+void sound_upload_end(void) {
+  difftest_effect(EFFECT_APU, 0, 0, 1);
+  difftest_effect(EFFECT_APU, 1, 0, 1);
+  difftest_effect(EFFECT_APU, 3, uploadToggle ^ 0xFF, 1);
+  difftest_effect(EFFECT_APU, 3, 0xBC, 1);
+  for(int p = 0; p < 4; p++) difftest_effect(EFFECT_APU, p, 0, 1);
+}
+
 // Inputs come from what the original read (difftest_input replays it in order).
 bool sound_is_ready(void) { return difftest_input(0x2141) == 0x77; }
 bool video_is_pal(void) { return (difftest_input(0x213F) & 0x10) != 0; }

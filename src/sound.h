@@ -31,6 +31,17 @@ bool sound_frame(void);
 // destination is where the driver starts (sound_boot_begin/block/start).
 void sound_boot_upload(uint32_t src);
 
+// $86:E0F0: send the blocks at `src` (a WRAM address: [size][destination][bytes] until a size
+// of 0) to the driver (sound_upload_begin/block/end).
+void sound_upload_list(uint32_t src);
+
+// $86:DDEF (long): load sound set `set` (port request 4): its compressed blocks (songs,
+// instruments and settings), then its samples one by one, then the sample directory built
+// from them (each slot: the sample's address and its loop point in the sound chip's memory).
+// It waits a frame before each upload and sends the frame's message first. `dp` is the
+// direct page the original runs with.
+void sound_load_set(uint16_t dp, uint16_t set);
+
 // $86:DD85 (long): the sound start-up. Clear the sound state, unpack the driver to
 // $7F:0000 ($86:E478), send it, clear the ports, wait for the driver's ready, and set
 // SOUND_ENABLE. `dp` is the direct page the original runs with (decompress's scratch and

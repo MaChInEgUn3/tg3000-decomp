@@ -1105,7 +1105,7 @@ oam_finish_near:
     db $10,$24 ; bpl            ; $8089DE
     jsl.l $80FC20               ; $8089E0
     lda.w #$0000                ; $8089E4
-    jsl.l $86DDEF               ; $8089E7
+    jsl.l sound_load_set        ; $8089E7
     sep.b #$20                  ; $8089EB
     lda.b #$01                  ; $8089ED
     sta.w $045F                 ; $8089EF

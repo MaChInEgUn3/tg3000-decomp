@@ -95,7 +95,7 @@ static Stats* stats;
 #define MAX_EFFECTS 512  // track_objects_stream's replay on the password movie makes 158
 // harness-18: a row with a budget (maxInsns: a screen's frame loop, thousands of frames)
 // keeps more effects and input reads; the buffers live outside the sample, one per depth
-#define MAX_EFFECTS_LONG 65536
+#define MAX_EFFECTS_LONG (1 << 19)  // harness-38: a race sound set sends about 200,000 port writes
 #define MAX_INPUTS 256
 #define MAX_INPUTS_LONG (1 << 19)  // (serial pad reads count every bit: ~70 a frame)
 typedef struct { uint16_t reg; uint8_t val; uint32_t frame; } InputRead;  // frame: cpu_interruptCount
@@ -1030,8 +1030,9 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   if(write && isJoypadProtocolWrite(adr)) return;
   uint16_t lo = adr & 0xFFFF;
   bool apuPort = lo >= 0x2140 && lo <= 0x217F && ((adr >> 16) & 0x7F) < 0x40;
-  // harness-38: the sound loaders' handshakes are the platform's (their polls are not inputs)
-  if(!write && apuPort && insnPc >= 0x86E096 && insnPc < 0x86E0F0) return;
+  // harness-38: the sound senders' handshakes are the platform's (their polls are not inputs):
+  // the frame's message, the start-up loader and a set's uploads ($86:DFFB-$86:E3A9)
+  if(!write && apuPort && insnPc >= 0x86DFFB && insnPc < 0x86E3AA) return;
   if((write && apuPort) || (!write && isInputReg(adr))) {
     // APU port writes are effects (port, value) in order; input reads are recorded
     for(int k = accessBase; k < depth; k++) {

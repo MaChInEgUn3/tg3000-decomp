@@ -5033,6 +5033,13 @@ static void call_sound_boot_upload(const Regs* in, Regs* out) {
   (void)out;
   sound_boot_upload((uint32_t)(rd8(in->d + 0xE0) | rd8(in->d + 0xE1) << 8 | rd8(in->d + 0xE2) << 16));
 }
+// sound_load_set ($86:DDEF): A is the set; its last PLB and the ready test give N, Z and C
+static void call_sound_load_set(const Regs* in, Regs* out) {
+  sound_load_set(in->d, in->a);
+  out->n = (in->db >> 7) & 1;  // its last PLB
+  out->z = in->db == 0;
+  out->c = 1;
+}
 static void call_sound_boot(const Regs* in, Regs* out) {
   sound_boot(in->d);
   setNZ16(out, in->d);  // its last PLD; C from the ready test, V clear from the upload's end
@@ -13065,6 +13072,14 @@ const Routine routines[] = {
   {.name = "sound_boot_upload", .entry = 0x86E096, .end = 0x86E0F0, .source = "src/sound.c", .manyEffects = true,
    .call = call_sound_boot_upload, .holes = {{0x86E0EA, 0x86E0EC}}},  // once per movie, at start-up: live only
    // (the hole: a kick of 0 made 4, which this driver's block sizes never need)
+  {.name = "sound_load_set", .entry = 0x86DDEF, .end = 0x86DFAE, .rtl = true, .source = "src/sound.c",
+   .waitsForInterrupts = true, .maxInsns = 200000000, .manyEffects = true, .call = call_sound_load_set,
+   .alsoIn = {{0x86E0F0, 0x86E3AA}},
+   .holes = {{0x86DE6F, 0x86DE96}, {0x86E105, 0x86E106}, {0x86E15F, 0x86E16E}, {0x86E274, 0x86E2B4},
+             {0x86E2C9, 0x86E2CA}, {0x86E323, 0x86E332}, {0x86E33E, 0x86E346}}},
+       // never run: a list of uncompressed blocks (a trap)
+       // its senders (port request 4); never run there: the driver's time-out (a BRK), blocks
+       // under three bytes, a sample not a multiple of three
   {.name = "sound_boot", .entry = 0x86DD85, .end = 0x86DDEF, .rtl = true, .source = "src/sound.c", .manyEffects = true,
    .call = call_sound_boot},
   {.name = "sound_frame", .entry = 0x86DFE1, .end = 0x86DFFB, .rtl = true, .source = "src/sound.c", .needM16 = true,

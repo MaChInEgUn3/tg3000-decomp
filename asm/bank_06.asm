@@ -93,6 +93,7 @@ CODE_86DDDF:
     sta.l $81046D               ; $86DDE9
     pld                         ; $86DDED
     rtl                         ; $86DDEE
+sound_load_set:
     rep.b #$30                  ; $86DDEF
     phb                         ; $86DDF1
     phd                         ; $86DDF2
@@ -134,7 +135,7 @@ CODE_86DE46:
     cmp.w $0024                 ; $86DE46
     beq CODE_86DE46             ; $86DE49
     jsr.w sound_send_message    ; $86DE4B
-    jsr.w $E0F0                 ; $86DE4E
+    jsr.w sound_upload_list     ; $86DE4E
     lda.l $810473               ; $86DE51
     clc                         ; $86DE55
     adc.w #$0004                ; $86DE56
@@ -224,7 +225,7 @@ CODE_86DF22:
     cmp.w $0024                 ; $86DF22
     beq CODE_86DF22             ; $86DF25
     jsr.w sound_send_message    ; $86DF27
-    jsr.w $E2B4                 ; $86DF2A
+    jsr.w sound_upload_one      ; $86DF2A
     lda.l $810473               ; $86DF2D
     tay                         ; $86DF31
     lda.l $810477               ; $86DF32
@@ -249,7 +250,7 @@ CODE_86DF62:
     cmp.w $0024                 ; $86DF62
     beq CODE_86DF62             ; $86DF65
     jsr.w sound_send_message    ; $86DF67
-    jsr.w $E0F0                 ; $86DF6A
+    jsr.w sound_upload_list     ; $86DF6A
     lda.w #$0077                ; $86DF6D
 CODE_86DF70:
     cmp.w $2141                 ; $86DF70
@@ -436,6 +437,7 @@ CODE_86E0EC:
     rep.b #$20                  ; $86E0EC
     pld                         ; $86E0EE
     rts                         ; $86E0EF
+sound_upload_list:
     rep.b #$30                  ; $86E0F0
     phd                         ; $86E0F2
     ldy.w #$0000                ; $86E0F3
@@ -615,6 +617,7 @@ CODE_86E255:
     sta.w $2143                 ; $86E270
     rts                         ; $86E273
     incbin !baserom:$36274..$362B4
+sound_upload_one:
     rep.b #$30                  ; $86E2B4
     phd                         ; $86E2B6
     ldy.w #$0000                ; $86E2B7
