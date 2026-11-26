@@ -6243,6 +6243,24 @@ VRAM word is not known at the unpacking. They can be named one by one if the por
 **Check:** the full gate. `platform_bench.c` belongs to the harness, which needs a full run on
 any change. Otherwise only lines were added, and no row changed.
 
+## The VS panels' arrangement named (port request J, 2026-11-26)
+
+**A new platform call, `video_note_vs_panels(vram_word, rows)`.** `vs_graphics_load` calls it
+right before it writes the VS screen's panels word by word, so a port can build them itself
+instead of recognising the write pattern. The arrangement:
+- `$400` words of `$0023` from `$7000`;
+- then, from `$7000` again, two halves, each built from the same 14 rows of the buffer at
+  `$7F:0000` ($20 bytes a row, unpacked just before from `$8A:C86C`);
+- each row is written as two copies of 16 words, ORed with `$0000` and `$0400` in the first
+  half and with `$0800` and `$0C00` in the second.
+
+The bench ignores the call; the words themselves are still compared.
+
+**Port requests done:** B, C, D, E, F, G, H, I and J. Only A is left, the DSP-4's streamed
+commands. Its road command `$01` is parked on the owner's question (dsp4-01f).
+
+**Check:** the full gate (`platform_bench.c` changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

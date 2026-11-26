@@ -30,6 +30,13 @@ void video_write_vram_word(uint16_t vram_word, uint16_t value);
 // queue_unpacked_upload through its task's slot, $1C00 bytes a frame). A port may convert that
 // graphic from the cartridge once instead of reading the bytes it is given; the bench ignores it.
 void video_note_source(uint32_t rom, uint16_t vram_word);
+// Port request J: the next words written from VRAM word `vram_word` are the VS screen's panels,
+// by video_write_vram_word: $400 words of $0023 (the blank), then from `vram_word` again two
+// halves, each the same 14 rows of two copies of 16 words, a row's words from the WRAM buffer
+// `rows` ($7F:0000, $20 bytes a row, unpacked just before from $8A:C86C) ORed with $0000 and
+// $0400 (first half), $0800 and $0C00 (second half). A port may build that arrangement itself;
+// the bench ignores the call.
+void video_note_vs_panels(uint16_t vram_word, uint32_t rows);
 // The Mode 7 vertical offset alone (the original's byte writes to $210E leave it apart from
 // BG1's: vs-race-20).
 void video_set_m7_vofs(uint16_t value);

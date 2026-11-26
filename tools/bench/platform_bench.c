@@ -19,6 +19,12 @@ void video_fill_vram(uint16_t vram_word, uint8_t value, uint32_t size) {
   difftest_effect(EFFECT_VRAM_FILL, vram_word, value, size);
 }
 
+// port request J: a note for a port; the words themselves are compared
+void video_note_vs_panels(uint16_t vram_word, uint32_t rows) {
+  (void)vram_word;
+  (void)rows;
+}
+
 // port request I: a note for a port; the uploads themselves are compared
 void video_note_source(uint32_t rom, uint16_t vram_word) {
   (void)rom;

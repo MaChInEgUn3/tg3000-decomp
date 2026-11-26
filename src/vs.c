@@ -577,6 +577,7 @@ void vs_graphics_load(void) {
   uint16_t end;
   decompress(DP, 0x8A, 0xC86C, 0x7F, 0x0000, &end);
   uint16_t at = 0x7000;
+  video_note_vs_panels(0x7000, 0x7F0000);  // (port request J)
   for(int i = 0; i < 0x400; i++) video_write_vram_word(at++, 0x0023);
   at = 0x7000;
   static const uint16_t bits[2][2] = {{0x0000, 0x0400}, {0x0800, 0x0C00}};
