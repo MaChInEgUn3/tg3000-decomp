@@ -5901,6 +5901,50 @@ D = `$0100`; with `$0200` it is the same code at another direct page.
 
 **Check:** the full gate (`src/misc.c` and `src/frame.c` changed by more than additions).
 
+## The shop as two tasks (task-4, 2026-11-26)
+
+**Port request D, step 2.** `shop_screen` is now built like the ticker:
+- the part before the fork: `shop_screen_begin`, a frame, `shop_screen_graphics`,
+  `split_screen_setup`;
+- `platform_task_split(shop_task2)`;
+- `shop_task(DP)`, which is everything after the fork, from the records to
+  `shop_screen_close`;
+- `platform_task_join()`.
+
+**`dp` through the shop's whole call tree.** About 135 functions now take the task's direct
+page in place of the fixed `DP`:
+- the shop's lists, item screens, panels, gauges, bars, money and buying;
+- the shared text routines (`type_text`, `text_type_step`, `type_blink`, `type_advance`,
+  `type_byte`, `sprite_number`, `sprite_number_centered`);
+- `take_nibble`.
+
+Callers outside the tree pass `DP`, as before. `task_frame_hook`'s shop panel (`$80:B149`) now
+runs for either task: its task-2 trap is gone.
+
+**How it was done, mechanically.**
+- **A walker:** lists every function reached from the shop's code after the fork whose body
+  uses the fixed `DP`.
+- **A converter:** turns each into a `dp` parameter. Calls inside the tree pass `dp`, and the
+  rest pass `DP`.
+- **The adapters:** pass the entry's D.
+- **Two scratch slips, caught by the compiler and redone:**
+  - the pattern missed functions with a capitalized return type (`ShopBuyEnd`);
+  - an empty second list matched every call in `routines.c`.
+- **The rows keep their D = `$0100` requirement.** Task 2's runs are not sampled (task-3), so
+  lifting it would add no check.
+
+**Results.**
+- **Every row passes, live and fuzz,** on the shop movie (299 rows passing outright) and the
+  buy movie (503).
+- **The others marked failing there** only lack paths that other movies cover; the gate pools
+  the movies.
+- **The full gate covers the rest.**
+
+**Next:** the championship screen as two tasks. Then `game_main`'s championship trap goes, and
+the port runs the championship loop.
+
+**Check:** the full gate (`src/` changed by more than additions).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

@@ -416,7 +416,7 @@ uint16_t string_list_nth(uint32_t list, uint16_t n);
 
 // Shift the 32-bit value at $0118 (high word) : $011A (low word) left by 4 and return
 // the 4 bits shifted out (a nibble reader).
-uint16_t take_nibble(void);
+uint16_t take_nibble(uint16_t dp);
 
 // A request ($0463 = a, $0465 = x, $0467 = 0) that is refused while the word at $047C has
 // bit 15 set (returns false, nothing stored) or while a cooldown runs: with the direct

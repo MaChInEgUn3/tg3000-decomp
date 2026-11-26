@@ -370,9 +370,8 @@ void upload_slot_drain(uint16_t dp) {
 void task_frame_hook(uint16_t dp) {
   const uint16_t hook = rd16((uint16_t)(dp + 0xEC));
   if(hook == 0xB94F) return;
-  if(hook == 0xB149) {  // the shop panel's frame (set by task 1's shop code)
-    if(dp != DP) tg3000_unported("$80:B149: the shop panel's frame in task 2");
-    shop_panel_frame();
+  if(hook == 0xB149) {  // the shop panel's frame
+    shop_panel_frame(dp);
     return;
   }
   if(hook == 0xC5E0) {  // the menu bar: its lines, then its step by D+$4E ($80:C636), then its end

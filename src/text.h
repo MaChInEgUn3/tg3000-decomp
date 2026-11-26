@@ -59,7 +59,7 @@ uint16_t sprite_text_centered(uint32_t str, uint16_t x);
 // glyphs $34-$43), leading zeros skipped (zero shows one digit), with one extra pixel
 // after the 2nd and the 5th digit position from the left (thousands gaps). The digits are
 // read through take_nibble ($0118:$011A). Returns the final x.
-uint16_t sprite_number(uint32_t value, uint16_t x);
+uint16_t sprite_number(uint16_t dp, uint32_t value, uint16_t x);
 
 // Add the sprites of a group to the entries at $0900+slot (slot at D+$74): the table at
 // `table` holds two lists of 6-byte items (tile, x, y), each ended by a zero word; items
@@ -78,7 +78,7 @@ uint16_t sprite_number_right(uint32_t value, uint16_t x);
 
 // The same, centred on `x`: the shift is ((x & $FF) - (end & $FF)) >> 1 (16-bit).
 // ($80:8635)
-uint16_t sprite_number_centered(uint32_t value, uint16_t x);
+uint16_t sprite_number_centered(uint16_t dp, uint32_t value, uint16_t x);
 
 // Five lines of tile text from $8A:C44F, C458, C46D, C484, C49B at (12, 6), (6, 22),
 // (5, 23), (5, 24), (6, 26), with D+$90 = 1, 0, 0, 0, 1. Returns the last
@@ -105,7 +105,7 @@ uint32_t func_80EB66(uint16_t dp);
 // ! - ~ ]), digits and the rest by their codes. Control codes $80-$86: next line; column
 // 0; jump; blink a cursor (D+$E1, a 16-frame cycle); wait D+$E3 frames, blinking; clear
 // the line and back up one; set bit 0 of D+$F8.
-void text_type_step(void);
+void text_type_step(uint16_t dp);
 
 // $82:B18B (DB = $7E): a centred line of 13 two-row characters at $7E:D+$18 (top row) and
 // + $1A (bottom). Both rows are first filled with $83:A5A4's blank; the string is the

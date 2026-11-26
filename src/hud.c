@@ -122,7 +122,7 @@ void race_hud_sprites(void) {
   a = (uint16_t)(a + rd16(DP + 0x28) + (w16 >> 15));
   sprite_number_point_right((uint16_t)binary_to_bcd(a), 0x5046);
   wr16(DP + 0x14, 0x2200);
-  sprite_number(binary_to_bcd(hud_product((uint16_t)(rd8(DP + 0x35) << 8), 0x63, &low)), 0x2CD2);
+  sprite_number(DP, binary_to_bcd(hud_product((uint16_t)(rd8(DP + 0x35) << 8), 0x63, &low)), 0x2CD2);
   wr16(DP + 0x14, 0x2200);
   a = hud_product((uint16_t)(rd8(DP + 0x37) << 8), 0x41, &low);
   sprite_number_right(binary_to_bcd((uint16_t)(a << 1 | (low >> 7))), 0x7662);

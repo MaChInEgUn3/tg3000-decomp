@@ -155,10 +155,10 @@ uint16_t string_list_nth(uint32_t list, uint16_t n) {
 }
 
 // TG3000_ROUTINE($80:8542) take_nibble
-uint16_t take_nibble(void) {
-  uint32_t v = ((uint32_t)rd16(DP + 0x18) << 16) | rd16(DP + 0x1A);
-  wr16(DP + 0x18, (uint16_t)(v >> 12));
-  wr16(DP + 0x1A, (uint16_t)(v << 4));
+uint16_t take_nibble(uint16_t dp) {
+  uint32_t v = ((uint32_t)rd16(dp + 0x18) << 16) | rd16(dp + 0x1A);
+  wr16(dp + 0x18, (uint16_t)(v >> 12));
+  wr16(dp + 0x1A, (uint16_t)(v << 4));
   return (uint16_t)(v >> 28);
 }
 
@@ -8524,7 +8524,7 @@ bool intro_screen_show(void) {
       oam_finish_0b00_near(DP);
       wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
     }
-    text_type_step();
+    text_type_step(DP);
     uint16_t a = (uint16_t)(rd16(DP + 0xF6) - 3);
     if(a & 0x8000) a = 0;
     wr16(DP + 0x82, (uint16_t)((uint16_t)(a << 3) + 0xFFFF));
@@ -8954,7 +8954,7 @@ bool name_entry_key(void) {
   }
   if(key == 0x001D || key == 0x001E) {
     if(rd16(DP + 0x42) == 0) {  // never run
-      shop_flag_fb();
+      shop_flag_fb(DP);
       return false;
     }
     func_80E4C5();
@@ -8967,7 +8967,7 @@ bool name_entry_key(void) {
     return false;
   }
   if(rd16(DP + 0x42) == 0x000D) {  // never run
-    shop_flag_fb();
+    shop_flag_fb(DP);
     return false;
   }
   wr16(DP + 0x42, (uint16_t)(rd16(DP + 0x42) + 1));

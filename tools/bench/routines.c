@@ -436,7 +436,7 @@ static void fuzz_table_062a_fill(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 }
 
 // ---- text_type_step ($80:B59D) ----  no register outputs (its callers reload them)
-static void call_text_type_step(const Regs* in, Regs* out) { (void)in; (void)out; text_type_step(); }
+static void call_text_type_step(const Regs* in, Regs* out) { (void)in; (void)out; text_type_step(in->d); }
 // a text in WRAM ($7E:1C00, 64 bytes; sometimes copied to the end of the bank, to cross into
 // $7F): letters, spaces and marks, with the codes $80, $83,
 // $84 (a count of 1-3 after it), $85, $86, and rarely $81 or a forward $82; the speed and
@@ -753,7 +753,7 @@ static void call_shop_list_label(const Regs* in, Regs* out) {
   int16_t row = (int16_t)rd16(DP + 0x22);
   bool drawn = (int16_t)(row - 0x1000) >= 0 && (int16_t)(row - 0x5800) < 0;
   uint16_t row0 = rd16(DP + 0x22);
-  out->x = shop_list_label(in->x);
+  out->x = shop_list_label(in->d, in->x);
   out->y = drawn ? rd16(DP + 0x74) : in->y;
   uint16_t moved = rd16(DP + 0x22), x2 = (uint16_t)(in->x + 2);
   setAdc16(out, row0, 0x0800);  // V (C is replaced below)
@@ -2454,7 +2454,7 @@ static void call_race_pause(const Regs* in, Regs* out) {
 static void call_shop_panel_frame(const Regs* in, Regs* out) {
   (void)in;
   const uint16_t a = rd16(DP + 0x8C), b = rd16(DP + 0x8E);
-  shop_panel_frame();
+  shop_panel_frame(in->d);
   if(a != b) {
     setNZ16(out, (uint16_t)(a - b));
     out->c = a >= b;
@@ -7419,7 +7419,7 @@ static void call_menu_bar_lines_end(const Regs* in, Regs* out) {
 static void call_shop_screen_begin(const Regs* in, Regs* out) { (void)in; (void)out; shop_screen_begin(); }
 static void call_shop_screen_graphics(const Regs* in, Regs* out) {
   (void)in;
-  shop_screen_graphics();
+  shop_screen_graphics(in->d);
   out->x = 0;
   out->n = false;
   out->z = true;
@@ -7438,28 +7438,28 @@ static void call_shop_screen_text_setup(const Regs* in, Regs* out) {
   out->a = 0x0002;
   out->n = out->z = false;
 }
-static void call_shop_screen_list_setup(const Regs* in, Regs* out) { (void)in; (void)out; shop_screen_list_setup(); }
+static void call_shop_screen_list_setup(const Regs* in, Regs* out) { (void)in; (void)out; shop_screen_list_setup(in->d); }
 // the frame loop's parts: the frame ends after oam_finish_near (its C and V); back from the
 // item screen (after its PLA of the saved D+$4A: A), A = $0C69 (N Z clear); the frame's end with its CMP's carry and the BIT of D+$0C's V; the closing after
 // LDA #$89B2 (N set), V from wait_flag_76's BIT of D+$76
 static void call_shop_screen_frame(const Regs* in, Regs* out) {
   (void)in;
-  shop_screen_frame();
+  shop_screen_frame(in->d);
   setSbc16(out, rd16(DP + 0x6C), 0x0900);
 }
 static void call_shop_screen_after_items(const Regs* in, Regs* out) {
-  shop_screen_after_items(in->a);
+  shop_screen_after_items(in->d, in->a);
   out->a = 0x0C69;
   out->n = out->z = false;
 }
 static void call_shop_screen_frame_end(const Regs* in, Regs* out) {
   (void)in;
-  out->c = shop_screen_frame_end();
+  out->c = shop_screen_frame_end(in->d);
   out->v = (rd16(DP + 0x0C) >> 14) & 1;
 }
 static void call_shop_screen_close(const Regs* in, Regs* out) {
   (void)in;
-  shop_screen_close();
+  shop_screen_close(in->d);
   out->a = 0x89B2;
   out->n = true;
   out->z = false;
@@ -7502,7 +7502,7 @@ static void call_results_screen_run_close(const Regs* in, Regs* out) {
 // LDA $0024 / STA D+$4E (N Z of it), C clear from the CMP of D+$4E with 4
 static void call_shop_item_screen(const Regs* in, Regs* out) {
   (void)in;
-  if(!shop_item_screen_open()) {
+  if(!shop_item_screen_open(in->d)) {
     out->a = 0xFF80;
     out->n = true;
     out->z = false;
@@ -7516,19 +7516,19 @@ static void call_shop_item_screen(const Regs* in, Regs* out) {
 static void call_shop_item_frame_view(const Regs* in, Regs* out) {
   (void)in;
   (void)out;
-  shop_item_frame_view();
+  shop_item_frame_view(in->d);
 }
 // the drawing ends after oam_finish_near: its C and V (the SBC of the other buffer's end,
 // now D+$6C, and $0900)
 static void call_shop_item_frame_draw(const Regs* in, Regs* out) {
   (void)in;
-  shop_item_frame_draw();
+  shop_item_frame_draw(in->d);
   setSbc16(out, rd16(DP + 0x6C), 0x0900);
 }
 static void call_shop_item_frame_tail(const Regs* in, Regs* out) {
   (void)in;
   (void)out;
-  shop_item_frame_tail();
+  shop_item_frame_tail(in->d);
 }
 
 // the intro, cut at its first wait: the load leaves DB = $81; its flags are dead after the cut (harness-17); the
@@ -8089,7 +8089,7 @@ static void fuzz_string_list_nth(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // shifts A's clear bit 15 out).
 static void call_take_nibble(const Regs* in, Regs* out) {
   (void)in;
-  out->a = take_nibble();
+  out->a = take_nibble(in->d);
   setNZ16(out, out->a);
   out->c = false;
 }
@@ -8200,7 +8200,7 @@ static void fuzz_sprite_text_centered(Regs* r, uint8_t* ram, uint32_t (*rnd)(voi
 // C of the last CPX, V of the last width ADC.
 static void call_sprite_number(const Regs* in, Regs* out) {
   uint32_t value = ((uint32_t)in->x << 16) | in->a;
-  out->y = sprite_number(value, in->y);
+  out->y = sprite_number(in->d, value, in->y);
   out->a = 0;
   out->x = value == 0 ? 0xFFFE : 0xFFFF;
   setNZ16(out, out->y);
@@ -8228,7 +8228,7 @@ static void call_sprite_number_right(const Regs* in, Regs* out) {
 // ---- sprite_number_centered ($80:8635) ----  as sprite_number_right's adapter
 static void call_sprite_number_centered(const Regs* in, Regs* out) {
   uint32_t value = ((uint32_t)in->x << 16) | in->a;
-  uint16_t shift = sprite_number_centered(value, in->y);
+  uint16_t shift = sprite_number_centered(in->d, value, in->y);
   uint16_t end = rd16(DP + 0x74);
   uint8_t post = rd8((uint16_t)(0x0900 + end - 4)), pre = (uint8_t)(post - (uint8_t)shift);
   out->y = end;
@@ -8687,7 +8687,7 @@ static void fuzz_shop_part_level(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 static void call_shop_money_take(const Regs* in, Regs* out) {
   (void)in;
   bool was = rd16(DP + 0x76) & 0x0004;
-  shop_money_take();
+  shop_money_take(in->d);
   out->a = 0x0004;
   out->x = rd16(DP + 0x94);
   out->n = false;
@@ -8714,7 +8714,7 @@ static uint16_t bcd16_random(uint32_t (*rnd)(void)) {
 static void call_shop_money_after_price(const Regs* in, Regs* out) {
   (void)in;
   ShopMoneyFlags f;
-  out->y = shop_money_after_price_flags(&f);
+  out->y = shop_money_after_price_flags(in->d, &f);
   out->c = f.c;
   out->v = f.v;
   out->a = 4;
@@ -8725,7 +8725,7 @@ static void call_shop_money_after_price(const Regs* in, Regs* out) {
 // tail's exit (shop-27)
 static void call_shop_money_after_refund(const Regs* in, Regs* out) {
   ShopMoneyFlags f;
-  out->y = shop_money_after_refund_flags(in->a, &f);
+  out->y = shop_money_after_refund_flags(in->d, in->a, &f);
   out->c = f.c;
   out->v = f.v;
   out->a = 4;
@@ -8740,7 +8740,7 @@ static void fuzz_shop_money_after_refund(Regs* r, uint8_t* ram, uint32_t (*rnd)(
 }
 static void call_shop_money_roll(const Regs* in, Regs* out) {
   ShopMoneyFlags f = {in->c, in->v};
-  out->a = shop_money_roll_flags(&f);
+  out->a = shop_money_roll_flags(in->d, &f);
   out->c = f.c;
   out->v = f.v;
   out->x = rd16(DP + 0x94);
@@ -8749,7 +8749,7 @@ static void call_shop_money_roll(const Regs* in, Regs* out) {
   out->z = true;
 }
 static void call_shop_money_store(const Regs* in, Regs* out) {
-  shop_money_store();
+  shop_money_store(in->d);
   out->a = rd16(DP + 0x54);
   out->x = rd16(DP + 0x94);
   out->y = in->y;
@@ -8788,7 +8788,7 @@ static void fuzz_shop_money_after_price(Regs* r, uint8_t* ram, uint32_t (*rnd)(v
 // N and Z clear), C clear. Short after a refund: shop_money_after_price's exit.
 static void call_shop_buy(const Regs* in, Regs* out, uint16_t field, uint16_t height, bool price_first, bool settle) {
   ShopMoneyFlags f = {in->c, in->v};
-  switch(shop_buy_part(field, height, price_first, settle, &f)) {
+  switch(shop_buy_part(in->d, field, height, price_first, settle, &f)) {
     case SHOP_BUY_OWNED:
     case SHOP_BUY_BOUGHT:
       out->n = true;
@@ -9321,7 +9321,7 @@ static void fuzz_password_lines_print(Regs* r, uint8_t* ram, uint32_t (*rnd)(voi
 // lists 6-8: as lists 2-5
 static void call_shop_buy_upgrade(const Regs* in, Regs* out, uint16_t field) {
   ShopMoneyFlags f = {in->c, in->v};
-  switch(shop_buy_upgrade(field, &f)) {
+  switch(shop_buy_upgrade(in->d, field, &f)) {
     case SHOP_BUY_OWNED:
     case SHOP_BUY_BOUGHT:
       out->n = true;
@@ -9349,7 +9349,7 @@ static void call_shop_buy_list9(const Regs* in, Regs* out) { call_shop_buy_upgra
 static void call_shop_buy_dispatch(const Regs* in, Regs* out) {
   const uint16_t base = rom16(0x81A892 + (uint32_t)(uint16_t)(rd16(DP + 0x48) << 1));
   const uint16_t rows = (uint16_t)(rd16(DP + 0x4A) << 4);
-  out->a = (uint16_t)(shop_buy_handler() - 1);
+  out->a = (uint16_t)(shop_buy_handler(in->d) - 1);
   setNZ16(out, out->a);
   // its two pushes, the RTS trick: the return to its own RTS, then the handler's address - 1
   wr16((uint16_t)(in->sp - 1), 0x9051);
@@ -9369,7 +9369,7 @@ static void fuzz_shop_buy_dispatch(Regs* r, uint8_t* ram, uint32_t (*rnd)(void))
 // last SBC #$0900 in oam_finish); short, as the others
 static void call_shop_buy_list1(const Regs* in, Regs* out) {
   ShopMoneyFlags f = {in->c, in->v};
-  switch(shop_buy_part(0, 0x0078, true, false, &f)) {
+  switch(shop_buy_part(in->d, 0, 0x0078, true, false, &f)) {
     case SHOP_BUY_OWNED:
       setNZ16(out, rd16(DP + 0x44));
       out->c = true;
@@ -9397,19 +9397,19 @@ static void call_shop_buy_list4(const Regs* in, Regs* out) { call_shop_buy(in, o
 // func_80E4DB's PLA: A as the handler left it, its high byte the entry's and its low byte
 // D+$4A's (an 8-bit LDA)
 static void call_shop_buy_colour(const Regs* in, Regs* out) {
-  shop_buy_colour();
+  shop_buy_colour(in->d);
   setNZ16(out, (uint16_t)((in->a & 0xFF00) | rd8(DP + 0x4A)));
 }
 
 // A kept (PLA: N/Z from it)
-static void call_shop_flag_fb(const Regs* in, Regs* out) { shop_flag_fb(); setNZ16(out, in->a); }
+static void call_shop_flag_fb(const Regs* in, Regs* out) { shop_flag_fb(in->d); setNZ16(out, in->a); }
 
 // as func_80B537's adapter, with its inputs set here (Y ends as $5C + $0400)
 static void call_shop_panel_upload(const Regs* in, Regs* out) {
   (void)in;
   uint16_t i = rd16(DP + 0x8C), base = rd16(DP + 0x8A);
   out->y = (uint16_t)(rd16(DP + 0x5C) + 0x0400);
-  out->a = shop_panel_upload();
+  out->a = shop_panel_upload(in->d);
   out->x = (uint16_t)(i + 2);
   setNZ16(out, out->a);
   setAdc16(out, (uint16_t)((i + 2) & 0x3F), base);
@@ -9441,7 +9441,7 @@ static void fuzz_shop_item(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 static void call_shop_item_picture(const Regs* in, Regs* out) {
   (void)in;
   out->x = rom16(0x81A89D + (uint32_t)shopEntry(rd16(DP + 0x4C)));
-  shop_item_picture();
+  shop_item_picture(in->d);
   out->a = 9;
   setNZ16(out, 9);
 }
@@ -9452,7 +9452,7 @@ static void call_shop_item_text(const Regs* in, Regs* out) {
   uint16_t text = rom16(0x81A895 + (uint32_t)shopEntry(rd16(DP + 0x4A)));
   uint16_t size = rom16(0x81A894 + (uint32_t)text), src = rom16(0x81A892 + (uint32_t)text);
   uint16_t dest = (uint16_t)(rd16(DP + 0xC4) + 0x0100);
-  shop_item_text();
+  shop_item_text(in->d);
   out->a = 0xFFFF;
   out->x = (uint16_t)(src + size);
   out->y = (uint16_t)(dest + size);
@@ -9464,7 +9464,7 @@ static void call_shop_item_text(const Regs* in, Regs* out) {
 static void call_shop_bar_cap(const Regs* in, Regs* out) {
   (void)in;
   uint16_t slot = rd16(DP + 0x74);
-  out->a = shop_bar_cap();
+  out->a = shop_bar_cap(in->d);
   out->x = slot;
   setNZ16(out, out->a);
   setAdc16(out, slot, 0x0010);
@@ -9472,7 +9472,7 @@ static void call_shop_bar_cap(const Regs* in, Regs* out) {
 static void call_shop_bar_column(const Regs* in, Regs* out) {
   (void)in;
   uint16_t slot = rd16(DP + 0x74);
-  out->a = shop_bar_column();
+  out->a = shop_bar_column(in->d);
   out->y = slot;
   setNZ16(out, out->a);
   setAdc16(out, slot, 0x000C);
@@ -9485,11 +9485,11 @@ static void fuzz_shop_bar(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 }
 
 // the bar routines: no register outputs (their callers reload A, X and Y)
-static void call_shop_bar_levels(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_levels(); }
-static void call_shop_bar_segments(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_segments(); }
-static void call_shop_bar_segments_long(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_segments_long(); }
-static void call_shop_bar_double(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_double(); }
-static void call_shop_gauge(const Regs* in, Regs* out) { (void)in; (void)out; shop_gauge(); }
+static void call_shop_bar_levels(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_levels(in->d); }
+static void call_shop_bar_segments(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_segments(in->d); }
+static void call_shop_bar_segments_long(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_segments_long(in->d); }
+static void call_shop_bar_double(const Regs* in, Regs* out) { (void)in; (void)out; shop_bar_double(in->d); }
+static void call_shop_gauge(const Regs* in, Regs* out) { (void)in; (void)out; shop_gauge(in->d); }
 
 // A = the old D+$14 (N/Z of its PLA); X and Y as sprite_number_centered leaves them, with
 // C and V from its last ADC
@@ -9498,7 +9498,7 @@ static void call_shop_item_price(const Regs* in, Regs* out) {
   uint16_t base = rd16(DP + 0x14);
   uint16_t price = rom16(0x81A89B + (uint32_t)shopEntry(rd16(DP + 0x4A)));
   uint32_t value = (uint32_t)rom16(0x81A88E + (uint32_t)price) << 16 | rom16(0x81A890 + (uint32_t)price);
-  uint16_t shift = shop_item_price();
+  uint16_t shift = shop_item_price(in->d);
   uint16_t end = rd16(DP + 0x74);
   uint8_t post = rd8((uint16_t)(0x0900 + end - 4)), pre = (uint8_t)(post - (uint8_t)shift);
   out->y = end;
@@ -9519,12 +9519,12 @@ static void fuzz_shop_item_price(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 }
 
 // the item-view handlers: no register outputs (the dispatcher's caller reloads them)
-static void call_shop_item_view_a(const Regs* in, Regs* out) { (void)out; shop_item_view_a(in->y); }
-static void call_shop_item_view_b(const Regs* in, Regs* out) { (void)out; shop_item_view_b(in->y); }
-static void call_shop_item_view_c(const Regs* in, Regs* out) { (void)out; shop_item_view_c(in->y); }
-static void call_shop_item_view_d(const Regs* in, Regs* out) { (void)out; shop_item_view_d(in->y); }
-static void call_shop_item_view_e(const Regs* in, Regs* out) { (void)out; shop_item_view_e(in->y); }
-static void call_shop_item_view_g(const Regs* in, Regs* out) { (void)out; shop_item_view_g(in->y); }
+static void call_shop_item_view_a(const Regs* in, Regs* out) { (void)out; shop_item_view_a(in->d, in->y); }
+static void call_shop_item_view_b(const Regs* in, Regs* out) { (void)out; shop_item_view_b(in->d, in->y); }
+static void call_shop_item_view_c(const Regs* in, Regs* out) { (void)out; shop_item_view_c(in->d, in->y); }
+static void call_shop_item_view_d(const Regs* in, Regs* out) { (void)out; shop_item_view_d(in->d, in->y); }
+static void call_shop_item_view_e(const Regs* in, Regs* out) { (void)out; shop_item_view_e(in->d, in->y); }
+static void call_shop_item_view_g(const Regs* in, Regs* out) { (void)out; shop_item_view_g(in->d, in->y); }
 // lists 6-8's views and their helpers (only the password movie reaches them, with few
 // returns: their exit flags are modelled). A view's tail: D+$40 += $40 (wrapping at `wrap`,
 // a SBC, for views h and i), then INC D+$3E (DEC back from $8000): N/Z of D+$3E; C/V of the
@@ -9541,15 +9541,15 @@ static void viewTail(Regs* out, uint16_t old40, uint16_t wrap) {
     out->v = ((a ^ wrap) & (a ^ r) & 0x8000) != 0;
   }
 }
-static void call_shop_item_view_h(const Regs* in, Regs* out) { const uint16_t o = rd16(DP + 0x40); shop_item_view_h(in->y); viewTail(out, o, 0x1E00); }
-static void call_shop_item_view_i(const Regs* in, Regs* out) { const uint16_t o = rd16(DP + 0x40); shop_item_view_i(in->y); viewTail(out, o, 0x0F00); }
-static void call_shop_item_view_j(const Regs* in, Regs* out) { const uint16_t o = rd16(DP + 0x40); shop_item_view_j(in->y); viewTail(out, o, 0); }
+static void call_shop_item_view_h(const Regs* in, Regs* out) { const uint16_t o = rd16(DP + 0x40); shop_item_view_h(in->d, in->y); viewTail(out, o, 0x1E00); }
+static void call_shop_item_view_i(const Regs* in, Regs* out) { const uint16_t o = rd16(DP + 0x40); shop_item_view_i(in->d, in->y); viewTail(out, o, 0x0F00); }
+static void call_shop_item_view_j(const Regs* in, Regs* out) { const uint16_t o = rd16(DP + 0x40); shop_item_view_j(in->d, in->y); viewTail(out, o, 0); }
 // shop_level_blocks ends on the CMP #$2D that matched (Z, C set, N clear) after the ADC #6
 // from $27 (V clear); or, all seven full with three left over, at the SBC #3 of D+$7E (not
 // stored): its N/Z/V, C set
 static void call_shop_level_blocks(const Regs* in, Regs* out) {
   (void)in;
-  if(shop_level_blocks()) {
+  if(shop_level_blocks(in->d)) {
     const uint16_t a = rd16(DP + 0x7E), r = (uint16_t)(a - 3);
     setNZ16(out, r);
     out->c = true;
@@ -9574,15 +9574,15 @@ static void gaugeLineOut(Regs* out) {
     out->z = true;
   }
 }
-static void call_shop_gauge_line(const Regs* in, Regs* out) { shop_gauge_line((uint8_t)in->a, in->y, in->x); gaugeLineOut(out); }
+static void call_shop_gauge_line(const Regs* in, Regs* out) { shop_gauge_line(in->d, (uint8_t)in->a, in->y, in->x); gaugeLineOut(out); }
 // four gauge lines, then PLB: N/Z of the bank it restores (the entry's), C/V the last line's
 static void call_shop_gauge_lines(const Regs* in, Regs* out) {
-  shop_gauge_lines();
+  shop_gauge_lines(in->d);
   gaugeLineOut(out);
   out->n = (in->db & 0x80) != 0;
   out->z = in->db == 0;
 }
-static void call_shop_item_dispatch_view(const Regs* in, Regs* out) { (void)in; (void)out; shop_item_dispatch_view(); }
+static void call_shop_item_dispatch_view(const Regs* in, Regs* out) { (void)in; (void)out; shop_item_dispatch_view(in->d); }
 // the panel dispatch: X = the entry (its PLX: N, Z); C and V of the last queue ADC (one
 // upload for lists 0 and 6-8, two for the rest)
 static void call_shop_item_dispatch_panel(const Regs* in, Regs* out) {
@@ -9591,18 +9591,18 @@ static void call_shop_item_dispatch_panel(const Regs* in, Regs* out) {
   uint16_t entry = (uint16_t)((rd16(DP + 0x4A) << 4) + rom16(0x81A892 + (uint32_t)(uint16_t)(list << 1)));
   uint16_t i = rd16(DP + 0x8C), base = rd16(DP + 0x8A);
   if(list >= 1 && list <= 5) i = (uint16_t)(((i + 2) & 0x3F) + base);  // the first upload's slot
-  shop_item_dispatch_panel();
+  shop_item_dispatch_panel(in->d);
   setAdc16(out, (uint16_t)((i + 2) & 0x3F), base);
   out->x = entry;
   setNZ16(out, entry);
 }
 // the panel's handlers (shop-26): their last func_80B537's exit: A the next index (N/Z), X the
 // index it used + 2, C/V of its ADC, Y D+$5C + the last upload's VRAM offset
-static void shopItemPanelOut(const Regs* in, Regs* out, void (*fn)(uint16_t), bool two, uint16_t lastVram) {
+static void shopItemPanelOut(const Regs* in, Regs* out, void (*fn)(uint16_t, uint16_t), bool two, uint16_t lastVram) {
   uint16_t i = rd16(DP + 0x8C);
   const uint16_t base = rd16(DP + 0x8A);
   if(two) i = (uint16_t)(((i + 2) & 0x3F) + base);
-  fn(in->y);
+  fn(in->d, in->y);
   out->a = (uint16_t)(((i + 2) & 0x3F) + base);
   out->x = (uint16_t)(i + 2);
   out->y = (uint16_t)(rd16(DP + 0x5C) + lastVram);
@@ -9635,9 +9635,9 @@ static void slideFlags(Regs* out) {
   out->z = true;
   out->c = true;
 }
-static void call_shop_item_slide_row(const Regs* in, Regs* out) { (void)in; shop_item_slide_row(); slideFlags(out); }
-static void call_shop_item_slide_list(const Regs* in, Regs* out) { (void)in; shop_item_slide_list(); slideFlags(out); }
-static void call_shop_item_slide_list_in(const Regs* in, Regs* out) { (void)in; shop_item_slide_list_in(); slideFlags(out); }
+static void call_shop_item_slide_row(const Regs* in, Regs* out) { (void)in; shop_item_slide_row(in->d); slideFlags(out); }
+static void call_shop_item_slide_list(const Regs* in, Regs* out) { (void)in; shop_item_slide_list(in->d); slideFlags(out); }
+static void call_shop_item_slide_list_in(const Regs* in, Regs* out) { (void)in; shop_item_slide_list_in(in->d); slideFlags(out); }
 // the list moves: no register outputs. A slide's exit flags (N clear, Z and C set); leaving,
 // the PLA of the routine's own return address (N, Z), C still set by the panel's CMP
 static void shopItemMoveOut(const Regs* in, Regs* out, bool left) {
@@ -9649,19 +9649,19 @@ static void shopItemMoveOut(const Regs* in, Regs* out, bool left) {
     slideFlags(out);
   }
 }
-static void call_shop_item_down(const Regs* in, Regs* out) { shopItemMoveOut(in, out, shop_item_down()); }
-static void call_shop_item_up(const Regs* in, Regs* out) { shopItemMoveOut(in, out, shop_item_up()); }
+static void call_shop_item_down(const Regs* in, Regs* out) { shopItemMoveOut(in, out, shop_item_down(in->d)); }
+static void call_shop_item_up(const Regs* in, Regs* out) { shopItemMoveOut(in, out, shop_item_up(in->d)); }
 // the icon's show and settle: no register outputs; show ends on its LDA of the step (N set),
 // settle on the TRB (Z of $8000 & D+$76: clear, the bit was set)
 static void call_shop_item_show_icon(const Regs* in, Regs* out) {
   (void)in;
-  shop_item_show_icon();
+  shop_item_show_icon(in->d);
   setNZ16(out, rd16(DP + 0x44));
 }
 static void call_shop_item_icon_settle(const Regs* in, Regs* out) {
   (void)in;
   bool set = (rd16(DP + 0x76) & 0x8000) != 0;
-  shop_item_icon_settle();
+  shop_item_icon_settle(in->d);
   out->n = true;  // LDA #$8000 before the TRB
   out->z = !set;
   out->c = true;  // the CMP #$8007 that matched
@@ -9689,7 +9689,7 @@ static void call_shop_item_affordable(const Regs* in, Regs* out) {
   const uint32_t price = 0x81A892 + (uint32_t)rom16(0x81A89B + (uint32_t)entry);
   bool v, low = rd16(DP + 0x52) >= rom16(price - 2);
   uint16_t high = sbcDecimal16(rd16(DP + 0x54), rom16(price - 4), low, &v);
-  out->c = shop_item_affordable();
+  out->c = shop_item_affordable(in->d);
   if(out->c) {
     setNZ16(out, high);
     out->v = v;
@@ -9717,14 +9717,14 @@ static void fuzz_shop_item_affordable(Regs* r, uint8_t* ram, uint32_t (*rnd)(voi
   wr16ram(ram, DP + 0x54, (uint16_t)(money >> 16));
 }
 // the frame: no register outputs (every caller reloads them)
-static void call_shop_item_redraw(const Regs* in, Regs* out) { (void)in; (void)out; shop_item_redraw(); }
+static void call_shop_item_redraw(const Regs* in, Regs* out) { (void)in; (void)out; shop_item_redraw(in->d); }
 // no register outputs: every caller reloads A, X and Y ($80:9E49, $80:9B99, LDA #2)
-static void call_shop_item_icon_draw(const Regs* in, Regs* out) { (void)out; shop_item_icon_draw(in->x); }
+static void call_shop_item_icon_draw(const Regs* in, Regs* out) { (void)out; shop_item_icon_draw(in->d, in->x); }
 // A = $B149 (N set, Z clear), X = D+$5E + 16, Y = 0; C and V kept
 static void call_shop_panel_blank(const Regs* in, Regs* out) {
   (void)in;
   uint16_t x = rd16(DP + 0x5E);
-  shop_panel_blank();
+  shop_panel_blank(in->d);
   out->a = 0xB149;
   out->x = (uint16_t)(x + 16);
   out->y = 0;
@@ -9733,7 +9733,7 @@ static void call_shop_panel_blank(const Regs* in, Regs* out) {
 // A = 0, X = D+$5E + 18, Y = 0 (N clear, Z set by the DEY), C set by the CMP that matched
 static void call_shop_panel_clear(const Regs* in, Regs* out) {
   (void)in;
-  shop_panel_clear();
+  shop_panel_clear(in->d);
   out->a = 0;
   out->x = (uint16_t)(rd16(DP + 0x5E) + 18);
   out->y = 0;
@@ -9762,7 +9762,7 @@ static void shopListLockedOut(Regs* out) {
   uint16_t key = (uint16_t)(a + rd16(DP + 0x4A));
   out->a = key;
   setAdc16(out, a, rd16(DP + 0x4A));
-  out->c = shop_list_locked();
+  out->c = shop_list_locked(DP);
   if(key & 0x8000) setNZ16(out, key);
   else setNZ16(out, (uint16_t)(key - 0x1800));
 }
@@ -9775,7 +9775,7 @@ static void call_shop_list_prev(const Regs* in, Regs* out) {
   shopListLockedOut(out);
   uint16_t list = rd16(DP + 0x48);
   bool locked = out->c;
-  shop_list_prev();
+  shop_list_prev(in->d);
   if(locked) return;
   setNZ16(out, list);
 }
@@ -9784,7 +9784,7 @@ static void call_shop_list_next(const Regs* in, Regs* out) {
   shopListLockedOut(out);
   uint16_t list = rd16(DP + 0x48), limit = rd16(DP + 0xF0);
   bool locked = out->c;
-  shop_list_next();
+  shop_list_next(in->d);
   if(locked) return;
   setNZ16(out, list == limit ? 0 : list);
   out->c = list >= limit;
@@ -9800,7 +9800,7 @@ static void fuzz_shop_list(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 }
 
 // no register outputs: func_809DD0 follows at every call
-static void call_shop_level_marks(const Regs* in, Regs* out) { (void)in; (void)out; shop_level_marks(); }
+static void call_shop_level_marks(const Regs* in, Regs* out) { (void)in; (void)out; shop_level_marks(in->d); }
 // lists 0-9 (the getter table), 1-8 marks, any level, cursor and position, slots in the
 // buffer
 static void fuzz_shop_level_marks(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -9818,11 +9818,11 @@ static void fuzz_shop_level_marks(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
 // carry set: the queue's ADC sets V and C, the PLY of the old Y sets N and Z; carry clear:
 // V from the icon's last group item ADC #6 (as on entry if the group is empty), or from
 // BIT D+$76 at step 7
-static void shopItemIconOut(const Regs* in, Regs* out, void (*fn)(bool), uint16_t field, uint16_t icons) {
+static void shopItemIconOut(const Regs* in, Regs* out, void (*fn)(uint16_t, bool), uint16_t field, uint16_t icons) {
   uint16_t i = rd16(DP + 0x8C), base = rd16(DP + 0x8A), step = rd16(DP + 0x44);
   uint16_t level = (uint16_t)(rd16(0x0393 + (uint32_t)field + rd16(DP + 0x94)) & 0x007F);
   GroupWalk w = sprite_group_walk(0x7E0000 | rom16(0x810000 + (uint32_t)icons + (uint32_t)(uint16_t)(level << 1)));
-  fn(in->c);
+  fn(in->d, in->c);
   if(in->c) {
     setAdc16(out, (uint16_t)((i + 2) & 0x3F), base);
     setNZ16(out, in->y);
@@ -9834,12 +9834,12 @@ static void shopItemIconOut(const Regs* in, Regs* out, void (*fn)(bool), uint16_
 static void call_shop_item_icon_1(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_1, 0, 0xBC2E); }
 // lists 0 and 6-10 (shop-25): as lists 1-5, but list 0 queues nothing (its RTS: flags as on
 // entry) and lists 6-10 queue nothing at level 0 (PHY ... PLY: N/Z of Y)
-static void shopItemIconOutB(const Regs* in, Regs* out, void (*fn)(bool), int field, uint16_t icons) {
+static void shopItemIconOutB(const Regs* in, Regs* out, void (*fn)(uint16_t, bool), int field, uint16_t icons) {
   const uint16_t i = rd16(DP + 0x8C), base = rd16(DP + 0x8A), step = rd16(DP + 0x44);
   const uint16_t level = field < 0 ? 0 : (uint16_t)(rd16(0x0393 + (uint32_t)field + rd16(DP + 0x94)) & 0x007F);
   const uint16_t group = field < 0 ? 0x4F6A : rom16(0x810000 + (uint32_t)icons + (uint32_t)(uint16_t)(level << 1));
   GroupWalk w = sprite_group_walk(0x7E0000 | group);
-  fn(in->c);
+  fn(in->d, in->c);
   if(in->c) {
     if(field < 0) return;
     if(level != 0) setAdc16(out, (uint16_t)((i + 2) & 0x3F), base);
@@ -9880,8 +9880,8 @@ static void shopItemDispatchOut(const Regs* in, Regs* out, bool upload) {
   uint16_t level = list ? (uint16_t)(rd16(0x0393 + (uint32_t)field + rd16(DP + 0x94)) & 0x007F) : 0;
   uint16_t group = list ? rom16(0x810000 + (uint32_t)icons[list - 1] + (uint32_t)(uint16_t)(level << 1)) : 0x4F6A;
   GroupWalk w = sprite_group_walk(0x7E0000 | group);
-  if(upload) shop_item_dispatch_upload();
-  else shop_item_dispatch_icon();
+  if(upload) shop_item_dispatch_upload(in->d);
+  else shop_item_dispatch_icon(in->d);
   if(upload) {
     if(list == 0 || (list >= 6 && level == 0)) {  // no upload: V of the entry's ADC, C of the SEC
       setAdc16(out, (uint16_t)(rd16(DP + 0x4A) << 4), rom16(0x81A892 + (uint32_t)(uint16_t)(list << 1)));
@@ -9901,10 +9901,10 @@ static void call_shop_item_icon_2(const Regs* in, Regs* out) { shopItemIconOut(i
 static void call_shop_item_icon_3(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_3, 2, 0xBC76); }
 static void call_shop_item_icon_4(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_4, 3, 0xBCBE); }
 static void call_shop_item_icon_5(const Regs* in, Regs* out) { shopItemIconOut(in, out, shop_item_icon_5, 4, 0xBC9A); }
-static void call_shop_item_view_f(const Regs* in, Regs* out) { (void)out; shop_item_view_f(in->y); }
+static void call_shop_item_view_f(const Regs* in, Regs* out) { (void)out; shop_item_view_f(in->d, in->y); }
 // the ring: no register outputs (its view reloads them); its pieces: A = 0, X = the frame
 // x 6, Y = slot + 4 (N/Z of the INY), C and V of the y position's ADC
-static void call_shop_ring(const Regs* in, Regs* out) { (void)in; (void)out; shop_ring(); }
+static void call_shop_ring(const Regs* in, Regs* out) { (void)in; (void)out; shop_ring(in->d); }
 static void ringPieceOut(const Regs* in, Regs* out, uint32_t table, uint16_t slot) {
   uint16_t x = (uint16_t)(((in->a >> 8) & 0x000F) * 6);
   out->a = 0;
@@ -9915,12 +9915,12 @@ static void ringPieceOut(const Regs* in, Regs* out, uint32_t table, uint16_t slo
 }
 static void call_shop_ring_piece_front(const Regs* in, Regs* out) {
   uint16_t base = rd16(DP + 0x18), add = rd16(0x4D0E + (uint32_t)(((in->a >> 8) & 0x000F) * 6));
-  ringPieceOut(in, out, 0x4D0A, shop_ring_piece_front(in->a, in->y));
+  ringPieceOut(in, out, 0x4D0A, shop_ring_piece_front(in->d, in->a, in->y));
   setAdc16(out, base, add);
 }
 static void call_shop_ring_piece_back(const Regs* in, Regs* out) {
   uint16_t base = rd16(DP + 0x18), add = rd16(0x4D6E + (uint32_t)(((in->a >> 8) & 0x000F) * 6));
-  ringPieceOut(in, out, 0x4D6A, shop_ring_piece_back(in->a, in->y));
+  ringPieceOut(in, out, 0x4D6A, shop_ring_piece_back(in->d, in->a, in->y));
   setAdc16(out, base, add);
 }
 static void fuzz_shop_ring(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -10111,7 +10111,7 @@ static void fuzz_shop_bars(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 
 // A = Y = slot + $10 (flags of the ADC)
 static void call_shop_sprite_block(const Regs* in, Regs* out) {
-  out->a = out->y = shop_sprite_block(in->a, in->y);
+  out->a = out->y = shop_sprite_block(in->d, in->a, in->y);
   setNZ16(out, out->a);
   setAdc16(out, in->y, 0x0010);
 }
