@@ -6409,6 +6409,48 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road's check over the gate's movies, before the wiring (dsp4-01s, 2026-11-26)
+
+**The advisor's blocking check before `road_rows_project` calls the native road.**
+`tools/dsp4_road_check.py` was run on bench tapes (`--dsp4-tape-out`) of every gate movie that
+runs `$85:B3D7`, recorded as the gate runs them, without `--dsp4-firmware`:
+
+| Movie | Runs after a `$0A` (all exact) | Runs with no `$0A` since the last road run (apart; at most 1 off) |
+|---|---|---|
+| `autopilot_60k` | 17,516 | 1,048 (1,040 differ) |
+| `explore_buy` | 4,005 | 408 (406) |
+| `explore_pw` | 3,344 | 162 (160) |
+| `code_infodata` | 349 | 192 (191) |
+
+- **None has a `$0F` run, an edge (`$8001`) or a nonzero `$0242`** (the script fails on each),
+  so the wiring's traps for those paths will not fire in a slice.
+- **The bench's own DSP-4** (the default, without the firmware) gives the same road as the
+  firmware on these runs.
+
+**A correction to dsp4-01r: `$07` and `$08` are road commands, not sprite commands.** `$07`
+is sent from `$85:B962` (`road_rows_project2`), `$08` from `$81:861D` (`road_rows_stream`). The
+commands between two road runs that may set the rounding are `$07`, `$08`, `$03` and `$09`.
+- **Next, to name it:** replay a frame into the firmware, cut before each command, and probe the
+  rounding.
+- **For the port:** the switch of `road_rows_project` alone does not let a race run. The next
+  byte-protocol call after the road is that `$07`. Request A's remaining list is `$07`, `$08`,
+  `$09`, `$06`, and `$0D` for VS.
+
+**The wiring's plan** (the advisor's, next unit):
+- **The rounding as chip state in `src/dsp4.c`:** `dsp4_edges` sets it (`car_road_step`'s C
+  already calls it at `$81:F90E`, untaped), and the road uses it once.
+- **A global tracker in the harness:** the original's command words, found by their listing
+  sites. It treats the state as known only after a `$0A` or a road that drew, and copies it
+  into each sample at entry.
+- **Samples whose state is unknown are set apart.** The evidence prints their count, and a
+  negative row (the edges ignored) must fail.
+- **The row stays taped for its products,** with the road's stream declared `dsp4Native`.
+- **`$0F`, the object words and `$8001` become named traps.** Today the row's fuzz runs them
+  through the tape; that loss is to be recorded.
+
+**Check:** a measurement, recorded here (the script's exit status 0 on each tape). It changes
+no code.
+
 ## The road's first rounding: what a road run leaves (dsp4-01r, 2026-11-26)
 
 **Measured** with pairs of road runs on one probe chip (firmware, outputs only). The probe
