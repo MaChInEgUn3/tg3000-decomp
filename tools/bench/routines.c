@@ -1114,7 +1114,7 @@ static void fuzz_track_entry_bounds(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
 }
 
 // ---- spark_step ($80:EA77) ----  no register outputs (flags by liveness)
-static void call_spark_step(const Regs* in, Regs* out) { (void)in; (void)out; spark_step(); }
+static void call_spark_step(const Regs* in, Regs* out) { (void)out; spark_step(in->d); }
 // the sparks' lives and places, either buffer, the count around the laying window
 static void fuzz_spark_step(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
@@ -1145,7 +1145,7 @@ static void call_block_copy_7f2000(const Regs* in, Regs* out) {
   uint16_t len = bus_rd16((0x81D419 + (uint32_t)in->y) & 0xFFFFFF);
   out->x = in->x;
   out->y = in->y;
-  block_copy_7f2000(&out->x, &out->y);
+  block_copy_7f2000(in->d, &out->x, &out->y);
   out->a = (uint16_t)((len & 0xFF00) | bus_rd8((0x81D419 + (uint32_t)(uint16_t)(out->y - 1)) & 0xFFFFFF));
   out->n = false;
   out->z = true;
@@ -1969,7 +1969,7 @@ static void call_clear_041c(const Regs* in, Regs* out) {
 // zero; C V as on entry
 static void call_name_copy_7f2000(const Regs* in, Regs* out) {
   out->x = in->x;
-  name_copy_7f2000(&out->x, &out->y);
+  name_copy_7f2000(in->d, &out->x, &out->y);
   out->a = 0x1400;
   out->n = out->z = false;
 }
@@ -1987,12 +1987,12 @@ static void fuzz_name_copy_7f2000(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
 // block_copy_7f2000's exit: A = its length word's high byte : its last byte, N clear, Z set;
 // C clear (the ASL of the car, which block_copy_7f2000 leaves alone), except with no car in
 // $80:E8F4 (its tail jump: C as on entry); V as on entry
-static void carBlocksOut(const Regs* in, Regs* out, void (*fn)(uint16_t*, uint16_t*)) {
+static void carBlocksOut(const Regs* in, Regs* out, void (*fn)(uint16_t, uint16_t*, uint16_t*)) {
   out->x = in->x;
   out->y = in->y;
-  fn(&out->x, &out->y);
+  fn(in->d, &out->x, &out->y);
   // the last block's start, from the car
-  uint16_t car = rd16(0x03A8 + (uint32_t)rd16(DP + 0x94)), start;
+  uint16_t car = rd16(0x03A8 + (uint32_t)rd16((uint16_t)(in->d + 0x94))), start;
   if(fn == car_blocks_7f2000) start = (car & 0x8000) ? 0x00A8 : 0x00BE;
   else start = rom16(0x81D3F1 + (uint32_t)(uint16_t)(((car & 0x8000) ? 0x0013 : car) << 1));
   uint16_t len = bus_rd16((0x81D419 + (uint32_t)start) & 0xFFFFFF);
@@ -3102,7 +3102,7 @@ static void fuzz_track_object_test_sides(Regs* r, uint8_t* ram, uint32_t (*rnd)(
 // it: no outputs (the bench judges the flags from the watched returns).
 static void call_ticker_draw(const Regs* in, Regs* out) {
   (void)out;
-  ticker_draw((uint8_t)in->a, in->x, in->y);
+  ticker_draw(in->d, (uint8_t)in->a, in->x, in->y);
 }
 // a text in low WRAM (bank $7F's mirror is not used: bank $81's is): capitals, digits,
 // spaces, a few marks, codes 1, 2 (with a count), 3 and 5, ending in code 0; the queue,
@@ -3368,7 +3368,7 @@ static void fuzz_car_contacts_chain(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
 // SBC #$0900 of the old D+$6E, which is D+$6C after it).
 static void call_ticker_scene_step(const Regs* in, Regs* out) {
   (void)in;
-  out->c = ticker_scene_step();
+  out->c = ticker_scene_step(in->d);
 }
 // the sparks', the sprites' and the ticker's state; a valid line at $7F:2000 + D+$5E; the
 // camera and view words; D+$46 counting either way (and $FFFF), D+$48/$4A keeping the list
@@ -5125,6 +5125,20 @@ static void call_top_after_title(const Regs* in, Regs* out) {
   out->atEnd2 = !top_after_title();
   // C: the CMP's (the same group, or $03E2 bit 0 skipping the test), else player_in_top5's (clear)
   out->c = (out->atEnd2 || two) ? group >= was : false;
+}
+// the two-task handlers' parts after their switch (port request D): the NMI's ends at its JMP to
+// nmi_tail with D = 0 (its PLD) and the data bank pushed at entry (its PLB); the IRQ's at its
+// PLD with D = $0200 and DB = $81
+static void call_nmi_menu_frame_tail(const Regs* in, Regs* out) {
+  nmi_menu_frame_tail();
+  out->d = 0x0000;
+  out->db = in->db;
+}
+static void call_irq_menu_frame_tail(const Regs* in, Regs* out) {
+  (void)in;
+  irq_menu_frame_tail();
+  out->d = 0x0200;
+  out->db = 0x81;
 }
 static void call_sound_boot(const Regs* in, Regs* out) {
   sound_boot(in->d);
@@ -7542,11 +7556,11 @@ static void call_ticker_screen_wrong_carry(const Regs* in, Regs* out) {  // (neg
   out->c = true;
 }
 static void call_ticker_screen_show(const Regs* in, Regs* out) {
-  out->c = ticker_screen_show(in->c);
+  out->c = ticker_screen_show(in->d, in->c);
   out->a = 0x89B2;
   out->n = true;
   out->z = false;
-  out->v = (rd16(DP + 0x76) >> 14) & 1;
+  out->v = (rd16((uint16_t)(in->d + 0x76)) >> 14) & 1;
 }
 
 // the title screen, cut at its first two waits: the load ends after its loop clearing $1516..$1534
@@ -13194,6 +13208,10 @@ const Routine routines[] = {
   {.name = "top_after_title", .entry = 0x808B25, .end = 0x808B55, .endAt = 0x808B55, .endAt2 = 0x808B59,
    .source = "src/boot.c", .needM16 = true, .needX16 = true, .call = call_top_after_title,
    .holes = {{0x808B50, 0x808B55}}},  // never run: the player not in the first five
+  {.name = "nmi_menu_frame_tail", .entry = 0x80BC60, .end = 0x80BC98, .endAt = 0x80BC98, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_menu_frame_tail, .holes = {{0x80BC74, 0x80BC77}}},
+  {.name = "irq_menu_frame_tail", .entry = 0x80BDCD, .end = 0x80BE2C, .endAt = 0x80BE2C, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .call = call_irq_menu_frame_tail},
   {.name = "game_boot_head", .entry = 0x808002, .end = 0x80802E, .endAt = 0x80802E, .source = "src/boot.c",
    .emuEntry = true, .call = call_game_boot_head},  // once per movie: live only
   {.name = "game_boot_body", .entry = 0x80803C, .end = 0x80807A, .endAt = 0x80807A, .source = "src/boot.c",
@@ -13764,7 +13782,7 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x81, .compareA = true, .compareX = true, .compareY = true,
    .call = call_ticker_screen},
   {.name = "ticker_screen_show", .entry = 0x80E5FA, .end = 0x80E88E, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x81, .waitsForInterrupts = true, .maxInsns = 40000000,
+   .needX16 = true, .db = 0x81, .waitsForInterrupts = true, .maxInsns = 40000000,
    .call = call_ticker_screen_show, .holes = {{0x80E6AE, 0x80E6B1}, {0x80E70D, 0x80E71C}, {0x80E734, 0x80E737}, {0x80E7D5, 0x80E7D8}},
    .alsoIn = {{0x80E88E, 0x80E8B5}}},  // the still view past the RTS (never run; not counted)
   // the title screen, cut at its first two waits (one path no movie runs: D+$5A's uploads)
@@ -14432,11 +14450,11 @@ const Routine routines[] = {
   {.name = "track_entry_bounds", .entry = 0x81E7DA, .end = 0x81E812, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_track_entry_bounds, ALL_OUTPUTS, .fuzz = fuzz_track_entry_bounds},
   {.name = "spark_step", .entry = 0x80EA77, .end = 0x80EB66, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_spark_step, .fuzz = fuzz_spark_step},
+   .needX16 = true, .db = 0x81, .call = call_spark_step, .fuzz = fuzz_spark_step},
   {.name = "car_clear_53", .entry = 0x83FD3C, .end = 0x83FD45, .source = "src/misc.c", .needM16 = true,
    .call = call_car_clear_53, ALL_OUTPUTS},
   {.name = "block_copy_7f2000", .entry = 0x80E8B5, .end = 0x80E8CE, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_block_copy_7f2000, ALL_OUTPUTS, .fuzz = fuzz_block_copy_7f2000},
+   .needX16 = true, .db = 0x81, .call = call_block_copy_7f2000, ALL_OUTPUTS, .fuzz = fuzz_block_copy_7f2000},
   {.name = "text_line_push", .entry = 0x8A99E2, .end = 0x8A99FC, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_text_line_push, .compareX = true, .fuzz = fuzz_text_line_push},
   {.name = "track_object_test", .entry = 0x83FA34, .end = 0x83FA6A,  // (verify-cover-1: its tail)
@@ -14548,12 +14566,12 @@ const Routine routines[] = {
   {.name = "clear_041c", .entry = 0x8A9D1E, .end = 0x8A9D2D, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .call = call_clear_041c, ALL_OUTPUTS},
   {.name = "name_copy_7f2000", .entry = 0x80E8CE, .end = 0x80E8F4, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_name_copy_7f2000, ALL_OUTPUTS, .fuzz = fuzz_name_copy_7f2000},
+   .needX16 = true, .db = 0x81, .call = call_name_copy_7f2000, ALL_OUTPUTS, .fuzz = fuzz_name_copy_7f2000},
   {.name = "car_blocks_7f2000", .entry = 0x80E8F4, .end = 0x80E911, .alsoIn = {{0x80E8B5, 0x80E8CE}},
    .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_car_blocks_7f2000, ALL_OUTPUTS, .fuzz = fuzz_car_blocks},
   {.name = "car_block_7f2000", .entry = 0x80E911, .end = 0x80E925, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_car_block_7f2000, ALL_OUTPUTS, .fuzz = fuzz_car_blocks},
+   .needX16 = true, .db = 0x81, .call = call_car_block_7f2000, ALL_OUTPUTS, .fuzz = fuzz_car_blocks},
   {.name = "track_next", .entry = 0x84A41B, .end = 0x84A487, .rtl = true, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .lowWramDb = true, .call = call_track_next, ALL_OUTPUTS, .fuzz = fuzz_track_next},
   {.name = "results_init", .entry = 0x84A4ED, .end = 0x84A553, .rtl = true, .source = "src/misc.c", .needM16 = true,
@@ -14640,7 +14658,7 @@ const Routine routines[] = {
    .needX16 = true, .lowWramDb = true, .call = call_track_object_test_sides, .fuzz = fuzz_track_object_test_sides,
    .holes = {{0x83FC90, 0x83FC98}}},  // the jump table
   {.name = "ticker_draw", .entry = 0x80EBF7, .end = 0x80EE56, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .call = call_ticker_draw, .fuzz = fuzz_ticker_draw,
+   .needX16 = true, .call = call_ticker_draw, .fuzz = fuzz_ticker_draw,
    .holes = {{0x80EDDB, 0x80EDF6}}},  // the control-code table and the marks
   {.name = "race_hud_sprites", .entry = 0x80D823, .end = 0x80DA5F, .source = "src/hud.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_race_hud_sprites, .fuzz = fuzz_race_hud_sprites},
@@ -14665,7 +14683,7 @@ const Routine routines[] = {
   {.name = "car_contacts_chain", .entry = 0x81F21E, .end = 0x81F251, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_car_contacts_chain, ALL_OUTPUTS, .fuzz = fuzz_car_contacts_chain},
   {.name = "ticker_scene_step", .entry = 0x80E925, .end = 0x80EA77, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x81, .call = call_ticker_scene_step, .fuzz = fuzz_ticker_scene_step},
+   .needX16 = true, .db = 0x81, .call = call_ticker_scene_step, .fuzz = fuzz_ticker_scene_step},
   {.name = "title_frame_step", .entry = 0x80F5DE, .end = 0x80F6AD, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x81, .call = call_title_frame_step, ALL_OUTPUTS, .fuzz = fuzz_title_frame_step},
   {.name = "title_fade_step", .entry = 0x80F6AD, .end = 0x80F6FD, .source = "src/misc.c", .needM16 = true,

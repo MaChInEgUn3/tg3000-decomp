@@ -6789,6 +6789,7 @@ CODE_80BC4F:
     sta.w $0278                 ; $80BC59
     lda.w $0178                 ; $80BC5C
     tcs                         ; $80BC5F
+nmi_menu_frame_tail:
     lda.w $0176                 ; $80BC60
     and.w $0276                 ; $80BC63
     and.w #$0010                ; $80BC66
@@ -6961,6 +6962,7 @@ CODE_80BCCB:
     tcs                         ; $80BDC8
     lda.w #$0200                ; $80BDC9
     tcd                         ; $80BDCC
+irq_menu_frame_tail:
     lda.b $64                   ; $80BDCD
     beq CODE_80BE1D             ; $80BDCF
     lda.b $6A                   ; $80BDD1

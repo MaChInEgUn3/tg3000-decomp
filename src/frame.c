@@ -2,6 +2,7 @@
 #include "frame.h"
 
 #include "misc.h"
+#include "shop.h"
 #include "video_dma.h"
 #include "vram_queue.h"
 #include "pads.h"
@@ -339,24 +340,80 @@ void nmi_menu_frame(void) {
   platform_set_irq_h(0x0010);
   platform_set_interrupts(0xB1);
   wr16(0x0005, 0xBC9B);  // the IRQ trampoline's target: $80:BC9B, the second task's frame
-  const uint16_t left = rd16(0x0164);
-  if(left) {  // the large upload, $1C00 bytes a frame
-    const uint16_t vram = rd16(0x016A), src = rd16(0x0166);
-    uint16_t size = left;
-    if(left >= 0x1C00) {
-      wr16(0x0164, (uint16_t)(left - 0x1C00));
-      const uint32_t moved = (uint32_t)src + 0x1C00;
-      wr16(0x0166, (uint16_t)moved);
-      wr16(0x0168, (uint16_t)(rd16(0x0168) + (moved > 0xFFFF)));
-      wr16(0x016A, (uint16_t)(vram + 0x0E00));
-      size = 0x1C00;
-    } else {
-      wr16(0x0164, 0);
-    }
-    video_upload_vram(vram, (uint32_t)rd8(0x0168) << 16 | src, size);  // the bank as it is now
-  }
+  upload_slot_drain(0x0100);
   const uint8_t brightness = rd8(0x019B);
   video_set_display(brightness ? brightness : 0x80);
+}
+
+// A task's large upload slot (its D+$64 bytes left, D+$66/$68 the source, D+$6A the VRAM word):
+// $1C00 bytes a frame (port request D: task 1's in nmi_menu_frame, task 2's in its IRQ's tail).
+void upload_slot_drain(uint16_t dp) {
+  const uint16_t left = rd16((uint16_t)(dp + 0x64));
+  if(!left) return;
+  const uint16_t vram = rd16((uint16_t)(dp + 0x6A)), src = rd16((uint16_t)(dp + 0x66));
+  uint16_t size = left;
+  if(left >= 0x1C00) {
+    wr16((uint16_t)(dp + 0x64), (uint16_t)(left - 0x1C00));
+    const uint32_t moved = (uint32_t)src + 0x1C00;
+    wr16((uint16_t)(dp + 0x66), (uint16_t)moved);
+    wr16((uint16_t)(dp + 0x68), (uint16_t)(rd16((uint16_t)(dp + 0x68)) + (moved > 0xFFFF)));
+    wr16((uint16_t)(dp + 0x6A), (uint16_t)(vram + 0x0E00));
+    size = 0x1C00;
+  } else {
+    wr16((uint16_t)(dp + 0x64), 0);
+  }
+  video_upload_vram(vram, (uint32_t)rd8((uint16_t)(dp + 0x68)) << 16 | src, size);  // the bank as it is now
+}
+
+// A task's per-frame hook, the word at its D+$EC (called after the task switch): $80:B94F does
+// nothing; $80:B149 is the shop panel's frame; $80:C5E0 is the menu bar's line window.
+void task_frame_hook(uint16_t dp) {
+  const uint16_t hook = rd16((uint16_t)(dp + 0xEC));
+  if(hook == 0xB94F) return;
+  if(hook == 0xB149) {  // the shop panel's frame (set by task 1's shop code)
+    if(dp != DP) tg3000_unported("$80:B149: the shop panel's frame in task 2");
+    shop_panel_frame();
+    return;
+  }
+  if(hook == 0xC5E0) {  // the menu bar: its lines, then its step by D+$4E ($80:C636), then its end
+    switch(menu_bar_lines(dp) >> 1) {
+    case 0: break;
+    case 1: menu_bar_open_step(dp); break;
+    case 2: menu_bar_close_step(dp); break;
+    case 3: menu_bar_open_colours_step(dp); break;
+    case 4:
+      if(dp != DP) tg3000_unported("$80:C68D: the controls menu's bar in task 2");
+      menu_bar_open_controls_step();
+      break;
+    case 5:
+      if(dp != DP) tg3000_unported("$80:C6A2: the menu panel's bar in task 2");
+      menu_bar_open_panel_step();
+      break;
+    default: tg3000_unported("$80:C636: a menu bar step past its table"); break;
+    }
+    menu_bar_lines_end(dp);
+    return;
+  }
+  tg3000_unported("a task's frame hook other than $80:B94F, $80:B149 and $80:C5E0");
+}
+
+// TG3000_ROUTINE($80:BC60) nmi_menu_frame_tail
+// After the switch to task 1 (the stack's: a port's scheduler, port request D): when both tasks
+// wait at their end (bit 4 of $0176 and $0276), both are released (bit 3); then, once vblank is
+// over, task 1's hook and the common tail.
+void nmi_menu_frame_tail(void) {
+  if(rd16(0x0176) & rd16(0x0276) & 0x0010) {
+    wr16(0x0176, (uint16_t)(rd16(0x0176) | 0x0008));
+    wr16(0x0276, (uint16_t)(rd16(0x0276) | 0x0008));
+  }
+  task_frame_hook(0x0100);
+}
+
+// TG3000_ROUTINE($80:BDCD) irq_menu_frame_tail
+// After the switch to task 2: its large upload slot, then its hook.
+void irq_menu_frame_tail(void) {
+  upload_slot_drain(0x0200);
+  task_frame_hook(0x0200);
 }
 
 // TG3000_ROUTINE($80:BC9B) irq_menu_frame

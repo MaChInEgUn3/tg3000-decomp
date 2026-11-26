@@ -319,7 +319,7 @@ void rotation_from_angle(void);
 // life, at its position + D+$E7. Then, while D+$86 - $64 is below $1E, new sparks are
 // laid at D+$3E (life $1C): two (positions $81:D2E3 by that value, and $808 less), and
 // when D+$86 is a multiple of 4 two more ($81:D323 with life $1C, $81:D367 with life $3C).
-void spark_step(void);
+void spark_step(uint16_t dp);
 
 // $83:FD3C: the byte dp+$53 = 0 (a car's direct page `dp`).
 void car_clear_53(uint16_t dp);
@@ -332,7 +332,7 @@ void car_set_53(uint16_t dp, uint8_t value);
 // $80:E8B5: a block from $81:D419 + `*y` (DB = $81) copied to $7F:2000 + `*x`: its length
 // (the low byte of the word there; 0 = 256, kept in D+$14) then that many bytes. Both
 // indices move on.
-void block_copy_7f2000(uint16_t* x, uint16_t* y);
+void block_copy_7f2000(uint16_t dp, uint16_t* x, uint16_t* y);
 
 // $8A:99E2: line `x` / 2 (16 bytes a line) of the text map at $7F:7918 pushed to the byte
 // buffer (byte_buffer_push), up to its zero.
@@ -799,15 +799,15 @@ void clear_041c(void);
 
 // $80:E8CE: the player's name (bytes at $037E + D+$94, up to its zero) to $7F:2000 + `*x`,
 // then the words $0100 and $1400. `*x` moves past them, `*y` ends at the zero.
-void name_copy_7f2000(uint16_t* x, uint16_t* y);
+void name_copy_7f2000(uint16_t dp, uint16_t* x, uint16_t* y);
 
 // $80:E8F4: the player's car's blocks (the car is the word $03A8 + D+$94) to $7F:2000 +
 // `*x` (block_copy_7f2000): the one $81:D3C9 + 2 * car points at, then block $BE; with no
 // car (negative), block $A8 alone (never run).
-void car_blocks_7f2000(uint16_t* x, uint16_t* y);
+void car_blocks_7f2000(uint16_t dp, uint16_t* x, uint16_t* y);
 
 // $80:E911: the one block $81:D3F1 + 2 * car points at (car $13 when negative, never run).
-void car_block_7f2000(uint16_t* x, uint16_t* y);
+void car_block_7f2000(uint16_t dp, uint16_t* x, uint16_t* y);
 
 // $84:A41B: the next track ($0444) in the variant's order (bits 8-9 of $03DC: $100 the
 // list at $8A:CADE, $200 at $8A:CB01, else at $8A:CAC4, never run): the byte after the
@@ -1010,7 +1010,7 @@ bool track_object_test_sides(uint16_t dp);
 // - Last, unless D+$E1 is negative: D+$E1 = $3B while the queue's 14th word is set; from
 //   $1E on it draws an end marker ($81:CDA1) in a fading palette; it counts down, $3B
 //   after 0.
-void ticker_draw(uint8_t bank, uint16_t x, uint16_t text);
+void ticker_draw(uint16_t dp, uint8_t bank, uint16_t x, uint16_t text);
 
 // $8A:C15D: the text buffer at $7F:7D00 printed as tiles (D = $0100), up to its 0 byte:
 // $80 starts a new row (D+$3C, from column 2 in D+$3A; from row $0C on, D+$90 = 0, and
@@ -1060,7 +1060,7 @@ bool car_contacts_chain(uint16_t x, uint16_t y);
 //   negative (then D+$46 = $8000), it counts back up and a fade starts. At $FFFF a fade
 //   starts.
 // Returns the carry it leaves (D+$46 = $FFFF when negative, else oam_finish_near's).
-bool ticker_scene_step(void);
+bool ticker_scene_step(uint16_t dp);
 
 // $80:F5DE: a title step by its frame D+$40 (D = $0100). At frames $13A-$140 (even), $614
 // bytes from $7E:9180 / $9768 / $9D50 / $A338 go to VRAM 0 / $2F4 / $5E8 / $8DC. Then
@@ -1632,7 +1632,7 @@ void title_screen_show(void);
 // carry the original leaves (the last ticker_scene_step's, else `carry`).
 void ticker_screen(void);
 void ticker_screen_load(void);
-bool ticker_screen_show(bool carry);
+bool ticker_screen_show(uint16_t dp, bool carry);
 
 // The intro ($80:EE56): its load (up to the first wait) and its show ($80:F115), a frame at a
 // time through D+$3E's steps until the fade is done (returns whether $0026 bit 2 was set).

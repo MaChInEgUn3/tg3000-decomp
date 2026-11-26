@@ -243,6 +243,24 @@ void platform_wait_vblank_start(void);
 // at once.
 void platform_wait_dsp4_start(void);
 
+// Two-task screens (port request D; docs/DECISIONS.md, "Two-task screens"). The shop, the
+// championship screen and the ticker run their code twice, as two tasks: task 1 with D = $0100
+// (player 1's half), task 2 with D = $0200 (player 2's), sharing no WRAM. Each is ordinary
+// blocking C that waits with platform_wait_vblank.
+// - platform_task_split(task): called by task 1 (the screen's code) right after
+//   split_screen_setup. Task 1 keeps running; task 2 is task(0x0200) and gets its first turn at
+//   task 1's next platform_wait_vblank.
+// - From then on, when task 1 calls platform_wait_vblank, the platform: runs irq_menu_frame
+//   then irq_menu_frame_tail; runs task 2 until its next platform_wait_vblank (or until its
+//   function returns: then task 2 ends, with no more turns); presents the frame; runs
+//   nmi_menu_frame then nmi_menu_frame_tail then nmi_tail; and resumes task 1. (On the console:
+//   the IRQ at line 108 switches to task 2, the NMI at vblank back to task 1.)
+// - platform_task_join(): called by task 1 only, at the screen's end; task 2 ends if it still
+//   runs. One split at a time: a split inside a split is a trap.
+// The bench runs the tasks' pieces as rows of their own, either D: there both calls do nothing.
+void platform_task_split(void (*task)(uint16_t dp));
+void platform_task_join(void);
+
 // Return after the next interrupt has run. On the console the NMI and IRQ handlers do
 // the frame's work; they are game code too (ported to C like the rest), so a port
 // presents the frame here and then runs the game's NMI code, and runs its IRQ code at

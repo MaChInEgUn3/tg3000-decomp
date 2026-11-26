@@ -239,6 +239,10 @@ void sound_upload_end(void) {
 void platform_wait_vblank_start(void) {}
 void platform_wait_dsp4_start(void) {}
 
+// port request D: the two-task screens' tasks are verified as rows (either D); no scheduler here
+void platform_task_split(void (*task)(uint16_t dp)) { (void)task; }
+void platform_task_join(void) {}
+
 // Inputs come from what the original read (difftest_input replays it in order).
 bool sound_is_ready(void) { return difftest_input(0x2141) == 0x77; }
 bool video_is_pal(void) { return (difftest_input(0x213F) & 0x10) != 0; }

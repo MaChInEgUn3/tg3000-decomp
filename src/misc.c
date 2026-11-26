@@ -1708,54 +1708,54 @@ void track_entry_bounds(void) {
 
 #define SPARKS 0x11000  // $7F:1000
 
-static void spark_lay(uint16_t life, uint16_t at) {
-  const uint32_t x = (uint16_t)(rd16(DP + 0x3E) + rd16(DP + 0x5E));
+static void spark_lay(uint16_t dp, uint16_t life, uint16_t at) {
+  const uint32_t x = (uint16_t)(rd16(dp + 0x3E) + rd16(dp + 0x5E));
   wr16(SPARKS + x, life);
   wr16(SPARKS + 2 + x, at);
-  wr16(DP + 0x3E, (uint16_t)((rd16(DP + 0x3E) + 4) & 0x007F));
+  wr16(dp + 0x3E, (uint16_t)((rd16(dp + 0x3E) + 4) & 0x007F));
 }
 
 // TG3000_ROUTINE($80:EA77) spark_step
-void spark_step(void) {
-  uint16_t x = (uint16_t)(rd16(DP + 0x3E) + rd16(DP + 0x5E));
-  wr16(DP + 0x14, 0x0020);
+void spark_step(uint16_t dp) {
+  uint16_t x = (uint16_t)(rd16(dp + 0x3E) + rd16(dp + 0x5E));
+  wr16(dp + 0x14, 0x0020);
   do {
     uint16_t life = rd16(SPARKS + (uint32_t)x), y = (uint16_t)((life >> 1) & 0xFFFE);
     if(y & 0x000F) {
       wr16(SPARKS + (uint32_t)x, (uint16_t)(life - 1));
-      const uint32_t s = rd16(DP + 0x74);
+      const uint32_t s = rd16(dp + 0x74);
       wr16(0x0902 + s, rom16(0x81D2C3 + (uint32_t)y));
-      wr16(0x0900 + s, (uint16_t)(rd16(SPARKS + 2 + (uint32_t)x) + rd16(DP + 0xE7)));
+      wr16(0x0900 + s, (uint16_t)(rd16(SPARKS + 2 + (uint32_t)x) + rd16(dp + 0xE7)));
       wr16(0x0B01 + s, 0x0100);
-      wr16(DP + 0x74, (uint16_t)(s + 4));
+      wr16(dp + 0x74, (uint16_t)(s + 4));
     }
     x = (uint16_t)((x + 4) & 0x807F);
-    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
-  } while(rd16(DP + 0x14) != 0);
-  uint16_t n = rd16(DP + 0x86);
+    wr16(dp + 0x14, (uint16_t)(rd16(dp + 0x14) - 1));
+  } while(rd16(dp + 0x14) != 0);
+  uint16_t n = rd16(dp + 0x86);
   if(n < 0x0064 || (uint16_t)(n - 0x0064) >= 0x001E) return;
   const uint32_t y = (uint16_t)((n - 0x0064) << 1);
-  spark_lay(0x001C, rom16(0x81D2E3 + y));
-  spark_lay(0x001C, (uint16_t)(rom16(0x81D2E3 + y) - 0x0808));
+  spark_lay(dp, 0x001C, rom16(0x81D2E3 + y));
+  spark_lay(dp, 0x001C, (uint16_t)(rom16(0x81D2E3 + y) - 0x0808));
   if(n & 0x0003) return;
-  spark_lay(0x001C, rom16(0x81D323 + y));
-  spark_lay(0x003C, rom16(0x81D367 + y));  // (the original tests D+$86 & 3 again: the same)
+  spark_lay(dp, 0x001C, rom16(0x81D323 + y));
+  spark_lay(dp, 0x003C, rom16(0x81D367 + y));  // (the original tests D+$86 & 3 again: the same)
 }
 
 // TG3000_ROUTINE($83:FD3C) car_clear_53
 void car_clear_53(uint16_t dp) { wr8(dp + 0x53, 0); }
 
 // TG3000_ROUTINE($80:E8B5) block_copy_7f2000
-void block_copy_7f2000(uint16_t* x, uint16_t* y) {
+void block_copy_7f2000(uint16_t dp, uint16_t* x, uint16_t* y) {
   // DB-relative reads ($D419,Y with DB = $81): past $81:FFFF they reach bank $82
-  wr16(DP + 0x14, bus_rd16((0x81D419 + (uint32_t)*y) & 0xFFFFFF));
+  wr16(dp + 0x14, bus_rd16((0x81D419 + (uint32_t)*y) & 0xFFFFFF));
   *y = (uint16_t)(*y + 2);
   do {  // the count is an 8-bit DEC
     wr8(0x12000 + (uint32_t)*x, bus_rd8((0x81D419 + (uint32_t)*y) & 0xFFFFFF));
     *x = (uint16_t)(*x + 1);
     *y = (uint16_t)(*y + 1);
-    wr8(DP + 0x14, (uint8_t)(rd8(DP + 0x14) - 1));
-  } while(rd8(DP + 0x14) != 0);
+    wr8(dp + 0x14, (uint8_t)(rd8(dp + 0x14) - 1));
+  } while(rd8(dp + 0x14) != 0);
 }
 
 // TG3000_ROUTINE($8A:99E2) text_line_push
@@ -2514,8 +2514,8 @@ void clear_041c(void) {
 }
 
 // TG3000_ROUTINE($80:E8CE) name_copy_7f2000
-void name_copy_7f2000(uint16_t* x, uint16_t* y) {
-  *y = rd16(DP + 0x94);
+void name_copy_7f2000(uint16_t dp, uint16_t* x, uint16_t* y) {
+  *y = rd16(dp + 0x94);
   for(uint8_t c; (c = rd8(0x037E + (uint32_t)*y)) != 0; *x = (uint16_t)(*x + 1), *y = (uint16_t)(*y + 1))
     wr8(0x12000 + (uint32_t)*x, c);
   wr16(0x12000 + (uint32_t)*x, 0x0100);
@@ -2523,28 +2523,28 @@ void name_copy_7f2000(uint16_t* x, uint16_t* y) {
   *x = (uint16_t)(*x + 4);
 }
 
-static uint16_t player_car(void) { return rd16(0x03A8 + (uint32_t)rd16(DP + 0x94)); }
+static uint16_t player_car(uint16_t dp) { return rd16(0x03A8 + (uint32_t)rd16(dp + 0x94)); }
 
 // TG3000_ROUTINE($80:E8F4) car_blocks_7f2000
-void car_blocks_7f2000(uint16_t* x, uint16_t* y) {
-  const uint16_t car = player_car();
+void car_blocks_7f2000(uint16_t dp, uint16_t* x, uint16_t* y) {
+  const uint16_t car = player_car(dp);
   if(car & 0x8000) {
     *y = 0x00A8;
-    block_copy_7f2000(x, y);
+    block_copy_7f2000(dp, x, y);
     return;
   }
   *y = rom16(0x81D3C9 + (uint32_t)(uint16_t)(car << 1));
-  block_copy_7f2000(x, y);
+  block_copy_7f2000(dp, x, y);
   *y = 0x00BE;
-  block_copy_7f2000(x, y);
+  block_copy_7f2000(dp, x, y);
 }
 
 // TG3000_ROUTINE($80:E911) car_block_7f2000
-void car_block_7f2000(uint16_t* x, uint16_t* y) {
-  uint16_t car = player_car();
+void car_block_7f2000(uint16_t dp, uint16_t* x, uint16_t* y) {
+  uint16_t car = player_car(dp);
   if(car & 0x8000) car = 0x0013;
   *y = rom16(0x81D3F1 + (uint32_t)(uint16_t)(car << 1));
-  block_copy_7f2000(x, y);
+  block_copy_7f2000(dp, x, y);
 }
 
 // TG3000_ROUTINE($84:A41B) track_next
@@ -3141,68 +3141,68 @@ bool track_object_test_sides(uint16_t dp) {
 static uint16_t q7f(uint16_t at) { return rd16(0x10000 + (uint32_t)at); }
 
 // One 2-tile sprite (16 pixels tall) at D+$CA: tiles `top` and `bottom`, both | D+$16.
-static void ticker_sprite(uint16_t top, uint16_t bottom) {
-  const uint32_t o = rd16(DP + 0x74);
-  wr16(0x0902 + o, (uint16_t)(top | rd16(DP + 0x16)));
-  wr16(0x0906 + o, (uint16_t)(bottom | rd16(DP + 0x16)));
-  wr16(0x0900 + o, rd16(DP + 0xCA));
-  wr16(0x0904 + o, (uint16_t)(rd16(DP + 0xCA) + 0x0800));
+static void ticker_sprite(uint16_t dp, uint16_t top, uint16_t bottom) {
+  const uint32_t o = rd16(dp + 0x74);
+  wr16(0x0902 + o, (uint16_t)(top | rd16(dp + 0x16)));
+  wr16(0x0906 + o, (uint16_t)(bottom | rd16(dp + 0x16)));
+  wr16(0x0900 + o, rd16(dp + 0xCA));
+  wr16(0x0904 + o, (uint16_t)(rd16(dp + 0xCA) + 0x0800));
   wr16(0x0B01 + o, 0);
   wr16(0x0B05 + o, 0);
-  wr16(DP + 0x74, (uint16_t)(o + 8));
+  wr16(dp + 0x74, (uint16_t)(o + 8));
 }
 
 // The end: the marker while D+$E1 is $1E or more, and its countdown.
-static void ticker_end(void) {
-  if(rd16(DP + 0xE1) & 0x8000) return;
-  if(q7f((uint16_t)(rd16(DP + 0x5E) + 0x1A)) != 0xFFFF) wr16(DP + 0xE1, 0x003B);
-  uint16_t e = rd16(DP + 0xE1);
+static void ticker_end(uint16_t dp) {
+  if(rd16(dp + 0xE1) & 0x8000) return;
+  if(q7f((uint16_t)(rd16(dp + 0x5E) + 0x1A)) != 0xFFFF) wr16(dp + 0xE1, 0x003B);
+  uint16_t e = rd16(dp + 0xE1);
   if(e >= 0x001E) {
     uint16_t a = (uint16_t)(e - 0x0020);
     if(a & 0x8000) a = 0;
-    wr16(DP + 0x16, (uint16_t)((((a >> 1) & 0x000E) << 8) + 0x3200));
-    const uint32_t o = rd16(DP + 0x74);
-    wr16(0x0902 + o, (uint16_t)(rd16(DP + 0x16) + bus_rd16(0x81CDA1)));
-    wr16(0x0906 + o, (uint16_t)(bus_rd16(0x81CDA3) + rd16(DP + 0x16)));
-    wr16(0x0900 + o, rd16(DP + 0xCA));
-    wr16(0x0904 + o, (uint16_t)(rd16(DP + 0xCA) + 0x0800));
+    wr16(dp + 0x16, (uint16_t)((((a >> 1) & 0x000E) << 8) + 0x3200));
+    const uint32_t o = rd16(dp + 0x74);
+    wr16(0x0902 + o, (uint16_t)(rd16(dp + 0x16) + bus_rd16(0x81CDA1)));
+    wr16(0x0906 + o, (uint16_t)(bus_rd16(0x81CDA3) + rd16(dp + 0x16)));
+    wr16(0x0900 + o, rd16(dp + 0xCA));
+    wr16(0x0904 + o, (uint16_t)(rd16(dp + 0xCA) + 0x0800));
     wr16(0x0B01 + o, 0);
     wr16(0x0B05 + o, 0);
-    wr16(DP + 0x74, (uint16_t)(o + 8));
+    wr16(dp + 0x74, (uint16_t)(o + 8));
   }
-  e = (uint16_t)(rd16(DP + 0xE1) - 1);
-  wr16(DP + 0xE1, (e & 0x8000) ? 0x003B : e);
+  e = (uint16_t)(rd16(dp + 0xE1) - 1);
+  wr16(dp + 0xE1, (e & 0x8000) ? 0x003B : e);
 }
 
 // TG3000_ROUTINE($80:EBF7) ticker_draw
-void ticker_draw(uint8_t bank, uint16_t x, uint16_t text) {
+void ticker_draw(uint16_t dp, uint8_t bank, uint16_t x, uint16_t text) {
   const uint32_t b = (uint32_t)bank << 16;
-  wr16(DP + 0xC8, x);
-  wr16(DP + 0xCA, x);
-  wr16(DP + 0xC6, (uint16_t)(rd16(DP + 0xC6) + rd16(DP + 0xE5)));
-  wr16(DP + 0xD3, 0);
-  uint16_t q = rd16(DP + 0x5E);
+  wr16(dp + 0xC8, x);
+  wr16(dp + 0xCA, x);
+  wr16(dp + 0xC6, (uint16_t)(rd16(dp + 0xC6) + rd16(dp + 0xE5)));
+  wr16(dp + 0xD3, 0);
+  uint16_t q = rd16(dp + 0x5E);
   for(int i = 0; i < 0x1B; i++, q = (uint16_t)(q + 2)) wr16(0x10000 + (uint32_t)q, q7f((uint16_t)(q + 2)));
   wr16(0x10000 + (uint32_t)q, 0xFFFF);
   // A quirk: after a step the loop goes on with A = the old D+$CC, not D+$C6, so it takes
   // one $100 step (more only while the counter is $100 or more)
-  for(uint16_t a = rd16(DP + 0xC6); a >= 0x0100;) {
-    wr16(DP + 0xC6, (uint16_t)(a - 0x0100));
-    a = rd16(DP + 0xCC);
+  for(uint16_t a = rd16(dp + 0xC6); a >= 0x0100;) {
+    wr16(dp + 0xC6, (uint16_t)(a - 0x0100));
+    a = rd16(dp + 0xCC);
     wr16(0x10000 + (uint32_t)q, a);
-    wr16(DP + 0xCC, (uint16_t)(a + 1));
+    wr16(dp + 0xCC, (uint16_t)(a + 1));
   }
-  wr16(DP + 0xDF, 0);
+  wr16(dp + 0xDF, 0);
   uint16_t first = 0;
-  for(uint16_t at = rd16(DP + 0x5E), n = 0x1C; n != 0; n--, at = (uint16_t)(at + 2))
+  for(uint16_t at = rd16(dp + 0x5E), n = 0x1C; n != 0; n--, at = (uint16_t)(at + 2))
     if(q7f(at) != 0xFFFF) {
       first = at;
       break;
     }
-  wr16(DP + 0xCF, first);
+  wr16(dp + 0xCF, first);
   uint16_t y = text;
-  if(rd16(DP + 0xDF) == rd16(DP + 0xCC)) {
-    ticker_end();
+  if(rd16(dp + 0xDF) == rd16(dp + 0xCC)) {
+    ticker_end(dp);
     return;
   }
   for(;;) {
@@ -3212,69 +3212,69 @@ void ticker_draw(uint8_t bank, uint16_t x, uint16_t text) {
       switch(w >> 8) {
         case 0:  // the end: the pointer stays on it
           y = (uint16_t)(y - 2);
-          wr16(DP + 0xC6, 0);
+          wr16(dp + 0xC6, 0);
           goto next;
         case 1: {
-          const uint16_t nx = (uint16_t)(bus_rd16(b + (uint32_t)(uint16_t)(y + 1)) + rd16(DP + 0xC8));
-          wr16(DP + 0xCA, nx);
-          wr16(DP + 0xC8, nx);
+          const uint16_t nx = (uint16_t)(bus_rd16(b + (uint32_t)(uint16_t)(y + 1)) + rd16(dp + 0xC8));
+          wr16(dp + 0xCA, nx);
+          wr16(dp + 0xC8, nx);
           y = (uint16_t)(y + 3);
           continue;
         }
         case 2: {  // never run
-          const uint16_t df1 = (uint16_t)(rd16(DP + 0xDF) + 1);
-          if(df1 != rd16(DP + 0xCC)) {
-            if((uint16_t)(df1 + 1) != rd16(DP + 0xCC)) {
+          const uint16_t df1 = (uint16_t)(rd16(dp + 0xDF) + 1);
+          if(df1 != rd16(dp + 0xCC)) {
+            if((uint16_t)(df1 + 1) != rd16(dp + 0xCC)) {
               y = (uint16_t)(y + 3);
               continue;
             }
-            wr16(DP + 0xCC, (uint16_t)(rd16(DP + 0xCC) - 1));
+            wr16(dp + 0xCC, (uint16_t)(rd16(dp + 0xCC) - 1));
           }
-          if(rd16(DP + 0xD1) == 0) wr16(DP + 0xD1, bus_rd16(b + (uint32_t)(uint16_t)(y + 1)));
-          wr16(DP + 0xD1, (uint16_t)(rd16(DP + 0xD1) - 1));
-          if(rd16(DP + 0xD1) != 0) {
-            wr16(0x10000 + (uint32_t)(uint16_t)(rd16(DP + 0x5E) + 0x36), 0xFFFF);
-            ticker_end();
+          if(rd16(dp + 0xD1) == 0) wr16(dp + 0xD1, bus_rd16(b + (uint32_t)(uint16_t)(y + 1)));
+          wr16(dp + 0xD1, (uint16_t)(rd16(dp + 0xD1) - 1));
+          if(rd16(dp + 0xD1) != 0) {
+            wr16(0x10000 + (uint32_t)(uint16_t)(rd16(dp + 0x5E) + 0x36), 0xFFFF);
+            ticker_end(dp);
             return;
           }
-          wr16(DP + 0xCC, (uint16_t)(rd16(DP + 0xCC) + 1));
+          wr16(dp + 0xCC, (uint16_t)(rd16(dp + 0xCC) + 1));
           y = (uint16_t)(y + 3);
           continue;
         }
         case 3:  // never run
-          wr16(DP + 0xE1, (uint16_t)(rd16(DP + 0xE1) | 0x8000));
+          wr16(dp + 0xE1, (uint16_t)(rd16(dp + 0xE1) | 0x8000));
           y = (uint16_t)(y + 1);
           continue;
         case 4:
-          wr16(DP + 0xD3, bus_rd16(b + (uint32_t)(uint16_t)(y + 1)));
+          wr16(dp + 0xD3, bus_rd16(b + (uint32_t)(uint16_t)(y + 1)));
           y = (uint16_t)(y + 3);
           continue;
         default:  // 5
-          wr16(DP + 0xD3, 0);
+          wr16(dp + 0xD3, 0);
           y = (uint16_t)(y + 1);
           continue;
       }
     }
-    if(rd16(DP + 0xD3) != 0 && (uint16_t)(rd16(DP + 0xDF) + 1) < q7f(rd16(DP + 0xCF))) {
-      const uint16_t d3 = rd16(DP + 0xD3);
+    if(rd16(dp + 0xD3) != 0 && (uint16_t)(rd16(dp + 0xDF) + 1) < q7f(rd16(dp + 0xCF))) {
+      const uint16_t d3 = rd16(dp + 0xD3);
       const uint16_t tile = bus_rd16(0x81D2E3 + (uint32_t)d3);
-      wr16(DP + 0xD3, (uint16_t)(d3 + 2));
-      const uint32_t o = rd16(DP + 0x74);
+      wr16(dp + 0xD3, (uint16_t)(d3 + 2));
+      const uint32_t o = rd16(dp + 0x74);
       wr16(0x0902 + o, tile);
-      wr16(0x0900 + o, rd16(DP + 0xCA));
-      wr16(DP + 0xCA, (uint16_t)(rd16(DP + 0xCA) + 0x0010));
+      wr16(0x0900 + o, rd16(dp + 0xCA));
+      wr16(dp + 0xCA, (uint16_t)(rd16(dp + 0xCA) + 0x0010));
       wr16(0x0B01 + o, 0x0100);
-      wr16(DP + 0x74, (uint16_t)(o + 4));
-      wr16(DP + 0xDF, (uint16_t)(rd16(DP + 0xDF) + 2));
+      wr16(dp + 0x74, (uint16_t)(o + 4));
+      wr16(dp + 0xDF, (uint16_t)(rd16(dp + 0xDF) + 2));
       y = (uint16_t)(y + 2);
       continue;
     }
-    wr16(DP + 0x16, 0x3200);
-    uint16_t at = rd16(DP + 0xCF);
-    if(rd16(DP + 0xDF) == q7f(at)) {
-      wr16(DP + 0x16, (uint16_t)(((((uint16_t)(at - rd16(DP + 0x5E)) >> 2) & 0x000E) << 8) + 0x3200));
+    wr16(dp + 0x16, 0x3200);
+    uint16_t at = rd16(dp + 0xCF);
+    if(rd16(dp + 0xDF) == q7f(at)) {
+      wr16(dp + 0x16, (uint16_t)(((((uint16_t)(at - rd16(dp + 0x5E)) >> 2) & 0x000E) << 8) + 0x3200));
       do at = (uint16_t)(at + 2); while(q7f(at) == 0xFFFF);
-      wr16(DP + 0xCF, at);
+      wr16(dp + 0xCF, at);
     }
     const uint16_t c = w & 0x00FF;
     uint16_t t;
@@ -3285,16 +3285,16 @@ void ticker_draw(uint8_t bank, uint16_t x, uint16_t text) {
       t = 0x24;
       while(t != 0x33 && bus_rd8(0x80EDC3 + (uint32_t)t) != c) t++;
     }
-    wr16(DP + 0x14, (uint16_t)(t << 2));
-    ticker_sprite(bus_rd16(0x81CCD9 + (uint32_t)(uint16_t)(t << 2)), bus_rd16(0x81CCDB + (uint32_t)(uint16_t)(t << 2)));
+    wr16(dp + 0x14, (uint16_t)(t << 2));
+    ticker_sprite(dp, bus_rd16(0x81CCD9 + (uint32_t)(uint16_t)(t << 2)), bus_rd16(0x81CCDB + (uint32_t)(uint16_t)(t << 2)));
   space:
-    wr16(DP + 0xCA, (uint16_t)(rd16(DP + 0xCA) + 8));
+    wr16(dp + 0xCA, (uint16_t)(rd16(dp + 0xCA) + 8));
   next:
     y = (uint16_t)(y + 1);
-    wr16(DP + 0xDF, (uint16_t)(rd16(DP + 0xDF) + 1));
-    if(rd16(DP + 0xDF) == rd16(DP + 0xCC)) break;
+    wr16(dp + 0xDF, (uint16_t)(rd16(dp + 0xDF) + 1));
+    if(rd16(dp + 0xDF) == rd16(dp + 0xCC)) break;
   }
-  ticker_end();
+  ticker_end(dp);
 }
 
 // TG3000_ROUTINE($8A:C15D) text_buffer_screen
@@ -3439,8 +3439,8 @@ bool car_contacts_chain(uint16_t x, uint16_t y) {
 static uint16_t high_signed(uint16_t v) { return (uint16_t)(int16_t)(int8_t)(v >> 8); }
 
 // TG3000_ROUTINE($80:E925) ticker_scene_step
-bool ticker_scene_step(void) {
-  uint16_t a = rd16(DP + 0x82);
+bool ticker_scene_step(uint16_t dp) {
+  uint16_t a = rd16(dp + 0x82);
   if(a & 0x8000) {  // never run
     a = (uint16_t)(a + 0x0012);
     if(!(a & 0x8000)) a = 0;
@@ -3448,74 +3448,74 @@ bool ticker_scene_step(void) {
     a = (uint16_t)(a - 0x0012);
     if(a & 0x8000) a = 0;
   }
-  wr16(DP + 0x82, a);
-  const uint16_t v80 = rd16(DP + 0x80);
-  const uint32_t lo = (uint32_t)rd16(DP + 0x7B) + v80;
-  wr16(DP + 0x7B, (uint16_t)lo);
-  wr8(DP + 0x7D, (uint8_t)(((v80 & 0x8000) ? 0xFF : 0x00) + rd8(DP + 0x7D) + (lo >> 16)));
-  wr16(DP + 0x7E, (uint16_t)(rd16(DP + 0x82) + rd16(DP + 0x7E)));
+  wr16(dp + 0x82, a);
+  const uint16_t v80 = rd16(dp + 0x80);
+  const uint32_t lo = (uint32_t)rd16(dp + 0x7B) + v80;
+  wr16(dp + 0x7B, (uint16_t)lo);
+  wr8(dp + 0x7D, (uint8_t)(((v80 & 0x8000) ? 0xFF : 0x00) + rd8(dp + 0x7D) + (lo >> 16)));
+  wr16(dp + 0x7E, (uint16_t)(rd16(dp + 0x82) + rd16(dp + 0x7E)));
   wr16(0x0026, (uint16_t)(rd16(0x0026) | 0x0002));
-  const uint16_t x = (uint16_t)(rd16(DP + 0x84) & 0x03FE);
-  uint16_t c = rd16(DP + 0x7C);
+  const uint16_t x = (uint16_t)(rd16(dp + 0x84) & 0x03FE);
+  uint16_t c = rd16(dp + 0x7C);
   for(int i = 0; i < 3; i++) c = (uint16_t)((c >> 1) | (c & 0x8000));
-  wr16(DP + 0x2E, (uint16_t)(c + 0x0088));
-  wr16(DP + 0x2E, (uint16_t)(high_signed(rd16(DP + 0x22)) + rd16(DP + 0x2E)));
-  uint16_t row = rd16(DP + 0x7E);
+  wr16(dp + 0x2E, (uint16_t)(c + 0x0088));
+  wr16(dp + 0x2E, (uint16_t)(high_signed(rd16(dp + 0x22)) + rd16(dp + 0x2E)));
+  uint16_t row = rd16(dp + 0x7E);
   row = (uint16_t)(row << 8 | row >> 8);
   row = (uint16_t)(((row << 1) | (row >> 15)) & 0x01FF);
   if(row & 0x0100) row |= 0xFE00;  // never run
-  wr16(DP + 0x30, (uint16_t)(row - 0x002E - rd16(DP + 0xE8)));
-  wr16(DP + 0x30, (uint16_t)(high_signed(rd16(DP + 0x24)) + rd16(DP + 0x30)));
-  wr16(DP + 0x32, bus_rd16(0x81CEA9 + (uint32_t)x));
-  wr16(DP + 0x38, bus_rd16(0x81CEA9 + (uint32_t)x));
-  wr16(DP + 0x34, bus_rd16(0x81CDA9 + (uint32_t)x));
-  wr16(DP + 0x36, (uint16_t)-rd16(DP + 0x34));
-  wr16(DP + 0x3A, rd16(DP + 0x2C));
-  wr16(DP + 0x3C, 0x001C);
-  const uint16_t at = (uint16_t)(0x0A10 + rd16(DP + 0xE7));
-  if(!(rd16(DP + 0x46) & 0x8000)) {
-    ticker_draw(0x7F, at, (uint16_t)(0x2000 + rd16(DP + 0x5E)));
+  wr16(dp + 0x30, (uint16_t)(row - 0x002E - rd16(dp + 0xE8)));
+  wr16(dp + 0x30, (uint16_t)(high_signed(rd16(dp + 0x24)) + rd16(dp + 0x30)));
+  wr16(dp + 0x32, bus_rd16(0x81CEA9 + (uint32_t)x));
+  wr16(dp + 0x38, bus_rd16(0x81CEA9 + (uint32_t)x));
+  wr16(dp + 0x34, bus_rd16(0x81CDA9 + (uint32_t)x));
+  wr16(dp + 0x36, (uint16_t)-rd16(dp + 0x34));
+  wr16(dp + 0x3A, rd16(dp + 0x2C));
+  wr16(dp + 0x3C, 0x001C);
+  const uint16_t at = (uint16_t)(0x0A10 + rd16(dp + 0xE7));
+  if(!(rd16(dp + 0x46) & 0x8000)) {
+    ticker_draw(dp, 0x7F, at, (uint16_t)(0x2000 + rd16(dp + 0x5E)));
   } else {
-    if(!(rd16(DP + 0x46) & 0x0001)) {
-      if(rd16(DP + 0x48) == 0) {
-        wr16(DP + 0x98, 0);
-        wr16(DP + 0x96, 0xFF80);
+    if(!(rd16(dp + 0x46) & 0x0001)) {
+      if(rd16(dp + 0x48) == 0) {
+        wr16(dp + 0x98, 0);
+        wr16(dp + 0x96, 0xFF80);
       } else {
         bool out;
         do {
-          wr16(DP + 0x4A, (uint16_t)(rd16(DP + 0x4A) + 2));
-          out = (rd16(DP + 0x48) & 1) != 0;
-          wr16(DP + 0x48, (uint16_t)(rd16(DP + 0x48) >> 1));
+          wr16(dp + 0x4A, (uint16_t)(rd16(dp + 0x4A) + 2));
+          out = (rd16(dp + 0x48) & 1) != 0;
+          wr16(dp + 0x48, (uint16_t)(rd16(dp + 0x48) >> 1));
         } while(!out);
-        wr16(DP + 0x46, (uint16_t)(rd16(DP + 0x46) + 1));
-        queue_7f_init(DP);
-        wr16(DP + 0x4C, 0x00A0);
+        wr16(dp + 0x46, (uint16_t)(rd16(dp + 0x46) + 1));
+        queue_7f_init(dp);
+        wr16(dp + 0x4C, 0x00A0);
       }
     }
-    ticker_draw(0x81, at, bus_rd16(0x81D5CF + (uint32_t)rd16(DP + 0x4A)));
-    wr16(DP + 0x4C, (uint16_t)(rd16(DP + 0x4C) - 1));
-    if(rd16(DP + 0x4C) == 0) wr16(DP + 0x46, (uint16_t)(rd16(DP + 0x46) + 1));
+    ticker_draw(dp, 0x81, at, bus_rd16(0x81D5CF + (uint32_t)rd16(dp + 0x4A)));
+    wr16(dp + 0x4C, (uint16_t)(rd16(dp + 0x4C) - 1));
+    if(rd16(dp + 0x4C) == 0) wr16(dp + 0x46, (uint16_t)(rd16(dp + 0x46) + 1));
   }
-  if(rd16(0x03A8 + (uint32_t)rd16(DP + 0x94)) == 0) spark_step();
-  func_80EB66(DP);
-  oam_finish_near(DP);
-  wr16(DP + 0x86, (uint16_t)(rd16(DP + 0x86) + 1));
-  const uint16_t s = rd16(DP + 0x46);
+  if(rd16(0x03A8 + (uint32_t)rd16(dp + 0x94)) == 0) spark_step(dp);
+  func_80EB66(dp);
+  oam_finish_near(dp);
+  wr16(dp + 0x86, (uint16_t)(rd16(dp + 0x86) + 1));
+  const uint16_t s = rd16(dp + 0x46);
   // the carry the original returns: its CMP #$FFFF with D+$46 negative, else oam_finish's
-  const bool carry = (s & 0x8000) ? s == 0xFFFF : rd16(DP + 0x6C) >= 0x0900;
+  const bool carry = (s & 0x8000) ? s == 0xFFFF : rd16(dp + 0x6C) >= 0x0900;
   if(!(s & 0x8000)) {
-    wr16(DP + 0x46, (uint16_t)(s - 1));
-    if(rd16(DP + 0x46) != 0) return carry;
-    if(rd16(DP + 0x48) != 0 && !(rd16(0x03A8 + (uint32_t)rd16(DP + 0x94)) & 0x8000)) {
-      wr16(DP + 0x46, 0x8000);
+    wr16(dp + 0x46, (uint16_t)(s - 1));
+    if(rd16(dp + 0x46) != 0) return carry;
+    if(rd16(dp + 0x48) != 0 && !(rd16(0x03A8 + (uint32_t)rd16(dp + 0x94)) & 0x8000)) {
+      wr16(dp + 0x46, 0x8000);
       return carry;
     }
-    wr16(DP + 0x46, (uint16_t)(rd16(DP + 0x46) + 1));
+    wr16(dp + 0x46, (uint16_t)(rd16(dp + 0x46) + 1));
   } else if(s != 0xFFFF) {
     return carry;
   }
-  wr16(DP + 0x98, 0);
-  wr16(DP + 0x96, 0xFF80);
+  wr16(dp + 0x98, 0);
+  wr16(dp + 0x96, 0xFF80);
   return carry;
 }
 
@@ -8165,29 +8165,33 @@ void title_screen_show(void) {
 // The ticker screen's two camera tracks: D+$26 and D+$28 index ($81) tables of (time, step)
 // pairs at `t22` and `t24`, moving on when D+$86 reaches the next time; each step is added
 // to D+$22 and D+$24.
-static void ticker_track(uint16_t t22, uint16_t t24) {
-  uint16_t x = rd16(DP + 0x26);
-  if(rd16(DP + 0x86) >= bus_rd16(0x810000 + (uint32_t)(uint16_t)(t22 + 2 + x))) {
+static void ticker_track(uint16_t dp, uint16_t t22, uint16_t t24) {
+  uint16_t x = rd16(dp + 0x26);
+  if(rd16(dp + 0x86) >= bus_rd16(0x810000 + (uint32_t)(uint16_t)(t22 + 2 + x))) {
     x = (uint16_t)(x + 4);
-    wr16(DP + 0x26, x);
+    wr16(dp + 0x26, x);
   }
-  wr16(DP + 0x22, (uint16_t)(bus_rd16(0x810000 + (uint32_t)(uint16_t)(t22 + x)) + rd16(DP + 0x22)));
-  x = rd16(DP + 0x28);
-  if(rd16(DP + 0x86) >= bus_rd16(0x810000 + (uint32_t)(uint16_t)(t24 + 2 + x))) {
+  wr16(dp + 0x22, (uint16_t)(bus_rd16(0x810000 + (uint32_t)(uint16_t)(t22 + x)) + rd16(dp + 0x22)));
+  x = rd16(dp + 0x28);
+  if(rd16(dp + 0x86) >= bus_rd16(0x810000 + (uint32_t)(uint16_t)(t24 + 2 + x))) {
     x = (uint16_t)(x + 4);
-    wr16(DP + 0x28, x);
+    wr16(dp + 0x28, x);
   }
-  wr16(DP + 0x24, (uint16_t)(bus_rd16(0x810000 + (uint32_t)(uint16_t)(t24 + x)) + rd16(DP + 0x24)));
+  wr16(dp + 0x24, (uint16_t)(bus_rd16(0x810000 + (uint32_t)(uint16_t)(t24 + x)) + rd16(dp + 0x24)));
 }
 
 // TG3000_ROUTINE($80:E4E6) ticker_screen
 //
 // The scrolling-text (ticker) screen, in two parts around its first wait (the one inside
 // split_screen_setup, as results_screen): the load, split_screen_setup, then the show.
+static void ticker_task2(uint16_t dp) { ticker_screen_show(dp, false); }
+
 void ticker_screen(void) {
   ticker_screen_load();
   split_screen_setup(0xE5F9, 0x81);  // (its return address as the JSR pushed it, and DB)
-  ticker_screen_show(false);
+  platform_task_split(ticker_task2);  // player 2's half (port request D)
+  ticker_screen_show(DP, false);
+  platform_task_join();
 }
 
 // (the part up to split_screen_setup: its row is ticker_screen's entry with endAt $80:E5F7)
@@ -8235,27 +8239,27 @@ void ticker_screen_load(void) {
 // name and car blocks at $7F:2000, then a frame at a time until D+$9A's low 15 bits are 0:
 // the zoom in ($03A8 = 0), the pass ($03A8 below 10) or a still view (never run). Returns
 // the carry the original leaves: the last ticker step's, else `carry` (the caller's).
-bool ticker_screen_show(bool carry) {
-  wr16(DP + 0x4A, 0xFFFE);
-  const uint16_t rec = rd16(DP + 0x92);
-  wr16(DP + 0xB8, bus_rd16(0x818B40 + (uint32_t)rec));
-  wr16(DP + 0xB4, (uint16_t)(bus_rd16(0x818B43 + (uint32_t)rec) + 4));
-  wr16(DP + 0x5C, bus_rd16(0x818B45 + (uint32_t)rec));
-  wr8(DP + 0xAD, bus_rd8(0x818B42 + (uint32_t)rec));
-  wr8(DP + 0xBC, 0x11);
-  wr8(DP + 0xA8, 0x07);
-  queue_7f_init(DP);
-  wr16(DP + 0x7A, 0);
-  wr16(DP + 0x7C, 0);
-  wr16(DP + 0x7E, 0);
-  func_80EB66(DP);
-  oam_finish_near(DP);
+bool ticker_screen_show(uint16_t dp, bool carry) {
+  wr16(dp + 0x4A, 0xFFFE);
+  const uint16_t rec = rd16(dp + 0x92);
+  wr16(dp + 0xB8, bus_rd16(0x818B40 + (uint32_t)rec));
+  wr16(dp + 0xB4, (uint16_t)(bus_rd16(0x818B43 + (uint32_t)rec) + 4));
+  wr16(dp + 0x5C, bus_rd16(0x818B45 + (uint32_t)rec));
+  wr8(dp + 0xAD, bus_rd8(0x818B42 + (uint32_t)rec));
+  wr8(dp + 0xBC, 0x11);
+  wr8(dp + 0xA8, 0x07);
+  queue_7f_init(dp);
+  wr16(dp + 0x7A, 0);
+  wr16(dp + 0x7C, 0);
+  wr16(dp + 0x7E, 0);
+  func_80EB66(dp);
+  oam_finish_near(dp);
   // three MVNs into bank $81: $20 bytes from $9C:9073, the car's $1E bytes from $89 (after
   // a word from $9D:9F0A), $20 bytes from $9F:8BFB
-  const uint16_t c4 = rd16(DP + 0xC4);
+  const uint16_t c4 = rd16(dp + 0xC4);
   for(uint16_t i = 0; i < 0x20; i++) wr8((uint16_t)(c4 + 0x0100 + i), bus_rd8(0x9C9073 + i));
-  const uint16_t car = rd16((uint16_t)(0x0392 + rd16(DP + 0x94))) & 0x00FF;
-  wr16(DP + 0x7A, car);
+  const uint16_t car = rd16((uint16_t)(0x0392 + rd16(dp + 0x94))) & 0x00FF;
+  wr16(dp + 0x7A, car);
   const uint16_t from = (uint16_t)((uint16_t)(car * 15) * 2 + 0x8380);
   wr16(c4, bus_rd16(0x9D9F0A));
   for(uint16_t i = 0; i < 0x1E; i++) wr8((uint16_t)(c4 + 2 + i), bus_rd8(0x890000 + (uint16_t)(from + i)));
@@ -8265,47 +8269,47 @@ bool ticker_screen_show(bool carry) {
     wr16((uint16_t)(y + 0x0124), bus_rd16(0x81D2B7 + x));
     wr16((uint16_t)(y + 0x0126), 0);
   }
-  if(!(rd16(DP + 0x76) & 0x0020)) {
-    wr16(DP + 0x98, 0x0F00);
-    wr16(DP + 0x96, 0x0080);
+  if(!(rd16(dp + 0x76) & 0x0020)) {
+    wr16(dp + 0x98, 0x0F00);
+    wr16(dp + 0x96, 0x0080);
     static const uint8_t zeroed[] = {0x80, 0x82, 0x84, 0x86, 0x22, 0x24, 0x26, 0x28, 0x2A};
-    for(unsigned i = 0; i < sizeof zeroed; i++) wr16(DP + zeroed[i], 0);
-    wr16(DP + 0x2C, 0x0040);
-    wr16(DP + 0x80, 0xF400);
-    uint16_t x = rd16(DP + 0x5E), y = rd16(DP + 0x94);
-    const uint16_t kind = rd16((uint16_t)(0x03A8 + rd16(DP + 0x94)));
+    for(unsigned i = 0; i < sizeof zeroed; i++) wr16(dp + zeroed[i], 0);
+    wr16(dp + 0x2C, 0x0040);
+    wr16(dp + 0x80, 0xF400);
+    uint16_t x = rd16(dp + 0x5E), y = rd16(dp + 0x94);
+    const uint16_t kind = rd16((uint16_t)(0x03A8 + rd16(dp + 0x94)));
     if(kind < 3) {
       y = bus_rd16(0x81D3C3 + (uint32_t)(kind * 2));
-      block_copy_7f2000(&x, &y);
-      name_copy_7f2000(&x, &y);
-      car_blocks_7f2000(&x, &y);
-      car_block_7f2000(&x, &y);
+      block_copy_7f2000(dp, &x, &y);
+      name_copy_7f2000(dp, &x, &y);
+      car_blocks_7f2000(dp, &x, &y);
+      car_block_7f2000(dp, &x, &y);
     } else if(kind < 0x0A) {
-      name_copy_7f2000(&x, &y);
+      name_copy_7f2000(dp, &x, &y);
       y = 0x018D;
-      block_copy_7f2000(&x, &y);
-      car_blocks_7f2000(&x, &y);
-      car_block_7f2000(&x, &y);
+      block_copy_7f2000(dp, &x, &y);
+      car_blocks_7f2000(dp, &x, &y);
+      car_block_7f2000(dp, &x, &y);
     } else {  // never run
-      name_copy_7f2000(&x, &y);
-      car_blocks_7f2000(&x, &y);
+      name_copy_7f2000(dp, &x, &y);
+      car_blocks_7f2000(dp, &x, &y);
       y = 0x019F;
-      block_copy_7f2000(&x, &y);
-      car_block_7f2000(&x, &y);
+      block_copy_7f2000(dp, &x, &y);
+      car_block_7f2000(dp, &x, &y);
     }
     wr16(0x7F2000 + (uint32_t)x, 0);
-    wr16(DP + 0x46, 0x0110);
-    const uint16_t view = rd16((uint16_t)(0x03A8 + rd16(DP + 0x94)));
+    wr16(dp + 0x46, 0x0110);
+    const uint16_t view = rd16((uint16_t)(0x03A8 + rd16(dp + 0x94)));
     if(view == 0) {  // the zoom in
-      for(uint16_t i = 0, at = rd16(DP + 0x5E); i < 0x20; i++, at = (uint16_t)(at + 4)) wr16(0x7F1000 + (uint32_t)at, 0);
-      wr16(DP + 0x3E, 0);
+      for(uint16_t i = 0, at = rd16(dp + 0x5E); i < 0x20; i++, at = (uint16_t)(at + 4)) wr16(0x7F1000 + (uint32_t)at, 0);
+      wr16(dp + 0x3E, 0);
       do {
         wait_frames(1);
-        ticker_track(0xCC15, 0xCC31);
-        const uint16_t t = rd16(DP + 0x86);
+        ticker_track(dp, 0xCC15, 0xCC31);
+        const uint16_t t = rd16(dp + 0x86);
         if(t >= 0x0060) {
-          if(t < 0x0080) wr16(DP + 0x82, (uint16_t)(rd16(DP + 0x82) + 0x0018));
-          uint16_t a = rd16(DP + 0x80);
+          if(t < 0x0080) wr16(dp + 0x82, (uint16_t)(rd16(dp + 0x82) + 0x0018));
+          uint16_t a = rd16(dp + 0x80);
           if(a & 0x8000) {
             a = (uint16_t)(a + 0x0020);
             if(!(a & 0x8000)) a = 0;
@@ -8313,51 +8317,51 @@ bool ticker_screen_show(bool carry) {
             a = (uint16_t)(a - 0x0020);
             if(a & 0x8000) a = 0;
           }
-          wr16(DP + 0x80, a);
-          if(rd16(DP + 0x2A) != 0x0040) wr16(DP + 0x2A, (uint16_t)(rd16(DP + 0x2A) + 0x0010));
-          if(rd16(DP + 0x2C) < 0x0066) wr16(DP + 0x2C, (uint16_t)(rd16(DP + 0x2C) + 0x0002));
-          a = (uint16_t)(rd16(DP + 0x84) - 0xFE3E);
+          wr16(dp + 0x80, a);
+          if(rd16(dp + 0x2A) != 0x0040) wr16(dp + 0x2A, (uint16_t)(rd16(dp + 0x2A) + 0x0010));
+          if(rd16(dp + 0x2C) < 0x0066) wr16(dp + 0x2C, (uint16_t)(rd16(dp + 0x2C) + 0x0002));
+          a = (uint16_t)(rd16(dp + 0x84) - 0xFE3E);
           if(a & 0x8000) a = 0;  // (never run)
-          if(!((uint16_t)(a - 0x0040) & 0x8000)) a = rd16(DP + 0x2A);
-          wr16(DP + 0x84, (uint16_t)(rd16(DP + 0x84) - (a >> 2)));
+          if(!((uint16_t)(a - 0x0040) & 0x8000)) a = rd16(dp + 0x2A);
+          wr16(dp + 0x84, (uint16_t)(rd16(dp + 0x84) - (a >> 2)));
         }
-        carry = ticker_scene_step();
-      } while(rd16(DP + 0x9A) & 0x7FFF);
+        carry = ticker_scene_step(dp);
+      } while(rd16(dp + 0x9A) & 0x7FFF);
     } else if(view < 0x0A) {  // the pass
-      wr16(DP + 0x80, 0xF000);
+      wr16(dp + 0x80, 0xF000);
       do {
         wait_frames(1);
-        ticker_track(0xCC71, 0xCC91);
-        const uint16_t t = rd16(DP + 0x86);
+        ticker_track(dp, 0xCC71, 0xCC91);
+        const uint16_t t = rd16(dp + 0x86);
         if(t >= 0x0018) {
-          uint16_t a = rd16(DP + 0x80);
+          uint16_t a = rd16(dp + 0x80);
           if(t >= 0x00A0) {
             if((uint16_t)(a - 0xFF01) & 0x8000) a = 0xFF01;
-            a = (uint16_t)(rd16(DP + 0x80) - (uint16_t)(a - 1));
+            a = (uint16_t)(rd16(dp + 0x80) - (uint16_t)(a - 1));
             if(!(a & 0x8000)) {
               a = 0;
-              wr16(DP + 0x20, 0);
+              wr16(dp + 0x20, 0);
             }
           } else {
             a = (uint16_t)(a - 0x0080);
             if((uint16_t)(a - 0xE800) & 0x8000) a = 0xE800;
           }
-          wr16(DP + 0x80, a);
+          wr16(dp + 0x80, a);
         }
-        carry = ticker_scene_step();
-      } while(rd16(DP + 0x9A) & 0x7FFF);
+        carry = ticker_scene_step(dp);
+      } while(rd16(dp + 0x9A) & 0x7FFF);
     } else {  // a still view (never run)
       do {
         wait_frames(1);
-        wr16(DP + 0x80, 0);
-        wr16(DP + 0x7C, 0xF870);
-        wr16(DP + 0x7E, 0);
-        wr16(DP + 0x84, 0);
-        carry = ticker_scene_step();
-      } while(rd16(DP + 0x9A) & 0x7FFF);
+        wr16(dp + 0x80, 0);
+        wr16(dp + 0x7C, 0xF870);
+        wr16(dp + 0x7E, 0);
+        wr16(dp + 0x84, 0);
+        carry = ticker_scene_step(dp);
+      } while(rd16(dp + 0x9A) & 0x7FFF);
     }
   }
-  wait_flag_76(DP);
+  wait_flag_76(dp);
   // (SEI: interrupts masked until the caller's CLI; as with the CLIs elsewhere, the I flag
   // is not a platform call)
   wr16(0x0008, 0x8934);

@@ -73,6 +73,14 @@ void nmi_menu_frame(void);
 // effect; its sprites ($81: + $026E) and palette ($81:0700) are sent; then its brightness
 // $029B (0: forced blank) and the interrupts ($B1).
 void irq_menu_frame(void);
+// Port request D (docs/DECISIONS.md, "Two-task screens"): the two handlers' parts after their
+// task switch, which a port's scheduler does. The NMI's: both tasks released when both wait at
+// their end, task 1's frame hook (then nmi_tail). The IRQ's: task 2's large upload slot and its
+// frame hook. A task's slot ($1C00 bytes a frame) and its frame hook (the word at D+$EC).
+void nmi_menu_frame_tail(void);
+void irq_menu_frame_tail(void);
+void upload_slot_drain(uint16_t dp);
+void task_frame_hook(uint16_t dp);
 // $80:D784: copy the 7-byte table at $81:C207 to $1B00, upload 4 KB from $7F:0000 to VRAM
 // $0000, set the screen up (mode $09, maps $51/$03/$59, tiles $03 for BG3/4, sprites $03,
 // main screen BG2, BG3 scrolled to (0, $3FF), $2130 = $02, colour 2 black); then the tail.

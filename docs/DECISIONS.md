@@ -5827,6 +5827,80 @@ screens' verified C.
 
 **Check:** the incremental gate (additions only).
 
+## The two-task screens in C, and the ticker as two tasks (task-3, 2026-11-26)
+
+**Port request D, step 1.** The design was agreed with the port session (2026-11-26). The
+advisor timed out, so this is my call, open to the owner's veto.
+
+**What the original does.** `split_screen_setup` (`$80:B7E7`) forks. It seeds task 2's stack
+(`$1D8C`) so that task 2's first turn returns to the same caller as task 1.
+- **From there,** both tasks run the screen's code: task 1 with D = `$0100` (player 1's
+  half), task 2 with D = `$0200` (player 2's). They share no WRAM.
+- **Task 2 works even in a one-player game:** on the 60k movie it decompresses into its own
+  slot.
+- **The scheduling:** the NMI at vblank switches to task 1, and the IRQ at line 108 to
+  task 2.
+- **A screen's end:** each task sets bit 4 of its D+$76 and waits for bit 3. The NMI's part
+  after its switch (`$80:BC60`) sets bit 3 in both once both have bit 4. Then task 1 puts the
+  normal vectors back, and task 2 is left behind.
+
+**The C's shape.** The screen's code stays ordinary blocking C, parameterized by the task's
+direct page (`dp`). There are two new platform calls, whose contract is in `platform.h`:
+- **`platform_task_split(task)`:** task 1 calls it right after `split_screen_setup`; task 2
+  is `task(0x0200)`.
+- **The order at each wait of task 1** (task 1 is the frame's first slice):
+  1. `irq_menu_frame` and `irq_menu_frame_tail`;
+  2. task 2, up to its own wait;
+  3. the frame presented;
+  4. `nmi_menu_frame`, `nmi_menu_frame_tail` and `nmi_tail`;
+  5. task 1 resumed.
+- **`platform_task_join()`:** at the screen's end; task 2 ends.
+- **One split at a time.**
+- **The stack switch is the port's scheduler.** The port session will use two threads in
+  strict hand-off, with no emulation. On the bench both calls do nothing.
+
+**The kernel's tails in C** (`src/frame.c`):
+- **`upload_slot_drain(dp)`:** a task's large upload slot, `$1C00` bytes a frame. It is
+  factored out of `nmi_menu_frame`, which uses it for task 1.
+- **`task_frame_hook(dp)`:** the word at D+$EC.
+  - `$80:B94F` does nothing.
+  - `$80:B149` is the shop panel's frame, `shop_panel_frame`. Task 1's shop code sets it; in
+    task 2 it is a trap until the shop takes `dp`. The full gate's first run found it on the
+    password movie, as a trap reached.
+  - `$80:C5E0` is the menu bar: `menu_bar_lines`, then its step by D+$4E (the table at
+    `$80:C636`), then `menu_bar_lines_end`.
+  - The controls' and the panel's steps in task 2 are traps; so is anything else.
+- **`nmi_menu_frame_tail`** (`$80:BC60`-`$80:BC97`, a row): both tasks released, then task
+  1's hook.
+- **`irq_menu_frame_tail`** (`$80:BDCD`-`$80:BE2B`, a row): task 2's slot, then its hook.
+
+**The ticker as two tasks.**
+- **`ticker_screen`** is now: the load, `split_screen_setup`,
+  `platform_task_split(ticker_task2)`, `ticker_screen_show(DP, false)`,
+  `platform_task_join()`.
+- **The code after the fork takes the task's `dp` in place of the fixed `DP`.** That is
+  `ticker_screen_show` and its call tree: `ticker_scene_step`, `ticker_draw`,
+  `ticker_track`, `ticker_sprite`, `ticker_end`, `spark_step`, `spark_lay`,
+  `block_copy_7f2000`, `name_copy_7f2000`, `car_blocks_7f2000`, `car_block_7f2000`,
+  `player_car`.
+- **Their rows no longer require D = `$0100`.** The adapters pass the entry's D.
+
+**Results** (the 60k movie; the full gate below covers the rest):
+- **The tails:** 2,249 of 2,249 live samples each on the 60k movie, 24/24 and 42/42 paths.
+  On the shop, buy and password movies: 4,000, 2,371 and 2,661 each, all passing.
+- **`nmi_menu_frame`** with the factored slot: 2,249 live samples, 500 fuzz cases, 302/302
+  paths.
+- **The ticker's rows:** all pass, for example `ticker_scene_step` 852 live and 500 fuzz.
+
+**What is not verified yet: task 2's own runs.** The bench sees them inside the IRQ that
+switched to them, so its D = `$0200` entries are not sampled. The per-task C is checked with
+D = `$0100`; with `$0200` it is the same code at another direct page.
+
+**Next:** the shop (`shop_screen`) and the championship screen as two tasks, and then
+`game_main`'s championship trap goes.
+
+**Check:** the full gate (`src/misc.c` and `src/frame.c` changed by more than additions).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
