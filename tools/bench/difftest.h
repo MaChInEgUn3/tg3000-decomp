@@ -79,6 +79,7 @@ typedef struct {
   // harness-25: the long effect log (MAX_EFFECTS_LONG) for a routine that does not wait but
   // writes more than MAX_EFFECTS hardware effects (a tilemap written word by word).
   bool manyEffects;
+  bool emuEntry;           // harness-39: entered in emulation mode (the reset vector's code)
   // The fuzz's stack: the highest byte of the sentinel frame (0: $1F00, the fuzz's usual
   // place). A routine whose callees write the game's words $1EEE-$1EFD needs the game's own
   // stack instead (measured from its live samples' entry SP).

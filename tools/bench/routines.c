@@ -13,6 +13,7 @@
 #include "rng.h"
 #include "scroll_tables.h"
 #include "sound.h"
+#include "boot.h"
 #include "scale.h"
 #include "line_tables.h"
 #include "decompress.h"
@@ -5067,6 +5068,30 @@ static void call_vs_race_sound(const Regs* in, Regs* out) {
   out->n = false;
   out->z = true;
   out->c = 1;
+}
+// game_boot ($80:8002, port request C): from the reset vector's code to its call of the top loop,
+// in two rows around the CPU's set-up (its stack switch, $80:802E-$80:803B)
+static void call_game_boot_head(const Regs* in, Regs* out) {
+  (void)in;
+  game_boot_head();
+  out->db = 0x81;  // the CPU's set-up (PHA/PLB), native mode, 8-bit registers, C from the XCE
+  out->e = false;
+  out->m8 = out->x8 = true;
+  out->c = 1;
+  out->n = true;  // its last wait's LDA $4212 (vblank: bit 7)
+  out->z = false;
+}
+static void call_game_boot_tail(const Regs* in, Regs* out) {
+  game_boot_tail();
+  out->n = (in->db >> 7) & 1;  // its last PLB (the entry's data bank)
+  out->z = in->db == 0;
+}
+static void call_game_boot_body(const Regs* in, Regs* out) {
+  (void)in;
+  game_boot_body();
+  out->db = 0x00;  // as its callees leave it
+  out->n = true;   // its last LDA #$81 (the value for $4200)
+  out->z = false;
 }
 static void call_sound_boot(const Regs* in, Regs* out) {
   sound_boot(in->d);
@@ -13110,6 +13135,12 @@ const Routine routines[] = {
        // under three bytes, a sample not a multiple of three
   {.name = "sound_load_menu", .entry = 0x84A4B7, .end = 0x84A4CD, .rtl = true, .source = "src/sound.c",
    .waitsForInterrupts = true, .maxInsns = 200000000, .manyEffects = true, .call = call_sound_load_menu},
+  {.name = "game_boot_head", .entry = 0x808002, .end = 0x80802E, .endAt = 0x80802E, .source = "src/boot.c",
+   .emuEntry = true, .call = call_game_boot_head},  // once per movie: live only
+  {.name = "game_boot_body", .entry = 0x80803C, .end = 0x80807A, .endAt = 0x80807A, .source = "src/boot.c",
+   .needM16 = true, .needX16 = true, .manyEffects = true, .call = call_game_boot_body},
+  {.name = "game_boot_tail", .entry = 0x80807A, .end = 0x80809B, .endAt = 0x80809B, .source = "src/boot.c",
+   .needX16 = true, .waitsForInterrupts = true, .maxInsns = 40000000, .call = call_game_boot_tail},
   {.name = "sound_boot", .entry = 0x86DD85, .end = 0x86DDEF, .rtl = true, .source = "src/sound.c", .manyEffects = true,
    .call = call_sound_boot},
   {.name = "sound_frame", .entry = 0x86DFE1, .end = 0x86DFFB, .rtl = true, .source = "src/sound.c", .needM16 = true,

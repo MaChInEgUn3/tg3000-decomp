@@ -5663,6 +5663,50 @@ exact. Its per-line texture word is still open after two units.
 **Check:** the probe builds (`make -C tools/bench probe`) and reproduces a recorded flat
 run's rows. This adds lines to `tools/bench/` only; no row or C changes.
 
+## The start-up in C (boot-1, 2026-11-26)
+
+**Port request C, step 1.** `game_boot` (`src/boot.c`) is the reset vector's code
+(`$80:8002`) up to its call of the top loop (`$80:809B`). A port calls it once, after loading
+the ROM. In order, it:
+- turns the interrupts off;
+- waits for two vertical blanks;
+- turns HDMA off and blanks the screen;
+- clears WRAM, except `$7E:0366`-`$03DF` and `$7E:FA3A` on, which are kept across a reset
+  (the saved data's copy is at `$FA3B`);
+- loads the start screen's registers (`$80:80A0`);
+- starts the sound driver (`sound_boot`);
+- sets the interrupt vectors;
+- turns the NMI and the controllers' automatic read on (`$4200` = `$81`);
+- checks the saved data;
+- waits for the DSP-4 to start.
+
+**Three rows around what is not the game's.**
+- **`game_boot_head`** (`$80:8002`-`$80:802D`).
+- **The CPU's own set-up stays out** (`$80:802E`-`$80:803B`): native mode, D = `$0100`, the
+  stack at `$1FFF`, a JML into the fast bank. A port's start does that.
+- **`game_boot_body`** (`$80:803C`-`$80:8079`), up to the interrupts switched on.
+- **`game_boot_tail`** (`$80:807A`-`$80:809A`): the first NMI lands during the saved data's
+  check, so it is a waiting row.
+
+`game_boot` calls the three.
+
+**Two new platform calls.** Both are the console's waits, and a port may return at once:
+- `platform_wait_vblank_start`, for the polls of `$4212`;
+- `platform_wait_dsp4_start`, for the 257 reads of `$FFFF` at `$80:8085`.
+
+**harness-39.**
+- **Those polls are neither inputs nor hardware the C must reproduce.** These are the reads of
+  `$4212` at `$80:8010`-`$80:802D` and of the DSP-4's data port at `$80:8085`-`$80:8099`.
+- **A row may declare an entry in emulation mode** (`emuEntry`), as the reset code's is.
+
+**Results:** one live sample each on the 60k and race movies, all passing (21/21, 28/28 and
+15/15 paths). There is no fuzz: it is the start-up.
+
+**Next:** the top loop (`$80:89DB`, `$80:8A8C`/`$80:8AA4`), so that the port can run the game
+whole after `game_boot`.
+
+**Check:** the full gate (`difftest.c` changed).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)

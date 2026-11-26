@@ -234,6 +234,15 @@ bool input_port1_data(void);
 // = line 1, bit 1 = line 2), where a plugged-in standard controller answers 1.
 void input_multitap_pair(int pair, uint16_t* d0, uint16_t* d1, uint8_t* tail);
 
+// At start-up, with the interrupts off: return once the next vertical blank has begun (the
+// original polls $4212). A port may return at once.
+void platform_wait_vblank_start(void);
+
+// At start-up: wait until the DSP-4 has started (the original reads $FFFF from its data port
+// 257 times in a row, $80:8085). A port, whose DSP-4 commands are native functions, returns
+// at once.
+void platform_wait_dsp4_start(void);
+
 // Return after the next interrupt has run. On the console the NMI and IRQ handlers do
 // the frame's work; they are game code too (ported to C like the rest), so a port
 // presents the frame here and then runs the game's NMI code, and runs its IRQ code at

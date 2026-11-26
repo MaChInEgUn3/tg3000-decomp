@@ -993,6 +993,8 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   // that began inside it see it
   accessBase = (irqOwner >= 0 && irqActive) ? irqBaseDepth : 0;
   if(depth <= accessBase) return;
+  // harness-39: the start-up's wait for the DSP-4 ($80:8085-$80:8099) is the platform's
+  if(isDsp4(adr) && !write && insnPc >= 0x808085 && insnPc < 0x80809A) return;
   if(isDsp4(adr)) {  // before the ROM test: $30:8000 reads look like ROM reads to it
     for(int k = accessBase; k < depth; k++) {
       Sample* smp = &samples[k];
@@ -1033,6 +1035,8 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   // harness-38: the sound senders' handshakes are the platform's (their polls are not inputs):
   // the frame's message, the start-up loader and a set's uploads ($86:DFFB-$86:E3A9)
   if(!write && apuPort && insnPc >= 0x86DFFB && insnPc < 0x86E3AA) return;
+  // harness-39: the start-up's waits for the vertical blank ($80:8010-$80:802D, $4212)
+  if(!write && lo == 0x4212 && insnPc >= 0x808010 && insnPc < 0x80802E) return;
   if((write && apuPort) || (!write && isInputReg(adr))) {
     // APU port writes are effects (port, value) in order; input reads are recorded
     for(int k = accessBase; k < depth; k++) {
@@ -1257,7 +1261,7 @@ static void findStarts(const Routine* r, Stats* s) {
 
 static void noteContract(Stats* s, const Routine* r, const Regs* in) {
   Contract c = {in->d, in->db, in->m8, in->x8, in->e};
-  if(in->e || (r->needM16 && in->m8) || (r->needX16 && in->x8)) s->contractBroken = true;
+  if((in->e && !r->emuEntry) || (r->needM16 && in->m8) || (r->needX16 && in->x8)) s->contractBroken = true;
   if(r->lowWramDb && !((in->db & 0x7F) < 0x40 || in->db == 0x7E)) s->contractBroken = true;
   if(r->fixedD && in->d != DP) s->contractBroken = true;
   if(r->db != 0 && in->db != r->db) s->contractBroken = true;

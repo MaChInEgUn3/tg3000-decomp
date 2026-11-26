@@ -2,6 +2,7 @@
 org $808000
 
     incbin !baserom:$0..$2
+game_boot_head:
     clc                         ; $808002
     xce                         ; $808003
     cld                         ; $808004
@@ -32,7 +33,8 @@ CODE_808029:
     tcd                         ; $808033
     lda.w #$1FFF                ; $808034
     tcs                         ; $808037
-    jml.l $80803C               ; $808038
+    jml.l game_boot_body        ; $808038
+game_boot_body:
     ldx.w #$0000                ; $80803C
     phb                         ; $80803F
     pea.w $7E7F                 ; $808040
@@ -64,6 +66,7 @@ CODE_808058:
     sep.b #$20                  ; $808073
     lda.b #$81                  ; $808075
     sta.w $4200                 ; $808077
+game_boot_tail:
     rep.b #$20                  ; $80807A
     jsr.w save_data_check       ; $80807C
     phb                         ; $80807F

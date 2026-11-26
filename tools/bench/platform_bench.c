@@ -234,6 +234,11 @@ void sound_upload_end(void) {
   for(int p = 0; p < 4; p++) difftest_effect(EFFECT_APU, p, 0, 1);
 }
 
+// harness-39: the start-up's waits are the platform's (the original's polls of $4212 and of the
+// DSP-4's data port there are neither inputs nor hardware the C must reproduce)
+void platform_wait_vblank_start(void) {}
+void platform_wait_dsp4_start(void) {}
+
 // Inputs come from what the original read (difftest_input replays it in order).
 bool sound_is_ready(void) { return difftest_input(0x2141) == 0x77; }
 bool video_is_pal(void) { return (difftest_input(0x213F) & 0x10) != 0; }
