@@ -11479,6 +11479,9 @@ static void call_object_sprite_group(const Regs* in, Regs* out) { out->c = objec
 static void call_sprite_put_rows_c(const Regs* in, Regs* out) { (void)in; out->c = sprite_put_rows_c(); }
 static void call_vs_object_flat(const Regs* in, Regs* out) { out->c = vs_object_flat(in->x); }
 static void call_vs_object_group(const Regs* in, Regs* out) { out->c = vs_object_group(in->x); }
+// object_sprite_kind0 ($82:DCEC, verify-cover-2): the VS race's table uses it for 15 kinds (the
+// one-player's for none the movies run)
+static void call_object_sprite_kind0(const Regs* in, Regs* out) { out->c = object_sprite_kind0(in->x); }
 
 // ---- object_sprite_shadowed ($82:DA48) ----  a DSP-4 tape row: C = the buffer filled; N
 // clear and Z set (every exit of the stream's tail follows a 0 word read or written); V
@@ -14585,6 +14588,9 @@ const Routine routines[] = {
   {.name = "sprite_put_rows_c", .entry = 0x82CAE5, .end = 0x82CB39, .alsoIn = {{0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_sprite_put_rows_c, .fuzz = fuzz_sprite_put_rows, .dsp4Tape = true},
+  {.name = "object_sprite_kind0", .entry = 0x82DCEC, .end = 0x82DD3B, .alsoIn = {{0x82CAE5, 0x82CB39}, {0x82DDBF, 0x82DEA8}},
+   .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
+   .call = call_object_sprite_kind0, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
   {.name = "vs_object_flat", .entry = 0x82DD3B, .end = 0x82DD69, .alsoIn = {{0x82CAE5, 0x82CB39}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_vs_object_flat, .fuzz = fuzz_object_sprite, .dsp4Tape = true},

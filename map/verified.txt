@@ -777,3 +777,4 @@
 8ABE2E password_show src/password.c dec753181090037c 1 0 79/79 verified live-flags:NVZC replayed:0
 8AB232 password_entry src/password.c dec753181090037c 1 0 84/84 verified live-flags:NVZC replayed:0
 8AA67B vs_screen_loop src/vs.c 6f5128fc08b46a96 1 0 37/37 verified live-flags:NVZC replayed:0
+82DCEC object_sprite_kind0 src/misc.c 5426011bdcf35e20 1353 500 34/34 verified live-flags:C replayed:1

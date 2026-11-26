@@ -5128,6 +5128,16 @@ registers. The rest of `$80:DC19`'s callers and the track events' tail are examp
 
 **Check:** the full gate (rows changed).
 
+## A row for object_sprite_kind0 (verify-cover-2, 2026-11-26)
+
+**`object_sprite_kind0` (`$82:DCEC`)** had C but no row.
+- **Why it had none:** no movie runs it through the one-player table.
+- **Where it runs now:** the VS race's object table (vs-race-30) uses it for 15 kinds. It now has
+  a tape row like the other object handlers.
+- **Results:** 1,353 live samples on the VS movie, 500 fuzz cases, 34/34 paths.
+
+**Check:** the incremental gate (additions only).
+
 **Check:** the full gate (a new waiting row).
 
 ## The player's password shown (menu-23, 2026-11-24)
