@@ -23,8 +23,8 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dsp4_09_entries import predict  # noqa: E402
-from dsp4_09_scenery import frames_of, load, s16, words  # noqa: E402
+from dsp4_09_entries import parts as ordered, predict  # noqa: E402
+from dsp4_09_scenery import frames_of, load  # noqa: E402
 
 RUN = os.path.join(ROOT, 'build', 'bench', 'dsp4_tape_run')
 FW = os.path.join(ROOT, 'ext', 'firmware', 'dsp4.rom')
@@ -76,57 +76,6 @@ def shown(cases):
             got.append(n > 0)
         res.append(got)
     return res
-
-
-def ordered(r, frame):
-    """the frame's parts in the stream's order: (kind, list, x, y, crest, attribute, answers);
-    a bar's part (sprite_part_put, $81:8527) as ('bar', 1, ..., answers)"""
-    a0, k1, k7, k8, k9, e = frame
-    ws, i, cur = words(r, k9, e), 0, None
-
-    def answers(i):
-        out, f = [], ws[i][1]
-        i += 1
-        while f != 0:
-            out.append((ws[i][1], ws[i + 1][1]))
-            i += 2
-            f = ws[i][1]
-            i += 1
-        return out, i
-    lists = {0x82DDD1: 0, 0x82DE21: 1, 0x82DEBA: 0, 0x82DF0A: 1}  # a part's a (the bench's PCs)
-    try:
-        while i < len(ws):
-            pc, v, rd = ws[i]
-            if rd:
-                i += 1
-            elif pc == 0x82D93D:  # a scenery object
-                cur = ('scenery', [ws[i + q][1] for q in range(7)])
-                i += 7
-            elif pc in (0x82D26E, 0x82D08F):  # a car
-                cur = ('car', [ws[i + q][1] for q in range(9)], ws[i + 9][1], ws[i + 10][1], ws[i + 11][1])
-                i += 12
-            elif pc == 0x81852A:  # a bar's part: x, y, attribute, then its answers
-                out, i = answers(i + 3)
-                yield ('bar', 1, None, None, None, None, out)
-            elif pc in lists and cur is not None:
-                w, a, b = ws[i - 1][1], s16(ws[i][1]), s16(ws[i + 1][1])
-                out, i = answers(i + 2)
-                if cur[0] == 'scenery':
-                    l2, h, P, l1, d20, d22, att = cur[1]
-                    x = 0x80 - s16(P) + (s16(d20) * h >> 15) + b
-                    y = 0xA9 + s16(l1) + a + (s16(d22) * h >> 15)
-                    yield ('scenery', lists[pc], x, y, 0xA9 + s16(l2), (att + w) & 0xFFFF, out)
-                else:
-                    line, _, d, lA, lB, _, _, h, _ = cur[1]
-                    ans, hgt, attr = cur[2], cur[3], cur[4]
-                    L = s16(lB) + ((s16(lA) - s16(lB)) * (d >> 8) >> 8)
-                    x = 0x80 + (s16(ans) * h >> 15) + b
-                    y = 0xA9 + (L * h >> 15) + a + (s16(hgt) * h >> 15)
-                    yield ('car', lists[pc], x, y, 0xA9 + s16(line), (attr + w) & 0xFFFF, out)
-            else:
-                i += 1
-    except IndexError:  # a stream cut off by the tape's end
-        return
 
 
 def place(T, p, size):

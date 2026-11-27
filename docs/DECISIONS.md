@@ -6409,6 +6409,49 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The crest is the stream's lowest line so far (dsp4-09k, 2026-11-27)
+
+**Corrects dsp4-09h's crest.** A part's crest is the lowest `$A9` + first word of every object
+and every empty slot sent since the stream's `$0009`. The empty slot is a line and a 0
+(`$82:CEF4`, the rows with no object). It starts again at each stream. On flat road (`race1`)
+that is each object's own first word, which is why dsp4-09h held there.
+
+**On chosen inputs on the firmware** (one object B at line `$10`, with earlier items):
+
+| Before B | B |
+|---|---|
+| nothing | shown |
+| an object at line 2 | hidden (that crest is above B's top) |
+| an empty slot at line 2 | hidden |
+| an object at line `$14` | shown, unchanged |
+| B first, then an object at line 2 | B unchanged |
+| a slot at 2, then a slot at `$30` | hidden: a lower line does not reset it |
+
+**Over the tapes** (`tools/dsp4_09_entries.py`, `tools/dsp4_09_budget.py`, `tools/dsp4_09_high.py`, now
+sharing one walk of the stream in its order):
+
+| 60k movie | dsp4-09h's crest | the lowest line so far |
+|---|---|---|
+| scenery parts the rule gets wrong (not budget-hidden) | 11,609 | 2,826 |
+| cars | 195 | 35 |
+| the budget's wrong parts (cars + scenery) | 23,695 | 3,933 |
+| high tables exact | 6,188 | 6,189 of 6,201 |
+
+`race1`'s numbers do not change.
+
+**A fix on the way.** On the 60k movie a "frame" cut by `frames_of` can run on through the VS
+views' streams, until the next command it knows. So the walk now starts again at each `$8000`
+end (`$82:D1F0`) and at each `$0009`.
+
+**What is left on the 60k movie:**
+- 832 parts that answer with their mask alone. The mask was emitted, then the sprite went
+  over the budget, so a part is not atomic (the advisor's point 3).
+- 1,955 parts shown with x outside −8..255. The bounds are not those (point 5).
+- 74 others.
+
+**Check:** the three scripts on `race1`'s firmware tape (exit 0). This changes `tools/` scripts
+only.
+
 ## The high table `$0006` (dsp4-09j, 2026-11-27)
 
 **Measured on the firmware's tapes, outputs only** (`tools/dsp4_09_high.py`).
