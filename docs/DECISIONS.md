@@ -6409,6 +6409,51 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The sprite stream's cars: their screen x (dsp4-09f, 2026-11-27)
+
+**Measured on the firmware, outputs only** (the tapes of dsp4-09e; `tools/dsp4_09_cars.py`).
+
+**A car object's words.** The player's (`car_sprite_head`, `$82:D267`) and the rivals'
+(`rival_car_sprites`) send 9 words:
+1. a row's line;
+2. `$9000`;
+3. the car's distance;
+4. and 5. two rows' lines;
+6. and 7. two rows' x;
+8. the height h;
+9. the car's sideways place.
+
+Then the chip answers one word. The game keeps it at `D+$2A`. Then come the car's height and
+attribute, then two lists of parts from the ROM (w, a, b), as the scenery's.
+
+**The rule for an entry's x and second word:**
+- x = `$80` + (answer · h >> 15) + b;
+- the second word is the attribute + w.
+
+**Results:**
+
+| | `race1` | 60k movie |
+|---|---|---|
+| the player's entries | 7,840, all exact | 125,623, all exact |
+| the rivals' entries | 1,067, all exact | 22,328, all exact |
+
+**So the answer word is the car's place across the screen before scaling,** worked out by the
+chip from the 9 words.
+- When the two rows' x are equal, the answer is the sideways place less a row's x.
+- When they differ, it lies between them: an interpolation by the distance word, whose
+  fraction is not yet pinned.
+
+**Not yet known:**
+- **The answer's rule.**
+- **The entry's line.**
+  - The player's car: on `race1` it is word 1 (42). On the 60k movie the line is 42 even
+    where word 1 is 51.
+  - The rivals' line equals word 1 in 8,647 of 10,315 cases.
+  - So the chip computes the line too, from the distance and the rows.
+- **The `$00EE` entries** (199 among the rivals' on the 60k movie).
+
+**Check:** `tools/dsp4_09_cars.py` on both tapes (exit 0). This adds a file to `tools/` only.
+
 ## The sprite stream's scenery parts: the projection (dsp4-09e, 2026-11-27)
 
 **Measured on the firmware, outputs only.** Tapes recorded with `--dsp4-firmware --dsp4-tape-out`:
