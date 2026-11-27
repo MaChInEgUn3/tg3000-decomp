@@ -60,7 +60,10 @@ probe: $(OUT)/dsp4_tape_run
 # dsp4-01f: the road command on chosen inputs, on the firmware chip
 $(OUT)/dsp4_road_probe: dsp4_road_probe.cpp $(OUT)/dsp4_lle.o | $(OUT)
 	$(CXX) $(CXXFLAGS) -o $@ $^
-probe: $(OUT)/dsp4_road_probe $(OUT)/dsp4_road_native
+probe: $(OUT)/dsp4_road_probe $(OUT)/dsp4_road_native $(OUT)/dsp4_sprite_native
+# dsp4-09l: src/dsp4.c's sprite list on a script (tools/dsp4_09_check.py)
+$(OUT)/dsp4_sprite_native: dsp4_sprite_native.c $(OUT)/src_dsp4.o | $(OUT)
+	$(CC) $(CFLAGS) -o $@ dsp4_sprite_native.c $(OUT)/src_dsp4.o
 
 $(OUT)/dsp4_road_native: dsp4_road_native.c $(OUT)/src_dsp4.o | $(OUT)
 	$(CC) $(CFLAGS) -o $@ dsp4_road_native.c $(OUT)/src_dsp4.o

@@ -2,6 +2,7 @@
 #include "dsp4.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 int32_t dsp4_multiply(int16_t a, int16_t b) { return (int32_t)a * b; }
 
@@ -219,4 +220,135 @@ void dsp4_window_row(Dsp4Window* w, const uint16_t words[9], uint16_t (*runs[2])
 uint16_t dsp4_window_end(const Dsp4Window* w) {
   (void)w;
   return 0;
+}
+
+// ---- the sprite list (dsp4-09l) ----
+static Dsp4Sprites dsp4_sp;
+
+void dsp4_sprites_get(Dsp4Sprites* out) { *out = dsp4_sp; }
+void dsp4_sprites_set(const Dsp4Sprites* in) { dsp4_sp = *in; }
+
+void dsp4_list_open(void) {
+  const bool sizes = dsp4_sp.sizes;  // ($0005 lasts past $0003)
+  memset(&dsp4_sp, 0, sizeof dsp4_sp);
+  dsp4_sp.sizes = sizes;
+}
+
+void dsp4_list_sizes(void) { dsp4_sp.sizes = true; }
+
+// an entry into the high table: its ninth x bit, its size bit (when $0005 was sent)
+static void dsp4_list_high(int32_t x, bool large) {
+  if(dsp4_sp.entries < 128) {
+    const unsigned bits = (x < 0 || x > 0xFF ? 1u : 0u) | (large && dsp4_sp.sizes ? 2u : 0u);
+    dsp4_sp.high[dsp4_sp.entries >> 2] |= (uint8_t)(bits << (2 * (dsp4_sp.entries & 3)));
+  }
+  dsp4_sp.entries++;
+}
+
+// an entry's lines walked from the top: false at the first one that would pass 33 slivers
+// (the lines before stay counted, as on the chip)
+static bool dsp4_list_lines(int32_t y, bool large) {
+  const unsigned size = large ? 16 : 8, k = large ? 2 : 1;
+  for(unsigned i = 0; i < size; i++) {
+    uint8_t* line = &dsp4_sp.lines[(uint8_t)(y + (int32_t)i)];
+    if(*line + k > 33) return false;
+    *line = (uint8_t)(*line + k);
+  }
+  return true;
+}
+
+uint16_t dsp4_list_sprite(uint16_t x, uint16_t y, uint16_t attr, uint16_t out[2]) {
+  const uint16_t flag = dsp4_sprite(x, y, attr, out);
+  if(flag) {
+    (void)dsp4_list_lines((int16_t)y, false);
+    dsp4_list_high((int16_t)x, false);
+  }
+  return flag;
+}
+
+void dsp4_objects_begin(const uint16_t pre[7]) {
+  for(int i = 0; i < 7; i++) dsp4_sp.pre[i] = (int16_t)pre[i];
+  dsp4_sp.crestSet = false;
+  dsp4_sp.kind = 0;
+}
+
+static void dsp4_objects_crest(uint16_t line) {
+  const int16_t c = (int16_t)(dsp4_sp.pre[1] + (int16_t)line);
+  if(!dsp4_sp.crestSet || c < dsp4_sp.crest) dsp4_sp.crest = c;
+  dsp4_sp.crestSet = true;
+}
+
+void dsp4_objects_slot(uint16_t line) {
+  dsp4_objects_crest(line);
+  dsp4_sp.kind = 0;
+}
+
+void dsp4_objects_scenery(const uint16_t head[7]) {
+  // the crest's line, h, the road's x, the object's line, its sideways place, its height, attribute
+  dsp4_objects_crest(head[0]);
+  const int32_t h = head[1];
+  dsp4_sp.x0 = (int16_t)(dsp4_sp.pre[0] - s16x(head[2]) + floor_shift((int64_t)s16x(head[4]) * h, 15));
+  dsp4_sp.y0 = (int16_t)(dsp4_sp.pre[1] + s16x(head[3]) + floor_shift((int64_t)s16x(head[5]) * h, 15));
+  dsp4_sp.attr = head[6];
+  dsp4_sp.kind = 1;
+  dsp4_sp.list = 0;
+}
+
+static int32_t dsp4_byte_lerp(int32_t a, int32_t b, uint16_t d) { return b + floor_shift((int64_t)(a - b) * (d >> 8), 8); }
+
+uint16_t dsp4_objects_car(const uint16_t head[9]) {
+  // the crest's line, $9000, the distance, two rows' lines, two rows' x, h, the sideways place
+  dsp4_objects_crest(head[0]);
+  const uint16_t d = head[2];
+  const int32_t h = head[7];
+  const uint16_t answer = (uint16_t)(s16x(head[8]) - dsp4_byte_lerp(s16x(head[5]), s16x(head[6]), d));
+  const int32_t line = dsp4_byte_lerp(s16x(head[3]), s16x(head[4]), d);
+  dsp4_sp.x0 = (int16_t)(dsp4_sp.pre[0] + floor_shift((int64_t)(int16_t)answer * h, 15));
+  dsp4_sp.y0 = (int16_t)(dsp4_sp.pre[1] + floor_shift((int64_t)line * h, 15));
+  dsp4_sp.h = (uint16_t)h;
+  dsp4_sp.attr = 0;
+  dsp4_sp.kind = 2;
+  dsp4_sp.list = 0;
+  return answer;
+}
+
+void dsp4_objects_car_tail(uint16_t height, uint16_t attr) {
+  dsp4_sp.y0 = (int16_t)(dsp4_sp.y0 + floor_shift((int64_t)s16x(height) * dsp4_sp.h, 15));
+  dsp4_sp.attr = attr;
+}
+
+unsigned dsp4_objects_part(uint16_t w, uint16_t a, uint16_t b, uint16_t out[2][2]) {
+  if(dsp4_sp.kind == 0) return 0;  // (parts with no object: not sent by the game)
+  const bool large = dsp4_sp.list == 0;
+  const int32_t size = large ? 16 : 8;
+  const int32_t x = dsp4_sp.x0 + s16x(b), y = dsp4_sp.y0 + s16x(a);
+  const int16_t* p = dsp4_sp.pre;
+  // the screen's edges (the stream's words 3 to 6), then the crest above the part's top
+  if(x + size <= p[3] || x > p[4] || y + size <= p[5] || y > p[6]) return 0;
+  const int32_t c = dsp4_sp.crestSet ? dsp4_sp.crest : 0x7FFF;
+  if(c < y) return 0;
+  unsigned n = 0;
+  if(c < y + size) {  // the crest cuts the part: a mask (tile $EE) on the crest's line first
+    if(!dsp4_list_lines(c, large)) return 0;
+    out[n][0] = (uint16_t)((x & 0xFF) | (c & 0xFF) << 8);
+    out[n][1] = 0x00EE;
+    dsp4_list_high(x, large);
+    n++;
+  }
+  if(!dsp4_list_lines(y, large)) return n;  // (a mask already given stays)
+  out[n][0] = (uint16_t)((x & 0xFF) | (y & 0xFF) << 8);
+  out[n][1] = (uint16_t)(dsp4_sp.attr + w);
+  dsp4_list_high(x, large);
+  return n + 1;
+}
+
+void dsp4_objects_list_end(void) {
+  if(dsp4_sp.list == 0) dsp4_sp.list = 1;
+  else dsp4_sp.kind = 0;
+}
+
+void dsp4_objects_end(void) { dsp4_sp.kind = 0; }
+
+void dsp4_high_table(uint16_t out[16]) {
+  for(int i = 0; i < 16; i++) out[i] = (uint16_t)(dsp4_sp.high[2 * i] | dsp4_sp.high[2 * i + 1] << 8);
 }

@@ -6409,6 +6409,61 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The sprite list native (dsp4-09l, 2026-11-27)
+
+**The owner's order, the port's request:** the native `$09` and `$06` first, with the known misses
+as open items; then the power-on rounding; then mode 1.
+
+**`src/dsp4.c`, the chip's sprite list.** One state (`Dsp4Sprites`, through `dsp4_sprites_get/set`
+for a harness): the line counts, the high table, the entry count, `$0005`'s setting, the
+stream's words, the crest and the object in hand.
+- `dsp4_list_open` (`$0003`) and `dsp4_list_sizes` (`$0005`);
+- `dsp4_list_sprite` (`$000B`: `dsp4_sprite`'s answer, the entry counted);
+- `dsp4_objects_begin` (`$0009` and its 7 words);
+- `dsp4_objects_slot`, `dsp4_objects_scenery`, `dsp4_objects_car` (its answer) with
+  `dsp4_objects_car_tail`;
+- `dsp4_objects_part` (a part's entries), `dsp4_objects_list_end`, `dsp4_objects_end`;
+- `dsp4_high_table` (`$0006`).
+
+**The rules** are dsp4-09e to dsp4-09k's, plus two measured in this unit:
+- **The object grammar,** by an object's first two words:
+  - (line, 0): an empty slot;
+  - (line, `$9000`): a car (word 2 `$9001` acts the same);
+  - (0, `$8000`): the stream's end;
+  - otherwise scenery;
+  - the bars (`sprite_bar_put`) are parts of the player car's object: an empty first list,
+    then parts.
+- **The screen's edges are the stream's words.** On chosen inputs, each word moved its own
+  edge:
+
+  | Word | Edge | A part shows when |
+  |---|---|---|
+  | 3 | left | x + size > word 3 |
+  | 4 | right | x ≤ word 4 |
+  | 5 | top | y + size > word 5 |
+  | 6 | bottom | y ≤ word 6 |
+
+  - Word 2 changes nothing seen.
+  - The game's words (0, `$100`, 4, `$DC`) give −15..256 for a large part and −7..256 for a
+    small one, and the y edges likewise.
+- **A part is not atomic** (the advisor's point 3): its mask can be answered and its sprite
+  then fail the budget, as on the 60k movie.
+
+**Checked** by `tools/dsp4_09_check.py` and the new driver `build/bench/dsp4_sprite_native`, which
+runs a script of these calls. The script reads every list on a firmware tape (`$0003` to the
+`$0006`'s answers, by the chip's grammar, not the game's PCs; multiplies and `$000A` in between
+read past) and compares every word the game read:
+- **`race1`:** 312 of 312 lists agree.
+- **The 60k movie, VS views included:** 5,672 of 5,812.
+  - Every first difference is a part the native hides and the chip shows: by the crest or
+    the budget, still open.
+
+**Not wired yet.** The game's C still sends these through the port. The wiring, the bridge's
+model and the harness's seeding of this state come next.
+
+**Check:** `tools/dsp4_09_check.py` on `race1`'s firmware tape (exit 0). This adds lines to `src/`
+and `tools/` only; no row changes.
+
 ## The race wrapper's mode 1 runs on the firmware; `$08`'s clamp is 16-bit (dsp4-08h, 2026-11-27)
 
 **Found by the port (its item N) and measured here.** Following the advisor's four steps, no

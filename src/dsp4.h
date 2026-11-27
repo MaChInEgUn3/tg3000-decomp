@@ -113,4 +113,45 @@ uint16_t dsp4_window_begin(Dsp4Window* w, const uint16_t head[45]);
 void dsp4_window_row(Dsp4Window* w, const uint16_t words[9], uint16_t (*runs[2])[2], unsigned n[2], unsigned max);
 // The last answer, after $8000: 0 in every run measured (the game's "far" windows never run).
 uint16_t dsp4_window_end(const Dsp4Window* w);
+// ---- the sprite list: $0003, $0005, $000B, $0009 and $0006 (dsp4-09l) ----
+// Measured on the firmware from outputs only (docs/DECISIONS.md, dsp4-09c to dsp4-09k and
+// dsp4-09l). $0003 opens a list; $0005 turns on the size bits of the high table (it lasts);
+// $000B adds one entry; the stream $0009 adds objects' parts; $0006 answers the high table.
+// One list at a time: the state is the chip's own (dsp4_sprites_get/set give it to a harness).
+typedef struct {
+  uint8_t lines[256];   // eight-pixel slivers counted on each screen line (at most 33)
+  uint8_t high[32];     // the high table: 2 bits an entry
+  uint16_t entries;     // entries in the list so far
+  bool sizes;           // $0005 sent
+  int16_t pre[7];       // the stream's words after $0009: centre x, centre y, -, left, right, top, bottom
+  bool crestSet;
+  int16_t crest;        // the lowest centre y + an object's or slot's line since $0009
+  uint8_t kind;         // the object the parts belong to: 0 none, 1 scenery, 2 car
+  uint8_t list;         // its list of parts: 0 (16 lines, 2 slivers), then 1 (8 lines, 1)
+  int16_t x0, y0;       // the object's screen place before the part's offsets (b, a)
+  uint16_t attr;        // its attribute word
+  uint16_t h;           // its height factor (a car's height word scales by it)
+} Dsp4Sprites;
+void dsp4_sprites_get(Dsp4Sprites* out);
+void dsp4_sprites_set(const Dsp4Sprites* in);
+void dsp4_list_open(void);    // $0003
+void dsp4_list_sizes(void);   // $0005
+// $000B in the list: dsp4_sprite's answer, the entry counted in the list when shown
+uint16_t dsp4_list_sprite(uint16_t x, uint16_t y, uint16_t attr, uint16_t out[2]);
+// $0009 and its 7 words
+void dsp4_objects_begin(const uint16_t pre[7]);
+// An object's first two words decide its kind: (line, 0) an empty slot; (line, $9000) a car
+// (7 more words, then its answer, then dsp4_objects_car_tail); (0, $8000) the stream's end;
+// otherwise scenery (5 more words). Then each object sends its two lists of parts, each part
+// (w, a, b), each list ended by a 0 (dsp4_objects_list_end).
+void dsp4_objects_slot(uint16_t line);
+void dsp4_objects_scenery(const uint16_t head[7]);
+uint16_t dsp4_objects_car(const uint16_t head[9]);
+void dsp4_objects_car_tail(uint16_t height, uint16_t attr);
+// A part: its entries into `out` (none: hidden; a $00EE mask first when the crest cuts it), their count.
+unsigned dsp4_objects_part(uint16_t w, uint16_t a, uint16_t b, uint16_t out[2][2]);
+void dsp4_objects_list_end(void);
+void dsp4_objects_end(void);
+// $0006: the high table, 16 words (8 entries a word, the first in bits 0-1)
+void dsp4_high_table(uint16_t out[16]);
 #endif
