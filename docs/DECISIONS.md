@@ -6409,6 +6409,43 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The sprite list's "word" is a command: `$0005` (dsp4-09d, 2026-11-27)
+
+**Corrects dsp4-09c.** The 5 after `$0003` is not a parameter of `$0003`: it is a command of its own,
+`$0005`, and neither takes parameters. Measured on the firmware, outputs only (`race1`'s frames,
+replayed as in dsp4-09c, `tools/dsp4_09_deps.py`).
+
+**The sweep of that word,** 0-16 and `$20`, `$40`, `$80`, `$100`, `$8000`, `$FFFF`, over 20 frames:
+- **5:** exact.
+- **0, 2, 3, `$A`, `$B`, `$C`, `$FFFF`:** about 5 bytes a frame differ, the same as no `$0005`.
+- **The others:** whole streams differ. They are commands whose parameters swallow the
+  `$000B`s that follow.
+
+**The two apart** (every fourth frame, then all 393 in the script):
+
+| Before the two `$000B` and `$0009` | Frames that differ |
+|---|---|
+| `$0003`, `$0005` (the game's) | 0 |
+| `$0005`, `$0003` | 0 |
+| `$0003`, `$0005`, `$0005`, `$0005` | 0 |
+| `$0005` sent before the frame's first `$0A`, `$0003` in its place | 0 |
+| `$0003` alone | 392: only the `$0006`'s high table (1,989 bytes); its size bits come out 0 |
+| `$0005` alone, or nothing | all: the whole stream |
+
+**So:**
+- **`$0003` opens the sprite list** that `$000B` and `$0009` add to. dsp4-09c's dependence is on
+  it.
+- **`$0005` is a setting, not a switch.** Once is the same as three times. It survives `$0003`
+  and the frame's other commands. It makes the high table carry the sprites' size bits. What
+  clears it is not measured.
+- **The bench's grammar** (`dsp4_chip.c` and `difftest.c`: `$03` as 10 bytes, "a word, then `$000B`
+  and the entry") still matches what the game sends. It reads `$0003` `$0005` `$000B` x y attr as
+  one command. A native list will want the three apart.
+
+**Next:** one object's parts against `dsp4_sprite` (`$0B`'s rule), then the hidden rule.
+
+**Check:** `tools/dsp4_09_deps.py` (its new lines, exit 0). This adds lines to `tools/` only.
+
 ## What the sprite stream `$09` needs from its frame (dsp4-09c, 2026-11-27)
 
 **Measured on the firmware chip, outputs only.** `race1` was recorded with the firmware
@@ -6420,7 +6457,7 @@ tape's.
 **A race frame sends, in order:**
 1. its cars' `$0A`s;
 2. `$01`, `$07`, `$08`;
-3. `$0003` with the word 5 and its first `$000B` entry;
+3. `$0003` with the word 5 and its first `$000B` entry (dsp4-09d: the 5 is a command, `$0005`);
 4. a second `$000B` (the two mini-map dots);
 5. `$0009`;
 6. `$0006`.

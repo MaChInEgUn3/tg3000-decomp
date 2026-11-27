@@ -8,8 +8,8 @@ tape recorded with the firmware chip, with commands left out or changed, into th
         --dsp4-firmware ext/firmware/dsp4.rom --dsp4-tape-out /tmp/r1.tape
     make -C tools/bench probe && python3 -I tools/dsp4_09_deps.py /tmp/r1.tape
 
-A race frame sends: its cars' $0A, then $01, $07, $08, then $0003 (a sprite list: a word, its
-first $000B entry) and a second $000B, then $0009, then $0006. A frame here runs from the last
+A race frame sends: its cars' $0A, then $01, $07, $08, then $0003, $0005 (dsp4-09d: two commands
+with no parameters) and two $000B, then $0009, then $0006. A frame here runs from the last
 $0A before its $01 to the $0006's answer. Outputs only. Exit status 0 when the measured facts
 (docs/DECISIONS.md, dsp4-09c) still hold.
 """
@@ -83,6 +83,12 @@ def main():
             'no $03 and $0B': r[a:j],
             'no $0B': r[a:k1] + g[0:4],
             "$03's word + 1": r[a:k1] + g[0:2] + W((g[2][1] | g[3][1] << 8) + 1) + g[4:],
+            # dsp4-09d: the word 5 is a command of its own, $0005, with no parameters
+            'no $05': r[a:k1] + g[0:2] + g[4:],
+            '$05 before $03': r[a:k1] + g[2:4] + g[0:2] + g[4:],
+            '$05 three times': r[a:k1] + g[0:4] + g[2:4] + g[2:4] + g[4:],
+            '$05 alone': r[a:k1] + g[2:4] + g[4:],
+            '$05 frame first': g[2:4] + r[a:k1] + g[0:2] + g[4:],
         }
         for name, pre in variants.items():
             items.append((name, i, pre + r[k9:e], len(pre)))
@@ -96,8 +102,13 @@ def main():
         out += subprocess.run([RUN, FW, '0'] + args[i:i + 2000], capture_output=True, text=True,
                               check=True).stdout.splitlines()
     stats = {}
+    highOnly = True  # the reads 'no $05' changes: only the $0006's (its PCs $82:AE20-$82:AE5F)
     for (name, i, recs, frm), line in zip(items, out):
         bad = int(line.split(': ')[1].split(' of')[0])
+        if name == 'no $05':
+            for tok in line.split(')')[-1].split():
+                if tok.startswith('$') and not 0x82AE20 <= int(tok[1:].split(':')[0], 16) < 0x82AE60:
+                    highOnly = False
         s = stats.setdefault(name, [0, 0, 0])
         s[0] += 1
         s[1] += bad > 0
@@ -105,7 +116,10 @@ def main():
     for name, (n, frames, bad) in stats.items():
         print('%-16s %d frames, %d differ (%d bytes)' % (name, n, frames, bad))
     ok = (stats['whole frame'][1] == 0 and stats['no $01'][1] == 0 and stats['no $01 $07 $08'][1] == 0 and
-          stats['no $03 and $0B'][1] == len(fr) and stats["$03's word + 1"][1] == len(fr) and len(fr) > 0)
+          stats['no $03 and $0B'][1] == len(fr) and stats["$03's word + 1"][1] == len(fr) and len(fr) > 0 and
+          stats['no $05'][1] > 0 and highOnly and stats['$05 before $03'][1] == 0 and
+          stats['$05 three times'][1] == 0 and stats['$05 alone'][1] == len(fr) and stats['$05 frame first'][1] == 0)
+    print("'no $05' changes only the $0006's high table:", highOnly)
     return 0 if ok else 1
 
 
