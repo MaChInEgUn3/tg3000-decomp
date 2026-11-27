@@ -93,12 +93,18 @@ about three times faster and gives the same per-frame WRAM hashes.
    (`tools/merge_verified.py`, harness-8). A hard failure on any movie fails it, while the
    100-return flag rule, the live flags and the paths count over all movies together.
 
+   `verify_all.sh` first records `race1` with the firmware chip and runs
+   `tools/dsp4_road_check.py` on it (about 30 s): the bench answers the road commands with
+   `src/dsp4.c` (dsp4-route-1), so only the firmware can judge them. A difference stops the run.
+
    `progress.py --check` (and CI) accepts an older row only while the code changed by
    additions alone since its run, and only for 5 commits. It also refuses when the last
    full run (the `# full run:` line `verify_all.sh` writes into `map/verified.txt`) is
    more than 5 commits back, or when anything in `src/` or `tools/bench/` changed since by
    more than additions. `verify_new.sh` refuses up front in that case.
    `tools/test_carry.sh` tests the rule without the ROM.
+   It also refuses a verified row that goes missing, unless `map/symbols.txt` marks that
+   routine "folded into NAME" and the row NAME is verified (dsp4-08g).
 
 ## Metrics
 

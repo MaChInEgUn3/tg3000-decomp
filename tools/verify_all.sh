@@ -36,6 +36,18 @@ optframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/e
 vsframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/vs_race.txt)
 # the VS race runs only with the DSP-4 run from its firmware (harness-27, the owner's file)
 firmware="${TG3000_DSP4_FIRMWARE:-ext/firmware/dsp4.rom}"
+# dsp4-check-1: since dsp4-route-1 the bench answers the road commands ($01, $07, $08) with
+# src/dsp4.c, so the slices below compare that C with itself there. The firmware judges it
+# first: race1 recorded with the firmware chip, then tools/dsp4_road_check.py (random runs on
+# both, and the tape's runs against the native C). A difference stops the run.
+make -s -C tools/bench probe >/dev/null
+build/bench/bench "$rom" 9450 --movie tools/bench/movies/race1.txt --dsp4-firmware "$firmware" \
+  --dsp4-tape-out "$tmp/race1.tape" >/dev/null 2>&1
+if ! python3 -I tools/dsp4_road_check.py 2000 "$tmp/race1.tape" > "$tmp/roadcheck.txt" 2>&1; then
+  cat "$tmp/roadcheck.txt" >&2
+  echo "verify_all: src/dsp4.c's roads differ from the firmware (tools/dsp4_road_check.py)" >&2
+  exit 1
+fi
 vsfuzzskip=vs_screen_frame,player_car_frame,car_sprite_head,vs_cars_frame
 pwfuzzskip=car_sprite_head  # (dsp4-11a: the password movie's last RAM)
 # The slices run from a queue, at most TG3000_JOBS at once (default: the cores), the longest first

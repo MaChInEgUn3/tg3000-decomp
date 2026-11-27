@@ -6409,6 +6409,27 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The firmware judges the roads before every full run (dsp4-check-1, 2026-11-27)
+
+**Why.** Since dsp4-route-1 the bench answers `$01`, `$07` and `$08` with `src/dsp4.c`, so on those
+commands the gate's slices compare that C with itself. A regression in `src/dsp4.c`'s roads would
+have passed. Raised by the advisor before `$09` adds shared state there.
+
+**What.**
+- **`tools/verify_all.sh` now starts with the road check.** It records `race1` with the firmware
+  chip (`--dsp4-firmware --dsp4-tape-out`, 27 s), then runs `tools/dsp4_road_check.py 2000` on that
+  tape (6 s).
+  - The check covers random runs of `$01`, `$07` and `$08` on the firmware and on the native C,
+    and the tape's runs against the native C.
+  - Any difference stops the run before the slices start.
+  - The recorded tape equals `build/cache/race1.tape` byte for byte.
+- **WORKFLOW.md** says so, and states the "folded into" rule of `progress.py --check` (dsp4-08g).
+- **The guard still refuses a missing row that is not marked.** `rng_next`'s row was taken out of
+  the working `map/verified.txt` and `--check` failed with "lost verification"; the row was
+  then put back.
+
+**Check:** the full gate, which now runs the road check first.
+
 ## The race's windows, native (dsp4-08g, 2026-11-27)
 
 **`road_rows_stream` (`$81:8564`) uses the native `$08`** (`dsp4_window_begin/row/end`), and its
