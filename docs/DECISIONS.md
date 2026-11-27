@@ -6409,6 +6409,34 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The cars' answer word (dsp4-09g, 2026-11-27)
+
+**On chosen inputs on the firmware, outputs only.** The tool is `build/bench/dsp4_tape_run`
+with `TAPE_RUN_DUMP=1` (new: it prints the bytes read). The input is a synthetic stream:
+`$0003`, `$0005`, `$0009` with the game's 7 preamble words, then one car object, its answer, its
+height and attribute, and one part.
+
+**The answer:**
+- answer = side − (xB + ((xA − xB) · (distance >> 8) >> 8)), with xA and xB the two rows' x
+  (words 6 and 7) and side word 9. Only the distance's high byte counts.
+- **Chosen inputs:**
+  - 2,000 random cases (x ±2,000, side ±300, any distance): exact.
+  - The candidates with the whole distance, or with 15 or 7 bits of it, give 430 to 1,138.
+- **Not used for the answer:** word 1's line, the two rows' lines and the height (each varied).
+- **Word 2 is a flag word:** `$9001` acts as `$9000`. `$8000` and `$A000` make a different object:
+  its answer is the side word alone, and the reads that follow are framed differently.
+- **The tapes:** every car of `race1` (1,812) and of the 60k movie (28,500), exact.
+
+**Seen on the way:**
+- Word 1 changes the entry: 0 hid it; `$20` and `$40` showed the car's own entry where `$0B`
+  showed a `$00EE` one first.
+- A height of `$4000` or more hid the car.
+
+So the line and the `$00EE` entries depend on word 1 and the height. They are next.
+
+**Check:** `tools/dsp4_09_cars.py` on both tapes (exit 0; it now checks the answer too). This
+adds lines to `tools/` only.
+
 ## The sprite stream's cars: their screen x (dsp4-09f, 2026-11-27)
 
 **Measured on the firmware, outputs only** (the tapes of dsp4-09e; `tools/dsp4_09_cars.py`).

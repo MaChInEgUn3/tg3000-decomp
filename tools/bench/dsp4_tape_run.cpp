@@ -5,7 +5,8 @@
 //   build/bench/dsp4_tape_run ext/firmware/dsp4.rom FROM tape[@FROM]...
 // (a tape's own @FROM overrides FROM). A record whose direction byte is 2 reads one $08 run
 // (a count word, then 4 bytes a pair), however long the chip makes it; it is not compared.
-// TAPE_RUN_SHOW=N prints each tape's first N differing reads (record, PC, tape and chip byte). Per tape one line: its reads at record FROM or later that differ, of how many, the first
+// TAPE_RUN_SHOW=N prints each tape's first N differing reads (record, PC, tape and chip byte).
+// TAPE_RUN_DUMP=1 prints instead each tape's bytes read from FROM on, in hex, on one line. Per tape one line: its reads at record FROM or later that differ, of how many, the first
 // (its record and PC), then the differing reads by PC (at most 8). Reads before FROM are not
 // compared (they set the chip up: a frame's commands before the one measured).
 #include <cstdio>
@@ -46,6 +47,8 @@ int main(int argc, char** argv) {
     uint32_t firstPc = 0;
     std::map<uint32_t, long> byPc;
     long show = std::getenv("TAPE_RUN_SHOW") ? std::strtol(std::getenv("TAPE_RUN_SHOW"), nullptr, 10) : 0;
+    const bool dump = std::getenv("TAPE_RUN_DUMP") != nullptr;
+    std::string dumped;
     while(std::fread(b, 1, 5, f) == 5) {
       const uint32_t pc = uint32_t(b[0] | b[1] << 8 | b[2] << 16);
       if(b[4] == 2) {  // an $08 run, its length the chip's: a count word, then 4 bytes a pair (not compared)
@@ -55,6 +58,7 @@ int main(int argc, char** argv) {
       else {
         const uint8_t v = dsp4_lle_read(true);
         if(k >= from) {
+          if(dump) { char t[4]; std::snprintf(t, sizeof t, "%02X", v); dumped += t; }
           n++;
           if(v != b[3]) {
             if(show > 0) { std::printf("  r%ld $%06X tape %02X chip %02X\n", k, pc, b[3], v); show--; }
@@ -67,6 +71,7 @@ int main(int argc, char** argv) {
       k++;
     }
     std::fclose(f);
+    if(dump) { std::printf("%s: %s\n", path.c_str(), dumped.c_str()); continue; }
     std::printf("%s: %ld of %ld differ", path.c_str(), bad, n);
     if(first >= 0) std::printf(" (first at record %ld, $%06X)", first, firstPc);
     int shown = 0;

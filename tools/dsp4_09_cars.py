@@ -11,8 +11,11 @@ and its sideways place; the chip answers one word; then the car's height and att
 two lists of parts from the ROM (w, a, b), as the scenery's (tools/dsp4_09_scenery.py). The
 rule tested on each entry that is not $00EE:
     x = $80 + (answer * h >> 15) + b,   the entry's second word: attribute + w.
-So the answer is the car's place across the screen before scaling; how the chip gets it from
-the 9 words, and the entry's line, are not known yet. Exit 0 when every entry follows the rule.
+So the answer is the car's place across the screen before scaling. dsp4-09g: it is
+    answer = side - (xB + ((xA - xB) * (distance >> 8) >> 8))
+with xA, xB the two rows' x (words 6 and 7) and side word 9 (on chosen inputs: the height, the
+lines and word 1 do not change it). The entry's line is not known yet. Exit 0 when every entry
+and every answer follow the rules.
 """
 import os
 import sys
@@ -66,9 +69,13 @@ def cars(r, frame):
 def main():
     r = load(sys.argv[1])
     n = {'player': [0, 0, 0], 'rival': [0, 0, 0]}  # entries, x exact, attribute exact
+    heads = answers = 0
     for frame in frames_of(r):
         for kind, head, ans, (hgt, attr), parts in cars(r, frame):
             h = head[7]
+            d, xA, xB, side = head[2], s16(head[5]), s16(head[6]), s16(head[8])
+            heads += 1
+            answers += ans == (side - (xB + ((xA - xB) * (d >> 8) >> 8))) & 0xFFFF
             for lst, w, a, b, out in parts:
                 for o in out:
                     if o[1] == 0x00EE:
@@ -78,7 +85,8 @@ def main():
                     n[kind][2] += o[1] == ((attr + w) & 0xFFFF)
     for kind, (e, x, at) in n.items():
         print('%s: %d entries, x exact %d, attribute exact %d' % (kind, e, x, at))
-    return 0 if all(e and e == x == at for e, x, at in n.values()) else 1
+    print('cars %d, the answer exact for %d' % (heads, answers))
+    return 0 if all(e and e == x == at for e, x, at in n.values()) and heads == answers else 1
 
 
 if __name__ == '__main__':
