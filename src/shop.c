@@ -1533,7 +1533,8 @@ uint16_t shop_list_label(uint16_t dp, uint16_t x) {
 // TG3000_ROUTINE($80:8EB4) shop_item_screen
 //
 // A shop list's item screen: on the list D+$F0 names, a fade out instead. Else it opens,
-// then runs a frame at a time for good (it is left by the buy handlers and the task switch).
+// then runs a frame at a time until down past the last item or up past the first leaves it
+// (shop_item_down/up: the buy handlers never leave, checked in the listing).
 void shop_item_screen(uint16_t dp) {
   if(!shop_item_screen_open(dp)) return;
   shop_panel_clear(dp);
@@ -1547,9 +1548,11 @@ void shop_item_screen(uint16_t dp) {
     const uint16_t was = rd16(dp + 0x4E);
     while(rd16(0x0024) == was) platform_wait_vblank();
     shop_item_frame_draw(dp);
-    // up/down on the pad move the cursor, A/B/X/Y (D+$0E) buy
-    if(rd16(dp + 0x0C) & 0x0900) shop_item_down(dp);
-    if(rd16(dp + 0x0C) & 0x0600) shop_item_up(dp);
+    // up/down on the pad move the cursor, A/B/X/Y (D+$0E) buy; down past the last item or up
+    // past the first leaves the screen (the original drops its return address there: port
+    // request Q)
+    if((rd16(dp + 0x0C) & 0x0900) && shop_item_down(dp)) return;
+    if((rd16(dp + 0x0C) & 0x0600) && shop_item_up(dp)) return;
     const uint16_t press = rd16(dp + 0x0E);
     wr16(dp + 0x0E, (uint16_t)(press & ~0xC0C0));
     if(press & 0xC0C0) shop_buy_dispatch(dp);

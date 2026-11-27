@@ -6409,6 +6409,21 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Leaving a shop item screen returns (port request Q, 2026-11-27)
+
+**A bug in the C, found by the port.** `shop_item_screen` ignored the true that `shop_item_down` and
+`shop_item_up` return when they leave the list, at the last item and the first. Their originals
+drop their return address and return from the screen's caller. So the C stayed in the
+screen's loop for good, and the port showed an item with a blank panel. The bench was right:
+there the original runs.
+- **The fix:** the loop returns when either one returns true.
+- **The buy handlers never leave.** None of `$80:9053`-`$80:9750` or `$80:930A` pulls its return address
+  in the listing, so `shop_buy_dispatch` needs no such path.
+- **Why no row caught it:** `shop_item_screen`'s row stops before the loop (`endAt` `$80:8F3B`), and
+  `shop_item_down`/`shop_item_up` were right as functions.
+
+**Check:** the full gate (`src/` changed by more than additions).
+
 ## The high table and the list's opening native (dsp4-09p, 2026-11-27)
 
 **The first wiring unit of `$09`/`$06`.** These parts of the game's C now call `src/dsp4.c`'s
