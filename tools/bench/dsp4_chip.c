@@ -27,6 +27,17 @@ static void dsp4_put(uint8_t* p, uint16_t w) {
   p[1] = (uint8_t)(w >> 8);
 }
 
+// The chip's rounding in place of src/dsp4.c's global for one native call; the global is put
+// back after, so the chip and the code using the global do not disturb each other.
+static void dsp4_round_enter(const Dsp4Chip* c, int16_t saved[2]) {
+  dsp4_round_get(&saved[0], &saved[1]);
+  dsp4_round_set(c->edge2, c->edge3);
+}
+static void dsp4_round_leave(Dsp4Chip* c, const int16_t saved[2]) {
+  dsp4_round_get(&c->edge2, &c->edge3);
+  dsp4_round_set(saved[0], saved[1]);
+}
+
 static void dsp4_answer(Dsp4Chip* c) {
   memset(c->out, 0, sizeof c->out);
   switch(c->cmd) {
@@ -37,10 +48,10 @@ static void dsp4_answer(Dsp4Chip* c) {
     break;
   }
   case 0x0A: {
-    int16_t e[4];
+    int16_t e[4], saved[2];
+    dsp4_round_enter(c, saved);
     dsp4_edges(dsp4_word(c->in), dsp4_word(c->in + 2), dsp4_word(c->in + 4), e);
-    c->edge2 = e[2];
-    c->edge3 = e[3];
+    dsp4_round_leave(c, saved);  // the copy takes edges 2 and 3
     for(int j = 0; j < 4; j++) dsp4_put(c->out + 2 * j, (uint16_t)e[j]);
     break;
   }
@@ -66,30 +77,161 @@ void dsp4_chip_reset(Dsp4Chip* c) {
   c->edge2 = c->edge3 = (int16_t)0x8000;
 }
 
-// The road ($01): phase 5 takes the header (30 bytes), phase 6 a row's words (8 bytes, 14 for
-// the first: its height, then the first row's 3 words, then its 3 track words), phase 7 gives
-// the row's answer, phase 8 takes the word after it: $8000 ends the command, anything else is
-// the next row's height.
+void dsp4_chip_abort(Dsp4Chip* c) {
+  const int16_t e2 = c->edge2, e3 = c->edge3;
+  const unsigned long u = c->unmodelled;
+  dsp4_chip_reset(c);
+  c->edge2 = e2;
+  c->edge3 = e3;
+  c->unmodelled = u;
+}
+
+// ---- the streams: phase 5 takes the header, phase 6 a row's words (its first word $8000
+// ends the command, $8001 is a road edge, not had), phase 7 gives an answer ----
+static unsigned dsp4_stream_head(uint8_t cmd) { return cmd == 0x01 ? 30 : cmd == 0x07 ? 22 : 90; }
+static unsigned dsp4_stream_row(const Dsp4Chip* c) { return c->cmd == 0x01 ? (c->roadFirst ? 14 : 8) : c->cmd == 0x07 ? 12 : 18; }
+
+static uint16_t dsp4_lines[DSP4_CHIP_LINES][3];
+static uint16_t dsp4_runs[2][DSP4_CHIP_LINES][2];
+
+static void dsp4_stream_answered(Dsp4Chip* c, unsigned len, bool unmodelled) {
+  c->streamLen = (uint16_t)len;
+  c->phase = 7;
+  c->count = 0;
+  if(unmodelled) c->unmodelled++;
+}
+
+// a row's count word and its lines at p (the count says what is kept); returns the bytes
+static unsigned dsp4_put_lines(uint8_t* p, unsigned n) {
+  const unsigned k = n < DSP4_CHIP_LINES ? n : DSP4_CHIP_LINES;
+  dsp4_put(p, (uint16_t)k);
+  for(unsigned i = 0; i < k; i++)
+    for(int j = 0; j < 3; j++) dsp4_put(p + 2 + 6 * i + 2 * j, dsp4_lines[i][j]);
+  return 2 + 6 * k;
+}
+
+static void dsp4_stream_begin(Dsp4Chip* c) {
+  uint16_t head[45];
+  const unsigned n = dsp4_stream_head(c->cmd) / 2;
+  for(unsigned i = 0; i < n; i++) head[i] = dsp4_word(c->streamIn + 2 * i);
+  int16_t saved[2];
+  uint16_t first = 0;
+  dsp4_round_enter(c, saved);
+  if(c->cmd == 0x01) dsp4_road_start(&c->road, head);
+  else if(c->cmd == 0x07) dsp4_road2_start(&c->road, head);
+  else first = dsp4_window_begin(&c->window, head);
+  dsp4_round_leave(c, saved);
+  // (dsp4.h) measured for the camera's line at or above the line limit; below it, a row can
+  // divide by 0 in dsp4.c (its segment 0 with lines to draw)
+  if(c->cmd == 0x08) c->outside = (int16_t)head[38] < (int16_t)head[24] || (int16_t)head[40] < (int16_t)head[26];
+  else c->outside = (int16_t)head[1] < (int16_t)head[2];
+  c->roadFirst = true;
+  c->count = 0;
+  if(c->cmd == 0x08) {
+    dsp4_put(c->streamOut, first);
+    dsp4_stream_answered(c, 2, false);
+  } else c->phase = 6;
+}
+
 static void dsp4_road_answer(Dsp4Chip* c) {
-  const uint8_t* w = c->roadIn;
-  uint16_t first[3], track[3], out[4];
+  const uint8_t* w = c->streamIn;
+  uint16_t first[3], track[3], out[4] = {0, 0, 0, 0};
   const uint8_t* tr = w + (c->roadFirst ? 8 : 2);
   for(int i = 0; i < 3; i++) {
     first[i] = dsp4_word(w + 2 + 2 * i);
     track[i] = dsp4_word(tr + 2 * i);
   }
-  static uint16_t lines[512][3];
-  const unsigned n = dsp4_road_row(&c->road, dsp4_word(w), c->roadFirst ? first : NULL, track, out, lines, 512);
+  unsigned n = 0;
+  bool unmodelled = c->outside;
+  if(!c->outside) {
+    const int prev = c->road.yPrev;  // the previous row's line (the camera's, for the first)
+    int16_t saved[2];
+    dsp4_round_enter(c, saved);
+    n = dsp4_road_row(&c->road, dsp4_word(w), c->roadFirst ? first : NULL, track, out, dsp4_lines, DSP4_CHIP_LINES);
+    dsp4_round_leave(c, saved);
+    unmodelled = prev - c->road.yPrev >= 88 || n > DSP4_CHIP_LINES;
+  }
   c->roadFirst = false;
-  for(int i = 0; i < 4; i++) dsp4_put(c->roadOut + 2 * i, out[i]);
-  dsp4_put(c->roadOut + 8, (uint16_t)n);
-  const unsigned k = n < 512 ? n : 512;
-  for(unsigned i = 0; i < k; i++)
-    for(int j = 0; j < 3; j++) dsp4_put(c->roadOut + 10 + 6 * i + 2 * j, lines[i][j]);
-  c->roadLen = (uint16_t)(10 + 6 * k);
+  for(int i = 0; i < 4; i++) dsp4_put(c->streamOut + 2 * i, out[i]);
+  dsp4_stream_answered(c, 8 + dsp4_put_lines(c->streamOut + 8, n), unmodelled);
+}
+
+static void dsp4_road2_answer(Dsp4Chip* c) {
+  uint16_t words[6], out[2] = {0, 0};
+  for(int i = 0; i < 6; i++) words[i] = dsp4_word(c->streamIn + 2 * i);
+  unsigned n = 0;
+  bool unmodelled = c->outside;
+  if(!c->outside) {
+    const int prev = c->road.yPrev;
+    int16_t saved[2];
+    dsp4_round_enter(c, saved);
+    n = dsp4_road2_row(&c->road, words, out, dsp4_lines, DSP4_CHIP_LINES);
+    dsp4_round_leave(c, saved);
+    unmodelled = prev - c->road.yPrev >= 88 || n > DSP4_CHIP_LINES;
+  }
+  for(int i = 0; i < 2; i++) dsp4_put(c->streamOut + 2 * i, out[i]);
+  dsp4_stream_answered(c, 4 + dsp4_put_lines(c->streamOut + 4, n), unmodelled);
+}
+
+static void dsp4_window_answer(Dsp4Chip* c) {
+  uint16_t words[9];
+  for(int i = 0; i < 9; i++) words[i] = dsp4_word(c->streamIn + 2 * i);
+  unsigned n[2] = {0, 0};
+  bool unmodelled = c->outside || words[2] != words[4];  // (dsp4.h) measured for equal lines only
+  if(!c->outside) {
+    uint16_t (*runs[2])[2] = {dsp4_runs[0], dsp4_runs[1]};
+    int16_t saved[2];
+    dsp4_round_enter(c, saved);  // (the windows do not use the rounding; kept alike)
+    dsp4_window_row(&c->window, words, runs, n, DSP4_CHIP_LINES);
+    dsp4_round_leave(c, saved);
+  }
+  unsigned at = 0;
+  for(int k = 0; k < 2; k++) {
+    if(n[k] > DSP4_CHIP_LINES) unmodelled = true;
+    const unsigned kept = n[k] < DSP4_CHIP_LINES ? n[k] : DSP4_CHIP_LINES;
+    dsp4_put(c->streamOut + at, (uint16_t)kept);
+    at += 2;
+    for(unsigned i = 0; i < kept; i++, at += 4) {
+      dsp4_put(c->streamOut + at, dsp4_runs[k][i][0]);
+      dsp4_put(c->streamOut + at + 2, dsp4_runs[k][i][1]);
+    }
+  }
+  dsp4_stream_answered(c, at, unmodelled);
+}
+
+// a row's first word: $8000 ends the command ($08 then answers one word); $8001 in a road is an
+// edge, which the native code does not have
+static bool dsp4_stream_mark(Dsp4Chip* c) {
+  const uint16_t w = dsp4_word(c->streamIn);
+  if(w == 0x8000) {
+    if(c->cmd == 0x08) {
+      dsp4_put(c->streamOut, dsp4_window_end(&c->window));
+      c->streamEnd = true;
+      dsp4_stream_answered(c, 2, false);
+    } else {
+      c->phase = 0;
+      c->count = 0;
+    }
+    return true;
+  }
+  if(w == 0x8001 && c->cmd != 0x08) {
+    c->unmodelled++;
+    c->phase = 4;
+    return true;
+  }
+  return false;
 }
 
 bool dsp4_chip_lost(const Dsp4Chip* c) { return c->phase == 4; }
+bool dsp4_chip_idle(const Dsp4Chip* c) { return c->phase == 0; }
+unsigned long dsp4_chip_unmodelled(const Dsp4Chip* c) { return c->unmodelled; }
+
+unsigned dsp4_chip_pending(const Dsp4Chip* c) {
+  if(c->phase == 7) return (unsigned)(c->streamLen - c->count);
+  if(c->phase != 3) return 0;
+  if(c->flagEnds && c->count < 2 && dsp4_word(c->out) == 0) return 2u - c->count;
+  return (unsigned)(c->outSize - c->count);
+}
 
 void dsp4_chip_write(Dsp4Chip* c, uint8_t v) {
   switch(c->phase) {
@@ -98,9 +240,10 @@ void dsp4_chip_write(Dsp4Chip* c, uint8_t v) {
     c->phase = 1;
     return;
   case 1: {
-    if(c->cmd == 0x01 && v == 0) {  // the road
+    if(v == 0 && (c->cmd == 0x01 || c->cmd == 0x07 || c->cmd == 0x08)) {  // a stream
       c->phase = 5;
       c->count = 0;
+      c->streamEnd = false;
       return;
     }
     const int i = dsp4_command_index(c->cmd);
@@ -131,35 +274,19 @@ void dsp4_chip_write(Dsp4Chip* c, uint8_t v) {
     (void)dsp4_chip_read(c);
     return;
   case 5:
-    c->roadIn[c->count++] = v;
-    if(c->count == 30) {
-      uint16_t head[15];
-      for(int i = 0; i < 15; i++) head[i] = dsp4_word(c->roadIn + 2 * i);
-      dsp4_road_begin(&c->road, head, c->edge2, c->edge3);
-      c->roadFirst = true;
-      c->phase = 6;
-      c->count = 0;
-    }
-    return;
-  case 8:  // the word after a row's answer
-    c->roadIn[c->count++] = v;
-    if(c->count < 2) return;
-    if(dsp4_word(c->roadIn) == 0x8000) {
-      c->phase = 0;
-      c->count = 0;
-      return;
-    }
-    c->phase = 6;
+    c->streamIn[c->count++] = v;
+    if(c->count == dsp4_stream_head(c->cmd)) dsp4_stream_begin(c);
     return;
   case 6:
-    c->roadIn[c->count++] = v;
-    if(c->count == (c->roadFirst ? 14 : 8)) {
-      dsp4_road_answer(c);
-      c->phase = 7;
-      c->count = 0;
+    c->streamIn[c->count++] = v;
+    if(c->count == 2 && dsp4_stream_mark(c)) return;
+    if(c->count == dsp4_stream_row(c)) {
+      if(c->cmd == 0x01) dsp4_road_answer(c);
+      else if(c->cmd == 0x07) dsp4_road2_answer(c);
+      else dsp4_window_answer(c);
     }
     return;
-  default:  // lost, or a write in the road's answer
+  default:  // lost, or a write in a stream's answer
     c->phase = 4;
     return;
   }
@@ -168,9 +295,9 @@ void dsp4_chip_write(Dsp4Chip* c, uint8_t v) {
 uint8_t dsp4_chip_read(Dsp4Chip* c) {
   if(c->phase == 0) return 0xFF;  // idle: the game's start-up waits for $FFFF ($80:8088)
   if(c->phase == 7) {
-    const uint8_t v = c->roadOut[c->count++];
-    if(c->count == c->roadLen) {
-      c->phase = 8;
+    const uint8_t v = c->streamOut[c->count++];
+    if(c->count == c->streamLen) {
+      c->phase = c->streamEnd ? 0 : 6;
       c->count = 0;
     }
     return v;

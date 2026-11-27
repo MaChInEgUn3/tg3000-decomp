@@ -6409,6 +6409,60 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The bench answers the road commands with the native C (dsp4-route-1, 2026-11-26)
+
+**Why.** dsp4-08f showed the bench's stand-in chip gets `$08` wrong on the explored movies (all
+800 runs checked there equal the native `$08` on the firmware, none the stand-in), as it gets
+`$01`/`$07`'s clamps wrong (dsp4-07b). The project's rule since the bench began: a command
+proved on the firmware is routed in the bridge to `src/dsp4.c`. `$01`, `$07` and `$08` are now
+routed, with `$0A`, `$11`, `$03` and `$0B` as before.
+
+**How** (`tools/bench/dsp4_bridge.cpp`, `tools/bench/dsp4_chip.c`):
+- **The chip model.** The bridge answers through `Dsp4Chip`, the byte-stream model built on
+  `src/dsp4.c` (until now used only by `dsp4_compare`), extended with `$07` and `$08`.
+  - It keeps its own copy of the road's rounding, changed only by `$0A` and the roads.
+  - Every native call runs with that copy swapped into `src/dsp4.c`'s global and the global put
+    back after. So the routine under test (seeded by the harness) and the bench's chip never
+    share the value; the negative row's wrong rounding cannot leak into the ground truth.
+- **In step.** The stand-in still gets every byte. Its answers can be a different length from
+  ours (other line counts). So when a header or row is complete, the bridge reads the
+  stand-in's whole answer away itself, by the stand-in's own count words, and the game reads
+  ours. At a stream's end the stand-in must be idle; otherwise it counts a desync.
+- **What the native C does not model is not served silently.** It is served from the stand-in
+  and counted (`DSP-4 routed: N answers not modelled`, printed by the bench without
+  `--dsp4-firmware`): `$01`/`$07` segments of 88 lines or more, the road edge `$8001`, `$08` rows
+  with unequal lines, more than 512 lines in a row, headers outside what was measured.
+- **Save states** carry the model, the answer being served and the routing state, after the
+  stand-in's blob (tagged; an older state restarts the model at power-on).
+- **Unchanged:** the firmware path (`--dsp4-firmware`), the tape replay, the scripted fuzz cases.
+
+**Drafted by a delegated agent** (cxc `ask_claude`, given only these source files; it hit its
+budget before replying), reviewed and checked here.
+
+**Checks:**
+- `tools/bench/dsp4_chip_test.c` (standalone: `cc -std=c99 -Isrc -Itools/bench
+  tools/bench/dsp4_chip_test.c tools/bench/dsp4_chip.c src/dsp4.c`). It drives the model byte
+  by byte through `$0A`, `$01`, `$07`, `$08` against direct calls: 2,191 checks, 0 failed, and the
+  global rounding unchanged.
+- `race1` on the routed bench: 0 answers not modelled, 0 desyncs.
+  - Its `$07` (585) and `$08` (584) runs equal the firmware tape's.
+  - In 191 of its 585 `$01` runs (the ones before any `$0A`) a line word is 1 off. This is
+    dsp4-01r's power-on rounding, still unmodelled. The stand-in had 3 there. Those samples stay
+    set apart by the tracker (rounding unknown). Every run's input equals the firmware's.
+- The road rows on `race1` (`road_rows_project`, `road_rows_project2`, `road_rows_stream`,
+  `race_track_start`) pass their samples.
+- The full gate.
+
+**What it changes for the evidence.**
+- **The default slices.** On these commands they now compare C with C. The firmware is the
+  judge through `tools/dsp4_road_check.py` (random runs on the firmware, and tapes recorded with
+  `--dsp4-firmware`) and the VS slice.
+  - **Tapes from the routed default bench are circular for that script:** record them with the
+    firmware.
+- **Next (dsp4-08g):** wire `road_rows_stream` (`$81:8564`) to the native `$08`, with its
+  products. Then consider a `race1` slice on the firmware in `verify_all.sh`, so the road rows
+  also have firmware evidence in the gate.
+
 ## The window command `$08`, native (dsp4-08f, 2026-11-26)
 
 **`src/dsp4.c`:** `dsp4_window_begin(w, head45)` (returns the first answer),

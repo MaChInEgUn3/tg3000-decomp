@@ -147,6 +147,9 @@ static const char* dsp4TapePath;
 // harness-27: the firmware DSP-4 (tools/bench/dsp4_lle.cpp)
 int dsp4_bridge_firmware(const char* path);
 static const char* dsp4FirmwarePath;
+// dsp4-route-1: the bridge's answers the native C does not model, and its stream desyncs
+unsigned long dsp4_bridge_unmodelled(void);
+unsigned long dsp4_bridge_desyncs(void);
 
 static uint8_t* readFile(const char* path, int* size) {
   FILE* f = fopen(path, "rb");
@@ -618,6 +621,9 @@ int main(int argc, char** argv) {
     free(known);
   }
 
+  if(dsp4FirmwarePath == NULL && dsp4TapePath == NULL)
+    fprintf(stderr, "DSP-4 routed: %lu answers not modelled (the stand-in's served), %lu desyncs\n",
+            dsp4_bridge_unmodelled(), dsp4_bridge_desyncs());
   if(dsp4TapePath != NULL) {
     long total;
     const long used = dsp4_bridge_tape_used(&total);
