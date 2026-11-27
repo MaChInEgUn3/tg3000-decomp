@@ -6409,6 +6409,61 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The sprite stream's per-line budget (dsp4-09i, 2026-11-27)
+
+**On chosen inputs on the firmware** (`tools/dsp4_09_budget.py`). Synthetic streams of scenery
+objects with one part each, the crest far below so there are no masks. `dsp4_tape_run` gains a
+record kind (direction 3) that reads one part's answer, however long.
+
+**The rule:**
+- each screen line holds at most **33 eight-pixel slivers**;
+- a part from an object's first list takes **2 a line for 16 lines**, from its second list
+  **1 for 8**;
+- a `$00EE` mask counts as another entry of the part's size;
+- **the chip walks a part's lines from the top.** At the first line that would pass 33 it hides
+  the part, and **the lines before stay counted.**
+
+**The cases** (chip = rule in each):
+
+| Stream | Shown |
+|---|---|
+| 34 small on one line | 33 |
+| 12 large on one line, no masks | 12 (24 slivers) |
+| 1 large, then 33 small, on one line | the large and 31 small |
+| 33 small on 164-171, one small at 160 (hidden), 34 at 156 | 32 of the last 34: the hidden one kept 160-163 |
+| the same with 3 at 160 | 30 of the last 34 |
+| 33 small on 164-171, one at 168 (hidden at its first line), 34 at 172 | 33: it kept nothing |
+
+- With masks, 8 large per line show (2 + 2 a line each), as first seen.
+- `$0005` does not change the budget.
+
+**Over the tapes,** with every part in the stream's order:
+- the place of each part follows dsp4-09h's rule;
+- a hidden part's place is the rule's, which the chip never confirms;
+- the bars' entries count on their own lines (the HUD's).
+
+| | cars | scenery |
+|---|---|---|
+| `race1`: right | 6,193 | 21,539 |
+| `race1`: wrong | 14 | 21 |
+| 60k movie: right | 101,091 | 307,224 |
+| 60k movie: wrong | 1,143 | 22,552 (with dsp4-09h's open crest cases) |
+
+- On `race1`, 35 of 27,767 parts are wrong. They are probably hidden parts whose place the rule
+  gets slightly wrong.
+- Not tried: an off-screen part's slivers, a bar's size.
+
+**What a native `$09` now has, all measured:** the list, the projection, the cars' answer, the
+crest and masks, the sizes, the budget.
+
+**Still open:**
+- the 60k movie's scenery crest cases (dsp4-09h);
+- the high table (`$0006`);
+- the other objects (`$82:A9DA`, `$82:AB46`, the bars' rule).
+
+**Check:** `tools/dsp4_09_budget.py` (its chosen inputs, exit 0). This adds lines to `tools/`
+only.
+
 ## The sprite entries: a car's line, the crest and the `$00EE` masks (dsp4-09h, 2026-11-27)
 
 **On chosen inputs on the firmware** (one car, as dsp4-09g), then over the tapes

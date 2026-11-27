@@ -5,6 +5,8 @@
 //   build/bench/dsp4_tape_run ext/firmware/dsp4.rom FROM tape[@FROM]...
 // (a tape's own @FROM overrides FROM). A record whose direction byte is 2 reads one $08 run
 // (a count word, then 4 bytes a pair), however long the chip makes it; it is not compared.
+// A record with direction 3 reads one $09 part's answer (a flag, then per 1 two words and another
+// flag), however long; dumped, not compared.
 // TAPE_RUN_SHOW=N prints each tape's first N differing reads (record, PC, tape and chip byte).
 // TAPE_RUN_DUMP=1 prints instead each tape's bytes read from FROM on, in hex, on one line. Per tape one line: its reads at record FROM or later that differ, of how many, the first
 // (its record and PC), then the differing reads by PC (at most 8). Reads before FROM are not
@@ -51,7 +53,17 @@ int main(int argc, char** argv) {
     std::string dumped;
     while(std::fread(b, 1, 5, f) == 5) {
       const uint32_t pc = uint32_t(b[0] | b[1] << 8 | b[2] << 16);
-      if(b[4] == 2) {  // an $08 run, its length the chip's: a count word, then 4 bytes a pair (not compared)
+      if(b[4] == 3) {  // dsp4-09i: a $09 part's answer: a flag, then per 1 an entry (2 words) and another flag
+        for(;;) {
+          const uint16_t flag = uint16_t(dsp4_lle_read(true) | dsp4_lle_read(true) << 8);
+          if(dump) { char t[8]; std::snprintf(t, sizeof t, "%02X%02X", flag & 0xFF, flag >> 8); dumped += t; }
+          if(flag == 0) break;
+          for(int q = 0; q < 4; q++) {
+            const uint8_t v = dsp4_lle_read(true);
+            if(dump) { char t[4]; std::snprintf(t, sizeof t, "%02X", v); dumped += t; }
+          }
+        }
+      } else if(b[4] == 2) {  // an $08 run, its length the chip's: a count word, then 4 bytes a pair (not compared)
         const uint16_t cnt = uint16_t(dsp4_lle_read(true) | dsp4_lle_read(true) << 8);
         for(unsigned q = 0; q < 4u * cnt; q++) (void)dsp4_lle_read(true);
       } else if(!(b[4] & 1)) dsp4_lle_write(true, b[3]);
