@@ -1140,9 +1140,240 @@ static void trackDsp4(uint32_t adr, uint8_t val, bool write) {
   }
 }
 
+// dsp4-09n: a shadow of the chip's sprite list ($0003, $0005, $000B, $0009, $0006: src/dsp4.c's
+// dsp4_list_* / dsp4_objects_* / dsp4_high_table), fed the original's DSP-4 words in order, as
+// tools/dsp4_09_check.py reads a tape (multiplies and $000A read past). It keeps its own
+// Dsp4Sprites, swapped in and out of src/dsp4.c's around each call. Each word the game reads in
+// a list is compared with the shadow's: a list is tainted from the first word that differs until
+// the next $0003, and lost when another command comes inside it (or a fuzz case or replay ran).
+static Dsp4Sprites shadowList;
+static bool shadowLive;  // in a list, untainted
+static bool shadowLost = true;  // (since a fuzz case or replay: the next $0003 starts again)
+static unsigned long shadowLists, shadowClean, shadowTainted, shadowLostLists;
+static uint8_t shadowByte;  // a word's low byte, once seen
+static bool shadowHalf, shadowHalfRead;
+enum { SH_IDLE, SH_ARGS, SH_READS, SH_OBJ0, SH_OBJ1, SH_HEAD, SH_TAIL, SH_PART, SH_SKIP };
+static int shState = SH_IDLE, shCmd, shNeed, shGot, shList, shAfter;
+static uint16_t shArgs[9], shExpect[40];
+static int shExpectN, shExpectAt;
+
+static void shadowSwap(bool in) {  // (src/dsp4.c's state is the C under test's)
+  static Dsp4Sprites saved;
+  if(in) {
+    dsp4_sprites_get(&saved);
+    dsp4_sprites_set(&shadowList);
+  } else {
+    dsp4_sprites_get(&shadowList);
+    dsp4_sprites_set(&saved);
+  }
+}
+static void shadowLose(void) {
+  if(shadowLive) shadowLostLists++;
+  shadowLive = false;
+  shState = SH_IDLE;
+}
+static void shadowExpect(const uint16_t* w, int n, int after) {
+  for(int i = 0; i < n && i < 40; i++) shExpect[i] = w[i];
+  shExpectN = n < 40 ? n : 40;
+  shExpectAt = 0;
+  shAfter = after;
+  shState = SH_READS;
+}
+static bool shadowAfterRead;  // the word before was a read (a command word follows an answer)
+static void shadowWord(uint16_t w, bool read) {
+  const bool afterRead = shadowAfterRead;
+  shadowAfterRead = read;
+  if(!shadowLive) {  // between lists: wait for a $0003 command word (after an answer, as the tape check)
+    if(read || w != 3 || !afterRead) return;
+    shadowLive = true;
+    shadowLost = false;
+    shadowLists++;
+    shadowSwap(true);
+    dsp4_list_open();
+    shadowSwap(false);
+    shState = SH_IDLE;
+    return;
+  }
+  switch(shState) {
+  case SH_READS:
+    if(!read) { shadowLose(); return; }
+    if(shExpectAt < shExpectN && w != shExpect[shExpectAt]) {
+      shadowTainted++;
+      shadowLive = false;
+      shState = SH_IDLE;
+      return;
+    }
+    if(++shExpectAt >= shExpectN) {
+      if(shAfter == -1) {  // the high table read whole: the list agreed
+        shadowClean++;
+        shadowLive = false;
+        shState = SH_IDLE;
+      } else shState = shAfter;
+    }
+    return;
+  case SH_IDLE:
+    if(read) { shadowLose(); return; }
+    shCmd = w;
+    shGot = 0;
+    if(w == 5) { shadowSwap(true); dsp4_list_sizes(); shadowSwap(false); return; }
+    if(w == 0x0B) { shNeed = 3; shState = SH_ARGS; return; }
+    if(w == 9) { shNeed = 7; shState = SH_ARGS; return; }
+    if(w == 0) { shNeed = 2; shState = SH_ARGS; return; }
+    if(w == 0x0A) { shNeed = 3; shState = SH_ARGS; return; }
+    if(w == 6) {
+      uint16_t h[16];
+      shadowSwap(true);
+      dsp4_high_table(h);
+      shadowSwap(false);
+      shadowExpect(h, 16, SH_IDLE);
+      shAfter = -1;  // the list's end
+      return;
+    }
+    shadowLose();
+    return;
+  case SH_ARGS:
+    if(read) { shadowLose(); return; }
+    shArgs[shGot++] = w;
+    if(shGot < shNeed) return;
+    if(shCmd == 0x0B) {
+      uint16_t out[2], e[3];
+      shadowSwap(true);
+      const uint16_t f = dsp4_list_sprite(shArgs[0], shArgs[1], shArgs[2], out);
+      shadowSwap(false);
+      e[0] = f;
+      e[1] = out[0];
+      e[2] = out[1];
+      shadowExpect(e, f ? 3 : 1, SH_IDLE);
+    } else if(shCmd == 9) {
+      shadowSwap(true);
+      dsp4_objects_begin(shArgs);
+      shadowSwap(false);
+      shState = SH_OBJ0;
+    } else if(shCmd == 0) {  // a multiply: its two answers, read or skipped by writes
+      shNeed = 2;
+      shGot = 0;
+      shState = SH_SKIP;
+    } else {  // $000A: four answers, not the list's
+      shExpectN = 0;
+      shNeed = 4;
+      shGot = 0;
+      shState = SH_SKIP;
+    }
+    return;
+  case SH_SKIP:
+    if(++shGot >= shNeed) shState = SH_IDLE;
+    return;
+  case SH_OBJ0:
+    if(read) { shadowLose(); return; }
+    shArgs[0] = w;
+    shState = SH_OBJ1;
+    return;
+  case SH_OBJ1:
+    if(read) { shadowLose(); return; }
+    shArgs[1] = w;
+    if(shArgs[0] == 0 && w == 0x8000) {
+      shadowSwap(true);
+      dsp4_objects_end();
+      shadowSwap(false);
+      shState = SH_IDLE;
+    } else if(w == 0) {
+      shadowSwap(true);
+      dsp4_objects_slot(shArgs[0]);
+      shadowSwap(false);
+      shState = SH_OBJ0;
+    } else {
+      shCmd = (w & 0x8000) ? 2 : 1;
+      shNeed = shCmd == 2 ? 9 : 7;
+      shGot = 2;
+      shState = SH_HEAD;
+    }
+    return;
+  case SH_HEAD:
+    if(read) { shadowLose(); return; }
+    shArgs[shGot++] = w;
+    if(shGot < shNeed) return;
+    shList = 0;
+    if(shCmd == 2) {
+      shadowSwap(true);
+      const uint16_t a = dsp4_objects_car(shArgs);
+      shadowSwap(false);
+      shGot = 0;
+      shadowExpect(&a, 1, SH_TAIL);
+    } else {
+      shadowSwap(true);
+      dsp4_objects_scenery(shArgs);
+      shadowSwap(false);
+      shGot = 0;
+      shState = SH_PART;
+    }
+    return;
+  case SH_TAIL:
+    if(read) { shadowLose(); return; }
+    shArgs[shGot++] = w;
+    if(shGot < 2) return;
+    shadowSwap(true);
+    dsp4_objects_car_tail(shArgs[0], shArgs[1]);
+    shadowSwap(false);
+    shGot = 0;
+    shState = SH_PART;
+    return;
+  case SH_PART:
+    if(read) { shadowLose(); return; }
+    if(shGot == 0 && w == 0) {  // a list's end
+      shadowSwap(true);
+      dsp4_objects_list_end();
+      shadowSwap(false);
+      if(++shList == 2) shState = SH_OBJ0;
+      return;
+    }
+    shArgs[shGot++] = w;
+    if(shGot < 3) return;
+    {
+      uint16_t out[2][2], e[8];
+      shadowSwap(true);
+      const unsigned k = dsp4_objects_part(shArgs[0], shArgs[1], shArgs[2], out);
+      shadowSwap(false);
+      int n = 0;
+      for(unsigned i = 0; i < k; i++) {
+        e[n++] = 1;
+        e[n++] = out[i][0];
+        e[n++] = out[i][1];
+      }
+      e[n++] = 0;
+      shGot = 0;
+      shadowExpect(e, n, SH_PART);
+    }
+    return;
+  default:
+    shadowLose();
+    return;
+  }
+}
+// the bytes into words: two of the same direction in a row; the list's end counted once its
+// high table is read
+static void trackSprites(uint32_t adr, uint8_t val, bool write) {
+  if((adr & 0xFFFF) >= 0xC000) return;  // status
+  if(fuzzing) {
+    shadowLost = true;
+    shadowLive = false;
+    return;
+  }
+  const bool read = !write;
+  if(shadowHalf && shadowHalfRead == read) {
+    shadowHalf = false;
+    shadowWord((uint16_t)(shadowByte | val << 8), read);
+    return;
+  }
+  shadowHalf = true;
+  shadowHalfRead = read;
+  shadowByte = val;
+}
+
 // dsp4-01t: a fuzz case or replay resets the bench's chip, whose rounding is then unmeasured: a
 // $0A with equal rows ($C4C4, edges -192 and 192), sent to the chip itself, sets a known one
 static void primeDsp4(void) {
+  shadowLost = true;  // (dsp4-09n: the shadow waits for the next $0003)
+  shadowLive = false;
   static const uint8_t command[] = {0x0A, 0x00, 0x00, 0x00, 0xC4, 0xC4, 0xC4, 0xC4};
   dsp4_bridge_direct(command, (int)sizeof command, 8);
   memset(&trackSmp, 0, sizeof trackSmp);
@@ -1160,7 +1391,10 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   // a handler recorded for a waiting sample: its hardware is its own, and only the samples
   // that began inside it see it
   accessBase = (irqOwner >= 0 && irqActive) ? irqBaseDepth : 0;
-  if(isDsp4(adr) && !(!write && insnPc >= 0x808085 && insnPc < 0x80809A)) trackDsp4(adr, val, write);  // (dsp4-01t)
+  if(isDsp4(adr) && !(!write && insnPc >= 0x808085 && insnPc < 0x80809A)) {
+    trackDsp4(adr, val, write);  // (dsp4-01t)
+    trackSprites(adr, val, write);  // (dsp4-09n)
+  }
   if(depth <= accessBase) return;
   // harness-39: the start-up's wait for the DSP-4 ($80:8085-$80:8099) is the platform's
   if(isDsp4(adr) && !write && insnPc >= 0x808085 && insnPc < 0x80809A) return;
@@ -2278,6 +2512,8 @@ static uint64_t verificationHash(const char* source) {
 static unsigned long fuzzLostOf(const Stats* s) { return s->fuzzRequested - (s->fuzzPass + s->fuzzFail); }
 
 bool difftest_report(const char* resultsPath) {
+  fprintf(stderr, "difftest: sprite list shadow (dsp4-09n): lists %lu, agreed %lu, tainted %lu, lost %lu\n",
+          shadowLists, shadowClean, shadowTainted, shadowLostLists);
   bool allOk = true;
   // keep earlier rows for routines this run did not reach
   char kept[64][256];

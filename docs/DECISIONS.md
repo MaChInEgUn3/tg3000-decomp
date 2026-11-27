@@ -6409,6 +6409,42 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## A shadow of the sprite list in the harness (dsp4-09n, 2026-11-27)
+
+**The advisor's first unit before the wiring.** No row changes; the rows stay taped.
+
+**`tools/bench/difftest.c` keeps a shadow of the chip's sprite list**, beside the rounding tracker.
+- It is fed the original's DSP-4 words in order, by the grammar of `tools/dsp4_09_check.py`
+  (multiplies and `$000A` read past). It calls `src/dsp4.c`'s list functions with its own
+  `Dsp4Sprites`, swapped in and out around each call, as the bridge's model does for the rounding.
+- Each word the game reads in a list is compared with the shadow's answer.
+- **A list is tainted** from the first word that differs.
+- **A list is lost** when another command comes inside it.
+- A list starts at a `$0003` written after an answer. A fuzz case or replay makes the shadow
+  wait for the next one.
+- The bench prints `difftest: sprite list shadow: lists N, agreed A, tainted T, lost L`.
+
+**Check: the shadow's counts equal the tape check's on the same movie:**
+
+| Movie | chip | shadow (lists, agreed, tainted, lost) | `dsp4_09_check.py` on its tape |
+|---|---|---|---|
+| `race1` | the bench's | 584, 554, 29, 0 | 583 read (+1 at the tape's end), 554, 29 |
+| `race1` | firmware | 584, 553, 30, 0 | 583 (+1), 553, 30 |
+| 60k | the bench's | 18,559, 14,070, 4,489, 0 | 18,559, 14,070, 4,489 |
+
+**On the 60k movie the bench's own chip agrees with the native much less than the firmware
+does:** 76% of its lists against 95% on the firmware tape (9,648 of 10,190). The sprite rows'
+evidence will come mostly from the firmware slices.
+
+**Next (unit 2, the wiring):**
+- each sample takes the shadow's state at entry, and the C is seeded with `dsp4_sprites_set`;
+- a sample in a tainted list is set apart, as `roadapart`;
+- a `race1` firmware slice;
+- VS's shared helpers are wired too;
+- the enclosing taped rows are listed first.
+
+**Check:** the runs above, then the full gate (`difftest.c` changed by more than additions).
+
 ## The sprite list check, corrected (dsp4-09m, 2026-11-27)
 
 **Corrects dsp4-09l's numbers.** `tools/dsp4_09_check.py` had checked only the lists it could read
