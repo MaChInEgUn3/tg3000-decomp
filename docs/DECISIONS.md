@@ -6409,6 +6409,67 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The race wrapper's mode 1 runs on the firmware; `$08`'s clamp is 16-bit (dsp4-08h, 2026-11-27)
+
+**Found by the port (its item N) and measured here.** Following the advisor's four steps, no
+change to the game's C besides the clamp below.
+
+**1. The code map misses what the firmware run reaches.**
+- `autopilot_60k` was run to the end with `--dsp4-firmware --coverage`. It executes 6,632
+  instruction starts that `map/code_starts.txt` lacks, in 102 ranges.
+- Among them is `$82:89B5`-`$82:8F8C`, the race wrapper's mode 1. It is still `incbin` in
+  `asm/`, and the C traps it.
+- The map comes from the bench's own chip, on which the movie never gets there.
+- `$03DC` is `$2001` at the switch: bit 13 is the title demo's random pick (`timer_0d7e_tick`), so
+  mode 1 is reached from the demo.
+
+**2. What mode 1 sends the DSP-4** (the 60k firmware tape, command words by site):
+- `$0F` and `$10` (the road with the chip's objects; never modelled, trapped on the
+  one-player path), 1,880 each, from `$83:CED2`/`$83:D323` and `$83:D747`/`$83:DB3F`;
+- `$08` from `$81:DCCB`/`$81:E214` (1,899 each);
+- `$01`/`$07` from bank `$83` (21 each);
+- `$0D` (15 each).
+
+It is a two-view race. `tools/dsp4_road_check.py` stops at the first `$0F` run.
+
+**3. "Never run" against the firmware coverage:**
+- **Holes whose code did run:**
+  - `race_frame_rest` (`$82:8689`-`$82:86AB`, 12 starts);
+  - `vs_race_frame_tail` (`$82:95F5`-`$82:9617`);
+  - `ticker_screen_show` (3 holes);
+  - `object_sprites_stream` (`$82:CCC7`-`$82:CDB7`, 94 starts).
+- **The traps:**
+  - the race window traps (`$81:8674`, `$81:879A`): their conditions never hold in the race's
+    6,392 `$08` runs on the firmware (`$0242` = `$1EF2` and equal lines in all);
+  - `$82:9642` and `$82:BF3D` are on lines that run, but their conditions are untested here.
+
+**4. Where the two chips' runs part.**
+- The first read that differs is tape record 8,970: `$85:B738` reads 218 on the firmware,
+  219 on the bench.
+- That is the race's first frames before any `$0A`: dsp4-01r's unmodelled rounding, the 191
+  runs that are 1 off.
+- The first write that differs follows millions of records later. So the bench's path, and
+  every map made from it, departs from the console's from that one rounding on.
+
+**The fix found on the way (`src/dsp4.c`).**
+- The race's own `$08` (`$81:861D`, 6,392 runs on the firmware tape) differed from the native
+  in 16 runs. They are consecutive: a player far off the road, x near −16,700.
+- The chip clamps a window edge as a 16-bit value: past 16 bits it wraps, then the sign
+  decides (0) or more than `$FF` gives `$FF`. `dsp4_clamp_byte` now does so.
+- 16 → 9 runs differ. The 9 left, with x past about ±1,500, cross the 0/`$FF` boundary one line
+  earlier than the native. Wrapping the ends, the interpolation's difference or the camera's
+  product did not fit them (tried on 2,400 chosen runs and on those 9).
+
+**Order now:**
+1. The power-on / first-frames rounding. It makes the bench follow the firmware's path, so it
+   comes before mode 1.
+2. Then mode 1: coverage merged, the map, the listing, then the port. Its `$0F`/`$10` are
+   measured on the firmware.
+3. The `$09` work stays measured, not routed, until then (the advisor: routing would move the
+   default bench's path).
+
+**Check:** `tools/dsp4_road_check.py` (exit 0), then the full gate (`src/dsp4.c` changed).
+
 ## The crest is the stream's lowest line so far (dsp4-09k, 2026-11-27)
 
 **Corrects dsp4-09h's crest.** A part's crest is the lowest `$A9` + first word of every object

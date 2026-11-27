@@ -163,7 +163,12 @@ unsigned dsp4_road2_row(Dsp4Road* r, const uint16_t words[6], uint16_t out[2], u
 }
 
 // ---- the road's windows, $0008 ----
-static int32_t dsp4_clamp_byte(int32_t v) { return v < 0 ? 0 : v > 0xFF ? 0xFF : v; }
+// dsp4-08h: the chip clamps a 16-bit value: a window edge past 16 bits wraps first (measured on
+// the firmware: a player far off the road, x near -16,700, on the 60k movie)
+static int32_t dsp4_clamp_byte(int32_t v) {
+  const int32_t w = (int16_t)(uint16_t)v;
+  return w < 0 ? 0 : w > 0xFF ? 0xFF : w;
+}
 
 uint16_t dsp4_window_begin(Dsp4Window* w, const uint16_t head[45]) {
   w->x = s16x(head[39]);
