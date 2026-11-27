@@ -44,6 +44,15 @@ int main(void) {
       case 'T': dsp4_objects_car_tail(v[0], v[1]); break;
       case 'P': {
         uint16_t out[2][2];
+        if(getenv("DSP4_SPRITE_DEBUG")) {  // the state before the part: its place, the crest, the lines
+          Dsp4Sprites st;
+          dsp4_sprites_get(&st);
+          const int y = st.y0 + (int16_t)v[1];
+          fprintf(stderr, "part %04X: kind %u list %u x %d y %d crest %d(%d) lines", v[0], st.kind, st.list,
+                  st.x0 + (int16_t)v[2], y, st.crest, st.crestSet);
+          for(int i = 0; i < 16; i++) fprintf(stderr, " %u", st.lines[(uint8_t)(y + i)]);
+          fprintf(stderr, "\n");
+        }
         const unsigned k = dsp4_objects_part(v[0], v[1], v[2], out);
         printf("%u ", k);
         for(unsigned i = 0; i < k; i++) printf("%04X %04X ", out[i][0], out[i][1]);

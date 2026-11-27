@@ -6409,6 +6409,42 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The sprite list check, corrected (dsp4-09m, 2026-11-27)
+
+**Corrects dsp4-09l's numbers.** `tools/dsp4_09_check.py` had checked only the lists it could read
+through. It cut every list that had a multiply after the stream's end (the frame's `$82:AB46`
+sends one, and a write skips its answers, as dsp4Step's multiply allows). Those lists went
+uncounted: `race1` has 584 streams, and 272 were cut.
+
+The script now reads past a multiply whose answers are read or skipped, and prints the
+lists it still cuts, by reason.
+
+| Tape | lists checked | native agrees | not checked |
+|---|---|---|---|
+| `race1`, firmware | 583 | 553 | 1 (the tape's end) |
+| `race1`, the bench's chip | 583 | 554 | 1 |
+| 60k movie, firmware | 10,190 | 9,648 | |
+| 60k movie, the bench's chip (dsp4-09l's count, before the fix) | 6,554 | 5,997 | |
+
+**The 30 `race1` lists that differ** are dsp4-09i's 35 budget misses.
+- The native hides a part that the chip shows: it counts more slivers on a line than the chip
+  (debug: `DSP4_SPRITE_DEBUG=1` on `build/bench/dsp4_sprite_native` prints the state at each
+  part).
+- **Not the cause:**
+  - undoing a hidden entry's lines (35 misses become 75);
+  - leaving out parts with x outside 0..255 (35 stays 35);
+  - leaving out parts near the right edge (35 becomes 90).
+- Still open.
+
+**For the harness (the advisor's plan):**
+- The bench's own chip and the native agree as often as the firmware and the native do
+  (`race1`: 554 and 553). So the default slices can judge sprite rows.
+- A shadow of the list in `difftest.c` will give each sample its state. A list where the chip and
+  the shadow disagree will be set apart from that point on.
+
+**Check:** `tools/dsp4_09_check.py` on `race1`'s firmware tape. This changes `tools/` scripts and
+the driver's debug output only; it now exits 1, for the 30 lists left.
+
 ## The sprite list native (dsp4-09l, 2026-11-27)
 
 **The owner's order, the port's request:** the native `$09` and `$06` first, with the known misses
@@ -6453,7 +6489,7 @@ stream's words, the crest and the object in hand.
 runs a script of these calls. The script reads every list on a firmware tape (`$0003` to the
 `$0006`'s answers, by the chip's grammar, not the game's PCs; multiplies and `$000A` in between
 read past) and compares every word the game read:
-- **`race1`:** 312 of 312 lists agree.
+- **`race1`:** 312 of 312 lists agree. *(dsp4-09m: of the lists then read; 553 of 583 in all.)*
 - **The 60k movie, VS views included:** 5,672 of 5,812.
   - Every first difference is a part the native hides and the chip shows: by the crest or
     the budget, still open.

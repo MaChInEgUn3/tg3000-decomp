@@ -41,6 +41,9 @@ class Cut(Exception):
     pass
 
 
+CUTS = collections.Counter()  # the lists not checked, by reason
+
+
 def lists(ws):
     """each list: (its script line, the words the game read)"""
     i, n = 0, len(ws)
@@ -48,14 +51,14 @@ def lists(ws):
     def wr():
         nonlocal i
         if i >= n or ws[i][1]:
-            raise Cut
+            raise Cut('a read where the grammar wants a write')
         i += 1
         return ws[i - 1][0]
 
     def rd():
         nonlocal i
         if i >= n or not ws[i][1]:
-            raise Cut
+            raise Cut('a write where the grammar wants a read')
         i += 1
         return ws[i - 1][0]
     while i < n:
@@ -109,9 +112,12 @@ def lists(ws):
                                     got += [rd(), rd()]
                                     f = rd()
                                 reads += [len(got) // 2] + got  # (the driver prints the count)
-                elif cmd == 0:  # a multiply between them (two words, two answers): not the list's
-                    wr(), wr()
-                    rd(), rd()
+                elif cmd == 0:  # a multiply between them (two words, two answers): not the list's.
+                    wr(), wr()  # (a write where an answer is due skips it, as on the chip)
+                    for _ in range(2):
+                        if i >= n:
+                            raise Cut('the tape ends')
+                        i += 1
                 elif cmd == 0x0A:  # the edges (three words, four answers): not the list's
                     wr(), wr(), wr()
                     rd(), rd(), rd(), rd()
@@ -120,8 +126,9 @@ def lists(ws):
                     reads += [rd() for _ in range(16)]
                     break
                 else:
-                    raise Cut  # another command inside: not a race list
-        except Cut:
+                    raise Cut('command $%04X inside the list' % cmd)  # not a race list
+        except Cut as why:
+            CUTS[str(why)] += 1
             i = start + 1
             continue
         yield ' '.join(calls), reads
@@ -141,6 +148,8 @@ def main():
         k = next((j for j in range(min(len(got), len(reads))) if got[j] != reads[j]), min(len(got), len(reads)))
         kinds['differs' if k < min(len(got), len(reads)) else 'length'] += 1
     print('sprite lists: %d, the native agrees on %d; %s' % (len(items), ok, dict(kinds)))
+    for why, k in CUTS.most_common():
+        print('  not checked: %d, %s' % (k, why))
     return 0 if items and ok == len(items) else 1
 
 
