@@ -12051,41 +12051,8 @@ static void fuzz_race_cars_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   }
 }
 
-// ---- dsp4_answers_store ($81:89F5) ----  a DSP-4 tape row. X = the last pair's address, Y =
-// 0. A is the last pair's value, or (no pair in the second run) the chip's status word,
-// which is not on the tape: not compared (its callers load A). N Z of that value, or Z set
-// (the LDY of a 0 count); C V as on entry
-static void call_dsp4_answers_store(const Regs* in, Regs* out) {
-  uint16_t x = in->x, a = in->a;
-  const bool pairs = dsp4_answers_store(&x, &a);
-  out->x = x;
-  out->y = 0;
-  if(pairs) setNZ16(out, a);
-  else {
-    out->n = false;
-    out->z = true;
-  }
-}
-// two runs of 0-6 pairs each (one count often 0), the addresses anywhere in bank $7E from
-// $2000 (below are the stack and the direct page), $FFFF now and then
-static void fuzz_dsp4_answers_store(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
-  (void)r;
-  (void)ram;
-  uint16_t script[32];
-  int n = 0;
-  for(int run = 0; run < 2; run++) {
-    const int pairs = rnd() % 3 == 0 ? 0 : 1 + (int)(rnd() % 6);
-    script[n++] = (uint16_t)pairs;
-    for(int i = 0; i < pairs; i++) {
-      script[n++] = rnd() % 16 == 0 ? 0xFFFF : (uint16_t)(0x2000 + rnd() % 0xE000);
-      script[n++] = (uint16_t)rnd();
-    }
-  }
-  dsp4_bridge_script(script, n);
-}
-
 // ---- road_rows_stream ($81:8564) ----  a DSP-4 tape row (RTL). A = $00EA, X = the fill's
-// end (D+$14) or the scan's ($0194), Y = 0 (dsp4_answers_store's), DB = $83; N set and Z
+// end (D+$14) or the scan's ($0194), Y = 0 ($81:89F5's), DB = $83; N set and Z
 // clear (the PLB of $83), C of the CMP #$A422 and V of the ADC #$0011 on $00EA
 static void call_road_rows_stream(const Regs* in, Regs* out) {
   (void)in;
@@ -12122,31 +12089,30 @@ static void fuzz_road_rows_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   }
   const bool split = rnd() % 3 == 0;
   if(split) {
-    const uint16_t end = (uint16_t)(4 + 2 * (rnd() % 40));
+    const uint16_t end = (uint16_t)(6 + 2 * rows + 2 * (rnd() % 30));
     wr16ram(ram, 0x0194, end);
-    for(uint32_t k = 2; k < end; k += 2) {
+    for(uint32_t k = (uint32_t)(2 + 2 * rows); k < end; k += 2) {
       wr16ram(ram, 0x386C + k, (uint16_t)(0x40 + rnd() % 0x20));
       wr16ram(ram, 0x37EC + k, (uint16_t)(0x10 + rnd() % 0x20));
+      // the split fill's edge bytes: products of either sign and size (dsp4-08g: native now)
+      wr16ram(ram, 0x34EC + k, (uint16_t)(rnd() % 0x4000 - 0x2000));
+      wr16ram(ram, 0x38EC + k, (uint16_t)(rnd() % 0x8000));
+      wr16ram(ram, 0x3C6C + first + k, (uint16_t)(rnd() % 0x4000 - 0x2000));
+      wr16ram(ram, 0x3F6C + first + k, (uint16_t)(rnd() % 0x4000 - 0x2000));
     }
   }
-  uint16_t script[256];
-  int n = 0;
-  for(int i = 0; i < 5; i++) script[n++] = (uint16_t)rnd();
-  for(int i = 0; i < rows; i++) {
-    const bool own = (ram[0x3D6E + first + 2 * (uint32_t)i] & 1) != 0;
-    for(int call = 0; call < (own ? 2 : 1); call++)
-      for(int run = 0; run < 2; run++) {
-        const int pairs = (rnd() % 4 == 0 && n < 200) ? 1 + (int)(rnd() % 2) : 0;
-        script[n++] = (uint16_t)pairs;
-        for(int k = 0; k < pairs; k++) {
-          script[n++] = (uint16_t)(0x6000 + 2 * (rnd() % 0x4800));
-          script[n++] = (uint16_t)rnd();
-        }
-      }
+  // dsp4-08g: the windows native: rows sent with both roads on one line, as the game sends
+  // ($37EC = $386C, dsp4-08e; a split fill needs the scan's extra rows past $0190 to differ),
+  // $0242 = $1EF2, the lines from the camera's down
+  const uint16_t p = (uint16_t)(ram[0x0242] | ram[0x0243] << 8);
+  wr16ram(ram, 0x1EF2, p);
+  uint16_t y = (uint16_t)(0x33 + p);
+  for(int i = 1; i <= rows; i++) {
+    y = (uint16_t)(y - rnd() % 8);
+    wr16ram(ram, 0x37EC + 2 * (uint32_t)i, y);
+    wr16ram(ram, 0x386C + 2 * (uint32_t)i, y);
+    wr16ram(ram, 0x38EC + 2 * (uint32_t)i, (uint16_t)(0x1000 + rnd() % 0x7000));
   }
-  script[n++] = (rnd() & 1) ? 0 : (uint16_t)(1 + rnd() % 0xFFFF);
-  for(int i = 0; i < 4; i++) script[n++] = (uint16_t)rnd();
-  dsp4_bridge_script(script, n);
 }
 
 // ---- road_rows_project ($85:B3D7) ----  a DSP-4 tape row (RTL). A = D+$1A, X = the band
@@ -14841,10 +14807,11 @@ const Routine routines[] = {
              {0x85B804, 0x85B811}}},
   {.name = "road_rows_stream", .entry = 0x818564, .end = 0x8189F5, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_stream, ALL_OUTPUTS,
-   .fuzz = fuzz_road_rows_stream, .dsp4Tape = true, .fuzzStack = 0x1FF1},
-  {.name = "dsp4_answers_store", .entry = 0x8189F5, .end = 0x818A4A, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .db = 0x30, .call = call_dsp4_answers_store, .compareX = true, .compareY = true,
-   .fuzz = fuzz_dsp4_answers_store, .dsp4Tape = true},
+   .fuzz = fuzz_road_rows_stream, .fuzzStack = 0x1FF1,
+   // dsp4-08g: $08 native, its products too (no tape left); its last answer is 0 in every run
+   // measured (dsp4-08f), so the far windows' code never runs
+   .holes = {{0x8188CB, 0x81891A}},
+   .alsoIn = {{0x8189F5, 0x818A4A}}},  // dsp4_answers_store, its only callee, folded in
   {.name = "sprite_part_put", .entry = 0x818527, .end = 0x818564, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_part_put, .compareY = true,
    .fuzz = fuzz_sprite_part_put, .dsp4Tape = true},

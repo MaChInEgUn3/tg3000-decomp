@@ -312,11 +312,23 @@ def lost_rows():
     before = verified(head)
     with open(os.path.join(ROOT, "map", "verified.txt")) as f:
         now = verified(f.read())
+    # dsp4-08g: a routine folded into its only caller's row (map/symbols.txt: "folded into NAME")
+    # may leave the table, when that row is verified now
+    folded = {}
+    with open(os.path.join(ROOT, "map", "symbols.txt")) as f:
+        for line in f:
+            parts = line.split()
+            m = re.search(r"folded into (\w+)", line)
+            if len(parts) >= 3 and parts[0] == "func" and m:
+                folded[parts[1] + " " + parts[2]] = m.group(1)
+    verified_now = {name for name, status in now.values() if status == "verified"}
     lost = []
     for entry, (name, status) in sorted(before.items()):
         if status != "verified":
             continue
         after = now.get(entry, (name, "missing"))[1]
+        if after == "missing" and folded.get(entry) in verified_now:
+            continue
         if after != "verified":
             lost.append("%s %s (verified at HEAD, now %s)" % (entry, name, after))
     return lost

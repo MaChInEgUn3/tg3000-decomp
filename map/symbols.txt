@@ -705,7 +705,7 @@ func    81FC72   car_sync_slot_0200  ; the VS race's player 1's car takes its re
 func    81FCD1   car_sync_slot_02b3  ; the same for player 2's record (handler 10) -> src/track.c
 func    81FD30   car_sync_slot_0262  ; the same for player 3's record (handler 12) -> src/track.c
 func    81FD8F   car_sync_slot_0315  ; the same for player 4's record (handler 14) -> src/track.c
-func    8189F5   dsp4_answers_store  ; two runs of DSP-4 (address, value) answers stored in bank $7E (a tape row) -> src/misc.c
+func    8189F5   dsp4_answers_store  ; two runs of DSP-4 (address, value) answers stored in bank $7E; folded into road_rows_stream (dsp4-08g, its only caller; native $08) -> src/misc.c
 func    818564   road_rows_stream    ; the road's rows streamed to the DSP-4 (command $08), its answers stored, the edges' scan (RTL; a tape row) -> src/misc.c
 func    85B3D7   road_rows_project   ; the road's rows projected by the DSP-4 (command $01): rows $7E:34EC-$39EC, objects, edges (RTL; a tape row) -> src/misc.c
 func    85B828   road_rows_project2  ; road_rows_project for the second view (command $07; $1EF2, bands $7E:4D49; RTL; a tape row) -> src/misc.c

@@ -6409,6 +6409,58 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The race's windows, native (dsp4-08g, 2026-11-27)
+
+**`road_rows_stream` (`$81:8564`) uses the native `$08`** (`dsp4_window_begin/row/end`), and its
+two products and the split fill's two use the native multiply (`road_product_hi`). It no
+longer touches the DSP-4 port.
+
+**`dsp4_answers_store` (`$81:89F5`) is folded into it.**
+- It has no row and no C of its own any more. `road_rows_stream` was its only caller (the
+  listing's two `JSR`s, `$81:8802`/`$81:8851`), and the native `$08` gives its answers.
+- Its extent is in `road_rows_stream`'s row (`alsoIn`), as `sound_load_race`'s is in the race
+  pieces' rows.
+- **Why it was needed:** the first full gate failed `race_frame_body`, a taped row that encloses
+  the frame. Its tape still held the `$08` answers read at `$81:89F5`, which the C no longer
+  reads. As a native site (the `alsoIn`), they leave the tapes.
+- **The guard:** `progress.py --check` refuses a verified row that goes missing. It now accepts
+  one only when `map/symbols.txt` marks it "folded into NAME" and the row NAME is verified.
+  `dsp4_answers_store` is the first.
+
+**Measured first** (on the firmware, outputs only):
+- the tapes' `$08` headers always have `$0242` = `$1EF2` = 0 (`race1`, `explore_buy`);
+- `$0242` = `$1EF2` moved up (1..`$30`) or down (−1..−`$30`): 1,500 random runs each, exact;
+- with the two unequal, 703 of 1,500 differ (as dsp4-08e's unequal lines).
+
+**Traps** (never run):
+- `$81:8674`: `$0242` ≠ `$1EF2`;
+- `$81:879A`: a row whose two roads' lines differ.
+
+**The far windows** (`$81:88CB`..`$81:891A`): the last answer is 0 in every run measured
+(dsp4-08f), so the code never runs. It is a hole in the row, and the C keeps it.
+
+**The harness:**
+- `dsp4Step` knows `$08` (90 header bytes, a word, rows of 18 bytes, two runs of a count and 4
+  bytes a pair, `$8000`, a word). The tracker makes the rounding unknown after it, as before.
+- The row is untaped.
+- Its fuzz now:
+  - keeps the sent rows on one line;
+  - sets `$1EF2` to `$0242`;
+  - gives the split fill's extra rows (past `$0190`, up to `$0194`) differing lines, and edges
+    and heights of either sign, for its clamps.
+
+**Check:**
+- `race1`: `road_rows_stream` live 39/39, fuzz 500/500, paths 438/438; `race_frame_body` passes
+  (its replays);
+- the full gate (verify_all and selftest passed; the commit then waited on the guard above).
+
+**What is left on the port** (`grep -c dsp4_port_ src/*.c`: 155 lines, all in `src/misc.c`):
+- the sprite streams `$09`: `vs_sprites`, `rival_car_sprites`, `player_car_sprites`,
+  `car_sprite_head`, `sprite_parts_*`, `sprite_bar_put`, `sprite_part_put`,
+  `object_sprites_stream`;
+- the VS road `$0D`: `vs_proj_pass`, `vs_proj_tail`, `road_port_product32`;
+- `$06`: `oam_high_load`, `oam_high_load2`.
+
 ## The bench answers the road commands with the native C (dsp4-route-1, 2026-11-26)
 
 **Why.** dsp4-08f showed the bench's stand-in chip gets `$08` wrong on the explored movies (all

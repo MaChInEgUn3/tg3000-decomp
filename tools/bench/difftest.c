@@ -952,6 +952,7 @@ static const struct { uint8_t cmd, in, out; bool writeSkips, flagEnds; } dsp4Com
   {0x0B, 6, 6, false, true},   // dsp4_sprite
   {0x01, 30, 0, false, false},  // the road (dsp4-01t): its header here; its rows in dsp4Step
   {0x07, 22, 0, false, false},  // the second road (dsp4-07b): likewise
+  {0x08, 90, 0, false, false},  // the windows (dsp4-08g): its header here; the rest in dsp4Step
 };
 static bool isDsp4(uint32_t adr) {
   uint8_t bank = (adr >> 16) & 0x7F;
@@ -991,7 +992,7 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
     const int i = dsp4CommandIndex(smp->dsp4Cmd);
     if(smp->dsp4Count < 6) smp->dsp4Param[smp->dsp4Count] = val;
     if(++smp->dsp4Count == dsp4Commands[i].in) {
-      smp->dsp4Phase = smp->dsp4Cmd == 0x01 || smp->dsp4Cmd == 0x07 ? 4 : 3;
+      smp->dsp4Phase = smp->dsp4Cmd == 0x01 || smp->dsp4Cmd == 0x07 ? 4 : smp->dsp4Cmd == 0x08 ? 6 : 3;
       smp->dsp4Count = 0;
       smp->dsp4Flag = 0;
       smp->dsp4RoadFirst = true;
@@ -1043,6 +1044,43 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
     if(++smp->dsp4RoadCount == smp->dsp4RoadNeed) {
       smp->dsp4Phase = 4;
       smp->dsp4RoadCount = 0;
+    }
+    break;
+  // the windows, $08 (dsp4-08g): the header's answer (a word); rows of 18 bytes, each answered
+  // by two runs (a count, then 4 bytes a pair); a row word of $8000 ends it, then a last word
+  case 6:
+  case 8:
+    if(write) return false;
+    if(++smp->dsp4Count == 2) {
+      smp->dsp4Phase = smp->dsp4Phase == 6 ? 7 : 0;
+      smp->dsp4Count = 0;
+      smp->dsp4RoadCount = 0;
+    }
+    break;
+  case 7:
+    if(!write) return false;
+    if(smp->dsp4RoadCount == 0) smp->dsp4Flag = val;
+    if(smp->dsp4RoadCount == 1 && (uint16_t)(smp->dsp4Flag | val << 8) == 0x8000) {
+      smp->dsp4Phase = 8;
+      smp->dsp4Count = 0;
+      break;
+    }
+    if(++smp->dsp4RoadCount == 18) {
+      smp->dsp4Phase = 9;
+      smp->dsp4RoadCount = 0;
+      smp->dsp4RoadNeed = 2;
+      smp->dsp4RoadDrew = false;  // (here: the second run)
+    }
+    break;
+  case 9:
+    if(write) return false;
+    if(smp->dsp4RoadCount == 0) smp->dsp4Flag = val;
+    if(smp->dsp4RoadCount == 1) smp->dsp4RoadNeed = (uint16_t)(2 + 4 * (uint16_t)(smp->dsp4Flag | val << 8));
+    if(++smp->dsp4RoadCount == smp->dsp4RoadNeed) {
+      smp->dsp4RoadCount = 0;
+      smp->dsp4RoadNeed = 2;
+      if(smp->dsp4RoadDrew) smp->dsp4Phase = 7;
+      smp->dsp4RoadDrew = true;
     }
     break;
   default: {  // the results: a read takes one (a write skips one, for the multiply)
