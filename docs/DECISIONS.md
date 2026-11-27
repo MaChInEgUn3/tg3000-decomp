@@ -6409,6 +6409,41 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The high table `$0006` (dsp4-09j, 2026-11-27)
+
+**Measured on the firmware's tapes, outputs only** (`tools/dsp4_09_high.py`).
+
+**What `$0006` answers after a sprite stream:** 16 words, 2 bits an entry, 8 entries a word,
+the first entry in bits 0-1. The entries come in the list's order:
+1. the frame's two `$000B` dots;
+2. then every entry the `$0009` stream answered, the `$00EE` masks included.
+
+**The two bits:**
+- **the low bit:** the part's screen x lies outside 0..255 (the x's ninth bit);
+- **the high bit:** the part is in its object's first list (a large sprite).
+
+The game sends `$0005` in every race frame. Without it the high bits are 0 (dsp4-09d).
+
+**Results:**
+- **`race1`:** 392 of 392 frames exact.
+- **The 60k movie:** 6,188 of 6,201. The other 13 hold parts whose entries are among
+  dsp4-09h's open cases.
+
+**This settles two of the advisor's questions:**
+- the parts answered at x = 256 or x = −13 are real entries, with their ninth bit set;
+- the bars' entries are small and their ninth bit is 0, at least where the table comes out
+  exact.
+
+**Next, the advisor's order:**
+1. the 60k movie's crest cases, found by bisecting a frame's stream (a crest probably carried
+   over from an earlier object);
+2. whether a part is atomic (a mask emitted, then the sprite over the budget);
+3. the chip's line counts measured, not inferred, for the 35 misses;
+4. the screen bounds from the preamble's words, not constants (the VS views send others).
+
+**Check:** `tools/dsp4_09_high.py` on `race1`'s firmware tape (exit 0). This adds a file to
+`tools/` only.
+
 ## The sprite stream's per-line budget (dsp4-09i, 2026-11-27)
 
 **On chosen inputs on the firmware** (`tools/dsp4_09_budget.py`). Synthetic streams of scenery
