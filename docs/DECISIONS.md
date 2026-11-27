@@ -6409,6 +6409,50 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The sprite stream's scenery parts: the projection (dsp4-09e, 2026-11-27)
+
+**Measured on the firmware, outputs only.** Tapes recorded with `--dsp4-firmware --dsp4-tape-out`:
+`race1` (393 stream frames) and the 60k autopilot movie (6,201). `tools/dsp4_09_scenery.py`
+does the counting.
+
+**A scenery object's words** (`sprite_put_rows`, `$82:D934`):
+- 7 words: two row lines, the row's height h, the road's x P, the object's sideways place
+  `D+$20`, its height `D+$22`, its attribute `D+$26` with flags;
+- then two lists of parts, each part 3 words (w, a, b), a w of 0 ending a list;
+- the chip answers each part with a flag, and per 1 an entry (two words) and another flag.
+
+**The rule for an entry** (`$80` and `$A9` are the stream's first two words after `$0009`):
+- x = `$80` − P + (`D+$20` · h >> 15) + b;
+- y = `$A9` + line + a + (`D+$22` · h >> 15);
+- the entry is (x & `$FF`) | (y & `$FF`) << 8, then `D+$26` + w.
+
+**Results:**
+
+| | `race1` | 60k movie |
+|---|---|---|
+| parts | 45,472 | 614,466 |
+| entries (not `$00EE`) following the rule | 21,215 of 21,215 | 268,775 of 268,780 |
+| parts with x outside −8..255, all hidden | 23,912 | 284,472 |
+| parts hidden on screen | 345 | 60,395 |
+| `$00EE` entries | 0 | 9,722 |
+
+**Not yet known:**
+- **The `$00EE` entries.** Tile `$EE`, attribute 0. They come before a part's own entry, at its x,
+  1 to 8 lines above its base. That is not h, the line or `D+$22` by a simple shift.
+  - They do not need the road either: 151 of the 1,057 frames that have them, replayed
+    without `$01`, `$07` and `$08` (as dsp4-09c), give the same answers.
+  - So they come from the stream itself, probably from the other objects, the cars sent
+    before.
+- **The parts hidden on screen.** They pile on busy lines (`race1`: all on y 164-166), and they
+  are not a total count: lists of 97 entries still show parts, and hiding starts at 78. The
+  likely rule is a per-line budget counted over every kind of entry (cars, bars, dots too)
+  with their heights (`$0005`'s size bits). That needs the other kinds' entries.
+- **On the 60k movie:** 5 entries off the rule, and 1,923 parts with x off screen that still
+  answered (perhaps only by an `$00EE` entry).
+
+**Check:** `tools/dsp4_09_scenery.py` on `race1`'s firmware tape (exit 0). On the 60k tape it
+prints the counts above and exits 1, for the open cases. This adds a file to `tools/` only.
+
 ## The sprite list's "word" is a command: `$0005` (dsp4-09d, 2026-11-27)
 
 **Corrects dsp4-09c.** The 5 after `$0003` is not a parameter of `$0003`: it is a command of its own,
