@@ -6409,6 +6409,55 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The sprite entries: a car's line, the crest and the `$00EE` masks (dsp4-09h, 2026-11-27)
+
+**On chosen inputs on the firmware** (one car, as dsp4-09g), then over the tapes
+(`tools/dsp4_09_entries.py`). Outputs only.
+
+**A car's line** is its two rows' lines interpolated as its x, L = lB + ((lA − lB) · (distance
+>> 8) >> 8). The entry's y is `$A9` + (L · h >> 15) + a + (height · h >> 15).
+- The player's constant line 42 on flat road is 51 · `$69BC` >> 15.
+
+**The object's first word is a crest line, c = `$A9` + that word:**
+
+| Where c falls | What the chip answers |
+|---|---|
+| above the sprite's top (c < y) | nothing: the part is hidden |
+| within the sprite (c < y + size) | first `((x & $FF) \| c << 8, $00EE)` (tile `$EE`, a mask), then the part's entry |
+| below it | the part's entry alone |
+
+- **The sweep that showed it** (line 1 to `$14`, a of −8, y = 171):
+  - hidden at 1;
+  - a mask at line c from 2 to `$11`;
+  - none from `$12`, which is y + 16.
+- **The part word** (`$008C`, `$208C`, `$408C`, `$6002`) and `$0005` do not change it.
+
+**The size is the list's:** 16 lines for a part in an object's first list, 8 in its second. On
+the tapes, the misses at 16 for every part were all second-list parts.
+
+**Results** (`tools/dsp4_09_entries.py`):
+
+| | player | rivals | scenery |
+|---|---|---|---|
+| `race1`: right | 7,840 | 1,067 | 45,127 |
+| `race1`: hidden where the rule shows them | 0 | 431 | 345 |
+| `race1`: other | 0 | 0 | 0 |
+| 60k movie: right | 125,623 | 23,496 | 542,462 |
+| 60k movie: hidden where the rule shows them | 3 | 2,918 | 60,395 |
+| 60k movie: other | 0 | 195 | 11,609 |
+
+**So on `race1` every part is either right or hidden on screen** (the per-line budget, next).
+
+**The 60k movie's others,** mostly scenery in the second list:
+- a mask 1 to 7 lines above the crest computed here, sometimes with no entry after it;
+- parts with x just off screen (−13, 256) that still answer.
+
+So the scenery's crest is not always `$A9` + its first word. The cars and scenery of hilly
+tracks are where to look.
+
+**Check:** `tools/dsp4_09_entries.py` on `race1`'s firmware tape (exit 0). On the 60k tape it
+prints the counts above and exits 1, for the open cases. This adds a file to `tools/` only.
+
 ## The cars' answer word (dsp4-09g, 2026-11-27)
 
 **On chosen inputs on the firmware, outputs only.** The tool is `build/bench/dsp4_tape_run`
