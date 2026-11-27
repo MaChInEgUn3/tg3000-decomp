@@ -1302,6 +1302,8 @@ bool save_data_check(void);
 // D+$86 to D+$8E + $200, moved off screen ($E0E0 every 4 bytes from $1576 + D+$86; a
 // count below 4 bytes is taken as 65536).
 void oam_high_load(void);
+// The same for the VS race, through the port ($000E lists: dsp4-09p).
+void oam_high_load_vs(void);
 
 // $82:D934 / $82:D988: one object's sprite streamed to the DSP-4 (D = $0100; a $09 sprite
 // stream is open): seven words through the port (the object's rows $386C, $38EC, then $35EC

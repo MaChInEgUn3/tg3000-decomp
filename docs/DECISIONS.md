@@ -6409,6 +6409,73 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The high table and the list's opening native (dsp4-09p, 2026-11-27)
+
+**The first wiring unit of `$09`/`$06`.** These parts of the game's C now call `src/dsp4.c`'s
+list, not the port:
+- **`oam_high_load` (`$82:AE15`):** the high table from `dsp4_high_table`. Its row is untaped, with
+  no fuzz (the list's state comes from the shadow).
+- **`object_sprites_stream`:** `$0003` and `$0005` as `dsp4_list_open` and `dsp4_list_sizes` (the race
+  always sends both: the listing at `$82:CBDE`/`$82:CBFC`).
+- **`minimap_car`:** the dots through `dsp4_list_sprite`, so they are counted in the list.
+
+The stream itself (`$0009`, the objects and parts) still goes through the port in this unit.
+
+**VS keeps the port.**
+- **Its lists are different.** A VS frame sends, per view, `$000E`, `$0005` and `$0009` with its stream,
+  with no `$0003` and no dots. On the VS movie's firmware tape (845 lists), reading `$000E` as a
+  fresh open makes 7 lists agree with the native; reading it as a continuation, 318. So `$000E` is
+  something else, not measured.
+- **The code:** VS calls `oam_high_load_vs` (`$82:AE15` through the port) and `oam_high_load2`, which is
+  unchanged.
+- **The harness:** the list rows' sites (`oam_high_load`, `object_sprites_stream`'s prologue,
+  `minimap_car`) leave a taped row's tape only when the shadow follows the list (the race's,
+  `listFollowed`), and in fuzz cases. VS's bytes there stay on the VS rows' tapes.
+  - A native list row's sample whose list the shadow does not follow (VS's `oam_high_load`
+    entries) is set apart.
+  - The first full gate had failed `oam_high_load` and `vs_race_frame_body` on the VS movie, with no
+    such rule.
+  - On the VS movie, `oam_high_load` now has 8 clean passes and 127 samples set apart. Pooled with
+    `race1`, the row is verified.
+
+**The harness, for rows half port and half native:**
+- **The C's shadow also opens at a `$0009`.** The C no longer sends its `$0003` through the port, so
+  `shC` takes the stream's start as the list's open, keeping the state the native call made.
+  Without it the native high table missed the stream's entries (`$0177F`: 05 against 00).
+- **Replays:**
+  - **A replay set apart only because its list was tainted** (the chip and the native disagree) no
+    longer counts as lost. It is counted apart (`replayListApart`), as a live sample set apart.
+  - A replay set apart for a road on an unknown rounding is still lost (dsp4-01t). The evidence's
+    `hard` flag no longer counts list-apart replays as lost either.
+- **Tried and dropped:**
+  - Saving the bench's own chip with each replay entry. It left the frames' hashes unchanged
+    (`--hashes` identical), but later replays then lost the rounding tracker at a `$000A`.
+  - Restoring it with the shadow and tracker. It was not taken for these rows and did not help.
+  - So only the firmware's state is saved, as harness-29 had it. The tracker is still saved with
+    each replay and restored with the firmware's state.
+- **A shadow restore keeps the run's counters** (`shRestore`), and the shadow is fed in replays
+  (not in fuzz cases). The prime clears its word state.
+
+**Checked on `race1` with the bench's chip (`--fuzz 50`):**
+
+| Row | Result |
+|---|---|
+| `oam_high_load` | 186/186 |
+| `race_frame_draw` | replays 2/2 |
+| `race_frame_body` | replays 16/16 |
+| `object_sprites_stream` | 58/58 |
+| `minimap_car` | 393/393 |
+| `car_sprite_head` | 364/364 |
+| `sprite_part_put` | 1,389/1,389 |
+| `car_road_step` | 3,510/3,510 |
+
+Then the full gate. On the firmware, `race_frame_body`, `race_frame_draw` and `minimap_car`'s fuzz
+fail as before this work (dsp4-09o).
+
+**For the port:** the high table and the list's opening are native; the stream is not yet. Until
+it is, a port that answers `$09` from the chip and `$06` natively would see a native table
+without the stream's entries. Keep the test tape for both until the stream is wired.
+
 ## The shadow seeds each sample (dsp4-09o, 2026-11-27)
 
 **The harness half of the advisor's unit 2.** The game's C is unchanged in this unit; the wiring

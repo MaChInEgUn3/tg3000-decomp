@@ -14715,8 +14715,7 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load2, ALL_OUTPUTS, .fuzz = fuzz_oam_high_load2,
    .dsp4Tape = true, .replays = 32},
   {.name = "oam_high_load", .entry = 0x82AE15, .end = 0x82AEA4, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load, ALL_OUTPUTS, .fuzz = fuzz_oam_high_load,
-   .dsp4Tape = true},
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load, ALL_OUTPUTS},  // dsp4-09o: $0006 native (no tape; the list's state from the shadow)
   {.name = "sprite_put_rows_a", .entry = 0x82D934, .end = 0x82D988, .alsoIn = {{0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_sprite_put_rows_a, .fuzz = fuzz_sprite_put_rows, .dsp4Tape = true},

@@ -4191,7 +4191,7 @@ void minimap_car(uint16_t y, uint16_t at, uint16_t attr) {
   const uint16_t py = (uint16_t)((y + rd8(0x4F32 + (uint32_t)at)) & 0x00FF);
   const uint16_t px = (uint16_t)(rd8(0x4F31 + (uint32_t)at) + 0x00BE);
   uint16_t out[2];
-  if(!dsp4_sprite(px, py, attr, out)) return;
+  if(!dsp4_list_sprite(px, py, attr, out)) return;  // $000B in the list (dsp4-09o)
   const uint32_t o = rd16(0x0184);
   wr16(0x1576 + o, out[0]);
   wr16(0x1578 + o, out[1]);
@@ -4598,6 +4598,23 @@ bool save_data_check(void) {
 
 // TG3000_ROUTINE($82:AE15) oam_high_load
 void oam_high_load(void) {
+  uint16_t high[16];
+  dsp4_high_table(high);  // $0006, native (dsp4-09o)
+  const uint32_t y = rd16(DP + 0x8E);
+  for(uint32_t i = 0; i < 32; i += 2) wr16(0x1776 + y + i, high[i / 2]);
+  const uint16_t room = (uint16_t)(0x0200 - (uint16_t)(rd16(DP + 0x86) - rd16(DP + 0x8E)));
+  if(room == 0) return;
+  uint16_t n = (uint16_t)(room >> 2), at = rd16(DP + 0x86);
+  do {
+    wr16(0x1576 + (uint32_t)at, 0xE0E0);
+    at = (uint16_t)(at + 4);
+    n = (uint16_t)(n - 1);
+  } while(n != 0);
+}
+
+// oam_high_load for the VS race (dsp4-09p): the same code at $82:AE15, through the port. VS opens
+// its lists with $000E, whose rule is not measured (VS keeps the port until it is).
+void oam_high_load_vs(void) {
   dsp4_port_write16(0x0006);
   const uint32_t y = rd16(DP + 0x8E);
   for(uint32_t i = 0; i < 32; i += 2) wr16(0x1776 + y + i, dsp4_port_read16());
@@ -7652,7 +7669,8 @@ static bool rival_car_sprites(uint16_t xrow, uint16_t car) {
 // TG3000_ROUTINE($82:CBD4) object_sprites_stream
 void object_sprites_stream(void) {
   wr16(0x0184, rd16(0x0186));
-  // (command $03, then $0005: native, judged as whole commands)
+  dsp4_list_open();   // $0003, native (dsp4-09o: the chip's sprite list)
+  dsp4_list_sizes();  // $0005
   wr16(DP + 0x1A, (uint16_t)(rd16(DP + 0x8E) + 0x0200));
   wr16(DP + 0x3C, rd16(DP + 0xC8) ? 0 : 0x1000);
   {  // the player's place in the race order: D+$28

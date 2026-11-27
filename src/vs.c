@@ -1752,7 +1752,7 @@ void vs_race_frame_body(void) {
   vs_road_project();
   vs_sprites_view0();
   vs_sprites_view1();
-  oam_high_load();
+  oam_high_load_vs();
   vs_sprites_view2();
   vs_sprites_view3();
   oam_high_load2();

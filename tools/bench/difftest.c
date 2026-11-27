@@ -55,6 +55,7 @@ typedef struct {
   unsigned long entries, samples, pass, fail, interrupted, abandoned, fuzzPass, fuzzFail, fuzzRequested;
   unsigned long hidden;  // entries inside a handler a waiting sample records (not sampled)
   unsigned long replayPass, replayFail, replayRequested;  // interrupted entries run again (see Replay)
+  unsigned long replayListApart;  // dsp4-09p: replays set apart for a tainted sprite list (not lost)
   bool contractBroken;
   Contract contracts[MAX_CONTRACTS];
   int contractCount;
@@ -181,6 +182,7 @@ typedef struct {
   bool roundKnown, roadUnknown;
   // dsp4-09o: the sprite list shadow at the sample's entry (its C is seeded from it)
   Shadow shEntry;
+  bool listApart;  // dsp4-09p: set apart only for a list the shadow found tainted
   int16_t roundE2, roundE3;
   // a taped row's DSP-4 data-port bytes, in order, in tapes[depth] (the C consumes them:
   // difftest_dsp4_byte); kept out of the sample, which every entry clears
@@ -282,9 +284,13 @@ typedef struct {
   Dma dma;
   // harness-29: with the firmware DSP-4 (harness-27), its state at the entry, so that a
   // replay finds the chip where the sample did (mid-command); the clean-room chip is reset
-  uint8_t dsp4[8192];
+  uint8_t dsp4[32768];  // (dsp4-09p: the bench's own chip too, with the bridge's routing)
   int dsp4Size;
-  Shadow sh;  // dsp4-09o: the sprite list shadow at the entry (restored with the firmware's state)
+  Shadow sh;  // dsp4-09o: the sprite list shadow at the entry (restored with the chip's state)
+  // dsp4-09p: the rounding tracker at the entry, restored with the chip (dsp4-01t)
+  Sample trackSmp;
+  bool trackLost, trackKnown;
+  int16_t trackE2, trackE3;
 } Replay;
 static Replay* replays;
 static bool replaying;
@@ -493,6 +499,13 @@ static bool dmaReadSite(const Routine* r, uint32_t pc) {
 static bool vramLiveSite(const Routine* r, uint32_t pc) {
   for(int k = 0; k < 4; k++) if(r->vramLiveAt[k] && r->vramLiveAt[k] == pc) return true;
   return false;
+}
+// dsp4-09p: the sites of the sprite list's native rows (oam_high_load; object_sprites_stream's
+// $0003/$0005 prologue; minimap_car), whose bytes the shadow owns when it follows the list
+// the last original byte is the list's as the shadow follows it, a $0003's pending first byte too
+static bool listFollowed(void);
+static bool listSite(uint32_t pc) {
+  return (pc >= 0x82AE15 && pc < 0x82AEA4) || (pc >= 0x82CBD4 && pc < 0x82CC8F) || (pc >= 0x82D8C6 && pc < 0x82D934);
 }
 static bool nativeAt(uint32_t pc) {
   const uint32_t bank = (pc >> 16) & 0x7F, adr = pc & 0xFFFF;
@@ -1141,6 +1154,8 @@ static void trackDsp4(uint32_t adr, uint8_t val, bool write) {
     if(val != 0x00 && val != 0x0A && val != 0x0B && val != 0x01 && val != 0x07) trackKnown = false;
   }
   if(!dsp4Step(&trackSmp, adr, val, write)) {
+    if(getenv("DIFFTEST_SHADOW_DEBUG") && replaying && !trackLost)
+      fprintf(stderr, "tracker lost at pc %06X %s %02X (phase %d cmd %02X count %d)\n", insnPc, write ? "w" : "r", val, trackSmp.dsp4Phase, trackSmp.dsp4Cmd, trackSmp.dsp4Count);
     trackLost = true;
     trackKnown = false;
     return;
@@ -1185,6 +1200,15 @@ static void shSwap(Shadow* sh, bool in) {
     dsp4_sprites_set(&saved);
   }
 }
+// a shadow as it was at an entry, its counters kept (they count the whole run)
+static void shRestore(const Shadow* from) {
+  const unsigned long n[4] = {shOrig.nLists, shOrig.nClean, shOrig.nTainted, shOrig.nLost};
+  shOrig = *from;
+  shOrig.nLists = n[0];
+  shOrig.nClean = n[1];
+  shOrig.nTainted = n[2];
+  shOrig.nLost = n[3];
+}
 static void shLose(Shadow* sh) {
   if(sh->live) sh->nLost++;
   sh->live = false;
@@ -1208,6 +1232,11 @@ static void shExpect(Shadow* sh, const uint16_t* w, int n, int after, int mode) 
 static void shWord(Shadow* sh, uint16_t w, bool read) {
   const bool afterRead = sh->afterRead;
   sh->afterRead = read;
+  if(!sh->live && !sh->own && !read && w == 9) {  // (dsp4-09p: the C opened its list natively,
+    sh->live = true;                                // dsp4_list_open: its stream comes by the port)
+    sh->tainted = false;
+    sh->state = SH_IDLE;
+  }
   if(!sh->live) {  // between lists: wait for a $0003 command word (after an answer, as the tape check)
     if(read || w != 3 || !afterRead) return;
     sh->live = true;
@@ -1390,10 +1419,13 @@ static void shByte(Shadow* sh, uint8_t val, bool read) {
   sh->halfRead = read;
   sh->byte = val;
 }
+static bool listFollowed(void) {
+  return shOrigConsumed || (!shOrig.live && shOrig.half && !shOrig.halfRead && shOrig.byte == 0x03);
+}
 static void trackSprites(uint32_t adr, uint8_t val, bool write) {
   shOrigConsumed = false;
   if((adr & 0xFFFF) >= 0xC000) return;  // status
-  if(fuzzing) {
+  if(fuzzing && !replaying) {  // (a fuzz case scripts the chip; a replay runs it, dsp4-09p)
     shOrig.lost = true;
     shOrig.live = false;
     return;
@@ -1418,8 +1450,12 @@ static void trackSprites(uint32_t adr, uint8_t val, bool write) {
 // dsp4-01t: a fuzz case or replay resets the bench's chip, whose rounding is then unmeasured: a
 // $0A with equal rows ($C4C4, edges -192 and 192), sent to the chip itself, sets a known one
 static void primeDsp4(void) {
-  shOrig.lost = true;  // (dsp4-09n: the shadow waits for the next $0003)
+  shOrig.lost = true;  // (dsp4-09n: the shadow waits for the next $0003, its word state cleared)
   shOrig.live = false;
+  shOrig.half = false;
+  shOrig.afterRead = true;
+  shOrig.tainted = false;
+  shOrig.state = SH_IDLE;
   static const uint8_t command[] = {0x0A, 0x00, 0x00, 0x00, 0xC4, 0xC4, 0xC4, 0xC4};
   dsp4_bridge_direct(command, (int)sizeof command, 8);
   memset(&trackSmp, 0, sizeof trackSmp);
@@ -1447,7 +1483,9 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   if(isDsp4(adr)) {  // before the ROM test: $30:8000 reads look like ROM reads to it
     for(int k = accessBase; k < depth; k++) {
       Sample* smp = &samples[k];
-      if(table[smp->idx].dsp4Tape && !nativeAt(insnPc)) {  // its tape: the data bytes in order; status reads free
+      // dsp4-09p: a sprite list site's bytes leave the tape only when the shadow follows the list
+      // (the race's); VS's ($000E lists, not followed) stay on the VS rows' tapes
+      if(table[smp->idx].dsp4Tape && (!nativeAt(insnPc) || (listSite(insnPc) && !listFollowed() && !(fuzzing && !replaying)))) {  // its tape: the data bytes in order; status reads free
         if((adr & 0xFFFF) >= 0xC000) {
           if(!write) continue;
         } else if(smp->nTape < MAX_TAPE) {
@@ -1459,12 +1497,26 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
           continue;
         }
       }
-      if(write && smp->dsp4Phase == 0 && (val == 0x01 || val == 0x07) && (adr & 0xFFFF) < 0xC000 && (!trackKnown || trackLost))
+      if(write && smp->dsp4Phase == 0 && (val == 0x01 || val == 0x07) && (adr & 0xFFFF) < 0xC000 && (!trackKnown || trackLost)) {
         smp->roadUnknown = true;  // dsp4-01t: a road on an unknown rounding
+        smp->listApart = false;
+      }
+      if(getenv("DIFFTEST_SHADOW_DEBUG") && replaying && write && smp->dsp4Phase == 0 && (val == 0x01 || val == 0x07) && (adr & 0xFFFF) < 0xC000 && (!trackKnown || trackLost))
+        fprintf(stderr, "apart (road) %s pc %06X known %d lost %d\n", table[smp->idx].name, insnPc, trackKnown, trackLost);
       // dsp4-09o: the sprite list's traffic is the shadow's (the C does it with src/dsp4.c's
       // list, seeded from the shadow); a list the shadow found tainted sets the sample apart
+      if((adr & 0xFFFF) < 0xC000 && !listFollowed() && listSite(insnPc) && !table[smp->idx].dsp4Tape && !(fuzzing && !replaying)) {
+        smp->roadUnknown = true;  // dsp4-09p: a list the shadow does not follow (VS's): set apart
+        if(!smp->dsp4Phase) smp->listApart = true;
+        continue;
+      }
       if((adr & 0xFFFF) < 0xC000 && (shOrigConsumed || shOrig.tainted)) {
-        if(shOrig.tainted) smp->roadUnknown = true;
+        if(shOrig.tainted) {
+          if(!smp->roadUnknown) smp->listApart = true;
+          smp->roadUnknown = true;
+        }
+        if(shOrig.tainted && replaying && getenv("DIFFTEST_SHADOW_DEBUG"))
+          fprintf(stderr, "apart (list) %s pc %06X live %d lost %d\n", table[smp->idx].name, insnPc, shOrig.live, shOrig.lost);
         if(shOrigOpened) smp->dsp4Phase = 0;  // (its parser had taken the $0003's 3 for a command)
         continue;
       }
@@ -2001,6 +2053,10 @@ static void finishSample(int k, const Cpu* cpu) {
   // dsp4-01t: a sample whose original ran a road while the tracker did not know its rounding (the
   // race's first frames, after the sprite streams) is set apart the same way; so is one whose
   // bench chip gave an unclamped $0796 word (dsp4-07b)
+  if(smp->roadUnknown && replaying && smp->listApart) {  // dsp4-09p: the bench's chip and the native list
+    s->replayListApart++;                               // disagreed: not lost, as a live sample set apart
+    return;
+  }
   if(smp->roadUnknown && (fuzzing || replaying)) {  // (dsp4-01t: a road the primed chip did not cover)
     if(replaying) s->replayApart++; else s->fuzzApart++;  // counted as lost: it fails the row
     return;
@@ -2101,11 +2157,17 @@ static void startSample(int idx, const Cpu* cpu) {
     memcpy(&p->ppu, snes->ppu, sizeof p->ppu);
     memcpy(&p->dma, snes->dma, sizeof p->dma);
     p->dsp4Size = 0;
-    if(dsp4_bridge_firmware_on() && dsp4_bridge_state_size() <= (int)sizeof p->dsp4) {
+    if(dsp4_bridge_firmware_on() && dsp4_bridge_state_size() <= (int)sizeof p->dsp4) {  // (harness-29; the bench chip's
+      // own state saved here changed later replays, dsp4-09p: so the firmware's only)
       p->dsp4Size = dsp4_bridge_state_size();
       dsp4_bridge_save_state(p->dsp4);
     }
     p->sh = shOrig;
+    p->trackSmp = trackSmp;
+    p->trackLost = trackLost;
+    p->trackKnown = trackKnown;
+    p->trackE2 = trackE2;
+    p->trackE3 = trackE3;
   }
   if(r->mayLeaveCaller) {  // the caller's return address, above this routine's
     smp->altRetPc = (uint16_t)((snes->ram[(uint16_t)(sp + 3)] | (snes->ram[(uint16_t)(sp + 4)] << 8)) + 1);
@@ -2462,9 +2524,20 @@ void difftest_fuzz(int iterations) {
       snes->hIrqEnabled = snes->vIrqEnabled = false;
       for(int ch = 0; ch < 8; ch++) snes->dma->channel[ch].hdmaActive = false;
       snes->dma->hdmaInitRequested = snes->dma->hdmaRunRequested = false;
-      if(p->dsp4Size > 0) {
+      // dsp4-09p: the firmware's state is restored (harness-29); the bench chip's too when the
+      // entry is inside a sprite list (the shadow live), with the shadow and the rounding tracker
+      // as they were. Otherwise the chip is reset and primed as before, the shadow between lists.
+      if(p->dsp4Size > 0 && (dsp4_bridge_firmware_on() || p->sh.live)) {
         dsp4_bridge_load_state(p->dsp4, p->dsp4Size);  // (harness-29)
-        shOrig = p->sh;  // dsp4-09o: the chip as it was, so the shadow too
+        shRestore(&p->sh);
+        trackSmp = p->trackSmp;
+        trackLost = p->trackLost;
+        trackKnown = p->trackKnown;
+        trackE2 = p->trackE2;
+        trackE3 = p->trackE3;
+        if(getenv("DIFFTEST_SHADOW_DEBUG"))
+          fprintf(stderr, "replay restore %s: tracker phase %d cmd %02X lost %d known %d; shadow state %d half %d\n",
+                  table[p->idx].name, trackSmp.dsp4Phase, trackSmp.dsp4Cmd, trackLost, trackKnown, shOrig.state, shOrig.half);
       } else {
         dsp4_bridge_reset();
         primeDsp4();  // (dsp4-01t)
@@ -2619,7 +2692,7 @@ bool difftest_report(const char* resultsPath) {
     // harness lost it, and a lost case may hide a deviation (e.g. an input on which the
     // original runs away), so it fails the routine
     unsigned long fuzzLost = s->fuzzRequested - (s->fuzzPass + s->fuzzFail);
-    unsigned long replayLost = s->replayRequested - (s->replayPass + s->replayFail);
+    unsigned long replayLost = s->replayRequested - (s->replayPass + s->replayFail + s->replayListApart);
     bool ok = flagsOk && s->fail == 0 && s->fuzzFail == 0 && fuzzLost == 0 && s->replayFail == 0 && replayLost == 0 &&
               (s->pass + s->fuzzPass + s->replayPass) > 0 && seen == need && !s->contractBroken &&
               (s->lagFail == 0 || s->cleanPass > 0) &&  // harness-15
@@ -2705,7 +2778,7 @@ bool difftest_report(const char* resultsPath) {
         vis[at] = '\0';
       }
       const bool hard = s->fail > 0 || s->fuzzFail > 0 || fuzzLostOf(s) > 0 || s->replayFail > 0 ||
-                        (s->replayRequested - (s->replayPass + s->replayFail)) > 0 || s->contractBroken;
+                        (s->replayRequested - (s->replayPass + s->replayFail + s->replayListApart)) > 0 || s->contractBroken;
       fprintf(out, "%06X %s %s %016llx %lu %lu %d/%d %s live-flags:%s replayed:%lu watched:%lu read:%s mism:%s hard:%d compared:%lu vis:%s lagfail:%lu cleanpass:%lu sdead:%s roadapart:%lu\n",
         r->entry, r->name, r->source, (unsigned long long)verificationHash(r->source), s->pass, s->fuzzPass, seen, need,
         status, liveFlags, s->replayPass, s->watched, readSet, mismSet, hard ? 1 : 0, s->pass + s->fuzzPass + s->replayPass, vis, s->lagFail, s->cleanPass, sdeadSet, s->apartFail);
