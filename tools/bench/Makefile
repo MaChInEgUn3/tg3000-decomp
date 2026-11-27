@@ -53,6 +53,10 @@ $(OUT)/dsp4_probe: dsp4_probe.cpp $(OUT)/dsp4_lle.o $(OUT)/src_dsp4.o | $(OUT)
 $(OUT)/dsp4_replay: dsp4_replay.cpp $(OUT)/dsp4_lle.o | $(OUT)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 probe: $(OUT)/dsp4_probe
+# dsp4-09c: tapes (cut and edited) replayed into the firmware chip, reads compared from a record on
+$(OUT)/dsp4_tape_run: dsp4_tape_run.cpp $(OUT)/dsp4_lle.o | $(OUT)
+	$(CXX) $(CXXFLAGS) -o $@ $^
+probe: $(OUT)/dsp4_tape_run
 # dsp4-01f: the road command on chosen inputs, on the firmware chip
 $(OUT)/dsp4_road_probe: dsp4_road_probe.cpp $(OUT)/dsp4_lle.o | $(OUT)
 	$(CXX) $(CXXFLAGS) -o $@ $^

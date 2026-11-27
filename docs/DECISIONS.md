@@ -6409,6 +6409,64 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## What the sprite stream `$09` needs from its frame (dsp4-09c, 2026-11-27)
+
+**Measured on the firmware chip, outputs only.** `race1` was recorded with the firmware
+(`--dsp4-firmware --dsp4-tape-out`). Its frames were cut and edited, then replayed into the
+firmware on a chip just powered on, by `build/bench/dsp4_tape_run` (new). Every byte the game
+read from the stream's `$0009` on, the `$0006`'s high table included, was compared with the
+tape's.
+
+**A race frame sends, in order:**
+1. its cars' `$0A`s;
+2. `$01`, `$07`, `$08`;
+3. `$0003` with the word 5 and its first `$000B` entry;
+4. a second `$000B` (the two mini-map dots);
+5. `$0009`;
+6. `$0006`.
+
+A frame here runs from the last `$0A` before its `$01` to the end of the `$0006`'s answer.
+
+**Results over `race1`'s 393 such frames** (`tools/dsp4_09_deps.py`):
+
+| Replayed | Frames that differ |
+|---|---|
+| the whole frame | 0 |
+| without `$01` | 0 |
+| without `$01`, `$07` and `$08` | 0 |
+| `$08` rebuilt with one row word nudged (±1-3), each of the 9 | 0 |
+| without the `$0003` and the `$000B`s | 393 (237,789 bytes) |
+| without the two `$000B`s (the `$0003` alone) | 392, only the `$0006`'s high table (2,381 bytes) |
+| the `$0003`'s word 5 → 4, 6 or 8 | 393: the stream's answers change throughout |
+| a dot's x + 8 | 0 |
+
+**So the sprites do not use the road at all.**
+- dsp4-09b's "the frame from its road command on" worked because it held the `$0003` too.
+- **What `$09` carries over is the sprite list the `$0003` starts.**
+  - The `$0003`'s word 5 is not a count: with 4, 6 or 8 the chip answers the stream
+    differently throughout.
+  - The `$000B` sprites already in the list only move the stream's sprites in the high table.
+  - Their x does not matter.
+- **For a native `$09`:** a sprite-list state (opened by `$0003` with its word, the high table's
+  place) shared by `$03`, `$0B`, `$09` and `$06`; no road state. The harness cost is that state,
+  not `Dsp4Road`.
+
+**`build/bench/dsp4_tape_run`** (`make -C tools/bench probe`) replays tapes (cut and edited) into
+the firmware, each on a chip just powered on, and compares the reads from a given record on.
+- A record with direction 2 reads one `$08` run, however long the chip makes it.
+- `TAPE_RUN_SHOW=N` prints the first differing reads.
+
+**`tools/dsp4_09_deps.py TAPE`** reproduces the table's checked lines; exit 0 while they hold.
+It works on tapes from the bench, whose PCs are one instruction later than refbench's.
+
+**Next (dsp4-09d):**
+- what the `$0003`'s word selects (other words on chosen streams);
+- then one object's parts against `dsp4_sprite` (`$0B`'s rule);
+- then the hidden rule (a total count before a per-line one).
+
+**Check:** `tools/dsp4_09_deps.py` (exit 0). This adds lines to `tools/` only and changes no row
+or C.
+
 ## The firmware judges the roads before every full run (dsp4-check-1, 2026-11-27)
 
 **Why.** Since dsp4-route-1 the bench answers `$01`, `$07` and `$08` with `src/dsp4.c`, so on those
