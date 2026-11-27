@@ -6409,6 +6409,64 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The shadow seeds each sample (dsp4-09o, 2026-11-27)
+
+**The harness half of the advisor's unit 2.** The game's C is unchanged in this unit; the wiring
+follows.
+
+**`tools/bench/difftest.c`.** The shadow becomes a structure (`Shadow`) with two instances.
+- **The original's (`shOrig`, dsp4-09n's):** it compares and taints.
+- **The C's (`shC`):** at each sample's entry it is a copy of `shOrig` as it was there (kept in the
+  sample, `shEntry`). It works on `src/dsp4.c`'s own list state, and it is fed the bytes the C
+  sends and takes from its tape (`difftest_dsp4_byte`). So a C that does part of a list through
+  the port and part natively keeps the native list in step.
+- **Before each C call** `src/dsp4.c`'s list state is set from the sample's `shEntry`, as the
+  rounding is.
+- **The original's list traffic is the shadow's.** A byte the shadow consumed (in a list, or a
+  `$0003`'s first byte) is not given to the sample's command parser. A list the shadow found
+  tainted sets the sample apart (`roadapart`, as dsp4-01t).
+- **A replay with the firmware chip** restores the shadow saved with its entry (`Replay.sh`), as
+  it restores the chip.
+- **Commands that are not the list's stay the parser's,** even inside a list. A multiply or a
+  `$000A` between a list's commands is left to the sample's own parser. The cars' `$000A`s fall
+  between a stream and its `$0006` in half of `race1`'s frames.
+  - The first full gate failed rows that track those commands (`car_road_step`, `race_load`,
+    `player_frame_setup`, `shake_step`, ...), because the shadow had claimed their bytes.
+  - With the bytes left to the parser, they pass again.
+- **The shadow reads an answer's length from the game's reads,** as the tape check does: a flag,
+  then 2 words per nonzero flag. A differing answer taints the list but never loses the shadow's
+  place in it. The list ends at its `$0006`, where the taint ends too.
+- **A `$0003`'s first byte stays the parser's,** since a 3 can be any word's low byte. When the
+  second byte opens the list, the samples' parsers, which took the 3 for a command, wait for
+  the next one.
+  - The second full gate failed `race_frame_head` on the 60k movie: a 3 inside another command,
+    after a read, had been claimed. That fails 20 of 4,000 samples, `$83:EDB7` writing `$8000`
+    with the parser out of step.
+  - `DIFFTEST_SHADOW_DEBUG=1` prints the shadow's and the parser's state at each rejected byte.
+
+**Checked on `race1`:**
+- **On the bench's chip** (`--fuzz 50`), these rows pass as before: `race_frame_body`, `race_frame_draw`,
+  `object_sprites_stream`, `oam_high_load`, `minimap_car`, `car_sprite_head`, `sprite_part_put`.
+- **On the firmware,** three rows fail, and they failed the same way with the harness before this
+  unit (run with the previous `difftest.c`), so they are older:
+  - `race_frame_body` (its replays, 0 of 11 paths);
+  - `race_frame_draw`;
+  - `minimap_car`'s fuzz (34 of 50: the fuzz's scripted chip against the firmware).
+
+  `verify_all.sh` runs `race1` only on the bench's chip, which is why they never showed. They come
+  before a `race1` firmware slice.
+
+**Tried and set aside for the next unit:** `oam_high_load` on the native high table, untaped.
+- **Alone it passes:** 186 of 186 live on the bench's chip, 185 of 185 on the firmware.
+- **But the rows that enclose it then fail:**
+  - The C sends `$0003`/`$0005` nowhere (they are a native site, as harness-5 had them), so the
+    native list was never opened. The C now has to call `dsp4_list_open`, `dsp4_list_sizes` and
+    `dsp4_list_sprite` itself.
+  - On the bench's chip a replay of those rows cannot know the list: setting it apart counts as
+    lost, which fails the row. So the replays need a rule of their own.
+
+**Check:** the runs above, then the full gate (`difftest.c` changed by more than additions).
+
 ## A shadow of the sprite list in the harness (dsp4-09n, 2026-11-27)
 
 **The advisor's first unit before the wiring.** No row changes; the rows stay taped.
