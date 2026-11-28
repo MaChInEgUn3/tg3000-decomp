@@ -12306,6 +12306,18 @@ static void call_mode1_road_project2_view2(const Regs* in, Regs* out) {
   mode1_road_project2_view2();
   mode1_project_out(out, 0x00B6, 0x0162);
 }
+static void call_mode1_road_lists(const Regs* in, Regs* out) {  // (map-fw-13: A, flags from the last SBC)
+  (void)in;
+  mode1_road_lists();
+  const uint16_t r = rd16(0x0237), a = (uint16_t)(0x00BB - r);
+  out->a = a;
+  out->x = rd16(0x0168);
+  out->y = rd16(0x00E0);
+  out->n = (a & 0x8000) != 0;
+  out->z = a == 0;
+  out->c = r <= 0x00BB;
+  out->v = ((0x00BB ^ r) & (0x00BB ^ a) & 0x8000) != 0;
+}
 static void call_road_rows_project(const Regs* in, Regs* out) {
   (void)in;
   road_rows_project();
@@ -15006,6 +15018,14 @@ const Routine routines[] = {
    .holes = {{0x83CE6D, 0x83CE70}, {0x83CECC, 0x83CED4}, {0x83CEE4, 0x83CEF1}, {0x83CF05, 0x83CF0B},
              {0x83CF22, 0x83CF28}, {0x83CF4C, 0x83CF53}, {0x83D02D, 0x83D0AF}, {0x83D0F6, 0x83D16F},
              {0x83D19D, 0x83D1AA}}},  // (the same, player 2's)
+  {.name = "mode1_road_lists", .entry = 0x83DE02, .end = 0x83E241, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .call = call_mode1_road_lists, ALL_OUTPUTS, .replays = 8,
+   // the listing's never-run stretches (traps in the C): each tail's record word negative, no band
+   // line, a band above the view, the record's +$37 word + $40 negative
+   .holes = {{0x83DE66, 0x83DE86}, {0x83DE96, 0x83DE99}, {0x83DE9F, 0x83DEA2}, {0x83DED8, 0x83DEDB},
+             {0x83DF62, 0x83DF82}, {0x83DF92, 0x83DF95}, {0x83DF9B, 0x83DF9E}, {0x83DFD4, 0x83DFD7},
+             {0x83E05E, 0x83E07E}, {0x83E08E, 0x83E091}, {0x83E097, 0x83E09A}, {0x83E0D0, 0x83E0D3},
+             {0x83E15A, 0x83E17A}, {0x83E18A, 0x83E18D}, {0x83E193, 0x83E196}, {0x83E1CC, 0x83E1CF}}},
   {.name = "mode1_road_project2_view1", .entry = 0x83DA0A, .end = 0x83DE02, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_road_project2_view1, ALL_OUTPUTS,
    .replays = 8,  // (map-fw-12: no fuzz, as the first road's views)

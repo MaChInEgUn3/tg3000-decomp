@@ -6409,6 +6409,30 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's HDMA lists after its roads (map-fw-13, 2026-11-28)
+
+**`mode1_road_lists` (`$83:DE02`, `src/misc.c`)** runs after mode 1's four road routines. The three
+road-frame routines at `$85:BED1`, `$85:BF1C` and `$85:BF4A` call it. It does two things:
+- **It turns the buffers.** `$00E0`/`$00E4`/`$00E6`/`$00E8` rotate, and so do `$1E2E`-`$1E3C`, which
+  give the two lists' heads `$00D0`/`$00D2`.
+- **It writes four list tails, two on each list.** These are the VS race's `vs_proj_tail` read
+  back from memory: each road's D+`$22` is at `$0164`-`$016A` and its D+`$1A` at `$1E3E`-`$1E44`.
+  - The first view's tails take `vs_proj_views`' player 2 constants: `$74`, `$AB28`, `$A79C`,
+    the `$4B` end.
+  - The second view's take player 1's: `$04`, `$A968`, `$A5DC`, `$BB`.
+- The never-run cases (incbins) are traps:
+  - the record's +`$42` word negative;
+  - no band line;
+  - a band above the view;
+  - the +`$37` word + `$40` negative.
+- Written inline. It needs 16 holes.
+
+**Harness:** a row may now have 16 holes, not 12 (`difftest.h`), and the hole loop uses the array's
+size. That change is not an addition, so this unit takes the full gate.
+
+**Check:** `demo_mode1` (firmware): live 720 of 720, 7 of 7 replays, paths 427 of 427, V live and
+matching. Then the full `verify_all`.
+
 ## Mode 1's two second roads, `$07` native; `$10` a trap (map-fw-12, 2026-11-28)
 
 **`mode1_road_project2_view1` (`$83:DA0A`) and `mode1_road_project2_view2` (`$83:D612`,

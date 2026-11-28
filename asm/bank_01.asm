@@ -1293,6 +1293,7 @@ CODE_818A3D:
 CODE_818A49:
     rts                         ; $818A49
     incbin !baserom:$8A4A..$DBAC
+mode1_window_view1:
     pea.w $8330                 ; $81DBAC
     plb                         ; $81DBAF
     ldx.w #$2E2C                ; $81DBB0
@@ -1710,6 +1711,7 @@ CODE_81E0EB:
     sta.l $7E0000,x             ; $81E0F3
 CODE_81E0F7:
     rts                         ; $81E0F7
+mode1_window_view2:
     pea.w $8330                 ; $81E0F8
     plb                         ; $81E0FB
     ldx.w #$2FDC                ; $81E0FC

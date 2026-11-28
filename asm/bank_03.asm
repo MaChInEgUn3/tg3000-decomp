@@ -1536,6 +1536,7 @@ CODE_839EC1:
     rep.b #$20                  ; $839EE7
     rts                         ; $839EE9
     incbin !baserom:$19EEA..$1CD70
+mode1_road_project_view2:
     pea.w $8330                 ; $83CD70
     plb                         ; $83CD73
     ldy.w #$0023                ; $83CD74
@@ -2005,6 +2006,7 @@ CODE_83D1AA:
     sta.w $1E42                 ; $83D1BC
     plb                         ; $83D1BF
     rtl                         ; $83D1C0
+mode1_road_project_view1:
     pea.w $8330                 ; $83D1C1
     plb                         ; $83D1C4
     ldy.w #$0023                ; $83D1C5
@@ -2427,6 +2429,7 @@ CODE_83D5FB:
     sta.w $1E3E                 ; $83D60D
     plb                         ; $83D610
     rtl                         ; $83D611
+mode1_road_project2_view2:
     pea.w $8330                 ; $83D612
     plb                         ; $83D615
     ldy.w #$0023                ; $83D616
@@ -2846,6 +2849,7 @@ CODE_83D9F3:
     sta.w $1E44                 ; $83DA05
     plb                         ; $83DA08
     rtl                         ; $83DA09
+mode1_road_project2_view1:
     pea.w $8330                 ; $83DA0A
     plb                         ; $83DA0D
     ldy.w #$0023                ; $83DA0E
@@ -3265,6 +3269,7 @@ CODE_83DDEB:
     sta.w $1E40                 ; $83DDFD
     plb                         ; $83DE00
     rtl                         ; $83DE01
+mode1_road_lists:
     ldy.w $00E8                 ; $83DE02
     lda.w $00E6                 ; $83DE05
     sta.w $00E8                 ; $83DE08

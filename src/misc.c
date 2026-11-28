@@ -7072,6 +7072,97 @@ static void mode1_road_project2(const Mode1Project2* v) {
   wr16(v->at1a, rd16(DP + 0x1A));
 }
 
+// map-fw-13: mode 1's HDMA lists after its four roads ($83:DE02). The four tails are the VS race's
+// vs_proj_tail from the values the roads left in memory (their D+$22 at $0164-$016A, their D+$1A at
+// $1E3E-$1E44): one kind of tail per view, two on each list ($00D0, $00D2).
+typedef struct {
+  uint16_t list, start, in, at22, bands1, sub, d1a, pairs, r37, edge1, e0add, edge2, end, fin, k;
+  const char* trap;
+} Mode1Tail;
+
+static const Mode1Tail mode1_tails[4] = {
+  {0x00D0, 0x0000, 0x02F5, 0x0166, 0x4D96, 0x74, 0x1E42, 0x0AF6, 0x02EA, 0xAB28, 0x1546, 0xA79C, 0x0000, 0x1548, 0x4B,
+   "$83:DE66: mode 1's list tail (view 2's first road): a never-run case"},
+  {0x00D0, 0x0008, 0x0242, 0x0164, 0x4CFE, 0x04, 0x1E3E, 0x0796, 0x0237, 0xA968, 0x1536, 0xA5DC, 0x0004, 0x1538, 0xBB,
+   "$83:DF62: mode 1's list tail (view 1's first road): a never-run case"},
+  {0x00D2, 0x0008, 0x1EFC, 0x016A, 0x4DE2, 0x74, 0x1E44, 0x11B6, 0x02EA, 0xAB28, 0x1566, 0xA79C, 0x0004, 0x1568, 0x4B,
+   "$83:E05E: mode 1's list tail (view 2's second road): a never-run case"},
+  {0x00D2, 0x0008, 0x1EF2, 0x0168, 0x4D4A, 0x04, 0x1E40, 0x0E56, 0x0237, 0xA968, 0x1556, 0xA5DC, 0x0004, 0x1558, 0xBB,
+   "$83:E15A: mode 1's list tail (view 1's second road): a never-run case"},
+};
+
+static void mode1_tail(const Mode1Tail* c) {
+  uint16_t y = rd16(c->list);
+  wr16(y, c->start);
+  y = (uint16_t)(y - 3);
+  wr16(DP + 0x14, 0x0068);
+  if(rd16(c->in) & 0x8000) tg3000_unported(c->trap);  // (the record's +$42 word negative: incbin)
+  wr16(DP + 0x16, 0x0068);
+  uint16_t a = rd8(c->bands1 + (uint32_t)rd16(c->at22));
+  if(a == 0) tg3000_unported(c->trap);                 // (no band line: incbin)
+  a = (uint16_t)(a - c->sub);
+  if(a & 0x8000) tg3000_unported(c->trap);             // (above the view: incbin)
+  if(cmp_n(a, rd16(DP + 0x14))) {
+    wr16(DP + 0x14, a);
+    const uint16_t t = (uint16_t)(rd16(DP + 0x16) - a);
+    if(t != 0) {
+      wr16(y, (uint16_t)(t | 0x0080));
+      wr16((uint16_t)(y + 1), (uint16_t)(rd16(c->d1a) - (uint16_t)((uint16_t)(0x0067 - a) << 2) + c->pairs));
+      y = (uint16_t)(y - 3);
+    }
+  }
+  const uint16_t r37 = rd16(c->r37);
+  a = (uint16_t)(r37 + 0x0040);
+  if(a & 0x8000) tg3000_unported(c->trap);             // (incbin)
+  wr16(DP + 0x16, a);
+  uint16_t d = (uint16_t)(a - rd16(DP + 0x14));
+  if(d & 0x8000) {
+    wr16(y, (uint16_t)((uint16_t)-d | 0x0080));
+    wr16(DP + 0x14, a);
+    wr16((uint16_t)(y + 1), (uint16_t)((uint16_t)(a << 2) + c->edge1));
+    y = (uint16_t)(y - 3);
+  }
+  a = (r37 & 0x8000) ? 0 : r37;
+  wr16(DP + 0x16, a);
+  d = (uint16_t)(a - rd16(DP + 0x14));
+  if(d & 0x8000) {
+    wr16(y, (uint16_t)-d);
+    wr16((uint16_t)(y + 1), (uint16_t)(rd16(0x00E0) + c->e0add));
+    y = (uint16_t)(y - 3);
+    wr16(DP + 0x14, a);
+  }
+  if(rd16(DP + 0x14) != 0) {
+    wr16(y, (uint16_t)(rd16(DP + 0x14) | 0x0080));
+    wr16((uint16_t)(y + 1), c->edge2);
+    y = (uint16_t)(y - 3);
+  }
+  wr16(y, c->end);
+  wr16(c->list, y);
+  wr16(c->fin + (uint32_t)rd16(0x00E0), (uint16_t)(c->k - r37));
+}
+
+// TG3000_ROUTINE($83:DE02) mode1_road_lists
+void mode1_road_lists(void) {
+  uint16_t y = rd16(0x00E8);
+  wr16(0x00E8, rd16(0x00E6));
+  wr16(0x00E6, rd16(0x00E4));
+  wr16(0x00E4, rd16(0x00E0));
+  wr16(0x00E0, y);
+  y = rd16(0x1E3A);
+  wr16(0x1E3A, rd16(0x1E36));
+  wr16(0x1E36, rd16(0x1E32));
+  wr16(0x1E32, rd16(0x1E2E));
+  wr16(0x1E2E, y);
+  wr16(0x00D0, y);
+  y = rd16(0x1E3C);
+  wr16(0x1E3C, rd16(0x1E38));
+  wr16(0x1E38, rd16(0x1E34));
+  wr16(0x1E34, rd16(0x1E30));
+  wr16(0x1E30, y);
+  wr16(0x00D2, y);
+  for(int i = 0; i < 4; i++) mode1_tail(&mode1_tails[i]);
+}
+
 // TG3000_ROUTINE($83:DA0A) mode1_road_project2_view1
 void mode1_road_project2_view1(void) { mode1_road_project2(&mode1_proj2_view1); }
 

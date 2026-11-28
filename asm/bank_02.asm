@@ -858,7 +858,7 @@ CODE_828D6D:
     sta.b $8E                   ; $828F55
 CODE_828F57:
     jsl.l $85BF1C               ; $828F57
-    jsl.l $81DBAC               ; $828F5B
+    jsl.l mode1_window_view1    ; $828F5B
     jsr.w shake_step            ; $828F5F
     jsr.w mode1_view1_sprites   ; $828F62
     jsr.w func_82A9B7           ; $828F65
@@ -872,7 +872,7 @@ CODE_828F57:
     sta.b $8E                   ; $828F79
 CODE_828F7B:
     jsl.l $85BF4A               ; $828F7B
-    jsl.l $81E0F8               ; $828F7F
+    jsl.l mode1_window_view2    ; $828F7F
     jsr.w $9064                 ; $828F83
     jsr.w mode1_view2_sprites   ; $828F86
     jsr.w $AA7B                 ; $828F89

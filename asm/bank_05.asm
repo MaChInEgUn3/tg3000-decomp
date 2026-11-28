@@ -6124,17 +6124,17 @@ CODE_85BEB6:
     sbc.w #$0070                ; $85BECA
     sta.w $1558,y               ; $85BECD
     rtl                         ; $85BED0
-    jsl.l $83D1C1               ; $85BED1
-    jsl.l $83DA0A               ; $85BED5
-    jsl.l $83CD70               ; $85BED9
-    jsl.l $83D612               ; $85BEDD
+    jsl.l mode1_road_project_view1; $85BED1
+    jsl.l mode1_road_project2_view1; $85BED5
+    jsl.l mode1_road_project_view2; $85BED9
+    jsl.l mode1_road_project2_view2; $85BEDD
     lda.w $00D0                 ; $85BEE1
     sta.w $1E46                 ; $85BEE4
     sta.w $1E4A                 ; $85BEE7
     lda.w $00D2                 ; $85BEEA
     sta.w $1E48                 ; $85BEED
     sta.w $1E4C                 ; $85BEF0
-    jsl.l $83DE02               ; $85BEF3
+    jsl.l mode1_road_lists      ; $85BEF3
     lda.w $015C                 ; $85BEF7
     sta.w $016C                 ; $85BEFA
     lda.w $015E                 ; $85BEFD
@@ -6148,9 +6148,9 @@ CODE_85BEB6:
     sta.w $01DE                 ; $85BF15
     jsr.w vs_bands_merge        ; $85BF18
     rtl                         ; $85BF1B
-    jsl.l $83D1C1               ; $85BF1C
-    jsl.l $83DA0A               ; $85BF20
-    jsl.l $83DE02               ; $85BF24
+    jsl.l mode1_road_project_view1; $85BF1C
+    jsl.l mode1_road_project2_view1; $85BF20
+    jsl.l mode1_road_lists      ; $85BF24
     lda.w $00D0                 ; $85BF28
     sta.w $1E46                 ; $85BF2B
     lda.w $00D2                 ; $85BF2E
@@ -6163,9 +6163,9 @@ CODE_85BEB6:
     sta.w $01DC                 ; $85BF43
     jsr.w race_bands_merge      ; $85BF46
     rtl                         ; $85BF49
-    jsl.l $83CD70               ; $85BF4A
-    jsl.l $83D612               ; $85BF4E
-    jsl.l $83DE02               ; $85BF52
+    jsl.l mode1_road_project_view2; $85BF4A
+    jsl.l mode1_road_project2_view2; $85BF4E
+    jsl.l mode1_road_lists      ; $85BF52
     lda.w $00D0                 ; $85BF56
     sta.w $1E4A                 ; $85BF59
     lda.w $00D2                 ; $85BF5C

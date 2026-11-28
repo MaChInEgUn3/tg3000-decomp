@@ -714,6 +714,7 @@ func    81DBAC   mode1_window_view1  ; road_rows_stream for mode 1's top view ($
 func    81E0F8   mode1_window_view2  ; the same for mode 1's bottom view ($81:E5DC folded in) -> src/misc.c
 func    818564   road_rows_stream    ; the road's rows streamed to the DSP-4 (command $08), its answers stored, the edges' scan (RTL; a tape row) -> src/misc.c
 func    83D1C1   mode1_road_project_view1 ; road_rows_project for mode 1's top view ($01 native; $0F, the colour, a trap) -> src/misc.c
+func    83DE02   mode1_road_lists    ; mode 1's HDMA lists after its four roads: the buffers turned, four of the VS race's list tails (RTL) -> src/misc.c
 func    83DA0A   mode1_road_project2_view1 ; road_rows_project2 for mode 1's top view ($07 native; $10, the colour, a trap) -> src/misc.c
 func    83D612   mode1_road_project2_view2 ; the same for mode 1's bottom view (player 2's record) -> src/misc.c
 func    83CD70   mode1_road_project_view2 ; the same for mode 1's bottom view (player 2's record) -> src/misc.c

@@ -1500,6 +1500,7 @@ bool mode1_window_view2(void);  // $81:E0F8: the same for its bottom view
 // and $1E3E (D+$1A).
 void road_rows_project(void);
 void mode1_road_project_view1(void);  // $83:D1C1: road_rows_project for mode 1's top view ($01; $0F a trap)
+void mode1_road_lists(void);  // $83:DE02: mode 1's HDMA lists after its four roads (the VS tails)
 void mode1_road_project2_view1(void);  // $83:DA0A: road_rows_project2 for mode 1's top view ($07; $10 a trap)
 void mode1_road_project2_view2(void);  // $83:D612: the same for its bottom view (player 2)
 void mode1_road_project_view2(void);  // $83:CD70: the same for its bottom view (player 2)

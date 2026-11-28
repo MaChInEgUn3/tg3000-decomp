@@ -69,7 +69,7 @@ typedef struct {
   bool mayLeaveCaller;
   // Data inside the extent (jump tables): [start, end) ranges skipped when listing its
   // instruction starts.
-  uint32_t holes[12][2];
+  uint32_t holes[16][2];  // (map-fw-13: 16, mode1_road_lists has 16)
   // Addresses where the linear decode must switch to 8-bit A (code reached by a branch
   // from an 8-bit section after a REP that the sweep would otherwise carry over).
   uint32_t m8At[2];
