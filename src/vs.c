@@ -1058,6 +1058,18 @@ void vs_car_bands(void) {
   for(int i = 0; i < 4; i++) vs_car_band(&players[i]);
 }
 
+// TG3000_ROUTINE($82:9145) mode1_car_bands
+// vs_car_bands for the race wrapper's mode 1, the two-view race: its two players (records $0200,
+// $02B3; cars 0, $35), both with the limit $3000. Its code is vs_car_bands' block for each, the
+// limit apart (map-fw-5: byte for byte, its never-run clamps and the bit-2 block included).
+void mode1_car_bands(void) {
+  static const VsBandPlayer players[2] = {
+    {0x0200, 0xFAB4, 0x3000, 0x4E2D, 0x4E35},
+    {0x02B3, 0xFAE9, 0x3000, 0x4E2F, 0x4E37},
+  };
+  for(int i = 0; i < 2; i++) vs_car_band(&players[i]);
+}
+
 // One player's block of vs_hud_digits: its record's words, the HUD words it writes, and its
 // message's state.
 typedef struct {

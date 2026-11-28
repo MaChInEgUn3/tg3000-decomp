@@ -6409,6 +6409,24 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's car bands: `vs_car_bands` for two players (map-fw-5, 2026-11-28)
+
+**`mode1_car_bands` (`$82:9145`, `src/vs.c`)** is `vs_car_bands` for mode 1's two players.
+- They are records `$0200` and `$02B3`, cars 0 and `$35`, with speed and band words at
+  `$7E:4E2D`/`$4E2F` and `$4E35`/`$4E37`.
+- Both have the limit `$3000`. VS's players 0-1 have `$3100` and `$2E00`.
+- **The same code, byte for byte, from the ROM.**
+  - Its three never-run 3-byte stretches are `LDA #$3000` (the cap) and `LDA #$0000` (the
+    clamps), as player 2's code has them where it ran.
+  - Its never-run bit-2 block (84 bytes) equals `vs_car_bands`' player-0 block, but for its
+    limit (`$30` against `$31`, twice). Player 2's equals player 1's, but for its record's
+    addresses.
+  - So `vs_car_band` serves for both, and the row has no holes.
+
+**Check:** `verify_new.sh mode1_car_bands`, with `vs_car_bands`' fuzz, whose first two players are
+mode 1's. On `demo_mode1`: live 177 of 177, fuzz 500 of 500, paths 151 of 151 (the never-run ones
+through the fuzz).
+
 ## Mode 1's first routine in C: its two views' scrolls (map-fw-4, 2026-11-28)
 
 **`mode1_view_scrolls` (`$83:8909`, `src/race_frame.c`)** is `vs_view_scrolls` for mode 1's two

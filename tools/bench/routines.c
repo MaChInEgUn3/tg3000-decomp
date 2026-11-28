@@ -6675,6 +6675,7 @@ static void fuzz_car_sync_slot(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 }
 // vs_car_bands ($82:9806): its caller reloads the registers (vs-race-15)
 static void call_vs_car_bands(const Regs* in, Regs* out) { (void)in; (void)out; vs_car_bands(); }
+static void call_mode1_car_bands(const Regs* in, Regs* out) { (void)in; (void)out; mode1_car_bands(); }  // (map-fw-5)
 // the four players: their +$13 words (near the race's or any), flags (bits 0 and 2 either way), the
 // car near the player or anywhere, the speed words
 static void fuzz_vs_car_bands(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
@@ -13475,6 +13476,9 @@ const Routine routines[] = {
        // (verify-cover-1: the shared tail in its extent, right after it, so its paths count)
   {.name = "vs_car_bands", .entry = 0x829806, .end = 0x829AF4, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_car_bands, .fuzz = fuzz_vs_car_bands},
+  {.name = "mode1_car_bands", .entry = 0x829145, .end = 0x8292BA, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_mode1_car_bands, .fuzz = fuzz_vs_car_bands},
+   // (vs_car_bands' fuzz: its first two players are mode 1's)
   {.name = "vs_track_objects_view0", .entry = 0x82B87A, .end = 0x82B89C, .source = "src/vs.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_track_objects_view0, ALL_OUTPUTS,
    .fuzz = fuzz_vs_track_objects_view},
