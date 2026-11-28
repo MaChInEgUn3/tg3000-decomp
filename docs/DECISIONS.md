@@ -6409,6 +6409,23 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Port request V: the race wrapper's NMI in C (port V, 2026-11-28)
+
+**`nmi_race_wrapper` (`$83:8623`, `src/frame.c`)** is the NMI `race_wrapper_head` points at
+(`$0001 = $8623`). The VS race's load waits under it, from `vs_race_load` to `vs_race_start`.
+- The original saves A, X, Y, D and DB, acknowledges (`$4210`, the platform's) and sets D = 0.
+- Then: `sound_frame`, `pads_read`, `$0024` + 1, `$00BA` + 1, and RTI.
+- No dispatch through `$0008`, no DMA, no fade.
+- The row is a self-contained interrupt, like `irq_split_top`: P comes from the frame.
+
+**Check:** `verify_new.sh nmi_race_wrapper`. On `demo_race` (the title's VS demo): live 53 of 53,
+fuzz 500 of 500, paths 21 of 21.
+
+**Also from the port.** U is withdrawn: at its draw point, `$1E46`/`$1E48` always name the table in
+effect. W (the VS loop's way out, `$82:9642`) and the rest of A (the VS race's DSP-4 through
+`dsp4_port_*`, which blocks its whole-game movies after the first race) come next, before the rest
+of mode 1.
+
 ## Mode 1's car bands: `vs_car_bands` for two players (map-fw-5, 2026-11-28)
 
 **`mode1_car_bands` (`$82:9145`, `src/vs.c`)** is `vs_car_bands` for mode 1's two players.

@@ -809,3 +809,4 @@
 8AA67B vs_screen_loop src/vs.c fa72bec2b805a72e 1 0 37/37 verified live-flags:NVZC replayed:0
 838909 mode1_view_scrolls src/race_frame.c 93438c26883a9c6f 776 500 41/41 verified live-flags:- replayed:0
 829145 mode1_car_bands src/vs.c 6f399af6d7b7311c 177 500 151/151 verified live-flags:- replayed:0
+838623 nmi_race_wrapper src/frame.c 4a2f4b31452c6dba 70 500 21/21 verified live-flags:NVZC replayed:0

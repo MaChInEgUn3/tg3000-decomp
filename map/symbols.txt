@@ -157,6 +157,7 @@ func    85838A   nmi_race_tail       ; race NMI tail: fade, $2100, sound, pads, 
 func    808807   nmi_prologue        ; NMI outside the race up to its dispatch: fade, $2100, palette, OAM, VRAM queue -> src/frame.c
 func    858377   nmi_race_prologue   ; race NMI up to its dispatch: saves, D = 0, DB = $85 (nothing for the C) -> src/frame.c
 func    838644   race_upload_queue_drain ; send the race VRAM queue ($7E:F433..) within the DMA budget $FC -> src/race_frame.c
+func    838623   nmi_race_wrapper    ; the race wrapper's NMI: sound, pads, $0024 and $00BA counted (port request V) -> src/frame.c
 func    8396D1   race_upload_queue_drain_long ; race_upload_queue_drain (long) -> src/race_frame.c
 func    838989   func_838989         ; 24-bit $00D4 += $01CC (unless paused), words at $1536/$1556 -> src/race_frame.c
 func    8396D5   func_838989_long    ; func_838989 (long) -> src/race_frame.c

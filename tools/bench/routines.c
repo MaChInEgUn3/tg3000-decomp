@@ -7863,6 +7863,15 @@ static void call_nmi_tail(const Regs* in, Regs* out) {
 }
 
 // ---- irq_split_top ($80:E3F7) ----  saves and restores DB, A, X, Y itself; P from the frame
+// ---- nmi_race_wrapper ($83:8623) ----  saves and restores A, X, Y, D, DB itself; P from the frame
+static void call_nmi_race_wrapper(const Regs* in, Regs* out) {
+  nmi_race_wrapper();
+  restoreP(in, out);
+}
+static void fuzz_nmi_race_wrapper(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  fuzz_nmi_quiet(ram, rnd);
+}
 static void call_irq_split_top(const Regs* in, Regs* out) {
   irq_split_top();
   restoreP(in, out);
@@ -13805,6 +13814,8 @@ const Routine routines[] = {
   {.name = "nmi_tail", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .fixedD = false, .call = call_nmi_tail, ALL_OUTPUTS, .fuzz = fuzz_nmi_tail},
   // no fuzz: it waits (WAI) for the next interrupt, which the fuzz never raises
+  {.name = "nmi_race_wrapper", .entry = 0x838623, .end = 0x838644, .rti = true, .source = "src/frame.c",
+   .call = call_nmi_race_wrapper, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_wrapper},  // (port request V)
   {.name = "irq_split_top", .entry = 0x80E3F7, .end = 0x80E48A, .rti = true, .source = "src/frame.c",
    .call = call_irq_split_top, ALL_OUTPUTS},
   {.name = "irq_split_bottom", .entry = 0x80E48A, .end = 0x80E4C5, .rti = true, .source = "src/frame.c",

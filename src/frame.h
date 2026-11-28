@@ -93,6 +93,7 @@ void nmi_prologue(void);  // $80:8807, up to its dispatch through $0008
 void interrupt_vectors_init(void);
 void nmi_race_prologue(void);  // $85:8377, up to its dispatch (nothing to do)
 void nmi_race_tail(void);  // $85:838A: the race NMI's tail (every race frame)
+void nmi_race_wrapper(void);  // $83:8623: the race wrapper's NMI (sound, pads, the frame counters)
 void nmi_vs_prologue(void);  // $83:9721, up to its dispatch (nothing to do)
 void nmi_vs_tail(void);      // $83:9734: the VS NMI's tail (nmi_race_tail with a short JSR)
 

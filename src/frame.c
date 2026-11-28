@@ -126,6 +126,19 @@ void nmi_race_tail(void) {
   wr16(0x00BA, (uint16_t)(rd16(0x00BA) + 1));
 }
 
+// TG3000_ROUTINE($83:8623) nmi_race_wrapper
+//
+// Port request V: the NMI race_wrapper_head points at ($0001 = $8623), under which the VS race's
+// load waits (vs_race_load to vs_race_start). The original saves A, X, Y, D and DB, acknowledges
+// ($4210: the platform's) and sets D = 0; then sound, the pads, and the two frame counters
+// ($0024, $00BA). No dispatch through $0008, no DMA, no fade.
+void nmi_race_wrapper(void) {
+  sound_frame();
+  pads_read();
+  wr16(FRAME_COUNTER, (uint16_t)(rd16(FRAME_COUNTER) + 1));
+  wr16(0x00BA, (uint16_t)(rd16(0x00BA) + 1));
+}
+
 // TG3000_ROUTINE($80:FBD1) nmi_target_80FBD1
 void nmi_target_80FBD1(void) {
   func_8A8000();
