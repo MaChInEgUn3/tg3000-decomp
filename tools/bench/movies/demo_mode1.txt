@@ -1,0 +1,4 @@
+# Mode 1, the title demo left alone (map-fw-2): no buttons. On the firmware chip the title runs its
+# demos, and the second, from about frame 17,115, is the race wrapper's mode 1 ($82:89B5, a
+# two-view race with $0F/$10). Run it for 19500 steps with --dsp4-firmware (the bench's own chip
+# never gets there: its path parts at a sprite answer, dsp4-01x).

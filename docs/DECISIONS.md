@@ -6409,6 +6409,28 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## A short way to mode 1: the title demo left alone, on the firmware (map-fw-2, 2026-11-28)
+
+**`tools/bench/movies/demo_mode1.txt`:** no buttons at all, run for 19,500 steps with
+`--dsp4-firmware`.
+- The title, left alone, runs its demos. The first is the four-player VS race (`demo_race.txt`,
+  about frame 5,750).
+- The second starts at frame 17,115: the race wrapper's mode 1 (`$82:89B5`), the two-view race
+  with `$0F`/`$10`.
+- On the bench's own chip the idle boot never gets there: its path parts at a sprite answer
+  (dsp4-01x).
+- The run takes about a minute, against about 3 for the firmware `autopilot_60k` (which reaches
+  mode 1 at frame 44,737).
+- It reaches 6,012 of map-fw-1's 6,979 new instruction starts, and 263 of the mode 1 wrapper's
+  282.
+
+**`bench --first-pc BB:AAAA`** prints the step and the video frame where that instruction first
+runs. It is how the two frames above were found.
+
+**Next:** the first mode 1 routines into C, with this movie added to `verify_new.sh`/`verify_all.sh`
+(with `--dsp4-firmware`, as the VS movies), in the same unit. A new movie can bring existing rows
+new samples, the two-player paths among them, and those have to pass with it.
+
 ## Mode 1's exchanges are a colour blend (dsp4-0f-2, 2026-11-28)
 
 **The four exchanges in each drawing row of `$0F`/`$10` blend a colour.** The command's extra word

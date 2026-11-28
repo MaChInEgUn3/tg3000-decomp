@@ -40,6 +40,7 @@ build/bench/bench TG3000.sfc 9450 --movie tools/bench/movies/race1.txt --dsp4-fi
 build/bench/bench TG3000.sfc 9450 --movie tools/bench/movies/race1.txt --dsp4-firmware ext/firmware/dsp4.rom --dsp4-tape-out /tmp/r.tape && python3 -I tools/dsp4_sites.py > /tmp/sites.txt && build/bench/dsp4_compare /tmp/r.tape /tmp/sites.txt   # src/dsp4.c's chip against the firmware, per command
 make -C tools/bench probe && python3 -I tools/dsp4_09_pairs.py /tmp/fw.tape 53   # the sprite budget on chosen lists: shift test, probe table (firmware and src/dsp4.c)
 python3 -I tools/dsp4_0f.py /tmp/fw60k.tape   # mode 1's $0F/$10 off a firmware tape: grammar, src/dsp4.c's $01/$07 on them, the exchanges
+build/bench/bench TG3000.sfc 19500 --movie tools/bench/movies/demo_mode1.txt --dsp4-firmware ext/firmware/dsp4.rom --first-pc 82:89B5   # mode 1 (the title demo left alone), where an instruction first runs
 tools/bench/selftest.sh         # determinism + fresh-process save/load + race reached + all rows (sharded); SELFTEST_DIFFTEST=0 skips the rows
 python3 -I tools/listing.py && tools/build_asm.sh   # asm/ -> exact ROM (SHA-1 + code-from-text proof)
 tools/refbench/fetch.sh && make -C tools/refbench    # TAS reference: bsnes from BizHawk 1.9.4

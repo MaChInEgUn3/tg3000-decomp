@@ -6,6 +6,7 @@
 //
 // A "frame" is one full video frame: the bench steps the CPU until LakeSnes's frame
 // counter changes (start of the next frame), so frame N of a movie is always video frame N.
+// --first-pc BB:AAAA prints the step and video frame where that instruction first runs (map-fw-2).
 // --hashes writes one line per step: "<step> <video frame counter> <FNV-1a 64 of the 128 KB WRAM>".
 // --coverage FILE: trace execution and OR-merge the per-ROM-byte flags into FILE
 // (see coverage.h); RAM-executed addresses go to FILE.ram.
@@ -248,8 +249,18 @@ static void autopilot(void) {
 }
 
 static bool coverageOn, difftestOn, censusOn, hdmaOn, apuOn;
+// --first-pc BB:AAAA (map-fw-2): print the step and video frame where that instruction first runs
+static uint32_t firstPc;
+static bool firstPcOn, firstPcSeen;
+static int firstPcStep;
 
 static void benchTrace(Cpu* cpu) {
+  if(firstPcOn && !firstPcSeen && (((uint32_t)cpu->k << 16) | cpu->pc) == firstPc) {
+    firstPcSeen = true;
+    printf("first-pc %02X:%04X at step %d, video frame %u\n", (unsigned)(firstPc >> 16), (unsigned)(firstPc & 0xFFFF),
+           firstPcStep, (unsigned)snes->frames);
+    fflush(stdout);
+  }
   if(coverageOn) coverage_on_insn(cpu);
   if(censusOn) census_on_insn(cpu);
   if(difftestOn) difftest_on_insn(cpu);
@@ -466,6 +477,11 @@ int main(int argc, char** argv) {
     if(strcmp(argv[i], "--dsp4-log") == 0 && i + 1 < argc) {
       dsp4Log = fopen(argv[++i], "w");
       if(dsp4Log == NULL) { perror(argv[i]); return 1; }
+    } else if(strcmp(argv[i], "--first-pc") == 0 && i + 1 < argc) {
+      unsigned bank = 0, adr = 0;
+      if(sscanf(argv[++i], "%x:%x", &bank, &adr) != 2) { fprintf(stderr, "--first-pc wants BB:AAAA\n"); return 1; }
+      firstPc = (uint32_t)(bank << 16 | adr);
+      firstPcOn = true;
     } else if(strcmp(argv[i], "--hashes") == 0 && i + 1 < argc) {
       hashes = fopen(argv[++i], "w");
       if(hashes == NULL) { perror(argv[i]); return 1; }
@@ -569,7 +585,7 @@ int main(int argc, char** argv) {
   if(censusPath != NULL) { census_start(snes, snes->cart->rom); censusOn = true; }
   if(hdmaPath != NULL) { hdma_start(snes); hdmaOn = true; }
   if(apuPath != NULL) { apu_start(snes); apuOn = true; }
-  if(coverageOn || difftestOn || censusOn || hdmaOn || apuOn) cpu_traceHook = benchTrace;
+  if(coverageOn || difftestOn || censusOn || hdmaOn || apuOn || firstPcOn) cpu_traceHook = benchTrace;
   if(difftestOn || censusOn || hdmaOn || apuOn) snes_cpuAccessHook = benchAccess;
   if(loadStatePath != NULL) {
     int stSize = 0;
@@ -585,6 +601,7 @@ int main(int argc, char** argv) {
   }
   uint16_t lastRecorded = 0;
   for(int i = 0; i < frames; i++) {
+    firstPcStep = i;
     applyMovie(i);
     if(autopilotFrom >= 0 && i >= autopilotFrom) autopilot();
     recordStep(record, i, &lastRecorded);
