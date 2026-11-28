@@ -155,4 +155,12 @@ void dsp4_objects_end(void);
 uint16_t dsp4_list_rounding(void);  // dsp4-01v: lines 127/128's budget left, as the road reads it
 // $0006: the high table, 16 words (8 entries a word, the first in bits 0-1)
 void dsp4_high_table(uint16_t out[16]);
+
+// dsp4-0f-2: the two-view race's roads $0F and $10 (mode 1) are $01 and $07 behind one word, a
+// colour (BGR555); each row that draws asks 4 times for a colour `colour` blended toward it by
+// `weight` (signed, 1.15): per channel, towards + ((colour - towards) * weight >> 15). Bit 15 of
+// `colour` is ignored. Measured on the firmware: every second word for 5 weights (327,680), the
+// 60k movie's 48,628 inputs, other colours and negative weights. (A colour with bit 15 set makes
+// the chip read the command otherwise: never sent, not modelled.)
+uint16_t dsp4_colour_blend(uint16_t towards, int16_t weight, uint16_t colour);
 #endif

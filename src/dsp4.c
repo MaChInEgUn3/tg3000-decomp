@@ -370,3 +370,15 @@ void dsp4_objects_end(void) {
 void dsp4_high_table(uint16_t out[16]) {
   for(int i = 0; i < 16; i++) out[i] = (uint16_t)(dsp4_sp.high[2 * i] | dsp4_sp.high[2 * i + 1] << 8);
 }
+
+uint16_t dsp4_colour_blend(uint16_t towards, int16_t weight, uint16_t colour) {
+  uint16_t out = 0;
+  for(int shift = 0; shift < 15; shift += 5) {
+    const int32_t t = (towards >> shift) & 31, c = (colour >> shift) & 31;
+    // (an arithmetic shift: the product's floor; written as a division that floors)
+    const int32_t p = (c - t) * weight;
+    const int32_t q = p >= 0 ? p >> 15 : -((-p + 32767) >> 15);
+    out = (uint16_t)(out | ((t + q) & 31) << shift);
+  }
+  return out;
+}

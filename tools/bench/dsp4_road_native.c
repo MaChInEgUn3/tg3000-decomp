@@ -18,6 +18,9 @@ int main(void) {
         int16_t o[4]; dsp4_edges((uint16_t)t, (uint16_t)a, (uint16_t)b, o); e2 = o[2]; e3 = o[3];
         for(int i = 0; i < 4; i++) printf("%04X ", (uint16_t)o[i]);
         continue; }
+      if(*p == 'X') {  // dsp4-0f-2: "X TOWARDS WEIGHT COLOUR": the colour blend, one answer
+        unsigned t, w, col; int k; sscanf(p + 1, "%x %x %x%n", &t, &w, &col, &k); p += 1 + k;
+        printf("%04X ", dsp4_colour_blend((uint16_t)t, (int16_t)w, (uint16_t)col)); continue; }
       if(*p == 'Q') { unsigned a, b; int k; sscanf(p + 1, "%x %x%n", &a, &b, &k); p += 1 + k;  // dsp4-01u: the
         e2 = (int16_t)a; e3 = (int16_t)b; continue; }  // rounding as a $0A's edges 2 and 3 would leave it
       if(*p == 'M') { unsigned a, b; int k; sscanf(p + 1, "%x %x%n", &a, &b, &k); p += 1 + k;

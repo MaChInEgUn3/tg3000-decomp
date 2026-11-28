@@ -6409,6 +6409,37 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's exchanges are a colour blend (dsp4-0f-2, 2026-11-28)
+
+**The four exchanges in each drawing row of `$0F`/`$10` blend a colour.** The command's extra word
+is a colour, `towards` (BGR555, `$737B` in the game). Each exchange sends `weight` and `colour` and
+gets back, channel by channel (red bits 0-4, green 5-9, blue 10-14):
+`towards + ((colour - towards) * weight >> 15)`.
+- `weight` is signed, 1.15: from `$8000` it is negative.
+- `colour`'s bit 15 is ignored.
+- `src/dsp4.c`: `dsp4_colour_blend(towards, weight, colour)`.
+
+**Measured on the firmware, outputs only:**
+- `dsp4_tape_run` replays a real `$0F` run with its exchange words replaced: 52 exchanges a run.
+  The answers do not depend on the rest of the run: the 52 recorded pairs replayed come back
+  equal.
+- Every second word, `$0000-$FFFF`, for weights `$73CE`, `$53DC`, 0, `$7FFF` and `$4000`: 327,680
+  of 327,680 equal the formula, and `src/dsp4.c`.
+  - Weight 0 gives `towards` itself. `$7FFF` gives nearly `colour`; it falls short by 1 in a
+    channel when the step is large.
+- Other extra words (0, `$7FFF`, `$1234`, `$5A5A`), 1,040 random pairs each: all equal.
+- Weights `$8000-$FFFF` as negative: 1,040 of 1,040.
+- An extra word with bit 15 set (`$8000`, `$FFFF`, `$F37B`): the chip answers `$0180` throughout.
+  It reads the command otherwise there. The game never sends one: not modelled.
+- On the 60k movie, all 48,628 distinct inputs: `tools/dsp4_0f.py` now checks them against
+  `src/dsp4.c` (via `dsp4_road_native`'s new `X TOWARDS WEIGHT COLOUR`).
+
+**So mode 1's DSP-4 is modelled but for its `$8001` edge and the 3 `$10` lines at −128.** The
+`$8001` is unmodelled in `$01` too.
+
+**Next:** mode 1's routines into C (the race wrapper from `$82:89B5`), the `$0F`/`$10` sites calling
+`src/dsp4.c`'s `$01`/`$07` and `dsp4_colour_blend`, verified on a firmware-backed movie.
+
 ## Mode 1's road commands: `$0F` is `$01`, `$10` is `$07`, plus four exchanges a row (dsp4-0f-1, 2026-11-28)
 
 **Read off the 60k firmware tape**, outputs only, with `tools/dsp4_0f.py`: 3,760 `$0F` and 3,760 `$10`

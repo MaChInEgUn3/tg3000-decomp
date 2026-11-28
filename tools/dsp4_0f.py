@@ -18,7 +18,8 @@ Checks: every run parses; $10's runs are src/dsp4.c's $07 (dsp4_road_native's R7
 road leaves it), answers and lines (a run that differs only in lines' third words that the chip gives
 as -128, $FF80, is counted apart: not modelled); $0F's first row answers are src/dsp4.c's $01 (its lines need
 the rounding the run starts on, not taken here); each exchange's answer is a function of its two
-words, the same for $0F and $10; the extra word is constant. Exit status 0 when all hold.
+words, the same for $0F and $10, and (dsp4-0f-2) is src/dsp4.c's dsp4_colour_blend toward the
+extra word; the extra word is constant. Exit status 0 when all hold.
 """
 import collections
 import mmap
@@ -143,6 +144,13 @@ def main():
     print('  exchanges: $0F %d, $10 %d; distinct inputs %d; an input with two answers: %d' % (
         total[0x0F], total[0x10], len(seen), conflicts))
     ok = ok and conflicts == 0
+    # dsp4-0f-2: src/dsp4.c's colour blend toward the extra word
+    keys = sorted(seen)
+    towards = all_runs[0][2][0] if all_runs else 0
+    got = road.run(road.NATIVE, ['X %X %X %X' % (towards, a, b) for a, b in keys])
+    blend = sum(int(g.split()[0], 16) == seen[k] for g, k in zip(got, keys))
+    print('  exchanges answered by src/dsp4.c\'s dsp4_colour_blend toward $%04X: %d of %d inputs' % (towards, blend, len(keys)))
+    ok = ok and blend == len(keys)
     return 0 if ok else 1
 
 
