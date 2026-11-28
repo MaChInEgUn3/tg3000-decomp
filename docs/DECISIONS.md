@@ -6409,6 +6409,43 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's two road projections, `$01` native; `$0F` a trap (map-fw-11, 2026-11-28)
+
+**`mode1_road_project_view1` (`$83:D1C1`) and `mode1_road_project_view2` (`$83:CD70`,
+`src/misc.c`)** are `road_rows_project` for mode 1's two views. They use one body,
+`mode1_road_project`, with a table per view.
+- **View 1** is the race's routine except for three things:
+  - D+`$1A` is `$019C`/`$033C`;
+  - the band start and header word 5 are `$006C`;
+  - header word 3 is `$FFCB`.
+- **View 2** has player 2's record (`$02B3`.., `$02D8`/`$02D9`, `$02F5`) and its own tables, answer
+  rows (`$352C`-`$3A2C`), band table (`$4D95`), lines (`$0AF8`/`$0AF6`), D+`$92`, `$0166`/`$015E` and
+  `$1E42`.
+
+**The colour, `$0F`.** Both routines send `$01` when D+`$E4`/`$E6` is negative. Otherwise they send
+`$0F` and that word: a colour that the chip blends the road's objects toward, 4 exchanges a row that
+draws (dsp4-0f-2).
+- On `demo_mode1` the word is always negative, so `demo_mode1` has no `$0F` or `$10` at all (a
+  firmware tape: 0 runs).
+- Only the 60k firmware run and the TAS reach the colour, and neither is a check movie.
+- So, as in `road_rows_project`, `$0F` is a trap here, and so are its exchanges. Verifying it needs a
+  check movie that reaches it.
+- For the same reason the harness does not learn `$0F`/`$10` yet.
+
+**The other traps** are the never-run stretches (incbins), as in the race's C:
+- the record's +`$42` word negative;
+- the edges (`$8001`; view 1's 121-byte incbin is exactly the race's edge block);
+- `$020D` negative (the sign extension, unchecked).
+
+**Check:** `demo_mode1` (firmware).
+- View 1: live 76 of 76, 7 of 7 replays, paths 337 of 337.
+- View 2: live 50 of 50, 6 of 6 replays, paths 337 of 337.
+- 2 samples of view 1 ran on an unknown rounding and are set apart (dsp4-01t).
+- Then `verify_new.sh`.
+
+The C was drafted by a delegated agent from the listing and `road_rows_project`. The differential
+test checks it.
+
 ## Mode 1's two window streams, `$08` native (map-fw-10, 2026-11-28)
 
 **`mode1_window_view1` (`$81:DBAC`) and `mode1_window_view2` (`$81:E0F8`, `src/misc.c`)** are

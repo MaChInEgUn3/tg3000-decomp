@@ -6624,6 +6624,222 @@ void road_rows_project(void) {
   wr16(0x1E3E, rd16(DP + 0x1A));
 }
 
+// map-fw-11: mode 1's two views' road projections ($83:D1C1, $83:CD70), drafted by a delegated agent
+// from the listing and road_rows_project; checked by the differential test
+// Mode 1's road projections ($83:D1C1 for the top view, player 1; $83:CD70 for the bottom view,
+// player 2): road_rows_project's code ($85:B3D7) with each view's record, tables and constants
+// (the table below). Both start PEA $8330 / PLB and end PLB / RTL, as the race's. The road is
+// DSP-4 command $01, answered natively as in road_rows_project (dsp4-01t). Every branch whose
+// target the listing leaves as incbin (never run, not disassembled) traps here.
+typedef struct {
+  uint16_t sel;               // the buffer selector: $00B4 / $00B6
+  uint16_t x_small, x_big;    // D+$18's start (the objects' bytes, filled top down)
+  uint16_t z_small, z_big;    // D+$1A (the lines' base, header word 9)
+  uint16_t rec;               // the player's record: $0200 / $02B3 (+$08 +$0A +$0B +$0D +$25 +$26 +$42)
+  uint16_t tab;               // the track tables: $3AEC / $406C (+$02 +$82 +$100 +$1FE +$27E)
+  uint16_t sky;               // the first product's word: $0174 / $0178
+  uint16_t bands;             // the band bytes: $4CFD / $4D95 (and +1)
+  uint16_t k_band;            // the band start and header word 5: $006C / $00DC
+  uint16_t dp_cmd;            // the road command's word: D+$E4 / D+$E6
+  uint16_t rows;              // the row answers: $34EC / $352C (+$100 per column, +$400, +$500)
+  uint16_t pairs;             // the lines' pairs in low WRAM: $0796 / $0AF6 (and +2)
+  uint16_t dp_rows;           // D+$24's copy: D+$90 / D+$92
+  uint16_t at22, at18, at1a;  // the tail: $0164/$015C/$1E3E / $0166/$015E/$1E42
+  const char* trap_cmd;       // LDA #$000F (the colour command)
+  const char* trap_in;        // the record's +$42 negative (incbin)
+  const char* trap_edge;      // a road edge (DSP-4 $8001)
+} Mode1Project;
+
+static const Mode1Project mode1_proj_view1 = {
+    0x00B4, 0x272B, 0x282B, 0x019C, 0x033C, 0x0200, 0x3AEC, 0x0174, 0x4CFD, 0x006C, 0xE4, 0x34EC, 0x0796, 0x90,
+    0x0164, 0x015C, 0x1E3E,
+    "$83:D31D: mode 1's road command $0F (the colour)",
+    "$83:D335: mode 1's road with $0242 negative (never run; not disassembled)",
+    "$83:D547: a road edge in mode 1's top view (DSP-4 $8001; never run, not disassembled)",
+};
+
+static const Mode1Project mode1_proj_view2 = {
+    0x00B6, 0x2B2B, 0x2C2B, 0x019C, 0x033C, 0x02B3, 0x406C, 0x0178, 0x4D95, 0x00DC, 0xE6, 0x352C, 0x0AF6, 0x92,
+    0x0166, 0x015E, 0x1E42,
+    "$83:CECC: mode 1's road command $0F (the colour)",
+    "$83:CEE4: mode 1's road with $02F5 negative (never run; not disassembled)",
+    "$83:D0F6: a road edge in mode 1's bottom view (DSP-4 $8001; decoded, so run by some trace: not ported, src/dsp4.c's road has no edge)",
+};
+
+static void mode1_road_project(const Mode1Project* v) {
+  const bool small = rd16(v->sel) != 0;
+  const uint16_t band = small ? 0x0023 : 0x0045;
+  wr16(DP + 0x18, small ? v->x_small : v->x_big);
+  wr16(DP + 0x1A, small ? v->z_small : v->z_big);
+  wr16(DP + 0x1C, small ? 0x0004 : 0x01A4);
+  wr16(DP + 0x14, (uint16_t)(0x0080 - ((rd16(v->rec + 0x25) >> 1) & 0x007E)));
+  wr16(DP + 0x16, (uint16_t)((rd16(v->rec + 0x26) << 1) & 0x003E));
+  const uint32_t x = rd16(DP + 0x16);
+  const uint16_t at = rd16(DP + 0x14);
+  const uint16_t ahead = xba16((uint16_t)((uint16_t)(0x0080 - at) >> 1)), behind = xba16((uint16_t)(at >> 1));
+  uint16_t lo, hi;
+  road_product32(rd16(v->tab + x), 0xFC00, &lo, &hi);
+  wr16(v->sky, (uint16_t)(hi + (lo >= 0x8000 ? 1 : 0)));
+  road_product32(rd16(v->tab + 0x82 + x), ahead, &lo, &hi);
+  wr16(DP + 0x1E, (uint16_t)(rd16(v->rec + 0x08) - (uint16_t)(hi << 2 | lo >> 14)));
+  road_product32(rd16(v->rec + 0x08), behind, &lo, &hi);
+  wr16(DP + 0x20, (uint16_t)(hi << 2 | lo >> 14));
+  road_product32(rd16(v->tab + 2 + x), ahead, &lo, &hi);
+  {
+    const uint16_t d = (uint16_t)-(uint16_t)(hi << 2 | lo >> 14);
+    const uint32_t c1 = (hi >> 14) & 1;  // the second ROL's carry, into the ADC
+    const uint32_t s = (uint32_t)rd16(v->rec + 0x0B) + d + c1;
+    wr16(DP + 0x26, (uint16_t)s);
+    wr16(DP + 0x28, (uint16_t)(sext8(rd8(v->rec + 0x0D)) + ((d & 0x8000) ? 0xFFFF : 0) + (s >> 16)));
+  }
+  road_product32(rd16(DP + 0x26), behind, &lo, &hi);
+  wr16(DP + 0x2A, hi);
+  wr16(DP + 0x2C, (hi & 0x8000) ? 0xFFFF : 0);
+  {
+    const uint16_t top = (uint16_t)(rd16(DP + 0x28) + ((rd16(DP + 0x26) & 0x8000) ? 1 : 0));
+    road_product32(top, behind, &lo, &hi);
+    const uint32_t s = (uint32_t)lo + rd16(DP + 0x2A);
+    const uint16_t h = (uint16_t)(hi + rd16(DP + 0x2C) + (s >> 16));
+    wr16(DP + 0x2A, (uint16_t)(s << 2));
+    wr16(DP + 0x2C, (uint16_t)(h << 2 | (uint16_t)s >> 14));
+  }
+  wr16(v->bands + (uint32_t)band, 0);
+  // the road, DSP-4 command $01, native (dsp4-01t; $0F, the colour, never ran)
+  if(!(rd16(DP + v->dp_cmd) & 0x8000)) tg3000_unported(v->trap_cmd);
+  const uint16_t p = rd16(v->rec + 0x42);
+  if(p & 0x8000) tg3000_unported(v->trap_in);  // (the listing's four other tests of it: the same)
+  uint16_t head[15];
+  head[0] = 0;
+  head[1] = (uint16_t)(p + 0x0033);
+  wr16(v->bands + (uint32_t)band, v->k_band);
+  head[2] = 0x0033;
+  head[3] = 0xFFCB;
+  head[4] = 0x00BF;
+  head[5] = v->k_band;
+  head[6] = rd16(v->rec);
+  uint16_t w = rd16(v->rec + 2);
+  if(w != 0) {
+    w = (uint16_t)(w - 1);
+    if(w & 0x8000) w = (uint16_t)(w + 2);
+  }
+  head[7] = w;
+  head[8] = 0x0180;
+  head[9] = rd16(DP + 0x1A);
+  head[10] = 0x00C0;
+  wr16(DP + 0x22, (uint16_t)(band - 1));
+  head[11] = (uint16_t)(rd16(DP + 0x1D) & 0xFF00);
+  head[12] = sext8(rd8(DP + 0x1F));
+  head[13] = (uint16_t)((rd16(DP + 0x25) & 0xFF00) | rd8(v->rec + 0x0A));
+  head[14] = rd16(DP + 0x27);
+  Dsp4Road road;
+  dsp4_road_start(&road, head);
+  wr16(DP + 0x24, 2);
+  bool first = true;
+  do {
+    const uint32_t row = rd16(DP + 0x14);
+    wr16(DP + 0x30, bus_rd16(0x83ACEC + row));
+    uint16_t firstWords[3];
+    if(first) {
+      firstWords[0] = rd16(DP + 0x20);
+      firstWords[1] = (uint16_t)(rd16(DP + 0x29) & 0xFF00);
+      firstWords[2] = rd16(DP + 0x2B);
+    }
+    uint32_t k = rd16(DP + 0x16);
+    const uint16_t track[3] = {rd16(v->tab + 0x82 + k), rd16(v->tab + 2 + k), rd16(v->tab + 0x100 + k)};
+    wr16(DP + 0x16, (uint16_t)(k + 2));
+    uint16_t answer[4];
+    static uint16_t lines[512][3];
+    const uint16_t count = (uint16_t)dsp4_road_row(&road, rd16(DP + 0x30), first ? firstWords : NULL, track, answer, lines, 512);
+    first = false;
+    k = rd16(DP + 0x24);
+    for(uint32_t col = 0; col < 4; col++) wr16(v->rows + 0x100 * col + k, answer[col]);
+    wr16(v->rows + 0x400 + k, rd16(DP + 0x30));
+    wr16(v->rows + 0x500 + k, rd16(DP + 0x14));
+    wr16(DP + 0x24, (uint16_t)(k + 2));
+    if(count != 0) {
+      const uint32_t b = rd16(DP + 0x22);
+      wr8(v->bands + b, (uint8_t)(rd8(v->bands + 1 + b) - (uint8_t)count));
+      // (D+$E4 / D+$E6 is negative here, checked above: the MVP path, not the colour exchanges)
+      const uint32_t s = rd16(v->tab + 0x1FE + (uint32_t)rd16(DP + 0x16));  // the object's bytes in bank $90
+      const uint16_t y = rd16(DP + 0x18);  // copied (MVP, top down)
+      for(uint16_t i = 0; i < 8; i++) wr8((uint16_t)(y - i), bus_rd8(0x900000 + (uint16_t)(s - i)));
+      wr16(DP + 0x18, (uint16_t)(y - 8));
+      for(uint16_t n = 0; n < count && n < 512; n++) {
+        const uint32_t i = lines[n][0];
+        wr16(v->pairs + 2 + i, lines[n][1]);  // in low WRAM (DB $30)
+        wr16(v->pairs + i, lines[n][2]);
+      }
+      wr16(DP + 0x22, (uint16_t)(rd16(DP + 0x22) - 1));
+    }
+    k = rd16(DP + 0x16);
+    if(rd16(v->tab + 0x27E + k) & 0x8000) tg3000_unported(v->trap_edge);
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 0x0080));
+  } while(rd16(DP + 0x14) < 0x0E00);
+  // (the original ends the $01 stream with $8000 here; src/dsp4.c's road has no stream to end)
+  wr16(DP + v->dp_rows, rd16(DP + 0x24));
+  wr16(v->bands + (uint32_t)band, 0);  // Y = 0: the record's +$42 negative trapped above
+  wr16(v->at22, rd16(DP + 0x22));
+  wr16(v->at18, (uint16_t)(rd16(DP + 0x18) + 1));
+  wr16(v->at1a, rd16(DP + 0x1A));
+}
+
+// TG3000_ROUTINE($83:D1C1) mode1_road_project_view1
+void mode1_road_project_view1(void) { mode1_road_project(&mode1_proj_view1); }
+
+// TG3000_ROUTINE($83:CD70) mode1_road_project_view2
+void mode1_road_project_view2(void) { mode1_road_project(&mode1_proj_view2); }
+
+/*
+ * Differences applied (race road_rows_project $85:B3D7 -> view 1 $83:D1C1 -> view 2 $83:CD70):
+ *  selector            $00B4 -> $00B4 ($D1D5) -> $00B6 ($CD84, $D18D)
+ *  D+$18 small/big     $272B/$282B -> same ($D1C8/$D1DD) -> $2B2B/$2C2B ($CD77/$CD8C)
+ *  D+$1A small/big     $06BC/$0D7C -> $019C/$033C ($D1CB/$D1E0) -> $019C/$033C ($CD7A/$CD8F)
+ *  D+$1C small/big     $0004/$01A4 -> same -> same
+ *  record              $0200.. -> same -> $02B3..: $0225/$0226 -> $02D8/$02D9, $0208 -> $02BB,
+ *                      $020A -> $02BD, $020B -> $02BE, $020D -> $02C0, $0200/$0202 -> $02B3/$02B5,
+ *                      $0242 -> $02F5
+ *  tables              $3AEC/$3AEE/$3B6E/$3BEC/$3CEA/$3D6A -> same ->
+ *                      $406C/$406E/$40EE/$416C/$426A/$42EA (the edge's $3AEB/$3AED/$3DEA..$3DF0
+ *                      -> $406B/$406D/$436A..$4370: not ported, behind the edge trap)
+ *  first word          $0174 -> $0174 ($D225) -> $0178 ($CDD4)
+ *  band bytes          $4CFD/$4CFE -> same -> $4D95/$4D96
+ *  band start, head 5  $00DC/$00DC -> $006C/$006C ($D349, $D379) -> $00DC/$00DC ($CEF8, $CF28)
+ *  head 3              $FF5B -> $FFCB ($D362) -> $FFCB ($CF11)
+ *  head 8, 10, 4       $0180, $00C0, $00BF -> same -> same
+ *  command word        D+$E4 -> D+$E4 -> D+$E6 ($CEC8, $D026)
+ *  row answers         $34EC..$39EC -> same -> $352C..$3A2C
+ *  object source       $7E6C33 (colour path only) -> same -> $7E7C73 (not used: $0F traps)
+ *  lines' pairs        $0798/$0796 -> same -> $0AF8/$0AF6
+ *  D+$24's copy        D+$90 -> D+$90 ($D5D9) -> D+$92 ($D188)
+ *  tail                $0164/$015C/$1E3E -> same -> $0166/$015E/$1E42
+ *  traps               $0F: $85:B533 -> $83:D31D -> $83:CECC
+ *                      +$42 negative: $85:B54B -> $83:D335 -> $83:CEE4 (incbin in both views; the
+ *                      later tests' incbins $D356/$D373/$D39D/$D5EE and $CF05/$CF22/$CF4C/$D19D
+ *                      are unreachable after it)
+ *                      edge: $85:B75D -> $83:D547 (the whole edge block $D547..$D5BF is incbin,
+ *                      $79 bytes = the race's $B75D..$B7D5) -> $83:D0F6 (decoded; its two
+ *                      ORA #$FF00 at $D118/$D158 are incbin)
+ *
+ * Checked mechanically (a script pairing the three listings by offset from the entry): every
+ * operand that differs is in the list above; the rest are the labels.
+ *
+ * Unsure:
+ *  - View 2's edge block ($83:D0F6..$D16E) is decoded without "static" tags, so some trace ran it
+ *    (only its two ORA #$FF00, $D118/$D158, are incbin). It traps here, as the race's ($85:B75D,
+ *    also decoded) does in road_rows_project: src/dsp4.c's road (dsp4_road_row) has no $8001
+ *    edge entry. View 2 may therefore trap on a mode 1 movie. Porting it would need that entry;
+ *    the block's WRAM side effect is D+$20 (the sign-extended byte at tab+$1/tab-$1 + D+$16),
+ *    its chip words the previous row's rows+$3FE word and the tab+$282.. differences.
+ *  - The record's +$42 negative arithmetic (head words 1, 2, 5, 9, the band start, the end clamp)
+ *    is absent here, not computed after the trap as the race C does: the listing has incbin there.
+ *    tg3000_unported does not return, so the end's band store is always 0.
+ *  - The adapter (not written): RTL; A = D+$1A, X = the band ($23/$45), Y = at18's value ($015C /
+ *    $015E), DB = $83 (PLB: N set, Z clear), C set (the rows' CMP #$0E00), V clear, as
+ *    call_road_rows_project with $0242 non-negative.
+ *  - The fuzz's chip script must match the native road (dsp4_road_row) as the race's row does;
+ *    the per-view tables need their own bank-$90 pointers (tab + $1FE) when a row draws.
+ */
+
 // an object's source byte: bank $90 (ROM) when the pointer is negative, else bank $7E (road_object_word,
 // its words for the chip, went with $0F and $10 in dsp4-07b)
 static uint8_t road_object_byte(bool rom, uint16_t at) { return rom ? bus_rd8(0x900000 + at) : rd8(at); }

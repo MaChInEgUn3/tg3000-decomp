@@ -12275,6 +12275,27 @@ static void fuzz_vs_road_project(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   }
   dsp4_bridge_script(script, n);
 }
+// map-fw-11: mode 1's road projections end as road_rows_project's (their +$42 word not negative)
+static void mode1_project_out(Regs* out, uint16_t selector, uint16_t y) {
+  out->a = rd16(DP + 0x1A);
+  out->x = rd16(selector) ? 0x0023 : 0x0045;
+  out->y = rd16(y);
+  out->n = true;
+  out->z = false;
+  out->c = true;
+  out->v = false;
+  out->db = 0x83;
+}
+static void call_mode1_road_project_view1(const Regs* in, Regs* out) {
+  (void)in;
+  mode1_road_project_view1();
+  mode1_project_out(out, 0x00B4, 0x015C);
+}
+static void call_mode1_road_project_view2(const Regs* in, Regs* out) {
+  (void)in;
+  mode1_road_project_view2();
+  mode1_project_out(out, 0x00B6, 0x015E);
+}
 static void call_road_rows_project(const Regs* in, Regs* out) {
   (void)in;
   road_rows_project();
@@ -14961,6 +14982,20 @@ const Routine routines[] = {
    .holes = {{0x85B533, 0x85B53B}, {0x85B75D, 0x85B7D6}, {0x85B4D4, 0x85B4D7}, {0x85B54B, 0x85B558},
              {0x85B56C, 0x85B572}, {0x85B589, 0x85B58F}, {0x85B5B3, 0x85B5BA}, {0x85B694, 0x85B716},
              {0x85B804, 0x85B811}}},
+  {.name = "mode1_road_project_view1", .entry = 0x83D1C1, .end = 0x83D612, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_road_project_view1, ALL_OUTPUTS,
+   .replays = 8,  // (map-fw-11: no fuzz, as road_rows_project)
+   // never run on demo_mode1 (traps in the C, as road_rows_project's): $020D negative (a sign
+   // extension, unchecked), $0F (the colour), $0242 negative, the colour's exchanges, the edges, the end clamp
+   .holes = {{0x83D2BE, 0x83D2C1}, {0x83D31D, 0x83D325}, {0x83D335, 0x83D342}, {0x83D356, 0x83D35C},
+             {0x83D373, 0x83D379}, {0x83D39D, 0x83D3A4}, {0x83D47E, 0x83D500}, {0x83D547, 0x83D5C0},
+             {0x83D5EE, 0x83D5FB}}},
+  {.name = "mode1_road_project_view2", .entry = 0x83CD70, .end = 0x83D1C1, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_road_project_view2, ALL_OUTPUTS,
+   .replays = 8,
+   .holes = {{0x83CE6D, 0x83CE70}, {0x83CECC, 0x83CED4}, {0x83CEE4, 0x83CEF1}, {0x83CF05, 0x83CF0B},
+             {0x83CF22, 0x83CF28}, {0x83CF4C, 0x83CF53}, {0x83D02D, 0x83D0AF}, {0x83D0F6, 0x83D16F},
+             {0x83D19D, 0x83D1AA}}},  // (the same, player 2's)
   {.name = "mode1_window_view1", .entry = 0x81DBAC, .end = 0x81E0A3, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_window_view1, ALL_OUTPUTS,
    .replays = 8, .alsoIn = {{0x81E0A3, 0x81E0F8}},  // (map-fw-10: $81:E0A3, dsp4_answers_store's copy, folded in)

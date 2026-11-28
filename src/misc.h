@@ -1499,6 +1499,8 @@ bool mode1_window_view2(void);  // $81:E0F8: the same for its bottom view
 // a row flagged at $7E:3D6A sends its edges. Last the bands' ends, $0164, $015C (D+$18 + 1)
 // and $1E3E (D+$1A).
 void road_rows_project(void);
+void mode1_road_project_view1(void);  // $83:D1C1: road_rows_project for mode 1's top view ($01; $0F a trap)
+void mode1_road_project_view2(void);  // $83:CD70: the same for its bottom view (player 2)
 
 // $85:B828: road_rows_project for the second view (D = $0100; DB = $30 inside, $83 on return;
 // RTL). Its own bands ($7E:4D49), buffer ends ($00B4: $292B/$2A2B) and outputs ($017C,
