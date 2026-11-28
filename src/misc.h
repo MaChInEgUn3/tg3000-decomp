@@ -1523,6 +1523,8 @@ void road_rows_project2(void);
 // $00D2, $016C/$0170 = $015C/$0160, $01DC = $00E0. $85:B36F: $1E46 and $1E4A = $00D0 before
 // the scroll tables, then $016C-$0172 = $015C-$0162, $01DC and $01DE = $00E0.
 uint16_t race_road_frame(void);
+uint16_t mode1_road_frame_view1(void);  // $85:BF1C: the top view's alone
+uint16_t mode1_road_frame_view2(void);  // $85:BF4A: the bottom view's alone
 uint16_t race_road_frame_alt(void);
 
 // $8A:84B9 (never run): 16 objects (2 bytes apart) in four tables: $0510/$054C/$0588 =

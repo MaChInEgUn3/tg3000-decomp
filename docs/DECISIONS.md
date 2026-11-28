@@ -6409,6 +6409,27 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's road for one view's frame (map-fw-14, 2026-11-28)
+
+**`mode1_road_frame_view1` (`$85:BF1C`) and `mode1_road_frame_view2` (`$85:BF4A`, `src/misc.c`)**
+are `race_road_frame`'s counterparts for one view of mode 1. Each does, in order:
+- the view's two roads;
+- `mode1_road_lists`;
+- the lists' heads to `$1E46`/`$1E48` (bottom view: `$1E4A`/`$1E4C`);
+- the end words to `$016C`/`$0170` (`$016E`/`$0172`) and `$00E0` to `$01DC` (`$01DE`);
+- `race_bands_merge` (`race_bands_merge2`).
+
+The adapter returns:
+- A, X, Y, N, Z and C as `bandsMergeOut` gives them;
+- V as `mode1_road_lists`' last subtraction leaves it.
+
+**`$85:BED1` (both views at once) is not ported.** On `demo_mode1` it runs once, and that one
+sample is interrupted, so there are no samples to judge it by. It stays for a movie that runs it
+more often.
+
+**Check:** on `demo_mode1` (firmware), each row has live 1 of 1, 4 of 4 replays, paths 15 of 15, and
+no flag mismatches. Then `verify_new.sh`.
+
 ## Mode 1's HDMA lists after its roads (map-fw-13, 2026-11-28)
 
 **`mode1_road_lists` (`$83:DE02`, `src/misc.c`)** runs after mode 1's four road routines. The three

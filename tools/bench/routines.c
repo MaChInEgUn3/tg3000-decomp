@@ -12387,6 +12387,15 @@ static void roadFrameOutputs(Regs* out, uint16_t merged, uint16_t t) {
   setSbc16(&s, t, 0x70);
   out->v = s.v;
 }
+// map-fw-14: mode 1's road frames end in a band merge (bandsMergeOut's A, X, Y, N, Z, C); V is
+// mode1_road_lists' last SBC's ($BB - $0237), which the merge leaves
+static void mode1RoadFrameOutputs(Regs* out, uint16_t split, uint16_t (*fn)(void)) {
+  bandsMergeOut(out, split, fn);
+  const uint16_t r = rd16(0x0237), a = (uint16_t)(0x00BB - r);
+  out->v = ((0x00BB ^ r) & (0x00BB ^ a) & 0x8000) != 0;
+}
+static void call_mode1_road_frame_view1(const Regs* in, Regs* out) { (void)in; mode1RoadFrameOutputs(out, 0x00B4, mode1_road_frame_view1); }
+static void call_mode1_road_frame_view2(const Regs* in, Regs* out) { (void)in; mode1RoadFrameOutputs(out, 0x00B6, mode1_road_frame_view2); }
 static void call_race_road_frame(const Regs* in, Regs* out) {
   (void)in;
   const uint16_t t = (uint16_t)(0xBB - rd16(0x0237));
@@ -14975,6 +14984,10 @@ const Routine routines[] = {
    .call = call_object_sprite_shadowed, .spriteList = true,
    // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
    .holes = {{0x82DA9F, 0x82DAA0}}},
+  {.name = "mode1_road_frame_view1", .entry = 0x85BF1C, .end = 0x85BF4A, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_road_frame_view1, ALL_OUTPUTS, .replays = 8},
+  {.name = "mode1_road_frame_view2", .entry = 0x85BF4A, .end = 0x85BF78, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_road_frame_view2, ALL_OUTPUTS, .replays = 8},
   {.name = "race_road_frame", .entry = 0x85B3A9, .end = 0x85B3D7, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_road_frame, ALL_OUTPUTS,
    .fuzz = fuzz_race_road_frame, .dsp4Tape = true, .fuzzStack = 0x1FF1},

@@ -821,3 +821,5 @@
 8ABE2E password_show src/password.c a6e0a9a308c6d2ef 1 0 79/79 verified live-flags:NVZC replayed:0
 8AB232 password_entry src/password.c a6e0a9a308c6d2ef 1 0 84/84 verified live-flags:NVZC replayed:0
 8AA67B vs_screen_loop src/vs.c 3ad4fe74e1f85d3a 1 0 37/37 verified live-flags:NVZC replayed:0
+85BF1C mode1_road_frame_view1 src/misc.c 30e4cb9283ef9735 1 0 15/15 verified live-flags:- replayed:4
+85BF4A mode1_road_frame_view2 src/misc.c 30e4cb9283ef9735 1 0 15/15 verified live-flags:- replayed:4

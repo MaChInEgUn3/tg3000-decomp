@@ -7247,6 +7247,35 @@ uint16_t race_road_frame_alt(void) {
   return race_bands_merge();
 }
 
+// map-fw-14: mode 1's road for one view's frame ($85:BF1C top, $85:BF4A bottom): race_road_frame's
+// counterparts with mode 1's roads, their HDMA lists and a band merge. ($85:BED1, both views, runs
+// once on demo_mode1, interrupted: not ported yet.)
+// TG3000_ROUTINE($85:BF1C) mode1_road_frame_view1
+uint16_t mode1_road_frame_view1(void) {
+  mode1_road_project_view1();
+  mode1_road_project2_view1();
+  mode1_road_lists();
+  wr16(0x1E46, rd16(0x00D0));
+  wr16(0x1E48, rd16(0x00D2));
+  wr16(0x016C, rd16(0x015C));
+  wr16(0x0170, rd16(0x0160));
+  wr16(0x01DC, rd16(0x00E0));
+  return race_bands_merge();
+}
+
+// TG3000_ROUTINE($85:BF4A) mode1_road_frame_view2
+uint16_t mode1_road_frame_view2(void) {
+  mode1_road_project_view2();
+  mode1_road_project2_view2();
+  mode1_road_lists();
+  wr16(0x1E4A, rd16(0x00D0));
+  wr16(0x1E4C, rd16(0x00D2));
+  wr16(0x016E, rd16(0x015E));
+  wr16(0x0172, rd16(0x0162));
+  wr16(0x01DE, rd16(0x00E0));
+  return race_bands_merge2();
+}
+
 // TG3000_ROUTINE($85:B3A9) race_road_frame
 uint16_t race_road_frame(void) {
   road_rows_project();
