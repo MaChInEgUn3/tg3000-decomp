@@ -6409,6 +6409,30 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's two second roads, `$07` native; `$10` a trap (map-fw-12, 2026-11-28)
+
+**`mode1_road_project2_view1` (`$83:DA0A`) and `mode1_road_project2_view2` (`$83:D612`,
+`src/misc.c`)** are `road_rows_project2` for mode 1's two views.
+- They use one body, `mode1_road_project2`, with a table per view.
+- All three routines are `$3F8` bytes and match instruction for instruction.
+- **View 1** is the race's routine except for three things:
+  - D+`$1A` is `$019C`/`$033C`;
+  - the band start and header word 5 are `$006C`;
+  - header word 3 is `$FFCB`.
+- **View 2** has player 2's record and its own tables (track tables `+$580`, row words `+$40`),
+  `$1EFC`-`$1F00`, `$1EDC`, `$0180`, `$4DE1`, D+`$E6`, D+`$96`, and the tail `$016A`/`$0162`/`$1E44`.
+- `$10` (the colour, when D+`$E4`/`$E6` is not negative) is a trap, and so are its rows, as for `$0F`
+  (map-fw-11): `demo_mode1` never sends it.
+- `$1EF2`/`$1EFC` negative (incbins) is a trap.
+
+**Check:** `demo_mode1` (firmware).
+- View 1: live 20 of 20, 6 of 6 replays, paths 296 of 296.
+- View 2: live 24 of 24, 5 of 5 replays, paths 296 of 296.
+- Then `verify_new.sh`.
+
+The C was drafted by a delegated agent from the listing and `road_rows_project2`. The differential
+test checks it.
+
 ## Mode 1's two road projections, `$01` native; `$0F` a trap (map-fw-11, 2026-11-28)
 
 **`mode1_road_project_view1` (`$83:D1C1`) and `mode1_road_project_view2` (`$83:CD70`,

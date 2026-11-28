@@ -818,3 +818,5 @@
 81E0F8 mode1_window_view2 src/misc.c e6235338153d1bb6 8 0 335/335 verified live-flags:- replayed:6
 83D1C1 mode1_road_project_view1 src/misc.c b76a09e34b6e354c 76 0 337/337 verified live-flags:- replayed:7
 83CD70 mode1_road_project_view2 src/misc.c b76a09e34b6e354c 50 0 337/337 verified live-flags:- replayed:6
+83DA0A mode1_road_project2_view1 src/misc.c fe86fc7ff3f9e481 20 0 296/296 verified live-flags:- replayed:6
+83D612 mode1_road_project2_view2 src/misc.c fe86fc7ff3f9e481 24 0 296/296 verified live-flags:- replayed:5

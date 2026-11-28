@@ -12296,6 +12296,16 @@ static void call_mode1_road_project_view2(const Regs* in, Regs* out) {
   mode1_road_project_view2();
   mode1_project_out(out, 0x00B6, 0x015E);
 }
+static void call_mode1_road_project2_view1(const Regs* in, Regs* out) {  // (map-fw-12)
+  (void)in;
+  mode1_road_project2_view1();
+  mode1_project_out(out, 0x00B4, 0x0160);
+}
+static void call_mode1_road_project2_view2(const Regs* in, Regs* out) {
+  (void)in;
+  mode1_road_project2_view2();
+  mode1_project_out(out, 0x00B6, 0x0162);
+}
 static void call_road_rows_project(const Regs* in, Regs* out) {
   (void)in;
   road_rows_project();
@@ -14996,6 +15006,17 @@ const Routine routines[] = {
    .holes = {{0x83CE6D, 0x83CE70}, {0x83CECC, 0x83CED4}, {0x83CEE4, 0x83CEF1}, {0x83CF05, 0x83CF0B},
              {0x83CF22, 0x83CF28}, {0x83CF4C, 0x83CF53}, {0x83D02D, 0x83D0AF}, {0x83D0F6, 0x83D16F},
              {0x83D19D, 0x83D1AA}}},  // (the same, player 2's)
+  {.name = "mode1_road_project2_view1", .entry = 0x83DA0A, .end = 0x83DE02, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_road_project2_view1, ALL_OUTPUTS,
+   .replays = 8,  // (map-fw-12: no fuzz, as the first road's views)
+   // never run on demo_mode1 (traps in the C): $10 (the colour), $1EF2 negative, the colour's rows
+   .holes = {{0x83DB39, 0x83DB41}, {0x83DB51, 0x83DB5E}, {0x83DB72, 0x83DB78}, {0x83DB8F, 0x83DB95},
+             {0x83DBB2, 0x83DBB9}, {0x83DC6E, 0x83DD61}, {0x83DDDE, 0x83DDEB}}},
+  {.name = "mode1_road_project2_view2", .entry = 0x83D612, .end = 0x83DA0A, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_road_project2_view2, ALL_OUTPUTS,
+   .replays = 8,
+   .holes = {{0x83D741, 0x83D749}, {0x83D759, 0x83D766}, {0x83D77A, 0x83D780}, {0x83D797, 0x83D79D},
+             {0x83D7BA, 0x83D7C1}, {0x83D876, 0x83D969}, {0x83D9E6, 0x83D9F3}}},  // (the same, player 2's)
   {.name = "mode1_window_view1", .entry = 0x81DBAC, .end = 0x81E0A3, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_window_view1, ALL_OUTPUTS,
    .replays = 8, .alsoIn = {{0x81E0A3, 0x81E0F8}},  // (map-fw-10: $81:E0A3, dsp4_answers_store's copy, folded in)
