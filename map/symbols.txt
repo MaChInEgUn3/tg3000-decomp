@@ -269,6 +269,7 @@ func    83FDCD   func_83FDCD         ; disabled hit test: always C = 0 -> src/mi
 func    82EA49   func_82EA49         ; bank-$85 word for A: row (A>>6)&$FF * 10 (DSP-4) + $0198 -> $84 table -> src/misc.c
 func    82AB3F   func_82AB3F         ; two lerps at fraction $FAB5,x/256 ($34EC/$36EC tables), DSP-4 high words -> src/misc.c
 func    82A9B7   func_82A9B7         ; camera-like targets via func_82AB3F + DSP-4 scale by $0293; $028B/$028D approach them -> src/misc.c
+func    82AA7B   func_82AA7B         ; func_82A9B7 for mode 1's second car (record $0334/$0336/$0346, $033E/$0340) -> src/misc.c
 func    82AC52   func_82AC52         ; $7E:4E2D/$4E35 from a DSP-4 product and the CPU divider (distance-based) -> src/misc.c
 func    8A8DEC   clear_vram          ; fill all VRAM with the byte at $8A:8E19 (fixed-source DMA; long) -> src/video_dma.c
 func    80F3C4   func_80F3C4         ; upload $7E:2000 x$4A0 to VRAM $3100; $013E++; line tables -> src/video_dma.c
@@ -606,6 +607,7 @@ func    80F5BF   title_zoom_count    ; a title zoom step: D+$30 down (D+$3E up a
 func    8A9CF8   slot_order_fill     ; the slots' order at $0D00, largest kind first -> src/misc.c
 func    8A9AF1   player_names_put    ; the players' names as text lines, by variant -> src/misc.c
 func    828F8F   shake_step          ; the shake $1F18: off, start, run, random end (DSP-4 multiply) -> src/misc.c
+func    829064   shake_step2         ; shake_step for mode 1's second player ($02E4, $1F1A): never on, $1F1A = $8000 -> src/misc.c
 func    82AF33   track_objects_stream ; the track objects' graphics, streamed to VRAM as the car passes their entries -> src/misc.c
 func    8A9AA5   results_text_build  ; the results text: variant lines, names, text lines -> src/misc.c
 func    8A9CB0   player_in_top5      ; the slots' order, then is the player in the first five -> src/misc.c

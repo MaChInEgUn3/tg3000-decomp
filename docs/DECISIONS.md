@@ -6409,6 +6409,24 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's second shake and second car's targets (map-fw-16, 2026-11-28)
+
+**`shake_step2` (`$82:9064`, `src/misc.c`)** is `shake_step` for mode 1's second player.
+- Its shake (`$02E4` not 0) is an incbin that has never run: a trap, and the row's hole.
+- Otherwise `$1F1A` = `$8000`.
+
+**`func_82AA7B` (`$82:AA7B`)** is `func_82A9B7` for mode 1's second car. It is the same code
+(the same `func_82AB3F`), with the record's `$0334`/`$0336`/`$0346` and `$033E`/`$0340`. Its
+adapter and fuzz are `func_82A9B7`'s with those addresses.
+
+Both are called from the bottom view's frame at `$82:8F6B`.
+
+**Check:** on `demo_mode1` (firmware):
+- `func_82AA7B`: live 183 of 183, fuzz 500 of 500, paths 85 of 85;
+- `shake_step2`: live 199 of 199, paths 5 of 5.
+
+Then `verify_new.sh`.
+
 ## Mode 1's road rows for its second player (map-fw-15, 2026-11-28)
 
 **`mode1_road_rows_view2` (`$82:E503`, `src/misc.c`)** is `road_rows_build` for mode 1's second

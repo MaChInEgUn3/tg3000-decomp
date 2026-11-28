@@ -10639,6 +10639,49 @@ static void fuzz_func_82A9B7(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x028B, (uint16_t)rnd());
   wr16ram(ram, 0x028D, (uint16_t)rnd());
 }
+// map-fw-16: func_82A9B7's adapter and fuzz with the second car's record
+static void call_func_82AA7B(const Regs* in, Regs* out) {
+  bool skip = (rd16(0x0334) & 0x8000) != 0;
+  uint16_t x = rd16(0x0334), y = rd16(0x0336), cur = rd16(0x0340);
+  out->a = func_82AA7B();
+  uint16_t target = rd16(DP + 0x18), step = (uint16_t)(rd16(0x1E9E) << 2), t;
+  if((uint16_t)(target - cur) & 0x8000) {
+    t = (uint16_t)(cur - step);
+    uint16_t neg = (uint16_t)~step;  // EOR #$FFFF / SEC / ADC: V of ~step + cur + 1
+    uint16_t sum = (uint16_t)(neg + cur + 1);
+    out->v = (~(neg ^ cur) & (neg ^ sum) & 0x8000) != 0;
+  } else {
+    t = (uint16_t)(cur + step);
+    setAdc16(out, step, cur);
+  }
+  out->c = t >= target;
+  out->n = true;
+  out->z = false;
+  out->db = 0x83;
+  if(!skip) { out->x = x; out->y = y; }
+}
+static void fuzz_func_82AA7B(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t x = (uint16_t)(2 * (rnd() % 0x100)), y = (uint16_t)(2 * (rnd() % 0x80));
+  wr16ram(ram, 0x0334, (rnd() % 8 == 0) ? (uint16_t)(0x8000 | rnd()) : x);
+  wr16ram(ram, 0x0336, y);
+  for(int i = 0; i < 10; i++) ram[0xFAB4 + x + i] = (uint8_t)rnd();
+  for(int i = 0; i < 4; i++) {
+    ram[0x34EC + y + i] = (uint8_t)rnd();
+    ram[0x36EC + y + i] = (uint8_t)rnd();
+  }
+  wr16ram(ram, 0x0346, (uint16_t)rnd());
+  wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 0x40));
+  wr16ram(ram, 0x033E, (uint16_t)rnd());
+  wr16ram(ram, 0x0340, (uint16_t)rnd());
+}
+static void call_shake_step2(const Regs* in, Regs* out) {  // (map-fw-16: off: A = $8000)
+  (void)in;
+  shake_step2();
+  out->a = 0x8000;
+  out->n = true;
+  out->z = false;
+}
 
 // the first $7E:4E2D value: bits 8-23 of the product - $B00, at most $3000 (by sign)
 static uint16_t cap_after_first(uint16_t pv) {
@@ -15266,6 +15309,11 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x7E, .fixedD = true, .call = call_func_82AB3F, ALL_OUTPUTS, .fuzz = fuzz_func_82AB3F},
   {.name = "func_82A9B7", .entry = 0x82A9B7, .end = 0x82AA7B, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .call = call_func_82A9B7, ALL_OUTPUTS, .fuzz = fuzz_func_82A9B7},
+  {.name = "func_82AA7B", .entry = 0x82AA7B, .end = 0x82AB3F, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .call = call_func_82AA7B, ALL_OUTPUTS, .fuzz = fuzz_func_82AA7B},
+  {.name = "shake_step2", .entry = 0x829064, .end = 0x82908A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_shake_step2, ALL_OUTPUTS,
+   .holes = {{0x829069, 0x829083}}},  // (its shake: never on, an incbin)
   {.name = "func_82AC52", .entry = 0x82AC52, .end = 0x82AD0E, .source = "src/misc.c", .needM16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_func_82AC52, ALL_OUTPUTS, .fuzz = fuzz_func_82AC52},
   {.name = "decompress_to_vram", .entry = 0x808381, .end = 0x8083AD, .source = "src/video_dma.c", .needM16 = true,

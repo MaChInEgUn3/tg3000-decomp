@@ -584,6 +584,26 @@ uint16_t func_82A9B7(void) {
   return rd16(0x028D);
 }
 
+// map-fw-16: func_82A9B7 for mode 1's second car (its record's $0334/$0336/$0346 and $033E/$0340)
+// TG3000_ROUTINE($82:AA7B) func_82AA7B
+uint16_t func_82AA7B(void) {
+  if(rd16(0x0334) & 0x8000) {
+    wr16(DP + 0x18, 0xFFD0);
+    wr16(DP + 0x16, 0);
+  } else {
+    func_82AB3F(rd16(0x0334), rd16(0x0336));
+    int16_t scale = (int16_t)rd16(0x0346);
+    uint16_t h1 = (uint16_t)((uint32_t)dsp4_multiply((int16_t)(rd16(DP + 0x16) << 1), scale) >> 16);
+    wr16(DP + 0x16, (uint16_t)-h1);
+    uint16_t h2 = (uint16_t)((uint32_t)dsp4_multiply((int16_t)(rd16(DP + 0x18) << 1), scale) >> 16);
+    wr16(DP + 0x18, (uint16_t)(h2 - 0x33));
+  }
+  uint16_t step = (uint16_t)(rd16(0x1E9E) << 2);
+  wr16(0x033E, approach(rd16(0x033E), rd16(DP + 0x16), step));
+  wr16(0x0340, approach(rd16(0x0340), rd16(DP + 0x18), step));
+  return rd16(0x0340);
+}
+
 // v unless v - $3000 is non-negative (by sign, as the original's BMI), then $3000.
 static uint16_t cap_3000(uint16_t v) { return ((uint16_t)(v - 0x3000) & 0x8000) ? v : 0x3000; }
 
@@ -2669,6 +2689,14 @@ void player_names_put(void) {
   }
   if(who & 0x0010) text_line_put(0x037E, 0x81);
   if(who & 0x0020) text_line_put(0x03AD, 0x81);
+}
+
+// map-fw-16: shake_step's copy for mode 1's second player ($02E4, $1F1A): its shake is never on
+// (the listing's $82:9069-$9083 is an incbin)
+// TG3000_ROUTINE($82:9064) shake_step2
+void shake_step2(void) {
+  if(rd16(0x02E4) != 0) tg3000_unported("$82:9069: mode 1's second shake (never run)");
+  wr16(0x1F1A, 0x8000);
 }
 
 // TG3000_ROUTINE($82:8F8F) shake_step

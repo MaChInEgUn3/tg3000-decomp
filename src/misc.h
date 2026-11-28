@@ -624,6 +624,7 @@ uint16_t func_82AB3F(uint16_t x, uint16_t y);
 // (2 * $0118 * $0293 >> 16) - $33 (DSP-4 multiplies). $028B and $028D then move towards
 // $0116 and $0118 by at most $1E9E * 4 (judged by sign, as the original). Returns $028D.
 uint16_t func_82A9B7(void);
+uint16_t func_82AA7B(void);  // $82:AA7B: func_82A9B7 for mode 1's second car ($0334-$0346)
 
 // $7E:4E2D = (bits 8-23 of $0213 * $300, a DSP-4 multiply) - $B00, at most $3000 (by
 // sign). If $0244 bit 0: $7E:4E35 = ($B0 - 2 * the high word of the 32-bit distance
@@ -850,6 +851,7 @@ void player_names_put(void);
 // and up it ends (never run in the movies): offsets (rng / 2) * -10 and * 10 (the DSP-4's
 // high words), then $1F18 from $82:9139 (below $B0) or $82:913F by a random 0, 2 or 4.
 void shake_step(void);
+void shake_step2(void);  // $82:9064: shake_step for mode 1's second player (never on)
 
 // $82:AF33: the track objects' graphics, streamed as the car ($0226) passes their entries:
 // 5-byte records at $7E:5B91 + D+$A0 (a word, where it starts; a byte, its tile slot; a

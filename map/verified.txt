@@ -824,3 +824,5 @@
 85BF1C mode1_road_frame_view1 src/misc.c 30e4cb9283ef9735 1 0 15/15 verified live-flags:- replayed:4
 85BF4A mode1_road_frame_view2 src/misc.c 30e4cb9283ef9735 1 0 15/15 verified live-flags:- replayed:4
 82E503 mode1_road_rows_view2 src/misc.c fe74e882d2ec1e71 354 500 440/440 verified live-flags:- replayed:8
+82AA7B func_82AA7B src/misc.c 215f238d130cbb2e 183 500 85/85 verified live-flags:- replayed:0
+829064 shake_step2 src/misc.c 215f238d130cbb2e 199 0 5/5 verified live-flags:- replayed:0
