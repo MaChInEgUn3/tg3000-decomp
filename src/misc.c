@@ -7754,6 +7754,321 @@ void object_sprites_stream(void) { object_sprites_stream_at(0x00A9, 0x00DC); }
 // bottom $6C (the race's $A9 and $DC), its own entry joining the body at $82:CDB7.
 void mode1_view1_sprites(void) { object_sprites_stream_at(0x0039, 0x006C); }
 
+// TG3000_ROUTINE($82:D2CC) mode1_view2_sprites (map-fw-9: drafted by a delegated agent from the
+// listing and object_sprites_stream_at; checked by the differential test)
+// ---- draft: mode 1's second view's sprites ($82:D2CC) ----
+// To go into src/misc.c after mode1_view1_sprites (it uses object_handler, car_sprite_head2,
+// minimap_car, sprite_parts_stream_rom, sprite_bar_put and the dsp4_* list calls, all there).
+
+// D508-D64B: the second player's car (car $35) on row `xrow`, player_car_sprites' code on record
+// $02B3: $02CD/$1F1A/$1F26 for $021A/$1F18/$1F24, $02D0 for $021D, $02ED for $023A, $014E for
+// $014C, car_sprite_head2 on car $35, $0334 for $0281. Its shadow car and its item are not in the
+// listing (incbin: never run). The parts' results are not looked at; never fills.
+static bool player_car_sprites_view2(uint16_t xrow) {
+  const uint16_t k8 = (uint16_t)(((rd16(0x02ED) >> 8) & 0x00FF));
+  const uint32_t me = 0x0035;
+  if(rd16(0x02CD) == 0) {
+    wr16(0x1F26, rd16(0x1F1A));
+    if(!(rd16(0x1F1A) & 0x8000)) tg3000_unported("$82:D52B: mode 1 view 2's shadow car ($02CD 0, $1F1A not negative)");
+  }
+  if(rd16(0x02D0) & 0x8000) {  // D567: its marker
+    wr16(DP + 0x32, 0);
+    wr16(DP + 0x34, 0);
+    (void)car_sprite_head2(xrow, (uint16_t)me);
+    dsp4_objects_car_tail(rd16(0xFABF + me), (uint16_t)(rd16(DP + 0x3C) + 0x0F00));
+    (void)sprite_parts_stream_rom(bus_rd16(0x86CBEC + 2 * (uint32_t)k8));
+  }
+  wr16(DP + 0x32, 0);  // D593: its body
+  wr16(DP + 0x34, 0);
+  (void)car_sprite_head2(xrow, (uint16_t)me);
+  dsp4_objects_car_tail(rd16(0xFABF + me), (uint16_t)(rd16(DP + 0x3C) + 0x0F00));
+  (void)sprite_parts_stream_rom(bus_rd16(0x86C97A + 8 * (uint32_t)k8));
+  (void)car_sprite_head2(xrow, (uint16_t)me);  // D5C1: its bar
+  dsp4_objects_car_tail(0, rd16(DP + 0x3C));
+  {
+    const uint32_t t = 8 * (uint32_t)k8;  // (the same full-buffer note as player_car_sprites')
+    (void)sprite_bar_put(bus_rd16(0x86CC64 + t), bus_rd16(0x86CC66 + t), bus_rd16(0x86CC68 + t));
+  }
+  if(rd16(0x014E) == 0x0002) tg3000_unported("$82:D5F5: mode 1 view 2's item ($014E = 2)");
+  wr16(0x0334, 0xFFFF);
+  return false;  // D64A: CLC
+}
+
+// D64E-D79E: a rival car `car` on row `xrow` in view 2; returns whether the buffer filled.
+// rival_car_sprites' code with $0334/$0336/$0346 for $0281/$0283/$0293, but the branch road's
+// case reads the same rows as the main road's ($36EE/$36EC/$34EE/$34EC) and ORs D+$3C, not
+// $1000 (D6E3): both cases are the same, so the test of $FADE+car's bits is dropped.
+static bool rival_car_sprites_view2(uint16_t xrow, uint16_t car) {
+  const uint32_t c = car;
+  uint16_t x = xrow;
+  if(rd16(0x0334) & 0x8000) {  // the first rival drawn: its frame for later
+    wr16(0x0334, car);
+    wr16(0x0336, x);
+    const uint32_t v = (uint16_t)(((rd16(0xFAB5 + c) >> 1) & 0x007E) + rd16(0x39EC + (uint32_t)rd16(DP + 0x14)));
+    wr16(0x0346, bus_rd16(0x83ACEC + v));
+    x = rd16(0x0336);
+  }
+  const uint16_t line = rd16(0x386A + (uint32_t)x), dist = rd16(0xFAB4 + c);
+  const uint32_t r = rd16(DP + 0x14);
+  const uint32_t frame = (uint16_t)(((rd16(0xFAB5 + c) >> 1) & 0x007E) + rd16(0x39EC + r));
+  const uint16_t head[9] = {line, 0x9000, dist, rd16(0x36EE + r), rd16(0x36EC + r), rd16(0x34EE + r),
+                            rd16(0x34EC + r), bus_rd16(0x83ACEC + frame), rd16(0xFABB + c)};
+  wr16(DP + 0x2A, dsp4_objects_car(head));
+  dsp4_objects_car_tail(rd16(0xFABF + c), (uint16_t)(rd16(DP + 0x3C) | rd16(0xFAD1 + c)));
+  const uint16_t d = (uint16_t)(rd16(0x34EC + r) - rd16(0x34EE + r));
+  // D75A: the car's turn against the road's: its band (0-12)
+  const uint16_t a = (uint16_t)(rd16(DP + 0x2A) - (uint16_t)(d << 1));
+  static const uint16_t steps[] = {0xFFA0, 0xFFC0, 0xFFE8, 0x0018, 0x0040, 0x0060};
+  uint32_t band = 0;
+  for(unsigned i = 0; i < 6; i++, band += 2)
+    if((uint16_t)(a - steps[i]) & 0x8000) break;
+  const uint32_t parts = (uint16_t)(rd16(0x10000 + band) + bus_rd16(0x849180 + frame));  // bank $7F
+  return sprite_parts_stream_rom(rd16(0x10000 + parts));
+}
+
+// TG3000_ROUTINE($82:D2CC) mode1_view2_sprites
+// object_sprites_stream for the race wrapper's mode 1, its second view: the road's rows from
+// D+$14 = $40 to D+$92 (+$40 for the run), player 2's record ($02B3: $02D8/$02D9/$02DA,
+// $1E68), the list's words at $0188 + $440, the jump/segment words $1EE2/$1EE4/$1E62, the
+// object heights $46C8/$4A38, the near object at $1DF8 and its highlight at $1E06-$1E0C, the
+// car's colours at $1E58-$1E5C.
+void mode1_view2_sprites(void) {
+  wr16(0x0184, (uint16_t)(rd16(0x0188) + 0x0440));
+  dsp4_list_open();   // $0003
+  wr16(DP + 0x1A, (uint16_t)(rd16(DP + 0x8E) + 0x0200 + 0x0440));
+  wr16(DP + 0x3C, rd16(DP + 0xCA) ? 0 : 0x1000);
+  dsp4_list_sizes();  // $0005
+  {  // player 2's place in the race order: D+$28
+    uint16_t y = 0x0028;
+    const uint32_t me = rd16(0x02D8) | (uint32_t)rd16(0x02DA) << 16;
+    uint32_t x = rd16(0x1E90);
+    if(me < (rd16(0xFAB5 + x) | (uint32_t)rd16(0xFAB7 + x) << 16)) {
+      for(y = 0x0026; y != 0; y = (uint16_t)(y - 2)) {
+        x = rd16(0x1E68 + (uint32_t)y);
+        if(me >= (rd16(0xFAB5 + x) | (uint32_t)rd16(0xFAB7 + x) << 16)) break;
+      }
+    }
+    wr16(DP + 0x28, y);
+  }
+  wr16(DP + 0x2C, rd16(0x02D9));
+  {  // the two players' dots on the mini-map: player 2's first (but D+$14 = $0235 as view 1's first)
+    uint16_t at = (uint16_t)((rd16(0x02D9) >> 2) & 0xFFFC);
+    if(rd16(0x1E68) & 0x8000) at = (uint16_t)(at + 2);
+    wr16(DP + 0x14, rd16(0x0235));
+    minimap_car(0x008E, at, (uint16_t)(rd16(0xFAD1 + 0x35) | 0x30FD));
+    at = (uint16_t)((rd16(0x0226) >> 2) & 0xFFFC);
+    if(rd16(0x1E66) & 0x8000) at = (uint16_t)(at + 2);
+    wr16(DP + 0x14, rd16(0x02E8));
+    minimap_car(0x008E, at, (uint16_t)(rd16(0xFAD1) | 0x30FD));
+  }
+  {  // the $09 stream, native
+    if(rd16(0x1EFC) & 0x8000) tg3000_unported("$82:D3B8: mode 1 view 2's stream bottom with $1EFC negative");
+    const uint16_t pre[7] = {0x0080, 0x00A9, 0, 0, 0x0100, 0x0074, 0x00DC};
+    dsp4_objects_begin(pre);
+  }
+  // D3C4
+  wr16(DP + 0x14, 0x0040);
+  wr16(DP + 0x92, (uint16_t)(rd16(DP + 0x92) + 0x0040));
+  wr16(DP + 0x16, (uint16_t)(rd16(0x02D9) << 2));
+  wr16(DP + 0x18, (uint16_t)(rd16(0x019A) << 2));
+  wr16(DP + 0x30, (uint16_t)(rd16(0x1EE2) << 2));
+  {
+    const uint32_t seg = (uint16_t)(rd16(0x019C) + rd16(0x1E62));
+    wr16(DP + 0x2E, (uint16_t)((uint16_t)(bus_rd16(0x840000 + seg) + 0x003F) << 2));
+    uint16_t a = (uint16_t)(bus_rd16(0x840010 + seg) << 2);
+    if(rd16(0x1E68) & 0x8000) a = 0;
+    wr16(DP + 0x36, a);
+  }
+  wr16(0x1DF8, 0);
+  wr16(0x1DFA, 0);
+  wr16(0x352C, (uint16_t)(rd16(0x352E) - rd16(0x02BF)));  // D410: row $40's
+  wr16(0x372C, (uint16_t)(rd16(0x372E) - rd16(0x02BB)));  // (a word: view 1 sign-extends $0209's byte)
+  wr16(0x38AC, 0x0033);
+  wr16(0x3A2C, (uint16_t)(rd16(0x3A2E) - 0x0080));
+  goto cars;           // the first row's cars (the original jumps to D4EB)
+objects:               // D43E: the row D+$14's object, if any
+  {
+    const uint16_t x = rd16(DP + 0x16);
+    uint16_t a = (uint16_t)(x + 4);
+    if(a >= rd16(DP + 0x18)) a = (uint16_t)(a - rd16(DP + 0x18));
+    if(a == rd16(DP + 0x30)) {  // the armed jump
+      wr16(DP + 0x16, a);
+      wr16(DP + 0x2C, (uint16_t)(rd16(0x1EE4) + rd16(DP + 0x2C)));
+      const uint16_t j = rd16(0x1EE4);
+      a = (uint16_t)((uint16_t)(j << 2) + rd16(DP + 0x16) + ((j >> 14) & 1));  // the second ASL's carry
+    }
+    if(a == rd16(DP + 0x2E)) {  // the segment's end: its length
+      a = (uint16_t)(a + rd16(DP + 0x36));
+      wr16(DP + 0x2C, (uint16_t)((rd16(DP + 0x36) >> 2) + rd16(DP + 0x2C)));
+    }
+    wr16(DP + 0x16, a);
+    const uint16_t w = rd16(0x8CB3 + (uint32_t)x);
+    if(w == 0) {  // D4DE: an empty entry
+      dsp4_objects_slot(rd16(0x386C + (uint32_t)rd16(DP + 0x14)));
+    } else {
+      wr16(DP + 0x1C, x);
+      const uint16_t kind2 = (uint16_t)(((w >> 8) & 0x007F) << 1);
+      wr16(DP + 0x1E, kind2);
+      wr16(DP + 0x3A, rd16(DP + 0x3C));
+      const uint16_t row = rd16(0x39EC + (uint32_t)rd16(DP + 0x14));
+      bool c;
+      if(row < 0x0082) {  // D4CA: near
+        wr16(DP + 0x26, rd16(0x46C8));
+        wr16(0x1DF8, kind2);
+        c = object_handler(kind2, false);
+      } else if(row >= 0x0442) {  // D4B1: far
+        wr16(DP + 0x26, rd16(0x4A38 + (uint32_t)bus_rd16(0x86AD66 + kind2)));
+        c = object_handler(kind2, true);
+      } else {
+        wr16(DP + 0x26, rd16(0x46C8 + (uint32_t)bus_rd16(0x86AD66 + kind2)));
+        c = object_handler(kind2, false);
+      }
+      if(c) goto done;  // the OAM buffer filled: the stream ends early (D7D3)
+    }
+  }
+cars:  // D4EB: the race order from D+$28 on, to the cars on this row (D+$2C)
+  for(;;) {
+    const uint16_t car = rd16(0x1E6A + (uint32_t)rd16(DP + 0x28));
+    const uint16_t at = rd16(0xFAB6 + (uint32_t)car);
+    if(at == rd16(DP + 0x2C)) {
+      uint16_t c2 = car;
+      for(;;) {  // D508: car c2 on this row
+        const uint16_t xrow = (uint16_t)(rd16(DP + 0x14) + 2);
+        if(xrow == rd16(DP + 0x92)) goto next_row;
+        bool c;
+        if(c2 == 0x0035 && !(rd16(0x02F7) & 0x0001)) c = player_car_sprites_view2(xrow);
+        else c = rival_car_sprites_view2(xrow, c2);
+        if(c) goto done;
+        wr16(DP + 0x28, (uint16_t)(rd16(DP + 0x28) + 2));  // D7A3
+        c2 = rd16(0x1E6A + (uint32_t)rd16(DP + 0x28));
+        if(rd16(0xFAB6 + (uint32_t)c2) != rd16(DP + 0x2C)) goto next_row;
+      }
+    }
+    if(!((uint16_t)(at - rd16(DP + 0x2C)) & 0x8000)) goto next_row;  // past this row
+    wr16(DP + 0x28, (uint16_t)(rd16(DP + 0x28) + 2));
+  }
+next_row:  // D7B9
+  wr16(DP + 0x2C, (uint16_t)(rd16(DP + 0x2C) + 1));
+  if(rd16(DP + 0x2C) == rd16(0x019A)) {
+    wr16(DP + 0x2C, 0);
+    wr16(DP + 0x28, 0);
+  }
+  wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 2));
+  if(rd16(DP + 0x14) != rd16(DP + 0x92)) goto objects;
+done:  // D7D3: the stream's end (0, $8000)
+  dsp4_objects_end();
+  wr16(0x1E0A, 0);
+  {  // the near object's highlight
+    const uint32_t k = rd16(0x1DF8);
+    const uint16_t v = k ? bus_rd16(0x86AE36 + k) : 0;
+    if(v != 0) {
+      wr16(DP + 0x14, v);
+      wr16(0x1E0C, 0x007F);
+      const uint16_t t = bus_rd16(0x848000 + (uint32_t)rd16(0x3A2E));
+      const uint32_t idx = (uint16_t)((uint16_t)(t << 1) + v + (t >> 15));  // the ASL's carry
+      wr16(0x1E06, bus_rd16(0x860006 + idx));
+      wr16(0x1E0A, bus_rd16(0x860008 + idx));
+      wr16(0x1E06, (uint16_t)(rd16(0x6591 + (uint32_t)bus_rd16(0x860000 + (uint32_t)v)) + rd16(0x1E06)));
+      wr16(0x1E08, (uint16_t)((uint16_t)(rd16(0x46C8) << 4) + 0x1000));
+    }
+  }
+  wr16(0x0188, (uint16_t)(rd16(0x0184) - 0x0440));  // D82F
+  wr16(DP + 0x92, (uint16_t)(rd16(DP + 0x92) - 0x0040));
+  {
+    const uint32_t t = (uint32_t)(((rd16(0x02ED) >> 8) & 0x00FF) << 3);
+    wr16(0x1E58, bus_rd16(0x86C974 + t));
+    wr16(0x1E5A, bus_rd16(0x86C976 + t));
+    wr16(0x1E5C, bus_rd16(0x86C978 + t));
+  }
+}
+
+/*
+ * Differences applied against mode1_view1_sprites / object_sprites_stream_at (view 1 -> view 2),
+ * each checked in asm/bank_02.asm lines 7823-8406:
+ *
+ * Prologue
+ *   D2D0  $0184 = $0186                      -> $0188 + $0440
+ *   D2E0  D+$1A = D+$8E + $200               -> D+$8E + $200 + $440
+ *   D2EE  D+$3C test on D+$C8                -> D+$CA
+ *   D30A..D32D  race order: $0225/$0227      -> $02D8/$02DA (tables $1E90/$1E68 unchanged)
+ *   D339  D+$2C = $0226                      -> $02D9
+ *   D343..D389  mini-map: view 1 = (at from $0226/$1E66, D+$14=$0235, attr $FAD1) then
+ *         ($02D9/$1E68, $02E8, $FAD1+$35), both y $1E;
+ *         view 2 = ($02D9/$1E68, D+$14=$0235, attr $FAD1+$35) then ($0226/$1E66, $02E8, $FAD1),
+ *         both y $8E. (Only the at/attr pairs swap; the D+$14 values keep their order.)
+ *   D392..D3C1  $09 words: centre $39 -> $A9; word 6 $0004 -> $0074; bottom $6C -> $DC;
+ *         test $1EF2 -> $1EFC, its negative case incbin -> tg3000_unported("$82:D3B8 ...").
+ * Body setup
+ *   D3C4  D+$14 = 0                          -> $0040; D3C9 D+$92 += $0040 (new)
+ *   D3D1  D+$16 = $0226 << 2                 -> $02D9 << 2
+ *   D3DF  D+$30 = $1EDE << 2                 -> $1EE2 << 2
+ *   D3E6  segment $019C + $1E5E              -> $019C + $1E62
+ *   D400  D+$36's test $1E66                 -> $1E68
+ *   D40A  clear $1DF6, $1DF8                 -> $1DF8, $1DFA
+ *   D410  $34EC = $34EE - $020C              -> $352C = $352E - $02BF
+ *   D41C  $36EC = $36EE - sext8($0209)       -> $372C = $372E - $02BB (a 16-bit SBC, no sign extension)
+ *         $356C += $34EC, $376C += $36EC     -> (absent)
+ *   D428  $386C = $33                        -> $38AC = $33
+ *   D42F  $39EC = $39EE - $80                -> $3A2C = $3A2E - $80
+ *   D43B  JMP $CEFD                          -> JMP $D4EB
+ * Objects
+ *   D451/D459  jump length $1EE0             -> $1EE4
+ *   D49F/D4CB  heights $45EC                 -> $46C8; D4B8 $495C -> $4A38
+ *   D4D3  near object $1DF6                  -> $1DF8
+ *   D4C7  view 1's far-case JMP $D1E7 (static) -> incbin; unreachable (the far case's BCS goes to
+ *         D4AE's JMP $D7D3), so no trap.
+ *   D4E7  empty slot: two NOPs fewer (timing only)
+ * Cars loop
+ *   D50D  row end D+$90                      -> D+$92; D7CC the same
+ *   D511  own car $0000                      -> $0035; D516 its flag $0244 -> $02F7
+ * Player car (player_car_sprites_view2)
+ *   D51E  $021A -> $02CD; D523 $1F18/$1F24 -> $1F1A/$1F26; the shadow car's code (D52B..D561)
+ *         is incbin -> tg3000_unported("$82:D52B ...") after the store to $1F26.
+ *   D562  marker test $021D                  -> $02D0
+ *   car_sprite_head(xrow, 0)                 -> car_sprite_head2(xrow, $35) (Y = $35 from TXY)
+ *   tails' $FABF (X = Y = 0)                 -> $FABF + $35 (X = Y = $35 after car_sprite_head2's TYX)
+ *   $023A (k8)                               -> $02ED
+ *   view 1's dead LDA $86CC6A,X              -> absent (no effect)
+ *   D5ED  item test $014C                    -> $014E; the item's code (D5F5..D643) incbin ->
+ *         tg3000_unported("$82:D5F5 ...")
+ *   D647  $0281 = $FFFF                      -> $0334 = $FFFF
+ * Rival (rival_car_sprites_view2)
+ *   $0281/$0283/$0293                        -> $0334/$0336/$0346
+ *   branch road: $376E/$376C/$356E/$356C     -> $36EE/$36EC/$34EE/$34EC; attr $1000 | $FAD1 -> D+$3C | $FAD1
+ *         (D6E3); its d $356C - $356E -> $34EC - $34EE. So both cases are the same and the
+ *         $FADE test is dropped (no side effect: a read only).
+ *   D67B  one extra NOP (timing only)
+ * End
+ *   D7DC  $1E02 = 0                          -> $1E0A = 0
+ *   D7DF  near object $1DF6                  -> $1DF8
+ *   D7F0  $1E04 = $7F                        -> $1E0C
+ *   D7F3  $39EE                              -> $3A2E
+ *   D804/D80B/D81D  $1DFE/$1E02/$1DFE        -> $1E06/$1E0A/$1E06
+ *   D820  $1E00 = $45EC << 4                 -> $1E08 = ($46C8 << 4) + $1000
+ *   D82F  $0186 = $0184                      -> $0188 = $0184 - $0440
+ *   D839  (new) D+$92 -= $0040 (on both the normal and the early (full-buffer) exit)
+ *   D841  $023A, $1E52/$1E54/$1E56           -> $02ED, $1E58/$1E5A/$1E5C
+ *
+ * Unsure / to check in the harness:
+ *   - The mini-map order: the listing pairs D+$14 = $0235 with player 2's dot ($02D9, car $35)
+ *     and $02E8 with player 1's ($0226, car 0). Transcribed as written; it matters only when
+ *     $82:DC68[$047B] is negative (minimap_car's D+$14 test).
+ *   - $372C = $372E - $02BB reads a word at $02BB (record + 8), not view 1's sign-extended byte
+ *     at record + 9: a real difference in the bytes, transcribed as is.
+ *   - The dsp4_list_sizes call is placed after D+$1A/D+$3C (listing order); view 1's C calls it
+ *     before them. Neither dsp4_list_open nor dsp4_list_sizes touches WRAM (checked in
+ *     src/dsp4.c: they set dsp4_sp only), so the order makes no difference.
+ *   - Three traps depend on entry state ($1EFC negative; $02CD == 0 with $1F1A not negative;
+ *     $014E == 2). If the fuzz phase hits one, that is never-run code being reached, not a
+ *     transcription error.
+ *   - The $1EFC-negative trap is raised before dsp4_objects_begin (the original would have sent
+ *     6 of the 7 words first); it stops the program either way.
+ *   - The player car's shadow trap fires after $1F26 = $1F1A, like the original's STA before
+ *     its BMI.
+ *   - The incbin at D4C7 (3 bytes, after the far case's BRA) is unreachable, so it has no trap.
+ *   - Not declared in misc.h / map/symbols.txt / routines.c yet (a draft only).
+ */
+
 // ---- the VS race's four views' sprites ($82:BE18, $C170, $C489, $C7BA) ----
 // object_sprites_stream's per-player counterparts: one body, each view's slice of the road's rows
 // (D+$14 from `first` to D+`end`) and its player's record `rec`. Commands $0E, $05 (views 0 and 2)

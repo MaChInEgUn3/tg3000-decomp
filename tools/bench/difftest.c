@@ -2848,7 +2848,8 @@ bool difftest_report(const char* resultsPath) {
     }
     if(reached && seen < need) {  // which instruction starts no sample reached
       printf("    paths not reached:");
-      for(int k = 0, shown = 0; k < MAX_EXTENT && shown < 8; k++)
+      const int most = getenv("DIFFTEST_ALL_PATHS") ? MAX_EXTENT : 8;  // (map-fw-9: all of them, on request)
+      for(int k = 0, shown = 0; k < MAX_EXTENT && shown < most; k++)
         if(s->starts[k] && !s->visitedCmp[k]) { printf(" $%06X", (unsigned)(r->entry + k)); shown++; }
       printf("\n");
     }

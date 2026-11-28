@@ -6409,6 +6409,37 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's bottom view's sprites (map-fw-9, 2026-11-28)
+
+**`mode1_view2_sprites` (`$82:D2CC`, `src/misc.c`)** is mode 1's bottom view.
+- It is a copy of the top view's routine (its prologue plus the race's body), with player 2's
+  record and objects:
+  - `$02D8`/`$02D9`/`$02DA`, `$1E68`, `$1EE2`/`$1EE4`, `$1E62`, `$1EFC`, `$1F1A`/`$1F26`, `$014E`,
+    `$02ED`, `$0334`-`$0346`;
+  - its own state words (`$1DF8`, `$1E06`-`$1E0C`, `$1E58`-`$1E5C`);
+  - the tables `$46C8`/`$4A38`;
+  - rows from `$40`, with D+`$92` raised by `$40` while it runs, and its buffer at `$0188` +
+    `$440`;
+  - the stream's words `$0080`, `$00A9`, 0, 0, `$0100`, `$0074`, `$00DC`;
+  - the dots in the other order;
+  - `car_sprite_head2`.
+- Its rival's branch road reads the main road's rows (and D+`$3C`), so the C has one path for
+  both.
+- Its own car's shadow and item, and `$1EFC` negative, never run: traps.
+- The C was drafted by a delegated agent from the listing and `object_sprites_stream_at`. The
+  differential test checks it.
+
+**The row:** native list, `replays = 32`. Its holes:
+- the never-run stretches (traps in the C);
+- what `demo_mode1` does not run: the dots with `$1E66`/`$1E68` negative, D+`$36`'s 0, the armed
+  jump and the segment's end, the rival's branch road, the cars' loop back.
+- Those last ones run only in the 60k firmware run, which is no check movie.
+
+**Check:** `demo_mode1`: 1 live sample and 24 of 24 replays (the raster IRQs land in nearly every
+sample), paths 484 of 484.
+
+**Harness:** `DIFFTEST_ALL_PATHS=1` prints every path not reached, not the first 8.
+
 ## Mode 1's top view's sprites: `object_sprites_stream` with its own centre (map-fw-8, 2026-11-28)
 
 **`mode1_view1_sprites` (`$82:CCC7`, `src/misc.c`)** is `object_sprites_stream`'s prologue for mode

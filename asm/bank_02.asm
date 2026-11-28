@@ -874,7 +874,7 @@ CODE_828F7B:
     jsl.l $85BF4A               ; $828F7B
     jsl.l $81E0F8               ; $828F7F
     jsr.w $9064                 ; $828F83
-    jsr.w $D2CC                 ; $828F86
+    jsr.w mode1_view2_sprites   ; $828F86
     jsr.w $AA7B                 ; $828F89
     jmp.w oam_high_load2        ; $828F8C
 shake_step:
@@ -7820,6 +7820,7 @@ CODE_82D28C:
     lda.w $8000                 ; $82D2C6
     sta.b $2A                   ; $82D2C9
     rts                         ; $82D2CB
+mode1_view2_sprites:
     pea.w $8330                 ; $82D2CC
     plb                         ; $82D2CF
     lda.w $0188                 ; $82D2D0

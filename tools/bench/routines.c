@@ -12757,6 +12757,14 @@ static void call_object_sprites_stream(const Regs* in, Regs* out) {
   out->z = false;
   out->c = false;
 }
+static void call_mode1_view2_sprites(const Regs* in, Regs* out) {  // (map-fw-9: the same end, DB $83)
+  (void)in;
+  mode1_view2_sprites();
+  out->db = 0x83;
+  out->n = true;
+  out->z = false;
+  out->c = false;
+}
 static void call_mode1_view1_sprites(const Regs* in, Regs* out) {  // (map-fw-8: the same end)
   (void)in;
   mode1_view1_sprites();
@@ -14851,6 +14859,15 @@ const Routine routines[] = {
    // (map-fw-8: $1EF2 and $1E66/$1E68 negative never run; the body's holes as object_sprites_stream's)
    .holes = {{0x82CDAB, 0x82CDB1}, {0x82CD4C, 0x82CD4E}, {0x82CD72, 0x82CD74}, {0x82CED7, 0x82CEDA}, {0x82CDED, 0x82CDF0}, {0x82CE0F, 0x82CE12}, {0x82CE5F, 0x82CE70},
              {0x82D00B, 0x82D058}}},
+  {.name = "mode1_view2_sprites", .entry = 0x82D2CC, .end = 0x82D863, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_view2_sprites, .spriteList = true,
+   .replays = 32,
+   // (map-fw-9: its never-run stretches, traps in the C; and what demo_mode1 does not run: the dots
+   // with $1E66/$1E68 negative, D+$36's 0, the armed jump and the segment's end, the rival's branch
+   // road (as the main road's in the C), the cars' loop back)
+   .holes = {{0x82D3B8, 0x82D3BE}, {0x82D4C7, 0x82D4CA}, {0x82D52B, 0x82D562}, {0x82D5F5, 0x82D644},
+             {0x82D35C, 0x82D35E}, {0x82D37F, 0x82D381}, {0x82D405, 0x82D408}, {0x82D44F, 0x82D474},
+             {0x82D696, 0x82D6F9}, {0x82D7B6, 0x82D7B9}}},
   {.name = "car_sprite_head", .entry = 0x82D267, .end = 0x82D2CC, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_car_sprite_head, ALL_OUTPUTS, .spriteList = true,
    // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
