@@ -3764,6 +3764,7 @@ player1_frame:
     jsr.w car_track_step        ; $83E25A
     pld                         ; $83E25D
     rtl                         ; $83E25E
+mode1_cars_frame:
     lda.w $1E9E                 ; $83E25F
     asl a                       ; $83E262
     tax                         ; $83E263
@@ -3777,7 +3778,7 @@ player1_frame:
     jsr.w player_car_frame      ; $83E275
     jsr.w car_track_step        ; $83E278
     pld                         ; $83E27B
-    jsr.w $E431                 ; $83E27C
+    jsr.w mode1_player2_frame_setup; $83E27C
     phd                         ; $83E27F
     lda.w #$02B3                ; $83E280
     tcd                         ; $83E283
@@ -3971,6 +3972,7 @@ CODE_83E422:
     sta.w $025C                 ; $83E42A
     stx.w $1F2E                 ; $83E42D
     rts                         ; $83E430
+mode1_player2_frame_setup:
     lda.w #$2000                ; $83E431
     sta.w $1EBE                 ; $83E434
     lda.w $03C4                 ; $83E437

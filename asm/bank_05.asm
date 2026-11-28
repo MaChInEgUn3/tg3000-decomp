@@ -1921,6 +1921,7 @@ race_cycle_blocks:
     stx.w $213E                 ; $8593A2
     plb                         ; $8593A5
     rts                         ; $8593A6
+irq_mode1_band:
     rep.b #$10                  ; $8593A7
     sep.b #$20                  ; $8593A9
     phb                         ; $8593AB
@@ -2108,6 +2109,7 @@ CODE_8594C9:
     pla                         ; $859568
     plb                         ; $859569
     rti                         ; $85956A
+irq_mode1_band2:
     rep.b #$10                  ; $85956B
     sep.b #$20                  ; $85956D
     phb                         ; $85956F

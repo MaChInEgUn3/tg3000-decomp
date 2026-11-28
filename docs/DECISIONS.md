@@ -6409,6 +6409,21 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's two band IRQs (map-fw-23, 2026-11-28)
+
+**`irq_mode1_band` (`$85:93A7`) and `irq_mode1_band2` (`$85:956B`, `src/race_frame.c`)** are mode
+1's raster IRQs for its two views. They are `irq_vs_band`/`irq_vs_band2` with two differences:
+- the next IRQ is at dot `$65`, not `$63`;
+- after the top view's last band comes mode 1's split, `$85:9405`.
+
+Their cursors, slot tables and line tables are the VS race's. `vs_band_send` now takes the dot as
+a parameter, so both races use it.
+
+Mode 1's split (`$85:9405`) differs more from `irq_vs_split` and is the next unit.
+
+**Check:** on `demo_mode1` (firmware), each row has live 4,000 of 4,000 and paths 44 of 44 and 40 of
+40. `irq_vs_band`/`irq_vs_band2` still pass. Then the full gate (`vs_band_send` changed).
+
 ## Mode 1's second object stream (map-fw-22, 2026-11-28)
 
 **`mode1_track_objects_stream2` (`$82:B026`, `src/misc.c`)** is `track_objects_stream` for mode 1's

@@ -580,10 +580,10 @@ void irq_race_band(void) {
   }
 }
 
-// One band of the VS race's raster IRQs (irq_race_band's, with the next IRQ at dot $63): the
-// band's chunk, the slots named at masks + the cursor; then the next band's line, if any (the
-// cursor moved on). Returns that line, 0 for none.
-static uint8_t vs_band_send(uint16_t cursorAt, uint16_t masks, uint16_t lines) {
+// One band of the VS race's raster IRQs (irq_race_band's, with the next IRQ at dot `dot`: $63, mode
+// 1's $65): the band's chunk, the slots named at masks + the cursor; then the next band's line, if
+// any (the cursor moved on). Returns that line, 0 for none.
+static uint8_t vs_band_send(uint16_t cursorAt, uint16_t masks, uint16_t lines, uint8_t dot) {
   uint16_t band = rd16(cursorAt);
   platform_set_irq_h_low(0xFF);
   dma_stream_size(2, 1);
@@ -596,7 +596,7 @@ static uint8_t vs_band_send(uint16_t cursorAt, uint16_t masks, uint16_t lines) {
   const uint8_t line = rd8((uint32_t)(lines + band));
   if(line) {
     platform_set_irq_v_low(line);
-    platform_set_irq_h_low(0x63);
+    platform_set_irq_h_low(dot);
     wr16(cursorAt, band);
   }
   return line;
@@ -608,7 +608,7 @@ static uint8_t vs_band_send(uint16_t cursorAt, uint16_t masks, uint16_t lines) {
 // irq_race_band's, next IRQ at dot $63. After the last band, the split ($83:8A84) at line $6C,
 // dot $78. (The original waits (WAI) for dot $FF, as irq_race_band.)
 void irq_vs_band(void) {
-  if(vs_band_send(0x00BC, 0x0596, 0x0486)) return;
+  if(vs_band_send(0x00BC, 0x0596, 0x0486, 0x63)) return;
   wr16(0x0005, 0x8A84);
   platform_set_irq_v(0x006C);
   platform_set_irq_h(0x0078);
@@ -619,7 +619,22 @@ void irq_vs_band(void) {
 // The same for the bottom pair (cursor $00C2, slots $061E, lines $050E). After the last band the
 // IRQ line goes to 0 (none this frame) and the trampoline stays.
 void irq_vs_band2(void) {
-  if(!vs_band_send(0x00C2, 0x061E, 0x050E)) platform_set_irq_v(0x0000);
+  if(!vs_band_send(0x00C2, 0x061E, 0x050E, 0x63)) platform_set_irq_v(0x0000);
+}
+
+// map-fw-23: mode 1's two band IRQs, the VS race's with the next IRQ at dot $65; after the top
+// view's last band, mode 1's split ($85:9405)
+// TG3000_ROUTINE($85:93A7) irq_mode1_band
+void irq_mode1_band(void) {
+  if(vs_band_send(0x00BC, 0x0596, 0x0486, 0x65)) return;
+  wr16(0x0005, 0x9405);
+  platform_set_irq_v(0x006C);
+  platform_set_irq_h(0x0078);
+}
+
+// TG3000_ROUTINE($85:956B) irq_mode1_band2
+void irq_mode1_band2(void) {
+  if(!vs_band_send(0x00C2, 0x061E, 0x050E, 0x65)) platform_set_irq_v(0x0000);
 }
 
 // TG3000_ROUTINE($83:8A84) irq_vs_split

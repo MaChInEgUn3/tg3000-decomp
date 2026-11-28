@@ -706,7 +706,7 @@ CODE_828AFB:
     jsr.w track_setup_load      ; $828B53
     jsl.l track_rows_build      ; $828B56
     jsr.w track_objects_stream  ; $828B5A
-    jsr.w $B026                 ; $828B5D
+    jsr.w mode1_track_objects_stream2; $828B5D
     jsr.w $B234                 ; $828B60
     stz.w $4315                 ; $828B63
     stz.w $4325                 ; $828B66
@@ -767,7 +767,7 @@ CODE_828BEC:
     sta.w $02E6                 ; $828BFD
 CODE_828C00:
     jsr.w race_countdown        ; $828C00
-    jsl.l $83E25F               ; $828C03
+    jsl.l mode1_cars_frame      ; $828C03
     jsl.l race_cars_frame       ; $828C07
     jsr.w mode1_car_bands       ; $828C0B
     jsr.w player_segment_step   ; $828C0E
@@ -4124,6 +4124,7 @@ CODE_82B012:
     jmp.w $AF48                 ; $82B022
 CODE_82B025:
     rts                         ; $82B025
+mode1_track_objects_stream2:
     lda.w #$0140                ; $82B026
     sta.l $7E46C8               ; $82B029
     ldx.b $A4                   ; $82B02D

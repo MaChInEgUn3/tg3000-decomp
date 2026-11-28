@@ -5652,6 +5652,8 @@ static void call_irq_race_band(const Regs* in, Regs* out) { irq_race_band(); res
 // (vs-race-21) the VS race's: as irq_race_band
 static void call_irq_vs_band(const Regs* in, Regs* out) { irq_vs_band(); restoreP(in, out); }
 static void call_irq_vs_band2(const Regs* in, Regs* out) { irq_vs_band2(); restoreP(in, out); }
+static void call_irq_mode1_band(const Regs* in, Regs* out) { irq_mode1_band(); restoreP(in, out); }  // (map-fw-23)
+static void call_irq_mode1_band2(const Regs* in, Regs* out) { irq_mode1_band2(); restoreP(in, out); }
 static void call_irq_vs_split(const Regs* in, Regs* out) { irq_vs_split(); restoreP(in, out); }  // (vs-race-22)
 
 // Negative test: the colours one CGRAM entry off
@@ -13716,6 +13718,10 @@ const Routine routines[] = {
    .dmaReadAt = {0x838B75}, .dmaReadsFree = true},  // slot 4's table address: the C has it (harness-41)
   {.name = "irq_vs_band2", .entry = 0x838BE3, .end = 0x838C35, .rti = true, .source = "src/race_frame.c",
    .call = call_irq_vs_band2, ALL_OUTPUTS},
+  {.name = "irq_mode1_band", .entry = 0x8593A7, .end = 0x859405, .rti = true, .source = "src/race_frame.c",
+   .call = call_irq_mode1_band, ALL_OUTPUTS},   // (map-fw-23: no fuzz: it waits, as irq_vs_band)
+  {.name = "irq_mode1_band2", .entry = 0x85956B, .end = 0x8595BD, .rti = true, .source = "src/race_frame.c",
+   .call = call_irq_mode1_band2, ALL_OUTPUTS},
   {.name = "race_cycle_blocks", .entry = 0x859147, .end = 0x8593A7, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .call = call_race_cycle_blocks, .fuzz = fuzz_race_cycle_blocks},
   {.name = "sound_fade_step", .entry = 0x86DFAE, .end = 0x86DFE1, .source = "src/sound.c", .needM16 = true,
