@@ -1305,6 +1305,26 @@ static void fuzz_car_set_53(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(int i = 0; i < 3; i++) ram[0x8CB3 + x + i] = (uint8_t)rnd();
 }
 
+// ---- car_object_stop ($83:FD68, map-fw-20) ----  skipped (bit 5 of D+$44): A = D+$44, N of it,
+// Z clear (the BIT), X kept; else A = the entry's word at +2 (N Z of its LDA), X = $011A; C V kept
+static void call_car_object_stop(const Regs* in, Regs* out) {
+  const bool skip = (rd16((uint16_t)(in->d + 0x44)) & 0x0020) != 0;
+  car_object_stop(in->d);
+  if(skip) {
+    out->a = rd16((uint16_t)(in->d + 0x44));
+    out->n = (out->a & 0x8000) != 0;
+    out->z = false;
+  } else {
+    out->a = rd16((uint16_t)(in->d + 0x5E));
+    out->x = rd16(0x011A);
+    setNZ16(out, out->a);
+  }
+}
+static void fuzz_car_object_stop(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_car_set_53(r, ram, rnd);
+  wr16ram(ram, (uint16_t)(r->d + 0x44), (uint16_t)rnd());
+}
+
 // ---- variant_lines / _5a / _66 ($8A:9AB1, $8A:98F0, $8A:99BE) ----  A = the value stored
 // (N and Z clear, from its LDA #), C of the CMP #2 of the variant, V as on entry
 static void variantOut(const Regs* in, Regs* out, void (*fn)(void), uint16_t at) {
@@ -11074,6 +11094,53 @@ static void fuzz_car_sync_player(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 0x10));
   wr16ram(ram, 0x0210, (uint16_t)(rnd() % 0x20));
 }
+// map-fw-20: car_sync_player for the second player ($81:FB20): its record at +$B3, $1E68
+static uint8_t sync2Held[0x35];
+static uint16_t sync2Car;
+static bool run_car_sync_player2(void) {
+  memcpy(&g_ram[0xFAB5 + (uint32_t)sync2Car], sync2Held, sizeof sync2Held);
+  return car_sync_player2(sync2Car);
+}
+static void call_car_sync_player2(const Regs* in, Regs* out) {
+  const uint16_t car = in->y;
+  const uint32_t o = car;
+  const bool direct = !(rd16(0x02F7) & 0x0001);
+  memcpy(sync2Held, &g_ram[0xFAB5 + o], sizeof sync2Held);
+  uint32_t pos = rd16(0xFAB5 + o) | (uint32_t)rd16(0xFAB7 + o) << 16;
+  if(direct) pos += rd16(0x02E0) | (uint32_t)rd16(0x02E2) << 16;
+  else pos += (uint32_t)((int32_t)(int16_t)rd16(0x1E9E) * (int16_t)rd16(0x02C3));
+  wr16(0xFAB5 + o, (uint16_t)pos);
+  wr16(0xFAB7 + o, (uint16_t)(pos >> 16));
+  wr16(0xFAC9 + o, rd16(0x02C1));
+  wr16(0xFACB + o, rd16(0x02C3));
+  if(direct) {
+    wr16(0xFAB9 + o, rd16(0x02B7));
+    wr16(0xFABB + o, rd16(0x02B9));
+  }
+  wr16(0xFAC7 + o, 0xFFFF);
+  sync2Car = car;
+  fbb1Run = run_car_sync_player2;
+  Regs t = *in;
+  call_func_81FBB1(&t, out);
+  fbb1Run = NULL;
+  out->y = car;
+  if(direct) {
+    out->a = rd16(CAR_FLAGS + o);
+    setNZ16(out, out->a);
+    out->v = (rd16(0x1E68) & 0x4000) != 0;
+  }
+}
+// func_81FBB1's state for the car, either way of $0244, the player's words
+static void fuzz_car_sync_player2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_func_81FBB1(r, ram, rnd);
+  wr16ram(ram, 0x02F7, (uint16_t)rnd());
+  static const uint16_t words[] = {0x02E0, 0x02E2, 0x02C1, 0x02C3, 0x02B7, 0x02B9, 0x1E68};
+  for(unsigned i = 0; i < sizeof words / sizeof words[0]; i++) wr16ram(ram, words[i], (uint16_t)rnd());
+  wr16ram(ram, 0x02E0, (uint16_t)(rnd() % 0x200));
+  wr16ram(ram, 0x02E2, 0);
+  wr16ram(ram, 0x1E9E, (uint16_t)(rnd() % 0x10));
+  wr16ram(ram, 0x02C3, (uint16_t)(rnd() % 0x20));
+}
 
 // ---- race_hud_digits ($82:B4ED) ----  both callers go on to code that sets what it reads
 // (one returns, JMP'd to, into the race frame's next step): no register outputs; the
@@ -15126,6 +15193,10 @@ const Routine routines[] = {
    .needX16 = true, .db = 0x30, .call = call_follow_car_step, ALL_OUTPUTS, .fuzz = fuzz_follow_car_step},
   {.name = "car_sync_player", .entry = 0x81FA8F, .end = 0x81FB20, .source = "src/track.c", .needM16 = true,
    .needX16 = true, .db = 0x7E, .call = call_car_sync_player, ALL_OUTPUTS, .fuzz = fuzz_car_sync_player},
+  {.name = "car_sync_player2", .entry = 0x81FB20, .end = 0x81FBB1, .source = "src/track.c", .needM16 = true,
+   .needX16 = true, .db = 0x7E, .call = call_car_sync_player2, ALL_OUTPUTS, .fuzz = fuzz_car_sync_player2},
+  {.name = "car_object_stop", .entry = 0x83FD68, .end = 0x83FD8A, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .lowWramDb = true, .call = call_car_object_stop, ALL_OUTPUTS, .fuzz = fuzz_car_object_stop},
   {.name = "hud_markers_write", .entry = 0x828961, .end = 0x8289B2, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_hud_markers_write, ALL_OUTPUTS,
    .fuzz = fuzz_hud_markers_write, .endAt = 0x8289B2,  // its tail jump to race_hud_digits

@@ -4174,8 +4174,8 @@ static void car_object_mark(uint16_t dp) {
 
 // TG3000_ROUTINE($83:FD68) car_object_stop
 // A stop marker: unless bit 5 of D+$44 is set, D+$53 = 4, D+$B1 = the entry's byte 0 and
-// D+$5E = its word at +2 (the segment to stop at).
-static void car_object_stop(uint16_t dp) {
+// D+$5E = its word at +2 (the segment to stop at). (map-fw-20: mode 1 runs it; public for its row)
+void car_object_stop(uint16_t dp) {
   if(rd16(dp + 0x44) & 0x0020) return;
   wr8(dp + 0x53, 4);
   const uint32_t x = rd16(0x011A);

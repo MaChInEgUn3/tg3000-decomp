@@ -6409,6 +6409,23 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's second car sync and the stop marker (map-fw-20, 2026-11-28)
+
+Two routines were already in C but had no row, because no movie ran them. Mode 1 runs both:
+- **`car_sync_player2` (`$81:FB20`, `src/track.c`)**, `car_sync_player` for the second player. Its
+  record is at +`$B3` (`$02F7`, `$02E0`/`$02E2`, `$02C1`/`$02C3`, `$02B7`/`$02B9`), with `$1E68`.
+  The adapter and fuzz are `car_sync_player`'s with those words.
+- **`car_object_stop` (`$83:FD68`, `src/misc.c`)**, a stop marker among the track objects. It is
+  now public so that its row can call it. Its exits:
+  - skipped: A = D+`$44`, N of it, Z clear;
+  - otherwise: A = the entry's word at +2, X = `$011A`.
+
+**Check:** on `demo_mode1` (firmware):
+- `car_sync_player2`: live 180 of 180, fuzz 500 of 500, paths 50 of 50;
+- `car_object_stop`: live 2 of 2, fuzz 500 of 500, paths 14 of 14.
+
+Then the full gate (`car_object_stop` lost its `static`).
+
 ## The track events mode 1 runs (map-fw-19, 2026-11-28)
 
 The race's C held these handlers inline in `track_event_run` as "never run". Mode 1 runs them:

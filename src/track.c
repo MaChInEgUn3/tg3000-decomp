@@ -269,7 +269,7 @@ static bool car_sync_record(uint16_t car, uint16_t b, bool full, uint16_t branch
 // TG3000_ROUTINE($81:FA8F) car_sync_player
 bool car_sync_player(uint16_t car) { return car_sync_record(car, 0, true, 0x1E66); }
 
-// $81:FB20 (never run in a one-player race)
+// TG3000_ROUTINE($81:FB20) car_sync_player2 (never run in a one-player race; mode 1 runs it)
 bool car_sync_player2(uint16_t car) { return car_sync_record(car, 0x00B3, true, 0x1E68); }
 
 // $81:FC72, $81:FCD1, $81:FD30, $81:FD8F: the VS race's four players' (never run in a

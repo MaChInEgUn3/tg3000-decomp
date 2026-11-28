@@ -334,6 +334,7 @@ void car_clear_53(uint16_t dp);
 // shared tail at $83:FD45) dp+$B1 = track object $011A's bytes at $7E:8CB3 (low) and
 // $8CB5 (high).
 void car_set_53(uint16_t dp, uint8_t value);
+void car_object_stop(uint16_t dp);  // $83:FD68: a stop marker (mode 1 runs it)
 
 // $80:E8B5: a block from $81:D419 + `*y` (DB = $81) copied to $7F:2000 + `*x`: its length
 // (the low byte of the word there; 0 = 256, kept in D+$14) then that many bytes. Both

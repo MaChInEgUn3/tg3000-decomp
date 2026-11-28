@@ -716,7 +716,7 @@ func    82EB9E   track_event2_clear  ; the second road's event cleared -> src/mi
 func    82EBC2   track_event2_place_only ; the second road's positions only -> src/misc.c
 func    82EBDE   track_event2_tail   ; the second road's events' shared body (pattern in A) -> src/misc.c
 func    81E812   race_cars_frame     ; the 20 cars' frame: handlers, the race order sorted, lap wraps, finishers (RTL) -> src/misc.c
-func    81FB20   car_sync_player2    ; car_sync_player for the second player (handler 4; never run) -> src/track.c
+func    81FB20   car_sync_player2    ; car_sync_player for the second player (handler 4; mode 1 runs it) -> src/track.c
 func    81FC72   car_sync_slot_0200  ; the VS race's player 1's car takes its record's motion (handler 8) -> src/track.c
 func    81FCD1   car_sync_slot_02b3  ; the same for player 2's record (handler 10) -> src/track.c
 func    81FD30   car_sync_slot_0262  ; the same for player 3's record (handler 12) -> src/track.c
