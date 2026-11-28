@@ -3655,7 +3655,7 @@ CODE_85A94F:
     and.w #$00FF                ; $85A95C
     bit.w #$0080                ; $85A95F
     beq CODE_85A967             ; $85A962
-    incbin !baserom:$2A964..$2A967
+    ora.w #$FF00                ; $85A964
 CODE_85A967:
     sta.w $8000                 ; $85A967
     ldx.b $14                   ; $85A96A
@@ -3803,7 +3803,7 @@ CODE_85AA85:
     clc                         ; $85AAAF
     adc.w #$0040                ; $85AAB0
     bpl CODE_85AAB8             ; $85AAB3
-    incbin !baserom:$2AAB5..$2AAB8
+    lda.w #$0000                ; $85AAB5
 CODE_85AAB8:
     sta.b $16                   ; $85AAB8
     sec                         ; $85AABA
@@ -3847,7 +3847,13 @@ CODE_85AAE1:
 CODE_85AB00:
     lda.b $14                   ; $85AB00
     beq CODE_85AB13             ; $85AB02
-    incbin !baserom:$2AB04..$2AB13
+    ora.w #$0080                ; $85AB04
+    sta.w $0000,y               ; $85AB07
+    lda.w #$A5DC                ; $85AB0A
+    sta.w $0001,y               ; $85AB0D
+    dey                         ; $85AB10
+    dey                         ; $85AB11
+    dey                         ; $85AB12
 CODE_85AB13:
     lda.w #$0004                ; $85AB13
     sta.w $0000,y               ; $85AB16
@@ -6275,7 +6281,10 @@ CODE_85C056:
     lda.w $0244                 ; $85C058
     lsr a                       ; $85C05B
     bcs CODE_85C067             ; $85C05C
-    incbin !baserom:$2C05E..$2C067
+    lda.b $14                   ; $85C05E
+    clc                         ; $85C060
+    adc.w $0240                 ; $85C061
+    sta.w $0240                 ; $85C064
 CODE_85C067:
     lda.w $023E                 ; $85C067
     asl a                       ; $85C06A
@@ -6396,7 +6405,48 @@ CODE_85C17E:
     lda.l $7E5B94,x             ; $85C181
     bit.w #$FF00                ; $85C185
     bne CODE_85C1ED             ; $85C188
-    incbin !baserom:$2C18A..$2C1ED
+    asl a                       ; $85C18A
+    tax                         ; $85C18B
+    lda.l $86AE36,x             ; $85C18C
+    tax                         ; $85C190
+    lda.l $86001E,x             ; $85C191
+    sta.w $F533,y               ; $85C195
+    lda.l $860020,x             ; $85C198
+    sta.w $F433,y               ; $85C19C
+    lda.w #$007F                ; $85C19F
+    sta.w $F733,y               ; $85C1A2
+    lda.l $860000,x             ; $85C1A5
+    tax                         ; $85C1A9
+    lda.l $7E6591,x             ; $85C1AA
+    clc                         ; $85C1AE
+    adc.w $F533,y               ; $85C1AF
+    sta.w $F533,y               ; $85C1B2
+    ldx.b $A0                   ; $85C1B5
+    lda.l $7E5B93,x             ; $85C1B7
+    and.w #$00FF                ; $85C1BB
+    xba                         ; $85C1BE
+    lsr a                       ; $85C1BF
+    lsr a                       ; $85C1C0
+    lsr a                       ; $85C1C1
+    sta.w $F633,y               ; $85C1C2
+    lda.l $7E5B93,x             ; $85C1C5
+    and.w #$00FF                ; $85C1C9
+    asl a                       ; $85C1CC
+    sta.w $F933,y               ; $85C1CD
+    lda.l $7E5B93,x             ; $85C1D0
+    xba                         ; $85C1D4
+    and.w #$00FF                ; $85C1D5
+    asl a                       ; $85C1D8
+    clc                         ; $85C1D9
+    adc.w #$45EC                ; $85C1DA
+    sta.w $F833,y               ; $85C1DD
+    jsl.l func_85CDAF           ; $85C1E0
+    iny                         ; $85C1E4
+    iny                         ; $85C1E5
+    tya                         ; $85C1E6
+    and.w #$00FF                ; $85C1E7
+    tay                         ; $85C1EA
+    bra CODE_85C24E             ; $85C1EB
 CODE_85C1ED:
     asl a                       ; $85C1ED
     tax                         ; $85C1EE
@@ -6439,6 +6489,7 @@ CODE_85C1ED:
     tya                         ; $85C249
     and.w #$00FF                ; $85C24A
     tay                         ; $85C24D
+CODE_85C24E:
     inx                         ; $85C24E
     inx                         ; $85C24F
     inx                         ; $85C250
@@ -6448,14 +6499,17 @@ CODE_85C1ED:
     lda.w $0226                 ; $85C255
     cmp.l $7E5B91,x             ; $85C258
     bcc CODE_85C261             ; $85C25C
-    incbin !baserom:$2C25E..$2C261
+    jmp.w $C181                 ; $85C25E
 CODE_85C261:
     sty.w $0100                 ; $85C261
     plb                         ; $85C264
     lda.w $0226                 ; $85C265
     cmp.w $019A                 ; $85C268
     bcc CODE_85C278             ; $85C26B
-    incbin !baserom:$2C26D..$2C278
+    sbc.w $019A                 ; $85C26D
+    sta.w $0226                 ; $85C270
+    sta.w $023E                 ; $85C273
+    stz.b $A0                   ; $85C276
 CODE_85C278:
     sta.w $0226                 ; $85C278
     sta.w $023E                 ; $85C27B
@@ -6475,7 +6529,7 @@ CODE_85C2A1:
     adc.w #$0001                ; $85C2AE
     cmp.w $019A                 ; $85C2B1
     bcc CODE_85C2B9             ; $85C2B4
-    incbin !baserom:$2C2B6..$2C2B9
+    sbc.w $019A                 ; $85C2B6
 CODE_85C2B9:
     jsr.w func_82EA49_85        ; $85C2B9
     sta.b $14                   ; $85C2BC
@@ -6483,7 +6537,7 @@ CODE_85C2B9:
     sec                         ; $85C2C1
     sbc.w #$0003                ; $85C2C2
     bcs CODE_85C2CA             ; $85C2C5
-    incbin !baserom:$2C2C7..$2C2CA
+    adc.w $019A                 ; $85C2C7
 CODE_85C2CA:
     jsr.w func_82EA49_85        ; $85C2CA
     sta.b $16                   ; $85C2CD
@@ -6506,7 +6560,7 @@ CODE_85C2CA:
     and.w #$03FF                ; $85C2F5
     bit.w #$0080                ; $85C2F8
     beq CODE_85C300             ; $85C2FB
-    incbin !baserom:$2C2FD..$2C300
+    ora.w #$FF00                ; $85C2FD
 CODE_85C300:
     sta.l $308000               ; $85C300
     clc                         ; $85C304
@@ -6845,7 +6899,7 @@ CODE_85C5FA:
     lda.w $02D9                 ; $85C601
     cmp.l $7E5B91,x             ; $85C604
     bcc CODE_85C60D             ; $85C608
-    incbin !baserom:$2C60A..$2C60D
+    jmp.w $C51F                 ; $85C60A
 CODE_85C60D:
     sty.w $0100                 ; $85C60D
     plb                         ; $85C610

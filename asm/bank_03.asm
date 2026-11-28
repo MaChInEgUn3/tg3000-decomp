@@ -308,7 +308,7 @@ vs_view_scrolls:
     ldy.w #$0000                ; $838874
     lda.w $01CC                 ; $838877
     bpl CODE_83887D             ; $83887A
-    incbin !baserom:$1887C..$1887D
+    dey                         ; $83887C
 CODE_83887D:
     clc                         ; $83887D
     adc.w $00D4                 ; $83887E
@@ -866,7 +866,9 @@ CODE_8398A6:
     sec                         ; $8398D5
     sbc.w #$6000                ; $8398D6
     bcc CODE_8398F3             ; $8398D9
-    incbin !baserom:$198DB..$198E1
+    sta.b $5A                   ; $8398DB
+    inc.b $5C                   ; $8398DD
+    bra CODE_8398F3             ; $8398DF
 CODE_8398E1:
     lda.b $5A                   ; $8398E1
     clc                         ; $8398E3
@@ -888,7 +890,9 @@ CODE_8398F3:
     sec                         ; $839904
     sbc.w #$6000                ; $839905
     bcc CODE_839922             ; $839908
-    incbin !baserom:$1990A..$19910
+    sta.b $5D                   ; $83990A
+    inc.b $5F                   ; $83990C
+    bra CODE_839922             ; $83990E
 CODE_839910:
     lda.b $5D                   ; $839910
     clc                         ; $839912
@@ -1118,12 +1122,23 @@ vs_hud_draw:
     lda.b $3E                   ; $839B52
     and.w #$FFFE                ; $839B54
     beq CODE_839B66             ; $839B57
-    incbin !baserom:$19B59..$19B66
+    tax                         ; $839B59
+CODE_839B5A:
+    lda.w $9F2E,y               ; $839B5A
+    sta.w $2118                 ; $839B5D
+    iny                         ; $839B60
+    iny                         ; $839B61
+    dex                         ; $839B62
+    dex                         ; $839B63
+    bne CODE_839B5A             ; $839B64
 CODE_839B66:
     lda.b $3E                   ; $839B66
     bit.w #$0001                ; $839B68
     beq CODE_839B75             ; $839B6B
-    incbin !baserom:$19B6D..$19B75
+    lda.w $9F3A,y               ; $839B6D
+    sta.w $2118                 ; $839B70
+    iny                         ; $839B73
+    iny                         ; $839B74
 CODE_839B75:
     cpy.w #$000C                ; $839B75
     beq CODE_839B87             ; $839B78
@@ -2758,7 +2773,7 @@ CODE_83D8FB:
     ldx.b $16                   ; $83D969
     lda.l $7E456C,x             ; $83D96B
     tax                         ; $83D96F
-    db $30,$0E ; bmi            ; $83D970
+    bmi CODE_83D980             ; $83D970
     phb                         ; $83D972
     ldy.b $18                   ; $83D973
     lda.w #$0007                ; $83D975
@@ -2766,7 +2781,13 @@ CODE_83D8FB:
     sty.b $18                   ; $83D97B
     plb                         ; $83D97D
     bra CODE_83D98C             ; $83D97E
-    incbin !baserom:$1D980..$1D98C
+CODE_83D980:
+    phb                         ; $83D980
+    ldy.b $18                   ; $83D981
+    lda.w #$0007                ; $83D983
+    mvp $7E,$90                 ; $83D986
+    sty.b $18                   ; $83D989
+    plb                         ; $83D98B
 CODE_83D98C:
     ply                         ; $83D98C
 CODE_83D98D:
@@ -3171,7 +3192,7 @@ CODE_83DCF3:
     ldx.b $16                   ; $83DD61
     lda.l $7E3FEC,x             ; $83DD63
     tax                         ; $83DD67
-    db $30,$0E ; bmi            ; $83DD68
+    bmi CODE_83DD78             ; $83DD68
     phb                         ; $83DD6A
     ldy.b $18                   ; $83DD6B
     lda.w #$0007                ; $83DD6D
@@ -3179,7 +3200,13 @@ CODE_83DCF3:
     sty.b $18                   ; $83DD73
     plb                         ; $83DD75
     bra CODE_83DD84             ; $83DD76
-    incbin !baserom:$1DD78..$1DD84
+CODE_83DD78:
+    phb                         ; $83DD78
+    ldy.b $18                   ; $83DD79
+    lda.w #$0007                ; $83DD7B
+    mvp $7E,$90                 ; $83DD7E
+    sty.b $18                   ; $83DD81
+    plb                         ; $83DD83
 CODE_83DD84:
     ply                         ; $83DD84
 CODE_83DD85:

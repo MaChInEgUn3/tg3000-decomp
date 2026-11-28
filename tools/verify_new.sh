@@ -54,6 +54,7 @@ buyframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/e
 pwframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_pw.txt)
 infoframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/code_infodata.txt)
 demoframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/demo_race.txt)
+mode1frames=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/demo_mode1.txt)
 menuframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_menu.txt)
 optframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/explore_options.txt)
 vsframes=$(sed -n 's/.*Run it for \([0-9]*\) steps.*/\1/p' tools/bench/movies/vs_race.txt)
@@ -72,12 +73,12 @@ PY
 mkdir -p build/cache
 # the VS race runs with the firmware DSP-4, the VS screen's frame not fuzzed there (harness-28)
 movieargs() { if [ "$1" = vs_race ]; then echo "--dsp4-firmware $firmware --fuzz-skip vs_screen_frame,player_car_frame,car_sprite_head,vs_cars_frame";
-  elif [ "$1" = demo_race ]; then echo "--dsp4-firmware $firmware --fuzz-skip vs_screen_frame,player_car_frame,car_sprite_head,vs_cars_frame,vs_sprites_view1";
+  elif [ "$1" = demo_race ] || [ "$1" = demo_mode1 ]; then echo "--dsp4-firmware $firmware --fuzz-skip vs_screen_frame,player_car_frame,car_sprite_head,vs_cars_frame,vs_sprites_view1";
   elif [ "$1" = explore_pw ]; then echo "--fuzz-skip car_sprite_head"; fi; }
 moviefuzz() { echo 500; }
 covfile() { echo "build/cache/$1-$(cat "tools/bench/movies/$1.txt" tools/bench/patches/*.patch tools/bench/bench.c | sha1sum | cut -c1-16).cov"; }
 covpids=""
-for m in "autopilot_60k:60000" "explore_shop:$shopframes" "explore_buy:$buyframes" "explore_pw:$pwframes" "code_infodata:$infoframes" "explore_menu:$menuframes" "explore_options:$optframes" "vs_race:$vsframes" "demo_race:$demoframes"; do
+for m in "autopilot_60k:60000" "explore_shop:$shopframes" "explore_buy:$buyframes" "explore_pw:$pwframes" "code_infodata:$infoframes" "explore_menu:$menuframes" "explore_options:$optframes" "vs_race:$vsframes" "demo_race:$demoframes" "demo_mode1:$mode1frames"; do
   movie=${m%%:*}; cov=$(covfile "$movie")
   if [ ! -f "$cov" ]; then  # made again, side by side
     rm -f build/cache/"$movie"-*.cov
@@ -101,7 +102,7 @@ sys.exit(1)
 PY
 }
 runs=""
-for m in "main:autopilot_60k:60000" "shop:explore_shop:$shopframes" "buy:explore_buy:$buyframes" "pw:explore_pw:$pwframes" "info:code_infodata:$infoframes" "menu:explore_menu:$menuframes" "opt:explore_options:$optframes" "vs:vs_race:$vsframes" "demo:demo_race:$demoframes"; do
+for m in "main:autopilot_60k:60000" "shop:explore_shop:$shopframes" "buy:explore_buy:$buyframes" "pw:explore_pw:$pwframes" "info:code_infodata:$infoframes" "menu:explore_menu:$menuframes" "opt:explore_options:$optframes" "vs:vs_race:$vsframes" "demo:demo_race:$demoframes" "mode1:demo_mode1:$mode1frames"; do
   k=${m%%:*}; rest=${m#*:}; movie=${rest%%:*}; frames=${rest#*:}
   if reaches "$movie"; then runs="$runs $k:$movie:$frames"; else echo "verify_new: $movie skipped (no named row's entry runs there)"; fi
 done

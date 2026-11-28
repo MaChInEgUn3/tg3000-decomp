@@ -6409,6 +6409,31 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's movie in the checks; two traps it reached (map-fw-3, 2026-11-28)
+
+**`demo_mode1.txt` is now one of the verify movies.**
+- `verify_all.sh` runs it as the job `mode1`, with `--dsp4-firmware` and the demo's fuzz skips.
+- `verify_new.sh` runs it too, with its coverage cache made on the firmware.
+- Its coverage is merged into `traces/coverage.bin`: 306 more instruction starts, 86.33%
+  classified. It reaches code the 60k firmware run did not.
+
+**What it reached in the C, all routines already verified:**
+- **`vs_road_rows_view1`: the trap "a second object in one frame".**
+  - The second player's copy of the VS road rows had never placed two objects in one frame;
+    mode 1 does.
+  - Its code is the same as the first copy's: `$85:C60A JMP $C51F` against `$85:C25E JMP $C181`,
+    each back to its own loop, at the copies' distance (`$39E`). The trap is dropped.
+- **`vs_hud_draw`: the trap "a word outside the progress strip".**
+  - Mode 1's progress strip reads VRAM word `$57BF`, one before the C's copy, which covered
+    `$57C0-$585F`.
+  - The copy now covers `$57A0-$587F`, loaded from the same graphics buffer.
+  - The trap now names the word.
+- With both, every row over this movie passes live: 292 PASS, and no hard failure (no compared
+  difference, nothing lost). The rows marked FAIL there lack paths or fuzz, which pool over all
+  movies.
+
+**Check:** the full gate.
+
 ## A short way to mode 1: the title demo left alone, on the firmware (map-fw-2, 2026-11-28)
 
 **`tools/bench/movies/demo_mode1.txt`:** no buttons at all, run for 19,500 steps with

@@ -3239,7 +3239,7 @@ timer_0d7e_tick:
     and.w #$0003                ; $8A9F84
     cmp.w #$0003                ; $8A9F87
     bne CODE_8A9F8D             ; $8A9F8A
-    incbin !baserom:$51F8C..$51F8D
+    dec a                       ; $8A9F8C
 CODE_8A9F8D:
     ora.w $03DC                 ; $8A9F8D
     sta.w $03DC                 ; $8A9F90

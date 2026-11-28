@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+#include <stdio.h>
 #include "race_frame.h"
 
 #include "frame.h"
@@ -270,8 +271,9 @@ static void vs_hud_count(uint16_t vram, uint8_t n) {
 // the player's place on the race's progress strip), and two 26-byte strips from
 // $7E:4E61, $4E95, $4EC9, $4EFD, or $83:A3DD when its accumulator pair ($7E:4E4D/$4E4E, ...)
 // adds up negative.
-#define VS_STRIP_FIRST 0x57C0
-#define VS_STRIP_WORDS 0xA0
+// (map-fw-3: from $57A0, not $57C0: mode 1 reads its strip from $57BF)
+#define VS_STRIP_FIRST 0x57A0
+#define VS_STRIP_WORDS 0xE0
 static uint16_t vs_strip[VS_STRIP_WORDS];
 
 void vs_strip_load(uint32_t src) {
@@ -280,7 +282,11 @@ void vs_strip_load(uint32_t src) {
 
 uint16_t vs_strip_word(uint16_t vram_word) {
   const uint16_t i = (uint16_t)(vram_word - VS_STRIP_FIRST);
-  if(i >= VS_STRIP_WORDS) tg3000_unported("vs_hud_draw: a word outside the progress strip ($57C0-$585F)");
+  if(i >= VS_STRIP_WORDS) {
+    static char what[96];
+    snprintf(what, sizeof what, "vs_hud_draw: VRAM word $%04X, outside the progress strip ($57A0-$587F)", vram_word);
+    tg3000_unported(what);
+  }
   return vs_strip[i];
 }
 

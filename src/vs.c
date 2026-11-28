@@ -573,7 +573,7 @@ void vs_panel_frame(uint16_t x) {
 // TG3000_ROUTINE($8A:B9AF) vs_graphics_load
 void vs_graphics_load(void) {
   decompress_to_vram(DP, 0x8D, 0xF696, 0x4000);
-  vs_strip_load(0x7F0000 + 2u * (0x57C0 - 0x4000));  // the progress strip, before the buffer is reused
+  vs_strip_load(0x7F0000 + 2u * (0x57A0 - 0x4000));  // the progress strip, before the buffer is reused
   uint16_t end;
   decompress(DP, 0x8A, 0xC86C, 0x7F, 0x0000, &end);
   uint16_t at = 0x7000;
@@ -1478,8 +1478,9 @@ typedef struct {
 static const VsRoadView vs_road_views[4] = {
   {0x0200, 0x3AEC, 0x01CE, 0x1E1E, 0xA0, 0xA2, 0x007F, 0x0000, 0x45EC, 0, 0, 0x1EF8, 0x1EFA, 0x0142,
    VS_HOLE_LIST2 | VS_HOLE_KIND_SCAN},
+  // (map-fw-3: copy 1's second object, $85:C60A JMP $C51F, runs in demo_mode1: copy 0's loop)
   {0x02B3, 0x406C, 0x01D2, 0x1E20, 0xA4, 0xA6, 0x017F, 0x0800, 0x46C8, 1, 2, 0x1F02, 0x1F04, 0x0144,
-   VS_HOLE_LIST2 | VS_HOLE_NEXT_OBJ | VS_HOLE_KIND_SCAN},
+   VS_HOLE_LIST2 | VS_HOLE_KIND_SCAN},
   {0x0262, 0x3DEC, 0x01D6, 0x1E22, 0xA8, 0x00, 0x027F, 0x1000, 0x47A4, 0, 0, 0, 0, 0, VS_HOLE_LIST2},
   {0x0315, 0x436C, 0x01DA, 0x1E24, 0xAC, 0xAE, 0x037F, 0x1800, 0x4880, 1, 1, 0, 0, 0, VS_HOLE_LIST2},
 };

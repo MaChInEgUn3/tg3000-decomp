@@ -3864,7 +3864,13 @@ CODE_81F5CC:
     lda.w $FAB6,x               ; $81F5E2
     sbc.w $019A                 ; $81F5E5
     bcc CODE_81F60B             ; $81F5E8
-    incbin !baserom:$F5EA..$F60B
+    sta.w $FAB6,x               ; $81F5EA
+    iny                         ; $81F5ED
+    ldx.w $1E6C                 ; $81F5EE
+    lda.w $FAB6,x               ; $81F5F1
+    sbc.w $019A                 ; $81F5F4
+    bcc CODE_81F60B             ; $81F5F7
+    incbin !baserom:$F5F9..$F60B
 CODE_81F60B:
     ldx.w $1E70                 ; $81F60B
     lda.w $1E6E                 ; $81F60E
@@ -3915,6 +3921,7 @@ vs_cars_tie:
     inc.b $3C                   ; $81F6BC
     lda.b $3C                   ; $81F6BE
     sta.b $14                   ; $81F6C0
+CODE_81F6C2:
     lda.w $FABB,y               ; $81F6C2
     sec                         ; $81F6C5
     sbc.w $FABB,x               ; $81F6C6
@@ -3933,7 +3940,8 @@ CODE_81F6D7:
     sbc.w $FAB5,x               ; $81F6DF
     cmp.w #$0100                ; $81F6E2
     bcs CODE_81F6EB             ; $81F6E5
-    incbin !baserom:$F6E7..$F6EB
+    dec.b $14                   ; $81F6E7
+    bne CODE_81F6C2             ; $81F6E9
 CODE_81F6EB:
     ply                         ; $81F6EB
     plx                         ; $81F6EC
