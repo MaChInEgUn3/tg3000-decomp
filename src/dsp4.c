@@ -233,6 +233,7 @@ void dsp4_list_open(void) {
   const bool sizes = dsp4_sp.sizes;  // ($0005 lasts past $0003)
   memset(&dsp4_sp, 0, sizeof dsp4_sp);
   dsp4_sp.sizes = sizes;
+  dsp4_sp.open = true;
   // dsp4-01u/01v: $0003 also sets the road's rounding: both words read 33 in each byte ($2121), the
   // second being where the chip counts lines 127 and 128's slivers (see dsp4_list_rounding)
   dsp4_round_set(0x2121, 0x2121);
@@ -369,6 +370,20 @@ void dsp4_objects_end(void) {
 
 void dsp4_high_table(uint16_t out[16]) {
   for(int i = 0; i < 16; i++) out[i] = (uint16_t)(dsp4_sp.high[2 * i] | dsp4_sp.high[2 * i + 1] << 8);
+  dsp4_sp.open = false;  // (dsp4-0e-1: the list ends: a $000E after it opens another)
+}
+
+// dsp4-0e-1: measured on the VS movie's firmware tape: 802 of its 845 view pairs ($000E, $0005, a
+// stream; $000E, a stream; $0006) agree, every answer and the high table; the 43 others are
+// dsp4-01x's pairs of lines (a part on an even line shown with its last two lines full).
+void dsp4_list_view(void) {
+  if(!dsp4_sp.open) {
+    const bool sizes = dsp4_sp.sizes;
+    memset(&dsp4_sp, 0, sizeof dsp4_sp);
+    dsp4_sp.sizes = sizes;
+    dsp4_sp.open = true;
+  }
+  memset(dsp4_sp.lines, 33 - 16, sizeof dsp4_sp.lines);  // (the counts as used: 16 left a line)
 }
 
 uint16_t dsp4_colour_blend(uint16_t towards, int16_t weight, uint16_t colour) {

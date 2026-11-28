@@ -6409,6 +6409,42 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The VS race's `$000E`: a half-screen view, 16 slivers a line (dsp4-0e-1, 2026-11-28)
+
+**A VS frame's sprite lists, per pair of views:** `$000E`, `$0005`, `$0009` with view 0's stream
+(its words: x `$00`-`$78`, y `$74`-`$DC`); `$000E`, `$0009` with view 1's (x `$88`-`$100`);
+`$0006`. Then the same for views 2-3 (y 4-`$6C`). The command list does not show the second
+`$000E`: it follows writes, not a read.
+
+**Measured off `vs_race`'s firmware tape (845 pairs), outputs only:**
+- `src/dsp4.c`'s race list, with `$000E` read as a fresh open: 7 pairs agree. As a continuation:
+  318.
+- A test op in `dsp4_sprite_native` (`K mask`) cleared parts of the state at each `$000E`. Where
+  the rest failed (509 of 527), the chip hid a part on a line the C counted 16 on.
+- **A budget of 16 slivers a line, afresh at each `$000E`,** with the entries and the high table
+  going on through the pair: 802 of 845. Each view is half the screen wide, and has half the
+  race's 33 less one.
+- Clearing the high table or the entries at the second `$000E` gives 12-24.
+- The 43 left: the chip shows a part (its mask, then its sprite) where the C stops after the mask.
+  The part is on an even line, with its last two lines at the limit: dsp4-01x's pairs of lines,
+  measured, not modelled.
+
+**`src/dsp4.c`:**
+- `dsp4_list_view()` is `$000E`: the lines' counts set to 17 used (16 left).
+- The first `$000E` after a `$0006`, or at power-on, opens a new list: the new `open` flag,
+  cleared by `dsp4_high_table`, set by `dsp4_list_open`.
+- The road's rounding a `$000E` leaves is not measured. A VS frame sends its `$0A` before its
+  roads.
+
+**Tools:**
+- `dsp4_sprite_native` has `V` (`$000E`) and the test op `K`.
+- `tools/dsp4_09_check.py` reads the VS lists too, from `$000E`, and reports them apart: 802 of 845
+  on `vs_race`. Race1 is unchanged, 553 of 583.
+
+**Next:** the VS race's C on it, `sprite_parts_stream_vs` and the other `_vs` copies, `vs_sprites`,
+`oam_high_load_vs`, `oam_high_load2`, with the harness's shadow following VS lists. That is the
+rest of the port's request A.
+
 ## The VS road `$0D` native: `$01` with its first row's `$28` split (dsp4-0d-1, 2026-11-28)
 
 **`$0D`, the VS race's road (`vs_road_project`, four views a frame), is `$01`.** Measured off

@@ -66,16 +66,18 @@ def lists(ws, starts=None):
         i += 1
         return ws[i - 1][0]
     while i < n:
-        if not (ws[i] == (3, 0) and i and ws[i - 1][1]):
+        if not (ws[i] in ((3, 0), (0x0E, 0)) and i and ws[i - 1][1]):  # (dsp4-0e-1: VS's $000E too)
             i += 1
             continue
         start = i
         i += 1
-        calls, reads = ['O'], []
+        calls, reads = ['O' if ws[start][0] == 3 else 'V'], []
         try:
             while True:
                 cmd = wr()
-                if cmd == 5:
+                if cmd == 0x0E:  # dsp4-0e-1: the VS race's next view
+                    calls.append('V')
+                elif cmd == 5:
                     calls.append('Z')
                 elif cmd == 0x0B:
                     x, y, a = wr(), wr(), wr()
@@ -145,18 +147,24 @@ def main():
     items = list(lists(ws))
     out = subprocess.run([NATIVE], input='\n'.join(c for c, r in items) + '\n', capture_output=True, text=True,
                          check=True).stdout.splitlines()
-    ok, kinds = 0, collections.Counter()
+    ok, kinds, vs, vsok = 0, collections.Counter(), 0, 0
     for (calls, reads), line in zip(items, out):
         got = [int(v, 16) for v in line.split()]
+        if calls.startswith('V'):  # (dsp4-0e-1: a VS view pair, counted apart)
+            vs += 1
+            vsok += got == reads
+            continue
         if got == reads:
             ok += 1
             continue
         k = next((j for j in range(min(len(got), len(reads))) if got[j] != reads[j]), min(len(got), len(reads)))
         kinds['differs' if k < min(len(got), len(reads)) else 'length'] += 1
-    print('sprite lists: %d, the native agrees on %d; %s' % (len(items), ok, dict(kinds)))
+    print('sprite lists: %d, the native agrees on %d; %s' % (len(items) - vs, ok, dict(kinds)))
+    if vs:
+        print('VS view pairs ($000E): %d, the native agrees on %d' % (vs, vsok))
     for why, k in CUTS.most_common():
         print('  not checked: %d, %s' % (k, why))
-    return 0 if items and ok == len(items) else 1
+    return 0 if items and ok == len(items) - vs and vsok == vs else 1
 
 
 if __name__ == '__main__':

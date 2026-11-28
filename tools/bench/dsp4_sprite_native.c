@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // dsp4-09l: src/dsp4.c's sprite list driven by a script, one list a line (tools/dsp4_09_check.py):
 //   O  $0003          Z  $0005          B x y attr  a $000B entry (prints its flag, and 2 words when shown)
+//   V  $000E (dsp4-0e-1: a VS view)       K mask  a test: clear parts of the list's state
 //   S w0..w6  $0009 and its words       L line  an empty slot     N w0..w6  a scenery object
 //   C w0..w8  a car (prints its answer)  T height attr  the car's last two words
 //   P w a b   a part (prints its entries' count, then theirs)     E  a list's end   X  the stream's end
@@ -30,6 +31,7 @@ int main(void) {
       switch(op) {
       case 'O': dsp4_list_open(); break;
       case 'Z': dsp4_list_sizes(); break;
+      case 'V': dsp4_list_view(); break;  // (dsp4-0e-1: $000E)
       case 'B': {
         uint16_t out[2];
         const uint16_t f = dsp4_list_sprite(v[0], v[1], v[2], out);
@@ -59,6 +61,18 @@ int main(void) {
         break;
       }
       case 'E': dsp4_objects_list_end(); break;
+      case 'K': {  // dsp4-0e-1 (a measurement): clear parts of the list's state, by a mask: 1 the
+        // lines' budget, 2 the high table, 4 the entry count, 8 the rounding left as a $0003's
+        Dsp4Sprites sp;
+        dsp4_sprites_get(&sp);
+        const unsigned mask = (unsigned)strtoul(strtok_r(NULL, " \t\r\n", &save), NULL, 16);
+        if(mask & 1) memset(sp.lines, 0, sizeof sp.lines);
+        if(mask & 2) memset(sp.high, 0, sizeof sp.high);
+        if(mask & 4) sp.entries = 0;
+        if(mask & 8) memset(sp.lines, 17, sizeof sp.lines);  // a budget of 16 a line (33 less 17)
+        dsp4_sprites_set(&sp);
+        break;
+      }
       case 'X':
         dsp4_objects_end();
         if(getenv("DSP4_SPRITE_LINES")) {  // dsp4-01v: the slivers counted per screen line, at the end

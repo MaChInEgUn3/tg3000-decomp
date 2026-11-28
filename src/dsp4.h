@@ -131,10 +131,16 @@ typedef struct {
   int16_t x0, y0;       // the object's screen place before the part's offsets (b, a)
   uint16_t attr;        // its attribute word
   uint16_t h;           // its height factor (a car's height word scales by it)
+  bool open;            // dsp4-0e-1: a list is open ($0003 or $000E), until its $0006
 } Dsp4Sprites;
 void dsp4_sprites_get(Dsp4Sprites* out);
 void dsp4_sprites_set(const Dsp4Sprites* in);
 void dsp4_list_open(void);    // $0003
+// dsp4-0e-1: $000E, the VS race's view: each of its views (half the screen wide) has 16 slivers a
+// line, its lines' counts starting afresh; the list (its entries, the high table) goes on from the
+// view before, and the first $000E after a $0006 opens a new one. (The road's rounding it leaves is
+// not measured: a VS frame sends its $0A before its roads.)
+void dsp4_list_view(void);
 void dsp4_list_sizes(void);   // $0005
 // $000B in the list: dsp4_sprite's answer, the entry counted in the list when shown
 uint16_t dsp4_list_sprite(uint16_t x, uint16_t y, uint16_t attr, uint16_t out[2]);
