@@ -18,6 +18,7 @@
 // 6) and the windows $08 (45 header words and one answer word, rows of 9, after $8000 one more
 // word). Any other one (the sprite streams, $06/$09/$0F, the road's edge $8001) leaves it lost:
 // it answers 0 and takes no more commands until reset (or dsp4_chip_abort). Idle, it reads $FF.
+// It follows the sprite list's writes all the same (dsp4-01w: `follow`), for the rounding.
 //
 // The road's rounding is the chip's own (edge2, edge3), not src/dsp4.c's global: each native
 // call runs with the chip's copy swapped into the global and the global put back after. Only
@@ -46,6 +47,17 @@ typedef struct {
   unsigned long unmodelled;  // answers the native code does not model (dsp4_chip_unmodelled)
   Dsp4Road road;
   Dsp4Window window;
+  // dsp4-01w: the sprite list followed from the game's writes alone (its answers are the other
+  // chip's), on the chip's own Dsp4Sprites, swapped in and out of src/dsp4.c's as the rounding
+  // is: a $0003 opens it; at its stream's end the road's second rounding word becomes lines
+  // 127/128's budget left (dsp4-01v). Kept by dsp4_chip_abort.
+  struct {
+    uint8_t state, kind, got, need, lists;
+    bool half;
+    uint8_t lo;
+    uint16_t args[9];
+    Dsp4Sprites list;
+  } follow;
   uint8_t streamOut[DSP4_CHIP_OUT_MAX];
 } Dsp4Chip;
 
@@ -61,6 +73,9 @@ bool dsp4_chip_lost(const Dsp4Chip* chip);
 bool dsp4_chip_idle(const Dsp4Chip* chip);
 unsigned dsp4_chip_pending(const Dsp4Chip* chip);
 void dsp4_chip_abort(Dsp4Chip* chip);
+// dsp4_chip_abort, then a command word whose low byte was already written (dsp4-01w: the list
+// followed sees each byte once)
+void dsp4_chip_start(Dsp4Chip* chip, uint8_t lo, uint8_t hi);
 
 // How many answers so far the native code does not model (it gives one anyway): a $01 or $07
 // row whose segment (the previous row's line less this one's) is 88 lines or more; an $08 row

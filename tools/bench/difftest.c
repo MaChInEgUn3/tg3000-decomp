@@ -1376,10 +1376,10 @@ static void shWord(Shadow* sh, uint16_t w, bool read) {
       shSwap(sh, false);
       if(sh == &shOrig) {  // dsp4-01v: the original's list sets the tracker's rounding, not the C's
         dsp4_round_set(r2, r3);
-        // (the firmware's road reads lines 127/128's budget left; the bench's chip model, without
-        // the list, keeps the $0003's $2121, and the tracker follows the chip that answers)
+        // (the road reads lines 127/128's budget left: the firmware, and the bench's chip model
+        // following the list, dsp4-01w)
         if(sh->tainted) trackKnown = false;
-        else if(dsp4_bridge_firmware_on()) trackE3 = (int16_t)left;
+        else trackE3 = (int16_t)left;
       }
       sh->state = SH_IDLE;
     } else if(w == 0) {

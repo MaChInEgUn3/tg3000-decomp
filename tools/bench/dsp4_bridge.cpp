@@ -145,9 +145,10 @@ static void routeAnswer(unsigned long before) {
 // does not have, or a multiply skipped)
 static void routeStart(uint8_t val) {
 	routeClear();
-	dsp4_chip_abort(&nat);
-	natWrite(route.lastWrite);
-	natWrite(val);
+	int16_t e2, e3;  // (as natWrite: the global rounding put back)
+	dsp4_round_get(&e2, &e3);
+	dsp4_chip_start(&nat, route.lastWrite, val);  // (dsp4-01w: the low byte was written already)
+	dsp4_round_set(e2, e3);
 	const int cmd = chip.m.command & 31;
 	if(isRouted(cmd) && !dsp4_chip_lost(&nat)) route.cmd = cmd;
 }

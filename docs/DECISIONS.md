@@ -6409,6 +6409,40 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The bench's chip follows the sprite list (dsp4-01w, 2026-11-28)
+
+**The bench's chip model now follows the race's sprite list for the road's rounding.** dsp4-01v
+put the rule in `src/dsp4.c`. The bench's chip model (`tools/bench/dsp4_chip.c`, which answers the
+roads for the bridge) had no list, so after a list it kept `$2121`.
+- **The follower.** `Dsp4Chip.follow` follows the list from the game's writes alone. Its answers
+  stay the clean-room chip's, so their lengths do not matter. It runs on its own `Dsp4Sprites`,
+  swapped in and out of `src/dsp4.c`'s with the rounding put back, as the chip model does with the
+  rounding, so the harness's C shadow and the native sites never see it.
+  - A `$0003` command word opens it: the chip model's own framing, not a 3 inside data.
+  - It then takes `$0005`, `$000B` and 3 words, `$0009` and the stream (slots, scenery, cars and
+    their tails, the parts), multiplies, and `$0006`, which ends it, like any other command.
+  - At the stream's end it sets the chip model's second rounding word to lines 127/128's budget
+    left. It lasts across `dsp4_chip_abort`.
+- **The bridge.** At each command start it replays the word's low byte into the chip model. It
+  now does that through `dsp4_chip_start`, which replays it to the framing alone, so the follower
+  sees each byte once.
+- **The harness.** The tracker now takes the list's value on the bench too, not only with the
+  firmware.
+- **Result:** the bench's race1 road answers equal the firmware's in all 585 runs (was 2
+  different). On the 60k movie, the bench's first answer different from the firmware's moved from
+  record 32,890 (a road) to 327,030 (`$82:DF19`, a `$09` part's flag). Before the game's path
+  parts (firmware record 2,746,462), every differing answer is a `$09` part's: 148 answer runs at
+  `$82:DE30` and `$82:DF19`, answered by the bench's clean-room chip. No road, `$0A`, `$07` or `$08`
+  answer differs.
+- **The path still parts at the same place.** That is `player_car_frame`'s multiply at `$83:ED04`,
+  the speed (record `$16`): 3 on the firmware, 2 on the bench. The per-frame WRAM hashes of the
+  bench and the firmware run first differ at frame 8,232. There a save state of each shows one
+  sprite entry more in the firmware's buffer (`$1898-`) and the buffer's pointer `$0189`/`$018B` at
+  `$0344` against `$0340`, besides the stack. So the first difference in the game's state is a
+  sprite answer. Whether it alone leads to the speed is not shown yet. Next: answer `$09` on the
+  bench from `src/dsp4.c`'s list (it differs from the firmware on fewer lists?) or find the
+  part answers' remaining rule, then follow the WRAM difference from frame 8,232 to the speed.
+
 ## The road's rounding after a sprite list: lines 127 and 128's budget (dsp4-01v, 2026-11-28)
 
 **After a `$09` stream, the road's second rounding word is the sliver budget left on screen lines
@@ -6435,7 +6469,7 @@ put it. Measured on the firmware, outputs only:
 **Wired:**
 - `src/dsp4.c`: `dsp4_list_open` sets `$2121` in both words. `dsp4_objects_end` sets the second
   word to `dsp4_list_rounding()`.
-- The harness's tracker follows the chip that answers. With the firmware it takes the same value
+- The harness's tracker follows the chip that answers (until dsp4-01w). With the firmware it takes the same value
   from `shOrig`'s list at the stream's end, restoring `src/dsp4.c`'s rounding, which is the C's;
   on the bench it keeps `$2121`, as the bench's chip model does. A tainted list makes the rounding
   unknown. (A first gate that took the list's value on the bench too failed `road_rows_project`

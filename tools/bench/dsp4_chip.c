@@ -83,10 +83,143 @@ void dsp4_chip_reset(Dsp4Chip* c) {
 void dsp4_chip_abort(Dsp4Chip* c) {
   const int16_t e2 = c->edge2, e3 = c->edge3;
   const unsigned long u = c->unmodelled;
+  static Dsp4Chip keep;  // (the list followed lasts across commands: dsp4-01w)
+  keep.follow = c->follow;
   dsp4_chip_reset(c);
   c->edge2 = e2;
   c->edge3 = e3;
   c->unmodelled = u;
+  c->follow = keep.follow;
+}
+
+// ---- dsp4-01w: the sprite list, followed from the writes: its words as the race's list sends
+// them ($0005, $000B and 3 words, $0009 and its stream, multiplies, $0006 the end), on the chip's
+// own list. Anything else ends the following. ----
+enum { FL_OFF, FL_CMD, FL_ARGS, FL_OBJ0, FL_OBJ1, FL_HEAD, FL_TAIL, FL_PART };
+static Dsp4Sprites flGlobal;
+static int16_t flRound[2];
+static void dsp4_follow_enter(Dsp4Chip* c) {
+  dsp4_sprites_get(&flGlobal);
+  dsp4_round_get(&flRound[0], &flRound[1]);
+  dsp4_sprites_set(&c->follow.list);
+}
+static void dsp4_follow_leave(Dsp4Chip* c) {
+  dsp4_sprites_get(&c->follow.list);
+  dsp4_sprites_set(&flGlobal);
+  dsp4_round_set(flRound[0], flRound[1]);
+}
+static void dsp4_follow_open(Dsp4Chip* c) {
+  dsp4_follow_enter(c);
+  dsp4_list_open();
+  dsp4_follow_leave(c);
+  c->follow.state = FL_CMD;
+  c->follow.half = false;
+}
+static void dsp4_follow_word(Dsp4Chip* c, uint16_t w) {
+  __typeof__(c->follow)* f = &c->follow;
+  switch(f->state) {
+  case FL_CMD:
+    f->got = 0;
+    f->kind = (uint8_t)w;
+    if(w == 0x0003) dsp4_follow_open(c);
+    else if(w == 0x0005) {
+      dsp4_follow_enter(c);
+      dsp4_list_sizes();
+      dsp4_follow_leave(c);
+    } else if(w == 0x000B || w == 0x0009 || w == 0x0000) {
+      f->need = w == 0x000B ? 3 : w == 0x0009 ? 7 : 2;
+      f->state = FL_ARGS;
+    } else f->state = FL_OFF;  // $0006 (the list's end) or a command not the list's
+    return;
+  case FL_ARGS:
+    f->args[f->got++] = w;
+    if(f->got < f->need) return;
+    f->state = FL_CMD;
+    if(f->kind == 0x0B) {
+      uint16_t out[2];
+      dsp4_follow_enter(c);
+      (void)dsp4_list_sprite(f->args[0], f->args[1], f->args[2], out);
+      dsp4_follow_leave(c);
+    } else if(f->kind == 0x09) {
+      dsp4_follow_enter(c);
+      dsp4_objects_begin(f->args);
+      dsp4_follow_leave(c);
+      f->state = FL_OBJ0;
+    }
+    return;
+  case FL_OBJ0:
+    f->args[0] = w;
+    f->state = FL_OBJ1;
+    return;
+  case FL_OBJ1:
+    f->args[1] = w;
+    if(f->args[0] == 0 && w == 0x8000) {
+      dsp4_follow_enter(c);
+      dsp4_objects_end();
+      const uint16_t left = dsp4_list_rounding();
+      dsp4_follow_leave(c);
+      c->edge3 = (int16_t)left;  // (the road reads lines 127/128's budget left)
+      f->state = FL_CMD;
+    } else if(w == 0) {
+      dsp4_follow_enter(c);
+      dsp4_objects_slot(f->args[0]);
+      dsp4_follow_leave(c);
+      f->state = FL_OBJ0;
+    } else {
+      f->kind = (w & 0x8000) ? 2 : 1;
+      f->need = f->kind == 2 ? 9 : 7;
+      f->got = 2;
+      f->state = FL_HEAD;
+    }
+    return;
+  case FL_HEAD:
+    f->args[f->got++] = w;
+    if(f->got < f->need) return;
+    f->lists = 0;
+    f->got = 0;
+    dsp4_follow_enter(c);
+    if(f->kind == 2) (void)dsp4_objects_car(f->args);
+    else dsp4_objects_scenery(f->args);
+    dsp4_follow_leave(c);
+    f->state = f->kind == 2 ? FL_TAIL : FL_PART;
+    return;
+  case FL_TAIL:
+    f->args[f->got++] = w;
+    if(f->got < 2) return;
+    dsp4_follow_enter(c);
+    dsp4_objects_car_tail(f->args[0], f->args[1]);
+    dsp4_follow_leave(c);
+    f->got = 0;
+    f->state = FL_PART;
+    return;
+  case FL_PART:
+    if(f->got == 0 && w == 0) {
+      dsp4_follow_enter(c);
+      dsp4_objects_list_end();
+      dsp4_follow_leave(c);
+      if(++f->lists == 2) f->state = FL_OBJ0;
+      return;
+    }
+    f->args[f->got++] = w;
+    if(f->got < 3) return;
+    {
+      uint16_t out[2][2];
+      dsp4_follow_enter(c);
+      (void)dsp4_objects_part(f->args[0], f->args[1], f->args[2], out);
+      dsp4_follow_leave(c);
+    }
+    f->got = 0;
+    return;
+  }
+}
+static void dsp4_follow_byte(Dsp4Chip* c, uint8_t v) {
+  if(!c->follow.half) {
+    c->follow.lo = v;
+    c->follow.half = true;
+    return;
+  }
+  c->follow.half = false;
+  dsp4_follow_word(c, (uint16_t)(c->follow.lo | v << 8));
 }
 
 // ---- the streams: phase 5 takes the header, phase 6 a row's words (its first word $8000
@@ -236,7 +369,26 @@ unsigned dsp4_chip_pending(const Dsp4Chip* c) {
   return (unsigned)(c->outSize - c->count);
 }
 
+static void dsp4_chip_step(Dsp4Chip* c, uint8_t v);
 void dsp4_chip_write(Dsp4Chip* c, uint8_t v) {
+  // dsp4-01w: the list follows the writes; a $0003 command word (the chip's own framing: not a
+  // 3 inside data) opens it
+  const bool following = c->follow.state != FL_OFF;
+  const uint8_t phase = c->phase;
+  dsp4_chip_step(c, v);
+  if(following) dsp4_follow_byte(c, v);
+  else if(phase == 1 && c->phase == 2 && c->cmd == 0x03) dsp4_follow_open(c);
+}
+
+// A command starting on the other chip: dropped to idle, its word's low byte (already written,
+// so already followed) replayed to the framing alone, then its high byte written
+void dsp4_chip_start(Dsp4Chip* c, uint8_t lo, uint8_t hi) {
+  dsp4_chip_abort(c);
+  dsp4_chip_step(c, lo);
+  dsp4_chip_write(c, hi);
+}
+
+static void dsp4_chip_step(Dsp4Chip* c, uint8_t v) {
   switch(c->phase) {
   case 0:
     c->cmd = v;
