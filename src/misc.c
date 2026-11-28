@@ -5815,6 +5815,383 @@ void road_rows_build(void) {
   wr16(0x0237, (uint16_t)-(uint16_t)((uint16_t)(s + (uint16_t)(p >> 16)) + 9));
 }
 
+// map-fw-15: mode 1's road rows for view 2 ($82:E503), drafted by a delegated agent from the listing
+// and road_rows_build; checked by the differential test
+// ---- draft: mode 1's road rows for view 2 ($82:E503-$82:EA48), to append to src/misc.c ----
+
+// One road object spawned for view 2 (road_object_spawn's copy at $82:E896/$82:E8FF): its
+// priority word $017F (the race's $007F) and $1000 added to its lane place (the race adds none).
+static uint16_t road_object_spawn_view2(uint32_t x, uint16_t y, uint16_t kind2, uint32_t table, uint32_t field, uint16_t base) {
+  const uint32_t t = bus_rd16(table + kind2);
+  const uint32_t s = y;
+  wr16(0xF533 + s, bus_rd16(0x860000 + field + t));
+  wr16(0xF433 + s, bus_rd16(0x860002 + field + t));
+  wr16(0xF733 + s, 0x017F);
+  wr16(0xF533 + s, (uint16_t)(rd16(0x6591 + (uint32_t)bus_rd16(0x860000 + t)) + rd16(0xF533 + s)));
+  const uint16_t lane = rd8(0x5B93 + x);
+  wr16(0xF633 + s, (uint16_t)((lane << 5) + 0x1000));  // the LSRs' carry is 0 (lane << 8's low bits)
+  wr16(0xF933 + s, (uint16_t)(lane << 1));
+  wr16(0xF833 + s, (uint16_t)((rd8(0x5B94 + x) << 1) + base));
+  func_85CDAF(y);
+  return (uint16_t)((y + 2) & 0x00FF);
+}
+
+// TG3000_ROUTINE($82:E503) mode1_road_rows_view2
+// road_rows_build for mode 1's bottom view: player 2's record ($02B3..), its tables ($406C..
+// $45AC, the race's + $580), its cursors D+$A4/$A6, $1EE8/$1EE2/$1EE4 for $1EE6/$1EDE/$1EE0,
+// $1E68 for $1E66, $1E20 for $1E1E, the handler table $82:826E (= $819E + 2 * $68); the road kind's $0A check absent.
+void mode1_road_rows_view2(void) {
+  // the road's sideways place $01D2 over the rows crossed ($7E:406E, by DSP-4 products)
+  uint32_t x = (uint16_t)((uint16_t)(rd16(0x02F1) + rd16(0x1EE8)) << 1) & 0x003E;
+  uint16_t crossed = (uint16_t)(rd16(0x02D9) - rd16(0x02F1));
+  if(crossed != 0) {
+    const uint16_t back = (uint16_t)(0 - rd16(0x02EF));
+    uint32_t p = (uint32_t)dsp4_multiply((int16_t)((back >> 8) & 0x00FF), (int16_t)rd16(0x406E + x));
+    wr16(DP + 0x14, (uint16_t)((p << 8) & 0xFF00));
+    wr16(DP + 0x16, (uint16_t)((p >> 8) & 0x00FF));
+    uint16_t a = (uint16_t)(p >> 8);
+    wr16(0x01D2, a);
+    x += 2;
+    if(--crossed != 0) {
+      uint32_t c = rd16(0x02EF) == 0;  // the carry of the SBC above
+      do {
+        const uint32_t sum = (uint32_t)a + rd16(0x406E + x) + c;
+        a = (uint16_t)sum;
+        c = sum >> 16;
+        x += 2;
+      } while(--crossed != 0);
+      wr16(0x01D2, a);
+    }
+    p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)((rd16(0x02D7) & 0xFF00) >> 1), (int16_t)(uint16_t)(rd16(0x406E + x) << 1));
+    wr16(0x01D2, (uint16_t)((uint16_t)(p >> 16) + rd16(0x01D2)));
+  } else {
+    const uint32_t p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)((uint16_t)((rd16(0x02D7) & 0xFF00) - rd16(0x02EF)) >> 1),
+                                               (int16_t)(uint16_t)(rd16(0x406E + x) << 1));
+    wr16(0x01D2, (uint16_t)(p >> 16));
+  }
+  uint16_t row = (uint16_t)(rd16(0x02F1) + 0x0020 + rd16(0x1EE8));
+  if(row >= rd16(0x019A)) row = (uint16_t)(row - rd16(0x019A));
+  wr16(DP + 0x16, row);
+  wr16(0x02EF, (uint16_t)(rd16(0x02D7) & 0xFF00));
+  const uint16_t rows = (uint16_t)(rd16(0x02D9) - rd16(0x02F1));
+  if(rows != 0) {
+    wr16(DP + 0x14, rows);
+    wr16(0x02F3, (uint16_t)(rows + rd16(0x02F3)));
+    wr16(DP + 0x22, rd16(0x1EE2));
+    x = (uint16_t)(rd16(0x02F1) << 1) & 0x003E;
+    wr16(0x1F02, (uint16_t)(rd16(0x43EE + x) - rd16(0x43EC + x)));
+    wr16(0x1F04, (uint16_t)(rd16(0x436E + x) - rd16(0x436C + x)));
+    // each new row of the road (D+$14 of them), at row D+$16
+    do {
+      if(rd16(DP + 0x16) >= rd16(DP + 0x22)) {  // the armed jump: the rows past it
+        wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + rd16(0x1EE4)));
+        wr16(DP + 0x22, 0x7FFF);
+      }
+      const uint16_t d16 = rd16(DP + 0x16);
+      wr16(DP + 0x18, (uint16_t)((uint16_t)dsp4_multiply((int16_t)((uint16_t)(d16 << 2) >> 8), 0x000A) + rd16(DP + 0x98)));
+      const uint32_t entry = rd16(DP + 0x18);
+      const uint32_t y = (uint16_t)(d16 << 1) & 0x003E;
+      wr16(DP + 0x1A, (uint16_t)y);
+      wr16(DP + 0x1C, (uint16_t)(d16 & 0x003E));
+      const uint32_t c16 = d16 >> 15;  // the ASL's carry
+      uint32_t at = (uint16_t)(rd16(DP + 0x1C) + bus_rd16(0x840000 + entry) + c16);
+      wr16(0x406C + y, bus_rd16(0x850000 + at));
+      wr16(0x40AC + y, bus_rd16(0x850000 + at));
+      at = (uint16_t)(rd16(DP + 0x1C) + bus_rd16(0x840002 + entry));
+      const uint16_t up = (uint16_t)(bus_rd16(0x850000 + at) - rd16(0x1E20));
+      wr16(0x40EC + y, up);
+      wr16(0x412C + y, up);
+      if((y & 0x0006) == 0x0006) wr16(0x1E20, bus_rd16(0x850000 + at));
+      uint16_t a = (y & 0x0002) ? (uint16_t)(rd16(DP + 0x1C) | 0x0001) : rd16(DP + 0x1C);
+      a = (uint16_t)(a << 1);
+      if(!(a & 0x0040)) at = (uint16_t)(a + bus_rd16(0x840006 + entry));
+      else at = (uint16_t)((a & 0x003F) + bus_rd16(0x840008 + entry));
+      wr16(0x426C + y, rd16(0x5391 + at));
+      wr16(0x42AC + y, rd16(0x5391 + at));
+      // the list at $85:(+4): its first pair's limit reaches the row (the next pairs, $E6DB-$E6EF,
+      // are not in the listing)
+      const uint32_t list = bus_rd16(0x840004 + entry);
+      const uint16_t v = bus_rd16(0x850000 + list);
+      if(bus_rd16(0x850002 + list) < rd16(DP + 0x1A))
+        tg3000_unported("$82:E6DB: mode 1's road rows (view 2): a row list's second pair");
+      wr16(0x416C + y, v);
+      wr16(0x41AC + y, v);
+      wr16(0x42EC + y, 0);
+      wr16(0x432C + y, 0);
+      uint32_t seg = (uint16_t)(rd16(DP + 0x9C) + rd16(DP + 0xA6));
+      if(rd16(DP + 0x16) < bus_rd16(0x840000 + seg)) {  // before the segment
+        if((uint16_t)(rd16(DP + 0x16) + 1) == rd16(DP + 0x22) && (rd16(0x1E68) & 0x8000)) {
+          wr16(0x42EC + y, 0x8002);
+          wr16(0x432C + y, 0x8002);
+        }
+        const uint16_t edge = (uint16_t)(((rd16(DP + 0x16) & 0x0007) << 3) + rd16(0x1F0C));
+        wr16(0x456C + y, edge);
+        wr16(0x45AC + y, edge);
+        goto flat;
+      }
+      // (map-fw-15: a row in a segment never runs in mode 1: every segment table in the ROM has a
+      // negative curve within 8 segments, and this copy has no code for one ($82:E7D4). The
+      // drafted code below is unreachable, kept as the listing's reading.)
+      tg3000_unported("$82:E729: mode 1's road rows (view 2): a row in a segment (never run)");
+      uint16_t diff = (uint16_t)(rd16(DP + 0x16) - bus_rd16(0x840000 + seg));
+      while(diff >= 0x0040) {  // past the segment's end: the next ones
+        const uint16_t f = (uint16_t)(0x0008 | rd16(0x42EC + y));
+        wr16(0x42EC + y, f);
+        wr16(0x432C + y, f);
+        wr16(0x456C + y, rd16(0x426A + y));
+        wr16(0x45AC + y, rd16(0x426A + y));
+        wr16(DP + 0xA6, (uint16_t)(rd16(DP + 0xA6) + 0x0014));
+        if(!(rd16(0x1E68) & 0x8000)) {
+          wr16(0x1EE8, bus_rd16(0x840010 + seg));
+          wr16(DP + 0x16, (uint16_t)(rd16(0x1EE8) + rd16(DP + 0x16)));
+        }
+        seg = (uint16_t)(rd16(DP + 0x9C) + rd16(DP + 0xA6));
+        if(rd16(DP + 0x16) < bus_rd16(0x840000 + seg)) goto flat;
+        diff = (uint16_t)(rd16(DP + 0x16) - bus_rd16(0x840000 + seg));
+      }
+      if(diff == 0x003E && (rd16(0x1E68) & 0x8000)) {
+        wr16(0x42EC + y, 0x8001);
+        wr16(0x432C + y, 0x8001);
+      }
+      {
+        const uint16_t d1e = (uint16_t)(diff << 1);
+        wr16(DP + 0x1E, d1e);
+        wr16(DP + 0x20, (uint16_t)seg);
+        at = (uint16_t)(d1e + bus_rd16(0x840004 + seg));
+        wr16(0x436C + y, bus_rd16(0x850000 + at));
+        wr16(0x43AC + y, bus_rd16(0x850000 + at));
+        at = (uint16_t)(d1e + bus_rd16(0x840006 + seg));
+        wr16(0x43EC + y, bus_rd16(0x850000 + at));
+        wr16(0x442C + y, bus_rd16(0x850000 + at));
+        // $E7B4: JMP ($E7B7,x), the shape's handler; only $E7CF (the curve's sign) is in the listing
+        if(bus_rd16(0x82E7B7 + (uint32_t)bus_rd16(0x84000A + seg)) != 0xE7CF)
+          tg3000_unported("$82:E7B4: mode 1's road rows (view 2): a flat shape (its handler not in the listing)");
+        if(rd16(0x436C + y) & 0x8000)
+          tg3000_unported("$82:E7D4: mode 1's road rows (view 2): a negative curve (its edges by the sign)");
+        {
+          const uint16_t e = (uint16_t)(rd16(0x436C + y) >> 1);
+          wr16(0x44EC + y, e);
+          wr16(0x452C + y, e);
+          wr16(0x41EC + y, 0xC001);
+          wr16(0x422C + y, 0xC001);
+        }
+        uint32_t s2 = rd16(DP + 0x20);
+        uint16_t b = d1e;
+        if(b >= 0x0040) {
+          b = (uint16_t)(b - 0x0040);
+          s2 += 2;
+        }
+        at = (uint16_t)(b + bus_rd16(0x84000C + s2));
+        wr16(0x456C + y, rd16(0x5391 + at));
+        wr16(0x45AC + y, rd16(0x5391 + at));
+        goto event;
+      }
+    flat:  // $E82B: no curve, the edges at the events' places
+      wr16(0x436C + y, 0);
+      wr16(0x43AC + y, 0);
+      wr16(0x43EC + y, 0);
+      wr16(0x442C + y, 0);
+      wr16(0x41EC + y, rd16(0x1F12));
+      wr16(0x422C + y, rd16(0x1F12));
+      wr16(0x44EC + y, rd16(0x1F14));
+      wr16(0x452C + y, rd16(0x1F14));
+    event: {
+        const uint16_t obj = (uint16_t)(rd16(DP + 0x16) << 2);
+        const uint16_t kind = rd8(0x8CB4 + (uint32_t)obj);
+        // JSR ($826E,x): $82:826E = $82:819E + 2 * $68, so track_event_run's table at kind + $68
+        // (map-fw-15: mode 1's own table has kinds 0-$68; past it the original jumps through bytes
+        // that are not a table: a trap)
+        if(kind > 0x68) tg3000_unported("$82:E85D: mode 1's road rows (view 2): a track event kind past its table ($68)");
+        if(kind != 0) track_event_run((uint16_t)(kind + 0x68), obj);
+      }
+      wr16(DP + 0x16, (uint16_t)(rd16(DP + 0x16) + 1));
+      if(rd16(DP + 0x16) == rd16(0x019A)) {
+        wr16(DP + 0x16, 0);
+        wr16(DP + 0xA6, 0);
+      }
+      wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 1));
+    } while(rd16(DP + 0x14) != 0);
+    // the road objects whose place came up, and the lap's wrap
+    for(;;) {
+      uint32_t ox = rd16(DP + 0xA4);
+      if(rd16(0x02D9) >= rd16(0x5B91 + ox)) {
+        uint16_t slot = rd16(0x0100);
+        do {
+          const uint16_t v = rd16(0x5B94 + ox);
+          if(v == 0) {
+            tg3000_unported("$82:E8FA: mode 1's road rows (view 2): the stream's lane-only entry (kind 0)");
+          } else if(v & 0xFF00) {
+            slot = road_object_spawn_view2(ox, slot, (uint16_t)(v << 1), 0x86AC36, 0x22, 0x4A38);
+          } else {
+            slot = road_object_spawn_view2(ox, slot, (uint16_t)(v << 1), 0x86AE36, 0x1E, 0x46C8);
+          }
+          ox += 5;
+          wr16(DP + 0xA4, (uint16_t)ox);
+        } while(rd16(0x02D9) >= rd16(0x5B91 + ox));
+        wr16(0x0100, slot);
+      }
+      if(rd16(0x02D9) < rd16(0x019A)) break;
+      wr16(0x02D9, (uint16_t)(rd16(0x02D9) - rd16(0x019A)));
+      wr16(0x02F1, rd16(0x02D9));
+      wr16(DP + 0xA4, 0);
+      wr16(0x1E62, 0);
+      wr16(0x1E64, 0);
+      wr16(0x46C8, 0x0140);
+    }
+    wr16(0x02F1, rd16(0x02D9));
+    // the road's kind at player 2 ($0313): the segment it is in (no $0A check, unlike the race)
+    wr16(0x0313, 0);
+    for(uint32_t s = rd16(DP + 0x9C);; s = (uint16_t)(s + 0x0014)) {
+      const uint16_t ahead = (uint16_t)(rd16(0x02D9) + 2);
+      const uint16_t start = bus_rd16(0x840000 + s);
+      if(ahead < start) break;
+      // (map-fw-15: the player in a segment: never run in mode 1, as the rows in one, $82:E729)
+      tg3000_unported("$82:E9C0: mode 1's road rows (view 2): the player in a segment (never run)");
+      const uint16_t into = (uint16_t)(ahead - start);
+      if(into >= 0x0041) continue;
+      wr16(0x0313, bus_rd16(0x840002 + s));
+      break;
+    }
+    wr16(0x0144, (uint16_t)(rd16(0x0313) & 0x00FF));
+  }
+  // $E9DD: the road's tilt $02EA from the heights a row ahead and three behind
+  uint16_t a = (uint16_t)(rd16(0x02D9) + 1);
+  if(a >= rd16(0x019A)) a = (uint16_t)(a - rd16(0x019A));
+  wr16(DP + 0x14, func_82EA49(a));
+  a = rd16(0x02D9);
+  if(a < 3) a = (uint16_t)(a - 3 + rd16(0x019A));
+  else a = (uint16_t)(a - 3);
+  wr16(DP + 0x16, func_82EA49(a));
+  const uint16_t d16 = rd16(DP + 0x16);
+  const uint32_t p = (uint32_t)dsp4_multiply((int16_t)(uint16_t)(rd16(DP + 0x14) - d16), (int16_t)(uint16_t)((rd16(0x02D8) + 0x0100) & 0x03FF));
+  const uint16_t top = (d16 & 0x8000) ? 3 : 0;
+  const uint16_t r = (uint16_t)((uint16_t)(d16 << 2) | top);
+  uint16_t s = (uint16_t)(((r >> 8) | (r << 8)) & 0x03FF);
+  if(s & 0x0080) s |= 0xFF00;
+  wr16(0x02EA, (uint16_t)-(uint16_t)((uint16_t)(s + (uint16_t)(p >> 16)) + 9));
+}
+
+/* ---- notes for the port of $82:E503 (mode1_road_rows_view2) ----
+
+Every operand difference, address by address (race road_rows_build: insn operand -> E503: operand;
+branch/label-only and JMP-target-only lines left out), then the same grouped:
+  DFB1 lda.w $023E -> E507 $02F1;  DFB5 adc.w $1EE6 -> E50B $1EE8;  DFBD lda.w $0226 -> E513 $02D9
+  DFC1 sbc.w $023E -> E517 $02F1;  DFCF sbc.w $023C -> E525 $02EF;  DFDA lda.w $3AEE,x -> E530 $406E,x
+  DFFD sta.w $01CE -> E553 $01D2;  E005 adc.w $3AEE,x -> E55B $406E,x;  E00D sta.w $01CE -> E563 $01D2
+  E017 lda.w $0224 -> E56D $02D7;  E022 lda.w $3AEE,x -> E578 $406E,x;  E037 adc.w $01CE -> E58D $01D2
+  E03A sta.w $01CE -> E590 $01D2;  E046 lda.w $0224 -> E59C $02D7;  E04D sbc.w $023C -> E5A3 $02EF
+  E055 lda.w $3AEE,x -> E5AB $406E,x;  E066 sta.w $01CE -> E5BC $01D2;  E069 lda.w $023E -> E5BF $02F1
+  E071 adc.w $1EE6 -> E5C7 $1EE8;  E07E lda.w $0224 -> E5D4 $02D7;  E084 sta.w $023C -> E5DA $02EF
+  E087 lda.w $0226 -> E5DD $02D9;  E08B sbc.w $023E -> E5E1 $02F1;  E096 adc.w $0240 -> E5EC $02F3
+  E099 sta.w $0240 -> E5EF $02F3;  E09C lda.w $1EDE -> E5F2 $1EE2;  E0A1 lda.w $023E -> E5F7 $02F1
+  E0A9 lda.l $7E3E6E,x -> E5FF $7E43EE,x;  E0AE sbc.l $7E3E6C,x -> E604 $7E43EC,x;  E0B2 sta.w $1EF8 -> E608 $1F02
+  E0B5 lda.l $7E3DEE,x -> E60B $7E436E,x;  E0BA sbc.l $7E3DEC,x -> E610 $7E436C,x;  E0BE sta.w $1EFA -> E614 $1F04
+  E0C8 adc.w $1EE0 -> E61E $1EE4;  E114 sta.w $3AEC,y -> E66A $406C,y;  E117 sta.w $3B2C,y -> E66D $40AC,y
+  E129 sbc.w $1E1E -> E67F $1E20;  E12C sta.w $3B6C,y -> E682 $40EC,y;  E12F sta.w $3BAC,y -> E685 $412C,y
+  E13F sta.w $1E1E -> E695 $1E20;  E16B sta.w $3CEC,y -> E6C1 $426C,y;  E16E sta.w $3D2C,y -> E6C4 $42AC,y
+  E19D sta.w $3BEC,y -> E6F3 $416C,y;  E1A0 sta.w $3C2C,y -> E6F6 $41AC,y;  E1A6 sta.w $3D6C,y -> E6FC $42EC,y
+  E1A9 sta.w $3DAC,y -> E6FF $432C,y;  E1AF adc.b $A2 -> E705 $A6;  E1C2 bit.w $1E66 -> E718 $1E68
+  E1CA sta.w $3D6C,y -> E720 $42EC,y;  E1CD sta.w $3DAC,y -> E723 $432C,y;  E1DB ora.w $3D6C,y -> E731 $42EC,y
+  E1DE sta.w $3D6C,y -> E734 $42EC,y;  E1E1 sta.w $3DAC,y -> E737 $432C,y;  E1E4 lda.w $3CEA,y -> E73A $426A,y
+  E1E7 sta.w $3FEC,y -> E73D $456C,y;  E1EA sta.w $402C,y -> E740 $45AC,y;  E1ED lda.b $A2 -> E743 $A6
+  E1F3 sta.b $A2 -> E749 $A6;  E1F5 bit.w $1E66 -> E74B $1E68;  E1FE sta.w $1EE6 -> E754 $1EE8
+  E209 adc.b $A2 -> E75F $A6;  E21D bit.w $1E66 -> E773 $1E68;  E225 sta.w $3D6C,y -> E77B $42EC,y
+  E228 sta.w $3DAC,y -> E77E $432C,y;  E23D sta.w $3DEC,y -> E793 $436C,y;  E240 sta.w $3E2C,y -> E796 $43AC,y
+  E251 sta.w $3E6C,y -> E7A7 $43EC,y;  E254 sta.w $3EAC,y -> E7AA $442C,y;  E25E jmp.w ($E261,x) -> E7B4 ($E7B7,x)
+  ~ ???? incbin -> | ????;  E279 lda.w $3DEC,y -> E7CF $436C,y;  E292 sta.w $3F6C,y -> E7E8 $44EC,y
+  E295 sta.w $3FAC,y -> E7EB $452C,y;  E29B sta.w $3C6C,y -> E7F1 $41EC,y;  E29E sta.w $3CAC,y -> E7F4 $422C,y
+  E2BB sta.w $3FEC,y -> E811 $456C,y;  E2BE sta.w $402C,y -> E814 $45AC,y;  E2CC adc.w $1F0A -> E822 $1F0C
+  E2CF sta.w $3FEC,y -> E825 $456C,y;  E2D2 sta.w $402C,y -> E828 $45AC,y;  E2D8 sta.w $3DEC,y -> E82E $436C,y
+  E2DB sta.w $3E2C,y -> E831 $43AC,y;  E2DE sta.w $3E6C,y -> E834 $43EC,y;  E2E1 sta.w $3EAC,y -> E837 $442C,y
+  E2E4 lda.w $1F0E -> E83A $1F12;  E2E7 sta.w $3C6C,y -> E83D $41EC,y;  E2EA sta.w $3CAC,y -> E840 $422C,y
+  E2ED lda.w $1F10 -> E843 $1F14;  E2F0 sta.w $3F6C,y -> E846 $44EC,y;  E2F3 sta.w $3FAC,y -> E849 $452C,y
+  E307 jsr.w ($819E,x) -> E85D ($826E,x);  E315 stz.b $A2 -> E86B $A6;  E322 ldx.b $A0 -> E878 $A4
+  E324 lda.w $0226 -> E87A $02D9;  E353 lda.w #$007F -> E8A9 #$017F;  E369 ldx.b $A0 -> E8BF $A4
+  E38E adc.w #$45EC -> E8E7 #$46C8;  E3B9 lda.w #$007F -> E912 #$017F;  E3CF ldx.b $A0 -> E928 $A4
+  E3F4 adc.w #$495C -> E950 #$4A38;  E418 stx.b $A0 -> E974 $A4;  E41A lda.w $0226 -> E976 $02D9
+  E42A lda.w $0226 -> E986 $02D9;  E435 sta.w $0226 -> E991 $02D9;  E438 sta.w $023E -> E994 $02F1
+  E43B stz.b $A0 -> E997 $A4;  E43D stz.w $1E5E -> E999 $1E62;  E440 stz.w $1E60 -> E99C $1E64
+  E446 sta.l $7E45EC -> E9A2 $7E46C8;  E44D sta.w $0226 -> E9A9 $02D9;  E450 sta.w $023E -> E9AC $02F1
+  E453 stz.w $0260 -> E9AF $0313;  E458 lda.w $0226 -> E9B4 $02D9;  E48B sta.w $0260 -> E9D1 $0313
+  E48E lda.w $0260 -> E9D4 $0313;  E494 sta.w $0142 -> E9DA $0144;  E497 lda.w $0226 -> E9DD $02D9
+  E4AB lda.w $0226 -> E9F1 $02D9;  E4CC lda.w $0225 -> EA12 $02D8;  E4FE sta.w $0237 -> EA44 $02EA
+  
+  structural: E185-E198 (list's next pairs) -> E6DB-E6EF incbin; E265-E277 (flat shape) -> in incbin
+  E7B7-E7CE; E27E-E28F (negative curve) -> E7D4-E7E6 incbin; E337 beq E3A1 -> E88D db $F0,$6B (beq E8FA);
+  (none) -> E8CC/E935 adc #$1000; E3A1 jmp E407 -> E8FA-E8FC incbin; E407-E412 ($45EC = lane << 1) ->
+  E963-E96E incbin; E471-E485 (road kind $0A check) -> absent.
+Grouped, from a script pairing the two listings line by line (normalised operands, difflib):
+  record:  $023E -> $02F1, $0226 -> $02D9, $023C -> $02EF, $0224 -> $02D7, $0225 -> $02D8,
+           $0240 -> $02F3, $0260 -> $0313, $0142 -> $0144, $0237 -> $02EA
+  words:   $01CE -> $01D2, $1EE6 -> $1EE8 (DFB5->E50B, E071->E5C7, E1FE->E754),
+           $1EDE -> $1EE2 (E09C->E5F2, the armed jump's row D+$22), $1EE0 -> $1EE4 (E0C8->E61E),
+           $1EF8 -> $1F02, $1EFA -> $1F04 (E0B2->E608, E0BE->E614), $1E1E -> $1E20,
+           $1E66 -> $1E68 (E1C2, E1F5, E21D), $1F0A -> $1F0C (E2CC->E822),
+           $1F0E -> $1F12, $1F10 -> $1F14 (flat edges), $1E5E/$1E60 -> $1E62/$1E64 (lap wrap)
+  tables (all + $580): $3AEE -> $406E, $3AEC/$3B2C -> $406C/$40AC, $3B6C/$3BAC -> $40EC/$412C,
+           $3CEC/$3D2C -> $426C/$42AC, $3BEC/$3C2C -> $416C/$41AC, $3D6C/$3DAC -> $42EC/$432C,
+           $3CEA -> $426A, $3FEC/$402C -> $456C/$45AC, $3DEC/$3E2C -> $436C/$43AC,
+           $3E6C/$3EAC -> $43EC/$442C, $3DEE/$3E6E -> $436E/$43EE,
+           $3C6C/$3CAC -> $41EC/$422C, $3F6C/$3FAC -> $44EC/$452C
+  cursors: D+$A0 -> D+$A4 (object stream), D+$A2 -> D+$A6 (segment)
+  objects: $45EC -> $46C8 (E38E->E8E7 base, E446->E9A2 the wrap's $0140), $495C -> $4A38 (E3F4->E950),
+           $F733 #$007F -> #$017F (E353->E8A9, E3B9->E912), + #$1000 on $F633 (E8CC, E935; no CLC:
+           the carry out of the three LSRs is 0)
+  events:  JSR ($819E,x) -> JSR ($826E,x) (E307->E85D): $826E - $819E = $D0 = 2 * $68, so the
+           C calls track_event_run(kind + $68, obj) (kind is a byte: no overflow)
+  shapes:  JMP ($E261,x) -> JMP ($E7B7,x) (E25E->E7B4)
+  same in both (checked): $019A, $0100, D+$98, D+$9C, $5391, $6591, $8CB4, $5B91-$5B94,
+           $84/$85/$86 tables, func_85CDAF, func_82EA49, the DSP-4 sequences, every SEP/REP (none;
+           the routine stays 16-bit), every carry.
+  The brief's "E503 adds $1EE8 where the race does not" is not so: the race adds $1EE6 at the
+  same two places (DFB5, E071); only the address differs. Likewise $E5F2 `lda $1EE2; sta $22` is
+  the race's `lda $1EDE; sta $22` (E09C), and $E617's `cmp $22` is the race's $E0C1.
+  Absent in E503 (mirrored): the race's $E471-$E485 road-kind check (kind $0A and $1EDE + 1 ==
+  the segment's start: leave $0260 0) - E503 always stores $840002,x.
+
+Traps (never-run paths, incbin in the listing):
+  $82:E6DB  BCS at $E6D9 not taken: a row list's second pair (race $E185-$E198, its "never run")
+  $82:E7B4  the shape handler is not $E7CF (the table $E7B7-$E7BA and the flat shape $E7BB-$E7CE
+            are incbin; the race's flat shape at $E265 - the race row has it as a hole too)
+  $82:E7D4  BPL at $E7D2 not taken: a negative curve (race $E27E-$E28F)
+  $82:E8FA  the BEQ (db $F0,$6B) at $E88D taken: a stream entry of kind 0 (race $E3A1 jmp $E407 ->
+            $E407: $45EC = lane << 1; E503's $E963-$E96E incbin)
+
+Unsure:
+  - The handler table at $82:826E (read through track_event_run at kind + $68): its entries are
+    data I could not see. Presumably the second road's handlers ($EB45..$EBC2, writing
+    $1F0C/$1F12/$1F14 and $41EC/$44EC/$42EC = view 2's tables) and $EA80. Those handlers never
+    ran live in the race, but the race row's fuzz (fuzz_road_rows_build: "both roads', the
+    never-run ones among them") already drives their C. An unknown handler does nothing, as in
+    the race (no trap). $EB72's sign extension ($EB74, incbin) is done in C by
+    track_event_place, as in the race.
+  - The shape table: assumed {$E7BB flat, $E7CF curve} by the byte counts (24 bytes = 4 of
+    table + 20 of flat code, the race's flat code is 20 bytes); the C only accepts $E7CF.
+  - The trap at $E6DB fires after reading the first pair, before the stores (the race C would
+    loop); nothing is written by then that the trap could lose.
+
+Bench adapter (mirroring call_road_rows_build): no register outputs but DB = $83 (the PLB at
+$EA47 pulls the $83 the PEA at $E503 left; the PEA/PLB pair at $E874/$E985 nets to the same);
+flags judged by the bench as for the race. At the RTS: A = the word stored to $02EA, X = the second
+func_82EA49's last TAX (its row entry's $85 offset), Y = its TAY (the row it was given), N=1 Z=0 from the
+PLB of $83, C from the CLC/ADC #$0009 chain (EOR/INC do not touch C); M/X 16-bit, DB $83. None
+of A/X/Y is compared by the race row (no ALL_OUTPUTS). Row:
+  {.name = "mode1_road_rows_view2", .entry = 0x82E503, .end = 0x82EA49, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_road_rows_view2,
+   .fuzz = <a view-2 copy of fuzz_road_rows_build on $02D9/$02F1/$02EF/$02D7, D+$A4/$A6,
+            $1E68, $1EE2/$1EE8 and the $406C.. tables>, .fuzzStack = 0x1FF1 (check: the caller
+            at $82:DF9F-ish JSRs road_rows_build then $E503, so the entry SP is the race's),
+   .holes = {{0x82E6DB, 0x82E6F0}, {0x82E7B7, 0x82E7CF}, {0x82E7D4, 0x82E7E7},
+             {0x82E8FA, 0x82E8FD}, {0x82E963, 0x82E96F}}}
+  static void call_mode1_road_rows_view2(const Regs* in, Regs* out) {
+    (void)in;
+    mode1_road_rows_view2();
+    out->db = 0x83;
+  }
+Also: a declaration `void mode1_road_rows_view2(void);` in src/misc.h, and the symbol line
+  func    82E503   mode1_road_rows_view2 ; road_rows_build for mode 1's bottom view (player 2's record) -> src/misc.c
+*/
+
 // TG3000_ROUTINE($82:DFA9) road_rows_build_call
 void road_rows_build_call(void) { road_rows_build(); }
 

@@ -1449,6 +1449,7 @@ void race_end(void);
 // road kind $0260/$0142 at the player, and the road's tilt $0237 (func_82EA49 a row ahead
 // and three behind; DSP-4).
 void road_rows_build(void);
+void mode1_road_rows_view2(void);  // $82:E503: road_rows_build for mode 1's second player (view 2)
 
 // $81:E812: the 20 cars' frame (D = $0100; DB = $7E inside, $83 on return; RTL). The race
 // order $1E6A (20 car offsets, last place first) linked both ways (+$1A back, +$18 on,

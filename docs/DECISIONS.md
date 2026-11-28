@@ -6409,6 +6409,40 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's road rows for its second player (map-fw-15, 2026-11-28)
+
+**`mode1_road_rows_view2` (`$82:E503`, `src/misc.c`)** is `road_rows_build` for mode 1's second
+player.
+- **Addresses:**
+  - player 2's record (`$02B3`..) and tables (+`$580`);
+  - D+`$A4`/`$A6` (the race's D+`$A0`/`$A2`);
+  - `$1E68`, `$1EE2`/`$1EE4`/`$1EE8`, `$1F02`-`$1F14`, `$46C8`/`$4A38`, `$0144`/`$0313`;
+  - spawned objects at `+$1000`, priority `$017F`.
+- **Its track events** go through its own table at `$82:826E`, which is `$82:819E`'s entries from
+  `$68` on. So the C calls `track_event_run(kind + $68)`.
+  - Read locally from the ROM: that table has kinds 0-`$68`. They are the race's no-op `$EA80` and
+    the second road's handlers (`$EB45`..), all already in `track_event_run`.
+  - A kind past `$68` would jump through bytes that are not a table: a trap.
+- **It lacks the race's kind-`$0A` check.**
+- **Never run, so traps** (holes in the row):
+  - a row list's second pair (incbin);
+  - a row in a segment, and the player in a segment (the road-kind scan). Every segment chain in
+    the ROM's tables has a negative curve within 8 segments, and this copy has no code for one (an
+    incbin at `$82:E7D4`). So no mode 1 track can run them, and no movie does.
+  - a kindless stream entry (incbin);
+  - the lane's other case (incbin).
+- The C was drafted by a delegated agent from the listing and `road_rows_build`. The differential
+  test checks it.
+
+**Fuzz:** `fuzz_mode1_road_rows_view2`, `fuzz_road_rows_build` with player 2's addresses, and with:
+- no kindless entries;
+- only segments whose curves stay positive (none in the ROM, so no segment rows);
+- event kinds 0-`$62` only. The race's second-road kinds 184-201 are not in this table: given
+  them, the original jumps through other bytes, and 189 of 500 cases were lost.
+
+**Check:** `demo_mode1` (firmware): live 354 of 354, 8 of 8 replays, fuzz 500 of 500 (0 lost),
+paths 440 of 440. Then `verify_new.sh`.
+
 ## Mode 1's road for one view's frame (map-fw-14, 2026-11-28)
 
 **`mode1_road_frame_view1` (`$85:BF1C`) and `mode1_road_frame_view2` (`$85:BF4A`, `src/misc.c`)**
