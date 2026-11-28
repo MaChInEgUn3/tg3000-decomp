@@ -11596,6 +11596,20 @@ static void call_oam_high_load_wrong_command(const Regs* in, Regs* out) {
 // with func_82A9B7's DB = $83, N set and Z clear (its PLB); oam_high_load reloads the flags
 // before reading any, and A X Y are not read. Every live entry is interrupted (it takes most
 // of a frame): its cases are the two replays and the fuzz, where the stand-in chip answers
+static void call_mode1_frame_draw_view1(const Regs* in, Regs* out) {  // (map-fw-17: as race_frame_draw's)
+  (void)in;
+  mode1_frame_draw_view1_body();
+  out->db = 0x83;
+  out->n = true;
+  out->z = false;
+}
+static void call_mode1_frame_draw_view2(const Regs* in, Regs* out) {
+  (void)in;
+  mode1_frame_draw_view2_body();
+  out->db = 0x83;
+  out->n = true;
+  out->z = false;
+}
 static void call_race_frame_draw(const Regs* in, Regs* out) {
   (void)in;
   race_frame_draw_body();
@@ -15079,6 +15093,12 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_parts_stream_rom, .spriteList = true,
    // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
    .holes = {{0x82DF4C, 0x82DF91}}},
+  {.name = "mode1_frame_draw_view1", .entry = 0x828F47, .end = 0x828F68, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_frame_draw_view1, .endAt = 0x828F68,
+   .fuzzStack = 0x1FF1, .spriteList = true, .replays = 16},  // (map-fw-17: the raster IRQs land in every sample)
+  {.name = "mode1_frame_draw_view2", .entry = 0x828F6B, .end = 0x828F8C, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_frame_draw_view2, .endAt = 0x828F8C,
+   .fuzzStack = 0x1FF1, .spriteList = true, .replays = 16},
   {.name = "race_frame_draw", .entry = 0x828923, .end = 0x828944, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_frame_draw, .endAt = 0x828944,  // its tail jump to oam_high_load
    .fuzzStack = 0x1FF1, .spriteList = true},                // the race's stack, as its road callees' rows

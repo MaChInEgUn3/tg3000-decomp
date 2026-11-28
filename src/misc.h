@@ -1632,6 +1632,10 @@ void mode1_view2_sprites(void);  // $82:D2CC: mode 1's bottom view (player 2's r
 // (oam_high_load, its JMP). race_frame_draw_body is that part alone (up to the tail jump).
 void race_frame_draw(void);
 void race_frame_draw_body(void);
+void mode1_frame_draw_view1(void);       // $82:8F47: race_frame_draw for mode 1's top view
+void mode1_frame_draw_view1_body(void);  // (up to its tail jump to oam_high_load)
+void mode1_frame_draw_view2(void);       // $82:8F6B: the same for its bottom view
+void mode1_frame_draw_view2_body(void);  // (up to its tail jump to oam_high_load2)
 
 // The title screen ($8A:800B, long): its load (up to the first wait), its scene (from that
 // wait, $8A:8042) and its show (from the second, $8A:80C8): a frame at a time until D+$58 is

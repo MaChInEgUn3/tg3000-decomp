@@ -6148,6 +6148,7 @@ CODE_85BEB6:
     sta.w $01DE                 ; $85BF15
     jsr.w vs_bands_merge        ; $85BF18
     rtl                         ; $85BF1B
+mode1_road_frame_view1:
     jsl.l mode1_road_project_view1; $85BF1C
     jsl.l mode1_road_project2_view1; $85BF20
     jsl.l mode1_road_lists      ; $85BF24
@@ -6163,6 +6164,7 @@ CODE_85BEB6:
     sta.w $01DC                 ; $85BF43
     jsr.w race_bands_merge      ; $85BF46
     rtl                         ; $85BF49
+mode1_road_frame_view2:
     jsl.l mode1_road_project_view2; $85BF4A
     jsl.l mode1_road_project2_view2; $85BF4E
     jsl.l mode1_road_lists      ; $85BF52

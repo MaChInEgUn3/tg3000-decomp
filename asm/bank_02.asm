@@ -747,13 +747,13 @@ CODE_828AFB:
     lda.w #$0011                ; $828BCC
     ldx.w #$4000                ; $828BCF
     jsr.w func_82AD12           ; $828BD2
-    jsr.w $8F6B                 ; $828BD5
+    jsr.w mode1_frame_draw_view2; $828BD5
     lda.w #$0002                ; $828BD8
     tsb.w $00B8                 ; $828BDB
 CODE_828BDE:
     bit.w $00B8                 ; $828BDE
     bne CODE_828BDE             ; $828BE1
-    jsr.w $8F47                 ; $828BE3
+    jsr.w mode1_frame_draw_view1; $828BE3
     lda.w #$0001                ; $828BE6
     tsb.w $00B8                 ; $828BE9
 CODE_828BEC:
@@ -782,14 +782,14 @@ CODE_828C00:
     lda.w #$0004                ; $828C28
     tsb.w $00B8                 ; $828C2B
 CODE_828C2E:
-    jsr.w $8F6B                 ; $828C2E
+    jsr.w mode1_frame_draw_view2; $828C2E
     lda.w #$0002                ; $828C31
     tsb.w $00B8                 ; $828C34
     lda.w #$0001                ; $828C37
 CODE_828C3A:
     bit.w $00B8                 ; $828C3A
     bne CODE_828C3A             ; $828C3D
-    jsr.w $8F47                 ; $828C3F
+    jsr.w mode1_frame_draw_view1; $828C3F
     lda.w #$0001                ; $828C42
     tsb.w $00B8                 ; $828C45
     lda.w #$0002                ; $828C48
@@ -849,6 +849,7 @@ CODE_828D6D:
     jsr.w wait_frames_82        ; $828D74
     rts                         ; $828D77
     incbin !baserom:$10D78..$10F47
+mode1_frame_draw_view1:
     stz.b $86                   ; $828F47
     stz.b $8E                   ; $828F49
     lda.w $00B4                 ; $828F4B
@@ -857,12 +858,13 @@ CODE_828D6D:
     sta.b $86                   ; $828F53
     sta.b $8E                   ; $828F55
 CODE_828F57:
-    jsl.l $85BF1C               ; $828F57
+    jsl.l mode1_road_frame_view1; $828F57
     jsl.l mode1_window_view1    ; $828F5B
     jsr.w shake_step            ; $828F5F
     jsr.w mode1_view1_sprites   ; $828F62
     jsr.w func_82A9B7           ; $828F65
     jmp.w oam_high_load         ; $828F68
+mode1_frame_draw_view2:
     stz.b $88                   ; $828F6B
     stz.b $8E                   ; $828F6D
     lda.w $00B6                 ; $828F6F
@@ -871,11 +873,11 @@ CODE_828F57:
     sta.b $88                   ; $828F77
     sta.b $8E                   ; $828F79
 CODE_828F7B:
-    jsl.l $85BF4A               ; $828F7B
+    jsl.l mode1_road_frame_view2; $828F7B
     jsl.l mode1_window_view2    ; $828F7F
-    jsr.w $9064                 ; $828F83
+    jsr.w shake_step2           ; $828F83
     jsr.w mode1_view2_sprites   ; $828F86
-    jsr.w $AA7B                 ; $828F89
+    jsr.w func_82AA7B           ; $828F89
     jmp.w oam_high_load2        ; $828F8C
 shake_step:
     lda.w $0231                 ; $828F8F
@@ -965,6 +967,7 @@ CODE_82905C:
     lda.l $82913F,x             ; $82905C
     sta.w $1F18                 ; $829060
     rts                         ; $829063
+shake_step2:
     lda.w $02E4                 ; $829064
     beq CODE_829083             ; $829067
     incbin !baserom:$11069..$11083
@@ -3467,6 +3470,7 @@ CODE_82AA76:
     sta.w $028D                 ; $82AA76
     plb                         ; $82AA79
     rts                         ; $82AA7A
+func_82AA7B:
     pea.w $837E                 ; $82AA7B
     plb                         ; $82AA7E
     lda.w $0334                 ; $82AA7F
@@ -9193,7 +9197,7 @@ vs_road_rows:
     jsl.l vs_road_rows_view3    ; $82DF9D
     rts                         ; $82DFA1
     jsr.w road_rows_build       ; $82DFA2
-    jsr.w $E503                 ; $82DFA5
+    jsr.w mode1_road_rows_view2 ; $82DFA5
     rts                         ; $82DFA8
 road_rows_build_call:
     jsr.w road_rows_build       ; $82DFA9
@@ -9805,6 +9809,7 @@ CODE_82E4ED:
     sta.w $0237                 ; $82E4FE
     plb                         ; $82E501
     rts                         ; $82E502
+mode1_road_rows_view2:
     pea.w $837E                 ; $82E503
     plb                         ; $82E506
     lda.w $02F1                 ; $82E507

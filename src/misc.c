@@ -9412,6 +9412,48 @@ void race_frame_draw_body(void) {
   (void)func_82A9B7();
 }
 
+// map-fw-17: race_frame_draw for mode 1's two views ($82:8F47 top, $82:8F6B bottom): each view's
+// road, windows, shake, sprites and targets, then its high table (their tail jumps)
+void mode1_frame_draw_view1_body(void) {
+  wr16(DP + 0x86, 0);
+  wr16(DP + 0x8E, 0);
+  if(rd16(0x00B4) != 0) {
+    wr16(DP + 0x86, 0x0220);
+    wr16(DP + 0x8E, 0x0220);
+  }
+  (void)mode1_road_frame_view1();
+  (void)mode1_window_view1();
+  shake_step();
+  mode1_view1_sprites();
+  (void)func_82A9B7();
+}
+
+// TG3000_ROUTINE($82:8F47) mode1_frame_draw_view1
+void mode1_frame_draw_view1(void) {
+  mode1_frame_draw_view1_body();
+  oam_high_load();
+}
+
+void mode1_frame_draw_view2_body(void) {
+  wr16(DP + 0x88, 0);
+  wr16(DP + 0x8E, 0);
+  if(rd16(0x00B6) != 0) {
+    wr16(DP + 0x88, 0x0220);
+    wr16(DP + 0x8E, 0x0220);
+  }
+  (void)mode1_road_frame_view2();
+  (void)mode1_window_view2();
+  shake_step2();
+  mode1_view2_sprites();
+  (void)func_82AA7B();
+}
+
+// TG3000_ROUTINE($82:8F6B) mode1_frame_draw_view2
+void mode1_frame_draw_view2(void) {
+  mode1_frame_draw_view2_body();
+  oam_high_load2();
+}
+
 // TG3000_ROUTINE($82:8923) race_frame_draw
 void race_frame_draw(void) {
   race_frame_draw_body();

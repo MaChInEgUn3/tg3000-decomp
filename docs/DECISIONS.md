@@ -6409,6 +6409,32 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's two view frames (map-fw-17, 2026-11-28)
+
+**`mode1_frame_draw_view1` (`$82:8F47`) and `mode1_frame_draw_view2` (`$82:8F6B`, `src/misc.c`)**
+are `race_frame_draw` for mode 1's two views. Each one does, in order:
+- D+`$86`/`$8E` = `$0220` when `$00B4` is set (bottom view: D+`$88`/`$8E` and `$00B6`);
+- the view's road frame (`$85:BF1C` / `$85:BF4A`);
+- its window stream;
+- `shake_step` / `shake_step2`;
+- its sprites;
+- `func_82A9B7` / `func_82AA7B`;
+- then a tail jump to `oam_high_load` / `oam_high_load2`.
+
+Every callee is already verified. The rows stop at the tail jump (`endAt`), as `race_frame_draw`'s
+row does.
+
+**Check:** `demo_mode1` (firmware). The raster IRQs land in every sample, so the rows rest on
+replays (`replays = 16`): 10 of 10 each in the full mode 1 job, paths 12 of 12. Then the full
+gate.
+
+**Harness: the replay pool is now 480 slots, not 320 (`MAX_REPLAYS`).**
+- The first full gate with these two rows (at `replays = 32`) failed. Three rows lost the last
+  replays that alone reached 4 of their paths: `mode1_view2_sprites`, `mode1_window_view1` and
+  `mode1_window_view2`.
+- The cause: the rows a run reaches share the pool, and mode 1's run had used it up.
+- With 480 slots and these rows at 16, all three are back to 484, 342 and 335 of their paths.
+
 ## Mode 1's second shake and second car's targets (map-fw-16, 2026-11-28)
 
 **`shake_step2` (`$82:9064`, `src/misc.c`)** is `shake_step` for mode 1's second player.
