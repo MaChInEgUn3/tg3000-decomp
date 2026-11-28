@@ -6409,6 +6409,27 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's second car head; its window streams' answer stores (map-fw-6, 2026-11-28)
+
+**`car_sprite_head2` (`$82:D863`, `src/misc.c`)** is `car_sprite_head` for mode 1's second player.
+- Its bytes are `car_sprite_head`'s, but for the height byte (`$02F6`, record `$02B3` + `$43`,
+  against `$0243`) and a NOP fewer.
+- Both now call one helper with the byte's address.
+- Its row matches `car_sprite_head`'s: native list, no fuzz, the never-run sign extension a hole.
+- On `demo_mode1`: live 390 of 390, paths 39 of 39.
+
+**Not yet followed: mode 1's sprite lists.** Its samples, and `car_sprite_head`'s on that movie, are
+all set apart: the shadow does not open mode 1's lists. Their `$0003` comes from a PC outside the
+race's prologue. This gets measured with mode 1's sprite routine.
+
+**`$81:E0A3` and `$81:E5DC` are `dsp4_answers_store` (`$81:89F5`), byte for byte.** They store an
+`$08` row's two runs of (address, word) answers.
+- In the race the native `$08` gives the runs, and that routine was folded into
+  `road_rows_stream`.
+- These two get folded the same way into their callers: mode 1's two window streams,
+  `$81:DBAC-$81:E0A3` and `$81:E0F8-$81:E5DC`. They are longer than `road_rows_stream`
+  (`$4F7`/`$4E4` bytes against `$491`): adaptations, to compare next.
+
 ## The VS race's sprite lists native: no DSP-4 port left in the game's C (dsp4-0e-2, 2026-11-28)
 
 **The game's C sends nothing through `dsp4_port_*` any more** (port request A, its rest). The VS

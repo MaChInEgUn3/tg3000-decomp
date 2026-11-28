@@ -1335,6 +1335,7 @@ bool sprite_parts_stream(uint16_t x);
 // $83:ACEC + (its $FAB5 / 2 & $7E) + the row $39EC at D+$14), 0; the chip's answer word to
 // D+$2A, which it returns.
 uint16_t car_sprite_head(uint16_t x, uint16_t y);
+uint16_t car_sprite_head2(uint16_t x, uint16_t y);  // $82:D863: mode 1's second player's ($02F6)
 
 // $82:DAFD / $82:DB4D: a track object's sprite (D = $0100): D+$24 = the graphics word at
 // $86:AF06 + `x`; for the object at $7E:8CB3 + D+$1C: D+$20 = its place (its byte * 16, a

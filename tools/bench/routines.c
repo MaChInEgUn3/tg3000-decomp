@@ -11683,6 +11683,18 @@ static void call_car_sprite_head(const Regs* in, Regs* out) {
   out->c = sum > 0xFFFF;
   out->v = (~(a ^ row) & (a ^ (uint16_t)sum) & 0x8000) != 0;
 }
+// map-fw-6: mode 1's second player's
+static void call_car_sprite_head2(const Regs* in, Regs* out) {
+  const uint16_t a = (uint16_t)((rd16(0xFAB5 + (uint32_t)in->y) >> 1) & 0x007E);
+  const uint16_t row = rd16(0x39EC + (uint32_t)rd16(DP + 0x14));
+  out->a = car_sprite_head2(in->x, in->y);
+  out->x = in->y;
+  out->y = in->y;
+  setNZ16(out, out->a);
+  const uint32_t sum = (uint32_t)a + row;
+  out->c = sum > 0xFFFF;
+  out->v = (~(a ^ row) & (a ^ (uint16_t)sum) & 0x8000) != 0;
+}
 // the race's object (D+$14 and its row at $39EC: the frame table in bank $83 stays in ROM),
 // a row offset X, a car Y (its words random), the height byte either sign, D+$32/$34, one
 // scripted answer
@@ -14829,6 +14841,9 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_car_sprite_head, ALL_OUTPUTS, .spriteList = true,
    // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
    .holes = {{0x82D289, 0x82D28C}}},
+  {.name = "car_sprite_head2", .entry = 0x82D863, .end = 0x82D8C6, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_car_sprite_head2, ALL_OUTPUTS, .spriteList = true,
+   .holes = {{0x82D885, 0x82D888}}},  // (map-fw-6: its height's sign extension, never run, as car_sprite_head's)
   {.name = "object_sprite_raised", .entry = 0x82DAFD, .end = 0x82DB4D, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_object_sprite_raised, .spriteList = true},

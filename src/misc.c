@@ -4750,9 +4750,9 @@ bool sprite_parts_stream_rom(uint16_t x) {
   return full;
 }
 
-// TG3000_ROUTINE($82:D267) car_sprite_head
-uint16_t car_sprite_head(uint16_t x, uint16_t y) {
-  uint16_t h = rd8(0x0243);
+// car_sprite_head's code with the player's height byte at `height_at` (map-fw-6)
+static uint16_t car_sprite_head_at(uint16_t x, uint16_t y, uint32_t height_at) {
+  uint16_t h = rd8(height_at);
   if(h & 0x0080) h |= 0xFF00;  // never run
   const uint16_t height = (uint16_t)(h + 0x0033 + rd16(DP + 0x34));
   const uint16_t frame = (uint16_t)(((rd16(0xFAB5 + (uint32_t)y) >> 1) & 0x007E) + rd16(0x39EC + (uint32_t)rd16(DP + 0x14)));
@@ -4762,6 +4762,14 @@ uint16_t car_sprite_head(uint16_t x, uint16_t y) {
   wr16(DP + 0x2A, answer);
   return answer;
 }
+
+// TG3000_ROUTINE($82:D267) car_sprite_head
+uint16_t car_sprite_head(uint16_t x, uint16_t y) { return car_sprite_head_at(x, y, 0x0243); }
+
+// TG3000_ROUTINE($82:D863) car_sprite_head2
+// car_sprite_head for mode 1's second player: its height byte at $02F6 (record $02B3 + $43); the
+// same code byte for byte but for it (and a NOP fewer, its timing).
+uint16_t car_sprite_head2(uint16_t x, uint16_t y) { return car_sprite_head_at(x, y, 0x02F6); }
 
 // The object sprite's common setup: D+$24, D+$26's bits, D+$20 (see object_sprite_raised).
 static uint32_t object_sprite_setup(uint16_t x) {

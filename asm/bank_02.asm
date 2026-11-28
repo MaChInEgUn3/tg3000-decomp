@@ -8107,7 +8107,7 @@ CODE_82D562:
     phx                         ; $82D568
     stz.b $32                   ; $82D569
     stz.b $34                   ; $82D56B
-    jsr.w $D863                 ; $82D56D
+    jsr.w car_sprite_head2      ; $82D56D
     lda.l $7EFABF,x             ; $82D570
     sta.w $8000                 ; $82D574
     lda.b $3C                   ; $82D577
@@ -8129,7 +8129,7 @@ CODE_82D593:
     phx                         ; $82D594
     stz.b $32                   ; $82D595
     stz.b $34                   ; $82D597
-    jsr.w $D863                 ; $82D599
+    jsr.w car_sprite_head2      ; $82D599
     lda.l $7EFABF,x             ; $82D59C
     sta.w $8000                 ; $82D5A0
     lda.b $3C                   ; $82D5A3
@@ -8148,7 +8148,7 @@ CODE_82D593:
     jsr.w sprite_parts_stream_rom; $82D5BC
     plx                         ; $82D5BF
     ply                         ; $82D5C0
-    jsr.w $D863                 ; $82D5C1
+    jsr.w car_sprite_head2      ; $82D5C1
     lda.w #$0000                ; $82D5C4
     sta.w $8000                 ; $82D5C7
     lda.b $3C                   ; $82D5CA
@@ -8403,6 +8403,7 @@ CODE_82D82F:
     sta.w $1E5C                 ; $82D85E
     plb                         ; $82D861
     rts                         ; $82D862
+car_sprite_head2:
     lda.l $7E386A,x             ; $82D863
     sta.w $8000                 ; $82D867
     lda.w #$9000                ; $82D86A
