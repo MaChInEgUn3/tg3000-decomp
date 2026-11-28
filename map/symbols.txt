@@ -105,6 +105,7 @@ func    809DD0   func_809DD0         ; label + number sprites ($3C00 or $3E00 ba
 func    82DF91   vs_road_rows        ; VS race: the four players' road rows in turn -> src/vs.c
 func    85CD78   func_82EA49_85      ; func_82EA49's copy in bank $85 (the VS road rows' JSR) -> src/misc.c
 func    8294B2   vs_race_frame_body  ; VS race: one frame of the race loop up to its wait (countdown, cars, road, sprites) -> src/vs.c
+func    829642   vs_race_end         ; VS race: the loop's way out (SEI, IRQ line $1FF, DMA/HDMA off, $047B - $2F; port request W) -> src/vs.c
 func    8295E8   vs_race_frame_tail  ; VS race: the frame's wait, the frames it took, the demo's end and the Start test -> src/vs.c
 func    829456   vs_race_start       ; VS race setup's last piece: car bands, interrupt vectors, CLI, a frame's wait, up to the race loop -> src/vs.c
 func    829422   vs_race_sums_clear  ; VS race setup piece: sideways sums $01CC-$01DA and $00D4-$00DF cleared -> src/vs.c

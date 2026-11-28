@@ -1725,8 +1725,9 @@ static uint16_t vs_countdown_message(uint16_t x, uint16_t y) {
 // cars linked, moved, ordered and banded; the records' sides from the cars; the road rows, the
 // steps' shares, the places; the road projected and the four views' sprites; then the frame
 // flagged for the NMI. The race's end (the fade-out after $1F08 = 4) is ported from the ROM's
-// bytes (never run: the movie races on); the way out of the loop ($82:9642) is a trap.
-void vs_race_frame_body(void) {
+// bytes (never run: the movie races on). True when the fade-out is over and the screen dark (port
+// request W): the loop's way out, vs_race_end ($82:9642), instead of the frame's tail.
+bool vs_race_frame_body(void) {
   vs_hud_digits();
   const uint16_t count = rd16(0x1ECE);
   if(count & 0x8000) {  // the demo's messages
@@ -1786,7 +1787,18 @@ void vs_race_frame_body(void) {
       }
     }
   }
-  if(rd16(0x0146) == 0 && !(rd16(0x014A) & 0x0F00)) tg3000_unported("$82:9642: the VS race loop's way out");
+  return rd16(0x0146) == 0 && !(rd16(0x014A) & 0x0F00);
+}
+
+// TG3000_ROUTINE($82:9642) vs_race_end
+// The VS race loop's way out (port request W): interrupts off (SEI), the line interrupt's line to
+// $1FF (its 16-bit store of $FFFF to $4209/$420A), no DMA and HDMA off (its 16-bit STZ $420B), and
+// the track number back from the VS race's ($047B - $2F, vs_race_load's + $2F undone); then the
+// race setup returns (race_wrapper).
+void vs_race_end(void) {
+  platform_set_irq_v(0xFFFF);
+  video_hdma_enable(0x00);
+  wr16(0x047B, (uint16_t)(rd16(0x047B) - 0x002F));
 }
 
 // TG3000_ROUTINE($82:95E8) vs_race_frame_tail
@@ -1815,10 +1827,11 @@ void vs_race_frame_tail(void) {
   wr16(0x1E9E, frames);
 }
 
-// One frame of the VS race loop ($82:94B2 to its jump back).
-void vs_race_frame(void) {
-  vs_race_frame_body();
+// One frame of the VS race loop ($82:94B2 to its jump back); false at the loop's way out.
+bool vs_race_frame(void) {
+  if(vs_race_frame_body()) return false;
   vs_race_frame_tail();
+  return true;
 }
 
 void race_mode_vs(void) {
@@ -1829,7 +1842,8 @@ void race_mode_vs(void) {
   vs_race_sums_clear();
   vs_road_project();
   vs_race_start();
-  for(;;) vs_race_frame();
+  while(vs_race_frame()) {}
+  vs_race_end();
 }
 
 // TG3000_ROUTINE($82:BDDA) vs_step_share

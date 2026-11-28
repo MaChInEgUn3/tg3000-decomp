@@ -229,13 +229,15 @@ void vs_race_sums_clear(void);
 // $82:9456: the VS race setup's last piece (the cars' bands, the interrupt vectors, a frame's wait),
 // up to the race loop.
 void vs_race_start(void);
-// $82:94B2: one frame of the VS race loop, from its head to the jump back.
-void vs_race_frame(void);
-// $82:92BA (the race wrapper's mode 2): the VS race whole, its setup's pieces then its frames.
-// Its way out (the pause's menu, $82:9657 on) never ran: a trap in vs_race_frame_tail.
+// $82:94B2: one frame of the VS race loop, from its head to the jump back; false at its way out.
+bool vs_race_frame(void);
+// $82:92BA (the race wrapper's mode 2): the VS race whole, its setup's pieces, its frames, then
+// its way out (vs_race_end, port request W). The pause's menu ($82:9657 on) never ran: a trap in
+// vs_race_frame_tail.
 void race_mode_vs(void);
 // $82:94B2 up to the frame's wait ($82:95E8), and from the wait to the jump back.
-void vs_race_frame_body(void);
+bool vs_race_frame_body(void);  // true: the loop's way out (vs_race_end)
+void vs_race_end(void);         // $82:9642: the VS race loop's way out (port request W)
 void vs_race_frame_tail(void);
 // $82:BDDA: minus `a` (signed) over the step count $1E9E, on the CPU's divider (the quotient of
 // the magnitude; $FFFF for a zero count). `negative` is the caller's N flag (its load of `a`):

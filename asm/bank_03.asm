@@ -2,6 +2,7 @@
 org $838000
 
     incbin !baserom:$18000..$18623
+nmi_race_wrapper:
     rep.b #$30                  ; $838623
     phb                         ; $838625
     pha                         ; $838626
@@ -375,6 +376,7 @@ CODE_8388E0:
     sbc.w #$004C                ; $838902
     sta.w $1566,x               ; $838905
     rts                         ; $838908
+mode1_view_scrolls:
     ldx.b $E2                   ; $838909
     lda.w $0026                 ; $83890B
     bit.w #$0010                ; $83890E
@@ -688,7 +690,7 @@ race_upload_queue_drain_long:
 func_838989_long:
     jsr.w func_838989           ; $8396D5
     rtl                         ; $8396D8
-    jsr.w $8909                 ; $8396D9
+    jsr.w mode1_view_scrolls    ; $8396D9
     rtl                         ; $8396DC
     incbin !baserom:$196DD..$19721
 nmi_vs_prologue:

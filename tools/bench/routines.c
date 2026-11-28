@@ -6924,9 +6924,25 @@ static void call_vs_race_load(const Regs* in, Regs* out) {
 // $047C (the race-over path, never run, would test it again), C from CMP $1F08 with 4
 static void call_vs_race_frame_body(const Regs* in, Regs* out) {
   (void)in;
-  vs_race_frame_body();
+  out->atEnd2 = vs_race_frame_body();  // (port W: the way out, $82:9642)
   out->v = (rd16(0x047C) & 0x4000) != 0;
   out->c = rd16(0x1F08) >= 0x0004;
+}
+// vs_race_end ($82:9642, port W): A and the flags its SBC leaves
+static void call_vs_race_end(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t before = rd16(0x047B);
+  vs_race_end();
+  const uint16_t after = rd16(0x047B);
+  out->a = after;
+  out->c = before >= 0x002F;
+  out->z = after == 0;
+  out->n = (after & 0x8000) != 0;
+  out->v = ((before ^ 0x002F) & (before ^ after) & 0x8000) != 0;
+}
+static void fuzz_vs_race_end(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x047B, (uint16_t)((rnd() & 3) ? 0x2F + rnd() % 0x40 : rnd()));
 }
 // vs_race_frame_tail ($82:95E8, vs-race-33): the wait, up to the jump back ($82:963F); V from BIT
 // $047C (bit 14); C as it came
@@ -13562,7 +13578,9 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_vs_names_absent, .fuzz = fuzz_vs_names_absent},
   {.name = "password_hdma_off", .entry = 0x8AB18C, .end = 0x8AB197, .source = "src/password.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .waitsForInterrupts = true, .call = call_password_hdma_off},  // no fuzz: it waits
-  {.name = "vs_race_frame_body", .entry = 0x8294B2, .end = 0x8295E8, .endAt = 0x8295E8, .source = "src/vs.c",
+  {.name = "vs_race_end", .entry = 0x829642, .end = 0x829657, .source = "src/vs.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_end, ALL_OUTPUTS, .fuzz = fuzz_vs_race_end},
+  {.name = "vs_race_frame_body", .entry = 0x8294B2, .end = 0x8295E8, .endAt = 0x8295E8, .endAt2 = 0x829642, .source = "src/vs.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .lowWramDb = true, .call = call_vs_race_frame_body,
    .manyEffects = true, .dsp4Tape = true, .replays = 32,  // the NMI lands in every live sample
    .holes = {{0x8294DE, 0x8294E1}, {0x8294ED, 0x8294F5}, {0x8294FF, 0x829502}, {0x8295AD, 0x8295DB}}},

@@ -769,7 +769,7 @@ CODE_828C00:
     jsr.w race_countdown        ; $828C00
     jsl.l $83E25F               ; $828C03
     jsl.l race_cars_frame       ; $828C07
-    jsr.w $9145                 ; $828C0B
+    jsr.w mode1_car_bands       ; $828C0B
     jsr.w player_segment_step   ; $828C0E
     jsr.w player2_segment_step  ; $828C11
     jsr.w $DFA2                 ; $828C14
@@ -973,6 +973,7 @@ CODE_829083:
     sta.w $1F1A                 ; $829086
     rts                         ; $829089
     incbin !baserom:$1108A..$11145
+mode1_car_bands:
     lda.w #$0000                ; $829145
     sta.l $308000               ; $829148
     lda.w $0213                 ; $82914C
@@ -1370,7 +1371,7 @@ CODE_8295DB:
     bne vs_race_frame_tail      ; $8295DE
     lda.w $014A                 ; $8295E0
     and.w #$0F00                ; $8295E3
-    beq CODE_829642             ; $8295E6
+    beq vs_race_end             ; $8295E6
 vs_race_frame_tail:
     lda.w $00B8                 ; $8295E8
     bne vs_race_frame_tail      ; $8295EB
@@ -1404,7 +1405,7 @@ CODE_829639:
     stz.w $00BA                 ; $829639
     stx.w $1E9E                 ; $82963C
     jmp.w vs_race_frame_body    ; $82963F
-CODE_829642:
+vs_race_end:
     sei                         ; $829642
     lda.w #$FFFF                ; $829643
     sta.w $4209                 ; $829646

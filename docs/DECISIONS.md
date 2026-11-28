@@ -6409,6 +6409,36 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Port request W: the VS race loop's way out (port W, 2026-11-28)
+
+**Traced, not inferred.**
+- `bench --first-pc 82:9642` reaches the way out on `demo_mode1` at step 14,327, and on
+  `autopilot_60k` with the firmware at step 20,465 (the port's step).
+- The bench's own chip never gets there.
+- On the idle title the VS demo ends with no button. Its race runs out (`$1F08` = 4), and the
+  frame body's fade-out (`$82:95AD-$82:95DB`, ported from the ROM's bytes) then runs.
+- At the frame's end, the fade done (`$0146` = 0) and the screen dark (`$014A & $0F00` = 0) send
+  the body to `$82:9642` instead of the frame's tail.
+
+**In C:**
+- `vs_race_frame_body` returns true there, instead of the trap.
+- The row has a second cut, `.endAt2 = $82:9642`, as `race_frame_rest`'s.
+- **`vs_race_end` (`$82:9642-$82:9656`, `src/vs.c`):**
+  - interrupts off (SEI, a comment);
+  - the line interrupt's line from the 16-bit store of `$FFFF` to `$4209`/`$420A`;
+  - no DMA and HDMA off (the 16-bit STZ `$420B`, as `race_end`);
+  - `$047B` - `$2F`, undoing `vs_race_load`'s + `$2F`;
+  - then RTS out of the race wrapper's mode.
+- `vs_race_frame` returns false at the way out, and `race_mode_vs` then calls `vs_race_end` and
+  returns.
+
+**Checks on `demo_mode1`:**
+- `vs_race_end`: live 1 of 1, fuzz 500 of 500, paths 9 of 9.
+- `vs_race_frame_body`: its 26 replays pass. Every live sample there is interrupted.
+- Its holes stay. The countdown's clamp and messages and the race's end are now in the coverage,
+  but this movie's samples of them are not all compared.
+- Then the full gate: `vs.c` changed by more than additions.
+
 ## Port request V: the race wrapper's NMI in C (port V, 2026-11-28)
 
 **`nmi_race_wrapper` (`$83:8623`, `src/frame.c`)** is the NMI `race_wrapper_head` points at
