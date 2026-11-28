@@ -10494,15 +10494,19 @@ track_event_tail:
     sta.w $3D6C,x               ; $82EB3E
     sta.w $3DAC,x               ; $82EB41
     rts                         ; $82EB44
-track_event2_set:
+track_event2_2007:
     lda.w #$2007                ; $82EB45
-    jmp.w $EBDE                 ; $82EB48
+    jmp.w track_event2_tail     ; $82EB48
+track_event2_2047:
     lda.w #$2047                ; $82EB4B
-    jmp.w $EBDE                 ; $82EB4E
+    jmp.w track_event2_tail     ; $82EB4E
+track_event2_2087:
     lda.w #$2087                ; $82EB51
-    jmp.w $EBDE                 ; $82EB54
+    jmp.w track_event2_tail     ; $82EB54
+track_event2_c2e7:
     lda.w #$C2E7                ; $82EB57
-    jmp.w $EBDE                 ; $82EB5A
+    jmp.w track_event2_tail     ; $82EB5A
+track_event2_20c7:
     lda.w #$20C7                ; $82EB5D
     sta.w $1F0C                 ; $82EB60
     tyx                         ; $82EB63
@@ -10528,8 +10532,10 @@ CODE_82EB77:
     sta.w $42EC,x               ; $82EB91
     sta.w $432C,x               ; $82EB94
     rts                         ; $82EB97
+track_event2_2107:
     lda.w #$2107                ; $82EB98
-    jmp.w $EBDE                 ; $82EB9B
+    jmp.w track_event2_tail     ; $82EB9B
+track_event2_clear:
     ldx.b $1A                   ; $82EB9E
     lda.w #$0000                ; $82EBA0
     sta.w $1F12                 ; $82EBA3
@@ -10543,6 +10549,7 @@ CODE_82EB77:
     sta.w $42EC,x               ; $82EBBB
     sta.w $432C,x               ; $82EBBE
     rts                         ; $82EBC1
+track_event2_place_only:
     tyx                         ; $82EBC2
     jsr.w func_82EC09           ; $82EBC3
     ldx.b $1A                   ; $82EBC6
@@ -10555,6 +10562,7 @@ CODE_82EB77:
     sta.w $44EC,x               ; $82EBD7
     sta.w $452C,x               ; $82EBDA
     rts                         ; $82EBDD
+track_event2_tail:
     sta.w $1F0C                 ; $82EBDE
     tyx                         ; $82EBE1
     jsr.w func_82EC09           ; $82EBE2

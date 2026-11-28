@@ -1496,7 +1496,7 @@ CODE_858DF3:
     lda.w #$0004                ; $858E95
     trb.w $00B8                 ; $858E98
     beq CODE_858EA0             ; $858E9B
-    jsr.w $95C7                 ; $858E9D
+    jsr.w mode1_hud_draw        ; $858E9D
 CODE_858EA0:
     lda.w #$0D43                ; $858EA0
     sta.w $4350                 ; $858EA3
@@ -2157,6 +2157,7 @@ irq_ack_only:
     bit.w $4210                 ; $8595C2
     plb                         ; $8595C5
     rti                         ; $8595C6
+mode1_hud_draw:
     phb                         ; $8595C7
     pea.w $8383                 ; $8595C8
     plb                         ; $8595CB

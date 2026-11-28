@@ -6409,6 +6409,38 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The track events mode 1 runs (map-fw-19, 2026-11-28)
+
+The race's C held these handlers inline in `track_event_run` as "never run". Mode 1 runs them:
+- the first road's `$82:EA93` (`$20C7` at the object's place) and `$82:EAFE` (positions only),
+  through player 1's `road_rows_build`;
+- the second road's `$82:EB45`-`$82:EC08`, through `mode1_road_rows_view2`'s table at `$82:826E`.
+
+They are now functions of their own (`src/misc.c`), each returning its A, and `track_event_run`
+calls them:
+- `track_event_20c7`, `track_event_place_only`;
+- `track_event2_set` (the body at `$82:EBDE`; entries `$EB45` `$2007`, `$EB4B` `$2047`, `$EB51`
+  `$2087`, `$EB57` `$C2E7`, `$EB98` `$2107`), `track_event2_20c7`, `track_event2_clear`,
+  `track_event2_place_only`.
+
+The second road's `$20C7` sign extension (`$82:EB74`) is an incbin in the listing. Still,
+`road_rows_build`'s fuzz runs it (kind 96 with a negative place) and matched the C, so it stays code.
+
+**Rows:** one per entry, plus the second road's tail. The adapters give:
+- a flag exit: A = the flag word with its N/Z, C 0 (or kept, for the clear), V kept;
+- a place exit: A = the far place, with the N/Z/C/V of its add.
+
+`$EB4B` and `$EB51` are reached in no movie (mode 1's kinds 82 and 95), so they have no row; their
+body has one.
+
+**Check:** `demo_mode1` (firmware). Every row passes:
+- with fuzz 500 of 500;
+- `track_event_place_only` live 9 of 9, `track_event2_place_only` 10 of 10, `track_event2_clear`
+  4 of 4, and the others' single live samples;
+- `road_rows_build` and `mode1_road_rows_view2` still pass.
+
+Then the full gate, because `track_event_run` changed.
+
 ## Mode 1's HUD (map-fw-18, 2026-11-28)
 
 **`mode1_hud_draw` (`$85:95C7`, `src/race_frame.c`)** is `race_hud_draw` for mode 1's two players.

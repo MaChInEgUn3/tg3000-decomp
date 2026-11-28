@@ -3770,6 +3770,48 @@ static void fuzz_track_event_tail(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
   r->a = (uint16_t)rnd();
 }
 
+// ---- map-fw-19: the track events mode 1 runs ($82:EA93, $82:EAFE, $82:EB45-$82:EC08) ----
+// a flag exit (the ORA of the flag row): A = the flag word (N Z), X = D+$1A, C as given, V kept
+static void trackEventFlagOut(const Regs* in, Regs* out, uint16_t a, bool c) {
+  out->a = a;
+  out->x = rd16(DP + 0x1A);
+  setNZ16(out, a);
+  out->c = c;
+  out->v = in->v;
+}
+// a place exit (the ADC of D+$1E): A = the far place, N Z C V of that ADC
+static void trackEventPlaceOut(Regs* out, uint16_t a, uint16_t nearWord) {
+  out->a = a;
+  out->x = rd16(DP + 0x1A);
+  setAdc16(out, rd16(nearWord), rd16(DP + 0x1E));
+  setNZ16(out, a);
+}
+static void call_track_event_20c7(const Regs* in, Regs* out) { trackEventFlagOut(in, out, track_event_20c7(in->y), false); }
+static void call_track_event_place_only(const Regs* in, Regs* out) { trackEventPlaceOut(out, track_event_place_only(in->y), 0x1F0E); }
+static void trackEvent2SetOut(const Regs* in, Regs* out, uint16_t pattern) {
+  out->a = track_event2_set(pattern, in->y);
+  out->x = rd16(DP + 0x1A);
+  setAdc16(out, rd16(0x1F12), rd16(DP + 0x1E));
+  setNZ16(out, out->a);
+}
+static void call_track_event2_2007(const Regs* in, Regs* out) { trackEvent2SetOut(in, out, 0x2007); }
+static void call_track_event2_c2e7(const Regs* in, Regs* out) { trackEvent2SetOut(in, out, 0xC2E7); }
+static void call_track_event2_2107(const Regs* in, Regs* out) { trackEvent2SetOut(in, out, 0x2107); }
+static void call_track_event2_tail(const Regs* in, Regs* out) { trackEvent2SetOut(in, out, in->a); }
+static void call_track_event2_20c7(const Regs* in, Regs* out) { trackEventFlagOut(in, out, track_event2_20c7(in->y), false); }
+static void call_track_event2_clear(const Regs* in, Regs* out) { trackEventFlagOut(in, out, track_event2_clear(), in->c); }
+static void call_track_event2_place_only(const Regs* in, Regs* out) { trackEventPlaceOut(out, track_event2_place_only(in->y), 0x1F12); }
+// the second road's flag row ($42EC) random too
+static void fuzz_track_event2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_track_event_set(r, ram, rnd);
+  const uint16_t x = (uint16_t)(ram[DP + 0x1A] | ram[DP + 0x1B] << 8);
+  wr16ram(ram, (uint16_t)(0x42EC + x), (uint16_t)rnd());
+}
+static void fuzz_track_event2_tail(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  fuzz_track_event2(r, ram, rnd);
+  r->a = (uint16_t)rnd();
+}
+
 // ---- title_sprites_place ($8A:824B) ----  placed: A = $070A (N Z), C V of $060A + $10;
 // skipped: A = D+$62, flags of its CMP #$FFFF
 static void call_title_sprites_place(const Regs* in, Regs* out) {
@@ -14783,6 +14825,24 @@ const Routine routines[] = {
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_2107, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
   {.name = "track_event_c2e7", .entry = 0x82EAD4, .end = 0x82EADA, .alsoIn = {{0x82EB1A, 0x82EB45}}, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_c2e7, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
+  {.name = "track_event_20c7", .entry = 0x82EA93, .end = 0x82EACE, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_20c7, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
+  {.name = "track_event_place_only", .entry = 0x82EAFE, .end = 0x82EB1A, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event_place_only, ALL_OUTPUTS, .fuzz = fuzz_track_event_set},
+  {.name = "track_event2_2007", .entry = 0x82EB45, .end = 0x82EB4B, .alsoIn = {{0x82EBDE, 0x82EC09}}, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event2_2007, ALL_OUTPUTS, .fuzz = fuzz_track_event2},
+  {.name = "track_event2_c2e7", .entry = 0x82EB57, .end = 0x82EB5D, .alsoIn = {{0x82EBDE, 0x82EC09}}, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event2_c2e7, ALL_OUTPUTS, .fuzz = fuzz_track_event2},
+  {.name = "track_event2_20c7", .entry = 0x82EB5D, .end = 0x82EB98, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event2_20c7, ALL_OUTPUTS, .fuzz = fuzz_track_event2},
+  {.name = "track_event2_2107", .entry = 0x82EB98, .end = 0x82EB9E, .alsoIn = {{0x82EBDE, 0x82EC09}}, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event2_2107, ALL_OUTPUTS, .fuzz = fuzz_track_event2},
+  {.name = "track_event2_clear", .entry = 0x82EB9E, .end = 0x82EBC2, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event2_clear, ALL_OUTPUTS, .fuzz = fuzz_track_event2},
+  {.name = "track_event2_place_only", .entry = 0x82EBC2, .end = 0x82EBDE, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event2_place_only, ALL_OUTPUTS, .fuzz = fuzz_track_event2},
+  {.name = "track_event2_tail", .entry = 0x82EBDE, .end = 0x82EC09, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x7E, .call = call_track_event2_tail, ALL_OUTPUTS, .fuzz = fuzz_track_event2_tail},
   {.name = "title_sprites_place", .entry = 0x8A824B, .end = 0x8A8290, .source = "src/misc.c", .needM16 = true,
    .lowWramDb = true, .fixedD = true, .call = call_title_sprites_place, ALL_OUTPUTS, .fuzz = fuzz_title_sprites_place},
   {.name = "rotation_from_angle", .entry = 0x8A867C, .end = 0x8A869A, .source = "src/misc.c", .needM16 = true,

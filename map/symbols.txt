@@ -704,9 +704,17 @@ func    82DFA9   road_rows_build_call ; JSR road_rows_build; RTS (the race frame
 func    82E503   mode1_road_rows_view2 ; road_rows_build for mode 1's second player (record $02B3, tables +$580) -> src/misc.c
 func    82DFAD   road_rows_build     ; the road's rows built as the player crosses them; objects, lap wrap, road kind, tilt -> src/misc.c
 func    82EB1A   track_event_tail    ; the track events' shared tail: pattern A at the object's place -> src/misc.c
-func    82EA93   track_event_20c7    ; a track event: pattern $20C7 at the object's place (never run; through road_rows_build) -> src/misc.c
-func    82EAFE   track_event_place_only ; a track event's positions only (never run; through road_rows_build) -> src/misc.c
-func    82EB45   track_event2_set    ; the second road's track events $EB45-$EC08 (never run; through road_rows_build) -> src/misc.c
+func    82EA93   track_event_20c7    ; a track event: pattern $20C7 at the object's place (mode 1 runs it) -> src/misc.c
+func    82EAFE   track_event_place_only ; a track event's positions only (mode 1 runs it) -> src/misc.c
+func    82EB45   track_event2_2007   ; the second road's track event $2007 (JMP track_event2_tail; mode 1) -> src/misc.c
+func    82EB4B   track_event2_2047   ; the second road's $2047 (its body track_event2_tail; never reached: no row) -> src/misc.c
+func    82EB51   track_event2_2087   ; the second road's $2087 (its body track_event2_tail; never reached: no row) -> src/misc.c
+func    82EB57   track_event2_c2e7   ; the second road's $C2E7 -> src/misc.c
+func    82EB5D   track_event2_20c7   ; the second road's $20C7 at the object's place -> src/misc.c
+func    82EB98   track_event2_2107   ; the second road's $2107 -> src/misc.c
+func    82EB9E   track_event2_clear  ; the second road's event cleared -> src/misc.c
+func    82EBC2   track_event2_place_only ; the second road's positions only -> src/misc.c
+func    82EBDE   track_event2_tail   ; the second road's events' shared body (pattern in A) -> src/misc.c
 func    81E812   race_cars_frame     ; the 20 cars' frame: handlers, the race order sorted, lap wraps, finishers (RTL) -> src/misc.c
 func    81FB20   car_sync_player2    ; car_sync_player for the second player (handler 4; never run) -> src/track.c
 func    81FC72   car_sync_slot_0200  ; the VS race's player 1's car takes its record's motion (handler 8) -> src/track.c

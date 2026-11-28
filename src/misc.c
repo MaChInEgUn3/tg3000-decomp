@@ -1692,6 +1692,71 @@ uint16_t track_event_set(uint16_t pattern, uint16_t y) {
   return flags;
 }
 
+// map-fw-19: the track events mode 1 runs (the race never did): the first road's $82:EA93 and
+// $82:EAFE, the second road's $82:EB45-$82:EC08 (on $1F0C, $1F12/$1F14 and the rows $41EC/$44EC/$42EC).
+// Each returns its A at the RTS.
+static uint16_t track_event_rows(uint16_t patternAt, uint16_t pattern, uint16_t nearWord, uint16_t farWord,
+                                 uint32_t nearRow, uint32_t farRow, uint16_t nearAt, uint16_t farAt) {
+  if(patternAt) wr16(patternAt, pattern);
+  const uint32_t x = rd16(DP + 0x1A);
+  wr16(nearWord, nearAt);
+  wr16(nearRow + x, nearAt);
+  wr16(nearRow + 0x40 + x, nearAt);
+  wr16(farWord, farAt);
+  wr16(farRow + x, farAt);
+  wr16(farRow + 0x40 + x, farAt);
+  return farAt;
+}
+static uint16_t track_event_flag(uint32_t flagRow) {
+  const uint32_t x = rd16(DP + 0x1A);
+  const uint16_t f = (uint16_t)(rd16(flagRow + x) | 0x0001);
+  wr16(flagRow + x, f);
+  wr16(flagRow + 0x40 + x, f);
+  return f;
+}
+
+// TG3000_ROUTINE($82:EA93) track_event_20c7
+uint16_t track_event_20c7(uint16_t y) {
+  uint16_t at = (uint16_t)(rd8(0x8CB3 + (uint32_t)y) << 4);
+  if(at & 0x0800) at |= 0xF000;  // a signed 12-bit place
+  track_event_rows(0x1F0A, 0x20C7, 0x1F0E, 0x1F10, 0x3C6C, 0x3F6C, at, at);
+  return track_event_flag(0x3D6C);
+}
+
+// TG3000_ROUTINE($82:EAFE) track_event_place_only
+uint16_t track_event_place_only(uint16_t y) {
+  const uint16_t at = func_82EC09(y);
+  return track_event_rows(0, 0, 0x1F0E, 0x1F10, 0x3C6C, 0x3F6C, at, (uint16_t)(at + rd16(DP + 0x1E)));
+}
+
+// TG3000_ROUTINE($82:EBDE) track_event2_set (its entries $82:EB45 $2007, $EB4B $2047, $EB51 $2087,
+// $EB57 $C2E7, $EB98 $2107)
+uint16_t track_event2_set(uint16_t pattern, uint16_t y) {
+  const uint16_t at = func_82EC09(y);
+  track_event_rows(0x1F0C, pattern, 0x1F12, 0x1F14, 0x41EC, 0x44EC, at, (uint16_t)(at + rd16(DP + 0x1E)));
+  return track_event_flag(0x42EC);
+}
+
+// TG3000_ROUTINE($82:EB5D) track_event2_20c7
+uint16_t track_event2_20c7(uint16_t y) {
+  uint16_t at = (uint16_t)(rd8(0x8CB3 + (uint32_t)y) << 4);
+  if(at & 0x0800) at |= 0xF000;  // ($82:EB74: an incbin in the listing; road_rows_build's fuzz runs it)
+  track_event_rows(0x1F0C, 0x20C7, 0x1F12, 0x1F14, 0x41EC, 0x44EC, at, at);
+  return track_event_flag(0x42EC);
+}
+
+// TG3000_ROUTINE($82:EB9E) track_event2_clear
+uint16_t track_event2_clear(void) {
+  track_event_rows(0, 0, 0x1F12, 0x1F14, 0x41EC, 0x44EC, 0, 0);
+  return track_event_flag(0x42EC);
+}
+
+// TG3000_ROUTINE($82:EBC2) track_event2_place_only
+uint16_t track_event2_place_only(uint16_t y) {
+  const uint16_t at = func_82EC09(y);
+  return track_event_rows(0, 0, 0x1F12, 0x1F14, 0x41EC, 0x44EC, at, (uint16_t)(at + rd16(DP + 0x1E)));
+}
+
 // TG3000_ROUTINE($8A:824B) title_sprites_place
 void title_sprites_place(void) {
   if(rd16(DP + 0x62) != 0xFFFF) return;  // never run
@@ -5512,48 +5577,11 @@ void race_state_reset(void) {
   for(uint32_t x = 0x14; x != 0; x -= 2) wr16(0x0444 + x, 0xFFFF);
 }
 
-// A track object's place as an event's position: its byte * 16, a signed 12-bit value.
-static uint16_t track_event_place(uint16_t y) {
-  uint16_t at = (uint16_t)(rd8(0x8CB3 + (uint32_t)y) << 4);
-  if(at & 0x0800) at |= 0xF000;
-  return at;
-}
-
-// One road's track event written: `pattern` (unless 0) to its pattern word, the near and
-// far positions to its two words and its rows at D+$1A; its flag row's bit 0 set (`flag`).
-typedef struct { uint16_t pattern, nearWord, farWord, nearRow, farRow, flagRow; } TrackEventRoad;
-static const TrackEventRoad TRACK_ROAD_1 = {0x1F0A, 0x1F0E, 0x1F10, 0x3C6C, 0x3F6C, 0x3D6C};
-static const TrackEventRoad TRACK_ROAD_2 = {0x1F0C, 0x1F12, 0x1F14, 0x41EC, 0x44EC, 0x42EC};
-static void track_event_put(const TrackEventRoad* road, uint16_t pattern, uint16_t nearAt, uint16_t farAt, bool flag) {
-  const uint32_t x = rd16(DP + 0x1A);
-  if(pattern) wr16(road->pattern, pattern);
-  wr16(road->nearWord, nearAt);
-  wr16(road->nearRow + x, nearAt);
-  wr16(road->nearRow + 0x40 + x, nearAt);
-  wr16(road->farWord, farAt);
-  wr16(road->farRow + x, farAt);
-  wr16(road->farRow + 0x40 + x, farAt);
-  if(flag) {
-    const uint16_t f = (uint16_t)(rd16(road->flagRow + x) | 0x0001);
-    wr16(road->flagRow + x, f);
-    wr16(road->flagRow + 0x40 + x, f);
-  }
-}
-
-// TG3000_ROUTINE($82:EA93) track_event_20c7
-// TG3000_ROUTINE($82:EAFE) track_event_place_only
-// TG3000_ROUTINE($82:EB45) track_event2_set (and $82:EB4B, $82:EB51, $82:EB57, $82:EB98)
-// TG3000_ROUTINE($82:EB5D) track_event2_20c7
-// TG3000_ROUTINE($82:EB9E) track_event2_clear
-// TG3000_ROUTINE($82:EBC2) track_event2_place_only
-// Object `y`'s track event (kind: its +1 byte), by its handler in the table at $82:819E.
-// The first road's handlers are track_event_set/_clear and two never run ($82:EA93: pattern
-// $20C7, both positions the object's place; $82:EAFE: func_82EC09's positions, no pattern,
-// no flag); the second road's ($82:EB45-$82:EC08, never run) mirror them on $1F0C, $1F12/
-// $1F14 and the rows $41EC/$44EC/$42EC.
+// Object `y`'s track event (kind: its +1 byte), by its handler in the table at $82:819E: the
+// first road's track_event_set/_clear/_20c7/_place_only, the second road's track_event2_* (map-fw-19:
+// $82:EA93, $82:EAFE and the second road's run in mode 1).
 static void track_event_run(uint16_t kind, uint16_t y) {
   const uint16_t handler = bus_rd16(0x82819E + 2u * kind);
-  uint16_t at;
   switch(handler) {
     case 0xEA81: track_event_set(0x2007, y); break;
     case 0xEA87: track_event_set(0x2047, y); break;
@@ -5561,32 +5589,16 @@ static void track_event_run(uint16_t kind, uint16_t y) {
     case 0xEACE: track_event_set(0x2107, y); break;
     case 0xEAD4: track_event_set(0xC2E7, y); break;
     case 0xEADA: track_event_clear(); break;
-    case 0xEA93:  // never run
-      at = track_event_place(y);
-      track_event_put(&TRACK_ROAD_1, 0x20C7, at, at, true);
-      break;
-    case 0xEAFE:  // never run
-      at = func_82EC09(y);
-      track_event_put(&TRACK_ROAD_1, 0, at, (uint16_t)(at + rd16(DP + 0x1E)), false);
-      break;
-    case 0xEB45: case 0xEB4B: case 0xEB51: case 0xEB57: case 0xEB98: {  // never run
-      const uint16_t pattern = handler == 0xEB45 ? 0x2007 : handler == 0xEB4B ? 0x2047 : handler == 0xEB51 ? 0x2087
-                             : handler == 0xEB57 ? 0xC2E7 : 0x2107;
-      at = func_82EC09(y);
-      track_event_put(&TRACK_ROAD_2, pattern, at, (uint16_t)(at + rd16(DP + 0x1E)), true);
-      break;
-    }
-    case 0xEB5D:  // never run
-      at = track_event_place(y);
-      track_event_put(&TRACK_ROAD_2, 0x20C7, at, at, true);
-      break;
-    case 0xEB9E:  // never run
-      track_event_put(&TRACK_ROAD_2, 0, 0, 0, true);
-      break;
-    case 0xEBC2:  // never run
-      at = func_82EC09(y);
-      track_event_put(&TRACK_ROAD_2, 0, at, (uint16_t)(at + rd16(DP + 0x1E)), false);
-      break;
+    case 0xEA93: (void)track_event_20c7(y); break;  // (map-fw-19: these run in mode 1)
+    case 0xEAFE: (void)track_event_place_only(y); break;
+    case 0xEB45: (void)track_event2_set(0x2007, y); break;
+    case 0xEB4B: (void)track_event2_set(0x2047, y); break;
+    case 0xEB51: (void)track_event2_set(0x2087, y); break;
+    case 0xEB57: (void)track_event2_set(0xC2E7, y); break;
+    case 0xEB98: (void)track_event2_set(0x2107, y); break;
+    case 0xEB5D: (void)track_event2_20c7(y); break;
+    case 0xEB9E: (void)track_event2_clear(); break;
+    case 0xEBC2: (void)track_event2_place_only(y); break;
     default:  // $EA80: nothing
       break;
   }

@@ -290,6 +290,12 @@ uint16_t track_event_clear(void);
 // entries load the pattern and jump to the shared body at $82:EB1A: $82:EA81 ($2007),
 // $82:EA87 ($2047), $82:EA8D ($2087), $82:EACE ($2107), $82:EAD4 ($C2E7).
 uint16_t track_event_set(uint16_t pattern, uint16_t y);
+uint16_t track_event_20c7(uint16_t y);                  // $82:EA93 (map-fw-19)
+uint16_t track_event_place_only(uint16_t y);            // $82:EAFE
+uint16_t track_event2_set(uint16_t pattern, uint16_t y);  // $82:EBDE (entries $EB45, $EB4B, $EB51, $EB57, $EB98)
+uint16_t track_event2_20c7(uint16_t y);                 // $82:EB5D
+uint16_t track_event2_clear(void);                      // $82:EB9E
+uint16_t track_event2_place_only(uint16_t y);           // $82:EBC2
 
 // $81:E7CE: D+$24, $26, $2C and $2E = $7FFF.
 void far_7fff_4(void);
