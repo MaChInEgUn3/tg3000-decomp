@@ -12124,6 +12124,32 @@ static void fuzz_race_cars_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // ---- road_rows_stream ($81:8564) ----  a DSP-4 tape row (RTL). A = $00EA, X = the fill's
 // end (D+$14) or the scan's ($0194), Y = 0 ($81:89F5's), DB = $83; N set and Z
 // clear (the PLB of $83), C of the CMP #$A422 and V of the ADC #$0011 on $00EA
+// map-fw-10: mode 1's window streams: view 1 ends as road_rows_stream (/bin/bash0EA advanced, X = /bin/bash194);
+// view 2 does not advance /bin/bash0EA (A = D+6 from its last compare, X = /bin/bash196)
+static void call_mode1_window_view1(const Regs* in, Regs* out) {
+  (void)in;
+  const uint16_t e = rd16(0x00EA), sum = (uint16_t)(e + 0x0011);
+  (void)mode1_window_view1();
+  out->a = rd16(0x00EA);
+  out->x = rd16(0x0194);
+  out->y = 0;
+  out->n = true;
+  out->z = false;
+  out->c = sum >= 0xA422;
+  out->v = (~(e ^ 0x0011) & (e ^ sum) & 0x8000) != 0;
+  out->db = 0x83;
+}
+static void call_mode1_window_view2(const Regs* in, Regs* out) {
+  (void)in;
+  (void)mode1_window_view2();
+  out->a = rd16(DP + 0x16);
+  out->x = rd16(0x0196);
+  out->y = 0;
+  out->n = true;
+  out->z = false;
+  out->c = rd16(DP + 0x16) >= rd16(DP + 0x14);
+  out->db = 0x83;
+}
 static void call_road_rows_stream(const Regs* in, Regs* out) {
   (void)in;
   const uint16_t e = rd16(0x00EA), sum = (uint16_t)(e + 0x0011);
@@ -14935,6 +14961,18 @@ const Routine routines[] = {
    .holes = {{0x85B533, 0x85B53B}, {0x85B75D, 0x85B7D6}, {0x85B4D4, 0x85B4D7}, {0x85B54B, 0x85B558},
              {0x85B56C, 0x85B572}, {0x85B589, 0x85B58F}, {0x85B5B3, 0x85B5BA}, {0x85B694, 0x85B716},
              {0x85B804, 0x85B811}}},
+  {.name = "mode1_window_view1", .entry = 0x81DBAC, .end = 0x81E0A3, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_window_view1, ALL_OUTPUTS,
+   .replays = 8, .alsoIn = {{0x81E0A3, 0x81E0F8}},  // (map-fw-10: $81:E0A3, dsp4_answers_store's copy, folded in)
+   // never run (the listing's incbins; traps in the C): $0242/$1EF2 negative, their $33 adds, the
+   // fill above the camera, the far windows, the split's fill
+   .holes = {{0x81DD27, 0x81DD38}, {0x81DD4B, 0x81DD5E}, {0x81DD6F, 0x81DD75}, {0x81DD83, 0x81DD89},
+             {0x81DE18, 0x81DE36}, {0x81DF79, 0x81DFC8}, {0x81DFCE, 0x81E08F}}},
+  {.name = "mode1_window_view2", .entry = 0x81E0F8, .end = 0x81E5DC, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_window_view2, ALL_OUTPUTS,
+   .replays = 8, .alsoIn = {{0x81E5DC, 0x81E631}},  // ($81:E5DC folded in)
+   .holes = {{0x81E270, 0x81E281}, {0x81E294, 0x81E2A7}, {0x81E2B8, 0x81E2BE}, {0x81E2CC, 0x81E2D2},
+             {0x81E361, 0x81E37F}, {0x81E4C4, 0x81E513}, {0x81E519, 0x81E5DA}}},  // (the same, view 2's)
   {.name = "road_rows_stream", .entry = 0x818564, .end = 0x8189F5, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_stream, ALL_OUTPUTS,
    .fuzz = fuzz_road_rows_stream, .fuzzStack = 0x1FF1,

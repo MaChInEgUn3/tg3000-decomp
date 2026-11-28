@@ -814,3 +814,5 @@
 8ABE2E password_show src/password.c fba96cad5f3ee303 1 0 79/79 verified live-flags:NVZC replayed:0
 8AB232 password_entry src/password.c fba96cad5f3ee303 1 0 84/84 verified live-flags:NVZC replayed:0
 8AA67B vs_screen_loop src/vs.c 810ce1cea21cc212 1 0 37/37 verified live-flags:NVZC replayed:0
+81DBAC mode1_window_view1 src/misc.c e6235338153d1bb6 9 0 342/342 verified live-flags:- replayed:6
+81E0F8 mode1_window_view2 src/misc.c e6235338153d1bb6 8 0 335/335 verified live-flags:- replayed:6

@@ -6112,6 +6112,210 @@ bool road_rows_stream(void) {
   return split;
 }
 
+// map-fw-10: mode 1's two views' window streams ($81:DBAC, $81:E0F8), drafted by a delegated agent
+// from the listing and road_rows_stream; checked by the differential test
+// ---- mode 1's two windows streams: $81:DBAC (top view, player 1) and $81:E0F8 (bottom view,
+// player 2), road_rows_stream's ($81:8564) code on a half screen's buffers, tables and words.
+// Draft for src/misc.c, after road_rows_stream (uses its statics cmp_n and road_product_hi).
+typedef struct {
+  uint16_t flag;                     // $00B4 / $00B6: which of the two buffers
+  uint16_t buf_set, buf_clear;       // $2E2C / $2FDC (flag set), $318C / $333C (flag clear)
+  uint16_t buf_save;                 // $1E4E / $1E50
+  uint16_t seg, line;                // $0226 / $02D9 (the segment), $0225 / $02D8 (the row byte)
+  uint16_t tab_r, tab_l, tab_bit;    // $3C6C / $41EC, $3F6C / $44EC, $3D6E / $42EE
+  uint16_t p1, p2;                   // $0242 / $02F5, $1EF2 / $1EFC
+  uint16_t w37, w39;                 // header words 37 and 39: $0202 / $02B5, $1EF6 / $1F00
+  uint16_t w32;                      // header word 32: $2FC8 / $3178
+  uint16_t row_h, row_x1, row_l1, row_x2, row_l2;  // $38EC, $35EC, $37EC, $366C, $386C (view 2: +$40)
+  uint16_t rows_end, scan_end;       // $0190 / $0192, $0194 / $0196
+  uint32_t far_dp, hdma_dp;          // D+$C8 / D+$CA, D+$B6..$BB / D+$C2..$C7
+  uint16_t hdma_src;                 // $7E:4E55 / $7E:4E5B (three bytes, every other one)
+  bool tail_ff;                      // view 2: the clear's last $20 bytes all $00FF ($81:E1A6)
+  bool step_ea;                      // view 1: $00EA advanced at the end ($81:E08F); view 2 not
+  const char *t_unequal, *t_neg1, *t_neg2, *t_fill, *t_lines, *t_far, *t_split;
+} Mode1Window;
+
+static const Mode1Window mode1_windows[2] = {
+  {0x00B4, 0x2E2C, 0x318C, 0x1E4E, 0x0226, 0x0225, 0x3C6C, 0x3F6C, 0x3D6E, 0x0242, 0x1EF2, 0x0202, 0x1EF6,
+   0x2FC8, 0x38EC, 0x35EC, 0x37EC, 0x366C, 0x386C, 0x0190, 0x0194, 0xC8, 0xB6, 0x4E55, false, true,
+   "$81:DD22: mode 1's top window with $0242 and $1EF2 unequal (never run; unmeasured)",
+   "$81:DD27: mode 1's top window with $0242 negative (never run; not disassembled)",
+   "$81:DD4B: mode 1's top window with $1EF2 negative (never run; not disassembled)",
+   "$81:DE18: mode 1's top window's fill above the camera (never run; not disassembled)",
+   "$81:DE48: mode 1's top window with the two roads' lines unequal (never run; unmeasured)",
+   "$81:DF79: mode 1's top window's far windows (never run; not disassembled)",
+   "$81:DFCE: mode 1's top window's split fill (never run; not disassembled)"},
+  {0x00B6, 0x2FDC, 0x333C, 0x1E50, 0x02D9, 0x02D8, 0x41EC, 0x44EC, 0x42EE, 0x02F5, 0x1EFC, 0x02B5, 0x1F00,
+   0x3178, 0x392C, 0x362C, 0x382C, 0x36AC, 0x38AC, 0x0192, 0x0196, 0xCA, 0xC2, 0x4E5B, true, false,
+   "$81:E26B: mode 1's bottom window with $02F5 and $1EFC unequal (never run; unmeasured)",
+   "$81:E270: mode 1's bottom window with $02F5 negative (never run; not disassembled)",
+   "$81:E294: mode 1's bottom window with $1EFC negative (never run; not disassembled)",
+   "$81:E361: mode 1's bottom window's fill above the camera (never run; not disassembled)",
+   "$81:E391: mode 1's bottom window with the two roads' lines unequal (never run; unmeasured)",
+   "$81:E4C4: mode 1's bottom window's far windows (never run; not disassembled)",
+   "$81:E519: mode 1's bottom window's split fill (never run; not disassembled)"},
+};
+
+// TG3000_ROUTINE($81:E0A3) and TG3000_ROUTINE($81:E5DC), byte-for-byte copies of
+// dsp4_answers_store ($81:89F5), folded in as in the race: a row of the window command $08,
+// its 9 words sent, each road's (address, word) answers stored in bank $7E
+static void mode1_window_row(const Mode1Window* c, Dsp4Window* w, uint32_t row, uint32_t at) {
+  const uint16_t words[9] = {rd16(c->row_h + row),  rd16(c->row_x1 + row), rd16(c->row_l1 + row),
+                             rd16(c->row_x2 + row), rd16(c->row_l2 + row), rd16(c->tab_r + at),
+                             rd16(c->tab_l + at),   rd16(c->tab_r + at),   rd16(c->tab_l + at)};
+  if(words[2] != words[4]) tg3000_unported(c->t_lines);
+  static uint16_t run0[512][2], run1[512][2];
+  uint16_t (*runs[2])[2] = {run0, run1};
+  unsigned n[2];
+  dsp4_window_row(w, words, runs, n, 512);
+  for(int k = 0; k < 2; k++)
+    for(unsigned i = 0; i < n[k] && i < 512; i++) wr16(runs[k][i][0], runs[k][i][1]);
+}
+
+static bool mode1_window(const Mode1Window* c) {
+  const uint16_t buffer = rd16(c->flag) ? c->buf_set : c->buf_clear;
+  wr16(DP + 0x16, buffer);
+  wr16(c->buf_save, buffer);
+  wr16(DP + 0x1A, (uint16_t)((rd16(c->seg) << 1) & 0x003E));
+  // the buffer's $1A0 bytes ($DBCD: 6 passes of $40, then $20 more): $00FF, $FF00 pairs; view
+  // 2's last $20 bytes all $00FF (no LDA #$FF00 before $81:E1A6's stores)
+  for(uint32_t x = buffer, n = 0; n < 0x0D; n++, x += 0x20)
+    for(uint32_t k = 0; k < 0x20; k += 4) {
+      wr16(x + k, 0x00FF);
+      wr16(x + k + 2, (c->tail_ff && n == 0x0C) ? 0x00FF : 0xFF00);
+    }
+  uint32_t x = rd16(DP + 0x1A);
+  const uint16_t row = (uint16_t)(((rd16(c->line) >> 1) & 0x007F) << 8);
+  wr16(DP + 0x1E, row);
+  wr16(DP + 0x1C, (uint16_t)(road_product_hi((uint16_t)((rd16(c->tab_r + 2 + x) - rd16(c->tab_r + x)) << 1), row) +
+                             rd16(c->tab_r + x)));
+  wr16(DP + 0x1E, (uint16_t)(road_product_hi((uint16_t)((rd16(c->tab_l + 2 + x) - rd16(c->tab_l + x)) << 1),
+                                             rd16(DP + 0x1E)) + rd16(c->tab_l + x)));
+  // the windows, DSP-4 command $08, native: its 45 header words
+  static const uint16_t fixed[] = {0x00FF, 0x00FF, 0x00FF, 0x00FF, 0, 0, 0, 0, 0x00A6, 0x00A6, 0x00A6, 0x00A6,
+                                   0x00A5, 0x00A5, 0x00A7, 0x00A7, 0x0081, 0x007F, 0x0081, 0x007F};
+  uint16_t head[45];
+  for(unsigned i = 0; i < sizeof fixed / sizeof fixed[0]; i++) head[i] = fixed[i];
+  const uint16_t base = rd16(DP + 0x16), p1 = rd16(c->p1), p2 = rd16(c->p2);
+  if(p1 != p2) tg3000_unported(c->t_unequal);
+  if(p1 & 0x8000) tg3000_unported(c->t_neg1);  // ($DD27..$DD37: incbin)
+  const uint16_t a = (uint16_t)(base + 0x019C);
+  head[20] = head[21] = a;
+  wr16(DP + 0x18, a);
+  if(p2 & 0x8000) tg3000_unported(c->t_neg2);  // ($DD4B..$DD5D: incbin)
+  head[22] = head[23] = (uint16_t)(base + 0x019E);
+  head[24] = head[25] = 0x0033;  // (p1 negative: $DD6F, under the trap above)
+  head[26] = head[27] = 0x0033;  // (p2 negative: $DD83, under the trap above)
+  const uint16_t mid[] = {0xFFCB, 0xFFCB, 0xFFCB, 0xFFCB, c->w32, 0x0034, 0xFFCC, 0x0035, 0x7FFF};
+  for(unsigned i = 0; i < sizeof mid / sizeof mid[0]; i++) head[28 + i] = mid[i];
+  head[37] = rd16(c->w37);
+  head[38] = (uint16_t)(p1 + 0x0033);
+  head[39] = rd16(c->w39);
+  head[40] = (uint16_t)(p2 + 0x0033);
+  x = rd16(DP + 0x1A);
+  if(rd16(c->tab_bit + x) & 1) {
+    wr16(DP + 0x1C, rd16(c->tab_r + x));
+    wr16(DP + 0x1E, rd16(c->tab_l + x));
+  }
+  for(int i = 0; i < 2; i++) {
+    head[41 + 2 * i] = rd16(DP + 0x1C);
+    head[42 + 2 * i] = rd16(DP + 0x1E);
+  }
+  Dsp4Window win;
+  (void)dsp4_window_begin(&win, head);  // the first answer: only the fill's word
+  const uint16_t fill = (uint16_t)(0 - p1);
+  if(!(fill & 0x8000) && fill != 0) tg3000_unported(c->t_fill);  // (unreachable: p1 negative trapped)
+  wr16(DP + 0x14, 2);
+  do {
+    x = rd16(DP + 0x1A);
+    mode1_window_row(c, &win, rd16(DP + 0x14), (rd16(c->tab_bit + x) & 1) ? x : x + 2);
+    if(rd16(c->tab_bit + (uint32_t)rd16(DP + 0x1A)) & 1)  // sent again: the answers may land anywhere
+      mode1_window_row(c, &win, rd16(DP + 0x14), rd16(DP + 0x1A) + 2);
+    wr16(DP + 0x1A, (uint16_t)(rd16(DP + 0x1A) + 2));
+    wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 2));  // (view 2's extra LDX $14 at $E451: no effect)
+  } while(rd16(DP + 0x14) != rd16(c->rows_end));
+  if(dsp4_window_end(&win) != 0) tg3000_unported(c->t_far);  // $DF1D / $E468: db $D0,$5A, a BNE
+  wr16(DP + c->far_dp, 0);  // STZ, 16-bit
+  static const uint8_t hdma_near[] = {0xC2, 0xB0, 0xA1};
+  for(int i = 0; i < 3; i++) wr8(DP + c->hdma_dp + (uint32_t)i, hdma_near[i]);
+  for(int i = 0; i < 3; i++) wr8(DP + c->hdma_dp + 3 + (uint32_t)i, rd8(c->hdma_src + 2 * (uint32_t)i));
+  wr16(DP + 0x14, 0x3FFF);
+  wr16(DP + 0x16, 0x3FFF);
+  for(uint32_t r = 2;; ) {
+    uint16_t v = rd16(c->row_l2 + r);
+    if(v == rd16(DP + 0x14) || cmp_n(v, rd16(DP + 0x14))) {
+      wr16(DP + 0x14, v);
+      wr16(DP + 0x18, (uint16_t)r);
+    }
+    v = rd16(c->row_l1 + r);
+    if(v == rd16(DP + 0x16) || cmp_n(v, rd16(DP + 0x16))) {
+      wr16(DP + 0x16, v);
+      wr16(DP + 0x1A, (uint16_t)r);
+    }
+    r = (uint16_t)(r + 2);
+    if(r == rd16(c->scan_end)) break;
+  }
+  if(cmp_n(rd16(DP + 0x16), rd16(DP + 0x14))) tg3000_unported(c->t_split);  // $DFC8 / $E513
+  if(c->step_ea) {  // $81:E08F (view 2's JMP $E5DA goes straight to PLB / RTL)
+    uint16_t e = (uint16_t)(rd16(0x00EA) + 0x0011);
+    if(e == 0xA422) e = 0xA411;
+    wr16(0x00EA, e);
+  }
+  return false;  // road_rows_stream's split, always false here: the split path is a trap
+}
+
+// TG3000_ROUTINE($81:DBAC) mode1_window_view1
+bool mode1_window_view1(void) { return mode1_window(&mode1_windows[0]); }
+// TG3000_ROUTINE($81:E0F8) mode1_window_view2
+bool mode1_window_view2(void) { return mode1_window(&mode1_windows[1]); }
+
+/*
+ * Differences applied (race $81:8564 -> view 1 $81:DBAC -> view 2 $81:E0F8)
+ *
+ *  buffer flag      $00B4 -> $00B4 -> $00B6           ($856B / $DBB3 / $E0FF)
+ *  buffers          $2E2C,$318C -> same -> $2FDC,$333C ($8568 / $DBB0 / $E0FC, $E104)
+ *  buffer saved at  $1E4E -> $1E4E -> $1E50           ($8575 / $DBBD / $E109)
+ *  segment word     $0226 -> $0226 -> $02D9           ($8578 / $DBC0 / $E10C)
+ *  row byte         $0225 -> $0225 -> $02D8           ($85DA / $DC88 / $E1D1)
+ *  clear            $1B x $20 bytes -> 6 x $40 + $20 ($1A0 bytes) -> the same, but its last $20
+ *                   bytes all $00FF (no LDA #$FF00 between $E1A3 and $E1A6)
+ *  edge tables      $3C6C/$3C6E/$3F6C/$3F6E -> same -> $41EC/$41EE/$44EC/$44EE
+ *  bit table        $3D6E -> $3D6E -> $42EE
+ *  window bases     D+$16 + $035C / $035E -> + $019C / $019E (both views) ($DD3B, $DD61)
+ *  words p1, p2     $0242, $1EF2 -> same -> $02F5, $1EFC
+ *  header 28-31, 34 $FF5B, $FF5C -> $FFCB, $FFCC (both views) ($DD92, $DDAD)
+ *  header 32        $2FC8 -> $2FC8 -> $3178          ($86F3 / $DDA1 / $E2EA)
+ *  header 37, 39    $0202, $1EF6 -> same -> $02B5, $1F00
+ *  row tables       $38EC/$35EC/$37EC/$366C/$386C -> same -> $392C/$362C/$382C/$36AC/$38AC
+ *  answer store     JSR $89F5 -> JSR $E0A3 -> JSR $E5DC (copies of $89F5; folded)
+ *  row loop end     $0190 -> $0190 -> $0192;  JMP $879C -> JMP $DE4A -> JMP $E393
+ *  view 2           an extra LDX $14 at $E451 (no effect)
+ *  far flag         D+$C8 -> D+$C8 -> D+$CA (STZ, 16-bit)
+ *  HDMA bytes       D+$B6..$BB -> same -> D+$C2..$C7; $7E:4E55/57/59 -> same -> $7E:4E5B/5D/5F
+ *  scan end         $0194 -> $0194 -> $0196
+ *  $00EA step       race and view 1 add $11 (wrapping $A422 -> $A411); view 2 does not:
+ *                   its no-split JMP $E5DA lands on PLB / RTL
+ *
+ * Not ported (traps), because the listing has incbin there (the code is not disassembled, not
+ * absent: each gap is the race's code's length): $0242/$1EF2 negative ($DD27..$DD37 $11 bytes,
+ * $DD4B..$DD5D $13, $DD6F..$DD74 6, $DD83..$DD88 6; view 2 $E270, $E294, $E2B8, $E2CC), the
+ * fill above the camera ($DE18..$DE35 $1E; view 2 $E361), the far windows ($DF79..$DFC7 $4F;
+ * view 2 $E4C4), the split fill ($DFCE..$E08E $C1; view 2 $E519..$E5D9). The task's "lacks the
+ * asl asl clc adc $16", "lacks clc adc #$0033 bra" and "lacks the clamp to $D8" are these gaps.
+ * The views' bases for negative words are thus not decoded; only the non-negative ones are known.
+ *
+ * Uncertain:
+ *  - The race's two "unequal" traps (p1 != p2; the roads' lines unequal) are kept with the
+ *    views' addresses: unmeasured for mode 1 as for the race.
+ *  - src/dsp4.c's window reads only header words 20, 22, 24, 26 and 38-44; it ignores 28-36,
+ *    so the views' $FFCB/$FFCC (race $FF5B/$FF5C) and view 2's $3178 do not reach it. If those
+ *    words bound the window on the chip (a half screen's lower limit), the native answers
+ *    could differ for mode 1: to measure against the firmware (not fixed here).
+ *  - Return value always false (the split path traps); an adapter like road_rows_stream's would
+ *    report X = $0194 / $0196 and, for view 2, A not $00EA's new value (no ADC #$0011 / CMP
+ *    #$A422 there: its A, C, V come from the scan's CMP / the end's state instead).
+ */
+
 static uint16_t xba16(uint16_t v) { return (uint16_t)(v << 8 | v >> 8); }
 static uint16_t sext8(uint8_t v) { return (uint16_t)(int16_t)(int8_t)v; }
 

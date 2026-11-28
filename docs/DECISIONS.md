@@ -6409,6 +6409,32 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's two window streams, `$08` native (map-fw-10, 2026-11-28)
+
+**`mode1_window_view1` (`$81:DBAC`) and `mode1_window_view2` (`$81:E0F8`, `src/misc.c`)** are
+`road_rows_stream` for mode 1's two views.
+- The windows are DSP-4 `$08`, answered by `src/dsp4.c`.
+- The answer stores `$81:E0A3`/`$81:E5DC` (`dsp4_answers_store`'s copies) are folded in, as in the
+  race.
+- One body, `mode1_window`, with a table per view.
+- **View 1 against the race:**
+  - a half screen's buffer (6 rows cleared, not `$1B`);
+  - the window bases `$019C`/`$019E` (not `$035C`/`$035E`);
+  - header words `$FFCB`/`$FFCC` (not `$FF5B`/`$FF5C`).
+- **View 2:** player 2's words, its own buffers, tables and HDMA bytes, header word 32 `$3178`. It
+  does not advance `$00EA`.
+- The drafting agent's points:
+  - The race's code for `$0242`/`$1EF2` negative, their `$33` adds, the fill above the camera, the
+    far windows and the split's fill are incbins in the listing (never run): traps, and the rows'
+    holes.
+  - `src/dsp4.c`'s `$08` reads only header words 20-26 and 38-44, so mode 1's other header
+    values never reach it. On the firmware movie every answer agrees anyway.
+- The C was drafted by a delegated agent from the listing and `road_rows_stream`. The
+  differential test checks it.
+
+**Check:** on `demo_mode1` (firmware), view 1 has live 9 of 9 and 6 of 6 replays, paths 342 of 342;
+view 2 has live 8 of 8 and 6 of 6, paths 335 of 335. Then `verify_new.sh`.
+
 ## Mode 1's bottom view's sprites (map-fw-9, 2026-11-28)
 
 **`mode1_view2_sprites` (`$82:D2CC`, `src/misc.c`)** is mode 1's bottom view.

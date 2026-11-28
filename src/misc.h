@@ -1483,6 +1483,8 @@ void race_cars_frame(void);
 // the edge bytes (never run). $00EA steps by $11 ($A422 back to $A411). Returns whether that
 // fill ran.
 bool road_rows_stream(void);
+bool mode1_window_view1(void);  // $81:DBAC: road_rows_stream for mode 1's top view ($08 native)
+bool mode1_window_view2(void);  // $81:E0F8: the same for its bottom view
 
 // $85:B3D7: the road's rows projected by the DSP-4 (D = $0100; DB = $30 inside, $83 on
 // return; RTL). Six products (by the port) of the player's row pair ($7E:3AEC/$3B6E/$3AEE at
