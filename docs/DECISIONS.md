@@ -6409,6 +6409,49 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The VS race's sprite lists native: no DSP-4 port left in the game's C (dsp4-0e-2, 2026-11-28)
+
+**The game's C sends nothing through `dsp4_port_*` any more** (port request A, its rest). The VS
+race's lists go through `src/dsp4.c` as the race's do.
+
+**`src/misc.c`:**
+- `vs_sprites`:
+  - its `$000E` is `dsp4_list_view`, its `$0005` `dsp4_list_sizes`, its `$0009` and 7 words
+    `dsp4_objects_begin`;
+  - empty slots are `dsp4_objects_slot`;
+  - both cars' 9-word heads go to `dsp4_objects_car`, then `dsp4_objects_car_tail`;
+  - the end is `dsp4_objects_end`.
+- The `_vs` copies are gone. With the list native they were the race's functions:
+  `sprite_parts_stream`, `sprite_put_rows_c` and `object_sprite_kind0` now serve both races.
+- `oam_high_load_vs` is now `oam_high_load`. `oam_high_load2` takes `dsp4_high_table`.
+
+**The harness:**
+- **The shadow follows VS lists.**
+  - A `$000E` written in the views' code (`$82:BE18-$82:CAE5`) opens one, after an answer or
+    after a command the tracker saw end. A frame's first `$000E` follows the last road's
+    `$8000`, a write.
+  - A later `$000E` is `dsp4_list_view`.
+  - A `$000E`'s first byte, pending, is the list's: not the rounding tracker's, not the sample
+    parser's. Before this, the tracker lost itself on it every frame and set the VS samples
+    apart.
+- **The rows go native.**
+  - Off the tape, marked `spriteList`, no fuzz: `vs_sprites_view0`-`3`, `vs_object_flat`,
+    `vs_object_group`, `oam_high_load2`, `vs_race_frame_body` (all its DSP-4 is native now).
+  - Off the tape only: `sprite_parts_stream`, `sprite_put_rows_c`, `object_sprite_kind0`. Their
+    adapters no longer dispatch to the copies.
+  - New holes, the paths only the scripted fuzz reached: each view's never-run sign extension
+    and buffer-full JMP.
+
+**Checks:**
+- On `vs_race`, `demo_race` and `demo_mode1` (firmware): every row's live samples and replays
+  pass, `vs_race_frame_body` 24 of 24 replays among them.
+- The shadow's lists on `vs_race`: 1,783 opens (views), 1,674 agreed. The 80 tainted are the 43
+  pairs of dsp4-01x's rule; their samples are set apart.
+- Then the full gate.
+
+**For the port:** `dsp4_port_write16`/`dsp4_port_read16` are no longer called by `src/`. Only the
+harness's negative row `oam_high_load_wrong_command` uses them, on purpose.
+
 ## The VS race's `$000E`: a half-screen view, 16 slivers a line (dsp4-0e-1, 2026-11-28)
 
 **A VS frame's sprite lists, per pair of views:** `$000E`, `$0005`, `$0009` with view 0's stream

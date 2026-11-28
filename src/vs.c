@@ -1766,7 +1766,7 @@ bool vs_race_frame_body(void) {
   vs_road_project();
   vs_sprites_view0();
   vs_sprites_view1();
-  oam_high_load_vs();
+  oam_high_load();  // (dsp4-0e-2: the VS race's list native)
   vs_sprites_view2();
   vs_sprites_view3();
   oam_high_load2();

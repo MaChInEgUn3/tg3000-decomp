@@ -4612,29 +4612,14 @@ void oam_high_load(void) {
   } while(n != 0);
 }
 
-// oam_high_load for the VS race (dsp4-09p): the same code at $82:AE15, through the port. VS opens
-// its lists with $000E, whose rule is not measured (VS keeps the port until it is).
-void oam_high_load_vs(void) {
-  dsp4_port_write16(0x0006);
-  const uint32_t y = rd16(DP + 0x8E);
-  for(uint32_t i = 0; i < 32; i += 2) wr16(0x1776 + y + i, dsp4_port_read16());
-  const uint16_t room = (uint16_t)(0x0200 - (uint16_t)(rd16(DP + 0x86) - rd16(DP + 0x8E)));
-  if(room == 0) return;
-  uint16_t n = (uint16_t)(room >> 2), at = rd16(DP + 0x86);
-  do {
-    wr16(0x1576 + (uint32_t)at, 0xE0E0);
-    at = (uint16_t)(at + 4);
-    n = (uint16_t)(n - 1);
-  } while(n != 0);
-}
-
 // TG3000_ROUTINE($82:AEA4) oam_high_load2
 // oam_high_load for the VS race's second sprite table: the chip's 16 words to $1BB6 + D+$8E,
 // the unused sprites from D+$88 off screen in the table at $19B6.
 void oam_high_load2(void) {
-  dsp4_port_write16(0x0006);
+  uint16_t high[16];
+  dsp4_high_table(high);  // $0006, native (dsp4-0e-2)
   const uint32_t y = rd16(DP + 0x8E);
-  for(uint32_t i = 0; i < 32; i += 2) wr16(0x1BB6 + y + i, dsp4_port_read16());
+  for(uint32_t i = 0; i < 32; i += 2) wr16(0x1BB6 + y + i, high[i / 2]);
   const uint16_t room = (uint16_t)(0x0200 - (uint16_t)(rd16(DP + 0x88) - rd16(DP + 0x8E)));
   if(room == 0) return;
   uint16_t n = (uint16_t)(room >> 2), at = rd16(DP + 0x88);
@@ -7775,91 +7760,12 @@ static const VsSprites vs_sprites_tab[4] = {
    {0x0009, 0x00C4, 0x00A9, 0, 0x0088, 0x0100, 0x0074, 0x00DC}},
 };
 
-// The VS race's copies of the object parts' helpers ($82:DDBF, $82:D934's body, $82:CAE5,
-// $82:DCEC), through the port: VS opens its lists with $000E, not measured yet (dsp4-09p).
-static void sprite_parts_drain_vs(int open) {
-  while(dsp4_port_read16() != 0) {
-    (void)dsp4_port_read16();
-    (void)dsp4_port_read16();
-  }
-  for(int i = 0; i < open; i++) dsp4_port_write16(0);
-}
-
-static bool sprite_parts_list_vs(uint16_t* x, uint16_t* y, int open) {
-  uint16_t w = rd16(0x10000 + (uint32_t)*x);
-  dsp4_port_write16(w);
-  while(w != 0) {
-    dsp4_port_write16(rd16(0x10002 + (uint32_t)*x));
-    dsp4_port_write16(rd16(0x10004 + (uint32_t)*x));
-    if(dsp4_port_read16() != 0) {
-      for(;;) {
-        *y = (uint16_t)(*y + 2);
-        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
-        *y = (uint16_t)(*y + 2);
-        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
-        if(*y == rd16(DP + 0x1A)) {
-          sprite_parts_drain_vs(open);
-          return false;
-        }
-        if(dsp4_port_read16() == 0) break;
-      }
-    }
-    *x = (uint16_t)(*x + 6);
-    w = rd16(0x10000 + (uint32_t)*x);
-    dsp4_port_write16(w);
-  }
-  return true;
-}
-
-bool sprite_parts_stream_vs(uint16_t x) {
-  uint16_t y = rd16(DP + 0x84);
-  bool full = !sprite_parts_list_vs(&x, &y, 2);  // the first list's overflow: never run
-  if(!full) {
-    x = (uint16_t)(x + 2);
-    full = !sprite_parts_list_vs(&x, &y, 1);
-  }
-  wr16(DP + 0x84, y);
-  return full;
-}
-
-static bool sprite_put_rows_vs(uint32_t first, uint32_t second, uint32_t third, uint32_t fourth, uint16_t flags,
-                               uint32_t sets) {
-  const uint32_t x = rd16(DP + 0x14);
-  dsp4_port_write16(rd16(first + x));
-  dsp4_port_write16(rd16(second + x));
-  dsp4_port_write16(rd16(third + x));
-  dsp4_port_write16(rd16(fourth + x));
-  dsp4_port_write16(rd16(DP + 0x20));
-  dsp4_port_write16(rd16(DP + 0x22));
-  dsp4_port_write16((uint16_t)(rd16(DP + 0x26) | flags));
-  return sprite_parts_stream_vs(sprite_parts_at(sets));
-}
-
-bool sprite_put_rows_c_vs(void) {
-  return sprite_put_rows_vs(0x37EC, 0x38EC, 0x35EC, 0x37EC, rd16(DP + 0x3A), 0x848080);
-}
-
-bool object_sprite_kind0_vs(uint16_t x) {
-  wr16(DP + 0x24, bus_rd16(0x86AF06 + (uint32_t)x));
-  const uint32_t o = rd16(DP + 0x1C);
-  uint16_t at = (uint16_t)(rd8(0x8CB3 + o) << 4);
-  if(at & 0x0800) at |= 0xF000;
-  wr16(DP + 0x20, at);
-  wr16(DP + 0x26, (uint16_t)(((rd16(0x8CB4 + o) & 0x0700) << 1) | rd16(DP + 0x26)));
-  const uint32_t r = (uint16_t)(rd16(0x0024) - rd16(0x8CB6 + o)) & 0x003E;
-  wr16(DP + 0x22, (uint16_t)(bus_rd16(0x84A200 + r) - 0x0040));
-  if(sprite_put_rows_c_vs()) return true;
-  wr16(DP + 0x22, 0);
-  wr16(DP + 0x24, 0xBC30);
-  return sprite_put_rows_c_vs();
-}
-
 // TG3000_ROUTINE($82:DD3B) vs_object_flat
 // The VS race's flat object: object_sprite_flat with the third rows' shape (sprite_put_rows_c).
 bool vs_object_flat(uint16_t x) {
   object_sprite_setup(x);
   wr16(DP + 0x22, 0);
-  return sprite_put_rows_c_vs();
+  return sprite_put_rows_c();
 }
 
 // TG3000_ROUTINE($82:DD69) vs_object_group
@@ -7867,13 +7773,13 @@ bool vs_object_flat(uint16_t x) {
 bool vs_object_group(uint16_t x) {
   object_sprite_setup(x);
   wr16(DP + 0x22, 0);
-  if(sprite_put_rows_c_vs()) return true;
+  if(sprite_put_rows_c()) return true;
   sprite_place_negate();
-  if(sprite_put_rows_c_vs()) return true;
+  if(sprite_put_rows_c()) return true;
   sprite_place_back();
-  if(sprite_put_rows_c_vs()) return true;
+  if(sprite_put_rows_c()) return true;
   sprite_place_negate();
-  return sprite_put_rows_c_vs();
+  return sprite_put_rows_c();
 }
 
 // The VS object handlers by the table at $82:7FFE + kind * 2 (kind 0 reads below the table).
@@ -7882,7 +7788,7 @@ static bool vs_object_handler(uint16_t kind2) {
   switch(bus_rd16(0x827FFE + (uint32_t)kind2)) {
     case 0xDD3B: return vs_object_flat(kind2);
     case 0xDD69: return vs_object_group(kind2);
-    case 0xDCEC: return object_sprite_kind0_vs(kind2);
+    case 0xDCEC: return object_sprite_kind0(kind2);
     case 0xDA46: clc_82DA46(); return false;
     default: tg3000_unported("$82:7FFE: a VS object handler of no kind"); return false;
   }
@@ -7893,10 +7799,10 @@ static uint32_t vs_car_pos(uint32_t car) { return rd16(0xFAB5 + car) | (uint32_t
 static bool vs_sprites(const VsSprites* v) {
   const uint32_t R = v->rec, k = v->first;
   wr16(0x0184, (uint16_t)(rd16(v->buf) + v->bias));
-  dsp4_port_write16(0x000E);
+  dsp4_list_view();  // $000E (dsp4-0e-1: the view, 16 slivers a line)
   wr16(DP + 0x1A, (uint16_t)(rd16(DP + 0x8E) + v->limit));
   wr16(DP + 0x3C, 0x1000);
-  if(v->five) dsp4_port_write16(0x0005);
+  if(v->five) dsp4_list_sizes();
   {  // the player's place in the race order: D+$28 (0-8)
     uint16_t y = 8;
     const uint32_t me = rd16(R + 0x25) | (uint32_t)rd16(R + 0x27) << 16;
@@ -7907,7 +7813,7 @@ static bool vs_sprites(const VsSprites* v) {
     wr16(DP + 0x28, y);
   }
   wr16(DP + 0x2C, rd16(R + 0x26));
-  for(unsigned i = 0; i < 8; i++) dsp4_port_write16(v->head[i]);  // the $09 stream
+  dsp4_objects_begin(&v->head[1]);  // the $09 stream (head[0] its command word)
   wr16(DP + 0x14, v->first);
   if(v->bump) wr16(v->bump, (uint16_t)(rd16(v->bump) + v->first));
   wr16(DP + 0x16, (uint16_t)(rd16(R + 0x26) << 2));
@@ -7927,8 +7833,7 @@ objects:  // the row D+$14's object, if any
     wr16(DP + 0x16, a);
     const uint16_t w = rd16(0x8CB3 + (uint32_t)x);
     if(w == 0) {
-      dsp4_port_write16(rd16(0x37EC + (uint32_t)rd16(DP + 0x14)));
-      dsp4_port_write16(0);
+      dsp4_objects_slot(rd16(0x37EC + (uint32_t)rd16(DP + 0x14)));
     } else {
       wr16(DP + 0x1C, x);
       const uint16_t kind2 = (uint16_t)(((w >> 8) & 0x007F) << 1);
@@ -7951,32 +7856,16 @@ cars:  // the cars on this row (D+$2C), from the race order at D+$28
       bool full;
       if(!(rd16(R + 0x44) & 1) && car == v->car) {  // the player's own car
         if(rd16(R + 0x31) != 0) tg3000_unported("$82:BFB1 and its copies: the own car with its +$31 set");
-        dsp4_port_write16(rd16(0x37EC + r14));
-        dsp4_port_write16(0x9000);
-        dsp4_port_write16(rd16(0xFAB4 + c));
-        dsp4_port_write16(0x0033);
-        dsp4_port_write16(0x0033);
-        dsp4_port_write16(rd16(R + 2));
-        dsp4_port_write16(rd16(R + 2));
-        dsp4_port_write16(rd16(DP + 0x34));
-        dsp4_port_write16(rd16(R + 2));
-        wr16(DP + 0x2A, dsp4_port_read16());
-        dsp4_port_write16(rd16(0xFABF + c));
-        dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) | rd16(0xFAD1 + c)));
-        full = sprite_parts_stream_vs(bus_rd16(0x86C89E + (uint32_t)((rd16(R + 0x3B) << 1) & 0x00FE)));
+        const uint16_t head[9] = {rd16(0x37EC + r14), 0x9000, rd16(0xFAB4 + c), 0x0033, 0x0033, rd16(R + 2), rd16(R + 2),
+                                  rd16(DP + 0x34), rd16(R + 2)};
+        wr16(DP + 0x2A, dsp4_objects_car(head));
+        dsp4_objects_car_tail(rd16(0xFABF + c), (uint16_t)(rd16(DP + 0x3C) | rd16(0xFAD1 + c)));
+        full = sprite_parts_stream(bus_rd16(0x86C89E + (uint32_t)((rd16(R + 0x3B) << 1) & 0x00FE)));
       } else {  // a rival's way
-        dsp4_port_write16(rd16(0x37EC + r14));
-        dsp4_port_write16(0x9000);
-        dsp4_port_write16(rd16(0xFAB4 + c));
-        dsp4_port_write16(rd16(0x36EE + r14));
-        dsp4_port_write16(rd16(0x36EC + r14));
-        dsp4_port_write16(rd16(0x34EE + r14));
-        dsp4_port_write16(rd16(0x34EC + r14));
-        dsp4_port_write16(bus_rd16(0x83ACEC + frame));
-        dsp4_port_write16(rd16(0xFABB + c));
-        wr16(DP + 0x2A, dsp4_port_read16());
-        dsp4_port_write16(rd16(0xFABF + c));
-        dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) | rd16(0xFAD1 + c)));
+        const uint16_t head[9] = {rd16(0x37EC + r14), 0x9000, rd16(0xFAB4 + c), rd16(0x36EE + r14), rd16(0x36EC + r14),
+                                  rd16(0x34EE + r14), rd16(0x34EC + r14), bus_rd16(0x83ACEC + frame), rd16(0xFABB + c)};
+        wr16(DP + 0x2A, dsp4_objects_car(head));
+        dsp4_objects_car_tail(rd16(0xFABF + c), (uint16_t)(rd16(DP + 0x3C) | rd16(0xFAD1 + c)));
         const uint16_t d = (uint16_t)(rd16(0x34EC + r14) - rd16(0x34EE + r14));
         const uint16_t a = (uint16_t)(rd16(DP + 0x2A) - (uint16_t)(d << 1));
         static const uint16_t steps[] = {0xFFA0, 0xFFC0, 0xFFE8, 0x0018, 0x0040, 0x0060};
@@ -7984,7 +7873,7 @@ cars:  // the cars on this row (D+$2C), from the race order at D+$28
         for(unsigned i = 0; i < 6; i++, band += 2)
           if((uint16_t)(a - steps[i]) & 0x8000) break;
         const uint16_t parts = (uint16_t)(bus_rd16(0x86AFD8 + band) + bus_rd16(0x849180 + frame));
-        full = sprite_parts_stream_vs(bus_rd16(0x860000 + (uint32_t)parts));
+        full = sprite_parts_stream(bus_rd16(0x860000 + (uint32_t)parts));
       }
       if(full) goto done;
       wr16(DP + 0x28, (uint16_t)(rd16(DP + 0x28) + 2));
@@ -8001,8 +7890,7 @@ next_row:
   wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 2));
   if(rd16(DP + 0x14) != rd16(DP + v->end)) goto objects;
 done:
-  dsp4_port_write16(0);
-  dsp4_port_write16(0x8000);
+  dsp4_objects_end();  // (0, $8000)
   bool c = true;  // the carry at the original's exits
   if(v->first == 0) {
     wr16(0x1E02, 0);

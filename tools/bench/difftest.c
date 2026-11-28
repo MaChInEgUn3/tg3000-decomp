@@ -1265,7 +1265,24 @@ static void shWord(Shadow* sh, uint16_t w, bool read) {
     sh->state = SH_IDLE;
   }
   if(!sh->live) {  // between lists: a $0003 command word (after an answer) then $0005, as the race sends
-    if(!read && w == 0x0E && afterRead) sh->foreign = true;  // (VS's lists)
+    // dsp4-0e-2: VS's lists, followed: a $000E command word after an answer, written in the views'
+    // code ($82:BE18-$82:CAE5), opens one (dsp4_list_view); a C's shadow has no PC: it opens on $0009
+    // (after an answer, or after a command the tracker saw end: a frame's first $000E follows the
+    // last road's $8000, a write)
+    if(!read && w == 0x0E && (afterRead || (trackSmp.dsp4Phase == 0 && !trackLost)) && sh->own &&
+       insnPc >= 0x82BE18 && insnPc < 0x82CAE5) {
+      sh->foreign = false;
+      sh->pendingOpen = false;
+      sh->live = true;
+      sh->lost = false;
+      sh->tainted = false;
+      sh->nLists++;
+      shSwap(sh, true);
+      dsp4_list_view();
+      shSwap(sh, false);
+      sh->state = SH_IDLE;
+      return;
+    }
     // (the race writes its $0003 in object_sprites_stream's prologue, $82:CBD4-$82:CC8F; a C's
     // shadow, fed by the C, has no PC: it opens on $0009 instead)
     if(!read && w == 3 && afterRead && (!sh->own || (insnPc >= 0x82CBD4 && insnPc < 0x82CC8F))) {
@@ -1320,6 +1337,7 @@ static void shWord(Shadow* sh, uint16_t w, bool read) {
     sh->cmd = w;
     sh->got = 0;
     if(w == 5) { shSwap(sh, true); dsp4_list_sizes(); shSwap(sh, false); return; }
+    if(w == 0x0E) { shSwap(sh, true); dsp4_list_view(); shSwap(sh, false); return; }  // (dsp4-0e-2: the next view)
     if(w == 0x0B) { sh->need = 3; sh->state = SH_ARGS; return; }
     if(w == 9) { sh->need = 7; sh->state = SH_ARGS; return; }
     if(w == 0) { sh->need = 2; sh->state = SH_ARGS; return; }
@@ -1468,11 +1486,13 @@ static void shByte(Shadow* sh, uint8_t val, bool read) {
   sh->byte = val;
 }
 static bool listFollowed(void) {
-  // (a $0003 pending, its $0005 not yet confirmed: the race's; not inside a VS list)
+  // (a $0003 pending, its $0005 not yet confirmed: the race's; a VS $000E's first byte)
   return shOrigConsumed ||
          (!shOrig.live && !shOrig.foreign &&
           (shOrig.pendingOpen ||
-           (shOrig.half && !shOrig.halfRead && shOrig.byte == 0x03 && insnPc >= 0x82CBD4 && insnPc < 0x82CC8F)));
+           (shOrig.half && !shOrig.halfRead && shOrig.byte == 0x03 && insnPc >= 0x82CBD4 && insnPc < 0x82CC8F) ||
+           // (dsp4-0e-2: a VS $000E's first byte, written in the views' code: the shadow opens on its second)
+           (shOrig.half && !shOrig.halfRead && shOrig.byte == 0x0E && insnPc >= 0x82BE18 && insnPc < 0x82CAE5)));
 }
 static void trackSprites(uint32_t adr, uint8_t val, bool write) {
   shOrigConsumed = false;
@@ -1587,6 +1607,11 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
         continue;
       }
 
+      // dsp4-0e-2: a VS $000E's first byte, pending in the shadow (which opens on its second): the
+      // list's, not a command for the sample's parser (which has no $0E)
+      if((adr & 0xFFFF) < 0xC000 && !shOrig.live && shOrig.half && !shOrig.halfRead && shOrig.byte == 0x0E &&
+         insnPc >= 0x82BE18 && insnPc < 0x82CAE5)
+        continue;
       if(smp->hwAccess || dsp4Step(smp, adr, val, write)) continue;
       if(getenv("DIFFTEST_SHADOW_DEBUG"))
         fprintf(stderr, "dsp4 reject %s pc %06X %s %02X: shadow live %d state %d cmd %X tainted %d half %d phase %d cmd %02X\n",

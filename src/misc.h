@@ -1296,14 +1296,12 @@ void results_screen_show(void);
 // loaded (the original's carry).
 bool save_data_check(void);
 
-// $82:AE15: the sprites' high table from the DSP-4 (D = $0100): command $0006 through the
-// port (dsp4_port_write16), its 16 words (dsp4_port_read16; the chip's high bits of the
-// sprites the earlier commands placed) to $1776 + D+$8E; then the sprites left unused, from
+// $82:AE15: the sprites' high table from the DSP-4 (D = $0100): command $0006, native
+// (dsp4_high_table), its 16 words (the chip's high bits of the sprites the earlier commands
+// placed) to $1776 + D+$8E; then the sprites left unused, from
 // D+$86 to D+$8E + $200, moved off screen ($E0E0 every 4 bytes from $1576 + D+$86; a
 // count below 4 bytes is taken as 65536).
-void oam_high_load(void);
-// The same for the VS race, through the port ($000E lists: dsp4-09p).
-void oam_high_load_vs(void);
+void oam_high_load(void);  // (the VS race's too, dsp4-0e-2)
 
 // $82:D934 / $82:D988: one object's sprite streamed to the DSP-4 (D = $0100; a $09 sprite
 // stream is open): seven words, native (dsp4_objects_scenery; the object's rows $386C, $38EC, then $35EC
@@ -1313,20 +1311,16 @@ void oam_high_load_vs(void);
 // 6-byte parts (a nonzero word, two more), ended by a 0 word; each part's answer is pairs
 // of OAM words (to $1574 + Y, Y from D+$84 on, 4 bytes a pair) while the chip's flag is
 // not 0. Y reaching D+$1A fills the buffer: the part's other answers are dropped, the open
-// lists ended (a 0 word each) and the result is true. D+$84 = Y. The VS race keeps the port
-// (the _vs copies).
+// lists ended (a 0 word each) and the result is true. D+$84 = Y. (The VS race's too: dsp4-0e-2.)
 bool sprite_put_rows_a(void);
 bool sprite_put_rows_b(void);
 // $82:CAE5: as sprite_put_rows_a with the rows $37EC, $38EC, $35EC, $37EC, and the part set
 // looked up at $84:8080 (not $84:8000).
 bool sprite_put_rows_c(void);
-// The VS race's copy, through the port (VS keeps it until $000E is measured).
-bool sprite_put_rows_c_vs(void);
 // $82:DCEC: object kind 0's handler: as object_sprite_shadowed up to D+$22, then
 // sprite_put_rows_c, and, unless that filled the buffer, D+$22 = 0, D+$24 = $BC30 and
 // sprite_put_rows_c again. No movie or the TAS runs it.
 bool object_sprite_kind0(uint16_t x);
-bool object_sprite_kind0_vs(uint16_t x);  // the VS race's copy, through the port
 
 // $82:DEA8: sprite_parts_stream for a parts list in ROM, at $86:0000 + `x` (D = $0100; a
 // $09 sprite stream open). Returns whether the OAM buffer filled (the original's carry).
@@ -1334,7 +1328,6 @@ bool sprite_parts_stream_rom(uint16_t x);
 // $82:DDBF: an object's two parts lists at $7F:0000 + x streamed (DSP-4); true when the sprite
 // buffer filled.
 bool sprite_parts_stream(uint16_t x);
-bool sprite_parts_stream_vs(uint16_t x);  // the VS race's copy, through the port
 
 // $82:D267: a car's sprite head to the DSP-4, native (dsp4_objects_car; a sprite stream open):
 // the row $7E:386A + `x`, $9000, the car's word $7E:FAB4 + `y`, twice its height ($0243's
