@@ -2830,6 +2830,40 @@ void track_objects_stream(void) {
   }
 }
 
+// map-fw-22: track_objects_stream for mode 1's second player: $46C8, D+$A4, $02D9, the high kinds'
+// slots in $4A38, the VRAM slot + $1000. Its early return, kind 0 and a low kind's empty entry are
+// never run (their branches are data in the listing): traps.
+// TG3000_ROUTINE($82:B026) mode1_track_objects_stream2
+void mode1_track_objects_stream2(void) {
+  wr16(0x46C8, 0x0140);
+  uint16_t x = rd16(DP + 0xA4);
+  if(rd16(0x02D9) < rd16(0x5B91 + (uint32_t)x)) tg3000_unported("$82:B038: mode 1's second object stream ahead of the car (never run)");
+  for(;;) {
+    const uint16_t kind = rd16(0x5B94 + (uint32_t)x), slot = rd8(0x5B93 + (uint32_t)x);
+    if(kind == 0) tg3000_unported("$82:B03F: mode 1's second object stream, a lane-only entry (never run)");
+    const bool high = (kind & 0xFF00) != 0;
+    const uint16_t t = bus_rd16((high ? 0x86AC36 : 0x86AE36) + (uint32_t)(uint16_t)(kind << 1));
+    if(!t) {
+      if(!high) tg3000_unported("$82:B04C: mode 1's second object stream, an empty entry (never run)");
+      x = (uint16_t)(kind << 1);  // the quirk, as in track_objects_stream
+    } else {
+      wr16(DP + 0x14, bus_rd16((high ? 0x860022 : 0x86001E) + (uint32_t)t));
+      wr16(DP + 0x16, bus_rd16((high ? 0x860024 : 0x860020) + (uint32_t)t));
+      const uint16_t base = bus_rd16(0x860000 + (uint32_t)t);
+      wr16(DP + 0x14, (uint16_t)(rd16(0x6591 + (uint32_t)base) + rd16(DP + 0x14)));
+      wr16(DP + 0x18, (uint16_t)((slot << 5) + 0x1000));
+      wr16(DP + 0x1A, (uint16_t)(slot << 1));
+      wr16((high ? 0x4A38 : 0x46C8) + (uint32_t)(uint16_t)((kind & 0x00FF) << 1), rd16(DP + 0x1A));
+      const uint16_t src = rd16(DP + 0x14);
+      wr16(DP + 0x14, 0x007F);
+      upload_vram_now(rd16(DP + 0x18), 0x7F, src, rd16(DP + 0x16));
+    }
+    x = (uint16_t)(x + 5);
+    wr16(DP + 0xA4, x);
+    if(rd16(0x02D9) < rd16(0x5B91 + (uint32_t)x)) return;
+  }
+}
+
 // TG3000_ROUTINE($8A:9AA5) results_text_build
 void results_text_build(void) {
   wr16(DP + 0x54, 0);

@@ -610,6 +610,7 @@ func    8A9AF1   player_names_put    ; the players' names as text lines, by vari
 func    828F8F   shake_step          ; the shake $1F18: off, start, run, random end (DSP-4 multiply) -> src/misc.c
 func    829064   shake_step2         ; shake_step for mode 1's second player ($02E4, $1F1A): never on, $1F1A = $8000 -> src/misc.c
 func    82AF33   track_objects_stream ; the track objects' graphics, streamed to VRAM as the car passes their entries -> src/misc.c
+func    82B026   mode1_track_objects_stream2 ; track_objects_stream for mode 1's second player ($46C8, D+$A4, $02D9, $4A38, VRAM + $1000) -> src/misc.c
 func    8A9AA5   results_text_build  ; the results text: variant lines, names, text lines -> src/misc.c
 func    8A9CB0   player_in_top5      ; the slots' order, then is the player in the first five -> src/misc.c
 func    80F6FD   title_scroll_start  ; $0198 = 0, $0196 = $FF80, D+$3E + 1 -> src/misc.c

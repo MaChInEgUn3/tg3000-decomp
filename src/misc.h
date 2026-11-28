@@ -872,6 +872,7 @@ void shake_step2(void);  // $82:9064: shake_step for mode 1's second player (nev
 // is counted (the original's quirk; the game's kinds have entries)
 // (upload_vram_now from bank $7F). D+$A0 moves on by 5 a record.
 void track_objects_stream(void);
+void mode1_track_objects_stream2(void);  // $82:B026: track_objects_stream for mode 1's second player
 
 // $8A:9AA5: the results text: D+$54 = 0, then variant_lines, player_names_put and
 // text_lines_copy.

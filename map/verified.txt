@@ -842,3 +842,4 @@
 8AA67B vs_screen_loop src/vs.c 52fa48b288322218 1 0 37/37 verified live-flags:NVZC replayed:0
 83E25F mode1_cars_frame src/misc.c 85237ace98d2ecb5 83 0 21/21 verified live-flags:- replayed:4
 83E431 mode1_player2_frame_setup src/misc.c 85237ace98d2ecb5 152 500 70/70 verified live-flags:- replayed:0
+82B026 mode1_track_objects_stream2 src/misc.c 021e22d60ecf05c9 0 500 104/104 verified live-flags:NVZC replayed:1

@@ -6409,6 +6409,27 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's second object stream (map-fw-22, 2026-11-28)
+
+**`mode1_track_objects_stream2` (`$82:B026`, `src/misc.c`)** is `track_objects_stream` for mode 1's
+second player:
+- `$46C8`, D+`$A4`, `$02D9`;
+- the high kinds' slots in `$4A38`;
+- the VRAM slot + `$1000` (`adc #$1000`; the carry is always 0 there).
+
+Three paths never ran, and their branches are data in the listing, so they are traps (holes):
+- the early return (the stream ahead of the car);
+- kind 0 (the lane-only entry);
+- a low kind's empty entry.
+
+A high kind's empty entry is real code, the same quirk as the race's.
+
+**Fuzz:** `track_objects_stream`'s, kept off those paths: only kinds with an entry, and the car at or
+past the first record.
+
+**Check:** `demo_mode1` (firmware). The one entry is interrupted: 1 of 1 replayed, fuzz 500 of 500,
+paths 104 of 104. Then `verify_new.sh`.
+
 ## Mode 1's cars for the frame (map-fw-21, 2026-11-28)
 
 **`mode1_player2_frame_setup` (`$83:E431`, `src/misc.c`)** is `player_frame_setup` for mode 1's

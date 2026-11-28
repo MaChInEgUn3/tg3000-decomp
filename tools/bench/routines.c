@@ -2371,6 +2371,90 @@ static void fuzz_track_objects_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(voi
   wr16ram(ram, (uint16_t)(0x5B91 + x), 0xFFFF);
   wr16ram(ram, 0x0226, (uint16_t)(rnd() % (uint32_t)(at + 1)));
 }
+// map-fw-22: track_objects_stream's adapter and fuzz for mode 1's second player
+static void call_mode1_track_objects_stream2(const Regs* in, Regs* out) {
+  uint16_t pos = rd16(0x02D9), x = rd16(DP + 0xA4);
+  bool first = true;
+  for(;;) {
+    uint16_t at = rd16(0x5B91 + (uint32_t)x);
+    if(pos < at) break;
+    first = false;
+    uint16_t kind = rd16(0x5B94 + (uint32_t)x), slot = rd8(0x5B93 + (uint32_t)x);
+    if(kind) {
+      bool high = (kind & 0xFF00) != 0;
+      uint16_t t = bus_rd16((high ? 0x86AC36 : 0x86AE36) + (uint32_t)(uint16_t)(kind << 1));
+      if(!t) x = (uint16_t)(kind << 1);  // the empty entry's quirk
+      if(t) {
+        uint16_t off = bus_rd16((high ? 0x860022 : 0x86001E) + (uint32_t)t);
+        uint16_t base = bus_rd16(0x860000 + (uint32_t)t);
+        Regs v;
+        setAdc16(&v, rd16(0x6591 + (uint32_t)base), off);
+        out->v = v.v;
+        out->y = (uint16_t)((slot << 5) + 0x1000);
+        out->v = false;  // (the ADC #$1000 after it)
+      }
+    }
+    x = (uint16_t)(x + 5);
+  }
+  (void)first;
+  mode1_track_objects_stream2();
+  out->a = pos;
+  out->x = x;
+  out->c = false;
+  setNZ16(out, (uint16_t)(pos - rd16(0x5B91 + (uint32_t)x)));
+  (void)in;
+}
+// a few records from D+$A0 on (the kinds within the tables, low or high), the car between
+// their starts, a record far ahead to end on
+static void fuzz_mode1_track_objects_stream2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  uint16_t x = (uint16_t)(5 * (rnd() % 8)), at = (uint16_t)(rnd() % 0x100);
+  const uint16_t start = x;
+  wr16ram(ram, DP + 0xA4, x);
+  int n = (int)(1 + rnd() % 5);
+  bool quirk = false;
+  for(int k = 0; k < n && !quirk; k++, x = (uint16_t)(x + 5)) {
+    wr16ram(ram, (uint16_t)(0x5B91 + x), at);
+    ram[0x5B93 + x] = (uint8_t)(rnd() % 0x40);
+    // a kind whose entry is empty or points into ROM (others would read I/O space)
+    uint16_t kind = 0;
+    for(int tries = 0; tries < 64 && kind == 0; tries++) {
+      bool high = rnd() & 1;
+      // high kinds below $29: $86:AC36 + 2 * (k << 8) stays in bank $86
+      uint16_t k = (uint16_t)(1 + rnd() % (high ? 0x28 : 0x30));
+      uint16_t t = rom16((high ? 0x86AC36 : 0x86AE36) + (uint32_t)(uint16_t)((high ? (uint16_t)(k << 8) : k) << 1));
+      // an empty entry (the quirk: the next record is counted from 2 * kind) only for low
+      // kinds, with a record there that ends it; a high kind's 2 * kind is far away
+      if(t >= 0x8000) {  // (map-fw-22: no empty entries, no kind 0: never run in this copy)
+        kind = high ? (uint16_t)(k << 8) : k;
+        quirk = t == 0;  // then the last record, so nothing overwrites the one that ends it
+        break;
+      }
+    }
+    wr16ram(ram, (uint16_t)(0x5B94 + x), kind);
+    if(quirk) {
+      wr16ram(ram, (uint16_t)(0x5B91 + (uint16_t)(2 * kind + 5)), 0xFFFF);
+      continue;
+    }
+    if(kind) {  // the source kept inside bank $7F, as the game's data keeps it (no DMA wrap)
+      bool high = (kind & 0xFF00) != 0;
+      uint16_t t = rom16((high ? 0x86AC36 : 0x86AE36) + (uint32_t)(uint16_t)(kind << 1));
+      if(t) {
+        uint16_t off = rom16((high ? 0x860022 : 0x86001E) + (uint32_t)t);
+        uint16_t size = rom16((high ? 0x860024 : 0x860020) + (uint32_t)t);
+        uint16_t base = rom16(0x860000 + (uint32_t)t);
+        uint32_t room = size ? 0x10000u - size : 0;
+        uint16_t src = (uint16_t)(room ? rnd() % room : 0);
+        wr16ram(ram, (uint16_t)(0x6591 + base), (uint16_t)(src - off));
+      }
+    }
+    at = (uint16_t)(at + 1 + rnd() % 0x40);
+  }
+  wr16ram(ram, (uint16_t)(0x5B91 + x), 0xFFFF);
+  // (the car at or past the first record: the early return never runs in this copy)
+  const uint16_t first = (uint16_t)(ram[0x5B91 + start] | ram[0x5B92 + start] << 8);
+  wr16ram(ram, 0x02D9, (uint16_t)(first + rnd() % (uint32_t)(at - first + 1)));
+}
 
 // ---- results_text_build ($8A:9AA5) ----  text_lines_copy's exit, from the state after: A =
 // D+$54 (C V of the last line's ADC #$10), N clear, Z set; X = the last line's start + its
@@ -15096,6 +15180,10 @@ const Routine routines[] = {
   {.name = "track_objects_stream", .entry = 0x82AF33, .end = 0x82B026, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_track_objects_stream, ALL_OUTPUTS,
    .fuzz = fuzz_track_objects_stream},
+  {.name = "mode1_track_objects_stream2", .entry = 0x82B026, .end = 0x82B11F, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_track_objects_stream2, ALL_OUTPUTS,
+   .fuzz = fuzz_mode1_track_objects_stream2, .replays = 4,
+   .holes = {{0x82B038, 0x82B03B}, {0x82B099, 0x82B0A7}}},  // (never run: incbins; traps in the C)
   {.name = "results_text_build", .entry = 0x8A9AA5, .end = 0x8A9AB1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x8A, .call = call_results_text_build, ALL_OUTPUTS,
    .fuzz = fuzz_results_text_build},
