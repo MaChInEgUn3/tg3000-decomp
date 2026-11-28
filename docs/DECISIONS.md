@@ -6409,6 +6409,62 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The sprite budget works on pairs of lines (dsp4-01x, 2026-11-28: measured, not yet modelled)
+
+**Why:** after dsp4-01w, the bench and the firmware part on the 60k movie at a sprite answer: at frame
+8,232 the firmware shows one car part (`72 A4 91 3A`, list 53 before the split) that the bench
+hides. Before the split, `src/dsp4.c`'s list agrees with the firmware on 371 of 405 lists, the
+bench's clean-room chip on 359, and both miss 34 of the same. So answering `$09` from the C would
+not close it: the budget rule is what is missing. Nothing in `src/` changes in this unit.
+
+**Measured on the firmware (outputs only), with `tools/dsp4_09_pairs.py`:**
+- **The shift test.** List 53 sent again with its whole scene moved by d lines (centre y, top and
+  bottom edges, dots' y). Shifts of ±2 and ±8 change no part's answer. Shifts of ±1 change exactly
+  one: part 98 (op 212, a car part at y 164, shown, hidden once moved to an odd line). So the chip
+  works on a 2-line grid, and readings taken through an odd shift measure a different scene.
+- **The probe table.** One object; a line filled from y0 (33 small parts, or 16 large ones, which
+  each take 2); then one part at y0 + δ. In the rows below, `S` is shown, `.` is hidden, and δ
+  runs from -17 to 17:
+  - Small full, small probe: at y0 128, `SSSSSSSSSS.S.............SSSSSSSSSS`; at 129,
+    `SSSSSSSSSSS..............SSSSSSSSSS`. `src/dsp4.c` has `.` at δ -6 (128) and -7 (129).
+  - Large full, large probe: at 128, `SS.S.....` (δ -14 shown); at 129, `SSS....` (δ -15
+    shown). `src/dsp4.c` hides both.
+  - Small full, large probe first, the last small part reported: at 128, shown from δ 6 (the C
+    from 8); at 129, the same as the C.
+  - Read: a part starting on an even line is shown although its last two lines are full; it then
+    counts them past 33 (line 170 went to 34, read through the road). A part on an odd line has
+    every line tested. Pairs fail whole: list 53's op 206 (y 165, line 170 full) counts 165-168
+    but not 169, where the C counts 169 too.
+- **The road reading's precision (correcting dsp4-01v).** The road resolves the second rounding
+  word to about `$20`-`$40`: its high byte (line 128) is read, its low byte only roughly. The
+  measured fact is that the high byte follows line 128's budget. "Line 127 in the low byte" fits
+  but was not measured.
+
+**Not modelled yet.**
+- A rule built from the table reproduces every row: pairs from the part's top, a pair that does
+  not fit stops the part, and on an even line the last pair is not tested. It gains on the 60k
+  recording's first 20 million records (2,359 of 2,559 lists, against 2,290) but loses on race1
+  (440 of 583, against 553) and before the split (262 of 405, against 371).
+- Race1's list 58 shows why. A part at y 164 with lines 170 and 171 both full is hidden on the
+  firmware, where the probe at y0 128, δ -6 (lines 128 and 129 full) was shown. Something the
+  clean probes hold fixed (x, the object, the crest, earlier parts) still counts.
+- Tested on the three recordings and worse than the current rule:
+  - a hidden part giving back its lines;
+  - lines off the screen not counted;
+  - a large part half off the side counting 1;
+  - limits of 32 and 34;
+  - words read at the part's y with a 16-bit borrow;
+  - aligned words (odd, even) and (even, odd);
+  - only the top or bottom line tested;
+  - the parity taken from the object, the centre or the top edge.
+- Next, with the same tool: vary x, the object and the crest in the probe at y0 128, δ -6, until
+  list 58's case comes out hidden.
+
+**Tools:**
+- `dsp4_tape_run` has two new record kinds: 5, a `$000B`'s answer, and 4, a `$01` row's answer
+  (dsp4-01v). `TAPE_RUN_ROAD=1` dumps only the road rows.
+- `tools/dsp4_09_pairs.py` runs the shift test and the probe table, firmware and C side by side.
+
 ## The bench's chip follows the sprite list (dsp4-01w, 2026-11-28)
 
 **The bench's chip model now follows the race's sprite list for the road's rounding.** dsp4-01v
@@ -6446,7 +6502,8 @@ roads for the bridge) had no list, so after a list it kept `$2121`.
 ## The road's rounding after a sprite list: lines 127 and 128's budget (dsp4-01v, 2026-11-28)
 
 **After a `$09` stream, the road's second rounding word is the sliver budget left on screen lines
-127 and 128:** `(33 - used[128]) << 8 | (33 - used[127])`. The first word stays where the `$0003`
+127 and 128:** `(33 - used[128]) << 8 | (33 - used[127])`. (dsp4-01x: the high byte, line 128, is what was measured; the low byte
+the road reads only to about `$20`-`$40`, so "line 127" fits but is not shown.) The first word stays where the `$0003`
 put it. Measured on the firmware, outputs only:
 - `dsp4_tape_run` got a record kind 4, one `$01` row's answer whatever its length. With it, a
   frame's real records from its `$0003` to its road, then a road built from random inputs, go to

@@ -7,6 +7,8 @@
 // (a count word, then 4 bytes a pair), however long the chip makes it; it is not compared.
 // A record with direction 3 reads one $09 part's answer (a flag, then per 1 two words and another
 // flag), however long; dumped, not compared.
+// TAPE_RUN_ROAD=1 (dsp4-01x) dumps the kind-4 rows alone.
+// dsp4-01x: direction 5 reads one $000B's answer (a flag, then 2 words when shown), not dumped.
 // dsp4-01v: direction 4 reads one $01 row's answer (4 words, a count, 3 words a line); dumped as
 // dsp4_road_native prints it (rows separated by '|'), and nothing else is dumped then.
 // TAPE_RUN_SHOW=N prints each tape's first N differing reads (record, PC, tape and chip byte).
@@ -51,20 +53,24 @@ int main(int argc, char** argv) {
     uint32_t firstPc = 0;
     std::map<uint32_t, long> byPc;
     long show = std::getenv("TAPE_RUN_SHOW") ? std::strtol(std::getenv("TAPE_RUN_SHOW"), nullptr, 10) : 0;
-    const bool dump = std::getenv("TAPE_RUN_DUMP") != nullptr;
+    const bool roadOnly = std::getenv("TAPE_RUN_ROAD") != nullptr;  // dsp4-01x: the $01 rows (kind 4) alone
+    const bool dump = std::getenv("TAPE_RUN_DUMP") != nullptr || roadOnly;
     std::string dumped;
     while(std::fread(b, 1, 5, f) == 5) {
       const uint32_t pc = uint32_t(b[0] | b[1] << 8 | b[2] << 16);
       if(b[4] == 3) {  // dsp4-09i: a $09 part's answer: a flag, then per 1 an entry (2 words) and another flag
         for(;;) {
           const uint16_t flag = uint16_t(dsp4_lle_read(true) | dsp4_lle_read(true) << 8);
-          if(dump) { char t[8]; std::snprintf(t, sizeof t, "%02X%02X", flag & 0xFF, flag >> 8); dumped += t; }
+          if(dump && !roadOnly) { char t[8]; std::snprintf(t, sizeof t, "%02X%02X", flag & 0xFF, flag >> 8); dumped += t; }
           if(flag == 0) break;
           for(int q = 0; q < 4; q++) {
             const uint8_t v = dsp4_lle_read(true);
-            if(dump) { char t[4]; std::snprintf(t, sizeof t, "%02X", v); dumped += t; }
+            if(dump && !roadOnly) { char t[4]; std::snprintf(t, sizeof t, "%02X", v); dumped += t; }
           }
         }
+      } else if(b[4] == 5) {  // dsp4-01x: a $000B's answer: a flag, then 2 words when shown; dumped
+        const uint16_t flag = uint16_t(dsp4_lle_read(true) | dsp4_lle_read(true) << 8);
+        if(flag) for(int q = 0; q < 4; q++) (void)dsp4_lle_read(true);
       } else if(b[4] == 4) {  // dsp4-01v: one $01 row's answer: 4 words, a count, 3 words a line; dumped
         uint16_t w[5];
         for(int q = 0; q < 5; q++) w[q] = uint16_t(dsp4_lle_read(true) | dsp4_lle_read(true) << 8);
@@ -85,7 +91,7 @@ int main(int argc, char** argv) {
       else {
         const uint8_t v = dsp4_lle_read(true);
         if(k >= from) {
-          if(dump) { char t[4]; std::snprintf(t, sizeof t, "%02X", v); dumped += t; }
+          if(dump && !roadOnly) { char t[4]; std::snprintf(t, sizeof t, "%02X", v); dumped += t; }
           n++;
           if(v != b[3]) {
             if(show > 0) { std::printf("  r%ld $%06X tape %02X chip %02X\n", k, pc, b[3], v); show--; }

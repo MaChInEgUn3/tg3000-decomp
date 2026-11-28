@@ -37,6 +37,7 @@ make -C tools/bench probe && python3 -I tools/dsp4_road_check.py   # src/dsp4.c'
 build/bench/dsp4_replay ext/firmware/dsp4.rom /tmp/t.bin   # a refbench --dsp4-tape replayed into the firmware: whole, per $09 stream, per frame
 build/bench/bench TG3000.sfc 9450 --movie tools/bench/movies/race1.txt --dsp4-firmware ext/firmware/dsp4.rom --dsp4-tape-out /tmp/r1.tape && python3 -I tools/dsp4_09_deps.py /tmp/r1.tape   # what the sprite stream $09 needs from its frame (dsp4_tape_run)
 build/bench/bench TG3000.sfc 9450 --movie tools/bench/movies/race1.txt --dsp4-firmware ext/firmware/dsp4.rom --dsp4-tape-out /tmp/r.tape && python3 -I tools/dsp4_sites.py > /tmp/sites.txt && build/bench/dsp4_compare /tmp/r.tape /tmp/sites.txt   # src/dsp4.c's chip against the firmware, per command
+make -C tools/bench probe && python3 -I tools/dsp4_09_pairs.py /tmp/fw.tape 53   # the sprite budget on chosen lists: shift test, probe table (firmware and src/dsp4.c)
 tools/bench/selftest.sh         # determinism + fresh-process save/load + race reached + all rows (sharded); SELFTEST_DIFFTEST=0 skips the rows
 python3 -I tools/listing.py && tools/build_asm.sh   # asm/ -> exact ROM (SHA-1 + code-from-text proof)
 tools/refbench/fetch.sh && make -C tools/refbench    # TAS reference: bsnes from BizHawk 1.9.4
