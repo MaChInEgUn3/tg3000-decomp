@@ -259,4 +259,27 @@ CODE_84A51D:
     rep.b #$20                  ; $84A550 static
 CODE_84A552:
     rtl                         ; $84A552
-    incbin !baserom:$22553..$28000
+    lda.l $8103DC               ; $84A553
+    and.w #$0003                ; $84A557
+    cmp.w #$0002                ; $84A55A
+    beq CODE_84A585             ; $84A55D
+    jsl.l rng_next_long         ; $84A55F
+    lsr a                       ; $84A563
+    tax                         ; $84A564
+    lda.w #$0000                ; $84A565
+    sta.l $308000               ; $84A568
+    txa                         ; $84A56C
+    sta.l $308000               ; $84A56D
+    lda.w #$005E                ; $84A571
+    sta.l $308000               ; $84A574
+    nop                         ; $84A578
+    lda.l $308000               ; $84A579
+    lda.l $308000               ; $84A57D
+    sta.w $047B                 ; $84A581
+    rtl                         ; $84A584
+CODE_84A585:
+    jsl.l rng_next_long         ; $84A585
+    and.w #$0007                ; $84A589
+    sta.w $047B                 ; $84A58C
+    rtl                         ; $84A58F
+    incbin !baserom:$22590..$28000

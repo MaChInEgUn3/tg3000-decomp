@@ -1146,7 +1146,574 @@ CODE_858A84:
     rep.b #$20                  ; $858AAA
     plb                         ; $858AAC
     rtl                         ; $858AAD
-    incbin !baserom:$28AAE..$29147
+    incbin !baserom:$28AAE..$28AF2
+    rep.b #$30                  ; $858AF2
+    phb                         ; $858AF4
+    pha                         ; $858AF5
+    phx                         ; $858AF6
+    phy                         ; $858AF7
+    phd                         ; $858AF8
+    phk                         ; $858AF9
+    plb                         ; $858AFA
+    lda.w $4210                 ; $858AFB
+    lda.w #$0000                ; $858AFE
+    tcd                         ; $858B01
+    jmp.w ($0008)               ; $858B02
+    lda.w $4210                 ; $858B05
+    cli                         ; $858B08
+    lda.w $0146                 ; $858B09
+    beq CODE_858B29             ; $858B0C
+    clc                         ; $858B0E
+    adc.w $014A                 ; $858B0F
+    sta.w $014A                 ; $858B12
+    sec                         ; $858B15
+    sbc.w $0148                 ; $858B16
+    beq CODE_858B20             ; $858B19
+    eor.w $0146                 ; $858B1B
+    bmi CODE_858B29             ; $858B1E
+CODE_858B20:
+    lda.w $0148                 ; $858B20
+    sta.w $014A                 ; $858B23
+    stz.w $0146                 ; $858B26
+CODE_858B29:
+    sep.b #$20                  ; $858B29
+    lda.w $014B                 ; $858B2B
+    bne CODE_858B32             ; $858B2E
+    ora.b #$80                  ; $858B30
+CODE_858B32:
+    sta.w $2100                 ; $858B32
+    rep.b #$20                  ; $858B35
+    jsl.l sound_frame           ; $858B37
+    jsl.l pads_read_long        ; $858B3B
+    inc.b $24                   ; $858B3F
+    inc.b $BA                   ; $858B41
+    pld                         ; $858B43
+    ply                         ; $858B44
+    plx                         ; $858B45
+    pla                         ; $858B46
+    plb                         ; $858B47
+    rti                         ; $858B48
+    ldx.w #$0E00                ; $858B49
+    lda.w $213F                 ; $858B4C
+    bit.w #$0010                ; $858B4F
+    beq CODE_858B57             ; $858B52
+    incbin !baserom:$28B54..$28B57
+CODE_858B57:
+    stx.b $FC                   ; $858B57
+    lda.w #$0001                ; $858B59
+    trb.w $00B8                 ; $858B5C
+    bne CODE_858B64             ; $858B5F
+    jmp.w $8C76                 ; $858B61
+CODE_858B64:
+    lda.w $00B4                 ; $858B64
+    eor.w #$0001                ; $858B67
+    sta.w $00B4                 ; $858B6A
+    beq CODE_858B72             ; $858B6D
+    jmp.w $8B72                 ; $858B6F
+CODE_858B72:
+    lda.w $1E4E                 ; $858B72
+    sta.l $7E4CD0               ; $858B75
+    lda.w $016C                 ; $858B79
+    sta.b $C8                   ; $858B7C
+    lda.w $0170                 ; $858B7E
+    sta.b $CC                   ; $858B81
+    lda.w $00C0                 ; $858B83
+    sta.w $00BE                 ; $858B86
+    lda.w $1E46                 ; $858B89
+    sta.w $4352                 ; $858B8C
+    lda.w $1E48                 ; $858B8F
+    sta.w $4362                 ; $858B92
+    lda.w #$1801                ; $858B95
+    sta.w $4370                 ; $858B98
+    lda.w $1E02                 ; $858B9B
+    beq CODE_858BC6             ; $858B9E
+    sta.w $4375                 ; $858BA0
+    eor.w #$FFFF                ; $858BA3
+    sec                         ; $858BA6
+    adc.b $FC                   ; $858BA7
+    sta.b $FC                   ; $858BA9
+    lda.w $1DFE                 ; $858BAB
+    sta.w $4372                 ; $858BAE
+    lda.w $1E00                 ; $858BB1
+    sta.w $2116                 ; $858BB4
+    sep.b #$20                  ; $858BB7
+    lda.w $1E04                 ; $858BB9
+    sta.w $4374                 ; $858BBC
+    lda.b #$80                  ; $858BBF
+    sta.w $420B                 ; $858BC1
+    rep.b #$20                  ; $858BC4
+CODE_858BC6:
+    lda.w #$0190                ; $858BC6
+    sta.w $4375                 ; $858BC9
+    lda.w #$230C                ; $858BCC
+    sta.w $4372                 ; $858BCF
+    lda.w #$57A0                ; $858BD2
+    sta.w $2116                 ; $858BD5
+    sep.b #$20                  ; $858BD8
+    lda.b #$7E                  ; $858BDA
+    sta.w $4374                 ; $858BDC
+    lda.b #$80                  ; $858BDF
+    sta.w $420B                 ; $858BE1
+    rep.b #$20                  ; $858BE4
+    lda.b $FC                   ; $858BE6
+    sec                         ; $858BE8
+    sbc.w #$0190                ; $858BE9
+    sta.b $FC                   ; $858BEC
+    lda.w $1E54                 ; $858BEE
+    beq CODE_858C19             ; $858BF1
+    sta.w $4375                 ; $858BF3
+    eor.w #$FFFF                ; $858BF6
+    sec                         ; $858BF9
+    adc.b $FC                   ; $858BFA
+    sta.b $FC                   ; $858BFC
+    lda.w $1E52                 ; $858BFE
+    sta.w $4372                 ; $858C01
+    lda.w #$1000                ; $858C04
+    sta.w $2116                 ; $858C07
+    sep.b #$20                  ; $858C0A
+    lda.w $1E56                 ; $858C0C
+    sta.w $4374                 ; $858C0F
+    lda.b #$80                  ; $858C12
+    sta.w $420B                 ; $858C14
+    rep.b #$20                  ; $858C17
+CODE_858C19:
+    ldx.w $1F24                 ; $858C19
+    bmi CODE_858C4A             ; $858C1C
+    incbin !baserom:$28C1E..$28C4A
+CODE_858C4A:
+    lda.w $0174                 ; $858C4A
+    sta.b $EC                   ; $858C4D
+    lda.w $0176                 ; $858C4F
+    sta.b $EE                   ; $858C52
+    lda.w $017C                 ; $858C54
+    sta.b $F4                   ; $858C57
+    lda.w $017E                 ; $858C59
+    sta.b $F6                   ; $858C5C
+    lda.w $01B6                 ; $858C5E
+    sta.w $01B0                 ; $858C61
+    lda.w $01B8                 ; $858C64
+    sta.w $01B2                 ; $858C67
+    lda.w $01BA                 ; $858C6A
+    sta.w $01B4                 ; $858C6D
+    lda.w $01DC                 ; $858C70
+    sta.w $00E2                 ; $858C73
+    lda.w #$0002                ; $858C76
+    trb.w $00B8                 ; $858C79
+    bne CODE_858C81             ; $858C7C
+    jmp.w $8D9F                 ; $858C7E
+CODE_858C81:
+    lda.w $00B6                 ; $858C81
+    eor.w #$0001                ; $858C84
+    sta.w $00B6                 ; $858C87
+    beq CODE_858C8F             ; $858C8A
+    jmp.w $8C8F                 ; $858C8C
+CODE_858C8F:
+    lda.w $1E50                 ; $858C8F
+    sta.l $7E4CD6               ; $858C92
+    lda.w $016E                 ; $858C96
+    sta.b $CA                   ; $858C99
+    lda.w $0172                 ; $858C9B
+    sta.b $CE                   ; $858C9E
+    lda.w $00C6                 ; $858CA0
+    sta.w $00C4                 ; $858CA3
+    lda.w $1E4A                 ; $858CA6
+    sta.w $4352                 ; $858CA9
+    lda.w $1E4C                 ; $858CAC
+    sta.w $4362                 ; $858CAF
+    lda.w #$1801                ; $858CB2
+    sta.w $4370                 ; $858CB5
+    lda.w $1E0A                 ; $858CB8
+    beq CODE_858CE3             ; $858CBB
+    sta.w $4375                 ; $858CBD
+    eor.w #$FFFF                ; $858CC0
+    sec                         ; $858CC3
+    adc.b $FC                   ; $858CC4
+    sta.b $FC                   ; $858CC6
+    lda.w $1E06                 ; $858CC8
+    sta.w $4372                 ; $858CCB
+    lda.w $1E08                 ; $858CCE
+    sta.w $2116                 ; $858CD1
+    sep.b #$20                  ; $858CD4
+    lda.w $1E0C                 ; $858CD6
+    sta.w $4374                 ; $858CD9
+    lda.b #$80                  ; $858CDC
+    sta.w $420B                 ; $858CDE
+    rep.b #$20                  ; $858CE1
+CODE_858CE3:
+    lda.w #$0190                ; $858CE3
+    sta.w $4375                 ; $858CE6
+    lda.w #$230C                ; $858CE9
+    sta.w $4372                 ; $858CEC
+    lda.w #$5930                ; $858CEF
+    sta.w $2116                 ; $858CF2
+    sep.b #$20                  ; $858CF5
+    lda.b #$7E                  ; $858CF7
+    sta.w $4374                 ; $858CF9
+    lda.b #$80                  ; $858CFC
+    sta.w $420B                 ; $858CFE
+    rep.b #$20                  ; $858D01
+    lda.b $FC                   ; $858D03
+    sec                         ; $858D05
+    sbc.w #$0190                ; $858D06
+    sta.b $FC                   ; $858D09
+    lda.w $1E5A                 ; $858D0B
+    beq CODE_858D36             ; $858D0E
+    sta.w $4375                 ; $858D10
+    eor.w #$FFFF                ; $858D13
+    sec                         ; $858D16
+    adc.b $FC                   ; $858D17
+    sta.b $FC                   ; $858D19
+    lda.w $1E58                 ; $858D1B
+    sta.w $4372                 ; $858D1E
+    lda.w #$2000                ; $858D21
+    sta.w $2116                 ; $858D24
+    sep.b #$20                  ; $858D27
+    lda.w $1E5C                 ; $858D29
+    sta.w $4374                 ; $858D2C
+    lda.b #$80                  ; $858D2F
+    sta.w $420B                 ; $858D31
+    rep.b #$20                  ; $858D34
+CODE_858D36:
+    ldx.w $1F26                 ; $858D36
+    bmi CODE_858D67             ; $858D39
+    incbin !baserom:$28D3B..$28D67
+CODE_858D67:
+    lda.w $0178                 ; $858D67
+    sta.b $F0                   ; $858D6A
+    lda.w $017A                 ; $858D6C
+    sta.b $F2                   ; $858D6F
+    lda.w $0180                 ; $858D71
+    sta.b $F8                   ; $858D74
+    lda.w $0182                 ; $858D76
+    sta.b $FA                   ; $858D79
+    lda.w $01CE                 ; $858D7B
+    sta.w $01CC                 ; $858D7E
+    lda.w $01D2                 ; $858D81
+    sta.w $01D0                 ; $858D84
+    lda.w $01C2                 ; $858D87
+    sta.w $01BC                 ; $858D8A
+    lda.w $01C4                 ; $858D8D
+    sta.w $01BE                 ; $858D90
+    lda.w $01C6                 ; $858D93
+    sta.w $01C0                 ; $858D96
+    lda.w $01DE                 ; $858D99
+    sta.w $00E2                 ; $858D9C
+    ldx.w #$1576                ; $858D9F
+    lda.w $00B4                 ; $858DA2
+    bne CODE_858DAA             ; $858DA5
+    ldx.w #$1796                ; $858DA7
+CODE_858DAA:
+    stx.w $4372                 ; $858DAA
+    lda.w #$0400                ; $858DAD
+    sta.w $4370                 ; $858DB0
+    lda.w #$0220                ; $858DB3
+    sta.w $4375                 ; $858DB6
+    stz.w $2102                 ; $858DB9
+    sep.b #$20                  ; $858DBC
+    lda.b #$81                  ; $858DBE
+    sta.w $4374                 ; $858DC0
+    lda.b #$80                  ; $858DC3
+    sta.w $420B                 ; $858DC5
+    lda.b #$00                  ; $858DC8
+    sta.w $2101                 ; $858DCA
+    rep.b #$20                  ; $858DCD
+    stz.w $2102                 ; $858DCF
+    lda.w #$001E                ; $858DD2
+    sta.w $4375                 ; $858DD5
+    lda.w #$2202                ; $858DD8
+    sta.w $4370                 ; $858DDB
+    lda.w $024A                 ; $858DDE
+    db $30,$09 ; bmi            ; $858DE1
+    sta.w $4372                 ; $858DE3
+    sep.b #$20                  ; $858DE6
+    lda.b #$7E                  ; $858DE8
+    bra CODE_858DF3             ; $858DEA
+    incbin !baserom:$28DEC..$28DF3
+CODE_858DF3:
+    sta.w $4374                 ; $858DF3
+    lda.b #$F1                  ; $858DF6
+    sta.w $2121                 ; $858DF8
+    lda.b #$80                  ; $858DFB
+    sta.w $420B                 ; $858DFD
+    rep.b #$20                  ; $858E00
+    lda.w #$6A55                ; $858E02
+    sta.w $4372                 ; $858E05
+    lda.w #$00DE                ; $858E08
+    sta.w $4375                 ; $858E0B
+    sep.b #$20                  ; $858E0E
+    lda.b #$81                  ; $858E10
+    sta.w $2121                 ; $858E12
+    lda.b #$7E                  ; $858E15
+    sta.w $4374                 ; $858E17
+    lda.b #$80                  ; $858E1A
+    sta.w $420B                 ; $858E1C
+    rep.b #$20                  ; $858E1F
+    lda.w #$6A35                ; $858E21
+    sta.w $4372                 ; $858E24
+    lda.w #$001E                ; $858E27
+    sta.w $4375                 ; $858E2A
+    sep.b #$20                  ; $858E2D
+    lda.b #$71                  ; $858E2F
+    sta.w $2121                 ; $858E31
+    lda.b #$7E                  ; $858E34
+    sta.w $4374                 ; $858E36
+    lda.b #$80                  ; $858E39
+    sta.w $420B                 ; $858E3B
+    stz.w $2121                 ; $858E3E
+    lda.l $7E6A33               ; $858E41
+    sta.w $2122                 ; $858E45
+    lda.l $7E6A34               ; $858E48
+    sta.w $2122                 ; $858E4C
+    rep.b #$20                  ; $858E4F
+    lda.w #$2140                ; $858E51
+    sta.w $024A                 ; $858E54
+    jsl.l race_upload_queue_drain_long; $858E57
+    sep.b #$20                  ; $858E5B
+    lda.b #$07                  ; $858E5D
+    sta.w $2121                 ; $858E5F
+    lda.b $A0                   ; $858E62
+    sta.w $2122                 ; $858E64
+    lda.b $A1                   ; $858E67
+    sta.w $2122                 ; $858E69
+    rep.b #$20                  ; $858E6C
+    lda.w $003A                 ; $858E6E
+    sep.b #$30                  ; $858E71
+    ldx.b #$21                  ; $858E73
+    stx.w $2121                 ; $858E75
+    sta.w $2122                 ; $858E78
+    xba                         ; $858E7B
+    sta.w $2122                 ; $858E7C
+    xba                         ; $858E7F
+    ldx.b #$31                  ; $858E80
+    stx.w $2121                 ; $858E82
+    sta.w $2122                 ; $858E85
+    xba                         ; $858E88
+    sta.w $2122                 ; $858E89
+    rep.b #$30                  ; $858E8C
+    lda.b $FC                   ; $858E8E
+    cmp.w #$0E00                ; $858E90
+    bmi CODE_858EA0             ; $858E93
+    lda.w #$0004                ; $858E95
+    trb.w $00B8                 ; $858E98
+    beq CODE_858EA0             ; $858E9B
+    jsr.w $95C7                 ; $858E9D
+CODE_858EA0:
+    lda.w #$0D43                ; $858EA0
+    sta.w $4350                 ; $858EA3
+    lda.w #$0F43                ; $858EA6
+    sta.w $4360                 ; $858EA9
+    lda.w #$2644                ; $858EAC
+    sta.w $4340                 ; $858EAF
+    lda.w #$4CCC                ; $858EB2
+    sta.w $4342                 ; $858EB5
+    lda.w #$2200                ; $858EB8
+    sta.w $4310                 ; $858EBB
+    lda.w $00C8                 ; $858EBE
+    sta.w $4312                 ; $858EC1
+    stz.w $4315                 ; $858EC4
+    lda.w #$2108                ; $858EC7
+    sta.w $4320                 ; $858ECA
+    lda.w #$8D35                ; $858ECD
+    sta.w $4322                 ; $858ED0
+    stz.w $4325                 ; $858ED3
+    lda.w #$2200                ; $858ED6
+    sta.w $4330                 ; $858ED9
+    lda.w $00CC                 ; $858EDC
+    sta.w $4332                 ; $858EDF
+    stz.w $4335                 ; $858EE2
+    lda.w #$0500                ; $858EE5
+    sta.w $4370                 ; $858EE8
+    ldx.w #$047E                ; $858EEB
+    lda.w $00B4                 ; $858EEE
+    bne CODE_858EF6             ; $858EF1
+    ldx.w #$0480                ; $858EF3
+CODE_858EF6:
+    stx.w $4372                 ; $858EF6
+    stz.w $4375                 ; $858EF9
+    sep.b #$20                  ; $858EFC
+    lda.b #$83                  ; $858EFE
+    sta.w $4354                 ; $858F00
+    sta.w $4364                 ; $858F03
+    sta.w $4357                 ; $858F06
+    sta.w $4367                 ; $858F09
+    lda.b #$7E                  ; $858F0C
+    sta.w $4347                 ; $858F0E
+    sta.w $4314                 ; $858F11
+    sta.w $4334                 ; $858F14
+    sta.w $4374                 ; $858F17
+    sta.w $4344                 ; $858F1A
+    lda.b #$83                  ; $858F1D
+    sta.w $4324                 ; $858F1F
+    lda.b #$70                  ; $858F22
+    sta.w $420C                 ; $858F24
+    rep.b #$20                  ; $858F27
+    jsl.l $8396D9               ; $858F29
+    sep.b #$20                  ; $858F2D
+    lda.w $01B0                 ; $858F2F
+    sta.w $2123                 ; $858F32
+    lda.w $01B1                 ; $858F35
+    sta.w $2125                 ; $858F38
+    lda.w $01B4                 ; $858F3B
+    sta.w $2132                 ; $858F3E
+    lda.w $01B5                 ; $858F41
+    sta.w $2132                 ; $858F44
+    rep.b #$20                  ; $858F47
+    lda.w $01B2                 ; $858F49
+    sta.w $2131                 ; $858F4C
+    lda.b $26                   ; $858F4F
+    bit.w #$0010                ; $858F51
+    bne CODE_858FC6             ; $858F54
+    sed                         ; $858F56
+    lda.w $0244                 ; $858F57
+    bit.w #$0008                ; $858F5A
+    beq CODE_858F8E             ; $858F5D
+    dec.b $60                   ; $858F5F
+    bne CODE_858F7C             ; $858F61
+    lda.w #$0003                ; $858F63
+    sta.b $60                   ; $858F66
+    lda.b $5A                   ; $858F68
+    clc                         ; $858F6A
+    adc.w #$0001                ; $858F6B
+    sta.b $5A                   ; $858F6E
+    sec                         ; $858F70
+    sbc.w #$6000                ; $858F71
+    bcc CODE_858F8E             ; $858F74
+    sta.b $5A                   ; $858F76
+    inc.b $5C                   ; $858F78
+    bra CODE_858F8E             ; $858F7A
+CODE_858F7C:
+    lda.b $5A                   ; $858F7C
+    clc                         ; $858F7E
+    adc.w #$0002                ; $858F7F
+    sta.b $5A                   ; $858F82
+    sec                         ; $858F84
+    sbc.w #$6000                ; $858F85
+    bcc CODE_858F8E             ; $858F88
+    incbin !baserom:$28F8A..$28F8E
+CODE_858F8E:
+    lda.w $02F7                 ; $858F8E
+    bit.w #$0008                ; $858F91
+    beq CODE_858FC5             ; $858F94
+    dec.b $62                   ; $858F96
+    bne CODE_858FB3             ; $858F98
+    lda.w #$0003                ; $858F9A
+    sta.b $62                   ; $858F9D
+    lda.b $5D                   ; $858F9F
+    clc                         ; $858FA1
+    adc.w #$0001                ; $858FA2
+    sta.b $5D                   ; $858FA5
+    sec                         ; $858FA7
+    sbc.w #$6000                ; $858FA8
+    bcc CODE_858FC5             ; $858FAB
+    sta.b $5D                   ; $858FAD
+    inc.b $5F                   ; $858FAF
+    bra CODE_858FC5             ; $858FB1
+CODE_858FB3:
+    lda.b $5D                   ; $858FB3
+    clc                         ; $858FB5
+    adc.w #$0002                ; $858FB6
+    sta.b $5D                   ; $858FB9
+    sec                         ; $858FBB
+    sbc.w #$6000                ; $858FBC
+    bcc CODE_858FC5             ; $858FBF
+    incbin !baserom:$28FC1..$28FC5
+CODE_858FC5:
+    cld                         ; $858FC5
+CODE_858FC6:
+    ldx.w $00BE                 ; $858FC6
+    stx.w $00BC                 ; $858FC9
+    lda.w $0486,x               ; $858FCC
+    and.w #$00FF                ; $858FCF
+    beq CODE_859049             ; $858FD2
+    sec                         ; $858FD4
+    sbc.w #$0004                ; $858FD5
+    bit.w #$0080                ; $858FD8
+    beq CODE_858FE0             ; $858FDB
+    incbin !baserom:$28FDD..$28FE0
+CODE_858FE0:
+    sta.b $2E                   ; $858FE0
+    sep.b #$20                  ; $858FE2
+    lda.b #$09                  ; $858FE4
+    sta.w $2105                 ; $858FE6
+    rep.b #$20                  ; $858FE9
+    lda.b $2E                   ; $858FEB
+    db $F0,$02 ; beq            ; $858FED
+    bpl CODE_859046             ; $858FEF
+    incbin !baserom:$28FF1..$29046
+CODE_859046:
+    cmp.w #$0068                ; $859046
+CODE_859049:
+    bpl CODE_85906B             ; $859049
+    lda.w #$93A7                ; $85904B
+    sta.w $0005                 ; $85904E
+    lda.b $2E                   ; $859051
+    clc                         ; $859053
+    adc.w #$0004                ; $859054
+    sta.w $4209                 ; $859057
+    lda.w #$0065                ; $85905A
+    sta.w $4207                 ; $85905D
+    sep.b #$20                  ; $859060
+    lda.b #$09                  ; $859062
+    sta.w $2105                 ; $859064
+    rep.b #$20                  ; $859067
+    bra CODE_859086             ; $859069
+CODE_85906B:
+    lda.w #$9405                ; $85906B
+    sta.w $0005                 ; $85906E
+    lda.w #$006C                ; $859071
+    sta.w $4209                 ; $859074
+    lda.w #$0078                ; $859077
+    sta.w $4207                 ; $85907A
+    sep.b #$20                  ; $85907D
+    lda.b #$29                  ; $85907F
+    sta.w $2105                 ; $859081
+    rep.b #$20                  ; $859084
+CODE_859086:
+    ldx.w $00C4                 ; $859086
+    stx.w $00C2                 ; $859089
+    lda.w $050E,x               ; $85908C
+    and.w #$00FF                ; $85908F
+    beq CODE_8590EF             ; $859092
+    sec                         ; $859094
+    sbc.w #$0074                ; $859095
+    bit.w #$0080                ; $859098
+    beq CODE_8590A0             ; $85909B
+    incbin !baserom:$2909D..$290A0
+CODE_8590A0:
+    sta.b $30                   ; $8590A0
+    lda.b $30                   ; $8590A2
+    db $F0,$02 ; beq            ; $8590A4
+    bpl CODE_8590D4             ; $8590A6
+    incbin !baserom:$290A8..$290D4
+CODE_8590D4:
+    cmp.w #$0068                ; $8590D4
+    bpl CODE_8590EF             ; $8590D7
+    clc                         ; $8590D9
+    adc.w #$0074                ; $8590DA
+    sta.w $0034                 ; $8590DD
+    sep.b #$20                  ; $8590E0
+    stz.w $0032                 ; $8590E2
+    rep.b #$20                  ; $8590E5
+    lda.w #$956B                ; $8590E7
+    sta.w $0036                 ; $8590EA
+    bra CODE_8590FE             ; $8590ED
+CODE_8590EF:
+    stz.w $0032                 ; $8590EF
+    lda.w #$0020                ; $8590F2
+    sta.w $0034                 ; $8590F5
+    lda.w #$9405                ; $8590F8
+    sta.w $0036                 ; $8590FB
+CODE_8590FE:
+    bit.w $047C                 ; $8590FE
+    bmi CODE_85913A             ; $859101
+    incbin !baserom:$29103..$2913A
+CODE_85913A:
+    lda.b $24                   ; $85913A
+    and.w #$0003                ; $85913C
+    bne CODE_859144             ; $85913F
+    jsr.w race_cycle_blocks     ; $859141
+CODE_859144:
+    jmp.w $8B05                 ; $859144
 race_cycle_blocks:
     phb                         ; $859147
     pea.w $7E7E                 ; $859148
@@ -1354,7 +1921,234 @@ race_cycle_blocks:
     stx.w $213E                 ; $8593A2
     plb                         ; $8593A5
     rts                         ; $8593A6
-    incbin !baserom:$293A7..$295BD
+    rep.b #$10                  ; $8593A7
+    sep.b #$20                  ; $8593A9
+    phb                         ; $8593AB
+    pha                         ; $8593AC
+    phx                         ; $8593AD
+    phk                         ; $8593AE
+    plb                         ; $8593AF
+    ldx.w $00BC                 ; $8593B0
+    lda.b #$FF                  ; $8593B3
+    sta.w $4207                 ; $8593B5
+    lda.b #$01                  ; $8593B8
+    sta.w $4325                 ; $8593BA
+    sta.w $4375                 ; $8593BD
+    lda.b #$08                  ; $8593C0
+    sta.w $4315                 ; $8593C2
+    sta.w $4335                 ; $8593C5
+    lda.b #$21                  ; $8593C8
+    sta.w $2121                 ; $8593CA
+    lda.w $4211                 ; $8593CD
+    lda.w $0596,x               ; $8593D0
+    wai                         ; $8593D3
+    sta.w $420B                 ; $8593D4
+    inx                         ; $8593D7
+    lda.w $4211                 ; $8593D8
+    lda.w $0486,x               ; $8593DB
+    beq CODE_8593EF             ; $8593DE
+    sta.w $4209                 ; $8593E0
+    lda.b #$65                  ; $8593E3
+    sta.w $4207                 ; $8593E5
+    stx.w $00BC                 ; $8593E8
+    plx                         ; $8593EB
+    pla                         ; $8593EC
+    plb                         ; $8593ED
+    rti                         ; $8593EE
+CODE_8593EF:
+    ldx.w #$9405                ; $8593EF
+    stx.w $0005                 ; $8593F2
+    ldx.w #$006C                ; $8593F5
+    stx.w $4209                 ; $8593F8
+    ldx.w #$0078                ; $8593FB
+    stx.w $4207                 ; $8593FE
+    plx                         ; $859401
+    pla                         ; $859402
+    plb                         ; $859403
+    rti                         ; $859404
+    rep.b #$30                  ; $859405
+    phb                         ; $859407
+    pha                         ; $859408
+    phx                         ; $859409
+    phy                         ; $85940A
+    phd                         ; $85940B
+    phk                         ; $85940C
+    plb                         ; $85940D
+    lda.w $4210                 ; $85940E
+    lda.w #$0000                ; $859411
+    tcd                         ; $859414
+    lda.w #$010A                ; $859415
+    sta.w $4207                 ; $859418
+    sep.b #$20                  ; $85941B
+    lda.b #$80                  ; $85941D
+    wai                         ; $85941F
+    sta.w $2100                 ; $859420
+    lda.w $4211                 ; $859423
+    ldy.w #$0000                ; $859426
+    sty.w $2102                 ; $859429
+    ldx.w #$19B6                ; $85942C
+    ldy.w $00B6                 ; $85942F
+    bne CODE_859437             ; $859432
+    ldx.w #$1BD6                ; $859434
+CODE_859437:
+    stx.w $4372                 ; $859437
+    ldy.w #$0402                ; $85943A
+    sty.w $4370                 ; $85943D
+    ldy.w #$0220                ; $859440
+    sty.w $4375                 ; $859443
+    lda.b #$81                  ; $859446
+    sta.w $4374                 ; $859448
+    lda.b #$80                  ; $85944B
+    sta.w $420B                 ; $85944D
+    ldy.w #$0000                ; $859450
+    sty.w $2102                 ; $859453
+    ldy.w #$001E                ; $859456
+    sty.w $4375                 ; $859459
+    ldy.w #$2202                ; $85945C
+    sty.w $4370                 ; $85945F
+    ldy.w $02FD                 ; $859462
+    db $30,$07 ; bmi            ; $859465
+    sty.w $4372                 ; $859467
+    lda.b #$7E                  ; $85946A
+    bra CODE_859473             ; $85946C
+    incbin !baserom:$2946E..$29473
+CODE_859473:
+    sta.w $4374                 ; $859473
+    lda.b #$F1                  ; $859476
+    sta.w $2121                 ; $859478
+    lda.b #$80                  ; $85947B
+    sta.w $420B                 ; $85947D
+    ldy.w #$6B35                ; $859480
+    sty.w $4372                 ; $859483
+    ldy.w #$00FE                ; $859486
+    sty.w $4375                 ; $859489
+    lda.b #$71                  ; $85948C
+    sta.w $2121                 ; $85948E
+    lda.b #$7E                  ; $859491
+    sta.w $4374                 ; $859493
+    lda.b #$80                  ; $859496
+    sta.w $420B                 ; $859498
+    stz.w $2121                 ; $85949B
+    lda.l $7E6B33               ; $85949E
+    sta.w $2122                 ; $8594A2
+    lda.l $7E6B34               ; $8594A5
+    sta.w $2122                 ; $8594A9
+    ldy.w #$0500                ; $8594AC
+    sty.w $4370                 ; $8594AF
+    ldy.w $00CA                 ; $8594B2
+    sty.w $4312                 ; $8594B5
+    ldy.w $00CE                 ; $8594B8
+    sty.w $4332                 ; $8594BB
+    ldx.w #$0482                ; $8594BE
+    ldy.w $00B6                 ; $8594C1
+    bne CODE_8594C9             ; $8594C4
+    ldx.w #$0484                ; $8594C6
+CODE_8594C9:
+    stx.w $4372                 ; $8594C9
+    lda.b #$09                  ; $8594CC
+    sta.w $2105                 ; $8594CE
+    lda.b #$21                  ; $8594D1
+    sta.w $2121                 ; $8594D3
+    lda.b $38                   ; $8594D6
+    sta.w $2122                 ; $8594D8
+    lda.b $39                   ; $8594DB
+    sta.w $2122                 ; $8594DD
+    lda.b #$31                  ; $8594E0
+    sta.w $2121                 ; $8594E2
+    lda.b $38                   ; $8594E5
+    sta.w $2122                 ; $8594E7
+    lda.b $39                   ; $8594EA
+    sta.w $2122                 ; $8594EC
+    lda.b #$01                  ; $8594EF
+    sta.w $4325                 ; $8594F1
+    sta.w $4375                 ; $8594F4
+    lda.b #$08                  ; $8594F7
+    sta.w $4315                 ; $8594F9
+    sta.w $4335                 ; $8594FC
+    lda.b #$21                  ; $8594FF
+    sta.w $2121                 ; $859501
+    lda.b $32                   ; $859504
+    sta.w $420B                 ; $859506
+    lda.b #$08                  ; $859509
+    sta.w $2101                 ; $85950B
+    ldy.w #$0073                ; $85950E
+    sty.w $4209                 ; $859511
+    ldy.w $0036                 ; $859514
+    sty.w $0005                 ; $859517
+    lda.w $014B                 ; $85951A
+    wai                         ; $85951D
+    sta.w $2100                 ; $85951E
+    lda.w $4211                 ; $859521
+    lda.b #$07                  ; $859524
+    sta.w $2121                 ; $859526
+    lda.b $A2                   ; $859529
+    sta.w $2122                 ; $85952B
+    lda.b $A3                   ; $85952E
+    sta.w $2122                 ; $859530
+    lda.w $01BC                 ; $859533
+    sta.w $2123                 ; $859536
+    lda.w $01BD                 ; $859539
+    sta.w $2125                 ; $85953C
+    lda.w $01C0                 ; $85953F
+    sta.w $2132                 ; $859542
+    lda.w $01C1                 ; $859545
+    sta.w $2132                 ; $859548
+    ldy.w $01BE                 ; $85954B
+    sty.w $2131                 ; $85954E
+    ldy.w #$0065                ; $859551
+    sty.w $4207                 ; $859554
+    ldy.w $0034                 ; $859557
+    sty.w $4209                 ; $85955A
+    rep.b #$20                  ; $85955D
+    ldy.w #$215E                ; $85955F
+    sty.w $02FD                 ; $859562
+    pld                         ; $859565
+    ply                         ; $859566
+    plx                         ; $859567
+    pla                         ; $859568
+    plb                         ; $859569
+    rti                         ; $85956A
+    rep.b #$10                  ; $85956B
+    sep.b #$20                  ; $85956D
+    phb                         ; $85956F
+    pha                         ; $859570
+    phx                         ; $859571
+    phk                         ; $859572
+    plb                         ; $859573
+    ldx.w $00C2                 ; $859574
+    lda.b #$FF                  ; $859577
+    sta.w $4207                 ; $859579
+    lda.b #$01                  ; $85957C
+    sta.w $4325                 ; $85957E
+    sta.w $4375                 ; $859581
+    lda.b #$08                  ; $859584
+    sta.w $4315                 ; $859586
+    sta.w $4335                 ; $859589
+    lda.b #$21                  ; $85958C
+    sta.w $2121                 ; $85958E
+    lda.w $4211                 ; $859591
+    lda.w $061E,x               ; $859594
+    wai                         ; $859597
+    sta.w $420B                 ; $859598
+    inx                         ; $85959B
+    lda.w $4211                 ; $85959C
+    lda.w $050E,x               ; $85959F
+    beq CODE_8595B3             ; $8595A2
+    sta.w $4209                 ; $8595A4
+    lda.b #$65                  ; $8595A7
+    sta.w $4207                 ; $8595A9
+    stx.w $00C2                 ; $8595AC
+    plx                         ; $8595AF
+    pla                         ; $8595B0
+    plb                         ; $8595B1
+    rti                         ; $8595B2
+CODE_8595B3:
+    ldx.w #$0000                ; $8595B3
+    stx.w $4209                 ; $8595B6
+    plx                         ; $8595B9
+    pla                         ; $8595BA
+    plb                         ; $8595BB
+    rti                         ; $8595BC
 irq_ack_only:
     rep.b #$20                  ; $8595BD
     phb                         ; $8595BF
@@ -1363,7 +2157,542 @@ irq_ack_only:
     bit.w $4210                 ; $8595C2
     plb                         ; $8595C5
     rti                         ; $8595C6
-    incbin !baserom:$295C7..$29ADB
+    phb                         ; $8595C7
+    pea.w $8383                 ; $8595C8
+    plb                         ; $8595CB
+    plb                         ; $8595CC
+    lda.w #$7E0F                ; $8595CD
+    sta.w $2116                 ; $8595D0
+    lda.w $1E94                 ; $8595D3
+    sta.w $2118                 ; $8595D6
+    lda.w #$7C62                ; $8595D9
+    sta.w $2116                 ; $8595DC
+    ldy.w #$0000                ; $8595DF
+    lda.b $3E                   ; $8595E2
+    and.w #$FFFE                ; $8595E4
+    tax                         ; $8595E7
+    beq CODE_8595F6             ; $8595E8
+CODE_8595EA:
+    lda.w $A422,y               ; $8595EA
+    sta.w $2118                 ; $8595ED
+    iny                         ; $8595F0
+    iny                         ; $8595F1
+    dex                         ; $8595F2
+    dex                         ; $8595F3
+    bne CODE_8595EA             ; $8595F4
+CODE_8595F6:
+    lda.b $3E                   ; $8595F6
+    bit.w #$0001                ; $8595F8
+    beq CODE_859605             ; $8595FB
+    lda.w $A430,y               ; $8595FD
+    sta.w $2118                 ; $859600
+    iny                         ; $859603
+    iny                         ; $859604
+CODE_859605:
+    lda.w $A43E                 ; $859605
+    cpy.w #$000E                ; $859608
+    beq CODE_859617             ; $85960B
+CODE_85960D:
+    sta.w $2118                 ; $85960D
+    iny                         ; $859610
+    iny                         ; $859611
+    cpy.w #$000E                ; $859612
+    bne CODE_85960D             ; $859615
+CODE_859617:
+    lda.w #$7D61                ; $859617
+    sta.w $2116                 ; $85961A
+    lda.w $1E96                 ; $85961D
+    sta.w $2118                 ; $859620
+    lda.b $42                   ; $859623
+    sta.w $2118                 ; $859625
+    lda.b $46                   ; $859628
+    sta.w $2118                 ; $85962A
+    lda.b $4A                   ; $85962D
+    sta.w $2118                 ; $85962F
+    lda.w #$7D81                ; $859632
+    sta.w $2116                 ; $859635
+    lda.w $1E98                 ; $859638
+    sta.w $2118                 ; $85963B
+    lda.b $44                   ; $85963E
+    sta.w $2118                 ; $859640
+    lda.b $48                   ; $859643
+    sta.w $2118                 ; $859645
+    lda.b $4C                   ; $859648
+    sta.w $2118                 ; $85964A
+    lda.w #$7C4D                ; $85964D
+    sta.w $2116                 ; $859650
+    lda.b $5C                   ; $859653
+    and.w #$000F                ; $859655
+    asl a                       ; $859658
+    tax                         ; $859659
+    lda.w $A498,x               ; $85965A
+    sta.w $2118                 ; $85965D
+    lda.w #$7C4F                ; $859660
+    sta.w $2116                 ; $859663
+    lda.b $5B                   ; $859666
+    and.w #$00F0                ; $859668
+    lsr a                       ; $85966B
+    lsr a                       ; $85966C
+    lsr a                       ; $85966D
+    tax                         ; $85966E
+    lda.w $A484,x               ; $85966F
+    sta.w $2118                 ; $859672
+    lda.b $5B                   ; $859675
+    and.w #$000F                ; $859677
+    asl a                       ; $85967A
+    tax                         ; $85967B
+    lda.w $A498,x               ; $85967C
+    sta.w $2118                 ; $85967F
+    lda.w #$7C52                ; $859682
+    sta.w $2116                 ; $859685
+    lda.b $5A                   ; $859688
+    and.w #$00F0                ; $85968A
+    lsr a                       ; $85968D
+    lsr a                       ; $85968E
+    lsr a                       ; $85968F
+    tax                         ; $859690
+    lda.w $A484,x               ; $859691
+    sta.w $2118                 ; $859694
+    lda.b $5A                   ; $859697
+    and.w #$000F                ; $859699
+    asl a                       ; $85969C
+    tax                         ; $85969D
+    lda.w $A484,x               ; $85969E
+    sta.w $2118                 ; $8596A1
+    lda.w #$7C22                ; $8596A4
+    sta.w $2116                 ; $8596A7
+    lda.b $64                   ; $8596AA
+    sta.w $2118                 ; $8596AC
+    lda.b $66                   ; $8596AF
+    sta.w $2118                 ; $8596B1
+    lda.w #$7C3A                ; $8596B4
+    sta.w $2116                 ; $8596B7
+    lda.w $0235                 ; $8596BA
+    bpl CODE_8596C2             ; $8596BD
+    lda.w #$0000                ; $8596BF
+CODE_8596C2:
+    inc a                       ; $8596C2
+    cmp.w $1F06                 ; $8596C3
+    bmi CODE_8596CB             ; $8596C6
+    incbin !baserom:$296C8..$296CB
+CODE_8596CB:
+    asl a                       ; $8596CB
+    tax                         ; $8596CC
+    lda.w $A484,x               ; $8596CD
+    sta.w $2118                 ; $8596D0
+    sep.b #$20                  ; $8596D3
+    lda.b #$81                  ; $8596D5
+    sta.w $2115                 ; $8596D7
+    rep.b #$20                  ; $8596DA
+    lda.w #$7D1E                ; $8596DC
+    sta.w $2116                 ; $8596DF
+    lda.b $6C                   ; $8596E2
+    sta.w $2118                 ; $8596E4
+    lda.b $6E                   ; $8596E7
+    sta.w $2118                 ; $8596E9
+    lda.b $70                   ; $8596EC
+    sta.w $2118                 ; $8596EE
+    lda.b $72                   ; $8596F1
+    sta.w $2118                 ; $8596F3
+    lda.b $74                   ; $8596F6
+    sta.w $2118                 ; $8596F8
+    sep.b #$20                  ; $8596FB
+    lda.b #$80                  ; $8596FD
+    sta.w $2115                 ; $8596FF
+    rep.b #$20                  ; $859702
+    lda.w #$5AE0                ; $859704
+    sta.w $2116                 ; $859707
+    lda.b $80                   ; $85970A
+    sta.w $2118                 ; $85970C
+    lda.b $82                   ; $85970F
+    sta.w $2118                 ; $859711
+    lda.b $84                   ; $859714
+    sta.w $2118                 ; $859716
+    lda.b $86                   ; $859719
+    sta.w $2118                 ; $85971B
+    lda.b $88                   ; $85971E
+    sta.w $2118                 ; $859720
+    lda.b $8A                   ; $859723
+    sta.w $2118                 ; $859725
+    lda.b $8C                   ; $859728
+    sta.w $2118                 ; $85972A
+    lda.b $8E                   ; $85972D
+    sta.w $2118                 ; $85972F
+    lda.w #$7D7C                ; $859732
+    sta.w $2116                 ; $859735
+    lda.w $00A4                 ; $859738
+    sta.w $2118                 ; $85973B
+    lda.w $00A6                 ; $85973E
+    sta.w $2118                 ; $859741
+    lda.w #$7D9C                ; $859744
+    sta.w $2116                 ; $859747
+    lda.w $00A8                 ; $85974A
+    sta.w $2118                 ; $85974D
+    lda.w $00AA                 ; $859750
+    sta.w $2118                 ; $859753
+    lda.w #$7C76                ; $859756
+    sta.w $2116                 ; $859759
+    ldx.w $014C                 ; $85975C
+    inx                         ; $85975F
+    ldy.w #$0157                ; $859760
+    tya                         ; $859763
+    dex                         ; $859764
+    bne CODE_85976A             ; $859765
+    lda.w #$295E                ; $859767
+CODE_85976A:
+    sta.w $2118                 ; $85976A
+    tya                         ; $85976D
+    dex                         ; $85976E
+    bne CODE_859774             ; $85976F
+    incbin !baserom:$29771..$29774
+CODE_859774:
+    sta.w $2118                 ; $859774
+    tya                         ; $859777
+    dex                         ; $859778
+    bne CODE_85977E             ; $859779
+    incbin !baserom:$2977B..$2977E
+CODE_85977E:
+    sta.w $2118                 ; $85977E
+    tya                         ; $859781
+    dex                         ; $859782
+    bne CODE_859788             ; $859783
+    incbin !baserom:$29785..$29788
+CODE_859788:
+    sta.w $2118                 ; $859788
+    tya                         ; $85978B
+    dex                         ; $85978C
+    bne CODE_859792             ; $85978D
+    incbin !baserom:$2978F..$29792
+CODE_859792:
+    sta.w $2118                 ; $859792
+    lda.w $025B                 ; $859795
+    bpl CODE_8597CB             ; $859798
+    incbin !baserom:$2979A..$297CB
+CODE_8597CB:
+    lda.w #$7D7B                ; $8597CB
+    sta.w $2116                 ; $8597CE
+    lda.l $858ABB               ; $8597D1
+    sta.w $2118                 ; $8597D5
+    lda.w #$7D97                ; $8597D8
+    sta.w $2116                 ; $8597DB
+    lda.w #$000A                ; $8597DE
+    sec                         ; $8597E1
+    sbc.w $025C                 ; $8597E2
+    beq CODE_8597FE             ; $8597E5
+    tay                         ; $8597E7
+    lda.l $858ABB               ; $8597E8
+CODE_8597EC:
+    dey                         ; $8597EC
+    db $F0,$08 ; beq            ; $8597ED
+    sta.w $2118                 ; $8597EF
+    dey                         ; $8597F2
+    bne CODE_8597EC             ; $8597F3
+    bra CODE_8597FE             ; $8597F5
+    incbin !baserom:$297F7..$297FE
+CODE_8597FE:
+    ldy.w $025C                 ; $8597FE
+    dey                         ; $859801
+    dey                         ; $859802
+    bmi CODE_859810             ; $859803
+    lda.l $858ABF               ; $859805
+CODE_859809:
+    sta.w $2118                 ; $859809
+    dey                         ; $85980C
+    dey                         ; $85980D
+    bpl CODE_859809             ; $85980E
+CODE_859810:
+    sep.b #$20                  ; $859810
+    ldx.w #$4E61                ; $859812
+    stx.w $4372                 ; $859815
+    lda.b #$7E                  ; $859818
+    sta.w $4374                 ; $85981A
+    lda.l $7E4E4D               ; $85981D
+    clc                         ; $859821
+    adc.l $7E4E4E               ; $859822
+    sta.l $7E4E4E               ; $859826
+    bpl CODE_859837             ; $85982A
+    ldx.w #$A5A4                ; $85982C
+    stx.w $4372                 ; $85982F
+    lda.b #$83                  ; $859832
+    sta.w $4374                 ; $859834
+CODE_859837:
+    ldx.w #$7CA9                ; $859837
+    stx.w $2116                 ; $85983A
+    ldx.w #$1801                ; $85983D
+    stx.w $4370                 ; $859840
+    ldx.w #$001A                ; $859843
+    stx.w $4375                 ; $859846
+    lda.b #$80                  ; $859849
+    sta.w $420B                 ; $85984B
+    ldx.w #$001A                ; $85984E
+    stx.w $4375                 ; $859851
+    ldx.w #$7CC9                ; $859854
+    stx.w $2116                 ; $859857
+    sta.w $420B                 ; $85985A
+    rep.b #$20                  ; $85985D
+    lda.w #$7E22                ; $85985F
+    sta.w $2116                 ; $859862
+    ldy.w #$0000                ; $859865
+    lda.b $40                   ; $859868
+    and.w #$FFFE                ; $85986A
+    tax                         ; $85986D
+    beq CODE_85987C             ; $85986E
+CODE_859870:
+    lda.w $A422,y               ; $859870
+    sta.w $2118                 ; $859873
+    iny                         ; $859876
+    iny                         ; $859877
+    dex                         ; $859878
+    dex                         ; $859879
+    bne CODE_859870             ; $85987A
+CODE_85987C:
+    lda.b $40                   ; $85987C
+    bit.w #$0001                ; $85987E
+    beq CODE_85988B             ; $859881
+    lda.w $A430,y               ; $859883
+    sta.w $2118                 ; $859886
+    iny                         ; $859889
+    iny                         ; $85988A
+CODE_85988B:
+    lda.w $A43E                 ; $85988B
+    cpy.w #$000E                ; $85988E
+    beq CODE_85989D             ; $859891
+CODE_859893:
+    sta.w $2118                 ; $859893
+    iny                         ; $859896
+    iny                         ; $859897
+    cpy.w #$000E                ; $859898
+    bne CODE_859893             ; $85989B
+CODE_85989D:
+    lda.w #$7F22                ; $85989D
+    sta.w $2116                 ; $8598A0
+    lda.b $4E                   ; $8598A3
+    sta.w $2118                 ; $8598A5
+    lda.b $52                   ; $8598A8
+    sta.w $2118                 ; $8598AA
+    lda.b $56                   ; $8598AD
+    sta.w $2118                 ; $8598AF
+    lda.w #$7F42                ; $8598B2
+    sta.w $2116                 ; $8598B5
+    lda.b $50                   ; $8598B8
+    sta.w $2118                 ; $8598BA
+    lda.b $54                   ; $8598BD
+    sta.w $2118                 ; $8598BF
+    lda.b $58                   ; $8598C2
+    sta.w $2118                 ; $8598C4
+    lda.w #$7E0D                ; $8598C7
+    sta.w $2116                 ; $8598CA
+    lda.b $5F                   ; $8598CD
+    and.w #$000F                ; $8598CF
+    asl a                       ; $8598D2
+    tax                         ; $8598D3
+    lda.w $A498,x               ; $8598D4
+    sta.w $2118                 ; $8598D7
+    lda.w #$7E0F                ; $8598DA
+    sta.w $2116                 ; $8598DD
+    lda.b $5E                   ; $8598E0
+    and.w #$00F0                ; $8598E2
+    lsr a                       ; $8598E5
+    lsr a                       ; $8598E6
+    lsr a                       ; $8598E7
+    tax                         ; $8598E8
+    lda.w $A484,x               ; $8598E9
+    sta.w $2118                 ; $8598EC
+    lda.b $5E                   ; $8598EF
+    and.w #$000F                ; $8598F1
+    asl a                       ; $8598F4
+    tax                         ; $8598F5
+    lda.w $A498,x               ; $8598F6
+    sta.w $2118                 ; $8598F9
+    lda.w #$7E12                ; $8598FC
+    sta.w $2116                 ; $8598FF
+    lda.b $5D                   ; $859902
+    and.w #$00F0                ; $859904
+    lsr a                       ; $859907
+    lsr a                       ; $859908
+    lsr a                       ; $859909
+    tax                         ; $85990A
+    lda.w $A484,x               ; $85990B
+    sta.w $2118                 ; $85990E
+    lda.b $5D                   ; $859911
+    and.w #$000F                ; $859913
+    asl a                       ; $859916
+    tax                         ; $859917
+    lda.w $A484,x               ; $859918
+    sta.w $2118                 ; $85991B
+    lda.w #$7DE2                ; $85991E
+    sta.w $2116                 ; $859921
+    lda.b $68                   ; $859924
+    sta.w $2118                 ; $859926
+    lda.b $6A                   ; $859929
+    sta.w $2118                 ; $85992B
+    lda.w #$7DFA                ; $85992E
+    sta.w $2116                 ; $859931
+    lda.w $02E8                 ; $859934
+    bpl CODE_85993C             ; $859937
+    lda.w #$0000                ; $859939
+CODE_85993C:
+    inc a                       ; $85993C
+    cmp.w $1F06                 ; $85993D
+    bmi CODE_859945             ; $859940
+    incbin !baserom:$29942..$29945
+CODE_859945:
+    asl a                       ; $859945
+    tax                         ; $859946
+    lda.w $A484,x               ; $859947
+    sta.w $2118                 ; $85994A
+    sep.b #$20                  ; $85994D
+    lda.b #$81                  ; $85994F
+    sta.w $2115                 ; $859951
+    rep.b #$20                  ; $859954
+    lda.w #$7EDE                ; $859956
+    sta.w $2116                 ; $859959
+    lda.b $76                   ; $85995C
+    sta.w $2118                 ; $85995E
+    lda.b $78                   ; $859961
+    sta.w $2118                 ; $859963
+    lda.b $7A                   ; $859966
+    sta.w $2118                 ; $859968
+    lda.b $7C                   ; $85996B
+    sta.w $2118                 ; $85996D
+    lda.b $7E                   ; $859970
+    sta.w $2118                 ; $859972
+    sep.b #$20                  ; $859975
+    lda.b #$80                  ; $859977
+    sta.w $2115                 ; $859979
+    rep.b #$20                  ; $85997C
+    lda.w #$5AE8                ; $85997E
+    sta.w $2116                 ; $859981
+    lda.b $90                   ; $859984
+    sta.w $2118                 ; $859986
+    lda.b $92                   ; $859989
+    sta.w $2118                 ; $85998B
+    lda.b $94                   ; $85998E
+    sta.w $2118                 ; $859990
+    lda.b $96                   ; $859993
+    sta.w $2118                 ; $859995
+    lda.b $98                   ; $859998
+    sta.w $2118                 ; $85999A
+    lda.b $9A                   ; $85999D
+    sta.w $2118                 ; $85999F
+    lda.b $9C                   ; $8599A2
+    sta.w $2118                 ; $8599A4
+    lda.b $9E                   ; $8599A7
+    sta.w $2118                 ; $8599A9
+    lda.w #$7F3C                ; $8599AC
+    sta.w $2116                 ; $8599AF
+    lda.w $00AC                 ; $8599B2
+    sta.w $2118                 ; $8599B5
+    lda.w $00AE                 ; $8599B8
+    sta.w $2118                 ; $8599BB
+    lda.w #$7F5C                ; $8599BE
+    sta.w $2116                 ; $8599C1
+    lda.w $00B0                 ; $8599C4
+    sta.w $2118                 ; $8599C7
+    lda.w $00B2                 ; $8599CA
+    sta.w $2118                 ; $8599CD
+    lda.w #$7E36                ; $8599D0
+    sta.w $2116                 ; $8599D3
+    ldx.w $014E                 ; $8599D6
+    inx                         ; $8599D9
+    ldy.w #$0157                ; $8599DA
+    tya                         ; $8599DD
+    dex                         ; $8599DE
+    bne CODE_8599E4             ; $8599DF
+    lda.w #$295E                ; $8599E1
+CODE_8599E4:
+    sta.w $2118                 ; $8599E4
+    tya                         ; $8599E7
+    dex                         ; $8599E8
+    bne CODE_8599EE             ; $8599E9
+    incbin !baserom:$299EB..$299EE
+CODE_8599EE:
+    sta.w $2118                 ; $8599EE
+    tya                         ; $8599F1
+    dex                         ; $8599F2
+    bne CODE_8599F8             ; $8599F3
+    incbin !baserom:$299F5..$299F8
+CODE_8599F8:
+    sta.w $2118                 ; $8599F8
+    tya                         ; $8599FB
+    dex                         ; $8599FC
+    bne CODE_859A02             ; $8599FD
+    incbin !baserom:$299FF..$29A02
+CODE_859A02:
+    sta.w $2118                 ; $859A02
+    tya                         ; $859A05
+    dex                         ; $859A06
+    bne CODE_859A0C             ; $859A07
+    incbin !baserom:$29A09..$29A0C
+CODE_859A0C:
+    sta.w $2118                 ; $859A0C
+    lda.w $030E                 ; $859A0F
+    bpl CODE_859A45             ; $859A12
+    incbin !baserom:$29A14..$29A45
+CODE_859A45:
+    lda.w #$7F3B                ; $859A45
+    sta.w $2116                 ; $859A48
+    lda.l $858ABB               ; $859A4B
+    sta.w $2118                 ; $859A4F
+    lda.w #$7F57                ; $859A52
+    sta.w $2116                 ; $859A55
+    lda.w #$000A                ; $859A58
+    sec                         ; $859A5B
+    sbc.w $030F                 ; $859A5C
+    beq CODE_859A78             ; $859A5F
+    tay                         ; $859A61
+    lda.l $858ABB               ; $859A62
+CODE_859A66:
+    dey                         ; $859A66
+    db $F0,$08 ; beq            ; $859A67
+    sta.w $2118                 ; $859A69
+    dey                         ; $859A6C
+    bne CODE_859A66             ; $859A6D
+    bra CODE_859A78             ; $859A6F
+    incbin !baserom:$29A71..$29A78
+CODE_859A78:
+    ldy.w $030F                 ; $859A78
+    dey                         ; $859A7B
+    dey                         ; $859A7C
+    bmi CODE_859A8A             ; $859A7D
+    lda.l $858ABF               ; $859A7F
+CODE_859A83:
+    sta.w $2118                 ; $859A83
+    dey                         ; $859A86
+    dey                         ; $859A87
+    bpl CODE_859A83             ; $859A88
+CODE_859A8A:
+    sep.b #$20                  ; $859A8A
+    ldx.w #$4E95                ; $859A8C
+    stx.w $4372                 ; $859A8F
+    lda.b #$7E                  ; $859A92
+    sta.w $4374                 ; $859A94
+    lda.l $7E4E4F               ; $859A97
+    clc                         ; $859A9B
+    adc.l $7E4E50               ; $859A9C
+    sta.l $7E4E50               ; $859AA0
+    bpl CODE_859AB1             ; $859AA4
+    ldx.w #$A5A4                ; $859AA6
+    stx.w $4372                 ; $859AA9
+    lda.b #$83                  ; $859AAC
+    sta.w $4374                 ; $859AAE
+CODE_859AB1:
+    ldx.w #$7E69                ; $859AB1
+    stx.w $2116                 ; $859AB4
+    ldx.w #$1801                ; $859AB7
+    stx.w $4370                 ; $859ABA
+    ldx.w #$001A                ; $859ABD
+    stx.w $4375                 ; $859AC0
+    lda.b #$80                  ; $859AC3
+    sta.w $420B                 ; $859AC5
+    ldx.w #$001A                ; $859AC8
+    stx.w $4375                 ; $859ACB
+    ldx.w #$7E89                ; $859ACE
+    stx.w $2116                 ; $859AD1
+    sta.w $420B                 ; $859AD4
+    rep.b #$20                  ; $859AD7
+    plb                         ; $859AD9
+    rts                         ; $859ADA
 race_grid_setup:
     phb                         ; $859ADB
     phk                         ; $859ADC
@@ -1399,7 +2728,7 @@ CODE_859B1F:
     lda.l $859E8D,x             ; $859B1F
     bra CODE_859B29             ; $859B23
 CODE_859B25:
-    lda.l $859EEB,x             ; $859B25 static
+    lda.l $859EEB,x             ; $859B25
 CODE_859B29:
     clc                         ; $859B29
     adc.b $1E                   ; $859B2A
@@ -1662,7 +2991,17 @@ CODE_859D9F:
     jsl.l decompress            ; $859DA8
 CODE_859DAC:
     rtl                         ; $859DAC
-    incbin !baserom:$29DAD..$2A066
+    ldx.w $047B                 ; $859DAD
+    lda.l $85A439,x             ; $859DB0
+    bpl CODE_859DD1             ; $859DB4
+    incbin !baserom:$29DB6..$29DD1
+CODE_859DD1:
+    ldx.w #$95E3                ; $859DD1
+    ldy.w #$7C73                ; $859DD4
+    lda.w #$7E8C                ; $859DD7
+    jsl.l decompress            ; $859DDA
+    rtl                         ; $859DDE
+    incbin !baserom:$29DDF..$2A066
 race_order_sort:
     pea.w $837E                 ; $85A066
     plb                         ; $85A069
@@ -2306,7 +3645,7 @@ CODE_85A800:
     and.w #$00FF                ; $85A944
     bit.w #$0080                ; $85A947
     beq CODE_85A94F             ; $85A94A
-    incbin !baserom:$2A94C..$2A94F
+    ora.w #$FF00                ; $85A94C
 CODE_85A94F:
     sta.w $8000                 ; $85A94F
     lda.b $25                   ; $85A952
@@ -2470,7 +3809,20 @@ CODE_85AAB8:
     sec                         ; $85AABA
     sbc.b $14                   ; $85AABB
     bpl CODE_85AAD9             ; $85AABD
-    incbin !baserom:$2AABF..$2AAD9
+    eor.w #$FFFF                ; $85AABF
+    inc a                       ; $85AAC2
+    ora.w #$0080                ; $85AAC3
+    sta.w $0000,y               ; $85AAC6
+    lda.b $16                   ; $85AAC9
+    sta.b $14                   ; $85AACB
+    asl a                       ; $85AACD
+    asl a                       ; $85AACE
+    clc                         ; $85AACF
+    adc.w #$A968                ; $85AAD0
+    sta.w $0001,y               ; $85AAD3
+    dey                         ; $85AAD6
+    dey                         ; $85AAD7
+    dey                         ; $85AAD8
 CODE_85AAD9:
     lda.w $0237                 ; $85AAD9
     bpl CODE_85AAE1             ; $85AADC
@@ -4766,7 +6118,60 @@ CODE_85BEB6:
     sbc.w #$0070                ; $85BECA
     sta.w $1558,y               ; $85BECD
     rtl                         ; $85BED0
-    incbin !baserom:$2BED1..$2BF78
+    jsl.l $83D1C1               ; $85BED1
+    jsl.l $83DA0A               ; $85BED5
+    jsl.l $83CD70               ; $85BED9
+    jsl.l $83D612               ; $85BEDD
+    lda.w $00D0                 ; $85BEE1
+    sta.w $1E46                 ; $85BEE4
+    sta.w $1E4A                 ; $85BEE7
+    lda.w $00D2                 ; $85BEEA
+    sta.w $1E48                 ; $85BEED
+    sta.w $1E4C                 ; $85BEF0
+    jsl.l $83DE02               ; $85BEF3
+    lda.w $015C                 ; $85BEF7
+    sta.w $016C                 ; $85BEFA
+    lda.w $015E                 ; $85BEFD
+    sta.w $016E                 ; $85BF00
+    lda.w $0160                 ; $85BF03
+    sta.w $0170                 ; $85BF06
+    lda.w $0162                 ; $85BF09
+    sta.w $0172                 ; $85BF0C
+    lda.w $00E0                 ; $85BF0F
+    sta.w $01DC                 ; $85BF12
+    sta.w $01DE                 ; $85BF15
+    jsr.w vs_bands_merge        ; $85BF18
+    rtl                         ; $85BF1B
+    jsl.l $83D1C1               ; $85BF1C
+    jsl.l $83DA0A               ; $85BF20
+    jsl.l $83DE02               ; $85BF24
+    lda.w $00D0                 ; $85BF28
+    sta.w $1E46                 ; $85BF2B
+    lda.w $00D2                 ; $85BF2E
+    sta.w $1E48                 ; $85BF31
+    lda.w $015C                 ; $85BF34
+    sta.w $016C                 ; $85BF37
+    lda.w $0160                 ; $85BF3A
+    sta.w $0170                 ; $85BF3D
+    lda.w $00E0                 ; $85BF40
+    sta.w $01DC                 ; $85BF43
+    jsr.w race_bands_merge      ; $85BF46
+    rtl                         ; $85BF49
+    jsl.l $83CD70               ; $85BF4A
+    jsl.l $83D612               ; $85BF4E
+    jsl.l $83DE02               ; $85BF52
+    lda.w $00D0                 ; $85BF56
+    sta.w $1E4A                 ; $85BF59
+    lda.w $00D2                 ; $85BF5C
+    sta.w $1E4C                 ; $85BF5F
+    lda.w $015E                 ; $85BF62
+    sta.w $016E                 ; $85BF65
+    lda.w $0162                 ; $85BF68
+    sta.w $0172                 ; $85BF6B
+    lda.w $00E0                 ; $85BF6E
+    sta.w $01DE                 ; $85BF71
+    jsr.w race_bands_merge2     ; $85BF74
+    rtl                         ; $85BF77
 vs_road_rows_view0:
     pea.w $837E                 ; $85BF78
     plb                         ; $85BF7B

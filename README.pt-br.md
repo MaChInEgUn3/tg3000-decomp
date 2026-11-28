@@ -30,13 +30,13 @@ a matemática do DSP-4, o vídeo e o driver de som viram código nativo.
 
 | Métrica | Atual |
 |---|---:|
-| Bytes da ROM classificados (código + dados) | **883,886 / 1,048,576 (84.29%)** |
-| Bytes de código | 95,032 (`0x17338`) |
-| Bytes de dados | 788,854 (`0xC0976`) |
+| Bytes da ROM classificados (código + dados) | **903,753 / 1,048,576 (86.19%)** |
+| Bytes de código | 112,178 (`0x1B632`) |
+| Bytes de dados | 791,575 (`0xC1417`) |
 | Pontos de entrada de rotinas em C, aprovados no teste diferencial | **794** |
 | Última reverificação completa de todas as rotinas | 2026-11-28T05:53:02Z |
 | Destes, aprovados num commit anterior, com o código só acrescido desde então | 0 (todos contra este código) |
-| Bytes de código dentro de rotinas em C aprovadas | **90,330 / 95,032 (95.05%)** |
+| Bytes de código dentro de rotinas em C aprovadas | **90,704 / 112,178 (80.86%)** |
 
 _Gerado por `tools/progress.py` a partir de `map/` e `src/`._
 

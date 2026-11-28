@@ -17,7 +17,6 @@
 85:8A57 85:8A5A m16x16 ; race_hud_draw: the fifth light's LDA #$295E ($85:8A55 BNE skips it; the four before it ran): executed by its difftest fuzz, matched by src/race_frame.c
 85:86DA 85:86DE m16x16 ; nmi_race_full: the race clock's carry into $5C on the +2 step ($85:86D8 BCC skips it; the +1 step's copy at $85:86C6 ran): executed by its difftest fuzz, matched by src/race_frame.c
 85:8702 85:8751 m16x16 ; nmi_race_full: the first band within 4 lines, sent from the NMI ($85:86FE BEQ / $85:8700 BPL fall into it; it repeats irq_race_band's stream kick): executed by its difftest fuzz, matched by src/race_frame.c
-83:E9DF 83:E9F6 m16x16 ; player_road_limits: a pushed side ($83:E9DD BEQ skips it): same
 80:A330 80:A332 m16x16 ; shop_item_view_a: DEC $3E when the stage passed $7FFF ($80:A32E BPL skips it; the same tail in all seven item views): executed by its difftest fuzz, matched by src/shop.c
 80:A87A 80:A87C m16x16 ; shop_item_view_b: the same stop at $7FFF ($80:A878 BPL): same
 80:AA56 80:AA58 m16x16 ; shop_item_view_c: the same stop at $7FFF ($80:AA54 BPL): same
@@ -38,7 +37,6 @@
 80:98B5 80:98B6 m16x16 ; shop_item_icon_settle: INC A, holding at $8007 ($80:98B3 BNE)
 80:D6D4 80:D6D7 m16x16 ; steer_state_init: LDA #$0100, the cap ($80:D6D2 BCC)
 8A:9F68 8A:9F6F m16x16 ; flag_03dc_from_52: LDA #$1000, TSB $03DC, RTS when D+$52 is not 0 ($8A:9F66 BEQ)
-8A:9F7B 8A:9FA0 m16x16 ; timer_0d7e_tick: at 0, a random $03DC mode and D+$6C + 1 ($8A:9F79 BNE)
 82:B1D9 82:B1E3 m16x16 ; text_centred_line: a byte with bit 7 set sets the palette ($82:B1D7 BEQ)
 82:B1FC 82:B201 m16x16 ; text_centred_line: '.' is tile $25 ($82:B1FA BNE)
 8A:8252 8A:8253 m16x16 ; title_sprites_place: RTS when D+$62 is not $FFFF ($8A:8250 BEQ)
@@ -49,8 +47,6 @@
 8A:98D3 8A:98DF m16x16 ; variant_offsets_add: the $8A:9DB5 table with variant 2 (never run)
 84:A331 84:A337 m16x16 ; result_slot_step: variant 0's table $85:D501 (never run)
 84:A364 84:A36D m16x16 ; result_tally: variant 0's table $85:D501, Y = 0 (never run)
-80:E8FB 80:E901 m16x16 ; car_blocks_7f2000: no car ($03A8 negative): block $A8 (never run)
-80:E918 80:E91B m16x16 ; car_block_7f2000: no car: entry $13 (never run)
 84:A42D 84:A44B m16x16 ; track_next: variants 0 and $300, table $8A:CAC4 (never run)
 82:AF45 82:AF48 m16x16 ; track_objects_stream: JMP to its RTS when the first entry is not reached yet (never run)
 84:A534 84:A552 m16x16 ; results_init: $03E2 bit 1, eight item bytes = 1 (never run)
@@ -65,7 +61,6 @@
 8A:85CC 8A:867C m16x16 ; tile_anim_step's frames and anim_tiles_put, 5x3 VRAM words (never run)
 81:E797 81:E7A7 m16x16 ; track_rows_build: a negative low nibble moved up (never run)
 82:A6DF 82:A6EC m16x16 ; track_palettes_load: player 2's flag $03CB moves its rows on (never run)
-81:F2B5 81:F2F5 m16x16 ; car_pair_contact: object -> car slot through $81:FE16 (two-player modes, never run)
 81:F430 81:F43C m16x16 ; car_pair_contact: the pushed car kept at its own floor (never run)
 80:ED04 80:ED18 m16x16 ; ticker_draw: a punctuation mark looked up in $80:EDE7 (never run)
 80:EE0D 80:EE45 m16x16 ; ticker_draw: control codes 2 (a counted repeat) and 3 (stop flag) (never run)
@@ -82,12 +77,9 @@
 82:B518 82:B51C m16x16 ; race_hud_digits: a negative gear product made positive (never run)
 82:B548 82:B54C m16x16 ; race_hud_digits: a negative speed made positive (never run)
 82:B580 82:B59E m16x16 ; race_hud_digits: a thousands digit (never run)
-82:B6FB 82:B71D m16x16 ; race_hud_digits: two players' blocks (never run)
 83:FB96 83:FBE2 m16x16 ; track_object_random: four of its prizes and the money add (never run)
 83:FBF2 83:FC05 m16x16 ; track_object_random: two of its prizes (never run)
 82:F3D0 82:F3D4 m16x16 ; player_segment_step: the handler clearing $1E66 (never run)
-82:FA59 82:FAB9 m16x16 ; player2_segment_step: an armed jump reached (never run)
-82:FB22 82:FB53 m16x16 ; player2_segment_step: kinds 6/10, the jump armed (never run)
 82:FB6C 82:FB70 m16x16 ; player2_segment_step: kind 8, $1E68 cleared (never run)
 82:ED27 82:EEB7 m16x16 ; road_shift_frame: the road-edge and edge-shift handlers (never run)
 82:A8C4 82:A8CC m16x16 ; track_setup_load: $0038 from the $03CB table (never run)
@@ -102,13 +94,10 @@
 82:DC38 82:DC3B m16x16 ; object_sprite_group: kind 2's negative place sign-extended (never run)
 81:8562 81:8564 m16x16 ; sprite_part_put: the OAM buffer full (SEC; RTS; never run)
 81:8508 81:8527 m16x16 ; sprite_bar_put: the OAM buffer full, the rest drained (never run; returns with two words pushed)
-85:9B25 85:9B29 m16x16 ; race_grid_setup: variant 0's forward offsets ($85:9EEB; never run)
 82:E185 82:E19A m16x16 ; road_rows_build: a row's pair list past its first pair (never run)
 82:E265 82:E279 m16x16 ; road_rows_build: the flat road shape, the shape table's second entry (never run)
-82:EB45 82:EC09 m16x16 ; the second road's track events ($1F0C, $1F12/$1F14; never run)
 81:EE28 81:EF10 m16x16 ; car_frames_order: the lap wrap for the 6th to 20th places (never run)
 81:EFB4 81:F17D m16x16 ; car_frames_order: the leader behind the line, places put back by a lap (never run)
-81:FB20 81:FBB1 m16x16 ; car_sync_player2: the second player's car (handler 4; never run in a one-player race)
 81:EFA6 81:EFA9 m16x16 ; race_cars_frame: the jump back to the order's rotation (never run)
 81:8679 81:868A m16x16 ; road_rows_stream: never run
 81:869D 81:86B0 m16x16 ; road_rows_stream: never run
@@ -146,7 +135,6 @@
 83:F3F9 83:F3FD m16x16 ; player_car_frame: never run
 82:CC7F 82:CC81 m16x16 ; object_sprites_stream: never run
 82:CCB8 82:CCBE m16x16 ; object_sprites_stream: never run
-82:CCC7 82:CDB7 m16x16 ; object_sprites_stream: a second entry (never run), on into $CDB7
 82:CE0F 82:CE12 m16x16 ; object_sprites_stream: never run
 82:CED7 82:CEDA m16x16 ; object_sprites_stream: never run
 80:99B6 80:99CB m16x16 ; shop_money_after_price's second loop (all four high digits settled): executed by its difftest fuzz, matched by src/shop.c

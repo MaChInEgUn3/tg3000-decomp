@@ -6409,6 +6409,46 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The map takes the firmware run: mode 1 and the two-player code mapped (map-fw-1, 2026-11-28)
+
+**What changed.**
+- `traces/coverage.bin` now also has `autopilot_60k` run to the end with `--dsp4-firmware`.
+  `bench --coverage` OR-merges, so nothing the bench's own runs found is lost.
+- That run follows the console's path past the point where the bench's parts (dsp4-01w), and
+  reaches the race wrapper's mode 1 (dsp4-08h).
+- It adds 6,979 instruction starts in 114 ranges: bank `$82` 2,577, `$83` 2,187, `$85` 1,308,
+  `$81` 841 and a few elsewhere. Among them:
+  - mode 1 from `$82:89B5`, no longer `incbin`;
+  - the two-view race's own code: `$83:CF53-$83:D333` and `$83:D7C1-$83:DD76` around its
+    `$0F`/`$10` sites, plus `$82:D2CC-$82:D8C5`, `$85:8DF3-$85:9A12` and `$82:B2D6-$82:B4EC`.
+- `map/static_code.txt` loses 12 ranges that the run now executes. They were code shown only by
+  other evidence; now they are in the coverage itself. Among them:
+  - `player_road_limits`' pushed side;
+  - `timer_0d7e_tick`'s random mode;
+  - `car_blocks_7f2000`'s no-car block;
+  - `car_pair_contact`'s two-player path;
+  - `race_hud_digits`' two players;
+  - two `player2_segment_step` paths;
+  - `race_grid_setup`'s variant 0;
+  - the second road's track events.
+
+**Numbers:**
+- ROM classified: 84.29% to 86.19%.
+- Code bytes: 95,032 to 112,178.
+- Code inside verified C routines: 95.05% to 80.86%. That fall is the new code, none of it in C
+  yet.
+- `asm/` still rebuilds the ROM byte for byte, all code from the asm text.
+
+**Check:**
+- `tools/map.py`, `tools/listing.py` and `tools/build_asm.sh` (SHA-1 and code from the text),
+  then `progress.py --check`.
+- No `src/` or `tools/bench/` change, so no full run.
+- The difftest rows are unchanged: the bench's movies still do not reach this code, which is why
+  verifying its C will need the firmware.
+
+**Next:** mode 1's routines into C, verified on a firmware-backed movie; its `$0F`/`$10` measured
+on the firmware first.
+
 ## The sprite budget works on pairs of lines (dsp4-01x, 2026-11-28: measured, not yet modelled)
 
 **Why:** after dsp4-01w, the bench and the firmware part on the 60k movie at a sprite answer: at frame

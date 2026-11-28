@@ -1141,7 +1141,11 @@ CODE_808A53:
     lda.w $03DC                 ; $808A59
     bit.w #$2000                ; $808A5C
     beq CODE_808A71             ; $808A5F
-    incbin !baserom:$A61..$A71
+    lda.w #$00FF                ; $808A61
+    tsb.w $047D                 ; $808A64
+    jsl.l $84A553               ; $808A67
+    jsl.l race_wrapper_head     ; $808A6B
+    bra CODE_808A1F             ; $808A6F
 CODE_808A71:
     lda.w #$00FF                ; $808A71
     trb.w $047D                 ; $808A74
@@ -1150,7 +1154,7 @@ CODE_808A71:
     cmp.w #$0002                ; $808A7D
     beq CODE_808A87             ; $808A80
     jsr.w $8A8C                 ; $808A82
-    incbin !baserom:$A85..$A87
+    bra CODE_808A1F             ; $808A85
 CODE_808A87:
     jsr.w $8B79                 ; $808A87
     incbin !baserom:$A8A..$A8C
@@ -1190,7 +1194,7 @@ top_after_race:
     sta.l $8103E0               ; $808AE2
     lda.w #$FFFF                ; $808AE6
     cmp.w $0446                 ; $808AE9
-    db $F0,$23 ; beq            ; $808AEC
+    beq CODE_808B11             ; $808AEC
     jsr.w ticker_screen         ; $808AEE
 top_after_ticker:
     lda.w $03E2                 ; $808AF1
@@ -1205,7 +1209,8 @@ top_after_ticker:
     incbin !baserom:$B09..$B0F
 CODE_808B0F:
     bpl CODE_808B12             ; $808B0F
-    incbin !baserom:$B11..$B12
+CODE_808B11:
+    rts                         ; $808B11
 CODE_808B12:
     jsl.l prize_money_award     ; $808B12
     jsl.l results_screen_run    ; $808B16
@@ -11777,14 +11782,19 @@ CODE_80E6B1:
     bra CODE_80E71C             ; $80E6F5
 CODE_80E6F7:
     cmp.w #$000A                ; $80E6F7
-    db $B0,$11 ; bcs            ; $80E6FA
+    bcs CODE_80E70D             ; $80E6FA
     jsr.w name_copy_7f2000      ; $80E6FC
     ldy.w #$018D                ; $80E6FF
     jsr.w block_copy_7f2000     ; $80E702
     jsr.w car_blocks_7f2000     ; $80E705
     jsr.w car_block_7f2000      ; $80E708
     bra CODE_80E71C             ; $80E70B
-    incbin !baserom:$670D..$671C
+CODE_80E70D:
+    jsr.w name_copy_7f2000      ; $80E70D
+    jsr.w car_blocks_7f2000     ; $80E710
+    ldy.w #$019F                ; $80E713
+    jsr.w block_copy_7f2000     ; $80E716
+    jsr.w car_block_7f2000      ; $80E719
 CODE_80E71C:
     lda.w #$0000                ; $80E71C
     sta.l $7F2000,x             ; $80E71F
@@ -11795,7 +11805,7 @@ CODE_80E71C:
     beq CODE_80E73A             ; $80E72D
     cmp.w #$000A                ; $80E72F
     bcc CODE_80E737             ; $80E732
-    incbin !baserom:$6734..$6737
+    jmp.w $E88E                 ; $80E734
 CODE_80E737:
     jmp.w $E7F9                 ; $80E737
 CODE_80E73A:
@@ -11983,7 +11993,22 @@ CODE_80E877:
     sta.w $0005                 ; $80E887
     stz.w $420B                 ; $80E88A
     rts                         ; $80E88D
-    incbin !baserom:$688E..$68B5
+    lda.w #$0001                ; $80E88E
+    jsr.w wait_frames           ; $80E891
+    stz.b $80                   ; $80E894
+    lda.w #$F870                ; $80E896
+    sta.b $7C                   ; $80E899
+    lda.w #$0000                ; $80E89B
+    sta.b $7E                   ; $80E89E
+    lda.w #$0000                ; $80E8A0
+    sta.b $84                   ; $80E8A3
+    jsr.w ticker_scene_step     ; $80E8A5
+    lda.b $9A                   ; $80E8A8
+    bit.w #$7FFF                ; $80E8AA
+    bne CODE_80E8B2             ; $80E8AD
+    jmp.w $E87A                 ; $80E8AF
+CODE_80E8B2:
+    jmp.w $E88E                 ; $80E8B2
 block_copy_7f2000:
     lda.w $D419,y               ; $80E8B5
     sta.b $14                   ; $80E8B8
@@ -12024,8 +12049,8 @@ car_blocks_7f2000:
     ldy.b $94                   ; $80E8F4
     lda.w $03A8,y               ; $80E8F6
     bpl CODE_80E901             ; $80E8F9
-    ldy.w #$00A8                ; $80E8FB static
-    jmp.w block_copy_7f2000     ; $80E8FE static
+    ldy.w #$00A8                ; $80E8FB
+    jmp.w block_copy_7f2000     ; $80E8FE
 CODE_80E901:
     asl a                       ; $80E901
     tay                         ; $80E902
@@ -12039,7 +12064,7 @@ car_block_7f2000:
     ldy.b $94                   ; $80E911
     lda.w $03A8,y               ; $80E913
     bpl CODE_80E91B             ; $80E916
-    lda.w #$0013                ; $80E918 static
+    lda.w #$0013                ; $80E918
 CODE_80E91B:
     asl a                       ; $80E91B
     tay                         ; $80E91C

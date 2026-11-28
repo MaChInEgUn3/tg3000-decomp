@@ -3233,22 +3233,22 @@ CODE_8A9F6F:
 timer_0d7e_tick:
     dec.w $0D7E                 ; $8A9F76
     bne CODE_8A9FA0             ; $8A9F79
-    lda.w #$2000                ; $8A9F7B static
-    sta.w $03DC                 ; $8A9F7E static
-    jsr.w rng_next_8a_2         ; $8A9F81 static
-    and.w #$0003                ; $8A9F84 static
-    cmp.w #$0003                ; $8A9F87 static
-    bne CODE_8A9F8D             ; $8A9F8A static
-    dec a                       ; $8A9F8C static
+    lda.w #$2000                ; $8A9F7B
+    sta.w $03DC                 ; $8A9F7E
+    jsr.w rng_next_8a_2         ; $8A9F81
+    and.w #$0003                ; $8A9F84
+    cmp.w #$0003                ; $8A9F87
+    bne CODE_8A9F8D             ; $8A9F8A
+    incbin !baserom:$51F8C..$51F8D
 CODE_8A9F8D:
-    ora.w $03DC                 ; $8A9F8D static
-    sta.w $03DC                 ; $8A9F90 static
-    lda.w $03DC                 ; $8A9F93 static
-    and.w #$0007                ; $8A9F96 static
-    cmp.w #$0002                ; $8A9F99 static
-    bne CODE_8A9F9E             ; $8A9F9C static
+    ora.w $03DC                 ; $8A9F8D
+    sta.w $03DC                 ; $8A9F90
+    lda.w $03DC                 ; $8A9F93
+    and.w #$0007                ; $8A9F96
+    cmp.w #$0002                ; $8A9F99
+    bne CODE_8A9F9E             ; $8A9F9C
 CODE_8A9F9E:
-    inc.b $6C                   ; $8A9F9E static
+    inc.b $6C                   ; $8A9F9E
 CODE_8A9FA0:
     rts                         ; $8A9FA0
 func_8A9FA1:
