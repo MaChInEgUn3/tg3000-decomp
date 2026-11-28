@@ -23,14 +23,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NATIVE = os.path.join(ROOT, 'build', 'bench', 'dsp4_sprite_native')
 
 
-def words(path):
-    """the tape's bytes paired into words (two writes or two reads in a row): (value, read)"""
+def words(path, at=None):
+    """the tape's bytes paired into words (two writes or two reads in a row): (value, read); with
+    a list AT, each word's first record goes into it (dsp4-01v)"""
     t = open(path, 'rb').read()
     recs = [(t[i + 3], t[i + 4] & 1) for i in range(0, len(t) - 4, 5)]
     out, i = [], 0
     while i + 1 < len(recs):
         if recs[i][1] == recs[i + 1][1]:
             out.append((recs[i][0] | recs[i + 1][0] << 8, recs[i][1]))
+            if at is not None:
+                at.append(i)
             i += 2
         else:
             i += 1
@@ -44,8 +47,9 @@ class Cut(Exception):
 CUTS = collections.Counter()  # the lists not checked, by reason
 
 
-def lists(ws):
-    """each list: (its script line, the words the game read)"""
+def lists(ws, starts=None):
+    """each list: (its script line, the words the game read); with a list STARTS, each list's
+    first word's index goes into it (dsp4-01v)"""
     i, n = 0, len(ws)
 
     def wr():
@@ -131,6 +135,8 @@ def lists(ws):
             CUTS[str(why)] += 1
             i = start + 1
             continue
+        if starts is not None:
+            starts.append(start)
         yield ' '.join(calls), reads
 
 

@@ -233,9 +233,9 @@ void dsp4_list_open(void) {
   const bool sizes = dsp4_sp.sizes;  // ($0005 lasts past $0003)
   memset(&dsp4_sp, 0, sizeof dsp4_sp);
   dsp4_sp.sizes = sizes;
-  // dsp4-01u: $0003 also sets the road's rounding to $848 (as a $0A's edges 2 and 3 of $2120 would;
-  // measured on the firmware: chosen roads after a $0003, and race1's roads before any $0A)
-  dsp4_round_set(0x2120, 0x2120);
+  // dsp4-01u/01v: $0003 also sets the road's rounding: both words read 33 in each byte ($2121), the
+  // second being where the chip counts lines 127 and 128's slivers (see dsp4_list_rounding)
+  dsp4_round_set(0x2121, 0x2121);
 }
 
 void dsp4_list_sizes(void) { dsp4_sp.sizes = true; }
@@ -351,7 +351,21 @@ void dsp4_objects_list_end(void) {
   else dsp4_sp.kind = 0;
 }
 
-void dsp4_objects_end(void) { dsp4_sp.kind = 0; }
+// dsp4-01v: the road's second rounding word is the chip's sliver budget left on screen lines 127
+// (low byte) and 128 (high byte): 33 less those counted. Measured on the firmware: chosen roads
+// after a frame's stream, cut after each object (it falls as parts land on those lines), and every
+// road after a list before any $0A (race1 190 of 190, the 60k movie's too). A $0A or a road
+// rewrites it; none comes inside a list.
+uint16_t dsp4_list_rounding(void) {
+  return (uint16_t)((33 - dsp4_sp.lines[128]) << 8 | (33 - dsp4_sp.lines[127]));
+}
+
+void dsp4_objects_end(void) {
+  dsp4_sp.kind = 0;
+  int16_t e2, e3;
+  dsp4_round_get(&e2, &e3);
+  dsp4_round_set(e2, (int16_t)dsp4_list_rounding());
+}
 
 void dsp4_high_table(uint16_t out[16]) {
   for(int i = 0; i < 16; i++) out[i] = (uint16_t)(dsp4_sp.high[2 * i] | dsp4_sp.high[2 * i + 1] << 8);

@@ -12,9 +12,11 @@
 #    apart. The first run of the probe's process is sent twice and its first copy dropped
 #    (the fresh chip's first run).
 # 2. TAPE (default build/cache/race1.tape: bench --dsp4-firmware --dsp4-tape-out over
-#    race1.txt): every $01 run after a $0A must agree (the runs before the race's first $0A
-#    take their first rounding from the sprite streams, not modelled yet: counted apart, with
-#    the largest difference in a line word). A $0F run, an edge ($8001) or a header whose
+#    race1.txt): every $01 run after a $0A must agree, and (dsp4-01u/01v) every run at power-on
+#    (rounding 0) or after a sprite list with no $0A since (its first word $2121, its second
+#    lines 127/128's sliver budget left, from src/dsp4.c's list driven by the tape's own:
+#    build/bench/dsp4_sprite_native). Runs after a road with no $0A or list since are counted
+#    apart, with the largest difference in a line word. A $0F run, an edge ($8001) or a header whose
 #    words 1 and 2 are not $33 (a nonzero $0242) fails: never seen, not checked.
 # 3. dsp4-07a: the second road, $07: N random runs as road_rows_project2 builds them (rows it
 #    places itself: lines falling 0-12 a row, offsets and a $0798 addend), on both; and every
@@ -69,6 +71,35 @@ def run(tool, cases):
     args = [tool] + ([FIRMWARE] if tool == PROBE else [])
     out = subprocess.run(args, input='\n'.join(cases) + '\n', capture_output=True, text=True, check=True).stdout
     return out.splitlines()
+
+
+def list_roundings(tape, runs):
+    """dsp4-01v: a run after a sprite list takes its second rounding word from that list: lines
+    127/128's budget left, from src/dsp4.c's list (dsp4_sprite_native) fed the tape's list"""
+    import bisect
+    import importlib.util
+    spec_ = importlib.util.spec_from_file_location('dsp4_09_check', os.path.join(ROOT, 'tools', 'dsp4_09_check.py'))
+    c = importlib.util.module_from_spec(spec_)
+    spec_.loader.exec_module(c)
+    at, starts = [], []
+    ws = c.words(tape, at)
+    items = list(c.lists(ws, starts))
+    out = subprocess.run([c.NATIVE], input='\n'.join(x for x, r in items) + '\n', capture_output=True, text=True,
+                         check=True, env=dict(os.environ, DSP4_SPRITE_LINES='1')).stdout.splitlines()
+    pos, left = [at[s] for s in starts], []
+    for line in out:
+        t = line.split()
+        lines = [int(x) for x in t[t.index('lines') + 1:][:256]]
+        left.append((33 - lines[128]) << 8 | (33 - lines[127]))
+    done = []
+    for r in runs:
+        if 'LIST' in r[1]:
+            k = bisect.bisect_left(pos, r[3]) - 1
+            if k < 0:
+                raise SystemExit('%s: a run after a list at record %d, no list found' % (tape, r[3]))
+            r = (r[0], r[1].replace('LIST', '%X' % left[k], 1), r[2], r[3])
+        done.append(r)
+    return done
 
 
 def long_segment(line, head1):
@@ -133,9 +164,9 @@ def tape_runs(path):
             # the probe's spec puts the first row's 3 words after the header
             head, row0 = words[:15], words[15:22]
             body = head + row0[1:4] + [row0[0]] + row0[4:7] + words[22:]
-            pre = ('Q 0 0 ' if edges == 'power' else 'Q 2120 2120 ' if edges == 'list' else
+            pre = ('Q 0 0 ' if edges == 'power' else 'Q 2121 LIST ' if edges == 'list' else
                    'E %X %X %X ' % edges if edges else 'Q 8000 8000 ')
-            runs.append((edges is not None, pre + spec(body), ' | '.join(expect)))
+            runs.append((edges is not None, pre + spec(body), ' | '.join(expect), i))
             edges = None
             i = j
             continue
@@ -321,11 +352,11 @@ def main():
     print('$08 random runs: %d, differ %d' % (n, bad8))
     ok = ok and bad8 == 0 and len(fw8) == len(nat8) == n
     if os.path.exists(tape):
-        runs = tape_runs(tape)
+        runs = list_roundings(tape, tape_runs(tape))
         got = run(NATIVE, [r[1] for r in runs])
         after = [g.split('#')[-1].split() == r[2].split() for g, r in zip(got, runs) if r[0] and r[1].startswith('E')]
-        # dsp4-01u: the runs on the rounding a $0003 left ($848): the race's first frames, before any $0A
-        listed = [g.split('#')[-1].split() == r[2].split() for g, r in zip(got, runs) if r[1].startswith(('Q 2120', 'Q 0 0 '))]
+        # dsp4-01u/01v: the runs at power-on or on what a sprite list left: the race's first frames
+        listed = [g.split('#')[-1].split() == r[2].split() for g, r in zip(got, runs) if r[1].startswith(('Q 2121', 'Q 0 0 '))]
         before = [g.split('#')[-1].split() == r[2].split() for g, r in zip(got, runs) if not r[0]]
         worst = 0
         for g, r in zip(got, runs):
@@ -338,8 +369,8 @@ def main():
                         worst = max(worst, min(d, 0x10000 - d))
         print('%s: %d runs after a $0A, differ %d; %d after a road with no $0A since, differ %d, by at most %d' % (
             os.path.basename(tape), len(after), after.count(False), len(before), before.count(False), worst))
-        print('%s: %d runs after a $0003 or at power-on (dsp4-01u; 2 known on race1), differ %d' % (os.path.basename(tape), len(listed), listed.count(False)))
-        ok = ok and after.count(False) == 0 and len(after) > 0
+        print('%s: %d runs at power-on or after a sprite list (dsp4-01u/01v), differ %d' % (os.path.basename(tape), len(listed), listed.count(False)))
+        ok = ok and after.count(False) == 0 and len(after) > 0 and listed.count(False) == 0
         runs7 = tape_runs7(tape)
         got7 = run(NATIVE, [r[0] for r in runs7])
         bad7 = sum(1 for g, r in zip(got7, runs7) if g.split() != r[1].split())

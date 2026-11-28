@@ -59,7 +59,16 @@ int main(void) {
         break;
       }
       case 'E': dsp4_objects_list_end(); break;
-      case 'X': dsp4_objects_end(); break;
+      case 'X':
+        dsp4_objects_end();
+        if(getenv("DSP4_SPRITE_LINES")) {  // dsp4-01v: the slivers counted per screen line, at the end
+          Dsp4Sprites sp;
+          dsp4_sprites_get(&sp);
+          printf("lines");
+          for(int i = 0; i < 256; i++) printf(" %u", sp.lines[i]);
+          printf(" ");
+        }
+        break;
       case 'H': {
         uint16_t h[16];
         dsp4_high_table(h);

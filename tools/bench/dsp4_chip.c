@@ -62,7 +62,9 @@ static void dsp4_answer(Dsp4Chip* c) {
     break;
   }
   default: {  // $03 (its entry after two words) and $0B
-    if(c->cmd == 0x03) c->edge2 = c->edge3 = 0x2120;  // (dsp4-01u: $0003 sets the road's rounding)
+    // (dsp4-01u: $0003 sets the road's rounding; dsp4-01v: the list's slivers then move the second
+    // word, which this model, without the list, does not follow)
+    if(c->cmd == 0x03) c->edge2 = c->edge3 = 0x2121;
     const uint8_t* e = c->in + (c->cmd == 0x03 ? 4 : 0);
     uint16_t w[2] = {0, 0};
     dsp4_put(c->out, dsp4_sprite(dsp4_word(e), dsp4_word(e + 2), dsp4_word(e + 4), w));

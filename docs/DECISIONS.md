@@ -6409,6 +6409,55 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road's rounding after a sprite list: lines 127 and 128's budget (dsp4-01v, 2026-11-28)
+
+**After a `$09` stream, the road's second rounding word is the sliver budget left on screen lines
+127 and 128:** `(33 - used[128]) << 8 | (33 - used[127])`. The first word stays where the `$0003`
+put it. Measured on the firmware, outputs only:
+- `dsp4_tape_run` got a record kind 4, one `$01` row's answer whatever its length. With it, a
+  frame's real records from its `$0003` to its road, then a road built from random inputs, go to
+  the firmware, and the rounding windows that fit the native's answers are intersected. Race1's
+  own roads rebuilt this way come back exact.
+- After frames 2 and 3's streams, the first word stays near `$2120`, and the second is
+  `$1908-$1947` and `$1500-$151F`. A stream with only its 7 opening words and its end leaves
+  `$2120`.
+- Frame 3's stream cut after each of its 68 objects: the second word falls step by step as
+  objects come in and never rises, from `$2121` to `$2020`, `$1F1F`, ... `$1515`. That matches
+  `src/dsp4.c`'s own count of slivers on lines 127/128 at all 14 cuts measured; lines 115/116,
+  the only other pair that fit frames 2-4, fails 12 of them. So the chip keeps each line's budget
+  left (33 at the `$0003`, hence `$2121` rather than dsp4-01u's `$2120`, the same `$848`), and the
+  road reads lines 127/128's bytes as its rounding.
+- No `$0A` and no road comes inside a list (race1 584 lists, the 60k movie 6,392), so taking the
+  value at the stream's end is the same as reading it live.
+- The first word: lines 62-182 are ruled out; any line sprites rarely reach fits. It stays $2121,
+  unmeasured.
+
+**Wired:**
+- `src/dsp4.c`: `dsp4_list_open` sets `$2121` in both words. `dsp4_objects_end` sets the second
+  word to `dsp4_list_rounding()`.
+- The harness's tracker follows the chip that answers. With the firmware it takes the same value
+  from `shOrig`'s list at the stream's end, restoring `src/dsp4.c`'s rounding, which is the C's;
+  on the bench it keeps `$2121`, as the bench's chip model does. A tainted list makes the rounding
+  unknown. (A first gate that took the list's value on the bench too failed `road_rows_project`
+  on 2 of 4,000 samples: the bench's original, answered by the chip model, against the C on the
+  firmware's value.)
+- The bench's chip model sets `$2121` at `$0003`, but it has no list, so it does not follow the
+  second word.
+- `dsp4_road_check.py` runs the tape's own lists through `dsp4_sprite_native` (new
+  `DSP4_SPRITE_LINES`) and gates on the power-on and post-list runs too.
+- `dsp4_09_check.words`/`lists` can also give each list's position.
+
+**Result:**
+- Race1: 191 of 191 runs at power-on or after a list are exact (was 188), plus 393 of 393 after a
+  `$0A`.
+- The 60k firmware tape's first 20 million records: 190 of 190. The whole tape stops at its first
+  `$0F` run (mode 1), which the check refuses.
+- **Not moved: the bench.** Its chip model answers the roads without the list, so on the 60k movie
+  it still answers differently at record 32,890, and the game's path still parts at record
+  2,746,462. The next unit gives the chip model its own list state, swapped in and out as the
+  rounding is, and not `src/dsp4.c`'s global one, which the harness's C shadow uses. Its check:
+  the 60k movie's first different answer moves past 32,890.
+
 ## The road's rounding at power-on and after a list's open (dsp4-01u, 2026-11-28)
 
 **The chip's road rounding starts at 0, and `$0003` sets it to `$2120`.** Both measured on the
@@ -6430,7 +6479,7 @@ new `T` sends a `$0003`):
 - **Result:** race1's roads: 393 after a `$0A`, 0 differ; 190 after a `$0003` or at power-on, 2
   differ (runs 4 and 6, one line word by 1). The bench's race1 roads against the firmware's: 2
   differ, was 191.
-- **Open: the `$09` stream changes the rounding too.** Runs 4 and 6 come out exact on the firmware
+- **Open (solved by dsp4-01v): the `$09` stream changes the rounding too.** Runs 4 and 6 come out exact on the firmware
   only with their frame's `$09` stream after the `$0003` (the `$0003` alone, or with the `$06` and
   the multiplies after it, leaves them wrong). They need the second half below about `$1C00`, the
   other 188 above it, so the value depends on the stream's contents: the next unit measures it

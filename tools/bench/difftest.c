@@ -1368,9 +1368,19 @@ static void shWord(Shadow* sh, uint16_t w, bool read) {
     if(read) { shLose(sh); return; }
     sh->args[1] = w;
     if(sh->args[0] == 0 && w == 0x8000) {
+      int16_t r2, r3;
+      dsp4_round_get(&r2, &r3);
       shSwap(sh, true);
       dsp4_objects_end();
+      const uint16_t left = dsp4_list_rounding();
       shSwap(sh, false);
+      if(sh == &shOrig) {  // dsp4-01v: the original's list sets the tracker's rounding, not the C's
+        dsp4_round_set(r2, r3);
+        // (the firmware's road reads lines 127/128's budget left; the bench's chip model, without
+        // the list, keeps the $0003's $2121, and the tracker follows the chip that answers)
+        if(sh->tainted) trackKnown = false;
+        else if(dsp4_bridge_firmware_on()) trackE3 = (int16_t)left;
+      }
       sh->state = SH_IDLE;
     } else if(w == 0) {
       shSwap(sh, true);
@@ -1516,11 +1526,12 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   if(isDsp4(adr) && !(!write && insnPc >= 0x808085 && insnPc < 0x80809A)) {
     trackSprites(adr, val, write);  // (dsp4-09n)
     // dsp4-01u: the sprite list's bytes leave the road's rounding as it is, but its $0003, which
-    // sets it to $848 (edges $2120); the tracker only sees the rest
+    // sets it to $2121, and its stream's end (dsp4-01v: lines 127/128's budget, from shOrig's list);
+    // the tracker only sees the rest
     if(shOrigOpened) {
       trackKnown = true;
       trackLost = false;
-      trackE2 = trackE3 = 0x2120;
+      trackE2 = trackE3 = 0x2121;
       memset(&trackSmp, 0, sizeof trackSmp);
     } else if(!listFollowed()) trackDsp4(adr, val, write);  // (dsp4-01t)
   }

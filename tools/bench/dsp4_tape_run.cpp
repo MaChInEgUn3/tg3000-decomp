@@ -7,6 +7,8 @@
 // (a count word, then 4 bytes a pair), however long the chip makes it; it is not compared.
 // A record with direction 3 reads one $09 part's answer (a flag, then per 1 two words and another
 // flag), however long; dumped, not compared.
+// dsp4-01v: direction 4 reads one $01 row's answer (4 words, a count, 3 words a line); dumped as
+// dsp4_road_native prints it (rows separated by '|'), and nothing else is dumped then.
 // TAPE_RUN_SHOW=N prints each tape's first N differing reads (record, PC, tape and chip byte).
 // TAPE_RUN_DUMP=1 prints instead each tape's bytes read from FROM on, in hex, on one line. Per tape one line: its reads at record FROM or later that differ, of how many, the first
 // (its record and PC), then the differing reads by PC (at most 8). Reads before FROM are not
@@ -62,6 +64,19 @@ int main(int argc, char** argv) {
             const uint8_t v = dsp4_lle_read(true);
             if(dump) { char t[4]; std::snprintf(t, sizeof t, "%02X", v); dumped += t; }
           }
+        }
+      } else if(b[4] == 4) {  // dsp4-01v: one $01 row's answer: 4 words, a count, 3 words a line; dumped
+        uint16_t w[5];
+        for(int q = 0; q < 5; q++) w[q] = uint16_t(dsp4_lle_read(true) | dsp4_lle_read(true) << 8);
+        if(dump) {
+          char t[40];
+          std::snprintf(t, sizeof t, "%s%04X %04X %04X %04X %u:", dumped.empty() ? "" : " | ", w[0], w[1], w[2], w[3], w[4]);
+          dumped += t;
+        }
+        for(unsigned q = 0; q < w[4] && q < 512; q++) {
+          uint16_t l[3];
+          for(int i = 0; i < 3; i++) l[i] = uint16_t(dsp4_lle_read(true) | dsp4_lle_read(true) << 8);
+          if(dump) { char t[20]; std::snprintf(t, sizeof t, " %04X,%04X,%04X", l[0], l[1], l[2]); dumped += t; }
         }
       } else if(b[4] == 2) {  // an $08 run, its length the chip's: a count word, then 4 bytes a pair (not compared)
         const uint16_t cnt = uint16_t(dsp4_lle_read(true) | dsp4_lle_read(true) << 8);

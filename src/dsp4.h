@@ -152,6 +152,7 @@ void dsp4_objects_car_tail(uint16_t height, uint16_t attr);
 unsigned dsp4_objects_part(uint16_t w, uint16_t a, uint16_t b, uint16_t out[2][2]);
 void dsp4_objects_list_end(void);
 void dsp4_objects_end(void);
+uint16_t dsp4_list_rounding(void);  // dsp4-01v: lines 127/128's budget left, as the road reads it
 // $0006: the high table, 16 words (8 entries a word, the first in bits 0-1)
 void dsp4_high_table(uint16_t out[16]);
 #endif
