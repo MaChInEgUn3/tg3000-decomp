@@ -6409,6 +6409,26 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's top view's sprites: `object_sprites_stream` with its own centre (map-fw-8, 2026-11-28)
+
+**`mode1_view1_sprites` (`$82:CCC7`, `src/misc.c`)** is `object_sprites_stream`'s prologue for mode
+1's top view, joining the same body at `$82:CDB7`.
+- Its 240 bytes are the race prologue's 243, but for three: the `$09` stream's centre y (`$39`,
+  against `$A9`), and its bottom, twice (`$6C`, against `$DC`, the second in the `$1EF2` negative
+  case that never runs).
+- The race's 3 bytes more are its `JMP $CDB7`; mode 1's falls through.
+- The C keeps one prologue and body, `object_sprites_stream_at(centre_y, bottom)`.
+  `object_sprites_stream` is `($A9, $DC)`, `mode1_view1_sprites` `($39, $6C)`.
+- The row: entry `$82:CCC7`, the body as `alsoIn`, `replays = 32`, the native list.
+  - Its holes: `$1EF2` negative, `$1E66`/`$1E68` negative (the dots' `INX INX`, as the race's),
+    and the body's holes as `object_sprites_stream`'s.
+
+**Check:** `demo_mode1`: 1 live sample and 17 of 17 replays (the raster IRQs land in nearly every
+sample), paths 90 of 90. Then the full gate (`object_sprites_stream` reshaped).
+
+**Next:** the bottom view, `$82:D2CC`. Its body is its own, longer, so it gets compared before
+porting.
+
 ## The shadow follows mode 1's sprite lists (map-fw-7, 2026-11-28)
 
 **Mode 1 opens two lists a frame, one per view, each with a `$0003`.** Read off `demo_mode1`'s

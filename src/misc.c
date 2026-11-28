@@ -7594,8 +7594,9 @@ static bool rival_car_sprites(uint16_t xrow, uint16_t car) {
   return sprite_parts_stream_rom(rd16(0x10000 + parts));
 }
 
-// TG3000_ROUTINE($82:CBD4) object_sprites_stream
-void object_sprites_stream(void) {
+// object_sprites_stream's prologue and body ($82:CBD4 and mode 1's view 1, $82:CCC7: the same bytes
+// but for the stream's centre y and bottom, map-fw-8)
+static void object_sprites_stream_at(uint16_t centre_y, uint16_t bottom) {
   wr16(0x0184, rd16(0x0186));
   dsp4_list_open();   // $0003, native (dsp4-09o: the chip's sprite list)
   dsp4_list_sizes();  // $0005
@@ -7625,8 +7626,8 @@ void object_sprites_stream(void) {
     minimap_car(0x001E, at, (uint16_t)(rd16(0xFAD1 + 0x35) | 0x30FD));
   }
   {  // the $09 stream, native
-    const uint16_t pre[7] = {0x0080, 0x00A9, 0, 0, 0x0100, 0x0004,
-                             (rd16(0x1EF2) & 0x8000) ? (uint16_t)(rd16(0x1EF2) + 0x00DC) : 0x00DC};
+    const uint16_t pre[7] = {0x0080, centre_y, 0, 0, 0x0100, 0x0004,
+                             (rd16(0x1EF2) & 0x8000) ? (uint16_t)(rd16(0x1EF2) + bottom) : bottom};
     dsp4_objects_begin(pre);
   }
   // CDB7
@@ -7744,6 +7745,14 @@ done:  // D1E7: the stream's end (0, $8000)
     wr16(0x1E56, bus_rd16(0x86C978 + t));
   }
 }
+
+// TG3000_ROUTINE($82:CBD4) object_sprites_stream
+void object_sprites_stream(void) { object_sprites_stream_at(0x00A9, 0x00DC); }
+
+// TG3000_ROUTINE($82:CCC7) mode1_view1_sprites
+// object_sprites_stream for the race wrapper's mode 1, its top view: the stream's centre y $39 and
+// bottom $6C (the race's $A9 and $DC), its own entry joining the body at $82:CDB7.
+void mode1_view1_sprites(void) { object_sprites_stream_at(0x0039, 0x006C); }
 
 // ---- the VS race's four views' sprites ($82:BE18, $C170, $C489, $C7BA) ----
 // object_sprites_stream's per-player counterparts: one body, each view's slice of the road's rows

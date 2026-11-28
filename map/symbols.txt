@@ -732,6 +732,7 @@ func    82C7BA   vs_sprites_view3    ; the same for player 4 (record $0315) -> s
 func    82DD3B   vs_object_flat      ; VS race: a flat object's sprite (object_sprite_flat with rows c; through vs_sprites) -> src/misc.c
 func    82DD69   vs_object_group     ; VS race: an object group's four sprites (rows c; through vs_sprites) -> src/misc.c
 func    82CBD4   object_sprites_stream ; the race's sprites streamed to the DSP-4: mini-map, track objects and cars row by row (a tape row) -> src/misc.c
+func    82CCC7   mode1_view1_sprites ; object_sprites_stream for mode 1's top view (centre y $39, bottom $6C) -> src/misc.c
 func    82CAE5   sprite_put_rows_c   ; an object's sprite streamed, rows $37EC/$38EC/$35EC/$37EC, part set at $84:8080 (kind 0) -> src/misc.c
 func    82DCEC   object_sprite_kind0 ; object kind 0's sprite, then its shadow (in no movie or the TAS) -> src/misc.c
 func    82DAAF   object_sprite_hover ; a track object's sprite, its height less $40 (ran in the TAS only) -> src/misc.c

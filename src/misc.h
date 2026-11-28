@@ -1610,6 +1610,7 @@ bool object_sprite_hover(uint16_t x);
 // runs in no movie or the TAS; kind 9's handler entry is $0000 (no routine: the original
 // would run WRAM as code), and no track places it.
 void object_sprites_stream(void);
+void mode1_view1_sprites(void);  // $82:CCC7: mode 1's top view (centre y $39, bottom $6C)
 
 // $82:8923: the race frame's drawing (D = $0100). The sprite pointers D+$86 and D+$8E start
 // at 0, or at $220 with the second buffer ($00B4 set); then the road (race_road_frame), its

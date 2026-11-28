@@ -12757,6 +12757,14 @@ static void call_object_sprites_stream(const Regs* in, Regs* out) {
   out->z = false;
   out->c = false;
 }
+static void call_mode1_view1_sprites(const Regs* in, Regs* out) {  // (map-fw-8: the same end)
+  (void)in;
+  mode1_view1_sprites();
+  out->db = 0x83;
+  out->n = true;
+  out->z = false;
+  out->c = false;
+}
 // the race as the movie left it; the player car's flags ($0244 bit 0, $021A, $1F18, $021D,
 // the item $014C), $0281's sign, $1EF2's, D+$C8; the chip scripted with many 0 answers (the
 // parts' lists end early, and some fill the buffer)
@@ -14837,6 +14845,12 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_object_sprites_stream,  // command $03's prologue (the mini-map's dots)
    .holes = {{0x82CCC7, 0x82CDB7},    // a second entry (never run) that joins at $82:CDB7
              {0x82CED7, 0x82CEDA}, {0x82CC59, 0x82CC5B}, {0x82CC7F, 0x82CC81}, {0x82CCB8, 0x82CCBE}, {0x82CDED, 0x82CDF0}, {0x82CE0F, 0x82CE12}, {0x82CE5F, 0x82CE70}, {0x82D00B, 0x82D058}}, .spriteList = true},  // a JMP $D1E7 after a BRA (dead)
+  {.name = "mode1_view1_sprites", .entry = 0x82CCC7, .end = 0x82CDB7, .alsoIn = {{0x82CDB7, 0x82D267}}, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_view1_sprites, .spriteList = true,
+   .replays = 32,  // (the raster IRQs land in most samples)
+   // (map-fw-8: $1EF2 and $1E66/$1E68 negative never run; the body's holes as object_sprites_stream's)
+   .holes = {{0x82CDAB, 0x82CDB1}, {0x82CD4C, 0x82CD4E}, {0x82CD72, 0x82CD74}, {0x82CED7, 0x82CEDA}, {0x82CDED, 0x82CDF0}, {0x82CE0F, 0x82CE12}, {0x82CE5F, 0x82CE70},
+             {0x82D00B, 0x82D058}}},
   {.name = "car_sprite_head", .entry = 0x82D267, .end = 0x82D2CC, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x30, .call = call_car_sprite_head, ALL_OUTPUTS, .spriteList = true,
    // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
