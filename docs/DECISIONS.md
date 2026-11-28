@@ -6409,6 +6409,28 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The shadow follows mode 1's sprite lists (map-fw-7, 2026-11-28)
+
+**Mode 1 opens two lists a frame, one per view, each with a `$0003`.** Read off `demo_mode1`'s
+firmware tape:
+- view 1's at `$82:CCD4`, inside `object_sprites_stream`'s stretch `$82:CCC7-$82:CDB7` (a hole
+  in its row: the race never runs it);
+- view 2's at `$82:D2DD`, in a second routine from `$82:D2CC`.
+- Their streams start at `$82:CD85` and `$82:D392`. The high tables come from the usual
+  `$82:AE1F` and `$82:AEAE`.
+
+**The harness:**
+- The shadow's `$0003` rule took only the race's prologue (`$82:CBD4-$82:CC8F`). It now takes
+  `listOpenSite(pc)`, the race's range and these two stores, for the opening and for a pending
+  first byte.
+- On `demo_mode1` the shadow follows 5,149 lists, 4,645 of them agreed, 475 tainted (the budget's
+  pairs of lines, dsp4-01x).
+- `car_sprite_head` and `car_sprite_head2` there: 375 and 390 live samples compared, none set apart
+  (all were before).
+- The movie's other FAIL rows lack paths only, which pool over the movies.
+
+**Check:** the full gate.
+
 ## Mode 1's second car head; its window streams' answer stores (map-fw-6, 2026-11-28)
 
 **`car_sprite_head2` (`$82:D863`, `src/misc.c`)** is `car_sprite_head` for mode 1's second player.

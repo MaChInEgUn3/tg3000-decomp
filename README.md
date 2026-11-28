@@ -35,7 +35,7 @@ all**: the DSP-4 maths, the video and the sound driver become native code.
 | Code bytes | 112,856 (`0x1B8D8`) |
 | Data bytes | 792,400 (`0xC1750`) |
 | Routine entry points in C, verified by the differential test | **800** |
-| Last full re-verification of every routine | 2026-11-28T11:18:59Z |
+| Last full re-verification of every routine | 2026-11-28T11:52:14Z |
 | Of those, verified at an earlier commit, the code only added to since | 0 (all against this code) |
 | Code bytes inside verified C routines | **91,764 / 112,856 (81.31%)** |
 

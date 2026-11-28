@@ -1256,6 +1256,12 @@ static void shExpect(Shadow* sh, const uint16_t* w, int n, int after, int mode) 
   sh->readLeft = mode == RM_N ? n : -1;  // -1: a flag is due
   sh->state = SH_READS;
 }
+// The PCs where the game writes a list's $0003: the race's object_sprites_stream prologue
+// ($82:CBD4-$82:CC8F), and mode 1's two views (map-fw-7: object_sprites_stream's $82:CCD4 and
+// the second view's $82:D2DD)
+static bool listOpenSite(uint32_t pc) {
+  return (pc >= 0x82CBD4 && pc < 0x82CC8F) || pc == 0x82CCD4 || pc == 0x82D2DD;
+}
 static void shWord(Shadow* sh, uint16_t w, bool read) {
   const bool afterRead = sh->afterRead;
   sh->afterRead = read;
@@ -1285,7 +1291,7 @@ static void shWord(Shadow* sh, uint16_t w, bool read) {
     }
     // (the race writes its $0003 in object_sprites_stream's prologue, $82:CBD4-$82:CC8F; a C's
     // shadow, fed by the C, has no PC: it opens on $0009 instead)
-    if(!read && w == 3 && afterRead && (!sh->own || (insnPc >= 0x82CBD4 && insnPc < 0x82CC8F))) {
+    if(!read && w == 3 && afterRead && (!sh->own || listOpenSite(insnPc))) {
       sh->pendingOpen = true;
       return;
     }
@@ -1490,7 +1496,7 @@ static bool listFollowed(void) {
   return shOrigConsumed ||
          (!shOrig.live && !shOrig.foreign &&
           (shOrig.pendingOpen ||
-           (shOrig.half && !shOrig.halfRead && shOrig.byte == 0x03 && insnPc >= 0x82CBD4 && insnPc < 0x82CC8F) ||
+           (shOrig.half && !shOrig.halfRead && shOrig.byte == 0x03 && listOpenSite(insnPc)) ||
            // (dsp4-0e-2: a VS $000E's first byte, written in the views' code: the shadow opens on its second)
            (shOrig.half && !shOrig.halfRead && shOrig.byte == 0x0E && insnPc >= 0x82BE18 && insnPc < 0x82CAE5)));
 }
