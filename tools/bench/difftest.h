@@ -91,6 +91,10 @@ typedef struct {
   // port calls (dsp4_port_write16/read16) must reproduce the writes in place and take the
   // reads exactly, the whole tape. Its fuzz scripts the chip's answers (dsp4_bridge_script).
   bool dsp4Tape;
+  // dsp4-09q: a row of the chip's sprite list done natively (src/dsp4.c's dsp4_list_* /
+  // dsp4_objects_* / dsp4_high_table): its extent's DSP-4 bytes are the list's while the
+  // harness's shadow follows the list (the race's), and a sample outside one is set apart
+  bool spriteList;  // (a taped one too: its VS samples read the tape, dsp4-09q)
   // harness-34: how many entry states to keep for replay while no live sample has completed
   // (0: REPLAYS_PER_ROUTINE), one entry in REPLAY_SPREAD. For a routine the interrupts land in
   // nearly every time.
@@ -165,4 +169,6 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write);  // from the CPU
 void difftest_fuzz(int iterations);          // at the end of a run
 bool difftest_report(const char* resultsPath);  // prints a summary; false if any routine failed
 
+// dsp4-09q: the sample under test saw a sprite list the shadow does not follow (VS's)
+bool difftest_sample_vs_list(void);
 #endif

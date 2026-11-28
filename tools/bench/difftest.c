@@ -115,6 +115,8 @@ typedef struct {
   uint16_t args[9], expect[40];
   int expectN, expectAt;
   int readMode, readLeft;  // dsp4-09o: how the answer's length is read (the game's reads decide it)
+  bool pendingOpen;  // dsp4-09q: a $0003 seen after an answer: the list opens if $0005 follows
+  bool foreign;      // dsp4-09q: in a VS list ($000E), which the shadow does not follow
   unsigned long nLists, nClean, nTainted, nLost;
 } Shadow;
 static Shadow shC;  // (dsp4-09o: the C's; defined with the original's at trackSprites)
@@ -183,6 +185,7 @@ typedef struct {
   // dsp4-09o: the sprite list shadow at the sample's entry (its C is seeded from it)
   Shadow shEntry;
   bool listApart;  // dsp4-09p: set apart only for a list the shadow found tainted
+  bool vsList;     // dsp4-09q: it saw a list site's byte the shadow does not follow (VS's)
   int16_t roundE2, roundE3;
   // a taped row's DSP-4 data-port bytes, in order, in tapes[depth] (the C consumes them:
   // difftest_dsp4_byte); kept out of the sample, which every entry clears
@@ -505,14 +508,34 @@ static bool vramLiveSite(const Routine* r, uint32_t pc) {
 // the last original byte is the list's as the shadow follows it, a $0003's pending first byte too
 static bool listFollowed(void);
 static bool listSite(uint32_t pc) {
-  return (pc >= 0x82AE15 && pc < 0x82AEA4) || (pc >= 0x82CBD4 && pc < 0x82CC8F) || (pc >= 0x82D8C6 && pc < 0x82D934);
+  static bool built;
+  static uint8_t site[0x80][0x8000 / 8];
+  if(!built) {  // the extents of the rows marked spriteList (dsp4-09q)
+    built = true;
+    for(int i = 0; i < routineCount; i++) {
+      if(!routines[i].spriteList) continue;
+      for(uint32_t a = routines[i].entry; a < routines[i].end; a++)
+        if((a & 0xFFFF) >= 0x8000) site[(a >> 16) & 0x7F][((a & 0xFFFF) - 0x8000) >> 3] |= (uint8_t)(1u << (a & 7));
+      for(int t = 0; t < 2; t++)
+        for(uint32_t a = routines[i].alsoIn[t][0]; a < routines[i].alsoIn[t][1]; a++)
+          if((a & 0xFFFF) >= 0x8000) site[(a >> 16) & 0x7F][((a & 0xFFFF) - 0x8000) >> 3] |= (uint8_t)(1u << (a & 7));
+    }
+  }
+  const uint32_t adr = pc & 0xFFFF;
+  return adr >= 0x8000 && (site[(pc >> 16) & 0x7F][(adr - 0x8000) >> 3] >> (adr & 7) & 1);
 }
 static bool nativeAt(uint32_t pc) {
   const uint32_t bank = (pc >> 16) & 0x7F, adr = pc & 0xFFFF;
   return adr >= 0x8000 && (nativeSite[bank][(adr - 0x8000) >> 3] >> (adr & 7) & 1);
 }
 // For the bridge: in a fuzz case, a native site's bytes go to the real stand-in, not the script
-bool difftest_dsp4_native_now(void) { return fuzzing && nativeAt(insnPc); }
+static int fuzzRow = -1;  // dsp4-09q: the row the fuzz phase is running (its index in table)
+bool difftest_dsp4_native_now(void) {
+  // (dsp4-09q: a sprite list site is native in a fuzz case only for a native list row; a row on
+  // the port, VS's, gets its script's answers there)
+  if(fuzzing && listSite(insnPc)) return fuzzRow >= 0 && table[fuzzRow].spriteList;
+  return fuzzing && nativeAt(insnPc);
+}
 
 uint8_t difftest_dsp4_byte(uint8_t value, bool write) {
   if(!collectingC || cSample == NULL) return 0;
@@ -540,6 +563,8 @@ uint8_t difftest_dsp4_byte(uint8_t value, bool write) {
   shByte(&shC, tapes[k][pos].val, !write);  // dsp4-09o: the C's list follows its port traffic
   return tapes[k][pos].val;
 }
+
+bool difftest_sample_vs_list(void) { return collectingC && cSample != NULL && ((const Sample*)cSample)->vsList; }
 
 // how many of the original's VRAM read words the C side has not taken yet (port-req-H3)
 int difftest_vram_reads_left(void) {
@@ -1237,14 +1262,25 @@ static void shWord(Shadow* sh, uint16_t w, bool read) {
     sh->tainted = false;
     sh->state = SH_IDLE;
   }
-  if(!sh->live) {  // between lists: wait for a $0003 command word (after an answer, as the tape check)
-    if(read || w != 3 || !afterRead) return;
+  if(!sh->live) {  // between lists: a $0003 command word (after an answer) then $0005, as the race sends
+    if(!read && w == 0x0E && afterRead) sh->foreign = true;  // (VS's lists)
+    // (the race writes its $0003 in object_sprites_stream's prologue, $82:CBD4-$82:CC8F; a C's
+    // shadow, fed by the C, has no PC: it opens on $0009 instead)
+    if(!read && w == 3 && afterRead && (!sh->own || (insnPc >= 0x82CBD4 && insnPc < 0x82CC8F))) {
+      sh->pendingOpen = true;
+      return;
+    }
+    const bool open = sh->pendingOpen && !read && w == 5;
+    sh->pendingOpen = false;
+    if(!open) return;
+    sh->foreign = false;
     sh->live = true;
     sh->lost = false;
     sh->tainted = false;
     sh->nLists++;
     shSwap(sh, true);
     dsp4_list_open();
+    dsp4_list_sizes();  // (the $0005 that confirmed it)
     shSwap(sh, false);
     sh->state = SH_IDLE;
     return;
@@ -1420,7 +1456,11 @@ static void shByte(Shadow* sh, uint8_t val, bool read) {
   sh->byte = val;
 }
 static bool listFollowed(void) {
-  return shOrigConsumed || (!shOrig.live && shOrig.half && !shOrig.halfRead && shOrig.byte == 0x03);
+  // (a $0003 pending, its $0005 not yet confirmed: the race's; not inside a VS list)
+  return shOrigConsumed ||
+         (!shOrig.live && !shOrig.foreign &&
+          (shOrig.pendingOpen ||
+           (shOrig.half && !shOrig.halfRead && shOrig.byte == 0x03 && insnPc >= 0x82CBD4 && insnPc < 0x82CC8F)));
 }
 static void trackSprites(uint32_t adr, uint8_t val, bool write) {
   shOrigConsumed = false;
@@ -1485,7 +1525,12 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
       Sample* smp = &samples[k];
       // dsp4-09p: a sprite list site's bytes leave the tape only when the shadow follows the list
       // (the race's); VS's ($000E lists, not followed) stay on the VS rows' tapes
-      if(table[smp->idx].dsp4Tape && (!nativeAt(insnPc) || (listSite(insnPc) && !listFollowed() && !(fuzzing && !replaying)))) {  // its tape: the data bytes in order; status reads free
+      if((adr & 0xFFFF) < 0xC000 && listSite(insnPc) && !listFollowed() && !(fuzzing && !replaying)) smp->vsList = true;
+      // (dsp4-09q: at a sprite list row's site the byte is the tape's only when the shadow does not
+      // follow it, VS's, or in a fuzz case of a row on the port, VS's; elsewhere when it is not a
+      // native site, as harness-5)
+      if(table[smp->idx].dsp4Tape &&
+         (listSite(insnPc) ? (fuzzing && !replaying ? !table[smp->idx].spriteList : !listFollowed()) : !nativeAt(insnPc))) {  // its tape: the data bytes in order; status reads free
         if((adr & 0xFFFF) >= 0xC000) {
           if(!write) continue;
         } else if(smp->nTape < MAX_TAPE) {
@@ -1497,7 +1542,8 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
           continue;
         }
       }
-      if(write && smp->dsp4Phase == 0 && (val == 0x01 || val == 0x07) && (adr & 0xFFFF) < 0xC000 && (!trackKnown || trackLost)) {
+      if(write && smp->dsp4Phase == 0 && (val == 0x01 || val == 0x07) && (adr & 0xFFFF) < 0xC000 && (!trackKnown || trackLost) &&
+         !listFollowed()) {  // (dsp4-09q: not a byte of the sprite list, which the shadow owns)
         smp->roadUnknown = true;  // dsp4-01t: a road on an unknown rounding
         smp->listApart = false;
       }
@@ -1816,9 +1862,11 @@ static bool compareWithC(int k, const Regs* after, char* why, size_t whyLen, uin
   irqLimit = irqOwner == k ? irqCount : 0;
   cWaitedTooLong = false;
   dsp4_round_set(smp->roundKnown ? smp->roundE2 : (int16_t)0x8000, smp->roundKnown ? smp->roundE3 : (int16_t)0x8000);  // dsp4-01t
-  shC = smp->shEntry;  // dsp4-09o: the C's list starts as the original's did, on src/dsp4.c's state
-  shC.own = false;
-  dsp4_sprites_set(&smp->shEntry.list);
+  if(r->dsp4Tape || r->spriteList) {
+    shC = smp->shEntry;  // dsp4-09o: the C's list starts as the original's did, on src/dsp4.c's state
+    shC.own = false;
+    dsp4_sprites_set(&smp->shEntry.list);
+  }
   if(setjmp(cAbort) == 0) r->call(&smp->entryRegs, &out);
   collectingC = false;
   if(cWaitedTooLong) {
@@ -2137,7 +2185,7 @@ static void startSample(int idx, const Cpu* cpu) {
   };
   smp->replaySlot = slot;
   smp->roundKnown = trackKnown && !trackLost;  // dsp4-01t
-  smp->shEntry = shOrig;  // dsp4-09o
+  if(r->dsp4Tape || r->spriteList) smp->shEntry = shOrig;  // dsp4-09o (dsp4-09q: only the rows that use it)
   smp->roundE2 = trackE2;
   smp->roundE3 = trackE3;
   smp->effects = sampleEffects[k];
@@ -2513,6 +2561,7 @@ void difftest_fuzz(int iterations) {
   memcpy(&dmaBase, snes->dma, sizeof dmaBase);
   for(int i = 0; i < tableCount; i++) {
     const Routine* r = &table[i];
+    fuzzRow = i;
     Stats* s = &stats[i];
     for(int q = 0; replays != NULL && q < MAX_REPLAYS; q++) {
       Replay* p = &replays[q];
@@ -2732,6 +2781,11 @@ bool difftest_report(const char* resultsPath) {
       bool any = false;
       for(int b = 0; b < 256; b++) if(s->ppuHdma[b >> 3] & (1u << (b & 7))) { printf(" $21%02X", b); any = true; }
       printf("%s; %lu sample(s) changed a field\n", any ? "" : " none", s->ppuSamplesChanged);
+    }
+    if(getenv("DIFFTEST_STARTS")) {  // dsp4-09q: every instruction start, in the order of the vis bits
+      printf("    starts:");
+      for(int k = 0; k < MAX_EXTENT; k++) if(s->starts[k]) printf(" %06X", (unsigned)(r->entry + k));
+      printf("\n");
     }
     if(reached && seen < need) {  // which instruction starts no sample reached
       printf("    paths not reached:");

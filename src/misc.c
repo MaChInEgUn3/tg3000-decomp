@@ -4645,41 +4645,40 @@ void oam_high_load2(void) {
   } while(n != 0);
 }
 
-// $82:DDBF's overflow: the chip's remaining answers drained (each nonzero flag with its
-// pair), then `open` 0 words ending the lists still open.
+// $82:DDBF's overflow: the part's remaining entries dropped, then the `open` lists still
+// open ended (native: the original drains the chip's answers and sends a 0 word each).
 static void sprite_parts_drain(int open) {
-  while(dsp4_port_read16() != 0) {
-    (void)dsp4_port_read16();
-    (void)dsp4_port_read16();
-  }
-  for(int i = 0; i < open; i++) dsp4_port_write16(0);
+  for(int i = 0; i < open; i++) dsp4_objects_list_end();
 }
 
-// One list of parts from $7F:0000 + *x (the 0 word ending it left at *x). Returns false
-// when the buffer filled (its rest drained, `open` lists ended).
+// One part's entries (native: dsp4_objects_part) to $1574 + *y, 4 bytes an entry. Returns
+// false when *y reached D+$1A after one (the rest of the part's entries dropped).
+static bool sprite_part_entries(uint16_t w, uint16_t a, uint16_t b, uint16_t* y) {
+  uint16_t out[2][2];
+  const unsigned n = dsp4_objects_part(w, a, b, out);
+  for(unsigned i = 0; i < n; i++) {
+    *y = (uint16_t)(*y + 2);
+    wr16(0x1574 + (uint32_t)*y, out[i][0]);
+    *y = (uint16_t)(*y + 2);
+    wr16(0x1574 + (uint32_t)*y, out[i][1]);
+    if(*y == rd16(DP + 0x1A)) return false;
+  }
+  return true;
+}
+
+// One list of parts from $7F:0000 + *x (the 0 word ending it left at *x), native. Returns
+// false when the buffer filled (`open` lists ended).
 static bool sprite_parts_list(uint16_t* x, uint16_t* y, int open) {
   uint16_t w = rd16(0x10000 + (uint32_t)*x);
-  dsp4_port_write16(w);
   while(w != 0) {
-    dsp4_port_write16(rd16(0x10002 + (uint32_t)*x));
-    dsp4_port_write16(rd16(0x10004 + (uint32_t)*x));
-    if(dsp4_port_read16() != 0) {
-      for(;;) {
-        *y = (uint16_t)(*y + 2);
-        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
-        *y = (uint16_t)(*y + 2);
-        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
-        if(*y == rd16(DP + 0x1A)) {
-          sprite_parts_drain(open);
-          return false;
-        }
-        if(dsp4_port_read16() == 0) break;
-      }
+    if(!sprite_part_entries(w, rd16(0x10002 + (uint32_t)*x), rd16(0x10004 + (uint32_t)*x), y)) {
+      sprite_parts_drain(open);
+      return false;
     }
     *x = (uint16_t)(*x + 6);
     w = rd16(0x10000 + (uint32_t)*x);
-    dsp4_port_write16(w);
   }
+  dsp4_objects_list_end();
   return true;
 }
 
@@ -4707,13 +4706,9 @@ static uint16_t sprite_parts_at(uint32_t sets) {
 static bool sprite_put_rows(uint32_t first, uint32_t second, uint32_t third, uint32_t fourth, uint16_t flags,
                             uint32_t sets) {
   const uint32_t x = rd16(DP + 0x14);
-  dsp4_port_write16(rd16(first + x));
-  dsp4_port_write16(rd16(second + x));
-  dsp4_port_write16(rd16(third + x));
-  dsp4_port_write16(rd16(fourth + x));
-  dsp4_port_write16(rd16(DP + 0x20));
-  dsp4_port_write16(rd16(DP + 0x22));
-  dsp4_port_write16((uint16_t)(rd16(DP + 0x26) | flags));
+  const uint16_t head[7] = {rd16(first + x), rd16(second + x), rd16(third + x), rd16(fourth + x),
+                            rd16(DP + 0x20), rd16(DP + 0x22), (uint16_t)(rd16(DP + 0x26) | flags)};
+  dsp4_objects_scenery(head);  // native
   return sprite_parts_stream(sprite_parts_at(sets));
 }
 
@@ -4746,27 +4741,15 @@ bool object_sprite_kind0(uint16_t x) {
 // sprite_parts_list.
 static bool sprite_parts_list_at(uint32_t base, uint16_t* x, uint16_t* y, int open) {
   uint16_t w = bus_rd16(base + *x);
-  dsp4_port_write16(w);
   while(w != 0) {
-    dsp4_port_write16(bus_rd16(base + (uint16_t)(*x + 2)));
-    dsp4_port_write16(bus_rd16(base + (uint16_t)(*x + 4)));
-    if(dsp4_port_read16() != 0) {
-      for(;;) {
-        *y = (uint16_t)(*y + 2);
-        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
-        *y = (uint16_t)(*y + 2);
-        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
-        if(*y == rd16(DP + 0x1A)) {
-          sprite_parts_drain(open);
-          return false;
-        }
-        if(dsp4_port_read16() == 0) break;
-      }
+    if(!sprite_part_entries(w, bus_rd16(base + (uint16_t)(*x + 2)), bus_rd16(base + (uint16_t)(*x + 4)), y)) {
+      sprite_parts_drain(open);
+      return false;
     }
     *x = (uint16_t)(*x + 6);
     w = bus_rd16(base + *x);
-    dsp4_port_write16(w);
   }
+  dsp4_objects_list_end();
   return true;
 }
 
@@ -4784,20 +4767,13 @@ bool sprite_parts_stream_rom(uint16_t x) {
 
 // TG3000_ROUTINE($82:D267) car_sprite_head
 uint16_t car_sprite_head(uint16_t x, uint16_t y) {
-  dsp4_port_write16(rd16(0x386A + (uint32_t)x));
-  dsp4_port_write16(0x9000);
-  dsp4_port_write16(rd16(0xFAB4 + (uint32_t)y));
   uint16_t h = rd8(0x0243);
   if(h & 0x0080) h |= 0xFF00;  // never run
   const uint16_t height = (uint16_t)(h + 0x0033 + rd16(DP + 0x34));
-  dsp4_port_write16(height);
-  dsp4_port_write16(height);
-  dsp4_port_write16(0);
-  dsp4_port_write16(rd16(DP + 0x32));
   const uint16_t frame = (uint16_t)(((rd16(0xFAB5 + (uint32_t)y) >> 1) & 0x007E) + rd16(0x39EC + (uint32_t)rd16(DP + 0x14)));
-  dsp4_port_write16(bus_rd16(0x83ACEC + (uint32_t)frame));
-  dsp4_port_write16(0);
-  const uint16_t answer = dsp4_port_read16();
+  const uint16_t head[9] = {rd16(0x386A + (uint32_t)x), 0x9000, rd16(0xFAB4 + (uint32_t)y), height, height, 0,
+                            rd16(DP + 0x32), bus_rd16(0x83ACEC + (uint32_t)frame), 0};
+  const uint16_t answer = dsp4_objects_car(head);  // native
   wr16(DP + 0x2A, answer);
   return answer;
 }
@@ -4883,24 +4859,14 @@ bool object_sprite_shadowed(uint16_t x) {
 
 // TG3000_ROUTINE($81:8527) sprite_part_put
 bool sprite_part_put(uint16_t x, uint16_t* y) {
-  dsp4_port_write16(x);
-  dsp4_port_write16((uint16_t)(rd16(DP + 0x32) - 8));
-  dsp4_port_write16(rd16(DP + 0x16));
-  while(dsp4_port_read16() != 0) {
-    *y = (uint16_t)(*y + 2);
-    wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
-    *y = (uint16_t)(*y + 2);
-    wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
-    if(*y == rd16(DP + 0x1A)) return true;  // never run
-  }
-  return false;
+  return !sprite_part_entries(x, (uint16_t)(rd16(DP + 0x32) - 8), rd16(DP + 0x16), y);  // full: never run
 }
 
 // TG3000_ROUTINE($81:8487) sprite_bar_put
 bool sprite_bar_put(uint16_t length, uint16_t at, uint16_t d32) {
-  if(length == 0) {
-    dsp4_port_write16(0);
-    dsp4_port_write16(0);
+  if(length == 0) {  // both lists ended
+    dsp4_objects_list_end();
+    dsp4_objects_list_end();
     return false;
   }
   wr16(DP + 0x32, d32);
@@ -4908,7 +4874,7 @@ bool sprite_bar_put(uint16_t length, uint16_t at, uint16_t d32) {
   wr16(DP + 0x14, (uint16_t)(length | 1));
   wr16(DP + 0x16, (uint16_t)(at - (rd16(DP + 0x14) >> 1)));
   uint16_t y = rd16(DP + 0x84);
-  dsp4_port_write16(0);
+  dsp4_objects_list_end();  // the first list
   uint16_t part = 0x20F6;
   for(;;) {
     wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) - 8));
@@ -4921,15 +4887,11 @@ bool sprite_bar_put(uint16_t length, uint16_t at, uint16_t d32) {
   if(sprite_part_put(0x60F6, &y)) goto full;
   wr16(DP + 0x16, saved16);
   wr16(DP + 0x14, saved14);
-  dsp4_port_write16(0);
+  dsp4_objects_list_end();
   wr16(DP + 0x84, y);
   return false;
-full:  // never run
-  while(dsp4_port_read16() != 0) {
-    (void)dsp4_port_read16();
-    (void)dsp4_port_read16();
-  }
-  dsp4_port_write16(0);
+full:  // never run: the part's other entries dropped, the list ended
+  dsp4_objects_list_end();
   wr16(DP + 0x84, y);
   return true;
 }
@@ -7572,8 +7534,7 @@ static bool player_car_sprites(uint16_t xrow) {
       wr16(DP + 0x32, rd16(0x1F1C));
       wr16(DP + 0x34, rd16(0x1F20));
       (void)car_sprite_head(xrow, 0);
-      dsp4_port_write16(rd16(0xFABF));
-      dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) + rd16(0x1F34) + 0x0138));
+      dsp4_objects_car_tail(rd16(0xFABF), (uint16_t)(rd16(DP + 0x3C) + rd16(0x1F34) + 0x0138));
       wr16(0x1F24, (uint16_t)(rd16(0x1F18) & 0xFFF8));
       (void)sprite_parts_stream_rom(bus_rd16(0x86C8B2 + (uint32_t)rd16(0x1F24)));
     }
@@ -7582,19 +7543,16 @@ static bool player_car_sprites(uint16_t xrow) {
     wr16(DP + 0x32, 0);
     wr16(DP + 0x34, 0);
     (void)car_sprite_head(xrow, 0);
-    dsp4_port_write16(rd16(0xFABF));
-    dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) + 0x0F00));
+    dsp4_objects_car_tail(rd16(0xFABF), (uint16_t)(rd16(DP + 0x3C) + 0x0F00));
     (void)sprite_parts_stream_rom(bus_rd16(0x86CBEC + 2 * (uint32_t)k8));
   }
   wr16(DP + 0x32, 0);
   wr16(DP + 0x34, 0);
   (void)car_sprite_head(xrow, 0);
-  dsp4_port_write16(rd16(0xFABF));
-  dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) + 0x0F00));
+  dsp4_objects_car_tail(rd16(0xFABF), (uint16_t)(rd16(DP + 0x3C) + 0x0F00));
   (void)sprite_parts_stream_rom(bus_rd16(0x86C97A + 8 * (uint32_t)k8));
   (void)car_sprite_head(xrow, 0);
-  dsp4_port_write16(0);
-  dsp4_port_write16(rd16(DP + 0x3C));
+  dsp4_objects_car_tail(0, rd16(DP + 0x3C));
   {
     // If the sprite buffer filled inside the bar, the original's full exit ($81:8508) would
     // return with two words left on the stack and crash; the C goes on. No live frame comes
@@ -7603,13 +7561,10 @@ static bool player_car_sprites(uint16_t xrow) {
     (void)sprite_bar_put(bus_rd16(0x86CC64 + t), bus_rd16(0x86CC66 + t), bus_rd16(0x86CC68 + t));
   }
   if(rd16(0x014C) == 0x0002) {  // the item
-    dsp4_port_write16(rd16(0x386A + (uint32_t)rd16(DP + 0x14)));
-    static const uint16_t w[] = {0x9000, 0, 0x0033, 0x0033, 0, 0, 0x7FFF};
-    for(unsigned i = 0; i < sizeof w / sizeof w[0]; i++) dsp4_port_write16(w[i]);
-    dsp4_port_write16(rd16(0x028B));
-    (void)dsp4_port_read16();
-    dsp4_port_write16(rd16(0x028D));
-    dsp4_port_write16(rd16(DP + 0x3C));
+    const uint16_t head[9] = {rd16(0x386A + (uint32_t)rd16(DP + 0x14)), 0x9000, 0, 0x0033, 0x0033, 0, 0, 0x7FFF,
+                              rd16(0x028B)};
+    (void)dsp4_objects_car(head);
+    dsp4_objects_car_tail(rd16(0x028D), rd16(DP + 0x3C));
     (void)sprite_parts_stream_rom(0xAD4A);
   }
   wr16(0x0281, 0xFFFF);
@@ -7627,33 +7582,21 @@ static bool rival_car_sprites(uint16_t xrow, uint16_t car) {
     wr16(0x0293, bus_rd16(0x83ACEC + v));
     x = rd16(0x0283);
   }
-  dsp4_port_write16(rd16(0x386A + (uint32_t)x));
-  dsp4_port_write16(0x9000);
-  dsp4_port_write16(rd16(0xFAB4 + c));
+  const uint16_t line = rd16(0x386A + (uint32_t)x), dist = rd16(0xFAB4 + c);
   const uint32_t r = rd16(DP + 0x14);
   const uint32_t frame = (uint16_t)(((rd16(0xFAB5 + c) >> 1) & 0x007E) + rd16(0x39EC + r));
   uint16_t d;
   if((rd16(0xFADE + c) & 0x0022) == 0x0020) {  // on the branch road
-    dsp4_port_write16(rd16(0x376E + r));
-    dsp4_port_write16(rd16(0x376C + r));
-    dsp4_port_write16(rd16(0x356E + r));
-    dsp4_port_write16(rd16(0x356C + r));
-    dsp4_port_write16(bus_rd16(0x83ACEC + frame));
-    dsp4_port_write16(rd16(0xFABB + c));
-    wr16(DP + 0x2A, dsp4_port_read16());
-    dsp4_port_write16(rd16(0xFABF + c));
-    dsp4_port_write16((uint16_t)(0x1000 | rd16(0xFAD1 + c)));
+    const uint16_t head[9] = {line, 0x9000, dist, rd16(0x376E + r), rd16(0x376C + r), rd16(0x356E + r),
+                              rd16(0x356C + r), bus_rd16(0x83ACEC + frame), rd16(0xFABB + c)};
+    wr16(DP + 0x2A, dsp4_objects_car(head));
+    dsp4_objects_car_tail(rd16(0xFABF + c), (uint16_t)(0x1000 | rd16(0xFAD1 + c)));
     d = (uint16_t)(rd16(0x356C + r) - rd16(0x356E + r));
   } else {
-    dsp4_port_write16(rd16(0x36EE + r));
-    dsp4_port_write16(rd16(0x36EC + r));
-    dsp4_port_write16(rd16(0x34EE + r));
-    dsp4_port_write16(rd16(0x34EC + r));
-    dsp4_port_write16(bus_rd16(0x83ACEC + frame));
-    dsp4_port_write16(rd16(0xFABB + c));
-    wr16(DP + 0x2A, dsp4_port_read16());
-    dsp4_port_write16(rd16(0xFABF + c));
-    dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) | rd16(0xFAD1 + c)));
+    const uint16_t head[9] = {line, 0x9000, dist, rd16(0x36EE + r), rd16(0x36EC + r), rd16(0x34EE + r),
+                              rd16(0x34EC + r), bus_rd16(0x83ACEC + frame), rd16(0xFABB + c)};
+    wr16(DP + 0x2A, dsp4_objects_car(head));
+    dsp4_objects_car_tail(rd16(0xFABF + c), (uint16_t)(rd16(DP + 0x3C) | rd16(0xFAD1 + c)));
     d = (uint16_t)(rd16(0x34EC + r) - rd16(0x34EE + r));
   }
   // D16E: the car's turn against the road's: its band (0-12, by the steps of $82:F48E's kind)
@@ -7696,10 +7639,11 @@ void object_sprites_stream(void) {
     wr16(DP + 0x14, rd16(0x02E8));
     minimap_car(0x001E, at, (uint16_t)(rd16(0xFAD1 + 0x35) | 0x30FD));
   }
-  // the $09 stream
-  static const uint16_t head[] = {0x0009, 0x0080, 0x00A9, 0, 0, 0x0100, 0x0004};
-  for(unsigned i = 0; i < sizeof head / sizeof head[0]; i++) dsp4_port_write16(head[i]);
-  dsp4_port_write16((rd16(0x1EF2) & 0x8000) ? (uint16_t)(rd16(0x1EF2) + 0x00DC) : 0x00DC);
+  {  // the $09 stream, native
+    const uint16_t pre[7] = {0x0080, 0x00A9, 0, 0, 0x0100, 0x0004,
+                             (rd16(0x1EF2) & 0x8000) ? (uint16_t)(rd16(0x1EF2) + 0x00DC) : 0x00DC};
+    dsp4_objects_begin(pre);
+  }
   // CDB7
   wr16(DP + 0x14, 0);
   wr16(DP + 0x16, (uint16_t)(rd16(0x0226) << 2));
@@ -7739,8 +7683,7 @@ objects:               // CE4E: the row D+$14's object, if any
     wr16(DP + 0x16, a);
     const uint16_t w = rd16(0x8CB3 + (uint32_t)x);
     if(w == 0) {  // CEEE: an empty entry
-      dsp4_port_write16(rd16(0x386C + (uint32_t)rd16(DP + 0x14)));
-      dsp4_port_write16(0);
+      dsp4_objects_slot(rd16(0x386C + (uint32_t)rd16(DP + 0x14)));
     } else {
       wr16(DP + 0x1C, x);
       const uint16_t kind2 = (uint16_t)(((w >> 8) & 0x007F) << 1);
@@ -7791,9 +7734,8 @@ next_row:  // D1CD
   }
   wr16(DP + 0x14, (uint16_t)(rd16(DP + 0x14) + 2));
   if(rd16(DP + 0x14) != rd16(DP + 0x90)) goto objects;
-done:  // D1E7
-  dsp4_port_write16(0);
-  dsp4_port_write16(0x8000);
+done:  // D1E7: the stream's end (0, $8000)
+  dsp4_objects_end();
   wr16(0x1E02, 0);
   {  // the near object's highlight
     const uint32_t k = rd16(0x1DF6);
@@ -7841,12 +7783,91 @@ static const VsSprites vs_sprites_tab[4] = {
    {0x0009, 0x00C4, 0x00A9, 0, 0x0088, 0x0100, 0x0074, 0x00DC}},
 };
 
+// The VS race's copies of the object parts' helpers ($82:DDBF, $82:D934's body, $82:CAE5,
+// $82:DCEC), through the port: VS opens its lists with $000E, not measured yet (dsp4-09p).
+static void sprite_parts_drain_vs(int open) {
+  while(dsp4_port_read16() != 0) {
+    (void)dsp4_port_read16();
+    (void)dsp4_port_read16();
+  }
+  for(int i = 0; i < open; i++) dsp4_port_write16(0);
+}
+
+static bool sprite_parts_list_vs(uint16_t* x, uint16_t* y, int open) {
+  uint16_t w = rd16(0x10000 + (uint32_t)*x);
+  dsp4_port_write16(w);
+  while(w != 0) {
+    dsp4_port_write16(rd16(0x10002 + (uint32_t)*x));
+    dsp4_port_write16(rd16(0x10004 + (uint32_t)*x));
+    if(dsp4_port_read16() != 0) {
+      for(;;) {
+        *y = (uint16_t)(*y + 2);
+        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
+        *y = (uint16_t)(*y + 2);
+        wr16(0x1574 + (uint32_t)*y, dsp4_port_read16());
+        if(*y == rd16(DP + 0x1A)) {
+          sprite_parts_drain_vs(open);
+          return false;
+        }
+        if(dsp4_port_read16() == 0) break;
+      }
+    }
+    *x = (uint16_t)(*x + 6);
+    w = rd16(0x10000 + (uint32_t)*x);
+    dsp4_port_write16(w);
+  }
+  return true;
+}
+
+bool sprite_parts_stream_vs(uint16_t x) {
+  uint16_t y = rd16(DP + 0x84);
+  bool full = !sprite_parts_list_vs(&x, &y, 2);  // the first list's overflow: never run
+  if(!full) {
+    x = (uint16_t)(x + 2);
+    full = !sprite_parts_list_vs(&x, &y, 1);
+  }
+  wr16(DP + 0x84, y);
+  return full;
+}
+
+static bool sprite_put_rows_vs(uint32_t first, uint32_t second, uint32_t third, uint32_t fourth, uint16_t flags,
+                               uint32_t sets) {
+  const uint32_t x = rd16(DP + 0x14);
+  dsp4_port_write16(rd16(first + x));
+  dsp4_port_write16(rd16(second + x));
+  dsp4_port_write16(rd16(third + x));
+  dsp4_port_write16(rd16(fourth + x));
+  dsp4_port_write16(rd16(DP + 0x20));
+  dsp4_port_write16(rd16(DP + 0x22));
+  dsp4_port_write16((uint16_t)(rd16(DP + 0x26) | flags));
+  return sprite_parts_stream_vs(sprite_parts_at(sets));
+}
+
+bool sprite_put_rows_c_vs(void) {
+  return sprite_put_rows_vs(0x37EC, 0x38EC, 0x35EC, 0x37EC, rd16(DP + 0x3A), 0x848080);
+}
+
+bool object_sprite_kind0_vs(uint16_t x) {
+  wr16(DP + 0x24, bus_rd16(0x86AF06 + (uint32_t)x));
+  const uint32_t o = rd16(DP + 0x1C);
+  uint16_t at = (uint16_t)(rd8(0x8CB3 + o) << 4);
+  if(at & 0x0800) at |= 0xF000;
+  wr16(DP + 0x20, at);
+  wr16(DP + 0x26, (uint16_t)(((rd16(0x8CB4 + o) & 0x0700) << 1) | rd16(DP + 0x26)));
+  const uint32_t r = (uint16_t)(rd16(0x0024) - rd16(0x8CB6 + o)) & 0x003E;
+  wr16(DP + 0x22, (uint16_t)(bus_rd16(0x84A200 + r) - 0x0040));
+  if(sprite_put_rows_c_vs()) return true;
+  wr16(DP + 0x22, 0);
+  wr16(DP + 0x24, 0xBC30);
+  return sprite_put_rows_c_vs();
+}
+
 // TG3000_ROUTINE($82:DD3B) vs_object_flat
 // The VS race's flat object: object_sprite_flat with the third rows' shape (sprite_put_rows_c).
 bool vs_object_flat(uint16_t x) {
   object_sprite_setup(x);
   wr16(DP + 0x22, 0);
-  return sprite_put_rows_c();
+  return sprite_put_rows_c_vs();
 }
 
 // TG3000_ROUTINE($82:DD69) vs_object_group
@@ -7854,13 +7875,13 @@ bool vs_object_flat(uint16_t x) {
 bool vs_object_group(uint16_t x) {
   object_sprite_setup(x);
   wr16(DP + 0x22, 0);
-  if(sprite_put_rows_c()) return true;
+  if(sprite_put_rows_c_vs()) return true;
   sprite_place_negate();
-  if(sprite_put_rows_c()) return true;
+  if(sprite_put_rows_c_vs()) return true;
   sprite_place_back();
-  if(sprite_put_rows_c()) return true;
+  if(sprite_put_rows_c_vs()) return true;
   sprite_place_negate();
-  return sprite_put_rows_c();
+  return sprite_put_rows_c_vs();
 }
 
 // The VS object handlers by the table at $82:7FFE + kind * 2 (kind 0 reads below the table).
@@ -7869,7 +7890,7 @@ static bool vs_object_handler(uint16_t kind2) {
   switch(bus_rd16(0x827FFE + (uint32_t)kind2)) {
     case 0xDD3B: return vs_object_flat(kind2);
     case 0xDD69: return vs_object_group(kind2);
-    case 0xDCEC: return object_sprite_kind0(kind2);
+    case 0xDCEC: return object_sprite_kind0_vs(kind2);
     case 0xDA46: clc_82DA46(); return false;
     default: tg3000_unported("$82:7FFE: a VS object handler of no kind"); return false;
   }
@@ -7950,7 +7971,7 @@ cars:  // the cars on this row (D+$2C), from the race order at D+$28
         wr16(DP + 0x2A, dsp4_port_read16());
         dsp4_port_write16(rd16(0xFABF + c));
         dsp4_port_write16((uint16_t)(rd16(DP + 0x3C) | rd16(0xFAD1 + c)));
-        full = sprite_parts_stream(bus_rd16(0x86C89E + (uint32_t)((rd16(R + 0x3B) << 1) & 0x00FE)));
+        full = sprite_parts_stream_vs(bus_rd16(0x86C89E + (uint32_t)((rd16(R + 0x3B) << 1) & 0x00FE)));
       } else {  // a rival's way
         dsp4_port_write16(rd16(0x37EC + r14));
         dsp4_port_write16(0x9000);
@@ -7971,7 +7992,7 @@ cars:  // the cars on this row (D+$2C), from the race order at D+$28
         for(unsigned i = 0; i < 6; i++, band += 2)
           if((uint16_t)(a - steps[i]) & 0x8000) break;
         const uint16_t parts = (uint16_t)(bus_rd16(0x86AFD8 + band) + bus_rd16(0x849180 + frame));
-        full = sprite_parts_stream(bus_rd16(0x860000 + (uint32_t)parts));
+        full = sprite_parts_stream_vs(bus_rd16(0x860000 + (uint32_t)parts));
       }
       if(full) goto done;
       wr16(DP + 0x28, (uint16_t)(rd16(DP + 0x28) + 2));

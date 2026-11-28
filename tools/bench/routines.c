@@ -11521,7 +11521,8 @@ static void call_race_frame_draw(const Regs* in, Regs* out) {
 }
 // the buffer ($00B4) either way, the shake's and the view targets' inputs as their rows fuzz
 // them; the race as the movie left it otherwise
-static void fuzz_race_frame_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+// (dsp4-09q: unused while the row is native: its script fed the port)
+__attribute__((unused)) static void fuzz_race_frame_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, 0x00B4, (uint16_t)(rnd() & 1 ? 0x0001 : 0));
   if(rnd() & 1) fuzz_shake_step(r, ram, rnd);
   if(rnd() & 1) fuzz_func_82A9B7(r, ram, rnd);
@@ -11536,7 +11537,8 @@ static void call_sprite_put_rows_b(const Regs* in, Regs* out) { (void)in; out->c
 // lists written where the routine will look (up to three parts in each, then their 0
 // word); the OAM pointer, its limit on a pair now and then (the buffer fills); the chip's
 // answers scripted: 40 words, a third of them 0 (each ends a part's pairs)
-static void fuzz_sprite_put_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+// (dsp4-09q: unused while the row is native: its script fed the port)
+__attribute__((unused)) static void fuzz_sprite_put_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   const uint16_t d14 = (uint16_t)(ram[DP + 0x14] | ram[DP + 0x15] << 8);
   const uint16_t d24 = (uint16_t)(ram[DP + 0x24] | ram[DP + 0x25] << 8);
@@ -11570,8 +11572,13 @@ static void fuzz_sprite_put_rows(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // (C = the buffer filled): two parts lists written at a random place in bank $7F (up to three
 // parts each, the first empty half the time), X their start; the OAM pointer and its limit, the
 // answers scripted as for sprite_put_rows_a
-static void call_sprite_parts_stream(const Regs* in, Regs* out) { out->c = sprite_parts_stream(in->x); }
-static void fuzz_sprite_parts_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+// dsp4-09q: the VS race shares these rows' code: its samples (a list the shadow does not follow)
+// call the VS port copies, which read the row's tape; the race's call the native versions
+static void call_sprite_parts_stream(const Regs* in, Regs* out) {
+  out->c = difftest_sample_vs_list() ? sprite_parts_stream_vs(in->x) : sprite_parts_stream(in->x);
+}
+// (dsp4-09q: unused while the row is native: its script fed the port)
+__attribute__((unused)) static void fuzz_sprite_parts_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   uint16_t x = (uint16_t)(0x2000 + 2 * (rnd() % 0x6000));
   r->x = x;
   for(int list = 0; list < 2; list++) {
@@ -11604,7 +11611,8 @@ static bool romPartsEnd(uint16_t* x) {
   }
   return false;
 }
-static void fuzz_sprite_parts_stream_rom(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+// (dsp4-09q: unused while the row is native: its script fed the port)
+__attribute__((unused)) static void fuzz_sprite_parts_stream_rom(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   for(int tries = 0; tries < 4000; tries++) {
     uint16_t x = (uint16_t)(0x8000 + 2 * (rnd() % 0x3FF0)), at = x;
     if(!romPartsEnd(&at)) continue;
@@ -11637,7 +11645,8 @@ static void call_car_sprite_head(const Regs* in, Regs* out) {
 // the race's object (D+$14 and its row at $39EC: the frame table in bank $83 stays in ROM),
 // a row offset X, a car Y (its words random), the height byte either sign, D+$32/$34, one
 // scripted answer
-static void fuzz_car_sprite_head(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+// (dsp4-09q: unused while the row is native: its script fed the port)
+__attribute__((unused)) static void fuzz_car_sprite_head(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->x = (uint16_t)(2 * (rnd() % 0x40));
   r->y = (uint16_t)(0x35 * (rnd() % 20));
   wr16ram(ram, 0xFAB4 + (uint32_t)r->y, (uint16_t)rnd());
@@ -11677,12 +11686,17 @@ static void call_object_sprite_group(const Regs* in, Regs* out) { out->c = objec
 // sprite_put_rows_c ($82:CAE5) and the VS object handlers vs_object_flat ($82:DD3B) and
 // vs_object_group ($82:DD69), vs-race-34: tape rows as their one-player counterparts (C = the
 // buffer filled; the other flags by liveness)
-static void call_sprite_put_rows_c(const Regs* in, Regs* out) { (void)in; out->c = sprite_put_rows_c(); }
+static void call_sprite_put_rows_c(const Regs* in, Regs* out) {
+  (void)in;
+  out->c = difftest_sample_vs_list() ? sprite_put_rows_c_vs() : sprite_put_rows_c();
+}
 static void call_vs_object_flat(const Regs* in, Regs* out) { out->c = vs_object_flat(in->x); }
 static void call_vs_object_group(const Regs* in, Regs* out) { out->c = vs_object_group(in->x); }
 // object_sprite_kind0 ($82:DCEC, verify-cover-2): the VS race's table uses it for 15 kinds (the
 // one-player's for none the movies run)
-static void call_object_sprite_kind0(const Regs* in, Regs* out) { out->c = object_sprite_kind0(in->x); }
+static void call_object_sprite_kind0(const Regs* in, Regs* out) {
+  out->c = difftest_sample_vs_list() ? object_sprite_kind0_vs(in->x) : object_sprite_kind0(in->x);
+}
 
 // ---- object_sprite_shadowed ($82:DA48) ----  a DSP-4 tape row: C = the buffer filled; N
 // clear and Z set (every exit of the stream's tail follows a 0 word read or written); V
@@ -11697,7 +11711,8 @@ static void call_object_sprite_shadowed(const Regs* in, Regs* out) {
 }
 // object_sprite's fuzz, with the parts lists for the second sprite's graphics word ($BC30)
 // written first
-static void fuzz_object_sprite_shadowed(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+// (dsp4-09q: unused while the row is native: its script fed the port)
+__attribute__((unused)) static void fuzz_object_sprite_shadowed(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   wr16ram(ram, DP + 0x24, 0xBC30);
   fuzz_sprite_put_rows(r, ram, rnd);
   fuzz_object_sprite(r, ram, rnd);
@@ -11720,7 +11735,8 @@ static void call_sprite_part_put(const Regs* in, Regs* out) {
 }
 // the part word X, D+$32 and D+$16, the OAM place Y and its limit (on a pair now and then),
 // the chip's answers scripted (40 words, a third of them 0)
-static void fuzz_sprite_part_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+// (dsp4-09q: unused while the row is native: its script fed the port)
+__attribute__((unused)) static void fuzz_sprite_part_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->x = (uint16_t)rnd();
   r->y = (uint16_t)(4 * (rnd() % 0x40));
   wr16ram(ram, DP + 0x1A, (rnd() & 1) ? (uint16_t)(r->y + 4 * (1 + rnd() % 6)) : (uint16_t)(r->y + 2));
@@ -11754,7 +11770,8 @@ static void call_sprite_bar_put(const Regs* in, Regs* out) {
 // a length (0 now and then, up to $60), its centre, D+$32 in Y; the OAM place never on its
 // limit (the full buffer's path returns with two words left on the stack: never in a case);
 // the chip's answers scripted
-static void fuzz_sprite_bar_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+// (dsp4-09q: unused while the row is native: its script fed the port)
+__attribute__((unused)) static void fuzz_sprite_bar_put(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   r->a = (rnd() % 6 == 0) ? 0 : (uint16_t)(1 + rnd() % 0x60);
   r->x = (uint16_t)rnd();
   r->y = (uint16_t)rnd();
@@ -12817,7 +12834,8 @@ static void fuzz_vs_sprites_view0(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
 static void fuzz_vs_sprites_view1(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_sprites(r, ram, rnd, 1); }
 static void fuzz_vs_sprites_view2(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_sprites(r, ram, rnd, 2); }
 static void fuzz_vs_sprites_view3(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) { fuzz_vs_sprites(r, ram, rnd, 3); }
-static void fuzz_object_sprites_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+// (dsp4-09q: unused while the row is native: its script fed the port)
+__attribute__((unused)) static void fuzz_object_sprites_stream(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   if(rnd() & 1) wr16ram(ram, 0x021A, (uint16_t)(rnd() & 1 ? 0 : 1));
   if(rnd() & 1) wr16ram(ram, 0x1F18, (uint16_t)(rnd() & 1 ? 0x8000 : rnd() % 0x40));
@@ -14684,7 +14702,9 @@ const Routine routines[] = {
   {.name = "car_track_step", .entry = 0x83F7F9, .end = 0x83F9D1, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .db = 0x83, .call = call_car_track_step, .fuzz = fuzz_car_track_step},
   {.name = "minimap_car", .entry = 0x82D8C6, .end = 0x82D934, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_minimap_car, .fuzz = fuzz_minimap_car},
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_minimap_car, .spriteList = true,
+   // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
+   .holes = {{0x82D8D1, 0x82D8EC}}},
   {.name = "player_segment_step", .entry = 0x82F2B3, .end = 0x82F374, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player_segment_step, .fuzz = fuzz_player_segment_step},
   {.name = "player2_segment_step", .entry = 0x82FA4F, .end = 0x82FB10, .source = "src/misc.c", .needM16 = true,
@@ -14715,23 +14735,24 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load2, ALL_OUTPUTS, .fuzz = fuzz_oam_high_load2,
    .dsp4Tape = true, .replays = 32},
   {.name = "oam_high_load", .entry = 0x82AE15, .end = 0x82AEA4, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load, ALL_OUTPUTS},  // dsp4-09o: $0006 native (no tape; the list's state from the shadow)
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_oam_high_load, ALL_OUTPUTS, .spriteList = true},  // dsp4-09o: $0006 native (no tape; the list's state from the shadow)
   {.name = "sprite_put_rows_a", .entry = 0x82D934, .end = 0x82D988, .alsoIn = {{0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
-   .call = call_sprite_put_rows_a, .fuzz = fuzz_sprite_put_rows, .dsp4Tape = true},
+   .call = call_sprite_put_rows_a, .spriteList = true},
   {.name = "sprite_put_rows_b", .entry = 0x82D988, .end = 0x82D9DD, .alsoIn = {{0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
-   .call = call_sprite_put_rows_b, .fuzz = fuzz_sprite_put_rows, .dsp4Tape = true},
+   .call = call_sprite_put_rows_b, .spriteList = true},
   {.name = "sprite_parts_stream", .entry = 0x82DDBF, .end = 0x82DEA8, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_parts_stream, .fuzz = fuzz_sprite_parts_stream,
-   .dsp4Tape = true},
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_parts_stream, .dsp4Tape = true, .spriteList = true,
+   // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
+   .holes = {{0x82DE63, 0x82DEA8}}},
   {.name = "sprite_parts_stream_rom", .entry = 0x82DEA8, .end = 0x82DF91, .source = "src/misc.c",
-   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_parts_stream_rom,
-   .fuzz = fuzz_sprite_parts_stream_rom, .dsp4Tape = true},
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_parts_stream_rom, .spriteList = true,
+   // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
+   .holes = {{0x82DF4C, 0x82DF91}}},
   {.name = "race_frame_draw", .entry = 0x828923, .end = 0x828944, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_frame_draw, .fuzz = fuzz_race_frame_draw,
-   .dsp4Tape = true, .endAt = 0x828944,  // its tail jump to oam_high_load
-   .fuzzStack = 0x1FF1},                // the race's stack, as its road callees' rows
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_frame_draw, .endAt = 0x828944,  // its tail jump to oam_high_load
+   .fuzzStack = 0x1FF1, .spriteList = true},                // the race's stack, as its road callees' rows
   {.name = "vs_sprites_view0", .entry = 0x82BE18, .end = 0x82C170, .source = "src/misc.c", .needM16 = true,
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_sprites_view0, .fuzz = fuzz_vs_sprites_view0,
    .dsp4Tape = true, .replays = 32, .fuzzStack = 0x1FF3,  // the VS raster IRQs land in its live samples
@@ -14746,22 +14767,24 @@ const Routine routines[] = {
    .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_sprites_view3, .fuzz = fuzz_vs_sprites_view3,
    .dsp4Tape = true, .replays = 32, .fuzzStack = 0x1FF3, .holes = {{0x82C90E, 0x82C911}, {0x82C962, 0x82C973}}},
   {.name = "object_sprites_stream", .entry = 0x82CBD4, .end = 0x82D267, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_object_sprites_stream, .fuzz = fuzz_object_sprites_stream,
-   .dsp4Tape = true, .dsp4Native = {{0x82CBD4, 0x82CC8F}},  // command $03's prologue (the mini-map's dots)
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_object_sprites_stream,  // command $03's prologue (the mini-map's dots)
    .holes = {{0x82CCC7, 0x82CDB7},    // a second entry (never run) that joins at $82:CDB7
-             {0x82CED7, 0x82CEDA}}},  // a JMP $D1E7 after a BRA (dead)
+             {0x82CED7, 0x82CEDA}, {0x82CC59, 0x82CC5B}, {0x82CC7F, 0x82CC81}, {0x82CCB8, 0x82CCBE}, {0x82CDED, 0x82CDF0}, {0x82CE0F, 0x82CE12}, {0x82CE5F, 0x82CE70}, {0x82D00B, 0x82D058}}, .spriteList = true},  // a JMP $D1E7 after a BRA (dead)
   {.name = "car_sprite_head", .entry = 0x82D267, .end = 0x82D2CC, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_car_sprite_head, ALL_OUTPUTS, .fuzz = fuzz_car_sprite_head,
-   .dsp4Tape = true},
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_car_sprite_head, ALL_OUTPUTS, .spriteList = true,
+   // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
+   .holes = {{0x82D289, 0x82D28C}}},
   {.name = "object_sprite_raised", .entry = 0x82DAFD, .end = 0x82DB4D, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
-   .call = call_object_sprite_raised, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
+   .call = call_object_sprite_raised, .spriteList = true},
   {.name = "sprite_put_rows_c", .entry = 0x82CAE5, .end = 0x82CB39, .alsoIn = {{0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
-   .call = call_sprite_put_rows_c, .fuzz = fuzz_sprite_put_rows, .dsp4Tape = true},
+   .call = call_sprite_put_rows_c, .dsp4Tape = true, .spriteList = true},
   {.name = "object_sprite_kind0", .entry = 0x82DCEC, .end = 0x82DD3B, .alsoIn = {{0x82CAE5, 0x82CB39}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
-   .call = call_object_sprite_kind0, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
+   .call = call_object_sprite_kind0, .dsp4Tape = true, .spriteList = true,
+   // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
+   .holes = {{0x82DD3A, 0x82DD3B}}},
   {.name = "vs_object_flat", .entry = 0x82DD3B, .end = 0x82DD69, .alsoIn = {{0x82CAE5, 0x82CB39}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
    .call = call_vs_object_flat, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
@@ -14770,14 +14793,18 @@ const Routine routines[] = {
    .call = call_vs_object_group, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
   {.name = "object_sprite_flat", .entry = 0x82DB4D, .end = 0x82DB87, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
-   .call = call_object_sprite_flat, .fuzz = fuzz_object_sprite, .dsp4Tape = true},
+   .call = call_object_sprite_flat, .spriteList = true,
+   // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
+   .holes = {{0x82DB81, 0x82DB84}}},
   {.name = "object_sprite_group", .entry = 0x82DB87, .end = 0x82DC69, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
-   .call = call_object_sprite_group, .fuzz = fuzz_object_sprite, .dsp4Tape = true,
-   .holes = {{0x82DBAA, 0x82DBB2}}},  // the handlers' jump table
+   .call = call_object_sprite_group,
+   .holes = {{0x82DBAA, 0x82DBB2}, {0x82DBF5, 0x82DC69}}, .spriteList = true},  // the handlers' jump table
   {.name = "object_sprite_shadowed", .entry = 0x82DA48, .end = 0x82DAAF, .alsoIn = {{0x82D934, 0x82D9DD}, {0x82DDBF, 0x82DEA8}},
    .source = "src/misc.c", .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30,
-   .call = call_object_sprite_shadowed, .fuzz = fuzz_object_sprite_shadowed, .dsp4Tape = true},
+   .call = call_object_sprite_shadowed, .spriteList = true,
+   // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
+   .holes = {{0x82DA9F, 0x82DAA0}}},
   {.name = "race_road_frame", .entry = 0x85B3A9, .end = 0x85B3D7, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_road_frame, ALL_OUTPUTS,
    .fuzz = fuzz_race_road_frame, .dsp4Tape = true, .fuzzStack = 0x1FF1},
@@ -14812,12 +14839,12 @@ const Routine routines[] = {
    .holes = {{0x8188CB, 0x81891A}},
    .alsoIn = {{0x8189F5, 0x818A4A}}},  // dsp4_answers_store, its only callee, folded in
   {.name = "sprite_part_put", .entry = 0x818527, .end = 0x818564, .source = "src/misc.c", .needM16 = true,
-   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_part_put, .compareY = true,
-   .fuzz = fuzz_sprite_part_put, .dsp4Tape = true},
+   .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_part_put, .compareY = true, .spriteList = true,
+   // dsp4-09q: never run in a gate movie (the scripted fuzz covered them; the row is native)
+   .holes = {{0x818562, 0x818564}}},
   {.name = "sprite_bar_put", .entry = 0x818487, .end = 0x818527, .rtl = true, .source = "src/misc.c",
-   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_bar_put, ALL_OUTPUTS,
-   .fuzz = fuzz_sprite_bar_put, .dsp4Tape = true, .alsoIn = {{0x818527, 0x818564}},
-   .holes = {{0x818508, 0x818527}}},  // the full buffer's path: it would return with two words left on the stack
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x30, .call = call_sprite_bar_put, ALL_OUTPUTS, .alsoIn = {{0x818527, 0x818564}},
+   .holes = {{0x818508, 0x818527}, {0x81848C, 0x818497}}, .spriteList = true},  // the full buffer's path: it would return with two words left on the stack
   {.name = "race_grid_setup", .entry = 0x859ADB, .end = 0x859D39, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_race_grid_setup,
    .fuzz = fuzz_race_grid_setup},

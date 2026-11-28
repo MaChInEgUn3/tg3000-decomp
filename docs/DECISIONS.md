@@ -6409,6 +6409,56 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The race's sprite stream native (dsp4-09q, 2026-11-28)
+
+**The one-player race's `$09` stream no longer uses the port.** It calls `src/dsp4.c`'s list:
+`object_sprites_stream` (its `$0009` head, slots, end), `sprite_put_rows` (scenery heads),
+`sprite_parts_list` / `sprite_parts_list_at` (the parts, the buffer-full test after each entry),
+`sprite_parts_drain`, `car_sprite_head`, `rival_car_sprites`, `player_car_sprites`, `sprite_bar_put`
+and `sprite_part_put`. With dsp4-09p's `$0003`/`$0005`/`$000B`/`$0006`, the race's sprite list is all
+native.
+- **VS keeps the port** through identical copies: `sprite_parts_stream_vs`, `sprite_put_rows_c_vs`,
+  `object_sprite_kind0_vs` and their static helpers. VS's lists (`$000E`) are another rule.
+- **What is left on the port** (`grep dsp4_port_ src/misc.c`) is VS only: `oam_high_load_vs`,
+  `oam_high_load2`, `road_port_product32`/`vs_proj_pass`/`vs_proj_tail`, the `_vs` copies, `vs_sprites`.
+- **Drafted by an in-session agent** (no API), reviewed here; the copies were checked equal to
+  HEAD.
+
+**The harness (`difftest.c`):**
+- **Rows marked `spriteList`** (the registry: the sprite rows, `oam_high_load`, `minimap_car`,
+  `race_frame_draw`) are the list's.
+  - At their sites, a byte leaves a taped row's tape only when the shadow follows the list.
+  - A sample of an untaped one that sees a list the shadow does not follow (VS's) is set apart.
+- **The rows the race and VS share** (`sprite_parts_stream`, `sprite_put_rows_c`, `object_sprite_kind0`)
+  keep a tape. Their VS samples call the `_vs` copies (`difftest_sample_vs_list`) and read it; their
+  race samples call the native C.
+- **A list opens only at the race's own `$0003`** (written in `object_sprites_stream`'s prologue,
+  `$82:CBD4`-`$82:CC8F`) **followed by `$0005`.** Words of 3 inside VS's streams had opened false lists
+  and claimed VS's bytes. After a `$000E` (VS) a pending `$0003` claims nothing.
+- **In a fuzz case, a list site's bytes are native only for a native list row.** A VS row on the port
+  gets its script's answers there (`difftest_dsp4_native_now`), and keeps them on its tape.
+  - The first full gate failed the four `vs_sprites_view*` rows and `vs_object_flat`/`_group`. Their fuzz
+    cases were abandoned, the list sites' bytes going to the chip instead of the script.
+  - They pass now (VS movie, firmware: 50 of 50 fuzz cases each, every path).
+- **The road rule (dsp4-01t) skips the list's bytes.** A 1 or 7 in the sprite stream, with the
+  tracker lost as it always is in a `$09`, had been taken for a road command and set
+  `race_frame_body`'s replays apart.
+- **The fuzz of these rows scripted the port's answers, which the native C no longer reads, so
+  it is dropped** (the scripts are kept, unused).
+  - The paths it alone covered are holes: the ranges no gate movie runs (the buffer-full drains
+    of `sprite_parts_stream`/`_rom`, a branch of `minimap_car`, `object_sprite_group`'s, and others).
+  - They were found from every gate movie's coverage, pooled; `DIFFTEST_STARTS=1` prints a row's
+    instruction starts in the order of its `vis` bits.
+- **The shadow is copied only for the rows that use it** (taped or `spriteList`). The first full run of
+  this unit took 70 minutes, against about 15 before.
+
+**Checked:**
+- On `race1` and the VS movie (firmware), the sprite rows' live samples all pass.
+- `race_frame_body`'s replays 16 of 16, `race_frame_draw`'s 2 of 2 (with fuzz).
+- Then the full gate.
+
+**For the port:** the one-player race's C no longer calls `dsp4_port_*` for `$09`/`$06`.
+
 ## Leaving a shop item screen returns (port request Q, 2026-11-27)
 
 **A bug in the C, found by the port.** `shop_item_screen` ignored the true that `shop_item_down` and
