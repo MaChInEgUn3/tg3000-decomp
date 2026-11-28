@@ -8625,6 +8625,47 @@ void player_car_frame(uint16_t dp) {
   #undef P
 }
 
+// map-fw-21: player_frame_setup for mode 1's second player: its record ($02B3: $02D2, $02D9, $02DE,
+// $02F7), its car's tables ($03C2-$03C6), $1E68; car 1 ($1ECA), $1ECC = $2F, $1EBA = $35, its rows
+// at +$580. Its controls ($83:E4E3: an incbin, the second player by hand) never run: a trap.
+// TG3000_ROUTINE($83:E431) mode1_player2_frame_setup
+void mode1_player2_frame_setup(void) {
+  wr16(0x1EBE, 0x2000);
+  const uint16_t t = rd8(0x03C4);
+  wr16(0x1EB2, t);
+  wr16(0x02DE, func_83EA9B((uint16_t)((rd16(0x02D2) << 1) + bus_rd16(0x86DAD9 + (uint32_t)((t & 0x7F) << 1)))));
+  uint32_t x = (uint32_t)rd8(0x03C2) << 1;
+  wr16(0x1EA8, bus_rd16(0x86DCE1 + x));
+  wr16(0x1EC0, bus_rd16(0x86DCED + x));
+  x = (uint32_t)rd8(0x03C6) << 1;
+  wr16(0x1EB4, bus_rd16(0x86DD29 + x));
+  wr16(0x1EB6, bus_rd16(0x86DD35 + x));
+  wr16(0x1EB8, bus_rd16(0x86DD41 + ((uint32_t)rd8(0x03C3) << 1)));
+  wr16(0x1F30, bus_rd16(0x86DD4D + ((uint32_t)rd8(0x03C5) << 1)));
+  wr16(0x1ECA, 0x0001);
+  wr16(0x1ECC, 0x002F);
+  wr16(0x1F2C, rd16(0x1E68));
+  wr16(0x1EBA, 0x0035);
+  wr16(0x1EBC, (uint16_t)(((rd16(0x02D9) << 1) & 0x003E) + 0x0580));
+  wr16(0x1E9C, 0);
+  if(!(rd16(0x02F7) & 0x0004) && (rd16(0x03DC) & 0x0020))
+    tg3000_unported("$83:E4E3: mode 1's second player's controls (never run)");
+  player_road_limits(0x02B3);
+}
+
+// map-fw-21: player1_frame for mode 1's two cars
+// TG3000_ROUTINE($83:E25F) mode1_cars_frame
+void mode1_cars_frame(void) {
+  const uint32_t at = 0x4CDD + (uint32_t)(uint16_t)(rd16(0x1E9E) << 1);  // bank $7E
+  wr16(at, (uint16_t)(rd16(at) + 1));
+  player_frame_setup();
+  player_car_frame(0x0200);
+  car_track_step(0x0200);
+  mode1_player2_frame_setup();
+  player_car_frame(0x02B3);
+  car_track_step(0x02B3);
+}
+
 // TG3000_ROUTINE($83:E241) player1_frame
 void player1_frame(void) {
   const uint32_t at = 0x4CDD + (uint32_t)(uint16_t)(rd16(0x1E9E) << 1);  // bank $7E

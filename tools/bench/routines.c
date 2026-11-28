@@ -1894,6 +1894,28 @@ static void fuzz_player_frame_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)
   ram[0x0396] = (uint8_t)(rnd() % 6);
 }
 
+// ---- mode1_player2_frame_setup ($83:E431, map-fw-21) ----  ends in player_road_limits (its PLD:
+// N Z clear), as player_frame_setup's other path
+static void call_mode1_player2_frame_setup(const Regs* in, Regs* out) {
+  (void)in;
+  mode1_player2_frame_setup();
+  out->n = out->z = false;
+}
+// its car's table bytes, its record's words; never its controls (bit 2 of $02F7, or bit 5 of $03DC clear)
+static void fuzz_mode1_player2_frame_setup(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  if(rnd() & 1) wr16ram(ram, 0x02F7, (uint16_t)(rnd() | 0x0004));
+  else {
+    wr16ram(ram, 0x02F7, (uint16_t)rnd());
+    wr16ram(ram, 0x03DC, (uint16_t)(rnd() & ~0x0020));
+  }
+  ram[0x03C2] = (uint8_t)(rnd() % 6);
+  ram[0x03C3] = (uint8_t)(rnd() % 6);
+  ram[0x03C5] = (uint8_t)(rnd() % 6);
+  ram[0x03C6] = (uint8_t)(rnd() % 6);
+  wr16ram(ram, 0x1E68, (uint16_t)rnd());
+}
+
 // ---- scene_objects_place ($8A:86AB) ----  not placing: A = 0 (Z set, N clear), X = 8 *
 // $1536, C = bit 13 of $1536 (the last ASL). Placing: func_8A92CF's exit for the last
 // object (A = D+$7C, N Z of it, C V of D+$7A + $10, X its slot)
@@ -13125,6 +13147,12 @@ static void fuzz_player_car_frame(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) 
 
 // ---- player1_frame ($83:E241) ----  RTL after PLD (D back to $0100: N and Z clear); DB = $83
 // (car_track_step's); its caller loads its own registers
+static void call_mode1_cars_frame(const Regs* in, Regs* out) {  // (map-fw-21: as player1_frame's)
+  (void)in;
+  mode1_cars_frame();
+  out->db = 0x83;
+  out->n = out->z = false;
+}
 static void call_player1_frame(const Regs* in, Regs* out) {
   (void)in;
   player1_frame();
@@ -15150,6 +15178,11 @@ const Routine routines[] = {
    .holes = {{0x81EEB6, 0x81EEE3},    // the forward wrap's 15th-17th cars: a BRA jumps over them
              {0x81F0E9, 0x81F0F0}}},  // the backward wrap's 20th car: the leader behind the line wraps
                                       // forward first (an unsigned check), unless a lap is $8000 or more
+  {.name = "mode1_cars_frame", .entry = 0x83E25F, .end = 0x83E28C, .rtl = true, .source = "src/misc.c",
+   .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_cars_frame, .replays = 8},
+  {.name = "mode1_player2_frame_setup", .entry = 0x83E431, .end = 0x83E4E3, .source = "src/misc.c", .needM16 = true,
+   .needX16 = true, .fixedD = true, .db = 0x83, .call = call_mode1_player2_frame_setup,
+   .fuzz = fuzz_mode1_player2_frame_setup},
   {.name = "player1_frame", .entry = 0x83E241, .end = 0x83E25F, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_player1_frame,
    .fuzz = fuzz_player1_frame},

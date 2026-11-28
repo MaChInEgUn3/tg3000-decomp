@@ -1609,6 +1609,8 @@ void player_car_frame(uint16_t dp);
 // (by how many steps it took), player_frame_setup, then with D = $0200 (player 1's record)
 // player_car_frame and car_track_step.
 void player1_frame(void);
+void mode1_cars_frame(void);           // $83:E25F: player1_frame for mode 1's two cars (RTL)
+void mode1_player2_frame_setup(void);  // $83:E431: player_frame_setup for mode 1's second player
 
 // $82:DAAF: a track object's sprite (D = $0100), as object_sprite_raised but its height the
 // table's less $40; sprite_put_rows_a on either side of its +2 byte's bit 4 (the original's

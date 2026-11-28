@@ -6409,6 +6409,26 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's cars for the frame (map-fw-21, 2026-11-28)
+
+**`mode1_player2_frame_setup` (`$83:E431`, `src/misc.c`)** is `player_frame_setup` for mode 1's
+second player:
+- its record (`$02D2`, `$02D9`, `$02DE`, `$02F7`), its car's tables (`$03C2`-`$03C6`) and `$1E68`;
+- car 1 (`$1ECA`), `$1ECC` = `$2F`, `$1EBA` = `$35`, and `$1EBC` at +`$580`;
+- then `player_road_limits` on its record.
+
+Its controls (`$83:E4E3`, an incbin: the second player playing by hand) never run: a trap. The
+fuzz keeps them off.
+
+**`mode1_cars_frame` (`$83:E25F`)** is `player1_frame` followed by the same for the second car:
+`mode1_player2_frame_setup`, then `player_car_frame` and `car_track_step` on `$02B3`.
+
+**Check:** on `demo_mode1` (firmware):
+- `mode1_cars_frame`: live 83 of 83, paths 21 of 21;
+- `mode1_player2_frame_setup`: live 152 of 152, fuzz 500 of 500, paths 70 of 70.
+
+Then `verify_new.sh`.
+
 ## Mode 1's second car sync and the stop marker (map-fw-20, 2026-11-28)
 
 Two routines were already in C but had no row, because no movie ran them. Mode 1 runs both:

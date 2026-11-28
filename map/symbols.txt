@@ -748,6 +748,8 @@ func    828F6B   mode1_frame_draw_view2 ; the same for mode 1's bottom view (JMP
 func    828961   hud_markers_write   ; the HUD's four markers and its badge in VRAM, then race_hud_digits -> src/misc.c
 func    83EAC6   player_car_frame    ; the player's car for the frame: speed, drag, engine, side, items, counters (D = record) -> src/misc.c
 func    83E241   player1_frame       ; player 1's car for the race frame: setup, player_car_frame, car_track_step (D = $0200; RTL) -> src/misc.c
+func    83E25F   mode1_cars_frame    ; player1_frame for mode 1's two cars (RTL) -> src/misc.c
+func    83E431   mode1_player2_frame_setup ; player_frame_setup for mode 1's second player (record $02B3; its controls never run) -> src/misc.c
 func    82BE18   vs_sprites_view0    ; VS race: player 1's view's sprites streamed to the DSP-4 (record $0200; object_sprites_stream's counterpart; a tape row) -> src/misc.c
 func    82C170   vs_sprites_view1    ; the same for player 2 (record $02B3) -> src/misc.c
 func    82C489   vs_sprites_view2    ; the same for player 3 (record $0262) -> src/misc.c
