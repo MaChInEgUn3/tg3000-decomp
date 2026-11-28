@@ -5727,6 +5727,7 @@ static void fuzz_func_838989(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 // dispatch (endAt): the targets start with D = 0 and the handler's data bank
 static void call_nmi_prologue(const Regs* in, Regs* out) { (void)in; nmi_prologue(); out->d = 0; out->db = 0x81; }
 static void call_nmi_race_prologue(const Regs* in, Regs* out) { (void)in; nmi_race_prologue(); out->d = 0; out->db = 0x85; }
+static void call_nmi_mode1_prologue(const Regs* in, Regs* out) { (void)in; nmi_mode1_prologue(); out->d = 0; out->db = 0x85; }  // (map-fw-25)
 
 // the menus' NMI frame, up to its stack switch (endAt $80:BC54): D = $0100 (its TCD), DB as
 // the prologue left it ($81); N/Z of the brightness byte it wrote ($80 when $019B is 0)
@@ -7920,6 +7921,7 @@ static void fuzz_nmi_prologue(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 
 // ---- nmi_race_tail ($85:838A) ----  the race NMI's prologue pushed the same frame
 static void call_nmi_race_tail(const Regs* in, Regs* out) { nmi_race_tail(); restoreNmiFrame(in, out); }
+static void call_nmi_mode1_tail(const Regs* in, Regs* out) { nmi_mode1_tail(); restoreNmiFrame(in, out); }  // (map-fw-25)
 
 // Negative test: brightness 0 written as is, without the forced blank (the $2100 byte)
 static void call_nmi_race_tail_wrong(const Regs* in, Regs* out) {
@@ -13814,6 +13816,8 @@ const Routine routines[] = {
    .fuzz = fuzz_nmi_vs_full, .holes = {{0x839AF0, 0x839AF8}},  // its jump table (by the frame count)
    .vramDeadAt = {0x839BD3, 0x839CBB, 0x839DA3, 0x839E8B},   // vs_hud_draw's (harness-30)
    .vramLiveAt = {0x839BD6, 0x839CBE, 0x839DA6, 0x839E8E}},
+  {.name = "nmi_mode1_tail", .entry = 0x858B05, .end = 0x858B49, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
+   .needM16 = true, .needX16 = true, .call = call_nmi_mode1_tail, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_race_tail", .entry = 0x85838A, .end = 0x8583CE, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
    .needM16 = true, .needX16 = true, .call = call_nmi_race_tail, ALL_OUTPUTS, .fuzz = fuzz_nmi_race_tail},
   {.name = "nmi_target_80E175", .entry = 0x80E175, .end = 0x80E28C, .rti = true, .rtiFrame = 9, .source = "src/frame.c",
@@ -14380,6 +14384,8 @@ const Routine routines[] = {
    .call = call_nmi_prologue, .fuzz = fuzz_nmi_prologue},
   {.name = "nmi_vs_prologue", .entry = 0x839721, .end = 0x839731, .rti = true, .endAt = 0x839731, .source = "src/frame.c",
    .call = call_nmi_vs_prologue, .fuzz = fuzz_nmi_prologue},
+  {.name = "nmi_mode1_prologue", .entry = 0x858AF2, .end = 0x858B02, .rti = true, .endAt = 0x858B02, .source = "src/frame.c",
+   .call = call_nmi_mode1_prologue, .fuzz = fuzz_nmi_prologue},
   {.name = "nmi_race_prologue", .entry = 0x858377, .end = 0x858387, .rti = true, .endAt = 0x858387, .source = "src/frame.c",
    .call = call_nmi_race_prologue, .fuzz = fuzz_nmi_prologue},
   {.name = "nmi_tail", .entry = 0x808934, .end = 0x80894E, .rti = true, .rtiFrame = 9, .source = "src/frame.c",

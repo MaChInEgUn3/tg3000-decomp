@@ -96,6 +96,8 @@ void nmi_race_tail(void);  // $85:838A: the race NMI's tail (every race frame)
 void nmi_race_wrapper(void);  // $83:8623: the race wrapper's NMI (sound, pads, the frame counters)
 void nmi_vs_prologue(void);  // $83:9721, up to its dispatch (nothing to do)
 void nmi_vs_tail(void);      // $83:9734: the VS NMI's tail (nmi_race_tail with a short JSR)
+void nmi_mode1_prologue(void);  // $85:8AF2: mode 1's NMI up to its dispatch (nothing to do)
+void nmi_mode1_tail(void);      // $85:8B05: mode 1's NMI tail (nmi_race_tail's)
 
 // $84:A4CD: wait until the word $03E0 is 0 (the interrupts count it down). Returns 0.
 uint16_t wait_03e0(void);

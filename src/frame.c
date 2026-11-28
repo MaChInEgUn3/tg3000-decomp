@@ -101,6 +101,13 @@ void nmi_vs_prologue(void) {}
 // full frame $83:9777 jumps here.
 void nmi_vs_tail(void) { nmi_race_tail(); }
 
+// map-fw-25: mode 1's NMI prologue and tail, the race's (the tail's JSL to pads_read_long, not _2)
+// TG3000_ROUTINE($85:8AF2) nmi_mode1_prologue
+void nmi_mode1_prologue(void) {}
+
+// TG3000_ROUTINE($85:8B05) nmi_mode1_tail
+void nmi_mode1_tail(void) { nmi_race_tail(); }
+
 // TG3000_ROUTINE($85:838A) nmi_race_tail
 //
 // The race NMI's tail, run on every race frame: the race NMI $85:8377 dispatches through

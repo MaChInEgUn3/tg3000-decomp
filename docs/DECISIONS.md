@@ -6409,6 +6409,21 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's NMI prologue and tail (map-fw-25, 2026-11-28)
+
+Mode 1's NMI ($85:8AF2) has three parts, like the race NMI:
+- **The prologue** (`nmi_mode1_prologue`, `$85:8AF2`-`$8B02`): it saves the registers, sets D = 0
+  and DB = `$85`, and dispatches through `$0008`. There is nothing for the C to do.
+- **The tail** (`nmi_mode1_tail`, `$85:8B05`): `nmi_race_tail`'s, with a JSL to `pads_read_long`
+  rather than `_2`, the same routine.
+- **The full frame** (`$85:8B49`-`$9144`): it mixes the race NMI's (26 differences) with the VS
+  race's split screen. That is the next unit.
+
+Both rows reuse the race's adapters and fuzz.
+
+**Check:** on `demo_mode1` (firmware), each has live 816 of 816 and fuzz 500 of 500; the paths are
+11 of 11 and 31 of 31. Then `verify_new.sh`.
+
 ## Mode 1's split IRQ (map-fw-24, 2026-11-28)
 
 **`irq_mode1_split` (`$85:9405`, `src/race_frame.c`)** is mode 1's split between its views. It is
