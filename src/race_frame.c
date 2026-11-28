@@ -107,6 +107,26 @@ void vs_view_scrolls(void) {
   wr16((uint16_t)(0x1566 + x), (uint16_t)(rd16(0x00DE) - 0x4C));
 }
 
+// TG3000_ROUTINE($83:8909) mode1_view_scrolls
+//
+// vs_view_scrolls for the race wrapper's mode 1, the two-view race: unless the game is paused
+// ($0026 bit 4), two 24-bit values move by their signed steps ($00D4 by $01CC, $00D7 by $01D0).
+// Their upper words + $3C go to the views' words, indexed by $00E2: the first to $1536 and
+// $1556, the second to $1546 and $1566. ($1F32 negative takes a block that never ran: a trap.)
+void mode1_view_scrolls(void) {
+  const uint16_t x = rd16(0x00E2);
+  if(!(rd16(0x0026) & 0x0010)) {
+    add24_signed(0x00D4, rd16(0x01CC));
+    add24_signed(0x00D7, rd16(0x01D0));
+  }
+  const uint16_t first = (uint16_t)(rd16(0x00D5) + 0x3C), second = (uint16_t)(rd16(0x00D8) + 0x3C);
+  wr16((uint16_t)(0x1536 + x), first);
+  wr16((uint16_t)(0x1556 + x), first);
+  wr16((uint16_t)(0x1546 + x), second);
+  wr16((uint16_t)(0x1566 + x), second);
+  if(rd16(0x1F32) & 0x8000) tg3000_unported("$83:8968: mode1_view_scrolls with $1F32 negative");
+}
+
 // TG3000_ROUTINE($85:9147) race_cycle_blocks
 //
 // Five groups of 64 bytes at $7E:2000-$7E:213F, each eight blocks of 8 bytes (four

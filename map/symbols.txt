@@ -168,6 +168,7 @@ func    839734   nmi_vs_tail         ; VS race NMI tail: nmi_race_tail with a sh
 func    839777   nmi_vs_full         ; VS split-screen NMI frame: sprites, colours, queue, HUD, scrolls, clocks, HDMA, bands, sound, then the tail -> src/race_frame.c
 func    839B49   vs_hud_draw         ; VS split screen: race_hud_draw for the four players (bars, words, counts, a word read back, strips) -> src/race_frame.c
 func    83886A   vs_view_scrolls     ; VS split screen: four 24-bit positions += their steps, the views' words -> src/race_frame.c
+func    838909   mode1_view_scrolls  ; mode 1's two views: two 24-bit positions += their steps, the views' words -> src/race_frame.c
 func    859147   race_cycle_blocks   ; every 4th race frame: cycle the 8-byte blocks of $7E:2000-$213F -> src/race_frame.c
 func    858814   race_hud_draw       ; race HUD tilemap words: bar, clock digits, counters, gauge, lights, two strips (long) -> src/race_frame.c
 func    8587BA   irq_race_band       ; race raster IRQ: next chunk of the palette/BG-mode streams, next band's line -> src/race_frame.c

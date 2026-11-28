@@ -5350,6 +5350,21 @@ static void fuzz_vs_hud_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
 }
 // (vs-race-4) its caller, the VS split screen's interrupt handler, reloads A, X and Y next
 static void call_vs_view_scrolls(const Regs* in, Regs* out) { (void)in; (void)out; vs_view_scrolls(); }
+// map-fw-4: mode 1's two views
+static void call_mode1_view_scrolls(const Regs* in, Regs* out) { (void)in; (void)out; mode1_view_scrolls(); }
+static void fuzz_mode1_view_scrolls(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x0026, (uint16_t)rnd());
+  for(int i = 0; i < 2; i++) {
+    static const uint16_t steps[2] = {0x01CC, 0x01D0};
+    wr16ram(ram, steps[i], (rnd() & 1) ? (uint16_t)(rnd() % 0x400 - 0x200) : (uint16_t)rnd());
+    wr16ram(ram, (uint16_t)(0x00D4 + 3 * i), (uint16_t)rnd());
+  }
+  ram[0x00D6] = (uint8_t)rnd();
+  ram[0x00D9] = (uint8_t)rnd();
+  wr16ram(ram, 0x00E2, (uint16_t)(rnd() & 0x0E));
+  wr16ram(ram, 0x1F32, (uint16_t)(rnd() & 0x7FFF));  // (negative: the trap)
+}
 static void fuzz_vs_view_scrolls(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   (void)r;
   wr16ram(ram, 0x0026, (uint16_t)rnd());
@@ -13111,6 +13126,9 @@ const Routine routines[] = {
   {.name = "vs_view_scrolls", .entry = 0x83886A, .end = 0x838909, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_vs_view_scrolls, .fuzz = fuzz_vs_view_scrolls},
    // (the first step negative, $83:887C, never ran in the movies: the fuzz runs it)
+  {.name = "mode1_view_scrolls", .entry = 0x838909, .end = 0x838989, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .lowWramDb = true, .call = call_mode1_view_scrolls, .fuzz = fuzz_mode1_view_scrolls,
+   .holes = {{0x838968, 0x838988}}},  // ($1F32 negative: never ran, a trap in the C)
   {.name = "video_load_screen", .entry = 0x8081CC, .end = 0x808373, .source = "src/video_dma.c",
    .call = call_video_load_screen, ALL_OUTPUTS, .fuzz = fuzz_video_load_screen},
   {.name = "video_load_screen_long", .entry = 0x8081C8, .end = 0x8081CC, .rtl = true, .source = "src/video_dma.c",

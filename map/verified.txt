@@ -807,3 +807,4 @@
 8ABE2E password_show src/password.c bc139943f1995c5a 1 0 79/79 verified live-flags:NVZC replayed:0
 8AB232 password_entry src/password.c bc139943f1995c5a 1 0 84/84 verified live-flags:NVZC replayed:0
 8AA67B vs_screen_loop src/vs.c fa72bec2b805a72e 1 0 37/37 verified live-flags:NVZC replayed:0
+838909 mode1_view_scrolls src/race_frame.c 93438c26883a9c6f 776 500 41/41 verified live-flags:- replayed:0

@@ -26,6 +26,7 @@ bool race_upload_queue_drain_long(void);  // $83:96D1
 void func_838989(void);
 void func_838989_long(void);              // $83:96D5
 void vs_view_scrolls(void);               // $83:886A, the VS split screen's func_838989
+void mode1_view_scrolls(void);            // $83:8909, the same for mode 1's two views
 void vs_hud_draw(void);                   // $83:9B49, race_hud_draw for the VS split screen's four players
 // The VS race's progress strip, VRAM words $57A0-$587F, as the game wrote them: the C's own copy
 // (port request H; the original reads VRAM back). Loaded from the race's graphics buffer right

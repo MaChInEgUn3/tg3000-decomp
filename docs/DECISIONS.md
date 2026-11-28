@@ -6409,6 +6409,28 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's first routine in C: its two views' scrolls (map-fw-4, 2026-11-28)
+
+**`mode1_view_scrolls` (`$83:8909`, `src/race_frame.c`)** is `vs_view_scrolls` for mode 1's two
+views.
+- Unless paused (`$0026` bit 4), `$00D4` moves by `$01CC` and `$00D7` by `$01D0` (24-bit,
+  signed).
+- Their upper words + `$3C` go to `$1536`/`$1556` and `$1546`/`$1566`, at `$00E2`.
+- `$1F32` negative takes a block that never ran (`$83:8968-$8988`): a trap, the row's hole, kept
+  out of the fuzz.
+
+**Check:** `verify_new.sh mode1_view_scrolls`. On `demo_mode1`: live 776 of 776, fuzz 500 of 500,
+paths 41 of 41. It has entries with DB `$83` and `$85`.
+
+**How the rest is ranked.** Mode 1's new code calls 94 routines. The ones not in C yet:
+- leaves, small first:
+  - `$82:9064` (5 instructions) and `$82:9145` (76), which send to the DSP-4;
+  - `$82:D863`, `$81:E0A3` and `$81:E5DC`, about 40 each, which also send to it;
+- then the two views' `$0F` senders (`$83:CD70`, `$83:D1C1`, 235 each) and `$10` senders
+  (`$83:D612`, `$83:DA0A`, 331 each);
+- `$82:E503`, `$83:DE02`, `$85:95C7`;
+- the wrapper from `$82:89B5`.
+
 ## Mode 1's movie in the checks; two traps it reached (map-fw-3, 2026-11-28)
 
 **`demo_mode1.txt` is now one of the verify movies.**
