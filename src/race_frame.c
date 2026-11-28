@@ -680,6 +680,62 @@ void irq_vs_split(void) {
   platform_set_irq_v(rd16(0x0034));
 }
 
+// TG3000_ROUTINE($85:9405) irq_mode1_split
+//
+// (map-fw-24: drafted by a delegated agent; checked by the differential test.) Mode 1's split between its top and bottom views, at line $6C
+// after the top view's last band (irq_mode1_band sets the trampoline): irq_vs_split's, with the
+// bottom view's palette. At dot $10A: the display in forced blank, the bottom view's sprite table
+// ($19B6 / $1BD6 by $00B6), CGRAM from colour $F1 ($1E bytes from $7E:[$02FD]) and from colour $71
+// ($FE bytes from $7E:6B35), colour 0 = $7E:6B33; the streams re-pointed to the bottom view's
+// sources ($00CA, $00CE; the BG mode bytes at $0482 / $0484, through bank $7E, the palette
+// uploads' bank), BG mode 9, colours $21 and $31 = $0038, their first chunk ($0032), OBSEL = 8;
+// then, at line $73 (the divider), the display back ($014B), colour 7 = $00A2, the windows
+// ($01BC BG1/BG2, $01BD sprites/colour), the fixed colour ($01C0, $01C1, $01BF) and colour math
+// ($01BE), and the bottom view's band IRQ: the handler word at $0036, line $0034, dot $65. The
+// palette source $02FD goes back to $215E. The original waits (WAI) twice; a port applies each
+// part from the next line (docs/DECISIONS.md, "Raster interrupts").
+void irq_mode1_split(void) {
+  platform_set_irq_h(0x010A);
+  video_set_display(0x80);
+  video_set_oam_address(0x0000);
+  const uint16_t buffer = rd16(0x00B6);
+  video_upload_oam(0x0000, 0x810000u | (buffer ? 0x19B6 : 0x1BD6), 0x0220);
+  video_set_oam_address(0x0000);
+  const uint16_t pal = rd16(0x02FD);
+  if(pal & 0x8000) tg3000_unported("$85:946E: mode 1's split, a palette source with bit 15 set");
+  video_upload_cgram(0xF1, 0x7E0000u | pal, 0x001E);
+  video_upload_cgram(0x71, 0x7E6B35, 0x00FE);
+  video_set_color(0x00, rd16(0x6B33));
+  dma_hdma_set_mode(7, 0x00, 0x05);  // (slot 7 re-pointed: its bank stays the palette uploads', $7E)
+  dma_stream_set_source(7, buffer ? 0x0482 : 0x0484);
+  dma_stream_set_source(1, rd16(0x00CA));
+  dma_stream_set_source(3, rd16(0x00CE));
+  video_set_bg_mode(0x09);
+  const uint16_t shade = rd16(0x0038);
+  video_set_color(0x21, shade);
+  video_set_color(0x31, shade);
+  dma_stream_size(2, 1);
+  dma_stream_size(7, 1);
+  dma_stream_size(1, 8);
+  dma_stream_size(3, 8);
+  video_set_cgram_address(0x21);
+  dma_stream_kick(rd8(0x0032));
+  video_set_obj_select(0x08);
+  platform_set_irq_v(0x0073);
+  wr16(0x0005, rd16(0x0036));
+  video_set_display(rd8(0x014B));
+  video_set_color(0x07, rd16(0x00A2));
+  video_set_window_bg12(rd8(0x01BC));
+  video_set_window_obj(rd8(0x01BD));
+  video_set_fixed_color(rd8(0x01C0));
+  video_set_fixed_color(rd8(0x01C1));
+  video_set_color_math(rd8(0x01BE));   // (one 16-bit store to $2131: $01BE, then $2132 = $01BF)
+  video_set_fixed_color(rd8(0x01BF));
+  platform_set_irq_h(0x0065);
+  platform_set_irq_v(rd16(0x0034));
+  wr16(0x02FD, 0x215E);
+}
+
 // A four-digit BCD add (the 65816's ADC in decimal mode, for valid BCD operands): the low
 // four digits of the sum.
 static uint16_t bcd_add(uint16_t a, uint16_t b) {

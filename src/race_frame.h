@@ -42,6 +42,7 @@ void irq_race_band(void);                 // $85:87BA, the race's raster IRQ
 void irq_vs_band(void);                   // $83:8A26, the VS race's raster IRQ (top views)
 void irq_vs_band2(void);                  // $83:8BE3, the same for the bottom views
 void irq_mode1_band(void);                // $85:93A7, mode 1's raster IRQ (top view): irq_vs_band's at dot $65
+void irq_mode1_split(void);               // $85:9405, mode 1's split between its views (irq_vs_split's, with the bottom palette)
 void irq_mode1_band2(void);               // $85:956B, the same for its bottom view
 void irq_vs_split(void);                  // $83:8A84, the split between the VS race's two halves
 void nmi_race_full(void);                 // $85:83CE, the race NMI's full frame (then its tail)

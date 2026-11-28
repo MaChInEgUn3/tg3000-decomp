@@ -6409,6 +6409,31 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's split IRQ (map-fw-24, 2026-11-28)
+
+**`irq_mode1_split` (`$85:9405`, `src/race_frame.c`)** is mode 1's split between its views. It is
+`irq_vs_split` with these differences:
+- **The bottom view's palette.** After the sprite table come CGRAM from colour `$F1` (`$1E` bytes
+  from `$7E:[$02FD]`) and from colour `$71` (`$FE` bytes from `$7E:6B35`), then colour 0 =
+  `$7E:6B33`.
+- **The colours.** Colours `$21`/`$31` are written after BG mode 9, and there is no third colour
+  `$21`.
+- **At the divider:**
+  - the windows (`$01BC` to `$2123`, `$01BD` to `$2125`);
+  - the fixed colour (`$01C0`, `$01C1`, `$01BF`);
+  - the colour math (`$01BE`);
+  - the bottom view's band IRQ at dot `$65`;
+  - `$02FD` back to `$215E`.
+- **No DMA register read**, unlike the VS split.
+
+A palette source with bit 15 set (`$85:946E`, an incbin) never runs: a trap, and the row's hole.
+
+Every register had a platform helper already. The C was drafted by a delegated agent from the
+listing and `irq_vs_split`; the differential test checks it.
+
+**Check:** `demo_mode1` (firmware): live 774 of 774, paths 138 of 138. `irq_vs_split` still passes.
+Then `verify_new.sh`.
+
 ## Mode 1's two band IRQs (map-fw-23, 2026-11-28)
 
 **`irq_mode1_band` (`$85:93A7`) and `irq_mode1_band2` (`$85:956B`, `src/race_frame.c`)** are mode

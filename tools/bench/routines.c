@@ -5654,6 +5654,7 @@ static void call_irq_vs_band(const Regs* in, Regs* out) { irq_vs_band(); restore
 static void call_irq_vs_band2(const Regs* in, Regs* out) { irq_vs_band2(); restoreP(in, out); }
 static void call_irq_mode1_band(const Regs* in, Regs* out) { irq_mode1_band(); restoreP(in, out); }  // (map-fw-23)
 static void call_irq_mode1_band2(const Regs* in, Regs* out) { irq_mode1_band2(); restoreP(in, out); }
+static void call_irq_mode1_split(const Regs* in, Regs* out) { irq_mode1_split(); restoreP(in, out); }
 static void call_irq_vs_split(const Regs* in, Regs* out) { irq_vs_split(); restoreP(in, out); }  // (vs-race-22)
 
 // Negative test: the colours one CGRAM entry off
@@ -13720,6 +13721,9 @@ const Routine routines[] = {
    .call = call_irq_vs_band2, ALL_OUTPUTS},
   {.name = "irq_mode1_band", .entry = 0x8593A7, .end = 0x859405, .rti = true, .source = "src/race_frame.c",
    .call = call_irq_mode1_band, ALL_OUTPUTS},   // (map-fw-23: no fuzz: it waits, as irq_vs_band)
+  {.name = "irq_mode1_split", .entry = 0x859405, .end = 0x85956B, .rti = true, .source = "src/race_frame.c",
+   .call = call_irq_mode1_split, ALL_OUTPUTS,   // (map-fw-24: no fuzz: it waits twice, as irq_vs_split)
+   .holes = {{0x85946E, 0x859473}}},  // a palette source with bit 15 set: never run (an incbin; a trap)
   {.name = "irq_mode1_band2", .entry = 0x85956B, .end = 0x8595BD, .rti = true, .source = "src/race_frame.c",
    .call = call_irq_mode1_band2, ALL_OUTPUTS},
   {.name = "race_cycle_blocks", .entry = 0x859147, .end = 0x8593A7, .source = "src/race_frame.c",
