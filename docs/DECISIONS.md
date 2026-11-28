@@ -6409,6 +6409,37 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's road commands: `$0F` is `$01`, `$10` is `$07`, plus four exchanges a row (dsp4-0f-1, 2026-11-28)
+
+**Read off the 60k firmware tape**, outputs only, with `tools/dsp4_0f.py`: 3,760 `$0F` and 3,760 `$10`
+runs, all of them parsed.
+- **`$0F`.** One word, always `$737B`, then `$01`'s whole command: its 15 header words, its rows
+  (the first 7 words, then 4) until `$8000`, each row answered with 4 words, a count and the
+  lines. `$8001` and 3 words is an edge, with no answer (96 of them).
+  - Fed to `src/dsp4.c`'s `$01` with the extra word dropped, all 3,664 runs without an edge give
+    the firmware's first-row answers.
+  - The lines then need the rounding the run starts on. It follows the known rules: about
+    `$8000` after a `$10` (a road), about `$2121` after a sprite list.
+- **`$10`.** The same word `$737B`, then `$07`'s command: 11 header words, rows of 6, an answer of
+  2 words and a count, the lines.
+  - Through `src/dsp4.c`'s `$07`, 3,757 of 3,760 runs equal the firmware's, answers and lines.
+  - The other 3 differ only in some lines' third word, which the chip gives as −128 (`$FF80`)
+    where the C gives 896 or an in-range value. That is not dsp4-07b's clamp, which the C has:
+    it is a new miss, open.
+- **The exchanges.** In both commands, a row whose count is not 0 adds 4 exchanges between its
+  answer and its lines. Each time the game writes two words and reads one.
+  - The answer is a function of the two words: 189,884 exchanges in each command, 48,628 distinct
+    inputs, never two answers for one.
+  - It is the same function in `$0F` and `$10`: the 9,092 inputs seen in both agree.
+  - Not modelled yet. Its first word is the row's height or a recurring value (`$73CE` in the
+    first run), and the answer is close to the second word.
+
+**So mode 1 needs from `src/dsp4.c`:** the extra word; `$01` and `$07` as they are (with
+the rounding state already measured); the exchange function; and the `$8001` edge.
+
+**Next:** the exchange function, measured on chosen inputs (`$0F` with one drawing row, varied
+exchange words, on the firmware), then wired.
+
 ## The map takes the firmware run: mode 1 and the two-player code mapped (map-fw-1, 2026-11-28)
 
 **What changed.**
