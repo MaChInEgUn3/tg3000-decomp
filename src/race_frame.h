@@ -37,6 +37,7 @@ void vs_strip_set(uint16_t vram_word, uint16_t value);
 void nmi_vs_full(void);                   // $83:9777, the VS split screen's NMI frame (then its tail)
 void race_cycle_blocks(void);             // $85:9147
 void race_hud_draw(void);                 // $85:8814 (long)
+void mode1_hud_draw(void);                // $85:95C7: race_hud_draw for mode 1's two players (RTS)
 void irq_race_band(void);                 // $85:87BA, the race's raster IRQ
 void irq_vs_band(void);                   // $83:8A26, the VS race's raster IRQ (top views)
 void irq_vs_band2(void);                  // $83:8BE3, the same for the bottom views

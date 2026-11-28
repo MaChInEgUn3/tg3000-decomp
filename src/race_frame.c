@@ -252,6 +252,212 @@ void race_hud_draw(void) {
   video_upload_vram(0x7E09, strip + 0x1A, 0x1A);
 }
 
+// map-fw-18: mode 1's HUD ($85:95C7), drafted by a delegated agent from the listing and race_hud_draw;
+// checked by the differential test
+// (draft, map-fw: mode 1's HUD; to append to src/race_frame.c after vs_hud_draw. It uses
+// race_frame.c's hud_from/hud_put/hud_step.)
+
+// Mode 1's HUD for one player (race_hud_draw's pieces at that player's VRAM words, from that
+// player's variables). `record` is the player's record ($0235, $02E8: the count at +0, the gauge
+// word at +$26, its count byte at +$27). `lead` (0: none) is the word in front of each of the
+// two rows of three words (player 1's $1E96/$1E98). The traps name the original's never-run
+// spans (incbin in the listing).
+struct mode1_hud_player {
+  uint16_t barAt, bar;         // the 7-word bar (two units a word, a half word at the end)
+  uint16_t rowsAt, lead, rows; // two rows of 3 words: rows, +4, +8 at rowsAt; +2, +6, +$A at rowsAt + $20
+  uint16_t clockAt, clock;     // the BCD clock: clock+2 low digit, clock+1 both, clock both
+  uint16_t pairAt, pair;       // two words
+  uint16_t countAt, record;    // the record's count + 1 as a digit (capped at $1F06: never run)
+  uint16_t columnAt, column;   // a tilemap column of 5 words
+  uint16_t lineAt, line;       // 8 words
+  uint16_t pairsAt, pairs;     // 2 words, 2 more a tilemap row ($20 words) below
+  uint16_t lightsAt, lit;      // five lights, the one at `lit` lit
+  uint16_t gaugeAt;            // the gauge: one word, then from gaugeAt + $1C
+  uint16_t acc, strip, stripAt;  // the strips: accumulator pair, $7E source, VRAM (and + $20)
+  const char *capTrap, *lightTrap, *gaugeTrap, *halfTrap;
+};
+
+static void mode1_hud_player_draw(const struct mode1_hud_player* p) {
+  // the bar: as race_hud_draw's
+  hud_from(p->barAt);
+  uint16_t bar = rd16(p->bar), y = 0;
+  for(uint16_t x = bar & 0xFFFE; x; x = (uint16_t)(x - 2)) {
+    hud_put(rom16(0x83A422 + y));
+    y = (uint16_t)(y + 2);
+  }
+  if(bar & 1) {
+    hud_put(rom16(0x83A430 + y));
+    y = (uint16_t)(y + 2);
+  }
+  for(; y != 0x000E; y = (uint16_t)(y + 2)) hud_put(rom16(0x83A43E));
+  for(uint16_t r = 0; r < 2; r++) {  // the two rows
+    hud_from((uint16_t)(p->rowsAt + 0x20 * r));
+    if(p->lead) hud_put(rd16((uint16_t)(p->lead + 2 * r)));
+    for(uint16_t k = 0; k < 3; k++) hud_put(rd16((uint16_t)(p->rows + 2 * r + 4 * k)));
+  }
+  // the clock's digits
+  const uint16_t c = p->clock;
+  hud_from(p->clockAt);
+  hud_put(rom16(0x83A498 + (uint32_t)(rd8((uint16_t)(c + 2)) & 0x0F) * 2));
+  hud_from((uint16_t)(p->clockAt + 2));
+  hud_put(rom16(0x83A484 + (uint32_t)((rd8((uint16_t)(c + 1)) & 0xF0) >> 3)));
+  hud_put(rom16(0x83A498 + (uint32_t)(rd8((uint16_t)(c + 1)) & 0x0F) * 2));
+  hud_from((uint16_t)(p->clockAt + 5));
+  hud_put(rom16(0x83A484 + (uint32_t)((rd8(c) & 0xF0) >> 3)));
+  hud_put(rom16(0x83A484 + (uint32_t)(rd8(c) & 0x0F) * 2));
+  hud_from(p->pairAt);
+  hud_put(rd16(p->pair));
+  hud_put(rd16((uint16_t)(p->pair + 2)));
+  hud_from(p->countAt);
+  uint16_t count = rd16(p->record);
+  if(count & 0x8000) count = 0;
+  count = (uint16_t)(count + 1);
+  if(!((uint16_t)(count - rd16(0x1F06)) & 0x8000)) tg3000_unported(p->capTrap);
+  hud_put(rom16(0x83A484 + (uint16_t)(count << 1)));
+  video_set_vram_increment(0x81);  // a column
+  hud_step = 32;
+  hud_from(p->columnAt);
+  for(uint16_t k = 0; k < 10; k += 2) hud_put(rd16((uint16_t)(p->column + k)));
+  video_set_vram_increment(0x80);
+  hud_step = 1;
+  hud_from(p->lineAt);
+  for(uint16_t k = 0; k < 16; k += 2) hud_put(rd16((uint16_t)(p->line + k)));
+  hud_from(p->pairsAt);
+  hud_put(rd16(p->pairs));
+  hud_put(rd16((uint16_t)(p->pairs + 2)));
+  hud_from((uint16_t)(p->pairsAt + 0x20));
+  hud_put(rd16((uint16_t)(p->pairs + 4)));
+  hud_put(rd16((uint16_t)(p->pairs + 6)));
+  // five lights (before the gauge here, after it in race_hud_draw): only the first lit ran
+  hud_from(p->lightsAt);
+  uint16_t lit = (uint16_t)(rd16(p->lit) + 1);
+  for(int i = 0; i < 5; i++) {
+    lit = (uint16_t)(lit - 1);
+    if(lit == 0 && i) tg3000_unported(p->lightTrap);
+    hud_put(lit == 0 ? 0x295E : 0x0157);
+  }
+  // the gauge: only race_hud_draw's second form ran, and only with an even count of segments
+  const uint16_t gauge = (uint16_t)(p->record + 0x26), segs = (uint16_t)(gauge + 1);
+  if(rd16(gauge) & 0x8000) tg3000_unported(p->gaugeTrap);
+  hud_from(p->gaugeAt);
+  hud_put(rom16(0x858ABB));
+  hud_from((uint16_t)(p->gaugeAt + 0x1C));
+  uint16_t k = (uint16_t)(0x000A - rd16(segs));
+  while(k) {  // k / 2 full segments (a half one when k is odd: never run)
+    if(--k == 0) tg3000_unported(p->halfTrap);
+    hud_put(rom16(0x858ABB));
+    k--;
+  }
+  for(int16_t e = (int16_t)(rd16(segs) - 2); e >= 0; e = (int16_t)(e - 2)) hud_put(rom16(0x858ABF));
+  // the two 26-byte strips (DMA channel 7, as race_hud_draw's)
+  uint8_t acc = (uint8_t)(rd8(p->acc) + rd8((uint16_t)(p->acc + 1)));
+  wr8((uint16_t)(p->acc + 1), acc);
+  uint32_t strip = (acc & 0x80) ? 0x83A5A4 : 0x7E0000u | p->strip;
+  video_upload_vram(p->stripAt, strip, 0x1A);
+  video_upload_vram((uint16_t)(p->stripAt + 0x20), strip + 0x1A, 0x1A);
+}
+
+// TG3000_ROUTINE($85:95C7) mode1_hud_draw
+//
+// race_hud_draw for mode 1, the two-view race, run by its NMI when the frame's DMA budget allows
+// ($85:8E9D, on $00B8 bit 2): the word at $1E94, then each player's HUD (mode1_hud_player_draw):
+// the first player's at race_hud_draw's places in the top view (its rows, column, words and
+// gauge moved up, its strips at $7CA9), the second's in the bottom view from the second set of
+// variables ($40, $4E-$58, the clock $5D-$5F, $68, the record at $02E8, $76-$7E, $90-$9E,
+// $AC-$B2, $014E, the strip at $7E:4E95 with its accumulator $7E:4E4F/$4E50). Tables in bank $83
+// ($A422.., the digits at $A484 and $A498) and bank $85 ($8ABB-$8ABF). Paths that never ran
+// (the counts' cap, lights 2-5, the gauge's first form and its half segment) are traps.
+void mode1_hud_draw(void) {
+  static const struct mode1_hud_player p[2] = {
+    {0x7C62, 0x003E, 0x7D61, 0x1E96, 0x0042, 0x7C4D, 0x005A, 0x7C22, 0x0064, 0x7C3A, 0x0235, 0x7D1E, 0x006C,
+     0x5AE0, 0x0080, 0x7D7C, 0x00A4, 0x7C76, 0x014C, 0x7D7B, 0x4E4D, 0x4E61, 0x7CA9,
+     "$85:96C8: mode 1's HUD: player 1's count + 1 reaches $1F06 (the cap)",
+     "$85:9771: mode 1's HUD: player 1's lit light is 2-5 ($014C 1-4)",
+     "$85:979A: mode 1's HUD: player 1's gauge word $025B negative (the other gauge)",
+     "$85:97F7: mode 1's HUD: player 1's gauge with an odd count of segments (the half one)"},
+    {0x7E22, 0x0040, 0x7F22, 0x0000, 0x004E, 0x7E0D, 0x005D, 0x7DE2, 0x0068, 0x7DFA, 0x02E8, 0x7EDE, 0x0076,
+     0x5AE8, 0x0090, 0x7F3C, 0x00AC, 0x7E36, 0x014E, 0x7F3B, 0x4E4F, 0x4E95, 0x7E69,
+     "$85:9942: mode 1's HUD: player 2's count + 1 reaches $1F06 (the cap)",
+     "$85:99EB: mode 1's HUD: player 2's lit light is 2-5 ($014E 1-4)",
+     "$85:9A14: mode 1's HUD: player 2's gauge word $030E negative (the other gauge)",
+     "$85:9A71: mode 1's HUD: player 2's gauge with an odd count of segments (the half one)"},
+  };
+  hud_step = 1;
+  hud_from(0x7E0F);  // (player 2's clock writes $7E0F again later in the same call)
+  hud_put(rd16(0x1E94));
+  for(int i = 0; i < 2; i++) mode1_hud_player_draw(&p[i]);
+}
+
+/*
+ * Notes for the port (mode1_hud_draw, $85:95C7-$85:9ADA)
+ *
+ * Player 1 ($95C7-$985D) against race_hud_draw ($8814-$8AAD), paired instruction by instruction:
+ *   - $7E0F <- $1E94, the bar at $7C62 from $3E ($A422/$A430/$A43E, to y = $0E): same.
+ *   - row 1 at $2116: $7F21 -> $7D61 ($1E96, $42, $46, $4A); row 2: $7F41 -> $7D81 ($1E98, $44, $48, $4C).
+ *   - the clock $7C4D/$7C4F/$7C52 from $5C/$5B/$5A: same addresses, same tables.
+ *   - $7C22 <- $64, $66: same.  $7C3A <- the $0235 count: same, except the cap: `cmp $1F06; bmi`
+ *     not taken lands on incbin $85:96C8-$96CA (3 bytes, where race_hud_draw has `lda $1F06`):
+ *     a trap, behind the branch.
+ *   - the column (VMAIN $81): $7EDE -> $7D1E ($6C-$74).  $5AE0 <- $80-$8E: same.
+ *   - $7F3C -> $7D7C ($A4, $A6); $7F5C -> $7D9C ($A8, $AA).
+ *   - ORDER: the five lights ($7C76, $014C: same address) come BEFORE the gauge in mode 1 (race
+ *     draws the gauge first). Only the first light's `lda #$295E` ($85:9767) is code; lights 2-5's
+ *     are incbin ($85:9771, $977B, $9785, $978F; 3 bytes each): a trap when $014C is 1-4 (each
+ *     sits behind its own `bne`; one trap message for all four).
+ *   - the gauge: `lda $025B; bpl` not taken -> incbin $85:979A-$97CA (race's $89A8-$89D8 form,
+ *     49 bytes = race's 49): a trap. The second form: $7F3B -> $7D7B, $7F57 -> $7D97 (= +$1C), same
+ *     $858ABB/$858ABF, k = $0A - $025C. Inside the loop the `dey; beq` is `db $F0,$08` at $85:97ED
+ *     (decoded as data: never taken) whose target $85:97F7-$97FD is incbin (7 bytes = race's
+ *     `lda.l $858ABD; sta $2118`): a trap where k reaches 0 on the first `dey` (k odd).
+ *   - the strips: same accumulator ($7E:4E4D + $7E:4E4E -> $4E4E), same sources ($7E:4E61, or
+ *     $83:A5A4 when negative), same channel 7 setup; VRAM $7DE9 -> $7CA9 and $7E09 -> $7CC9.
+ *   - the end: race_hud_draw has `rep #$20; plb; rtl`; mode 1 has `rep #$20` ($85:985D) and goes on.
+ * Player 2 ($985F-$9AD7), the same sequence with (player 1 -> player 2):
+ *   bar $7C62/$3E -> $7E22/$40 (same tables); rows $7D61/$7D81 with the lead words $1E96/$1E98 ->
+ *   $7F22/$7F42 with NO lead word ($4E, $52, $56 / $50, $54, $58); clock $7C4D/$7C4F/$7C52 from
+ *   $5C/$5B/$5A -> $7E0D/$7E0F/$7E12 from $5F/$5E/$5D; pair $7C22/$64,$66 -> $7DE2/$68,$6A; count
+ *   $7C3A/$0235 -> $7DFA/$02E8 (cap incbin $85:9942: trap); column $7D1E/$6C-$74 -> $7EDE/$76-$7E;
+ *   line $5AE0/$80-$8E -> $5AE8/$90-$9E; pairs $7D7C,$7D9C/$A4-$AA -> $7F3C,$7F5C/$AC-$B2; lights
+ *   $7C76/$014C -> $7E36/$014E (lights 2-5 incbin $85:99EB, $99F5, $99FF, $9A09: trap); gauge
+ *   $025B/$025C -> $030E/$030F (= record + $26/$27, records $B3 apart), first form incbin
+ *   $85:9A14-$9A44 (trap), $7D7B/$7D97 -> $7F3B/$7F57 (race_hud_draw's own), the loop's `beq`
+ *   `db $F0,$08` at $85:9A67 to incbin $85:9A71-$9A77 (trap); strips $7E:4E61, acc $4E4D/$4E4E,
+ *   $7CA9/$7CC9 -> $7E:4E95, acc $4E4F/$4E50, $7E69/$7E89. Ends `rep #$20; plb; rts`.
+ * No reuse from the VS HUD: vs_hud_draw's bars are 6 words from other tables ($83:9F2E..), its
+ * counts are rows of marks; only hud_from/hud_put/hud_step are shared. No incbin replaces code
+ * on an always-run path: every incbin above sits behind a branch.
+ *
+ * Unsure:
+ *   - $7E0F is written twice per call (the $1E94 word first, player 2's clock tens later); the C
+ *     keeps both writes in order (the bench's VRAM effect log should see both).
+ *   - The light trap fires before the lit word is written (the original would have loaded
+ *     $295E there); the other traps fire at their branch before any further write, as asked.
+ *   - The lights' X is 16-bit (`ldx $014C`): $014C >= 5 (or $FFFF) lights none, as in race.
+ *   - The gauge loop with $025C/$030F above 10 (k "negative") would write ~32K words in the
+ *     original (even k) or trap at the end (odd k); the fuzz should keep them 0-10, even.
+ *
+ * Bench (tools/bench/routines.c), mirroring race_hud_draw's:
+ *   // ---- mode1_hud_draw ($85:95C7) ----  no register outputs (mode 1's NMI loads A next, $85:8EA0)
+ *   static void call_mode1_hud_draw(const Regs* in, Regs* out) { (void)in; (void)out; mode1_hud_draw(); }
+ *   At the RTS: M = 16 (`rep #$20`), X = 16 (never changed), DB restored by `plb` (the caller's,
+ *   N/Z from it), A/X/Y leftovers (X = $7E89) that the caller overwrites: nothing to return.
+ *   Row: {.name = "mode1_hud_draw", .entry = 0x8595C7, .end = 0x859ADB, .source = "src/race_frame.c",
+ *         .needM16 = true, .needX16 = true, .call = call_mode1_hud_draw, .fuzz = fuzz_mode1_hud_draw,
+ *         .holes = {{0x8596C8, 0x8596CB}, {0x859771, 0x859774}, {0x85977B, 0x85977E}, {0x859785, 0x859788},
+ *                   {0x85978F, 0x859792}, {0x85979A, 0x8597CB}, {0x8597F7, 0x8597FE}, {0x859942, 0x859945},
+ *                   {0x8599EB, 0x8599EE}, {0x8599F5, 0x8599F8}, {0x8599FF, 0x859A02}, {0x859A09, 0x859A0C},
+ *                   {0x859A14, 0x859A45}, {0x859A71, 0x859A78}}},   // 14 never-run spans (traps)
+ *   (no .rtl: it ends with RTS; race_hud_draw's row has no .db/.lowWramDb either: its `pea $8383`
+ *   sets DB itself.) A negative row as race's (lights one off) would hit the light trap instead;
+ *   use e.g. the $1E96 word XOR 1 around the call (wr16 before, restore after, as race's
+ *   wrong row does with $014C); not a bar + 1 (a bar of 15 loops for ever in both).
+ *   Fuzz, kept off the traps: $3E/$40 0-14; $014C/$014E 0 or 5-$FFFF (not 1-4); $025C and
+ *   $030F as words (wr16ram, high byte $025D/$0310 = 0), even 0-10 ($025B/$030E then never
+ *   negative; their low bytes random); $0235/$02E8
+ *   negative or below $1F06 - 1 with $1F06 2-11; $1E94-$1E98, $0042-$00B2 random (the clock
+ *   $5A-$5F any byte: only table lookups); $7E:4E4D-$4E50 random.
+ */
+
 // A VS HUD bar: 6 words at `vram`: bar / 2 full segments ($83:9F2E + y), a half one when the
 // bar is odd ($83:9F3A + y), then empty ones ($83:9F46 + y). (The original runs to y = 12
 // exactly: bars 0-12.)

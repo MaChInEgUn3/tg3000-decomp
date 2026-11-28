@@ -5456,6 +5456,29 @@ static void fuzz_race_hud_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   ram[0x4E4E] = (uint8_t)rnd();
 }
 
+// ---- mode1_hud_draw ($85:95C7) ----  no register outputs (mode 1's NMI loads A next, $85:8EA0)
+static void call_mode1_hud_draw(const Regs* in, Regs* out) { (void)in; (void)out; mode1_hud_draw(); }
+// race_hud_draw's inputs for both players, kept off the never-run paths (traps): lights 0 or 5+,
+// the gauges' counts even 0-10 (their words never negative), the counts below the cap
+static void fuzz_mode1_hud_draw(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
+  (void)r;
+  wr16ram(ram, 0x003E, (uint16_t)(rnd() % 15));
+  wr16ram(ram, 0x0040, (uint16_t)(rnd() % 15));
+  for(int p = 0; p < 2; p++) {
+    wr16ram(ram, p ? 0x014E : 0x014C, (rnd() & 1) ? 0 : (uint16_t)(5 + rnd() % 0xFFF0));
+    const uint16_t g = p ? 0x030E : 0x025B;
+    ram[g] = (uint8_t)rnd();
+    wr16ram(ram, (uint16_t)(g + 1), (uint16_t)(2 * (rnd() % 6)));
+  }
+  wr16ram(ram, 0x1F06, (uint16_t)(2 + rnd() % 10));
+  const uint16_t cap = (uint16_t)(ram[0x1F06] - 1);
+  wr16ram(ram, 0x0235, (uint16_t)((rnd() & 3) == 0 ? 0x8000 | rnd() : rnd() % cap));
+  wr16ram(ram, 0x02E8, (uint16_t)((rnd() & 3) == 0 ? 0x8000 | rnd() : rnd() % cap));
+  for(uint32_t a = 0x1E94; a <= 0x1E99; a++) ram[a] = (uint8_t)rnd();
+  for(uint32_t a = 0x0042; a <= 0x00B2; a++) ram[a] = (uint8_t)rnd();
+  for(uint32_t a = 0x4E4D; a <= 0x4E50; a++) ram[a] = (uint8_t)rnd();
+}
+
 // ---- irq_race_band ($85:87BA) ----  saves and restores DB, A, X itself; P from the frame
 static void call_irq_race_band(const Regs* in, Regs* out) { irq_race_band(); restoreP(in, out); }
 // (vs-race-21) the VS race's: as irq_race_band
@@ -13454,6 +13477,13 @@ const Routine routines[] = {
    .lowWramDb = true, .call = call_fade_in_start, ALL_OUTPUTS, .fuzz = fuzz_nothing},
   {.name = "hdma_window_tables_init", .entry = 0x8AA09F, .end = 0x8AA0F9, .source = "src/misc.c", .lowWramDb = true,
    .call = call_hdma_window_tables_init, ALL_OUTPUTS, .fuzz = fuzz_nothing},
+  {.name = "mode1_hud_draw", .entry = 0x8595C7, .end = 0x859ADB, .source = "src/race_frame.c",
+   .needM16 = true, .needX16 = true, .call = call_mode1_hud_draw, .fuzz = fuzz_mode1_hud_draw,
+   // never run (traps in the C): the counts' cap, lights 2-5, the gauges' negative form, a half segment
+   .holes = {{0x8596C8, 0x8596CB}, {0x859771, 0x859774}, {0x85977B, 0x85977E}, {0x859785, 0x859788},
+             {0x85978F, 0x859792}, {0x85979A, 0x8597CB}, {0x8597F7, 0x8597FE}, {0x859942, 0x859945},
+             {0x8599EB, 0x8599EE}, {0x8599F5, 0x8599F8}, {0x8599FF, 0x859A02}, {0x859A09, 0x859A0C},
+             {0x859A14, 0x859A45}, {0x859A71, 0x859A78}}},
   {.name = "race_hud_draw", .entry = 0x858814, .end = 0x858AAE, .rtl = true, .source = "src/race_frame.c",
    .needM16 = true, .needX16 = true, .call = call_race_hud_draw, .fuzz = fuzz_race_hud_draw},
   {.name = "irq_race_band", .entry = 0x8587BA, .end = 0x858812, .rti = true, .source = "src/race_frame.c",

@@ -6409,6 +6409,34 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## Mode 1's HUD (map-fw-18, 2026-11-28)
+
+**`mode1_hud_draw` (`$85:95C7`, `src/race_frame.c`)** is `race_hud_draw` for mode 1's two players.
+Mode 1's NMI runs it (`$85:8EA0`), and it ends with an RTS.
+- **Player 1** is `race_hud_draw` with other VRAM places: rows `$7D61`/`$7D81`, column `$7D1E`,
+  pairs `$7D7C`/`$7D9C`, gauge `$7D7B`/`$7D97`, strips `$7CA9`/`$7CC9`.
+  - The five lights come before the gauge.
+- **Player 2** is the same sequence with player 2's words:
+  - its bar from `$40`, rows `$7F22`/`$7F42` with no lead word, clock `$5D`-`$5F`;
+  - count `$02E8`, lights `$014E`, gauge `$030E`/`$030F`;
+  - strips `$7E:4E95` with the accumulator `$4E4F`/`$4E50`.
+  - `$7E0F` is written twice in a call: `$1E94`, then player 2's clock.
+- **Never run (incbins), so traps** (14 holes):
+  - each count's cap;
+  - lights 2-5;
+  - the gauge's negative form;
+  - a half gauge segment.
+- The C was drafted by a delegated agent from the listing and `race_hud_draw`. The differential
+  test checks it.
+
+**Fuzz:** `race_hud_draw`'s inputs for both players, kept off the traps:
+- lights 0 or 5 and up;
+- the gauges' counts even, 0-10;
+- the counts below the cap.
+
+**Check:** `demo_mode1` (firmware): live 199 of 199, fuzz 500 of 500, paths 486 of 486. Then
+`verify_new.sh`.
+
 ## Mode 1's two view frames (map-fw-17, 2026-11-28)
 
 **`mode1_frame_draw_view1` (`$82:8F47`) and `mode1_frame_draw_view2` (`$82:8F6B`, `src/misc.c`)**

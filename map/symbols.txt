@@ -173,6 +173,7 @@ func    83886A   vs_view_scrolls     ; VS split screen: four 24-bit positions +=
 func    838909   mode1_view_scrolls  ; mode 1's two views: two 24-bit positions += their steps, the views' words -> src/race_frame.c
 func    859147   race_cycle_blocks   ; every 4th race frame: cycle the 8-byte blocks of $7E:2000-$213F -> src/race_frame.c
 func    858814   race_hud_draw       ; race HUD tilemap words: bar, clock digits, counters, gauge, lights, two strips (long) -> src/race_frame.c
+func    8595C7   mode1_hud_draw      ; race_hud_draw for mode 1's two players (their bars, rows, clocks, counts, lights, gauges, strips; RTS) -> src/race_frame.c
 func    8587BA   irq_race_band       ; race raster IRQ: next chunk of the palette/BG-mode streams, next band's line -> src/race_frame.c
 func    8583CE   nmi_race_full       ; race NMI full frame: VRAM/OAM/CGRAM sends, HDMA + streams, clock, bands, then the tail -> src/race_frame.c
 func    80F709   inverse_scale       ; D+$38 = 42 * (65536 / D+$7A), hardware multiply -> src/scale.c
