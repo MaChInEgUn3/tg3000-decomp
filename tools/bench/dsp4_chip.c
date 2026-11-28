@@ -62,6 +62,7 @@ static void dsp4_answer(Dsp4Chip* c) {
     break;
   }
   default: {  // $03 (its entry after two words) and $0B
+    if(c->cmd == 0x03) c->edge2 = c->edge3 = 0x2120;  // (dsp4-01u: $0003 sets the road's rounding)
     const uint8_t* e = c->in + (c->cmd == 0x03 ? 4 : 0);
     uint16_t w[2] = {0, 0};
     dsp4_put(c->out, dsp4_sprite(dsp4_word(e), dsp4_word(e + 2), dsp4_word(e + 4), w));
@@ -74,7 +75,7 @@ static void dsp4_answer(Dsp4Chip* c) {
 
 void dsp4_chip_reset(Dsp4Chip* c) {
   memset(c, 0, sizeof *c);
-  c->edge2 = c->edge3 = (int16_t)0x8000;
+  c->edge2 = c->edge3 = 0;  // (dsp4-01u: the power-on rounding)
 }
 
 void dsp4_chip_abort(Dsp4Chip* c) {

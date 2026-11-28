@@ -6409,6 +6409,36 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The road's rounding at power-on and after a list's open (dsp4-01u, 2026-11-28)
+
+**The chip's road rounding starts at 0, and `$0003` sets it to `$2120`.** Both measured on the
+firmware, outputs only (`dsp4_road_native`'s new `Q E2 E3` sets the rounding directly; the probe's
+new `T` sends a `$0003`):
+- **Power-on:** 300 of 300 random roads on a freshly loaded chip (one process each) match the C with
+  rounding 0; with `$8000` (what a road leaves) 37 of 300. `dsp4_lle_reset` keeps the chip's
+  memory, so a probe's later cases start where the last left off (the old reason the first case was
+  thrown away). The race's first road, at record 8970 (`$85:B738`, 218 against the bench's 219),
+  was this.
+- **`$0003`:** race1's roads before any `$0A` follow a sprite list. Replayed on the firmware with
+  each command of the frame before in front, only the `$0003` made them exact (56 of 58); its
+  `$0005`, the dots and their x, y change nothing. Random roads after a `$0003` pin the rounding
+  to `$848` both halves (edges `$2120`).
+- Wired: `src/dsp4.c` starts at 0 and `dsp4_list_open` sets `$2120`; the bench's chip model
+  (`dsp4_chip_reset`, its `$03`) and the harness's tracker (a list's open makes the rounding
+  known) do the same. `dsp4_road_check.py` starts tape runs at power-on (`Q 0 0`), after a
+  `$0003` (`Q 2120 2120`) or after a `$0A`, and reports the first two apart.
+- **Result:** race1's roads: 393 after a `$0A`, 0 differ; 190 after a `$0003` or at power-on, 2
+  differ (runs 4 and 6, one line word by 1). The bench's race1 roads against the firmware's: 2
+  differ, was 191.
+- **Open: the `$09` stream changes the rounding too.** Runs 4 and 6 come out exact on the firmware
+  only with their frame's `$09` stream after the `$0003` (the `$0003` alone, or with the `$06` and
+  the multiplies after it, leaves them wrong). They need the second half below about `$1C00`, the
+  other 188 above it, so the value depends on the stream's contents: the next unit measures it
+  (a `$0003`, one frame's stream, then chosen roads). On the 60k movie the bench's first different
+  answer moved from record 8,970 to 32,890 (the race's sixth road, this case); the game's path
+  still parts at the same place (record 2,746,462, `$83:ED04`), so mode 1 stays unreached on the
+  bench until then.
+
 ## The race's sprite stream native (dsp4-09q, 2026-11-28)
 
 **The one-player race's `$09` stream no longer uses the port.** It calls `src/dsp4.c`'s list:

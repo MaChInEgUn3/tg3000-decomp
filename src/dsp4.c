@@ -14,7 +14,8 @@ static int16_t dsp4_width(uint16_t row, int j) {
 }
 
 // the road's rounding, as the chip keeps it (dsp4-01r): the last $0A's edges 2 and 3
-static int16_t dsp4_round[2] = {(int16_t)0x8000, (int16_t)0x8000};
+// dsp4-01u: at power-on the rounding is 0 (300 of 300 fresh firmware chips; a road leaves $2000)
+static int16_t dsp4_round[2] = {0, 0};
 void dsp4_round_get(int16_t* edge2, int16_t* edge3) {
   *edge2 = dsp4_round[0];
   *edge3 = dsp4_round[1];
@@ -232,6 +233,9 @@ void dsp4_list_open(void) {
   const bool sizes = dsp4_sp.sizes;  // ($0005 lasts past $0003)
   memset(&dsp4_sp, 0, sizeof dsp4_sp);
   dsp4_sp.sizes = sizes;
+  // dsp4-01u: $0003 also sets the road's rounding to $848 (as a $0A's edges 2 and 3 of $2120 would;
+  // measured on the firmware: chosen roads after a $0003, and race1's roads before any $0A)
+  dsp4_round_set(0x2120, 0x2120);
 }
 
 void dsp4_list_sizes(void) { dsp4_sp.sizes = true; }

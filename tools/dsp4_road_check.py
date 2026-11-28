@@ -91,12 +91,18 @@ def tape_runs(path):
 
     def w(i):
         return val[i] | val[i + 1] << 8
-    runs, edges, i = [], None, 0
+    # the rounding a run starts on (dsp4-01u): 'power' (0) at the tape's start; a $0A's edges; 'list'
+    # after a $0003 ($848, edges $2120); None after a road (it leaves $2000: the native's own)
+    runs, edges, i = [], 'power', 0
     while i < n - 1:
         start = not rd[i] and val[i + 1] == 0 and not rd[i + 1] and (i == 0 or rd[i - 1])
         if start and val[i] == 0x0A:
             edges = (w(i + 2), w(i + 4), w(i + 6))
             i += 16
+            continue
+        if start and val[i] == 0x03:
+            edges = 'list'
+            i += 2
             continue
         if start and val[i] == 0x0F:
             raise SystemExit('%s: a $0F run at record %d: not checked' % (path, i))
@@ -127,7 +133,8 @@ def tape_runs(path):
             # the probe's spec puts the first row's 3 words after the header
             head, row0 = words[:15], words[15:22]
             body = head + row0[1:4] + [row0[0]] + row0[4:7] + words[22:]
-            pre = 'E %X %X %X ' % edges if edges else ''
+            pre = ('Q 0 0 ' if edges == 'power' else 'Q 2120 2120 ' if edges == 'list' else
+                   'E %X %X %X ' % edges if edges else 'Q 8000 8000 ')
             runs.append((edges is not None, pre + spec(body), ' | '.join(expect)))
             edges = None
             i = j
@@ -316,7 +323,9 @@ def main():
     if os.path.exists(tape):
         runs = tape_runs(tape)
         got = run(NATIVE, [r[1] for r in runs])
-        after = [g.split('#')[-1].split() == r[2].split() for g, r in zip(got, runs) if r[0]]
+        after = [g.split('#')[-1].split() == r[2].split() for g, r in zip(got, runs) if r[0] and r[1].startswith('E')]
+        # dsp4-01u: the runs on the rounding a $0003 left ($848): the race's first frames, before any $0A
+        listed = [g.split('#')[-1].split() == r[2].split() for g, r in zip(got, runs) if r[1].startswith(('Q 2120', 'Q 0 0 '))]
         before = [g.split('#')[-1].split() == r[2].split() for g, r in zip(got, runs) if not r[0]]
         worst = 0
         for g, r in zip(got, runs):
@@ -327,8 +336,9 @@ def main():
                     for u, v in zip(x.split(','), y.split(',')):
                         d = (int(u, 16) - int(v, 16)) & 0xFFFF
                         worst = max(worst, min(d, 0x10000 - d))
-        print('%s: %d runs after a $0A, differ %d; %d before any (not modelled), differ %d, by at most %d' % (
+        print('%s: %d runs after a $0A, differ %d; %d after a road with no $0A since, differ %d, by at most %d' % (
             os.path.basename(tape), len(after), after.count(False), len(before), before.count(False), worst))
+        print('%s: %d runs after a $0003 or at power-on (dsp4-01u; 2 known on race1), differ %d' % (os.path.basename(tape), len(listed), listed.count(False)))
         ok = ok and after.count(False) == 0 and len(after) > 0
         runs7 = tape_runs7(tape)
         got7 = run(NATIVE, [r[0] for r in runs7])

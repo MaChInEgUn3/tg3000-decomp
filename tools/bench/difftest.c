@@ -1161,8 +1161,8 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
 // $03, unmeasured) makes it unknown, and the parser, lost in a command it does not have, waits
 // for the next $0A at one of the listing's $0A sites.
 static Sample trackSmp;
-static bool trackLost = false, trackKnown = false;  // power-on: idle; the rounding $8000 with the firmware only
-static int16_t trackE2 = (int16_t)0x8000, trackE3 = (int16_t)0x8000;
+static bool trackLost = false, trackKnown = false;  // power-on: idle; the rounding 0 (dsp4-01u), trusted with the firmware only
+static int16_t trackE2 = 0, trackE3 = 0;  // (dsp4-01u: the power-on rounding)
 static const uint32_t dsp4EdgeSites[] = {0x81E663, 0x81F90E, 0x82902F, 0x82E0E8, 0x82EA5F, 0x83E8B2,
                                          0x83E8F7, 0x85C09D, 0x85C43B, 0x85C7C7, 0x85CB1D, 0x85CD8E};
 static void trackDsp4(uint32_t adr, uint8_t val, bool write) {
@@ -1514,8 +1514,15 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
   // that began inside it see it
   accessBase = (irqOwner >= 0 && irqActive) ? irqBaseDepth : 0;
   if(isDsp4(adr) && !(!write && insnPc >= 0x808085 && insnPc < 0x80809A)) {
-    trackDsp4(adr, val, write);  // (dsp4-01t)
     trackSprites(adr, val, write);  // (dsp4-09n)
+    // dsp4-01u: the sprite list's bytes leave the road's rounding as it is, but its $0003, which
+    // sets it to $848 (edges $2120); the tracker only sees the rest
+    if(shOrigOpened) {
+      trackKnown = true;
+      trackLost = false;
+      trackE2 = trackE3 = 0x2120;
+      memset(&trackSmp, 0, sizeof trackSmp);
+    } else if(!listFollowed()) trackDsp4(adr, val, write);  // (dsp4-01t)
   }
   if(depth <= accessBase) return;
   // harness-39: the start-up's wait for the DSP-4 ($80:8085-$80:8099) is the platform's

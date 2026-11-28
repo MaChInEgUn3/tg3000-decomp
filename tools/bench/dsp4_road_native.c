@@ -18,6 +18,8 @@ int main(void) {
         int16_t o[4]; dsp4_edges((uint16_t)t, (uint16_t)a, (uint16_t)b, o); e2 = o[2]; e3 = o[3];
         for(int i = 0; i < 4; i++) printf("%04X ", (uint16_t)o[i]);
         continue; }
+      if(*p == 'Q') { unsigned a, b; int k; sscanf(p + 1, "%x %x%n", &a, &b, &k); p += 1 + k;  // dsp4-01u: the
+        e2 = (int16_t)a; e3 = (int16_t)b; continue; }  // rounding as a $0A's edges 2 and 3 would leave it
       if(*p == 'M') { unsigned a, b; int k; sscanf(p + 1, "%x %x%n", &a, &b, &k); p += 1 + k;
         int32_t q = dsp4_multiply((int16_t)a, (int16_t)b); printf("%04X %04X ", (uint16_t)q, (uint16_t)(q >> 16)); continue; }
       break;

@@ -50,6 +50,11 @@ int main(int argc, char** argv) {
     while(true) {
       in >> std::ws;
       const int c = in.peek();
+      if(c == 'T') {  // dsp4-01u: a $0003 (the sprite list's open: no words, no answer)
+        in.get();
+        pre.push_back(std::vector<unsigned>{unsigned('T')});
+        continue;
+      }
       if(c != 'E' && c != 'M' && c != 'B') break;
       in.get();
       std::vector<unsigned> p{unsigned(c)};
@@ -76,6 +81,10 @@ int main(int argc, char** argv) {
     dsp4_lle_reset();
     if(!pre.empty()) {
       for(const auto& p : pre) {
+        if(p[0] == 'T') {
+          wr(0x0003);
+          continue;
+        }
         wr(p[0] == 'E' ? 0x000A : p[0] == 'B' ? 0x000B : 0x0000);
         for(size_t i = 1; i < p.size(); i++) wr(uint16_t(p[i]));
         if(p[0] == 'B') {  // a sprite: its flag, then two words when shown
