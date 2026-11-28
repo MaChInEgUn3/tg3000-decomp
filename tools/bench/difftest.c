@@ -1011,6 +1011,7 @@ static const struct { uint8_t cmd, in, out; bool writeSkips, flagEnds; } dsp4Com
   {0x01, 30, 0, false, false},  // the road (dsp4-01t): its header here; its rows in dsp4Step
   {0x07, 22, 0, false, false},  // the second road (dsp4-07b): likewise
   {0x08, 90, 0, false, false},  // the windows (dsp4-08g): its header here; the rest in dsp4Step
+  {0x0D, 30, 0, false, false},  // the VS road (dsp4-0d-1): $01's header; its first row 12 bytes
 };
 static bool isDsp4(uint32_t adr) {
   uint8_t bank = (adr >> 16) & 0x7F;
@@ -1050,7 +1051,7 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
     const int i = dsp4CommandIndex(smp->dsp4Cmd);
     if(smp->dsp4Count < 6) smp->dsp4Param[smp->dsp4Count] = val;
     if(++smp->dsp4Count == dsp4Commands[i].in) {
-      smp->dsp4Phase = smp->dsp4Cmd == 0x01 || smp->dsp4Cmd == 0x07 ? 4 : smp->dsp4Cmd == 0x08 ? 6 : 3;
+      smp->dsp4Phase = smp->dsp4Cmd == 0x01 || smp->dsp4Cmd == 0x07 || smp->dsp4Cmd == 0x0D ? 4 : smp->dsp4Cmd == 0x08 ? 6 : 3;
       smp->dsp4Count = 0;
       smp->dsp4Flag = 0;
       smp->dsp4RoadFirst = true;
@@ -1071,7 +1072,7 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
       break;
     }
     if(smp->dsp4RoadCount == 1 && (uint16_t)(smp->dsp4Flag | val << 8) == 0x8001) return false;  // an edge: not native
-    if(++smp->dsp4RoadCount == (smp->dsp4Cmd == 0x07 ? 12 : smp->dsp4RoadFirst ? 14 : 8)) {
+    if(++smp->dsp4RoadCount == (smp->dsp4Cmd == 0x07 ? 12 : smp->dsp4RoadFirst ? (smp->dsp4Cmd == 0x0D ? 12 : 14) : 8)) {
       smp->dsp4Phase = 5;
       smp->dsp4RoadCount = 0;
       smp->dsp4RoadNeed = smp->dsp4Cmd == 0x07 ? 6 : 10;
@@ -1161,6 +1162,7 @@ static bool dsp4Step(Sample* smp, uint32_t adr, uint8_t val, bool write) {
 // $03, unmeasured) makes it unknown, and the parser, lost in a command it does not have, waits
 // for the next $0A at one of the listing's $0A sites.
 static Sample trackSmp;
+static bool trackerRestored;  // dsp4-0d-1: the replay running restored the chip with its tracker
 static bool trackLost = false, trackKnown = false;  // power-on: idle; the rounding 0 (dsp4-01u), trusted with the firmware only
 static int16_t trackE2 = 0, trackE3 = 0;  // (dsp4-01u: the power-on rounding)
 static const uint32_t dsp4EdgeSites[] = {0x81E663, 0x81F90E, 0x82902F, 0x82E0E8, 0x82EA5F, 0x83E8B2,
@@ -1176,7 +1178,7 @@ static void trackDsp4(uint32_t adr, uint8_t val, bool write) {
   }
   const uint8_t phase = trackSmp.dsp4Phase, cmd = trackSmp.dsp4Cmd;
   if(phase == 0 && write) {
-    if(val != 0x00 && val != 0x0A && val != 0x0B && val != 0x01 && val != 0x07) trackKnown = false;
+    if(val != 0x00 && val != 0x0A && val != 0x0B && val != 0x01 && val != 0x07 && val != 0x0D) trackKnown = false;
   }
   if(!dsp4Step(&trackSmp, adr, val, write)) {
     if(getenv("DIFFTEST_SHADOW_DEBUG") && replaying && !trackLost)
@@ -1193,7 +1195,7 @@ static void trackDsp4(uint32_t adr, uint8_t val, bool write) {
       trackE2 = e[2];
       trackE3 = e[3];
       trackKnown = true;
-    } else if((cmd == 0x01 || cmd == 0x07) && trackSmp.dsp4RoadDrew) {
+    } else if((cmd == 0x01 || cmd == 0x07 || cmd == 0x0D) && trackSmp.dsp4RoadDrew) {
       trackE2 = trackE3 = (int16_t)0x8000;
       trackKnown = true;
     }
@@ -1560,7 +1562,7 @@ void difftest_on_access(uint32_t adr, uint8_t val, bool write) {
           continue;
         }
       }
-      if(write && smp->dsp4Phase == 0 && (val == 0x01 || val == 0x07) && (adr & 0xFFFF) < 0xC000 && (!trackKnown || trackLost) &&
+      if(write && smp->dsp4Phase == 0 && (val == 0x01 || val == 0x07 || val == 0x0D) && (adr & 0xFFFF) < 0xC000 && (!trackKnown || trackLost) &&
          !listFollowed()) {  // (dsp4-09q: not a byte of the sprite list, which the shadow owns)
         smp->roadUnknown = true;  // dsp4-01t: a road on an unknown rounding
         smp->listApart = false;
@@ -2123,6 +2125,12 @@ static void finishSample(int k, const Cpu* cpu) {
     s->replayListApart++;                               // disagreed: not lost, as a live sample set apart
     return;
   }
+  // dsp4-0d-1: a replay whose chip and rounding tracker came back as they were at its entry, on a
+  // rounding the tracker did not know: its live sample's case, set apart as that sample would be
+  if(smp->roadUnknown && replaying && trackerRestored) {
+    s->replayListApart++;
+    return;
+  }
   if(smp->roadUnknown && (fuzzing || replaying)) {  // (dsp4-01t: a road the primed chip did not cover)
     if(replaying) s->replayApart++; else s->fuzzApart++;  // counted as lost: it fails the row
     return;
@@ -2594,7 +2602,9 @@ void difftest_fuzz(int iterations) {
       // dsp4-09p: the firmware's state is restored (harness-29); the bench chip's too when the
       // entry is inside a sprite list (the shadow live), with the shadow and the rounding tracker
       // as they were. Otherwise the chip is reset and primed as before, the shadow between lists.
+      trackerRestored = false;  // dsp4-0d-1: the chip and its rounding tracker restored together
       if(p->dsp4Size > 0 && (dsp4_bridge_firmware_on() || p->sh.live)) {
+        trackerRestored = true;
         dsp4_bridge_load_state(p->dsp4, p->dsp4Size);  // (harness-29)
         shRestore(&p->sh);
         trackSmp = p->trackSmp;
@@ -2622,9 +2632,9 @@ void difftest_fuzz(int iterations) {
       cpu->k = r->entry >> 16;
       cpu->pc = r->entry & 0xFFFF;
       replaying = true;
-      if(p->dsp4Size > 0) {  // (dsp4-01t: a chip restored mid-command cannot be primed: unknown)
-        trackKnown = false;
-        trackLost = true;
+      if(p->dsp4Size > 0 && !trackerRestored) {  // (dsp4-01t: a chip restored mid-command cannot be
+        trackKnown = false;                       // primed: unknown; dsp4-0d-1: unless the tracker came
+        trackLost = true;                         // back with it, as dsp4-09p restores it)
       }
       startSample(i, cpu);
       s->visited[0] = true;

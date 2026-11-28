@@ -6409,6 +6409,48 @@ words.
 
 **Check:** a measurement, recorded here. It changes no code.
 
+## The VS road `$0D` native: `$01` with its first row's `$28` split (dsp4-0d-1, 2026-11-28)
+
+**`$0D`, the VS race's road (`vs_road_project`, four views a frame), is `$01`.** Measured off
+`vs_race`'s firmware tape (3,385 runs), outputs only.
+- **The grammar:** `$01`'s 15 header words, as `vs_proj_pass` sends them. A first row of 6
+  words: the height, `$20`, `$28`, then the 3 track words; later rows of 4, as `$01`. Answers of 4
+  words and a count, then 3 words a line, then `$8000`.
+- **`$01`'s first row has three words after the height.** `$0D`'s two map to them as: `$20`;
+  `$28`'s low byte << 8; `$28`'s high byte sign-extended.
+  - With that, `src/dsp4.c`'s `$01` gives every first answer (200 of 200 runs whose words are not
+    0).
+  - With a 0 inserted in the first row instead, it gives 2-16 of 200.
+- **The rounding** follows the known rules: `$8000` after another `$0D` that drew, a `$0A`'s
+  edges at a frame's first.
+  - After a `$0D`: 2,537 of 2,537 runs equal, answers and lines. After a `$0A`: all of them.
+  - One run differs in a late row's line count. It has a segment of 88 lines or more, `$01`'s
+    unmodelled regime (dsp4-01m).
+  - On the 60k firmware tape, its 60 `$0D` runs: 45 of 45 and 2 of 2.
+- `tools/dsp4_0f.py` now checks `$0D` too, on any firmware tape.
+
+**Wired:**
+- **`vs_proj_pass` (`src/misc.c`):** its header and rows go to `dsp4_road_start` and
+  `dsp4_road_row`, its 5 products to `road_product32` (native). `vs_proj_tail` no longer sends
+  the stream's `$8000`. `road_port_product32` is gone.
+- **The row `vs_road_project`** is off the tape, so its extent is a native site for the rows that
+  keep one, `vs_race_frame_body` among them.
+  - Its fuzz sets every row's bank-`$90` pointer: the chip's own counts now pick the rows.
+  - It has 4 new holes: the tails' clamp of the last band's line to 0 (`LDA #0`, never run live).
+    The scripted fuzz reached them; the chip's answers do not.
+- **The harness:**
+  - `dsp4Step` knows `$0D` (its first row 12 bytes), and the rounding tracker counts it as a
+    road.
+  - A replay on the firmware restores the chip with its tracker (dsp4-09p) and now trusts that
+    tracker. A replay that still finds a road on an unknown rounding is its live sample's case,
+    and is set apart, not lost.
+
+**Check:** `vs_road_project` on `vs_race`, `demo_race`, `demo_mode1`: fuzz 500 of 500 each, 31 of 31
+replays; then the full gate.
+
+**What is left of the port's request A:** the VS race's sprite lists (`$000E`), its high table
+`$06` (`oam_high_load_vs`, `oam_high_load2`), `vs_sprites` and the `_vs` copies.
+
 ## Port request W: the VS race loop's way out (port W, 2026-11-28)
 
 **Traced, not inferred.**

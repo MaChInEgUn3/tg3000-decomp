@@ -19,7 +19,9 @@ road leaves it), answers and lines (a run that differs only in lines' third word
 as -128, $FF80, is counted apart: not modelled); $0F's first row answers are src/dsp4.c's $01 (its lines need
 the rounding the run starts on, not taken here); each exchange's answer is a function of its two
 words, the same for $0F and $10, and (dsp4-0f-2) is src/dsp4.c's dsp4_colour_blend toward the
-extra word; the extra word is constant. Exit status 0 when all hold.
+extra word; the extra word is constant. dsp4-0d-1: the VS road $0D (15 header words, a first row of
+6) is src/dsp4.c's $01 with its first row's $28 split ($28's low byte << 8, its high byte
+sign-extended), after another $0D (rounding $8000) or after a $0A (its edges): all must agree. Exit status 0 when all hold.
 """
 import collections
 import mmap
@@ -89,6 +91,72 @@ def runs(path):
     return out, stats
 
 
+def runs0d(path):
+    """dsp4-0d-1: every $0D run (the VS road): (record, header, rows, the commands before it since
+    the last $0D or its last $0A's edges)"""
+    f = open(path, 'rb')
+    t = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+    n = len(t) // 5
+
+    def rd(k):
+        return t[5 * k + 4] & 1
+
+    def start(k):
+        return not rd(k) and (k == 0 or rd(k - 1)) and not rd(k + 1) and t[5 * k + 8] == 0
+
+    out, k, edges, since = [], 0, None, set()
+    while k < n - 1:
+        if not start(k):
+            k += 1
+            continue
+        cmd, j = t[5 * k + 3], k + 2
+        if cmd == 0x0A:
+            edges = tuple(t[5 * (k + 2 + 2 * q) + 3] | t[5 * (k + 3 + 2 * q) + 3] << 8 for q in range(3))
+            since.add(0x0A)
+        elif cmd != 0x0D:
+            if cmd != 0:
+                since.add(cmd)
+        if cmd != 0x0D:
+            k += 2
+            continue
+
+        def take(d, count):
+            nonlocal j
+            words = []
+            for _ in range(count):
+                if j + 1 >= n or rd(j) != d or rd(j + 1) != d:
+                    raise Broken('record %d' % j)
+                words.append(t[5 * j + 3] | t[5 * j + 8] << 8)
+                j += 2
+            return words
+        try:
+            head, rows, first = take(0, 15), [], True
+            while True:
+                h = take(0, 1)[0]
+                if h == 0x8000:
+                    break
+                if h == 0x8001:
+                    raise Broken('an edge')
+                words = [h] + take(0, 5 if first else 3)
+                first = False
+                ans = take(1, 5)
+                rows.append((words, ans, [], take(1, 3 * ans[4])))
+            out.append((k, head, rows, frozenset(since), edges))
+        except Broken:
+            pass
+        since = set()
+        k = max(j, k + 1)
+    return out
+
+
+def spec0d(head, rows):
+    """a $0D run as $01's: the first row's $20, $28's low byte << 8, its high byte sign-extended"""
+    w = rows[0][0]
+    hi = w[2] >> 8
+    first = [w[1], (w[2] << 8) & 0xFF00, hi | 0xFF00 if hi & 0x80 else hi]
+    return road.spec(head + first + [w[0]] + w[3:6] + [x for r in rows[1:] for x in r[0]])
+
+
 def answers(rows, n):
     return ' | '.join(('%04X ' * (n - 1)) % tuple(ans[:-1]) + '%d:' % ans[-1] +
                       ''.join(' %04X,%04X,%04X' % tuple(lines[3 * q:3 * q + 3]) for q in range(ans[-1]))
@@ -98,14 +166,14 @@ def answers(rows, n):
 def main():
     tape = sys.argv[1]
     all_runs, stats = runs(tape)
-    ok = not any(k.startswith('broken') for k in stats) and bool(all_runs)
+    ok = not any(k.startswith('broken') for k in stats) and (bool(all_runs) or bool(runs0d(tape)))
     edges = sum(1 for r in all_runs for row in r[3] if row[0] == 'edge')
     print('%s: $0F runs %d, $10 runs %d, edges ($8001) %d, unparsed %d' % (
         os.path.basename(tape), stats['0F'], stats['10'], edges, sum(v for k, v in stats.items() if k.startswith('broken'))))
     clean = [r for r in all_runs if not any(row[0] == 'edge' for row in r[3])]
     extra = collections.Counter(r[2][0] for r in all_runs)
     print('  the extra word: %s' % ', '.join('$%04X x%d' % kv for kv in extra.most_common(4)))
-    ok = ok and len(extra) == 1
+    ok = ok and len(extra) <= 1
     # $10 as $07
     t10 = [r for r in clean if r[0] == 0x10]
     got = road.run(road.NATIVE, ['Q 8000 8000 R7 ' + road.spec(r[2][1:] + [w for row in r[3] for w in row[0]]) for r in t10])
@@ -151,6 +219,30 @@ def main():
     blend = sum(int(g.split()[0], 16) == seen[k] for g, k in zip(got, keys))
     print('  exchanges answered by src/dsp4.c\'s dsp4_colour_blend toward $%04X: %d of %d inputs' % (towards, blend, len(keys)))
     ok = ok and blend == len(keys)
+    # dsp4-0d-1: the VS road $0D as src/dsp4.c's $01, after another $0D (rounding $8000) or a $0A
+    d = runs0d(tape)
+    cases, want, kinds = [], [], []
+    for k, head, rows, since, edges in d:
+        if since and since != frozenset({0x0A}):
+            continue  # (after other commands: not checked here)
+        pre = 'E %X %X %X ' % edges if 0x0A in since else 'Q 8000 8000 '
+        body = spec0d(head, rows)
+        cases.append(pre + body)
+        want.append(answers(rows, 5))
+        kinds.append(('after a $0A' if 0x0A in since else 'after a $0D', road.long_segment(body, head[1])))
+    got = road.run(road.NATIVE, cases) if cases else []
+    # (a run that differs with a segment of 88 lines or more: $01's other regime, dsp4-01m, apart)
+    tally = collections.Counter()
+    for g, w, (kind, long) in zip(got, want, kinds):
+        same = g.split('#')[-1].split() == w.split()
+        tally[('long', False) if not same and long else (kind, same)] += 1
+    if d:
+        print('  $0D runs %d; as src/dsp4.c\'s $01: after a $0D %d of %d, after a $0A %d of %d; with a segment of 88+ '
+              'lines (not modelled) apart: %d more differ' % (
+            len(d), tally[('after a $0D', True)], tally[('after a $0D', True)] + tally[('after a $0D', False)],
+            tally[('after a $0A', True)], tally[('after a $0A', True)] + tally[('after a $0A', False)],
+            tally[('long', False)]))
+        ok = ok and not tally[('after a $0D', False)] and not tally[('after a $0A', False)]
     return 0 if ok else 1
 
 

@@ -12204,6 +12204,9 @@ static void fuzz_vs_road_project(Regs* r, uint8_t* ram, uint32_t (*rnd)(void)) {
   int n = 0;
   for(int b = 0; b < 4; b++) {
     const uint16_t R = v[b].rec;
+    // dsp4-0d-1: the chip's own counts (native $0D) decide which rows copy their object's bytes,
+    // so every row's pointer into bank $90 is set, not only the script's (kept for the products)
+    for(uint32_t k = 0; k < 0x80; k += 2) wr16ram(ram, (uint16_t)(v[b].tab + 0x200 + k), (uint16_t)(0x8100 + 2 * (rnd() % 0x3000)));
     ram[R + 0x25] = (uint8_t)rnd();
     wr16ram(ram, R + 0x37, (uint16_t)((int)(rnd() % 0x180) - 0xC0));
     uint16_t at = (uint16_t)(0x0080 - ((ram[R + 0x25] >> 1) & 0x7E));
@@ -14871,8 +14874,11 @@ const Routine routines[] = {
              {0x85B9D0, 0x85B9D7}, {0x85BA8C, 0x85BB7F}, {0x85BBFC, 0x85BC09}}},
   {.name = "vs_road_project", .entry = 0x85A471, .end = 0x85B1F9, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_vs_road_project, ALL_OUTPUTS,
-   .fuzz = fuzz_vs_road_project, .dsp4Tape = true, .fuzzStack = 0x1FF1,
-   .replays = 32},  // the VS raster IRQs land in every live sample (harness-34)
+   .fuzz = fuzz_vs_road_project, .fuzzStack = 0x1FF1,  // dsp4-0d-1: $0D and its products native (no tape)
+   .replays = 32,  // the VS raster IRQs land in every live sample (harness-34)
+   // dsp4-0d-1: never run live, and no longer by the fuzz (the chip's own counts): the tails' clamp
+   // of the last band's line to 0 (LDA #0, one a view; ported from the ROM's bytes)
+   .holes = {{0x85A73A, 0x85A73D}, {0x85AA82, 0x85AA85}, {0x85ADED, 0x85ADF0}, {0x85B135, 0x85B138}}},
   {.name = "road_rows_project", .entry = 0x85B3D7, .end = 0x85B828, .rtl = true, .source = "src/misc.c",
    .needM16 = true, .needX16 = true, .fixedD = true, .db = 0x83, .call = call_road_rows_project, ALL_OUTPUTS,
    // dsp4-01t: the road, $01, native; dsp4-00a: its products too (no tape left: its whole extent native)

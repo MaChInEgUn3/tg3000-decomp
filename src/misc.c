@@ -6122,17 +6122,8 @@ bool road_rows_stream(void) {
 static uint16_t xba16(uint16_t v) { return (uint16_t)(v << 8 | v >> 8); }
 static uint16_t sext8(uint8_t v) { return (uint16_t)(int16_t)(int8_t)v; }
 
-// a product's two answer words (command 0 by the port)
-static void road_port_product32(uint16_t a, uint16_t b, uint16_t* lo, uint16_t* hi) {
-  dsp4_port_write16(0);
-  dsp4_port_write16(a);
-  dsp4_port_write16(b);
-  *lo = dsp4_port_read16();
-  *hi = dsp4_port_read16();
-}
-
 // The same product by the native multiply (dsp4-00a, the port's request: no DSP-4 port on a race
-// path): road_rows_project and road_rows_project2. The VS road's passes keep the port until $0D.
+// path): road_rows_project and road_rows_project2, and the VS road's passes (dsp4-0d-1).
 static void road_product32(uint16_t a, uint16_t b, uint16_t* lo, uint16_t* hi) {
   const uint32_t p = (uint32_t)dsp4_multiply((int16_t)a, (int16_t)b);
   *lo = (uint16_t)p;
@@ -6174,51 +6165,52 @@ static void vs_proj_pass(const VsProjView* c) {
   const uint16_t at = rd16(DP + 0x14);
   const uint16_t ahead = xba16((uint16_t)((uint16_t)(0x0080 - at) >> 1)), behind = xba16((uint16_t)(at >> 1));
   uint16_t lo, hi;
-  road_port_product32(rd16(c->tab + x), 0xFC00, &lo, &hi);
+  road_product32(rd16(c->tab + x), 0xFC00, &lo, &hi);
   wr16(c->sky, (uint16_t)(hi + (lo >= 0x8000 ? 1 : 0)));
-  road_port_product32(rd16(c->tab + 0x82 + x), ahead, &lo, &hi);
+  road_product32(rd16(c->tab + 0x82 + x), ahead, &lo, &hi);
   wr16(DP + 0x1E, (uint16_t)(rd16(c->rec + 8) - (uint16_t)(hi << 2 | lo >> 14)));
-  road_port_product32(rd16(DP + 0x1E), behind, &lo, &hi);  // (its answers dropped: $20 cleared)
+  road_product32(rd16(DP + 0x1E), behind, &lo, &hi);  // (its answers dropped: $20 cleared)
   wr16(DP + 0x20, 0);
-  road_port_product32(rd16(c->tab + 2 + x), ahead, &lo, &hi);
+  road_product32(rd16(c->tab + 2 + x), ahead, &lo, &hi);
   wr16(DP + 0x26, (uint16_t)-(uint16_t)(hi << 2 | lo >> 14));
-  road_port_product32(rd16(DP + 0x26), behind, &lo, &hi);
+  road_product32(rd16(DP + 0x26), behind, &lo, &hi);
   wr16(DP + 0x28, (uint16_t)(hi << 2 | lo >> 14));
   wr16(c->bands + band, c->k1);
-  static const uint16_t head[6] = {0x000D, 0x0000, 0x0033, 0x0033, 0xFFCB, 0x00BF};
-  for(int i = 0; i < 6; i++) dsp4_port_write16(head[i]);
-  dsp4_port_write16(c->k1);
-  dsp4_port_write16(rd16(c->rec));
-  dsp4_port_write16(rd16(c->rec + 2));
-  dsp4_port_write16(c->k2);
-  dsp4_port_write16(rd16(DP + 0x1A));
-  dsp4_port_write16(0x00C0);
+  // dsp4-0d-1: $0D is $01 (measured on the firmware, outputs only): its 15 header words as sent;
+  // its first row's two words after the height, $20 and $28, are $01's three as $20, $28's low
+  // byte << 8 and its high byte sign-extended. src/dsp4.c's road answers it, rounding and all.
+  uint16_t head[15] = {0x0000, 0x0033, 0x0033, 0xFFCB, 0x00BF, c->k1, rd16(c->rec), rd16(c->rec + 2), c->k2,
+                       rd16(DP + 0x1A), 0x00C0, 0, 0, 0, 0};
   wr16(DP + 0x22, (uint16_t)(band - 1));
   wr16(DP + 0x24, 2);
-  dsp4_port_write16((uint16_t)(rd16(DP + 0x1D) & 0xFF00));
-  dsp4_port_write16(vs_proj_ext(c, rd8(DP + 0x1F)));
-  dsp4_port_write16((uint16_t)(rd16(DP + 0x25) & 0xFF00));
-  dsp4_port_write16(vs_proj_ext(c, rd8(DP + 0x27)));
+  head[11] = (uint16_t)(rd16(DP + 0x1D) & 0xFF00);
+  head[12] = vs_proj_ext(c, rd8(DP + 0x1F));
+  head[13] = (uint16_t)(rd16(DP + 0x25) & 0xFF00);
+  head[14] = vs_proj_ext(c, rd8(DP + 0x27));
+  Dsp4Road road;
+  dsp4_road_start(&road, head);
   bool first = true;
   for(;;) {
     wr16(DP + 0x30, bus_rd16(0x83ACEC + rd16(DP + 0x14)));
-    dsp4_port_write16(rd16(DP + 0x30));
+    uint16_t firstWords[3];
     if(first) {
-      dsp4_port_write16(rd16(DP + 0x20));
-      dsp4_port_write16(rd16(DP + 0x28));
-      first = false;
+      const uint16_t w28 = rd16(DP + 0x28);
+      firstWords[0] = rd16(DP + 0x20);
+      firstWords[1] = (uint16_t)(w28 << 8);
+      firstWords[2] = sext8((uint8_t)(w28 >> 8));
     }
     const uint32_t k = rd16(DP + 0x16);
-    dsp4_port_write16(rd16(c->tab + 0x82 + k));
-    dsp4_port_write16(rd16(c->tab + 2 + k));
-    dsp4_port_write16(rd16(c->tab + 0x102 + k));
+    const uint16_t track[3] = {rd16(c->tab + 0x82 + k), rd16(c->tab + 2 + k), rd16(c->tab + 0x102 + k)};
     wr16(DP + 0x16, (uint16_t)(k + 2));
+    uint16_t answer[4];
+    static uint16_t lines[512][3];
+    const uint16_t count = (uint16_t)dsp4_road_row(&road, rd16(DP + 0x30), first ? firstWords : NULL, track, answer, lines, 512);
+    first = false;
     const uint32_t r = rd16(DP + 0x24);
-    for(uint32_t col = 0; col < 4; col++) wr16(c->rows + 0x100 * col + r, dsp4_port_read16());
+    for(uint32_t col = 0; col < 4; col++) wr16(c->rows + 0x100 * col + r, answer[col]);
     wr16(c->rows + 0x400 + r, rd16(DP + 0x30));
     wr16(c->rows + 0x500 + r, rd16(DP + 0x14));
     wr16(DP + 0x24, (uint16_t)(r + 2));
-    const uint16_t count = dsp4_port_read16();
     if(count != 0) {
       const uint32_t b = rd16(DP + 0x22);
       wr8(c->bands + b, (uint8_t)(rd8(c->bands + 1 + b) - (uint8_t)count));
@@ -6227,10 +6219,10 @@ static void vs_proj_pass(const VsProjView* c) {
       for(uint16_t i = 0; i < 8; i++) wr8((uint16_t)(y - i), bus_rd8(0x900000 + (uint16_t)(s - i)));  // MVP, top down
       wr16(DP + 0x18, (uint16_t)(y - 8));
       uint16_t last = 0;
-      for(uint16_t n = count; n != 0; n--) {
-        last = dsp4_port_read16();
-        wr16(c->pairs + 2 + (uint32_t)last, dsp4_port_read16());  // in low WRAM (DB $30)
-        wr16(c->pairs + (uint32_t)last, dsp4_port_read16());
+      for(uint16_t n = 0; n < count; n++) {
+        last = lines[n][0];
+        wr16(c->pairs + 2 + (uint32_t)last, lines[n][1]);  // in low WRAM (DB $30)
+        wr16(c->pairs + (uint32_t)last, lines[n][2]);
       }
       wr16(DP + 0x22, (uint16_t)(rd16(DP + 0x22) - 1));
       if(cmp_n(last, rd16(DP + 0x1C))) return;  // CPX $1C / BMI: straight to the tail
@@ -6241,7 +6233,7 @@ static void vs_proj_pass(const VsProjView* c) {
 }
 
 static void vs_proj_tail(const VsProjView* c) {
-  dsp4_port_write16(0x8000);
+  // (the original ends the $0D stream with $8000 here; src/dsp4.c's road has no stream to end)
   wr16(DP + c->save24, rd16(DP + 0x24));
   wr16(c->bands + 0x23, 0);
   wr16(c->bands + 0x45, 0);
